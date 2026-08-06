@@ -2,6 +2,8 @@
 
 namespace App\Services\CustomKeywordSearch;
 
+use App\Models\User;
+use App\Services\Billing\BillingService;
 use App\Jobs\RunCustomKeywordSearch;
 use App\Models\CustomKeywordSearch;
 use App\Models\CustomKeywordSearchRun;
@@ -16,19 +18,26 @@ class SavedSearchManager
     public function __construct(
         private readonly KeywordNormalizer $normalizer,
         private readonly SearchRunProcessor $processor,
+        private readonly BillingService $billing,
     ) {}
 
     /**
      * @param  array<int, string>  $keywords
      */
     public function create(
-        ?int $userId,
+        ?User $user,
         ?string $guestToken,
+        string $type,
         string $phrase,
         array $keywords,
         ?string $name,
         string $frequency,
     ): CustomKeywordSearch {
+        $type = in_array($type, CustomKeywordSearch::allowedTypes(), true)
+            ? $type
+            : CustomKeywordSearch::TYPE_BRAND;
+
+        $userId = $user?->id;
         $phrase = $this->normalizer->keyword($phrase);
         $keywords = $this->normalizer->keywordSet($phrase, $keywords);
 
@@ -49,6 +58,7 @@ class SavedSearchManager
         // instead of cluttering the list with near-duplicates.
         $existing = CustomKeywordSearch::query()
             ->ownedBy($userId, $guestToken)
+            ->where('search_type', $type)
             ->where('keyword_signature', $signature)
             ->first();
 
@@ -67,12 +77,18 @@ class SavedSearchManager
             'guest_token' => $userId === null ? $guestToken : null,
             'name' => $name,
             'phrase' => $phrase,
+            'search_type' => $type,
             'keywords' => $keywords,
             'keyword_signature' => $signature,
             'frequency' => $frequency,
             'status' => CustomKeywordSearch::STATUS_SCRAPING,
+            'is_watchlisted' => false,
             'next_run_at' => $this->processor->nextRunAt($frequency),
         ]);
+
+        if ($user !== null) {
+            $this->billing->consumeSearchCredit($user);
+        }
 
         $this->queueRun($search);
 
@@ -155,6 +171,13 @@ class SavedSearchManager
             ]);
 
         $search->delete();
+    }
+
+    public function setWatchlist(CustomKeywordSearch $search, bool $watchlisted): CustomKeywordSearch
+    {
+        $search->update(['is_watchlisted' => $watchlisted]);
+
+        return $search->refresh();
     }
 
     /**

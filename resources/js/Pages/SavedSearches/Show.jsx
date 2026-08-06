@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Head, router } from '@inertiajs/react';
 
-import SearchShell from '../../landing/flow/SearchShell.jsx';
+import AppLayout from '../components/AppLayout.jsx';
 import ResultsScreen from '../../landing/flow/screens/ResultsScreen.jsx';
 import { savedSearch as api, untrackSearch } from '../../landing/flow/api.js';
 
@@ -12,9 +12,10 @@ const PILL = {
     failed: { text: 'Last run failed', tone: 'accent' },
 };
 
-export default function Show({ search: initial, isAuthenticated = false }) {
+export default function Show({ search: initial, isAuthenticated = false, billing }) {
     const [search, setSearch] = useState(initial);
     const [refreshing, setRefreshing] = useState(false);
+    const [watchlistUpdating, setWatchlistUpdating] = useState(false);
 
     const refresh = async () => {
         setRefreshing(true);
@@ -41,22 +42,31 @@ export default function Show({ search: initial, isAuthenticated = false }) {
         setSearch((prev) => ({ ...prev, ...updated }));
     };
 
+    const toggleWatchlist = async () => {
+        setWatchlistUpdating(true);
+
+        try {
+            const { search: updated } = await api.watchlist(search.id, !search.is_watchlisted);
+            setSearch((prev) => ({ ...prev, ...updated }));
+        } finally {
+            setWatchlistUpdating(false);
+        }
+    };
+
     return (
         <>
             <Head title={`${search.name} — VVF`} />
 
-            <SearchShell
-                pill={PILL[search.status] ?? PILL.done}
-                step="results"
-                onNewSearch={() => router.visit('/')}
-                onExit={() => router.visit('/saved-searches')}
-            >
+            <AppLayout pill={PILL[search.status] ?? PILL.done} step="results">
                 <ResultsScreen
                     search={search}
                     isAuthenticated={isAuthenticated}
+                    billingState={billing}
                     refreshing={refreshing}
+                    watchlistUpdating={watchlistUpdating}
                     onRefresh={refresh}
                     onStartTrial={() => router.visit('/trial')}
+                    onToggleWatchlist={toggleWatchlist}
                 />
 
                 <div className="mt-8 flex flex-wrap items-center justify-between gap-3 border-t border-black/[.06] pt-6 dark:border-white/[.07]">
@@ -87,7 +97,7 @@ export default function Show({ search: initial, isAuthenticated = false }) {
                         </button>
                     </div>
                 </div>
-            </SearchShell>
+            </AppLayout>
         </>
     );
 }

@@ -9,7 +9,7 @@ const ngrokApi = 'http://127.0.0.1:4040/api/tunnels';
 const ngrokArgs = ['http', '--log=stdout', '8000'];
 
 let ngrokProcess;
-let serverProcess;
+const appProcesses = [];
 
 async function main() {
     ensureWindowsPowerShellNote();
@@ -31,13 +31,15 @@ async function main() {
     await runNpmCommand(['run', 'build']);
     await runCommand('php', ['artisan', 'queue:restart']);
 
-    serverProcess = spawnNpmCommand(['run', 'serve'], {
-        stdio: 'inherit',
-    });
+    startAppProcesses();
 
     forwardTerminationSignals();
 
-    const exitCode = await waitForExit(serverProcess, 'npm run serve');
+    const exitCode = await waitForAnyExit(appProcesses, [
+        'npm run serve',
+        'php artisan queue:work',
+        'npm run dev',
+    ]);
     await shutdown(0);
     process.exit(exitCode);
 }
@@ -118,6 +120,29 @@ function spawnNpmCommand(args, options = {}) {
     return spawnCommand(command, commandArgs, options);
 }
 
+function startAppProcesses() {
+    const server = spawnNpmCommand(['run', 'serve'], {
+        stdio: ['ignore', 'pipe', 'pipe'],
+    });
+    pipeWithPrefix(server.stdout, '[serve]');
+    pipeWithPrefix(server.stderr, '[serve]');
+    appProcesses.push(server);
+
+    const queueWorker = spawnCommand('php', ['artisan', 'queue:work'], {
+        stdio: ['ignore', 'pipe', 'pipe'],
+    });
+    pipeWithPrefix(queueWorker.stdout, '[queue]');
+    pipeWithPrefix(queueWorker.stderr, '[queue]');
+    appProcesses.push(queueWorker);
+
+    const vite = spawnNpmCommand(['run', 'dev'], {
+        stdio: ['ignore', 'pipe', 'pipe'],
+    });
+    pipeWithPrefix(vite.stdout, '[vite]');
+    pipeWithPrefix(vite.stderr, '[vite]');
+    appProcesses.push(vite);
+}
+
 function resolveNpmCommand(args) {
     if (process.platform === 'win32') {
         return ['cmd.exe', ['/d', '/s', '/c', 'npm.cmd', ...args]];
@@ -143,6 +168,22 @@ function waitForExit(child, label) {
 
         child.once('exit', (code) => {
             resolve(code ?? 0);
+        });
+    });
+}
+
+function waitForAnyExit(children, labels) {
+    return new Promise((resolve, reject) => {
+        children.forEach((child, index) => {
+            const label = labels[index] ?? `process ${index + 1}`;
+
+            child.once('error', (error) => {
+                reject(new Error(`Unable to start ${label}: ${error.message}`));
+            });
+
+            child.once('exit', (code) => {
+                resolve(code ?? 0);
+            });
         });
     });
 }
@@ -176,8 +217,10 @@ function forwardTerminationSignals() {
 }
 
 async function shutdown(exitCode) {
-    if (serverProcess && serverProcess.exitCode === null) {
-        serverProcess.kill('SIGTERM');
+    for (const processHandle of appProcesses) {
+        if (processHandle.exitCode === null) {
+            processHandle.kill('SIGTERM');
+        }
     }
 
     if (ngrokProcess && ngrokProcess.exitCode === null) {

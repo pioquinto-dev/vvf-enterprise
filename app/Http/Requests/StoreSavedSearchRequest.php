@@ -20,6 +20,7 @@ class StoreSavedSearchRequest extends FormRequest
         $maxPhrase = (int) config('custom_keyword_search.limits.max_phrase_length', 120);
 
         return [
+            'type' => ['required', 'in:'.implode(',', CustomKeywordSearch::allowedTypes())],
             'phrase' => ['required', 'string', 'max:'.$maxPhrase],
             'name' => ['nullable', 'string', 'max:'.config('custom_keyword_search.limits.max_name_length', 80)],
             'keywords' => ['required', 'array', 'min:1', 'max:'.config('custom_keyword_search.limits.max_keywords', 12)],

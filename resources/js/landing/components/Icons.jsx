@@ -97,6 +97,17 @@ export const Share = ({ className = 'h-3.5 w-3.5' }) => (
   </svg>
 );
 
+export const Bookmark = ({ className = 'h-3.5 w-3.5', filled = false }) => (
+  <svg viewBox="0 0 16 16" fill={filled ? 'currentColor' : 'none'} className={className} aria-hidden="true">
+    <path
+      d="M4 2.5h8a1 1 0 0 1 1 1v10l-5-2.8L3 13.5v-10a1 1 0 0 1 1-1Z"
+      stroke="currentColor"
+      strokeWidth="1.4"
+      strokeLinejoin="round"
+    />
+  </svg>
+);
+
 export const Play = ({ className = 'h-3.5 w-3.5' }) => (
   <svg viewBox="0 0 16 16" fill="currentColor" className={className} aria-hidden="true">
     <path d="M5 3.2 12.5 8 5 12.8Z" />
@@ -106,6 +117,13 @@ export const Play = ({ className = 'h-3.5 w-3.5' }) => (
 export const Chevron = ({ className = 'h-4 w-4' }) => (
   <svg viewBox="0 0 16 16" fill="none" className={className} aria-hidden="true">
     <path d="M4 6l4 4 4-4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
+
+export const Globe = ({ className = 'h-4 w-4' }) => (
+  <svg viewBox="0 0 24 24" fill="none" className={className} aria-hidden="true">
+    <circle cx="12" cy="12" r="8.25" stroke="currentColor" strokeWidth="1.7" />
+    <path d="M4.6 9h14.8M4.6 15h14.8M12 3.8c2.6 2.2 4.1 5 4.1 8.2S14.6 18 12 20.2M12 3.8C9.4 6 7.9 8.8 7.9 12S9.4 18 12 20.2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
   </svg>
 );
 
@@ -127,6 +145,58 @@ export const Plus = ({ className = 'h-4 w-4' }) => (
   </svg>
 );
 
+/* ---- App shell / sidebar icons ---- */
+
+export const Search = ({ className = 'h-4 w-4' }) => (
+  <svg viewBox="0 0 16 16" fill="none" className={className} aria-hidden="true">
+    <circle cx="7" cy="7" r="4.4" stroke="currentColor" strokeWidth="1.5" />
+    <path d="M10.3 10.3 13.5 13.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+  </svg>
+);
+
+export const Library = ({ className = 'h-4 w-4' }) => (
+  <svg viewBox="0 0 16 16" fill="none" className={className} aria-hidden="true">
+    <rect x="2.2" y="2.5" width="4" height="11" rx="1.3" stroke="currentColor" strokeWidth="1.4" />
+    <rect x="7.6" y="2.5" width="3.2" height="11" rx="1.3" stroke="currentColor" strokeWidth="1.4" />
+    <path d="M12.3 3.6 14.3 12.4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+  </svg>
+);
+
+export const Store = ({ className = 'h-4 w-4' }) => (
+  <svg viewBox="0 0 16 16" fill="none" className={className} aria-hidden="true">
+    <path d="M2.6 6.2 3.6 2.8h8.8l1 3.4a2 2 0 0 1-3.8.9 2 2 0 0 1-3.6 0 2 2 0 0 1-3.4-.9Z" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" />
+    <path d="M3.4 8.2v4.4a.8.8 0 0 0 .8.8h7.6a.8.8 0 0 0 .8-.8V8.2" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+  </svg>
+);
+
+export const Target = ({ className = 'h-4 w-4' }) => (
+  <svg viewBox="0 0 16 16" fill="none" className={className} aria-hidden="true">
+    <circle cx="8" cy="8" r="5.6" stroke="currentColor" strokeWidth="1.4" />
+    <circle cx="8" cy="8" r="2.6" stroke="currentColor" strokeWidth="1.4" />
+    <circle cx="8" cy="8" r=".9" fill="currentColor" />
+  </svg>
+);
+
+export const User = ({ className = 'h-4 w-4' }) => (
+  <svg viewBox="0 0 16 16" fill="none" className={className} aria-hidden="true">
+    <circle cx="8" cy="5.6" r="2.7" stroke="currentColor" strokeWidth="1.4" />
+    <path d="M2.9 13.4a5.1 5.1 0 0 1 10.2 0" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+  </svg>
+);
+
+export const Exit = ({ className = 'h-4 w-4' }) => (
+  <svg viewBox="0 0 16 16" fill="none" className={className} aria-hidden="true">
+    <path d="M6.4 2.6H3.6a1 1 0 0 0-1 1v8.8a1 1 0 0 0 1 1h2.8" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+    <path d="M10 5.2 12.8 8l-2.8 2.8M12.4 8H6.2" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
+
+export const Spark = ({ className = 'h-4 w-4' }) => (
+  <svg viewBox="0 0 16 16" fill="none" className={className} aria-hidden="true">
+    <path d="M8 1.8 9.5 6.1 13.8 7.6 9.5 9.1 8 13.4 6.5 9.1 2.2 7.6 6.5 6.1Z" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" />
+  </svg>
+);
+
 export const Google = ({ className = 'h-4 w-4' }) => (
   <svg viewBox="0 0 24 24" className={className} aria-hidden="true">
     <path
@@ -142,5 +212,20 @@ export const Google = ({ className = 'h-4 w-4' }) => (
       fill="#EA4335"
       d="M12 5.06c1.69 0 3.2.58 4.4 1.72l3.28-3.28C17.7 1.63 15.1.5 12 .5A11.5 11.5 0 0 0 1.74 6.83l3.83 2.96C6.48 7.08 9.01 5.06 12 5.06Z"
     />
+  </svg>
+);
+
+export const Lock = ({ className = 'h-4 w-4' }) => (
+  <svg viewBox="0 0 16 16" fill="none" className={className} aria-hidden="true">
+    <rect x="3" y="7" width="10" height="6.5" rx="1.6" stroke="currentColor" strokeWidth="1.4" />
+    <path d="M5.2 7V5.8a2.8 2.8 0 1 1 5.6 0V7" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+  </svg>
+);
+
+export const Dots = ({ className = 'h-4 w-4' }) => (
+  <svg viewBox="0 0 16 16" fill="currentColor" className={className} aria-hidden="true">
+    <circle cx="3" cy="8" r="1.2" />
+    <circle cx="8" cy="8" r="1.2" />
+    <circle cx="13" cy="8" r="1.2" />
   </svg>
 );

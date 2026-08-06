@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Play, Heart, Comment, Trend, Arrow } from '../components/Icons.jsx';
+import { Play, Heart, Comment, Trend, Arrow, Bookmark } from '../components/Icons.jsx';
 import { compactNumber, duration, gradientFor, multiplier, relativeTime } from './format.js';
 
 export function Thumb({ video, rank, className = '' }) {
@@ -57,7 +57,24 @@ export function Thumb({ video, rank, className = '' }) {
   );
 }
 
-export function FeaturedVideo({ video }) {
+function BookmarkButton({ video, onToggleBookmark, bookmarking = false }) {
+  if (!onToggleBookmark || !video?.id) {
+    return null;
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={() => onToggleBookmark(video)}
+      disabled={bookmarking}
+      className="btn-ghost h-11 px-4 text-sm"
+    >
+      <Bookmark filled={Boolean(video.bookmarked)} /> {video.bookmarked ? 'Bookmarked' : 'Bookmark'}
+    </button>
+  );
+}
+
+export function FeaturedVideo({ video, onToggleBookmark, bookmarking = false }) {
   return (
     <div className="ring-gradient mt-5 flex flex-col gap-6 rounded-3xl bg-white/70 p-5 backdrop-blur-2xl sm:flex-row sm:p-6 dark:bg-white/[.04]">
       <Thumb video={video} rank={video.rank} className="aspect-[9/16] w-full shrink-0 sm:w-[160px] lg:w-[184px]" />
@@ -88,7 +105,7 @@ export function FeaturedVideo({ video }) {
         <div className="mt-4 text-sm font-semibold">{video.handle ?? video.creator_name}</div>
         {video.title && <p className="mt-2 line-clamp-3 text-[13.5px] leading-relaxed muted">{video.title}</p>}
 
-        <div className="mt-6">
+        <div className="mt-6 flex flex-wrap gap-3">
           <a
             href={video.post_url}
             target="_blank"
@@ -97,13 +114,14 @@ export function FeaturedVideo({ video }) {
           >
             View on TikTok <Arrow />
           </a>
+          <BookmarkButton video={video} onToggleBookmark={onToggleBookmark} bookmarking={bookmarking} />
         </div>
       </div>
     </div>
   );
 }
 
-export function GridVideo({ video }) {
+export function GridVideo({ video, onToggleBookmark, bookmarking = false }) {
   return (
     <div className="group">
       <Thumb video={video} rank={video.rank} className="aspect-[9/16] w-full" />
@@ -120,14 +138,24 @@ export function GridVideo({ video }) {
           </span>
         </div>
         <div className="mt-2 truncate text-[12.5px] muted">{video.handle ?? video.creator_name}</div>
-        <a
-          href={video.post_url}
-          target="_blank"
-          rel="noreferrer noopener"
-          className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-accent underline-offset-4 hover:underline dark:text-accent-glow"
-        >
-          View on TikTok <Arrow className="h-3 w-3" />
-        </a>
+        <div className="mt-2 flex items-center justify-between gap-2">
+          <a
+            href={video.post_url}
+            target="_blank"
+            rel="noreferrer noopener"
+            className="inline-flex items-center gap-1 text-xs font-semibold text-accent underline-offset-4 hover:underline dark:text-accent-glow"
+          >
+            View on TikTok <Arrow className="h-3 w-3" />
+          </a>
+          <button
+            type="button"
+            onClick={() => onToggleBookmark?.(video)}
+            disabled={!onToggleBookmark || bookmarking}
+            className="inline-flex items-center gap-1 text-xs font-semibold muted"
+          >
+            <Bookmark className="h-3.5 w-3.5" filled={Boolean(video.bookmarked)} />
+          </button>
+        </div>
       </div>
     </div>
   );

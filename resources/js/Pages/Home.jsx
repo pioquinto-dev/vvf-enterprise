@@ -1,4 +1,5 @@
 import { Head, usePage } from '@inertiajs/react';
+import AppFooter from './components/AppFooter.jsx';
 
 export default function Home({ stack, integrations }) {
     const { props } = usePage();
@@ -64,6 +65,11 @@ export default function Home({ stack, integrations }) {
                             </div>
                         </article>
                     </section>
+
+                    <AppFooter
+                        label="VVF starter shell"
+                        className="mt-auto border-white/10 bg-white/5 dark:border-white/10 dark:bg-white/5"
+                    />
                 </div>
             </main>
         </>

@@ -20,6 +20,9 @@ class CustomKeywordSearch extends Model
 
     public const FREQUENCY_WEEKLY = 'weekly';
     public const FREQUENCY_MONTHLY = 'monthly';
+    public const TYPE_BRAND = 'brand';
+    public const TYPE_COMPETITOR = 'competitor';
+    public const TYPE_PRODUCT = 'product';
 
     protected $guarded = [];
 
@@ -29,6 +32,7 @@ class CustomKeywordSearch extends Model
             'keywords' => 'array',
             'last_run_at' => 'datetime',
             'next_run_at' => 'datetime',
+            'is_watchlisted' => 'boolean',
         ];
     }
 
@@ -66,6 +70,15 @@ class CustomKeywordSearch extends Model
         return $this->runs()
             ->whereIn('status', [CustomKeywordSearchRun::STATUS_QUEUED, CustomKeywordSearchRun::STATUS_RUNNING])
             ->exists();
+    }
+
+    public static function allowedTypes(): array
+    {
+        return [
+            self::TYPE_BRAND,
+            self::TYPE_COMPETITOR,
+            self::TYPE_PRODUCT,
+        ];
     }
 
     /** Scope to whoever is asking — a signed-in user or a guest session token. */

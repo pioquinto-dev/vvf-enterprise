@@ -1,10 +1,20 @@
 import { useState } from 'react';
-import { PRICING } from '../data/dummy.js';
+import { usePage } from '@inertiajs/react';
+import { PRICING, PRICING_PLAN_ORDER } from '../data/dummy.js';
 import { Check, Arrow } from '../components/Icons.jsx';
 import Reveal from '../components/Reveal.jsx';
 
 export default function Pricing({ onStart, onTrial }) {
   const [annual, setAnnual] = useState(false);
+  const { pricingPlans = [] } = usePage().props;
+  const plans = (pricingPlans.length > 0 ? [...pricingPlans] : [...PRICING.monthly]).sort((a, b) => {
+    const aKey = a.slug ?? a.name?.toLowerCase();
+    const bKey = b.slug ?? b.name?.toLowerCase();
+    const aIndex = PRICING_PLAN_ORDER.indexOf(aKey);
+    const bIndex = PRICING_PLAN_ORDER.indexOf(bKey);
+
+    return (aIndex === -1 ? Number.MAX_SAFE_INTEGER : aIndex) - (bIndex === -1 ? Number.MAX_SAFE_INTEGER : bIndex);
+  });
 
   const price = (p) => (p === 0 ? 0 : annual ? Math.round((p * 12 * 0.8) / 12) : p);
 
@@ -40,7 +50,7 @@ export default function Pricing({ onStart, onTrial }) {
       </Reveal>
 
       <div className="mx-auto mt-12 grid max-w-5xl gap-5 sm:grid-cols-2 lg:grid-cols-3">
-        {PRICING.monthly.map((t, i) => (
+        {plans.map((t, i) => (
           <Reveal key={t.name} delay={i * 90} className={t.popular ? 'lg:-mt-4 lg:mb-4' : ''}>
             <div
               className={`relative flex h-full flex-col rounded-3xl p-6 transition-all duration-300 sm:p-7 ${

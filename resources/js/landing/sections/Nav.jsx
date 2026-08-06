@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Logo, Menu, Close, Arrow } from '../components/Icons.jsx';
+import { Logo, Menu, Close, Chevron } from '../components/Icons.jsx';
 import ThemeToggle from '../components/ThemeToggle.jsx';
 import { NAV_LINKS } from '../data/dummy.js';
 
@@ -19,12 +19,12 @@ export default function Nav({ theme, onToggleTheme, onStart }) {
       <div
         className={`transition-all duration-500 ${
           scrolled
-            ? 'border-b border-black/[.06] bg-canvas/70 backdrop-blur-xl dark:border-white/[.07] dark:bg-canvas-dark/70'
+            ? 'border-b border-black/[.06] bg-canvas/88 backdrop-blur-xl dark:border-white/[.07] dark:bg-canvas-dark/88'
             : 'border-b border-transparent'
         }`}
       >
-        <div className="mx-auto flex h-[68px] max-w-page items-center justify-between px-4 sm:px-6 lg:px-8">
-          <a href="#top" className="group flex items-center gap-2.5 font-display text-[17px] font-bold">
+        <div className="mx-auto grid h-[74px] max-w-page grid-cols-[auto_1fr_auto] items-center gap-8 px-4 sm:px-6 lg:px-8">
+          <a href="#top" className="group flex shrink-0 items-center gap-3 font-display text-[17px] font-bold">
             <span className="relative">
               <Logo />
               <span
@@ -35,25 +35,30 @@ export default function Nav({ theme, onToggleTheme, onStart }) {
             VVF
           </a>
 
-          <nav className="hidden items-center gap-0.5 rounded-full border border-black/[.06] bg-white/50 p-1 backdrop-blur-xl lg:flex dark:border-white/[.08] dark:bg-white/[.04]">
+          <nav className="hidden items-center justify-center gap-7 xl:flex">
             {NAV_LINKS.map((l) => (
               <a
                 key={l.href}
                 href={l.href}
-                className="rounded-full px-4 py-2 text-[13.5px] font-medium muted transition-all duration-300 hover:bg-black/[.05] hover:text-ink dark:hover:bg-white/[.08] dark:hover:text-white"
+                className="py-2 text-[15px] font-medium text-ink/76 transition-all duration-300 hover:text-ink dark:text-white/72 dark:hover:text-white"
               >
                 {l.label}
               </a>
             ))}
           </nav>
 
-          <div className="flex items-center gap-2 sm:gap-3">
-            <ThemeToggle theme={theme} onToggle={onToggleTheme} />
-            <a href="/saved-searches" className="btn-ghost hidden h-10 px-4 text-sm sm:inline-flex">
-              Saved searches
+          <div className="flex items-center justify-end gap-3 sm:gap-4">
+            <div className="hidden xl:block">
+              <ThemeToggle theme={theme} onToggle={onToggleTheme} />
+            </div>
+            <a href="/login" className="hidden py-2 text-[15px] font-medium text-ink/76 transition hover:text-ink xl:inline-flex dark:text-white/72 dark:hover:text-white">
+              Sign In
             </a>
-            <button onClick={() => onStart()} className="btn-accent hidden h-10 px-4 text-sm sm:inline-flex">
-              Get started <Arrow />
+            <button
+              onClick={() => onStart()}
+              className="hidden h-[42px] items-center rounded-full bg-ink px-6 text-[15px] font-semibold text-white shadow-[0_12px_30px_-16px_rgba(15,15,15,.55)] transition hover:-translate-y-px hover:bg-black xl:inline-flex dark:bg-white dark:text-ink dark:hover:bg-white/90"
+            >
+              Try for Free
             </button>
             <button
               onClick={() => setOpen((o) => !o)}
@@ -81,17 +86,24 @@ export default function Nav({ theme, onToggleTheme, onStart }) {
             ))}
           </nav>
           <div className="mt-3 flex flex-col gap-2">
-            <a href="/saved-searches" className="btn-ghost h-11 w-full text-sm">
-              Saved searches
+            <button className="btn-ghost h-11 w-full justify-between px-4 text-sm">
+              <span>Theme</span>
+              <span className="inline-flex items-center gap-2">
+                <ThemeToggle theme={theme} onToggle={onToggleTheme} />
+                <Chevron className="h-3.5 w-3.5" />
+              </span>
+            </button>
+            <a href="/login" className="btn-ghost h-11 w-full text-sm">
+              Sign In
             </a>
             <button
               onClick={() => {
                 setOpen(false);
                 onStart();
               }}
-              className="btn-accent h-11 w-full text-sm"
+              className="h-11 w-full rounded-full bg-ink text-sm font-semibold text-white transition hover:bg-black dark:bg-white dark:text-ink"
             >
-              Get started <Arrow />
+              Try for Free
             </button>
           </div>
         </div>

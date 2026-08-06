@@ -111,6 +111,15 @@
     .dark {
         color-scheme: dark;
     }
+
+    /*
+     * Native dropdown lists are painted by the OS, not by Tailwind. Without
+     * this they render dark-on-dark once the app is in dark mode.
+     */
+    .dark select option {
+        background-color: var(--color-ink-800);
+        color: #fff;
+    }
 }
 
 /*

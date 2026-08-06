@@ -1,5 +1,8 @@
 {
   "\u0000rolldown/runtime.js": [],
+  "resources/js/Pages/Auth/Login.jsx": [],
+  "resources/js/Pages/Auth/Register.jsx": [],
+  "resources/js/Pages/Dashboard.jsx": [],
   "resources/js/Pages/Home.jsx": [],
   "resources/js/Pages/Landing.jsx": [],
   "resources/js/Pages/SavedSearches/Index.jsx": [],

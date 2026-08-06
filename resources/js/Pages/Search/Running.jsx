@@ -1,6 +1,6 @@
 import { Head, router } from '@inertiajs/react';
 
-import SearchShell from '../../landing/flow/SearchShell.jsx';
+import AppLayout from '../components/AppLayout.jsx';
 import RunningScreen from '../../landing/flow/screens/RunningScreen.jsx';
 
 export default function Running({ searchId }) {
@@ -8,18 +8,13 @@ export default function Running({ searchId }) {
         <>
             <Head title="Search running — VVF" />
 
-            <SearchShell
-                pill={{ text: 'Search running', tone: 'ok' }}
-                step="running"
-                onNewSearch={() => router.visit('/')}
-                onExit={() => router.visit('/')}
-            >
+            <AppLayout pill={{ text: 'Search running', tone: 'ok' }} step="running" width="max-w-4xl">
                 <RunningScreen
                     searchId={searchId}
-                    onBack={() => router.visit('/')}
+                    onBack={() => router.visit('/saved-searches')}
                     onDone={() => router.visit(`/saved-searches/${searchId}`)}
                 />
-            </SearchShell>
+            </AppLayout>
         </>
     );
 }

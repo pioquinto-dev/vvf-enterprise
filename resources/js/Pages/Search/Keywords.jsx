@@ -1,11 +1,11 @@
 import { useState } from 'react';
 import { Head, router } from '@inertiajs/react';
 
-import SearchShell from '../../landing/flow/SearchShell.jsx';
+import AppLayout from '../components/AppLayout.jsx';
 import KeywordsScreen from '../../landing/flow/screens/KeywordsScreen.jsx';
 import { createSavedSearch, trackSearch } from '../../landing/flow/api.js';
 
-export default function Keywords({ phrase }) {
+export default function Keywords({ phrase, type = 'brand' }) {
     const [submitting, setSubmitting] = useState(false);
     const [error, setError] = useState(null);
 
@@ -14,7 +14,7 @@ export default function Keywords({ phrase }) {
         setError(null);
 
         try {
-            const created = await createSavedSearch({ phrase, name, keywords, frequency });
+            const created = await createSavedSearch({ type, phrase, name, keywords, frequency });
 
             // Remember it locally so the running screen can keep polling even
             // if the visitor navigates away and comes back.
@@ -31,12 +31,7 @@ export default function Keywords({ phrase }) {
         <>
             <Head title="Add keywords — VVF" />
 
-            <SearchShell
-                pill={{ text: '1 free search', tone: 'ok' }}
-                step="keywords"
-                onNewSearch={() => router.visit('/')}
-                onExit={() => router.visit('/')}
-            >
+            <AppLayout pill={{ text: '1 free search', tone: 'ok' }} step="keywords" width="max-w-4xl">
                 <KeywordsScreen
                     phrase={phrase}
                     submitting={submitting}
@@ -44,7 +39,7 @@ export default function Keywords({ phrase }) {
                     onBack={() => router.visit('/')}
                     onSubmit={submit}
                 />
-            </SearchShell>
+            </AppLayout>
         </>
     );
 }

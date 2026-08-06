@@ -21,6 +21,8 @@ class SavedSearchPresenter
             'id' => $search->id,
             'name' => $search->name,
             'phrase' => $search->phrase,
+            'search_type' => $search->search_type,
+            'is_watchlisted' => (bool) $search->is_watchlisted,
             'keywords' => $search->keywords ?? [],
             'frequency' => $search->frequency,
             'status' => $search->status,
@@ -38,7 +40,7 @@ class SavedSearchPresenter
     /**
      * @return array<string, mixed>
      */
-    public static function detail(CustomKeywordSearch $search): array
+    public static function detail(CustomKeywordSearch $search, array $bookmarkedVideoIds = []): array
     {
         $results = $search->videos()
             ->with('video')
@@ -49,6 +51,7 @@ class SavedSearchPresenter
                 [
                     'rank' => $row->rank,
                     'score' => (float) $row->viral_score,
+                    'bookmarked' => in_array($row->viral_video_id, $bookmarkedVideoIds, true),
                     'is_new_breakout' => (bool) $row->is_new_breakout,
                     'source' => $row->source,
                 ]

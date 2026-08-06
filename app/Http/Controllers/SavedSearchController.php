@@ -5,7 +5,10 @@ namespace App\Http\Controllers;
 use App\Http\Requests\StoreSavedSearchRequest;
 use App\Http\Resources\SavedSearchPresenter;
 use App\Models\CustomKeywordSearch;
+use App\Services\Bookmarks\BookmarkService;
+use App\Services\Billing\BillingService;
 use App\Services\CustomKeywordSearch\KeywordExpansionService;
+use App\Services\CustomKeywordSearch\OwnedSearchResolver;
 use App\Services\CustomKeywordSearch\SavedSearchManager;
 use App\Support\GuestIdentity;
 use Illuminate\Http\JsonResponse;
@@ -14,13 +17,14 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
 use Inertia\Inertia;
 use Inertia\Response;
-use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
-
 class SavedSearchController extends Controller
 {
     public function __construct(
         private readonly KeywordExpansionService $expansion,
         private readonly SavedSearchManager $manager,
+        private readonly BillingService $billing,
+        private readonly OwnedSearchResolver $searches,
+        private readonly BookmarkService $bookmarks,
     ) {}
 
     /**
@@ -51,9 +55,14 @@ class SavedSearchController extends Controller
      */
     public function store(StoreSavedSearchRequest $request): JsonResponse
     {
+        if ($request->user() !== null) {
+            $this->billing->ensureCanCreateSearch($request->user());
+        }
+
         $search = $this->manager->create(
-            userId: $request->user()?->id,
+            user: $request->user(),
             guestToken: $request->user() ? null : GuestIdentity::token($request, create: true),
+            type: $request->string('type')->toString(),
             phrase: $request->string('phrase')->toString(),
             keywords: $request->input('keywords', []),
             name: $request->input('name'),
@@ -80,12 +89,7 @@ class SavedSearchController extends Controller
             return response()->json(['searches' => []]);
         }
 
-        $searches = CustomKeywordSearch::query()
-            ->ownedBy($request->user()?->id, GuestIdentity::token($request))
-            ->whereIn('id', $ids)
-            ->with('latestRun')
-            ->withCount('videos')
-            ->get()
+        $searches = $this->searches->findMany($request, $ids)
             ->map(fn (CustomKeywordSearch $search): array => SavedSearchPresenter::summary($search))
             ->all();
 
@@ -97,17 +101,17 @@ class SavedSearchController extends Controller
      */
     public function index(Request $request): Response
     {
-        $searches = CustomKeywordSearch::query()
-            ->ownedBy($request->user()?->id, GuestIdentity::token($request))
-            ->with('latestRun')
-            ->withCount('videos')
-            ->latest()
-            ->get()
+        $type = $this->filterType($request);
+        $watchlistedOnly = $type === null;
+
+        $searches = $this->searches->all($request, $type, $watchlistedOnly)
             ->map(fn (CustomKeywordSearch $search): array => SavedSearchPresenter::summary($search))
             ->all();
 
         return Inertia::render('SavedSearches/Index', [
             'searches' => $searches,
+            'filterType' => $type,
+            'watchlistedOnly' => $watchlistedOnly,
             'isAuthenticated' => $request->user() !== null,
         ]);
     }
@@ -117,10 +121,11 @@ class SavedSearchController extends Controller
      */
     public function show(Request $request, int $id): Response
     {
-        $search = $this->findOwned($request, $id);
+        $search = $this->searches->resolve($request, $id);
+        $bookmarkedVideoIds = $this->bookmarks->idsForUser($request->user());
 
         return Inertia::render('SavedSearches/Show', [
-            'search' => SavedSearchPresenter::detail($search),
+            'search' => SavedSearchPresenter::detail($search, $bookmarkedVideoIds),
             'isAuthenticated' => $request->user() !== null,
         ]);
     }
@@ -128,19 +133,21 @@ class SavedSearchController extends Controller
     /** JSON twin of show(), used to refresh the results page in place. */
     public function showJson(Request $request, int $id): JsonResponse
     {
-        return response()->json(['search' => SavedSearchPresenter::detail($this->findOwned($request, $id))]);
+        return response()->json([
+            'search' => SavedSearchPresenter::detail($this->searches->resolve($request, $id), $this->bookmarks->idsForUser($request->user())),
+        ]);
     }
 
     public function pause(Request $request, int $id): JsonResponse
     {
-        $search = $this->manager->pause($this->findOwned($request, $id));
+        $search = $this->manager->pause($this->searches->resolve($request, $id));
 
         return response()->json(['search' => SavedSearchPresenter::summary($search)]);
     }
 
     public function resume(Request $request, int $id): JsonResponse
     {
-        $search = $this->manager->resume($this->findOwned($request, $id));
+        $search = $this->manager->resume($this->searches->resolve($request, $id));
 
         return response()->json(['search' => SavedSearchPresenter::summary($search)]);
     }
@@ -154,7 +161,7 @@ class SavedSearchController extends Controller
         ]);
 
         $search = $this->manager->updateSettings(
-            $this->findOwned($request, $id),
+            $this->searches->resolve($request, $id),
             $validated['name'] ?? null,
             $validated['frequency'] ?? null,
         );
@@ -164,7 +171,7 @@ class SavedSearchController extends Controller
 
     public function refresh(Request $request, int $id): JsonResponse
     {
-        $search = $this->findOwned($request, $id);
+        $search = $this->searches->resolve($request, $id);
 
         if ($search->hasActiveRun()) {
             return response()->json([
@@ -180,7 +187,7 @@ class SavedSearchController extends Controller
 
     public function destroy(Request $request, int $id): RedirectResponse|JsonResponse
     {
-        $this->manager->delete($this->findOwned($request, $id));
+        $this->manager->delete($this->searches->resolve($request, $id));
 
         if ($request->expectsJson()) {
             return response()->json(['deleted' => true]);
@@ -189,21 +196,26 @@ class SavedSearchController extends Controller
         return redirect('/saved-searches');
     }
 
-    /**
-     * Ownership check for both signed-in users and guests holding the session
-     * token. A miss is a 404 rather than a 403 so ids cannot be probed.
-     */
-    private function findOwned(Request $request, int $id): CustomKeywordSearch
+    public function watchlist(Request $request, int $id): JsonResponse
     {
-        $search = CustomKeywordSearch::query()
-            ->ownedBy($request->user()?->id, GuestIdentity::token($request))
-            ->with('latestRun')
-            ->find($id);
+        $validated = $request->validate([
+            'watchlisted' => ['required', 'boolean'],
+        ]);
 
-        if ($search === null) {
-            throw new NotFoundHttpException('Saved search not found.');
-        }
+        $search = $this->manager->setWatchlist(
+            $this->searches->resolve($request, $id),
+            (bool) $validated['watchlisted'],
+        );
 
-        return $search;
+        return response()->json([
+            'search' => SavedSearchPresenter::summary($search),
+        ]);
+    }
+
+    private function filterType(Request $request): ?string
+    {
+        $type = (string) $request->query('type', '');
+
+        return in_array($type, CustomKeywordSearch::allowedTypes(), true) ? $type : null;
     }
 }

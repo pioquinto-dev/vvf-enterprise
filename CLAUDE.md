@@ -96,10 +96,20 @@ The product's core loop. One phrase becomes a saved, self-refreshing list of vir
 - Landing component classes (`btn-accent`, `btn-ghost`, `field`, `muted`, `faint`, `eyebrow`, `section-title`) live in `@layer components`. Tailwind v4 cannot `@apply` one component class inside another, so each is self-contained — do not refactor them to share a base class.
 - `app.jsx` is the Inertia entry. Theme is applied pre-paint by an inline script in `resources/views/app.blade.php` reading `localStorage['vvf-theme']`.
 
+### `resources/js/Pages/components`
+- `AppLayout.jsx` is the shell for every in-app page — dashboard, watchlist, watchlist detail, the search flow, and the trial page. It replaced the old `landing/flow/SearchShell.jsx`, which has been deleted.
+  - Desktop (`lg` and up): a fixed 268px sidebar holding the logo, a phrase search box that routes to `/search`, the primary nav, the affiliate slot, the account/log-out row, and the theme toggle. Content sits in a column offset by `lg:pl-[268px]` with the shared footer beneath it.
+  - Mobile: a sticky top bar with a hamburger that opens a right-hand drawer (same nav plus account and theme controls), and a fixed three-item bottom tab bar. The footer is hidden on mobile because the tab bar occupies that space — main has `pb-28` to clear it.
+  - Props mirror the old SearchShell so the flow screens dropped in unchanged: `pill` (status chip), `step` (`keywords` | `running` | `results`, draws the progress rail), plus `title`, `actions`, and `width`.
+  - Nav entries must point at routes that exist. "Brand searches" and "Competitor searches" are not separate features — they seed `/search` with the `type` query param that `routes/public.php` already accepts. The affiliate card is a deliberate non-link placeholder until an affiliate route exists.
+  - The layout reads `auth.signedIn` from the shared Inertia props and swaps the account block for log in / sign up, so guest-accessible pages (`/search`, `/trial`) can use the same shell.
+- `AppFooter.jsx` is the shared footer rendered inside `AppLayout`'s content column.
+- **Naming:** the "saved searches" feature is called **Watchlist** in all user-facing copy. Routes, controllers, models, and API paths still use `saved-searches` / `SavedSearch` — do not rename those.
+
 ### `resources/js/landing`
 - Marketing landing page components, rendered by `resources/js/Pages/Landing.jsx` at route `/` (named `landing`).
 - `data/dummy.js` holds every piece of copy, pricing tier, testimonial, FAQ, and fake video on the page. It is all placeholder data — replace these exports with real sources and the components need no changes.
-- `flow/` is the custom search flow. Each step is a real page, not a modal: `SearchShell.jsx` is the shared page chrome, `screens/` holds the four step components, `searchQuery.js` builds and parses the query string that carries state between steps, `VideoCard.jsx` renders results. Step one lives inline in `sections/Hero.jsx`.
+- `flow/` is the custom search flow. Each step is a real page, not a modal: `screens/` holds the four step components, `searchQuery.js` builds and parses the query string that carries state between steps, `VideoCard.jsx` renders results. Step one lives inline in `sections/Hero.jsx`. Page chrome comes from `Pages/components/AppLayout.jsx` — the old `SearchShell.jsx` is gone.
 - Flow routes are `/search` (keywords), `/search/running`, `/search/results`, and `/trial`, all defined in `routes/web.php`. State travels in the query string — `type`, `q` (subject), and `kw` (pipe-separated keywords) — so results are shareable and the browser back button works. Nothing is stored server-side.
 - The legacy Laravel/React starter page is still available at `/starter` (named `home`); `GoogleAuthController` redirects there after sign-in.
 - `landing-mvp/` at the repo root is the original standalone Vite prototype this was ported from, kept for reference. `resources/js/landing` is the source of truth.

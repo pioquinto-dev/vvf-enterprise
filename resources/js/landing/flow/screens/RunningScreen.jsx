@@ -181,7 +181,7 @@ export default function RunningScreen({ searchId, onBack, onDone }) {
             </div>
 
             <p className="mt-5 text-[12.5px] leading-relaxed faint">
-              Safe to close this tab — the search keeps running and stays in your saved searches.
+              Safe to close this tab — the search keeps running and stays on your watchlist.
             </p>
           </>
         )}

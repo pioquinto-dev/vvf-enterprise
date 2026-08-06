@@ -1,4 +1,4 @@
-import { Head, createInertiaApp, router, usePage } from "@inertiajs/react";
+import { Head, Link, createInertiaApp, router, useForm, usePage } from "@inertiajs/react";
 import { Fragment, jsx, jsxs } from "react/jsx-runtime";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import createServer from "@inertiajs/react/server";
@@ -14,6 +14,496 @@ var __exportAll = (all, no_symbols) => {
 	if (!no_symbols) __defProp(target, Symbol.toStringTag, { value: "Module" });
 	return target;
 };
+//#endregion
+//#region resources/js/Pages/Auth/Login.jsx
+var Login_exports = /* @__PURE__ */ __exportAll({ default: () => Login });
+function Login() {
+	const { flash = {} } = usePage().props;
+	const form = useForm({
+		email: "",
+		password: "",
+		remember: true
+	});
+	const submit = (event) => {
+		event.preventDefault();
+		form.post("/login");
+	};
+	return /* @__PURE__ */ jsxs(Fragment, { children: [/* @__PURE__ */ jsx(Head, { title: "Log in — VVF" }), /* @__PURE__ */ jsxs("div", {
+		className: "vvf-landing relative min-h-screen overflow-hidden px-4 py-10 sm:px-6",
+		children: [
+			/* @__PURE__ */ jsxs("div", {
+				"aria-hidden": true,
+				className: "pointer-events-none absolute inset-0 -z-10",
+				children: [/* @__PURE__ */ jsx("div", { className: "bg-grid mask-radial-fade absolute inset-0" }), /* @__PURE__ */ jsx("div", { className: "absolute top-[-10%] left-1/2 h-[380px] w-[760px] -translate-x-1/2 rounded-full bg-accent/18 blur-[140px]" })]
+			}),
+			/* @__PURE__ */ jsxs("div", {
+				className: "mx-auto flex max-w-5xl items-center justify-between",
+				children: [/* @__PURE__ */ jsx(Link, {
+					href: "/",
+					className: "font-display text-[20px] font-bold tracking-[-.02em]",
+					children: "VVF"
+				}), /* @__PURE__ */ jsx(Link, {
+					href: "/register",
+					className: "btn-ghost h-10 px-4 text-sm",
+					children: "Create account"
+				})]
+			}),
+			/* @__PURE__ */ jsxs("div", {
+				className: "mx-auto mt-14 grid max-w-5xl gap-10 lg:grid-cols-[1.1fr_.9fr] lg:items-center",
+				children: [/* @__PURE__ */ jsxs("div", { children: [
+					/* @__PURE__ */ jsxs("p", {
+						className: "eyebrow",
+						children: [/* @__PURE__ */ jsx("span", { className: "h-px w-6 bg-accent/50" }), " Account access"]
+					}),
+					/* @__PURE__ */ jsx("h1", {
+						className: "mt-4 font-display text-[36px] font-bold tracking-[-.03em] sm:text-[52px]",
+						children: "Log in to your VVF workspace"
+					}),
+					/* @__PURE__ */ jsx("p", {
+						className: "mt-5 max-w-xl text-[15px] leading-relaxed muted sm:text-[16px]",
+						children: "Access saved searches, plan limits, bookmarks, and billing. Google sign-in can still be added later, but your email and password flow works independently."
+					})
+				] }), /* @__PURE__ */ jsxs("div", {
+					className: "rounded-[28px] border border-black/[.06] bg-white/78 p-7 shadow-[0_30px_90px_-50px_rgba(16,18,32,.45)] backdrop-blur-xl dark:border-white/[.08] dark:bg-white/[.05] sm:p-8",
+					children: [
+						/* @__PURE__ */ jsx("h2", {
+							className: "font-display text-[24px] font-bold",
+							children: "Welcome back"
+						}),
+						/* @__PURE__ */ jsx("p", {
+							className: "mt-2 text-[13.5px] muted",
+							children: "Use your email and password to continue."
+						}),
+						flash.status && /* @__PURE__ */ jsx("div", {
+							className: "mt-5 rounded-2xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-700 dark:text-emerald-300",
+							children: flash.status
+						}),
+						/* @__PURE__ */ jsxs("form", {
+							onSubmit: submit,
+							className: "mt-6 space-y-4",
+							children: [
+								/* @__PURE__ */ jsxs("div", { children: [
+									/* @__PURE__ */ jsx("label", {
+										className: "mb-2 block text-[12px] font-semibold uppercase tracking-[.14em] faint",
+										children: "Email"
+									}),
+									/* @__PURE__ */ jsx("input", {
+										type: "email",
+										value: form.data.email,
+										onChange: (event) => form.setData("email", event.target.value),
+										className: "w-full rounded-2xl border border-black/[.08] bg-white px-4 py-3 text-[14px] outline-none transition focus:border-accent/45 dark:border-white/[.12] dark:bg-white/[.04]",
+										placeholder: "you@company.com",
+										autoComplete: "email"
+									}),
+									form.errors.email && /* @__PURE__ */ jsx("p", {
+										className: "mt-2 text-sm text-hot",
+										children: form.errors.email
+									})
+								] }),
+								/* @__PURE__ */ jsxs("div", { children: [
+									/* @__PURE__ */ jsx("label", {
+										className: "mb-2 block text-[12px] font-semibold uppercase tracking-[.14em] faint",
+										children: "Password"
+									}),
+									/* @__PURE__ */ jsx("input", {
+										type: "password",
+										value: form.data.password,
+										onChange: (event) => form.setData("password", event.target.value),
+										className: "w-full rounded-2xl border border-black/[.08] bg-white px-4 py-3 text-[14px] outline-none transition focus:border-accent/45 dark:border-white/[.12] dark:bg-white/[.04]",
+										placeholder: "Your password",
+										autoComplete: "current-password"
+									}),
+									form.errors.password && /* @__PURE__ */ jsx("p", {
+										className: "mt-2 text-sm text-hot",
+										children: form.errors.password
+									})
+								] }),
+								/* @__PURE__ */ jsxs("label", {
+									className: "flex items-center gap-3 text-[13px] muted",
+									children: [/* @__PURE__ */ jsx("input", {
+										type: "checkbox",
+										checked: form.data.remember,
+										onChange: (event) => form.setData("remember", event.target.checked),
+										className: "h-4 w-4 rounded border-black/[.15]"
+									}), "Keep me signed in"]
+								}),
+								/* @__PURE__ */ jsx("button", {
+									type: "submit",
+									disabled: form.processing,
+									className: "btn-accent h-12 w-full text-sm",
+									children: form.processing ? "Logging in…" : "Log in"
+								})
+							]
+						}),
+						/* @__PURE__ */ jsxs("p", {
+							className: "mt-5 text-center text-[13px] muted",
+							children: [
+								"Need an account?",
+								" ",
+								/* @__PURE__ */ jsx(Link, {
+									href: "/register",
+									className: "font-semibold text-accent underline-offset-4 hover:underline dark:text-accent-glow",
+									children: "Sign up"
+								})
+							]
+						})
+					]
+				})]
+			})
+		]
+	})] });
+}
+//#endregion
+//#region resources/js/Pages/Auth/Register.jsx
+var Register_exports = /* @__PURE__ */ __exportAll({ default: () => Register });
+function Register() {
+	const form = useForm({
+		name: "",
+		email: "",
+		password: "",
+		password_confirmation: ""
+	});
+	const submit = (event) => {
+		event.preventDefault();
+		form.post("/register");
+	};
+	return /* @__PURE__ */ jsxs(Fragment, { children: [/* @__PURE__ */ jsx(Head, { title: "Create account — VVF" }), /* @__PURE__ */ jsxs("div", {
+		className: "vvf-landing relative min-h-screen overflow-hidden px-4 py-10 sm:px-6",
+		children: [
+			/* @__PURE__ */ jsxs("div", {
+				"aria-hidden": true,
+				className: "pointer-events-none absolute inset-0 -z-10",
+				children: [/* @__PURE__ */ jsx("div", { className: "bg-grid mask-radial-fade absolute inset-0" }), /* @__PURE__ */ jsx("div", { className: "absolute top-[-10%] left-1/2 h-[380px] w-[760px] -translate-x-1/2 rounded-full bg-hot/12 blur-[150px]" })]
+			}),
+			/* @__PURE__ */ jsxs("div", {
+				className: "mx-auto flex max-w-5xl items-center justify-between",
+				children: [/* @__PURE__ */ jsx(Link, {
+					href: "/",
+					className: "font-display text-[20px] font-bold tracking-[-.02em]",
+					children: "VVF"
+				}), /* @__PURE__ */ jsx(Link, {
+					href: "/login",
+					className: "btn-ghost h-10 px-4 text-sm",
+					children: "Log in"
+				})]
+			}),
+			/* @__PURE__ */ jsxs("div", {
+				className: "mx-auto mt-14 grid max-w-5xl gap-10 lg:grid-cols-[1.05fr_.95fr] lg:items-center",
+				children: [/* @__PURE__ */ jsxs("div", { children: [
+					/* @__PURE__ */ jsxs("p", {
+						className: "eyebrow",
+						children: [/* @__PURE__ */ jsx("span", { className: "h-px w-6 bg-accent/50" }), " New account"]
+					}),
+					/* @__PURE__ */ jsx("h1", {
+						className: "mt-4 font-display text-[36px] font-bold tracking-[-.03em] sm:text-[52px]",
+						children: "Create your VVF account"
+					}),
+					/* @__PURE__ */ jsx("p", {
+						className: "mt-5 max-w-xl text-[15px] leading-relaxed muted sm:text-[16px]",
+						children: "Start with email and password, then choose a plan when you’re ready. Any guest searches you ran in this session will be attached to your account after sign-in."
+					})
+				] }), /* @__PURE__ */ jsxs("div", {
+					className: "rounded-[28px] border border-black/[.06] bg-white/78 p-7 shadow-[0_30px_90px_-50px_rgba(16,18,32,.45)] backdrop-blur-xl dark:border-white/[.08] dark:bg-white/[.05] sm:p-8",
+					children: [
+						/* @__PURE__ */ jsx("h2", {
+							className: "font-display text-[24px] font-bold",
+							children: "Create account"
+						}),
+						/* @__PURE__ */ jsx("p", {
+							className: "mt-2 text-[13.5px] muted",
+							children: "Use a normal email/password login or add Google later."
+						}),
+						/* @__PURE__ */ jsxs("form", {
+							onSubmit: submit,
+							className: "mt-6 space-y-4",
+							children: [
+								/* @__PURE__ */ jsxs("div", { children: [
+									/* @__PURE__ */ jsx("label", {
+										className: "mb-2 block text-[12px] font-semibold uppercase tracking-[.14em] faint",
+										children: "Name"
+									}),
+									/* @__PURE__ */ jsx("input", {
+										type: "text",
+										value: form.data.name,
+										onChange: (event) => form.setData("name", event.target.value),
+										className: "w-full rounded-2xl border border-black/[.08] bg-white px-4 py-3 text-[14px] outline-none transition focus:border-accent/45 dark:border-white/[.12] dark:bg-white/[.04]",
+										placeholder: "Your name",
+										autoComplete: "name"
+									}),
+									form.errors.name && /* @__PURE__ */ jsx("p", {
+										className: "mt-2 text-sm text-hot",
+										children: form.errors.name
+									})
+								] }),
+								/* @__PURE__ */ jsxs("div", { children: [
+									/* @__PURE__ */ jsx("label", {
+										className: "mb-2 block text-[12px] font-semibold uppercase tracking-[.14em] faint",
+										children: "Email"
+									}),
+									/* @__PURE__ */ jsx("input", {
+										type: "email",
+										value: form.data.email,
+										onChange: (event) => form.setData("email", event.target.value),
+										className: "w-full rounded-2xl border border-black/[.08] bg-white px-4 py-3 text-[14px] outline-none transition focus:border-accent/45 dark:border-white/[.12] dark:bg-white/[.04]",
+										placeholder: "you@company.com",
+										autoComplete: "email"
+									}),
+									form.errors.email && /* @__PURE__ */ jsx("p", {
+										className: "mt-2 text-sm text-hot",
+										children: form.errors.email
+									})
+								] }),
+								/* @__PURE__ */ jsxs("div", { children: [
+									/* @__PURE__ */ jsx("label", {
+										className: "mb-2 block text-[12px] font-semibold uppercase tracking-[.14em] faint",
+										children: "Password"
+									}),
+									/* @__PURE__ */ jsx("input", {
+										type: "password",
+										value: form.data.password,
+										onChange: (event) => form.setData("password", event.target.value),
+										className: "w-full rounded-2xl border border-black/[.08] bg-white px-4 py-3 text-[14px] outline-none transition focus:border-accent/45 dark:border-white/[.12] dark:bg-white/[.04]",
+										placeholder: "Choose a password",
+										autoComplete: "new-password"
+									}),
+									form.errors.password && /* @__PURE__ */ jsx("p", {
+										className: "mt-2 text-sm text-hot",
+										children: form.errors.password
+									})
+								] }),
+								/* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsx("label", {
+									className: "mb-2 block text-[12px] font-semibold uppercase tracking-[.14em] faint",
+									children: "Confirm password"
+								}), /* @__PURE__ */ jsx("input", {
+									type: "password",
+									value: form.data.password_confirmation,
+									onChange: (event) => form.setData("password_confirmation", event.target.value),
+									className: "w-full rounded-2xl border border-black/[.08] bg-white px-4 py-3 text-[14px] outline-none transition focus:border-accent/45 dark:border-white/[.12] dark:bg-white/[.04]",
+									placeholder: "Repeat your password",
+									autoComplete: "new-password"
+								})] }),
+								/* @__PURE__ */ jsx("button", {
+									type: "submit",
+									disabled: form.processing,
+									className: "btn-accent h-12 w-full text-sm",
+									children: form.processing ? "Creating account…" : "Create account"
+								})
+							]
+						}),
+						/* @__PURE__ */ jsxs("p", {
+							className: "mt-5 text-center text-[13px] muted",
+							children: [
+								"Already have an account?",
+								" ",
+								/* @__PURE__ */ jsx(Link, {
+									href: "/login",
+									className: "font-semibold text-accent underline-offset-4 hover:underline dark:text-accent-glow",
+									children: "Log in"
+								})
+							]
+						})
+					]
+				})]
+			})
+		]
+	})] });
+}
+//#endregion
+//#region resources/js/Pages/Dashboard.jsx
+var Dashboard_exports = /* @__PURE__ */ __exportAll({ default: () => Dashboard });
+var TOP_NAV = [
+	{
+		label: "Dashboard",
+		href: "/dashboard"
+	},
+	{
+		label: "Saved searches",
+		href: "/saved-searches"
+	},
+	{
+		label: "Pricing",
+		href: "/trial"
+	}
+];
+var FOOT_NAV = [
+	{
+		label: "Home",
+		href: "/"
+	},
+	{
+		label: "Saved searches",
+		href: "/saved-searches"
+	},
+	{
+		label: "Trial",
+		href: "/trial"
+	}
+];
+function Dashboard() {
+	const { auth = {}, billing = {}, flash = {} } = usePage().props;
+	const logout = useForm({});
+	const signOut = () => {
+		logout.post("/logout");
+	};
+	return /* @__PURE__ */ jsxs(Fragment, { children: [/* @__PURE__ */ jsx(Head, { title: "Dashboard — VVF" }), /* @__PURE__ */ jsxs("div", {
+		className: "vvf-landing relative min-h-screen overflow-hidden",
+		children: [
+			/* @__PURE__ */ jsxs("div", {
+				"aria-hidden": true,
+				className: "pointer-events-none absolute inset-0 -z-10",
+				children: [/* @__PURE__ */ jsx("div", { className: "bg-grid mask-radial-fade absolute inset-0" }), /* @__PURE__ */ jsx("div", { className: "absolute top-[-12%] left-1/2 h-[420px] w-[820px] -translate-x-1/2 rounded-full bg-accent/14 blur-[150px]" })]
+			}),
+			/* @__PURE__ */ jsx("header", {
+				className: "border-b border-black/[.06] bg-canvas/80 backdrop-blur-xl dark:border-white/[.08] dark:bg-canvas-dark/80",
+				children: /* @__PURE__ */ jsxs("div", {
+					className: "mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-4 sm:px-6 lg:px-8",
+					children: [
+						/* @__PURE__ */ jsx(Link, {
+							href: "/dashboard",
+							className: "font-display text-[20px] font-bold tracking-[-.025em]",
+							children: "VVF"
+						}),
+						/* @__PURE__ */ jsx("nav", {
+							className: "hidden items-center gap-2 md:flex",
+							children: TOP_NAV.map((item) => /* @__PURE__ */ jsx(Link, {
+								href: item.href,
+								className: `rounded-xl px-4 py-2 text-[13px] font-semibold transition ${item.href === "/dashboard" ? "bg-black/[.06] text-ink dark:bg-white/[.08] dark:text-white" : "muted hover:bg-black/[.04] hover:text-ink dark:hover:bg-white/[.05] dark:hover:text-white"}`,
+								children: item.label
+							}, item.href))
+						}),
+						/* @__PURE__ */ jsx("button", {
+							onClick: signOut,
+							className: "btn-ghost h-10 px-4 text-sm",
+							disabled: logout.processing,
+							children: logout.processing ? "Signing out…" : "Log out"
+						})
+					]
+				})
+			}),
+			/* @__PURE__ */ jsx("main", {
+				className: "mx-auto max-w-6xl px-4 py-10 sm:px-6 lg:px-8",
+				children: /* @__PURE__ */ jsxs("div", {
+					className: "grid gap-6 lg:grid-cols-[1.3fr_.7fr]",
+					children: [/* @__PURE__ */ jsxs("section", {
+						className: "rounded-[28px] border border-black/[.06] bg-white/78 p-7 shadow-[0_30px_90px_-55px_rgba(16,18,32,.45)] backdrop-blur-xl dark:border-white/[.08] dark:bg-white/[.05] sm:p-8",
+						children: [
+							/* @__PURE__ */ jsxs("p", {
+								className: "eyebrow",
+								children: [/* @__PURE__ */ jsx("span", { className: "h-px w-6 bg-accent/50" }), " Dashboard"]
+							}),
+							/* @__PURE__ */ jsxs("h1", {
+								className: "mt-4 font-display text-[32px] font-bold tracking-[-.03em] sm:text-[42px]",
+								children: [
+									"Welcome back",
+									auth.user?.name ? `, ${auth.user.name}` : "",
+									"."
+								]
+							}),
+							/* @__PURE__ */ jsx("p", {
+								className: "mt-4 max-w-2xl text-[15px] leading-relaxed muted",
+								children: "This is your account home. From here you can head to saved searches, review your plan state, and later plug in billing, bookmarks, and account settings without changing the overall shell."
+							}),
+							flash.status && /* @__PURE__ */ jsx("div", {
+								className: "mt-6 rounded-2xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-700 dark:text-emerald-300",
+								children: flash.status
+							}),
+							/* @__PURE__ */ jsxs("div", {
+								className: "mt-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-3",
+								children: [
+									/* @__PURE__ */ jsxs("div", {
+										className: "rounded-2xl border border-black/[.06] bg-black/[.02] p-4 dark:border-white/[.08] dark:bg-white/[.04]",
+										children: [/* @__PURE__ */ jsx("p", {
+											className: "text-[12px] font-semibold uppercase tracking-[.14em] faint",
+											children: "Current plan"
+										}), /* @__PURE__ */ jsx("p", {
+											className: "mt-3 font-display text-[24px] font-bold capitalize",
+											children: billing.currentPlan ?? "free"
+										})]
+									}),
+									/* @__PURE__ */ jsxs("div", {
+										className: "rounded-2xl border border-black/[.06] bg-black/[.02] p-4 dark:border-white/[.08] dark:bg-white/[.04]",
+										children: [/* @__PURE__ */ jsx("p", {
+											className: "text-[12px] font-semibold uppercase tracking-[.14em] faint",
+											children: "Credits remaining"
+										}), /* @__PURE__ */ jsxs("p", {
+											className: "mt-3 font-display text-[24px] font-bold",
+											children: [billing.searchCreditsRemaining ?? 0, typeof billing.searchCreditsLimit === "number" ? ` / ${billing.searchCreditsLimit}` : ""]
+										})]
+									}),
+									/* @__PURE__ */ jsxs("div", {
+										className: "rounded-2xl border border-black/[.06] bg-black/[.02] p-4 dark:border-white/[.08] dark:bg-white/[.04]",
+										children: [/* @__PURE__ */ jsx("p", {
+											className: "text-[12px] font-semibold uppercase tracking-[.14em] faint",
+											children: "Bookmarks"
+										}), /* @__PURE__ */ jsxs("p", {
+											className: "mt-3 font-display text-[24px] font-bold",
+											children: [billing.bookmarkCount ?? 0, billing.bookmarkLimit === -1 ? "" : ` / ${billing.bookmarkLimit ?? 0}`]
+										})]
+									})
+								]
+							})
+						]
+					}), /* @__PURE__ */ jsxs("aside", {
+						className: "rounded-[28px] border border-black/[.06] bg-white/78 p-7 shadow-[0_30px_90px_-55px_rgba(16,18,32,.45)] backdrop-blur-xl dark:border-white/[.08] dark:bg-white/[.05] sm:p-8",
+						children: [
+							/* @__PURE__ */ jsx("h2", {
+								className: "font-display text-[22px] font-bold",
+								children: "Quick links"
+							}),
+							/* @__PURE__ */ jsxs("div", {
+								className: "mt-5 space-y-3",
+								children: [
+									/* @__PURE__ */ jsx(Link, {
+										href: "/saved-searches",
+										className: "btn-accent h-11 w-full justify-center text-sm",
+										children: "Open saved searches"
+									}),
+									/* @__PURE__ */ jsx(Link, {
+										href: "/trial",
+										className: "btn-ghost h-11 w-full justify-center text-sm",
+										children: "View plans"
+									}),
+									/* @__PURE__ */ jsx(Link, {
+										href: "/",
+										className: "btn-ghost h-11 w-full justify-center text-sm",
+										children: "Run a new search"
+									})
+								]
+							}),
+							/* @__PURE__ */ jsxs("div", {
+								className: "mt-8 rounded-2xl border border-black/[.06] bg-black/[.02] p-4 dark:border-white/[.08] dark:bg-white/[.04]",
+								children: [/* @__PURE__ */ jsx("p", {
+									className: "text-[12px] font-semibold uppercase tracking-[.14em] faint",
+									children: "Signed in as"
+								}), /* @__PURE__ */ jsx("p", {
+									className: "mt-3 text-[14px] font-semibold",
+									children: auth.user?.email ?? "Unknown account"
+								})]
+							})
+						]
+					})]
+				})
+			}),
+			/* @__PURE__ */ jsx("footer", {
+				className: "border-t border-black/[.06] bg-canvas/80 backdrop-blur-xl dark:border-white/[.08] dark:bg-canvas-dark/80",
+				children: /* @__PURE__ */ jsxs("div", {
+					className: "mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4 px-4 py-4 sm:px-6 lg:px-8",
+					children: [/* @__PURE__ */ jsx("nav", {
+						className: "flex flex-wrap items-center gap-2",
+						children: FOOT_NAV.map((item) => /* @__PURE__ */ jsx(Link, {
+							href: item.href,
+							className: "rounded-xl px-3 py-2 text-[13px] font-semibold muted transition hover:bg-black/[.04] hover:text-ink dark:hover:bg-white/[.05] dark:hover:text-white",
+							children: item.label
+						}, item.href))
+					}), /* @__PURE__ */ jsx("p", {
+						className: "text-[12px] faint",
+						children: "VVF dashboard shell"
+					})]
+				})
+			})
+		]
+	})] });
+}
 //#endregion
 //#region resources/js/Pages/Home.jsx
 var Home_exports = /* @__PURE__ */ __exportAll({ default: () => Home });
@@ -377,6 +867,18 @@ var Share = ({ className = "h-3.5 w-3.5" }) => /* @__PURE__ */ jsxs("svg", {
 		})
 	]
 });
+var Bookmark = ({ className = "h-3.5 w-3.5", filled = false }) => /* @__PURE__ */ jsx("svg", {
+	viewBox: "0 0 16 16",
+	fill: filled ? "currentColor" : "none",
+	className,
+	"aria-hidden": "true",
+	children: /* @__PURE__ */ jsx("path", {
+		d: "M4 2.5h8a1 1 0 0 1 1 1v10l-5-2.8L3 13.5v-10a1 1 0 0 1 1-1Z",
+		stroke: "currentColor",
+		strokeWidth: "1.4",
+		strokeLinejoin: "round"
+	})
+});
 var Play = ({ className = "h-3.5 w-3.5" }) => /* @__PURE__ */ jsx("svg", {
 	viewBox: "0 0 16 16",
 	fill: "currentColor",
@@ -480,23 +982,27 @@ function ThemeToggle({ theme, onToggle, className = "" }) {
 var NAV_LINKS = [
 	{
 		label: "Features",
-		href: "#features"
-	},
-	{
-		label: "How it works",
-		href: "#how"
+		href: "#top"
 	},
 	{
 		label: "Pricing",
-		href: "#pricing"
+		href: "#top"
 	},
 	{
-		label: "Customers",
-		href: "#customers"
+		label: "Blog",
+		href: "#top"
 	},
 	{
-		label: "FAQ",
-		href: "#faq"
+		label: "Consulting",
+		href: "#top"
+	},
+	{
+		label: "Affiliate",
+		href: "#top"
+	},
+	{
+		label: "Extension",
+		href: "#top"
 	}
 ];
 var BRANDS = [
@@ -697,6 +1203,7 @@ var TESTIMONIALS = [
 ];
 var PRICING = { monthly: [
 	{
+		slug: "free",
 		name: "Free",
 		price: 0,
 		tagline: "One search, no card.",
@@ -705,9 +1212,14 @@ var PRICING = { monthly: [
 			"1 free search",
 			"Last 90 days",
 			"Top 100 viral videos"
-		]
+		],
+		searchCreditsLimit: 1,
+		searchCreditsUsed: 0,
+		bookmarkLimit: 0,
+		bookmarksUsed: 0
 	},
 	{
+		slug: "basic",
 		name: "Basic",
 		price: 79,
 		tagline: "For a single brand.",
@@ -719,22 +1231,32 @@ var PRICING = { monthly: [
 			"CSV export for reports",
 			"Virality alerts",
 			"2 user seats"
-		]
+		],
+		searchCreditsLimit: 150,
+		searchCreditsUsed: 0,
+		bookmarkLimit: 50,
+		bookmarksUsed: 0
 	},
 	{
+		slug: "premium",
 		name: "Premium",
 		price: 199,
 		tagline: "For brand and agency teams.",
 		cta: "Choose Premium",
 		features: [
-			"300 searches",
+			"400 searches",
 			"Weekly + monthly scheduling",
 			"Virality alerts",
 			"CSV export for reports",
 			"10 user seats"
-		]
+		],
+		searchCreditsLimit: 400,
+		searchCreditsUsed: 0,
+		bookmarkLimit: -1,
+		bookmarksUsed: 0
 	}
 ] };
+var PRICING_PLAN_ORDER = PRICING.monthly.map((plan) => plan.slug ?? plan.name.toLowerCase());
 var FAQS = [
 	{
 		q: "What counts as one search?",
@@ -969,13 +1491,13 @@ function Nav({ theme, onToggleTheme, onStart }) {
 	return /* @__PURE__ */ jsxs("header", {
 		className: "sticky top-0 z-50",
 		children: [/* @__PURE__ */ jsx("div", {
-			className: `transition-all duration-500 ${scrolled ? "border-b border-black/[.06] bg-canvas/70 backdrop-blur-xl dark:border-white/[.07] dark:bg-canvas-dark/70" : "border-b border-transparent"}`,
+			className: `transition-all duration-500 ${scrolled ? "border-b border-black/[.06] bg-canvas/88 backdrop-blur-xl dark:border-white/[.07] dark:bg-canvas-dark/88" : "border-b border-transparent"}`,
 			children: /* @__PURE__ */ jsxs("div", {
-				className: "mx-auto flex h-[68px] max-w-page items-center justify-between px-4 sm:px-6 lg:px-8",
+				className: "mx-auto grid h-[74px] max-w-page grid-cols-[auto_1fr_auto] items-center gap-8 px-4 sm:px-6 lg:px-8",
 				children: [
 					/* @__PURE__ */ jsxs("a", {
 						href: "#top",
-						className: "group flex items-center gap-2.5 font-display text-[17px] font-bold",
+						className: "group flex shrink-0 items-center gap-3 font-display text-[17px] font-bold",
 						children: [/* @__PURE__ */ jsxs("span", {
 							className: "relative",
 							children: [/* @__PURE__ */ jsx(Logo, {}), /* @__PURE__ */ jsx("span", {
@@ -985,29 +1507,32 @@ function Nav({ theme, onToggleTheme, onStart }) {
 						}), "VVF"]
 					}),
 					/* @__PURE__ */ jsx("nav", {
-						className: "hidden items-center gap-0.5 rounded-full border border-black/[.06] bg-white/50 p-1 backdrop-blur-xl lg:flex dark:border-white/[.08] dark:bg-white/[.04]",
+						className: "hidden items-center justify-center gap-7 xl:flex",
 						children: NAV_LINKS.map((l) => /* @__PURE__ */ jsx("a", {
 							href: l.href,
-							className: "rounded-full px-4 py-2 text-[13.5px] font-medium muted transition-all duration-300 hover:bg-black/[.05] hover:text-ink dark:hover:bg-white/[.08] dark:hover:text-white",
+							className: "py-2 text-[15px] font-medium text-ink/76 transition-all duration-300 hover:text-ink dark:text-white/72 dark:hover:text-white",
 							children: l.label
 						}, l.href))
 					}),
 					/* @__PURE__ */ jsxs("div", {
-						className: "flex items-center gap-2 sm:gap-3",
+						className: "flex items-center justify-end gap-3 sm:gap-4",
 						children: [
-							/* @__PURE__ */ jsx(ThemeToggle, {
-								theme,
-								onToggle: onToggleTheme
+							/* @__PURE__ */ jsx("div", {
+								className: "hidden xl:block",
+								children: /* @__PURE__ */ jsx(ThemeToggle, {
+									theme,
+									onToggle: onToggleTheme
+								})
 							}),
 							/* @__PURE__ */ jsx("a", {
-								href: "/saved-searches",
-								className: "btn-ghost hidden h-10 px-4 text-sm sm:inline-flex",
-								children: "Saved searches"
+								href: "/login",
+								className: "hidden py-2 text-[15px] font-medium text-ink/76 transition hover:text-ink xl:inline-flex dark:text-white/72 dark:hover:text-white",
+								children: "Sign In"
 							}),
-							/* @__PURE__ */ jsxs("button", {
+							/* @__PURE__ */ jsx("button", {
 								onClick: () => onStart(),
-								className: "btn-accent hidden h-10 px-4 text-sm sm:inline-flex",
-								children: ["Get started ", /* @__PURE__ */ jsx(Arrow, {})]
+								className: "hidden h-[42px] items-center rounded-full bg-ink px-6 text-[15px] font-semibold text-white shadow-[0_12px_30px_-16px_rgba(15,15,15,.55)] transition hover:-translate-y-px hover:bg-black xl:inline-flex dark:bg-white dark:text-ink dark:hover:bg-white/90",
+								children: "Try for Free"
 							}),
 							/* @__PURE__ */ jsx("button", {
 								onClick: () => setOpen((o) => !o),
@@ -1031,18 +1556,31 @@ function Nav({ theme, onToggleTheme, onStart }) {
 				}, l.href))
 			}), /* @__PURE__ */ jsxs("div", {
 				className: "mt-3 flex flex-col gap-2",
-				children: [/* @__PURE__ */ jsx("a", {
-					href: "/saved-searches",
-					className: "btn-ghost h-11 w-full text-sm",
-					children: "Saved searches"
-				}), /* @__PURE__ */ jsxs("button", {
-					onClick: () => {
-						setOpen(false);
-						onStart();
-					},
-					className: "btn-accent h-11 w-full text-sm",
-					children: ["Get started ", /* @__PURE__ */ jsx(Arrow, {})]
-				})]
+				children: [
+					/* @__PURE__ */ jsxs("button", {
+						className: "btn-ghost h-11 w-full justify-between px-4 text-sm",
+						children: [/* @__PURE__ */ jsx("span", { children: "Theme" }), /* @__PURE__ */ jsxs("span", {
+							className: "inline-flex items-center gap-2",
+							children: [/* @__PURE__ */ jsx(ThemeToggle, {
+								theme,
+								onToggle: onToggleTheme
+							}), /* @__PURE__ */ jsx(Chevron, { className: "h-3.5 w-3.5" })]
+						})]
+					}),
+					/* @__PURE__ */ jsx("a", {
+						href: "/login",
+						className: "btn-ghost h-11 w-full text-sm",
+						children: "Sign In"
+					}),
+					/* @__PURE__ */ jsx("button", {
+						onClick: () => {
+							setOpen(false);
+							onStart();
+						},
+						className: "h-11 w-full rounded-full bg-ink text-sm font-semibold text-white transition hover:bg-black dark:bg-white dark:text-ink",
+						children: "Try for Free"
+					})
+				]
 			})]
 		})]
 	});
@@ -1629,6 +2167,14 @@ function Testimonials() {
 //#region resources/js/landing/sections/Pricing.jsx
 function Pricing({ onStart, onTrial }) {
 	const [annual, setAnnual] = useState(false);
+	const { pricingPlans = [] } = usePage().props;
+	const plans = (pricingPlans.length > 0 ? [...pricingPlans] : [...PRICING.monthly]).sort((a, b) => {
+		const aKey = a.slug ?? a.name?.toLowerCase();
+		const bKey = b.slug ?? b.name?.toLowerCase();
+		const aIndex = PRICING_PLAN_ORDER.indexOf(aKey);
+		const bIndex = PRICING_PLAN_ORDER.indexOf(bKey);
+		return (aIndex === -1 ? Number.MAX_SAFE_INTEGER : aIndex) - (bIndex === -1 ? Number.MAX_SAFE_INTEGER : bIndex);
+	});
 	const price = (p) => p === 0 ? 0 : annual ? Math.round(p * 12 * .8 / 12) : p;
 	return /* @__PURE__ */ jsxs("section", {
 		id: "pricing",
@@ -1665,7 +2211,7 @@ function Pricing({ onStart, onTrial }) {
 			]
 		}), /* @__PURE__ */ jsx("div", {
 			className: "mx-auto mt-12 grid max-w-5xl gap-5 sm:grid-cols-2 lg:grid-cols-3",
-			children: PRICING.monthly.map((t, i) => /* @__PURE__ */ jsx(Reveal, {
+			children: plans.map((t, i) => /* @__PURE__ */ jsx(Reveal, {
 				delay: i * 90,
 				className: t.popular ? "lg:-mt-4 lg:mb-4" : "",
 				children: /* @__PURE__ */ jsxs("div", {
@@ -2300,7 +2846,21 @@ function Thumb({ video, rank, className = "" }) {
 		]
 	});
 }
-function FeaturedVideo({ video }) {
+function BookmarkButton({ video, onToggleBookmark, bookmarking = false }) {
+	if (!onToggleBookmark || !video?.id) return null;
+	return /* @__PURE__ */ jsxs("button", {
+		type: "button",
+		onClick: () => onToggleBookmark(video),
+		disabled: bookmarking,
+		className: "btn-ghost h-11 px-4 text-sm",
+		children: [
+			/* @__PURE__ */ jsx(Bookmark, { filled: Boolean(video.bookmarked) }),
+			" ",
+			video.bookmarked ? "Bookmarked" : "Bookmark"
+		]
+	});
+}
+function FeaturedVideo({ video, onToggleBookmark, bookmarking = false }) {
 	return /* @__PURE__ */ jsxs("div", {
 		className: "ring-gradient mt-5 flex flex-col gap-6 rounded-3xl bg-white/70 p-5 backdrop-blur-2xl sm:flex-row sm:p-6 dark:bg-white/[.04]",
 		children: [/* @__PURE__ */ jsx(Thumb, {
@@ -2355,21 +2915,25 @@ function FeaturedVideo({ video }) {
 					className: "mt-2 line-clamp-3 text-[13.5px] leading-relaxed muted",
 					children: video.title
 				}),
-				/* @__PURE__ */ jsx("div", {
-					className: "mt-6",
-					children: /* @__PURE__ */ jsxs("a", {
+				/* @__PURE__ */ jsxs("div", {
+					className: "mt-6 flex flex-wrap gap-3",
+					children: [/* @__PURE__ */ jsxs("a", {
 						href: video.post_url,
 						target: "_blank",
 						rel: "noreferrer noopener",
 						className: "btn-accent h-12 px-5 text-sm",
 						children: ["View on TikTok ", /* @__PURE__ */ jsx(Arrow, {})]
-					})
+					}), /* @__PURE__ */ jsx(BookmarkButton, {
+						video,
+						onToggleBookmark,
+						bookmarking
+					})]
 				})
 			]
 		})]
 	});
 }
-function GridVideo({ video }) {
+function GridVideo({ video, onToggleBookmark, bookmarking = false }) {
 	return /* @__PURE__ */ jsxs("div", {
 		className: "group",
 		children: [/* @__PURE__ */ jsx(Thumb, {
@@ -2409,16 +2973,142 @@ function GridVideo({ video }) {
 					className: "mt-2 truncate text-[12.5px] muted",
 					children: video.handle ?? video.creator_name
 				}),
-				/* @__PURE__ */ jsxs("a", {
-					href: video.post_url,
-					target: "_blank",
-					rel: "noreferrer noopener",
-					className: "mt-2 inline-flex items-center gap-1 text-xs font-semibold text-accent underline-offset-4 hover:underline dark:text-accent-glow",
-					children: ["View on TikTok ", /* @__PURE__ */ jsx(Arrow, { className: "h-3 w-3" })]
+				/* @__PURE__ */ jsxs("div", {
+					className: "mt-2 flex items-center justify-between gap-2",
+					children: [/* @__PURE__ */ jsxs("a", {
+						href: video.post_url,
+						target: "_blank",
+						rel: "noreferrer noopener",
+						className: "inline-flex items-center gap-1 text-xs font-semibold text-accent underline-offset-4 hover:underline dark:text-accent-glow",
+						children: ["View on TikTok ", /* @__PURE__ */ jsx(Arrow, { className: "h-3 w-3" })]
+					}), /* @__PURE__ */ jsx("button", {
+						type: "button",
+						onClick: () => onToggleBookmark?.(video),
+						disabled: !onToggleBookmark || bookmarking,
+						className: "inline-flex items-center gap-1 text-xs font-semibold muted",
+						children: /* @__PURE__ */ jsx(Bookmark, {
+							className: "h-3.5 w-3.5",
+							filled: Boolean(video.bookmarked)
+						})
+					})]
 				})
 			]
 		})]
 	});
+}
+//#endregion
+//#region resources/js/landing/flow/api.js
+/**
+* Small fetch wrapper for the saved-search endpoints. Inertia handles page
+* navigation; these calls are the in-page ones that should not re-render the
+* whole document.
+*/
+function csrfToken() {
+	return document.querySelector("meta[name=\"csrf-token\"]")?.getAttribute("content") ?? "";
+}
+var API_V1 = "/api/v1";
+async function request(url, { method = "GET", body } = {}) {
+	const response = await fetch(url, {
+		method,
+		credentials: "same-origin",
+		headers: {
+			Accept: "application/json",
+			"X-Requested-With": "XMLHttpRequest",
+			...body ? { "Content-Type": "application/json" } : {},
+			...method === "GET" ? {} : { "X-CSRF-TOKEN": csrfToken() }
+		},
+		...body ? { body: JSON.stringify(body) } : {}
+	});
+	const payload = await response.json().catch(() => null);
+	if (!response.ok) {
+		const error = new Error(payload?.message || `Request failed (${response.status})`);
+		error.status = response.status;
+		error.payload = payload;
+		throw error;
+	}
+	return payload;
+}
+function expandKeywords(phrase, { signal } = {}) {
+	return fetch(`${API_V1}/saved-searches/expand`, {
+		method: "POST",
+		credentials: "same-origin",
+		signal,
+		headers: {
+			Accept: "application/json",
+			"Content-Type": "application/json",
+			"X-Requested-With": "XMLHttpRequest",
+			"X-CSRF-TOKEN": csrfToken()
+		},
+		body: JSON.stringify({ phrase })
+	}).then(async (response) => {
+		const payload = await response.json().catch(() => null);
+		if (!response.ok) throw new Error(payload?.message || "Could not suggest keywords.");
+		return payload;
+	});
+}
+function createSavedSearch({ phrase, name, keywords, frequency }) {
+	return request(`${API_V1}/saved-searches`, {
+		method: "POST",
+		body: {
+			phrase,
+			name,
+			keywords,
+			frequency
+		}
+	});
+}
+function fetchNotifications(ids) {
+	return request(`${API_V1}/saved-searches/notifications?${ids.map((id) => `ids[]=${encodeURIComponent(id)}`).join("&")}`);
+}
+var savedSearch = {
+	get: (id) => request(`${API_V1}/saved-searches/${id}/json`),
+	pause: (id) => request(`${API_V1}/saved-searches/${id}/pause`, { method: "PATCH" }),
+	resume: (id) => request(`${API_V1}/saved-searches/${id}/resume`, { method: "PATCH" }),
+	update: (id, body) => request(`${API_V1}/saved-searches/${id}/frequency`, {
+		method: "PATCH",
+		body
+	}),
+	refresh: (id) => request(`${API_V1}/saved-searches/${id}/refresh`, { method: "POST" }),
+	destroy: (id) => request(`${API_V1}/saved-searches/${id}`, { method: "DELETE" })
+};
+var billing = { checkout: (slug) => {
+	window.location.assign(`/billing/checkout/${encodeURIComponent(slug)}`);
+} };
+var bookmarks = {
+	save: (id) => request(`${API_V1}/videos/${id}/bookmark`, { method: "POST" }),
+	remove: (id) => request(`${API_V1}/videos/${id}/bookmark`, { method: "DELETE" })
+};
+var TRACKED_KEY = "vvf-tracked-searches";
+function readTracked() {
+	try {
+		const raw = window.sessionStorage.getItem(TRACKED_KEY);
+		const parsed = raw ? JSON.parse(raw) : [];
+		return Array.isArray(parsed) ? parsed : [];
+	} catch {
+		return [];
+	}
+}
+function writeTracked(entries) {
+	try {
+		window.sessionStorage.setItem(TRACKED_KEY, JSON.stringify(entries.slice(0, 10)));
+	} catch {}
+}
+function trackSearch(entry) {
+	const existing = readTracked().filter((t) => String(t.id) !== String(entry.id));
+	writeTracked([{
+		runningPromptShown: false,
+		completedPromptShown: false,
+		...entry
+	}, ...existing]);
+}
+function updateTracked(id, patch) {
+	writeTracked(readTracked().map((t) => String(t.id) === String(id) ? {
+		...t,
+		...patch
+	} : t));
+}
+function untrackSearch(id) {
+	writeTracked(readTracked().filter((t) => String(t.id) !== String(id)));
 }
 //#endregion
 //#region resources/js/landing/flow/screens/ResultsScreen.jsx
@@ -2439,22 +3129,81 @@ function EmptyState({ phrase, onRefresh, refreshing }) {
 						className: "text-ink dark:text-white",
 						children: phrase
 					}),
-					" but nothing matched the phrase with a real creator behind it. Narrower phrases and brand names often do this — try a broader one, or refresh to pull again."
+					" but nothing matched the phrase with a real creator behind it. Narrower phrases and brand names often do this - try a broader one, or refresh to pull again."
 				]
 			}),
 			/* @__PURE__ */ jsx("button", {
 				onClick: onRefresh,
 				disabled: refreshing,
 				className: "btn-ghost mx-auto mt-6 h-11 px-5 text-sm",
-				children: refreshing ? "Refreshing…" : "Run it again"
+				children: refreshing ? "Refreshing..." : "Run it again"
 			})
 		]
 	});
 }
-function ResultsScreen({ search, onStartTrial, onRefresh, refreshing = false, freeSearch = true }) {
+function LoginGate({ resultCount }) {
+	return /* @__PURE__ */ jsxs("div", {
+		className: "ring-gradient relative mt-6 overflow-hidden rounded-3xl bg-white/72 p-8 backdrop-blur-2xl dark:bg-white/[.04]",
+		children: [
+			/* @__PURE__ */ jsx("div", {
+				"aria-hidden": true,
+				className: "pointer-events-none absolute inset-0",
+				children: /* @__PURE__ */ jsx("div", { className: "absolute inset-x-8 top-6 h-32 rounded-full bg-accent/12 blur-3xl" })
+			}),
+			/* @__PURE__ */ jsxs("div", {
+				className: "relative mx-auto max-w-2xl text-center",
+				children: [
+					/* @__PURE__ */ jsx("p", {
+						className: "inline-flex items-center gap-2 rounded-full border border-accent/25 bg-accent/10 px-3 py-1 text-[12px] font-semibold text-accent dark:text-accent-glow",
+						children: "Results locked"
+					}),
+					/* @__PURE__ */ jsx("h2", {
+						className: "mt-4 font-display text-[24px] font-bold tracking-[-.025em] sm:text-[30px]",
+						children: "Sign in to view the matched videos"
+					}),
+					/* @__PURE__ */ jsxs("p", {
+						className: "mx-auto mt-3 max-w-lg text-[14px] leading-relaxed muted",
+						children: [
+							"We found ",
+							compactNumber(resultCount),
+							" videos for this search. Continue with Google to unlock the featured result, ranked list, and outbound TikTok links."
+						]
+					}),
+					/* @__PURE__ */ jsxs("div", {
+						className: "mt-6 flex flex-col items-center justify-center gap-3 sm:flex-row",
+						children: [/* @__PURE__ */ jsxs("a", {
+							href: "/auth/google",
+							className: "btn-accent h-12 px-5 text-sm",
+							children: ["Continue with Google ", /* @__PURE__ */ jsx(Arrow, {})]
+						}), /* @__PURE__ */ jsx("a", {
+							href: "/trial",
+							className: "btn-ghost h-12 px-5 text-sm",
+							children: "Start free trial"
+						})]
+					})
+				]
+			}),
+			/* @__PURE__ */ jsx("div", {
+				className: "mt-8 grid grid-cols-2 gap-4 sm:grid-cols-4",
+				children: Array.from({ length: Math.min(Math.max(resultCount, 4), 8) }).map((_, index) => /* @__PURE__ */ jsxs("div", {
+					"aria-hidden": "true",
+					className: "overflow-hidden rounded-2xl border border-black/[.06] bg-black/[.03] p-2.5 dark:border-white/[.08] dark:bg-white/[.04]",
+					children: [
+						/* @__PURE__ */ jsx("div", { className: "aspect-[9/16] rounded-xl bg-linear-to-br from-black/8 via-black/4 to-transparent blur-[0.2px] dark:from-white/10 dark:via-white/5" }),
+						/* @__PURE__ */ jsx("div", { className: "mt-3 h-3 w-16 rounded-full bg-black/10 dark:bg-white/10" }),
+						/* @__PURE__ */ jsx("div", { className: "mt-2 h-2.5 w-24 rounded-full bg-black/7 dark:bg-white/7" })
+					]
+				}, index))
+			})
+		]
+	});
+}
+function ResultsScreen({ search, isAuthenticated = false, billingState = null, onStartTrial, onRefresh, refreshing = false, freeSearch = true }) {
 	const [visible, setVisible] = useState(13);
 	const [copied, setCopied] = useState(false);
-	const results = search?.results ?? [];
+	const [bookmarkingId, setBookmarkingId] = useState(null);
+	const [items, setItems] = useState(search?.results ?? []);
+	const results = items;
 	const [featured, ...rest] = results;
 	const shown = rest.slice(0, Math.max(visible - 1, 0));
 	const share = async () => {
@@ -2464,6 +3213,24 @@ function ResultsScreen({ search, onStartTrial, onRefresh, refreshing = false, fr
 			window.setTimeout(() => setCopied(false), 2e3);
 		} catch {}
 	};
+	const toggleBookmark = async (video) => {
+		if (!isAuthenticated) {
+			window.location.assign("/auth/google");
+			return;
+		}
+		try {
+			setBookmarkingId(video.id);
+			const payload = video.bookmarked ? await bookmarks.remove(video.id) : await bookmarks.save(video.id);
+			setItems((current) => current.map((item) => item.id === video.id ? {
+				...item,
+				bookmarked: payload.bookmarked
+			} : item));
+		} catch (error) {
+			if (error?.status === 422 || error?.status === 401) window.alert(error.payload?.errors?.billing?.[0] || error.payload?.errors?.auth?.[0] || error.message);
+		} finally {
+			setBookmarkingId(null);
+		}
+	};
 	return /* @__PURE__ */ jsxs("div", {
 		className: "animate-fade-up",
 		children: [
@@ -2471,7 +3238,7 @@ function ResultsScreen({ search, onStartTrial, onRefresh, refreshing = false, fr
 				className: "flex flex-wrap items-center justify-between gap-3",
 				children: [freeSearch ? /* @__PURE__ */ jsx("p", {
 					className: "inline-flex items-center gap-2 rounded-full border border-accent/25 bg-accent/10 px-3 py-1 text-[12px] font-semibold text-accent dark:text-accent-glow",
-					children: "★ This is your 1 free search"
+					children: "* This is your 1 free search"
 				}) : /* @__PURE__ */ jsxs("p", {
 					className: "inline-flex items-center gap-2 rounded-full border border-black/[.08] px-3 py-1 text-[12px] font-semibold muted dark:border-white/[.12]",
 					children: ["Refreshes ", search?.frequency ?? "weekly"]
@@ -2527,14 +3294,44 @@ function ResultsScreen({ search, onStartTrial, onRefresh, refreshing = false, fr
 				phrase: search?.phrase,
 				onRefresh,
 				refreshing
-			}) : /* @__PURE__ */ jsxs(Fragment, { children: [
-				/* @__PURE__ */ jsx(FeaturedVideo, { video: featured }),
+			}) : !isAuthenticated ? /* @__PURE__ */ jsx(LoginGate, { resultCount: results.length }) : /* @__PURE__ */ jsxs(Fragment, { children: [
+				billingState && /* @__PURE__ */ jsxs("div", {
+					className: "mt-6 flex flex-wrap items-center gap-2 rounded-2xl border border-black/[.06] bg-black/[.03] px-4 py-3 text-[12.5px] muted dark:border-white/[.08] dark:bg-white/[.04]",
+					children: [
+						/* @__PURE__ */ jsxs("span", { children: ["Plan ", /* @__PURE__ */ jsx("b", {
+							className: "text-ink dark:text-white capitalize",
+							children: billingState.currentPlan
+						})] }),
+						/* @__PURE__ */ jsx("span", { children: "·" }),
+						/* @__PURE__ */ jsxs("span", { children: [
+							billingState.searchCreditsRemaining,
+							" / ",
+							billingState.searchCreditsLimit,
+							" credits left"
+						] }),
+						/* @__PURE__ */ jsx("span", { children: "·" }),
+						/* @__PURE__ */ jsxs("span", { children: [
+							billingState.bookmarkCount,
+							billingState.bookmarkLimit === -1 ? "" : ` / ${billingState.bookmarkLimit}`,
+							" bookmarks"
+						] })
+					]
+				}),
+				/* @__PURE__ */ jsx(FeaturedVideo, {
+					video: featured,
+					onToggleBookmark: toggleBookmark,
+					bookmarking: bookmarkingId === featured?.id
+				}),
 				shown.length > 0 && /* @__PURE__ */ jsxs(Fragment, { children: [/* @__PURE__ */ jsx("h2", {
 					className: "mt-10 font-display text-[11px] font-semibold tracking-[.14em] uppercase faint",
 					children: "More viral videos"
 				}), /* @__PURE__ */ jsx("div", {
 					className: "mt-4 grid grid-cols-2 gap-5 sm:grid-cols-3 lg:grid-cols-4",
-					children: shown.map((v) => /* @__PURE__ */ jsx(GridVideo, { video: v }, v.id))
+					children: shown.map((v) => /* @__PURE__ */ jsx(GridVideo, {
+						video: v,
+						onToggleBookmark: toggleBookmark,
+						bookmarking: bookmarkingId === v.id
+					}, v.id))
 				})] }),
 				visible < results.length && /* @__PURE__ */ jsx("button", {
 					onClick: () => setVisible((v) => v + PAGE_STEP),
@@ -2562,13 +3359,9 @@ function ResultsScreen({ search, onStartTrial, onRefresh, refreshing = false, fr
 					/* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsx("p", {
 						className: "font-display text-[17px] font-bold text-white",
 						children: "Want another search, or weekly tracking?"
-					}), /* @__PURE__ */ jsxs("p", {
+					}), /* @__PURE__ */ jsx("p", {
 						className: "mt-1.5 text-[13.5px] text-white/60",
-						children: [
-							"This search refreshes ",
-							search?.frequency ?? "weekly",
-							" on a paid plan. 10 day trial, cancel before day 10."
-						]
+						children: "Basic includes 150 credits and 50 bookmarks. Premium includes 400 credits and unlimited bookmarks."
 					})] }),
 					/* @__PURE__ */ jsxs("button", {
 						onClick: onStartTrial,
@@ -2579,112 +3372,6 @@ function ResultsScreen({ search, onStartTrial, onRefresh, refreshing = false, fr
 			})
 		]
 	});
-}
-//#endregion
-//#region resources/js/landing/flow/api.js
-/**
-* Small fetch wrapper for the saved-search endpoints. Inertia handles page
-* navigation; these calls are the in-page ones that should not re-render the
-* whole document.
-*/
-function csrfToken() {
-	return document.querySelector("meta[name=\"csrf-token\"]")?.getAttribute("content") ?? "";
-}
-async function request(url, { method = "GET", body } = {}) {
-	const response = await fetch(url, {
-		method,
-		credentials: "same-origin",
-		headers: {
-			Accept: "application/json",
-			"X-Requested-With": "XMLHttpRequest",
-			...body ? { "Content-Type": "application/json" } : {},
-			...method === "GET" ? {} : { "X-CSRF-TOKEN": csrfToken() }
-		},
-		...body ? { body: JSON.stringify(body) } : {}
-	});
-	const payload = await response.json().catch(() => null);
-	if (!response.ok) {
-		const error = new Error(payload?.message || `Request failed (${response.status})`);
-		error.status = response.status;
-		error.payload = payload;
-		throw error;
-	}
-	return payload;
-}
-function expandKeywords(phrase, { signal } = {}) {
-	return fetch("/saved-searches/expand", {
-		method: "POST",
-		credentials: "same-origin",
-		signal,
-		headers: {
-			Accept: "application/json",
-			"Content-Type": "application/json",
-			"X-Requested-With": "XMLHttpRequest",
-			"X-CSRF-TOKEN": csrfToken()
-		},
-		body: JSON.stringify({ phrase })
-	}).then(async (response) => {
-		const payload = await response.json().catch(() => null);
-		if (!response.ok) throw new Error(payload?.message || "Could not suggest keywords.");
-		return payload;
-	});
-}
-function createSavedSearch({ phrase, name, keywords, frequency }) {
-	return request("/saved-searches", {
-		method: "POST",
-		body: {
-			phrase,
-			name,
-			keywords,
-			frequency
-		}
-	});
-}
-function fetchNotifications(ids) {
-	return request(`/saved-searches/notifications?${ids.map((id) => `ids[]=${encodeURIComponent(id)}`).join("&")}`);
-}
-var savedSearch = {
-	get: (id) => request(`/saved-searches/${id}/json`),
-	pause: (id) => request(`/saved-searches/${id}/pause`, { method: "PATCH" }),
-	resume: (id) => request(`/saved-searches/${id}/resume`, { method: "PATCH" }),
-	update: (id, body) => request(`/saved-searches/${id}/frequency`, {
-		method: "PATCH",
-		body
-	}),
-	refresh: (id) => request(`/saved-searches/${id}/refresh`, { method: "POST" }),
-	destroy: (id) => request(`/saved-searches/${id}`, { method: "DELETE" })
-};
-var TRACKED_KEY = "vvf-tracked-searches";
-function readTracked() {
-	try {
-		const raw = window.sessionStorage.getItem(TRACKED_KEY);
-		const parsed = raw ? JSON.parse(raw) : [];
-		return Array.isArray(parsed) ? parsed : [];
-	} catch {
-		return [];
-	}
-}
-function writeTracked(entries) {
-	try {
-		window.sessionStorage.setItem(TRACKED_KEY, JSON.stringify(entries.slice(0, 10)));
-	} catch {}
-}
-function trackSearch(entry) {
-	const existing = readTracked().filter((t) => String(t.id) !== String(entry.id));
-	writeTracked([{
-		runningPromptShown: false,
-		completedPromptShown: false,
-		...entry
-	}, ...existing]);
-}
-function updateTracked(id, patch) {
-	writeTracked(readTracked().map((t) => String(t.id) === String(id) ? {
-		...t,
-		...patch
-	} : t));
-}
-function untrackSearch(id) {
-	writeTracked(readTracked().filter((t) => String(t.id) !== String(id)));
 }
 //#endregion
 //#region resources/js/Pages/SavedSearches/Show.jsx
@@ -2707,7 +3394,7 @@ var PILL = {
 		tone: "accent"
 	}
 };
-function Show({ search: initial }) {
+function Show({ search: initial, isAuthenticated = false, billing }) {
 	const [search, setSearch] = useState(initial);
 	const [refreshing, setRefreshing] = useState(false);
 	const refresh = async () => {
@@ -2738,6 +3425,8 @@ function Show({ search: initial }) {
 		onExit: () => router.visit("/saved-searches"),
 		children: [/* @__PURE__ */ jsx(ResultsScreen, {
 			search,
+			isAuthenticated,
+			billingState: billing,
 			refreshing,
 			onRefresh: refresh,
 			onStartTrial: () => router.visit("/trial")
@@ -3254,34 +3943,46 @@ function Running({ searchId }) {
 //#endregion
 //#region resources/js/landing/flow/screens/TrialScreen.jsx
 function TrialScreen({ onBack, backLabel = "Back to results" }) {
-	const tiers = PRICING.monthly.filter((t) => t.price > 0);
+	const { pricingPlans = [], auth = {} } = usePage().props;
+	const tiers = (pricingPlans.length > 0 ? [...pricingPlans] : [...PRICING.monthly]).sort((a, b) => {
+		const aKey = a.slug ?? a.name?.toLowerCase();
+		const bKey = b.slug ?? b.name?.toLowerCase();
+		const aIndex = PRICING_PLAN_ORDER.indexOf(aKey);
+		const bIndex = PRICING_PLAN_ORDER.indexOf(bKey);
+		return (aIndex === -1 ? Number.MAX_SAFE_INTEGER : aIndex) - (bIndex === -1 ? Number.MAX_SAFE_INTEGER : bIndex);
+	}).filter((t) => t.price > 0);
 	const trialTier = tiers.find((t) => t.popular) || tiers[0];
+	const startCheckout = (slug) => {
+		if (!auth.signedIn) {
+			window.location.assign("/auth/google");
+			return;
+		}
+		billing.checkout(slug);
+	};
 	return /* @__PURE__ */ jsxs("div", {
 		className: "animate-fade-up",
 		children: [/* @__PURE__ */ jsxs("button", {
 			onClick: onBack,
 			className: "text-[13px] font-semibold muted transition hover:text-accent",
-			children: ["← ", backLabel]
+			children: [
+				"<- ",
+				" ",
+				backLabel
+			]
 		}), /* @__PURE__ */ jsxs("div", {
 			className: "mx-auto mt-8 max-w-3xl text-center",
 			children: [
 				/* @__PURE__ */ jsxs("span", {
 					className: "eyebrow justify-center",
-					children: [/* @__PURE__ */ jsx("span", { className: "h-px w-6 bg-accent/50" }), " 10 day trial"]
+					children: [/* @__PURE__ */ jsx("span", { className: "h-px w-6 bg-accent/50" }), " Subscription plans"]
 				}),
 				/* @__PURE__ */ jsx("h1", {
 					className: "mt-4 font-display text-[30px] leading-tight font-bold tracking-[-.025em] sm:text-[40px]",
-					children: "Start your 10 day trial"
+					children: "Unlock paid tracking"
 				}),
-				/* @__PURE__ */ jsxs("p", {
+				/* @__PURE__ */ jsx("p", {
 					className: "mt-3 text-[14.5px] muted",
-					children: [
-						"Card up front, cancel anytime before day 10. Then it becomes ",
-						trialTier.name,
-						" at $",
-						trialTier.price,
-						"/mo."
-					]
+					children: "Basic gives you 150 search credits and 50 bookmarks. Premium gives you 400 search credits and unlimited bookmarks."
 				}),
 				/* @__PURE__ */ jsx("div", {
 					className: "mx-auto mt-9 grid max-w-2xl gap-5 text-left sm:grid-cols-2",
@@ -3290,14 +3991,18 @@ function TrialScreen({ onBack, backLabel = "Back to results" }) {
 						children: [
 							t.popular && /* @__PURE__ */ jsx("span", {
 								className: "absolute -top-3 left-6 rounded-full bg-linear-to-r from-accent-glow to-accent px-3 py-1 text-[10.5px] font-bold tracking-wider text-white uppercase shadow-[0_8px_20px_-8px_rgba(109,75,255,1)]",
-								children: "Your trial"
+								children: "Most popular"
 							}),
 							/* @__PURE__ */ jsx("p", {
 								className: "font-display text-[16px] font-bold",
 								children: t.name
 							}),
+							/* @__PURE__ */ jsx("p", {
+								className: "mt-1 text-[12.5px] faint",
+								children: t.tagline
+							}),
 							/* @__PURE__ */ jsxs("p", {
-								className: "mt-2 font-display text-[32px] leading-none font-bold tracking-[-.03em]",
+								className: "mt-3 font-display text-[32px] leading-none font-bold tracking-[-.03em]",
 								children: [
 									"$",
 									t.price,
@@ -3307,35 +4012,50 @@ function TrialScreen({ onBack, backLabel = "Back to results" }) {
 									})
 								]
 							}),
+							/* @__PURE__ */ jsxs("p", {
+								className: "mt-4 text-[12px] faint",
+								children: [
+									t.searchCreditsLimit,
+									" credits · ",
+									t.bookmarkLimit === -1 ? "Unlimited" : t.bookmarkLimit,
+									" bookmarks"
+								]
+							}),
 							/* @__PURE__ */ jsx("ul", {
 								className: "mt-5 space-y-2.5 border-t border-black/[.05] pt-5 text-[13.5px] muted dark:border-white/[.07]",
-								children: t.features.slice(0, 3).map((f) => /* @__PURE__ */ jsxs("li", {
+								children: t.features.slice(0, 4).map((f) => /* @__PURE__ */ jsxs("li", {
 									className: "flex gap-2.5",
 									children: [/* @__PURE__ */ jsx("span", {
 										className: "mt-0.5 flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full bg-accent/15 text-accent dark:text-accent-glow",
 										children: /* @__PURE__ */ jsx(Check, { className: "h-2.5 w-2.5" })
 									}), f]
 								}, f))
+							}),
+							/* @__PURE__ */ jsxs("button", {
+								onClick: () => startCheckout(t.slug),
+								className: `mt-6 h-11 w-full text-sm ${t.popular ? "btn-accent" : "btn-ghost"}`,
+								children: [
+									t.cta,
+									" ",
+									/* @__PURE__ */ jsx(Arrow, {})
+								]
 							})
 						]
 					}, t.name))
 				}),
 				/* @__PURE__ */ jsxs("button", {
+					onClick: () => startCheckout(trialTier.slug),
 					className: "btn-accent mx-auto mt-9 h-[52px] px-8 text-[15px]",
 					children: [
 						"Start ",
 						trialTier.name,
-						" trial ",
+						" plan ",
 						/* @__PURE__ */ jsx(Arrow, {})
 					]
 				}),
-				/* @__PURE__ */ jsxs("p", {
+				/* @__PURE__ */ jsx("p", {
 					className: "mt-4 text-xs faint",
-					children: [
-						tiers.filter((t) => !t.popular).map((t) => t.name).join(" and "),
-						" ",
-						"is a direct upgrade, no trial."
-					]
+					children: "Checkout uses Stripe subscriptions. Sign in first if you want the subscription attached to your account."
 				})
 			]
 		})]
@@ -3365,6 +4085,9 @@ createServer((page) => createInertiaApp({
 	render: renderToString,
 	resolve: (name) => {
 		return (/* @__PURE__ */ Object.assign({
+			"./Pages/Auth/Login.jsx": Login_exports,
+			"./Pages/Auth/Register.jsx": Register_exports,
+			"./Pages/Dashboard.jsx": Dashboard_exports,
 			"./Pages/Home.jsx": Home_exports,
 			"./Pages/Landing.jsx": Landing_exports,
 			"./Pages/SavedSearches/Index.jsx": Index_exports,

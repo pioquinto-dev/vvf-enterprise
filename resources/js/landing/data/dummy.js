@@ -1,11 +1,12 @@
 // All content here is placeholder/dummy data for the MVP.
 
 export const NAV_LINKS = [
-  { label: 'Features', href: '#features' },
-  { label: 'How it works', href: '#how' },
-  { label: 'Pricing', href: '#pricing' },
-  { label: 'Customers', href: '#customers' },
-  { label: 'FAQ', href: '#faq' },
+  { label: 'Features', href: '#top' },
+  { label: 'Pricing', href: '#top' },
+  { label: 'Blog', href: '#top' },
+  { label: 'Consulting', href: '#top' },
+  { label: 'Affiliate', href: '#top' },
+  { label: 'Extension', href: '#top' },
 ];
 
 export const BRANDS = [
@@ -142,13 +143,19 @@ export const TESTIMONIALS = [
 export const PRICING = {
   monthly: [
     {
+      slug: 'free',
       name: 'Free',
       price: 0,
       tagline: 'One search, no card.',
       cta: 'Run a free search',
-      features: ['1 free search', 'Last 90 days', 'Top 100 viral videos'],
+      features: ['1 free search', '0 watchlist slots', 'Last 90 days', 'Top 100 viral videos'],
+      searchCreditsLimit: 1,
+      searchCreditsUsed: 0,
+      bookmarkLimit: 0,
+      bookmarksUsed: 0,
     },
     {
+      slug: 'basic',
       name: 'Basic',
       price: 79,
       tagline: 'For a single brand.',
@@ -156,27 +163,40 @@ export const PRICING = {
       popular: true,
       features: [
         '150 searches',
+        '50 watchlist slots',
         'Weekly + monthly scheduling',
         'CSV export for reports',
         'Virality alerts',
         '2 user seats',
       ],
+      searchCreditsLimit: 150,
+      searchCreditsUsed: 0,
+      bookmarkLimit: 50,
+      bookmarksUsed: 0,
     },
     {
+      slug: 'premium',
       name: 'Premium',
       price: 199,
       tagline: 'For brand and agency teams.',
       cta: 'Choose Premium',
       features: [
-        '300 searches',
+        '400 searches',
+        'Unlimited watchlist',
         'Weekly + monthly scheduling',
         'Virality alerts',
         'CSV export for reports',
         '10 user seats',
       ],
+      searchCreditsLimit: 400,
+      searchCreditsUsed: 0,
+      bookmarkLimit: -1,
+      bookmarksUsed: 0,
     },
   ],
 };
+
+export const PRICING_PLAN_ORDER = PRICING.monthly.map((plan) => plan.slug ?? plan.name.toLowerCase());
 
 export const FAQS = [
   {

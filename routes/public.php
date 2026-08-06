@@ -1,0 +1,59 @@
+<?php
+
+use App\Http\Controllers\Auth\AuthenticatedSessionController;
+use App\Http\Controllers\Auth\GoogleAuthController;
+use App\Http\Controllers\Auth\RegisteredUserController;
+use App\Http\Controllers\BillingController;
+use App\Http\Controllers\StripeWebhookController;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Route;
+use Inertia\Inertia;
+
+Route::get('/', function (Request $request) {
+    return Inertia::render($request->user() ? 'Dashboard' : 'Landing');
+})->name('landing');
+
+Route::prefix('search')->group(function (): void {
+    Route::get('/', function (Request $request) {
+        return Inertia::render('Search/Keywords', [
+            'phrase' => trim((string) $request->query('q', '')),
+            'type' => in_array($request->query('type'), ['brand', 'competitor', 'product'], true)
+                ? $request->query('type')
+                : 'brand',
+        ]);
+    })->name('search.keywords');
+
+    Route::get('/running', function (Request $request) {
+        return Inertia::render('Search/Running', [
+            'searchId' => (int) $request->query('id'),
+        ]);
+    })->name('search.running');
+});
+
+Route::get('/trial', function () {
+    return Inertia::render('Trial');
+})->middleware('remember.trial.checkout')->name('trial');
+
+Route::prefix('auth/google')->group(function (): void {
+    Route::get('/', [GoogleAuthController::class, 'redirect'])->name('auth.google.redirect');
+    Route::get('/callback', [GoogleAuthController::class, 'callback'])->name('auth.google.callback');
+});
+
+Route::middleware('guest')->group(function (): void {
+    Route::get('/login', [AuthenticatedSessionController::class, 'create'])->name('login');
+    Route::post('/login', [AuthenticatedSessionController::class, 'store']);
+
+    Route::get('/register', [RegisteredUserController::class, 'create'])->name('register');
+    Route::post('/register', [RegisteredUserController::class, 'store']);
+});
+
+Route::post('/logout', [AuthenticatedSessionController::class, 'destroy'])
+    ->middleware('auth')
+    ->name('logout');
+
+Route::prefix('billing')->group(function (): void {
+    Route::get('/checkout/{slug}', [BillingController::class, 'checkout'])->name('billing.checkout');
+    Route::get('/success', [BillingController::class, 'success'])->name('billing.success');
+});
+
+Route::post('/stripe/webhook', StripeWebhookController::class)->name('stripe.webhook');

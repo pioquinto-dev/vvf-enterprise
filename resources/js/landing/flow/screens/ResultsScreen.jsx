@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import { Share, Arrow, Trend, Check } from '../../components/Icons.jsx';
+import { Share, Arrow, Trend, Check, Bookmark } from '../../components/Icons.jsx';
 import { FeaturedVideo, GridVideo } from '../VideoCard.jsx';
 import { compactNumber } from '../format.js';
+import { bookmarks } from '../api.js';
 
 const PAGE_STEP = 12;
 
@@ -11,11 +12,11 @@ function EmptyState({ phrase, onRefresh, refreshing }) {
       <h2 className="font-display text-[20px] font-bold">No videos cleared the bar</h2>
       <p className="mx-auto mt-3 max-w-md text-[13.5px] leading-relaxed muted">
         We scanned TikTok for <b className="text-ink dark:text-white">{phrase}</b> but nothing matched the phrase with
-        a real creator behind it. Narrower phrases and brand names often do this — try a broader one, or refresh to
+        a real creator behind it. Narrower phrases and brand names often do this - try a broader one, or refresh to
         pull again.
       </p>
       <button onClick={onRefresh} disabled={refreshing} className="btn-ghost mx-auto mt-6 h-11 px-5 text-sm">
-        {refreshing ? 'Refreshing…' : 'Run it again'}
+        {refreshing ? 'Refreshing...' : 'Run it again'}
       </button>
     </div>
   );
@@ -36,8 +37,8 @@ function LoginGate({ resultCount }) {
           Sign in to view the matched videos
         </h2>
         <p className="mx-auto mt-3 max-w-lg text-[14px] leading-relaxed muted">
-          We found {compactNumber(resultCount)} videos for this search. Continue with Google to unlock the featured result,
-          ranked list, and outbound TikTok links.
+          We found {compactNumber(resultCount)} videos for this search. Continue with Google to unlock the featured
+          result, ranked list, and outbound TikTok links.
         </p>
 
         <div className="mt-6 flex flex-col items-center justify-center gap-3 sm:flex-row">
@@ -70,15 +71,20 @@ function LoginGate({ resultCount }) {
 export default function ResultsScreen({
   search,
   isAuthenticated = false,
+  billingState = null,
   onStartTrial,
+  onToggleWatchlist,
   onRefresh,
   refreshing = false,
   freeSearch = true,
+  watchlistUpdating = false,
 }) {
   const [visible, setVisible] = useState(PAGE_STEP + 1);
   const [copied, setCopied] = useState(false);
+  const [bookmarkingId, setBookmarkingId] = useState(null);
+  const [items, setItems] = useState(search?.results ?? []);
 
-  const results = search?.results ?? [];
+  const results = items;
   const [featured, ...rest] = results;
   const shown = rest.slice(0, Math.max(visible - 1, 0));
 
@@ -88,7 +94,28 @@ export default function ResultsScreen({
       setCopied(true);
       window.setTimeout(() => setCopied(false), 2000);
     } catch {
-      /* clipboard unavailable — the URL is in the address bar anyway */
+      /* clipboard unavailable - the URL is in the address bar anyway */
+    }
+  };
+
+  const toggleBookmark = async (video) => {
+    if (!isAuthenticated) {
+      window.location.assign('/auth/google');
+      return;
+    }
+
+    try {
+      setBookmarkingId(video.id);
+      const payload = video.bookmarked ? await bookmarks.remove(video.id) : await bookmarks.save(video.id);
+      setItems((current) =>
+        current.map((item) => (item.id === video.id ? { ...item, bookmarked: payload.bookmarked } : item))
+      );
+    } catch (error) {
+      if (error?.status === 422 || error?.status === 401) {
+        window.alert(error.payload?.errors?.billing?.[0] || error.payload?.errors?.auth?.[0] || error.message);
+      }
+    } finally {
+      setBookmarkingId(null);
     }
   };
 
@@ -97,7 +124,7 @@ export default function ResultsScreen({
       <div className="flex flex-wrap items-center justify-between gap-3">
         {freeSearch ? (
           <p className="inline-flex items-center gap-2 rounded-full border border-accent/25 bg-accent/10 px-3 py-1 text-[12px] font-semibold text-accent dark:text-accent-glow">
-            ★ This is your 1 free search
+            * This is your 1 free search
           </p>
         ) : (
           <p className="inline-flex items-center gap-2 rounded-full border border-black/[.08] px-3 py-1 text-[12px] font-semibold muted dark:border-white/[.12]">
@@ -105,14 +132,28 @@ export default function ResultsScreen({
           </p>
         )}
 
-        <button onClick={share} className="btn-ghost h-10 px-3.5 text-[13px]">
-          {copied ? <Check className="h-3 w-3" /> : <Share />} {copied ? 'Link copied' : 'Share'}
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          {onToggleWatchlist && (
+            <button onClick={onToggleWatchlist} disabled={watchlistUpdating} className="btn-ghost h-10 px-3.5 text-[13px]">
+              <Bookmark className="h-3.5 w-3.5" filled={Boolean(search?.is_watchlisted)} />
+              {search?.is_watchlisted ? 'Watchlisted' : 'Add to watchlist'}
+            </button>
+          )}
+          <button onClick={share} className="btn-ghost h-10 px-3.5 text-[13px]">
+            {copied ? <Check className="h-3 w-3" /> : <Share />} {copied ? 'Link copied' : 'Share'}
+          </button>
+        </div>
       </div>
 
       <h1 className="mt-4 font-display text-[28px] leading-tight font-bold tracking-[-.025em] sm:text-[36px]">
         {search?.name ?? 'Recent viral videos'}
       </h1>
+
+      {search?.search_type && (
+        <p className="mt-2 text-[11.5px] font-semibold uppercase tracking-[.14em] faint">
+          {search.search_type}
+        </p>
+      )}
 
       <div className="mt-4 flex flex-wrap gap-2">
         <span className="rounded-xl bg-ink px-3 py-1.5 text-[12.5px] font-semibold text-white dark:bg-white dark:text-ink">
@@ -151,7 +192,28 @@ export default function ResultsScreen({
         <LoginGate resultCount={results.length} />
       ) : (
         <>
-          <FeaturedVideo video={featured} />
+          {billingState && (
+            <div className="mt-6 flex flex-wrap items-center gap-2 rounded-2xl border border-black/[.06] bg-black/[.03] px-4 py-3 text-[12.5px] muted dark:border-white/[.08] dark:bg-white/[.04]">
+              <span>
+                Plan <b className="text-ink dark:text-white capitalize">{billingState.currentPlan}</b>
+              </span>
+              <span>·</span>
+              <span>
+                {billingState.searchCreditsRemaining} / {billingState.searchCreditsLimit} credits left
+              </span>
+              <span>·</span>
+              <span>
+                {billingState.bookmarkCount}
+                {billingState.bookmarkLimit === -1 ? '' : ` / ${billingState.bookmarkLimit}`} watchlist
+              </span>
+            </div>
+          )}
+
+          <FeaturedVideo
+            video={featured}
+            onToggleBookmark={toggleBookmark}
+            bookmarking={bookmarkingId === featured?.id}
+          />
 
           {shown.length > 0 && (
             <>
@@ -161,7 +223,12 @@ export default function ResultsScreen({
 
               <div className="mt-4 grid grid-cols-2 gap-5 sm:grid-cols-3 lg:grid-cols-4">
                 {shown.map((v) => (
-                  <GridVideo key={v.id} video={v} />
+                  <GridVideo
+                    key={v.id}
+                    video={v}
+                    onToggleBookmark={toggleBookmark}
+                    bookmarking={bookmarkingId === v.id}
+                  />
                 ))}
               </div>
             </>
@@ -189,7 +256,8 @@ export default function ResultsScreen({
           <div>
             <p className="font-display text-[17px] font-bold text-white">Want another search, or weekly tracking?</p>
             <p className="mt-1.5 text-[13.5px] text-white/60">
-              This search refreshes {search?.frequency ?? 'weekly'} on a paid plan. 10 day trial, cancel before day 10.
+              Free includes 1 search and 0 watchlist slots. Basic includes 150 searches and 50 watchlist slots.
+              Premium includes 400 searches and unlimited watchlist.
             </p>
           </div>
           <button onClick={onStartTrial} className="btn-accent h-[52px] shrink-0 px-6 text-[15px]">

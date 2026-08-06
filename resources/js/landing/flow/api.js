@@ -7,6 +7,8 @@ function csrfToken() {
   return document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') ?? '';
 }
 
+const API_V1 = '/api/v1';
+
 async function request(url, { method = 'GET', body } = {}) {
   const response = await fetch(url, {
     method,
@@ -33,7 +35,7 @@ async function request(url, { method = 'GET', body } = {}) {
 }
 
 export function expandKeywords(phrase, { signal } = {}) {
-  return fetch('/saved-searches/expand', {
+  return fetch(`${API_V1}/saved-searches/expand`, {
     method: 'POST',
     credentials: 'same-origin',
     signal,
@@ -51,25 +53,38 @@ export function expandKeywords(phrase, { signal } = {}) {
   });
 }
 
-export function createSavedSearch({ phrase, name, keywords, frequency }) {
-  return request('/saved-searches', {
+export function createSavedSearch({ type, phrase, name, keywords, frequency }) {
+  return request(`${API_V1}/saved-searches`, {
     method: 'POST',
-    body: { phrase, name, keywords, frequency },
+    body: { type, phrase, name, keywords, frequency },
   });
 }
 
 export function fetchNotifications(ids) {
   const query = ids.map((id) => `ids[]=${encodeURIComponent(id)}`).join('&');
-  return request(`/saved-searches/notifications?${query}`);
+  return request(`${API_V1}/saved-searches/notifications?${query}`);
 }
 
 export const savedSearch = {
-  get: (id) => request(`/saved-searches/${id}/json`),
-  pause: (id) => request(`/saved-searches/${id}/pause`, { method: 'PATCH' }),
-  resume: (id) => request(`/saved-searches/${id}/resume`, { method: 'PATCH' }),
-  update: (id, body) => request(`/saved-searches/${id}/frequency`, { method: 'PATCH', body }),
-  refresh: (id) => request(`/saved-searches/${id}/refresh`, { method: 'POST' }),
-  destroy: (id) => request(`/saved-searches/${id}`, { method: 'DELETE' }),
+  get: (id) => request(`${API_V1}/saved-searches/${id}/json`),
+  watchlist: (id, watchlisted) =>
+    request(`${API_V1}/saved-searches/${id}/watchlist`, { method: 'PATCH', body: { watchlisted } }),
+  pause: (id) => request(`${API_V1}/saved-searches/${id}/pause`, { method: 'PATCH' }),
+  resume: (id) => request(`${API_V1}/saved-searches/${id}/resume`, { method: 'PATCH' }),
+  update: (id, body) => request(`${API_V1}/saved-searches/${id}/frequency`, { method: 'PATCH', body }),
+  refresh: (id) => request(`${API_V1}/saved-searches/${id}/refresh`, { method: 'POST' }),
+  destroy: (id) => request(`${API_V1}/saved-searches/${id}`, { method: 'DELETE' }),
+};
+
+export const billing = {
+  checkout: (slug) => {
+    window.location.assign(`/billing/checkout/${encodeURIComponent(slug)}`);
+  },
+};
+
+export const bookmarks = {
+  save: (id) => request(`${API_V1}/videos/${id}/bookmark`, { method: 'POST' }),
+  remove: (id) => request(`${API_V1}/videos/${id}/bookmark`, { method: 'DELETE' }),
 };
 
 /* ---------------- tracked searches (session storage) ---------------- */

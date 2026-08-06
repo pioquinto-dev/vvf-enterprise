@@ -2,7 +2,9 @@
 
 namespace Database\Seeders;
 
+use App\Models\PricingPlan;
 use App\Models\User;
+use App\Support\PricingPlanTable;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 
@@ -15,7 +17,9 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        // User::factory(10)->create();
+        if (PricingPlan::query()->count() === 0) {
+            PricingPlanTable::seedDefaults();
+        }
 
         User::factory()->create([
             'name' => 'Test User',
