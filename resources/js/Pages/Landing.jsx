@@ -23,12 +23,16 @@ export default function Landing() {
      * secondary CTAs — those just send the visitor back to the hero input.
      */
     const startSearch = (type, subject) => {
-        if (!type) {
+        const phrase = String(subject || '').trim();
+
+        // Called with nothing from the secondary CTAs — send those back to the
+        // hero input rather than guessing a phrase.
+        if (!type || phrase === '') {
             document.getElementById('search-subject')?.focus();
             return;
         }
 
-        router.get('/search', { type, q: String(subject || '').trim() });
+        router.get('/search', { type, q: phrase });
     };
 
     return (

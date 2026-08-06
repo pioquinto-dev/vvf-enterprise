@@ -49,7 +49,9 @@ export default function Nav({ theme, onToggleTheme, onStart }) {
 
           <div className="flex items-center gap-2 sm:gap-3">
             <ThemeToggle theme={theme} onToggle={onToggleTheme} />
-            <button className="btn-ghost hidden h-10 px-4 text-sm sm:inline-flex">Sign in</button>
+            <a href="/saved-searches" className="btn-ghost hidden h-10 px-4 text-sm sm:inline-flex">
+              Saved searches
+            </a>
             <button onClick={() => onStart()} className="btn-accent hidden h-10 px-4 text-sm sm:inline-flex">
               Get started <Arrow />
             </button>
@@ -79,7 +81,9 @@ export default function Nav({ theme, onToggleTheme, onStart }) {
             ))}
           </nav>
           <div className="mt-3 flex flex-col gap-2">
-            <button className="btn-ghost h-11 w-full text-sm">Sign in</button>
+            <a href="/saved-searches" className="btn-ghost h-11 w-full text-sm">
+              Saved searches
+            </a>
             <button
               onClick={() => {
                 setOpen(false);

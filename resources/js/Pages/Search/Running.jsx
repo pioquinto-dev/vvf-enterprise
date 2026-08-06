@@ -2,11 +2,8 @@ import { Head, router } from '@inertiajs/react';
 
 import SearchShell from '../../landing/flow/SearchShell.jsx';
 import RunningScreen from '../../landing/flow/screens/RunningScreen.jsx';
-import { toQuery } from '../../landing/flow/searchQuery.js';
 
-export default function Running({ type, subject, keywords }) {
-    const query = toQuery({ type, subject, keywords });
-
+export default function Running({ searchId }) {
     return (
         <>
             <Head title="Search running — VVF" />
@@ -18,8 +15,9 @@ export default function Running({ type, subject, keywords }) {
                 onExit={() => router.visit('/')}
             >
                 <RunningScreen
-                    onBack={() => router.get('/search', { type: query.type, q: query.q })}
-                    onContinue={() => router.get('/search/results', query)}
+                    searchId={searchId}
+                    onBack={() => router.visit('/')}
+                    onDone={() => router.visit(`/saved-searches/${searchId}`)}
                 />
             </SearchShell>
         </>

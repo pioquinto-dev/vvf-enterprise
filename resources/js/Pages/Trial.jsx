@@ -2,11 +2,8 @@ import { Head, router } from '@inertiajs/react';
 
 import SearchShell from '../landing/flow/SearchShell.jsx';
 import TrialScreen from '../landing/flow/screens/TrialScreen.jsx';
-import { toQuery } from '../landing/flow/searchQuery.js';
 
-export default function Trial({ type, subject, keywords, fromResults }) {
-    const query = toQuery({ type, subject, keywords });
-
+export default function Trial() {
     return (
         <>
             <Head title="Start your trial — VVF" />
@@ -16,10 +13,7 @@ export default function Trial({ type, subject, keywords, fromResults }) {
                 onNewSearch={() => router.visit('/')}
                 onExit={() => router.visit('/')}
             >
-                <TrialScreen
-                    backLabel={fromResults ? 'Back to results' : 'Back to home'}
-                    onBack={() => (fromResults ? router.get('/search/results', query) : router.visit('/'))}
-                />
+                <TrialScreen backLabel="Back to home" onBack={() => router.visit('/')} />
             </SearchShell>
         </>
     );

@@ -49,6 +49,19 @@ Operational updates to keep in mind:
 
 ### `app/Http/Controllers`
 - Web request entrypoints.
+- `SavedSearchController.php` is the whole custom keyword search API: expand, create, poll, detail, pause/resume, frequency, refresh, delete.
+
+### Custom keyword search
+The product's core loop. One phrase becomes a saved, self-refreshing list of viral videos.
+
+- **The split that matters:** the Apify scrape is sent *only the primary phrase* (broad, cheap, high recall). The full keyword set is applied locally afterwards for precision. Sending every keyword as a remote filter is what starves these searches of results — do not "optimize" that away.
+- `app/Services/CustomKeywordSearch/` holds the pipeline: `KeywordNormalizer` (trim/dedupe/cap/signature), `KeywordExpansionService` (OpenAI with a template fallback, cached), `TikTokItemMapper` (tolerant field mapping across Apify actor shapes), `KeywordMatcher` (prescreen + score + rank), `SearchRunProcessor` (one scrape attempt end to end), `SavedSearchManager` (create/dedupe/pause/resume/delete).
+- `app/Services/Apify/ApifyClient.php` is a thin REST wrapper — start task run, poll, read dataset. No domain logic.
+- Searches dedupe on `keyword_signature` (sorted, lowercased keywords), not name or phrase, so the same set in a different order reuses the existing search.
+- Keywords are fixed after creation by design. Name and frequency stay editable.
+- A failed refresh on a search that already has results leaves the search `done` and only the run `failed` — an established search should never look broken because one refresh died.
+- Guests get a `guest_token` in session so the free search works before sign-in; `AppServiceProvider` claims those rows on the `Login` event.
+- Scheduled: `custom-keyword-search:dispatch-due` (hourly) and `custom-keyword-search:fail-stale-runs` (every 15 min). Runs need a queue worker — `php artisan queue:work`.
 
 ### `app/Repositories`
 - Repository layer for application data access.
@@ -79,8 +92,17 @@ Operational updates to keep in mind:
 
 ### `resources/css` and `resources/js`
 - Frontend entry files compiled by Vite.
-- `app.css` contains shared Tailwind-driven styling and theme rules.
-- `app.js` is intentionally light; theme toggling currently runs from the Blade layouts.
+- `app.css` contains shared Tailwind v4 styling. The `@theme` block holds the landing palette (`accent`, `hot`, `ink`, `canvas`), the display/body font tokens, the `max-w-page` container, and the marquee/fade keyframes. `@custom-variant dark (&:where(.dark, .dark *))` makes dark mode class-driven rather than OS-driven.
+- Landing component classes (`btn-accent`, `btn-ghost`, `field`, `muted`, `faint`, `eyebrow`, `section-title`) live in `@layer components`. Tailwind v4 cannot `@apply` one component class inside another, so each is self-contained — do not refactor them to share a base class.
+- `app.jsx` is the Inertia entry. Theme is applied pre-paint by an inline script in `resources/views/app.blade.php` reading `localStorage['vvf-theme']`.
+
+### `resources/js/landing`
+- Marketing landing page components, rendered by `resources/js/Pages/Landing.jsx` at route `/` (named `landing`).
+- `data/dummy.js` holds every piece of copy, pricing tier, testimonial, FAQ, and fake video on the page. It is all placeholder data — replace these exports with real sources and the components need no changes.
+- `flow/` is the custom search flow. Each step is a real page, not a modal: `SearchShell.jsx` is the shared page chrome, `screens/` holds the four step components, `searchQuery.js` builds and parses the query string that carries state between steps, `VideoCard.jsx` renders results. Step one lives inline in `sections/Hero.jsx`.
+- Flow routes are `/search` (keywords), `/search/running`, `/search/results`, and `/trial`, all defined in `routes/web.php`. State travels in the query string — `type`, `q` (subject), and `kw` (pipe-separated keywords) — so results are shareable and the browser back button works. Nothing is stored server-side.
+- The legacy Laravel/React starter page is still available at `/starter` (named `home`); `GoogleAuthController` redirects there after sign-in.
+- `landing-mvp/` at the repo root is the original standalone Vite prototype this was ported from, kept for reference. `resources/js/landing` is the source of truth.
 
 ### `config`
 - Central configuration.

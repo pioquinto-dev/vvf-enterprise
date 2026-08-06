@@ -1,10 +1,32 @@
+import { useState } from 'react';
 import { Head, router } from '@inertiajs/react';
 
 import SearchShell from '../../landing/flow/SearchShell.jsx';
 import KeywordsScreen from '../../landing/flow/screens/KeywordsScreen.jsx';
-import { toQuery } from '../../landing/flow/searchQuery.js';
+import { createSavedSearch, trackSearch } from '../../landing/flow/api.js';
 
-export default function Keywords({ type, subject }) {
+export default function Keywords({ phrase }) {
+    const [submitting, setSubmitting] = useState(false);
+    const [error, setError] = useState(null);
+
+    const submit = async ({ keywords, frequency, name }) => {
+        setSubmitting(true);
+        setError(null);
+
+        try {
+            const created = await createSavedSearch({ phrase, name, keywords, frequency });
+
+            // Remember it locally so the running screen can keep polling even
+            // if the visitor navigates away and comes back.
+            trackSearch({ id: created.id, name: created.name, url: created.url });
+
+            router.visit(`/search/running?id=${created.id}`);
+        } catch (e) {
+            setError(e.message || 'Could not start the search. Try again.');
+            setSubmitting(false);
+        }
+    };
+
     return (
         <>
             <Head title="Add keywords — VVF" />
@@ -16,10 +38,11 @@ export default function Keywords({ type, subject }) {
                 onExit={() => router.visit('/')}
             >
                 <KeywordsScreen
-                    type={type}
-                    subject={subject}
+                    phrase={phrase}
+                    submitting={submitting}
+                    error={error}
                     onBack={() => router.visit('/')}
-                    onRun={(keywords) => router.get('/search/running', toQuery({ type, subject, keywords }))}
+                    onSubmit={submit}
                 />
             </SearchShell>
         </>

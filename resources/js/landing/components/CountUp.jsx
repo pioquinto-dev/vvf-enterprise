@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 /**
  * Animates a numeric stat when it first scrolls into view. Values like "62B+"
@@ -8,14 +8,29 @@ const PARTS = /^(\D*?)([\d.]+)(.*)$/;
 
 export default function CountUp({ value, duration = 1400, className = '' }) {
   const ref = useRef(null);
-  const match = String(value).match(PARTS);
-  const target = match ? parseFloat(match[2]) : null;
-  const decimals = match && match[2].includes('.') ? match[2].split('.')[1].length : 0;
+  const hasAnimated = useRef(false);
+  const parts = useMemo(() => {
+    const match = String(value).match(PARTS);
 
-  const [shown, setShown] = useState(() => (target === null ? value : null));
+    if (!match) {
+      return { prefix: '', numeric: null, suffix: '', decimals: 0 };
+    }
+
+    return {
+      prefix: match[1],
+      numeric: parseFloat(match[2]),
+      suffix: match[3],
+      decimals: match[2].includes('.') ? match[2].split('.')[1].length : 0,
+    };
+  }, [value]);
+
+  const [shown, setShown] = useState(() => (parts.numeric === null ? value : null));
 
   useEffect(() => {
-    if (target === null) return undefined;
+    if (parts.numeric === null) {
+      setShown(value);
+      return undefined;
+    }
 
     const el = ref.current;
     const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -23,6 +38,7 @@ export default function CountUp({ value, duration = 1400, className = '' }) {
     const settle = () => setShown(value);
 
     if (!el || reduced || typeof IntersectionObserver === 'undefined') {
+      hasAnimated.current = true;
       settle();
       return undefined;
     }
@@ -30,15 +46,16 @@ export default function CountUp({ value, duration = 1400, className = '' }) {
     let frame;
     const observer = new IntersectionObserver(
       ([entry]) => {
-        if (!entry.isIntersecting) return;
+        if (!entry.isIntersecting || hasAnimated.current) return;
+        hasAnimated.current = true;
         observer.disconnect();
 
         const start = performance.now();
         const tick = (now) => {
           const t = Math.min((now - start) / duration, 1);
           const eased = 1 - Math.pow(1 - t, 3);
-          const current = (target * eased).toFixed(decimals);
-          setShown(`${match[1]}${current}${match[3]}`);
+          const current = (parts.numeric * eased).toFixed(parts.decimals);
+          setShown(`${parts.prefix}${current}${parts.suffix}`);
           if (t < 1) frame = requestAnimationFrame(tick);
           else settle();
         };
@@ -52,11 +69,11 @@ export default function CountUp({ value, duration = 1400, className = '' }) {
       observer.disconnect();
       if (frame) cancelAnimationFrame(frame);
     };
-  }, [value, target, duration, decimals, match]);
+  }, [value, duration, parts]);
 
   return (
     <span ref={ref} className={className}>
-      {shown ?? `${match?.[1] ?? ''}0${match?.[3] ?? ''}`}
+      {shown ?? `${parts.prefix}0${parts.suffix}`}
     </span>
   );
 }
