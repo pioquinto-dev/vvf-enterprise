@@ -14,6 +14,13 @@ export default defineConfig({
                 bunny('Instrument Sans', {
                     weights: [400, 500, 600],
                 }),
+                // Landing page typography
+                bunny('Space Grotesk', {
+                    weights: [500, 600, 700],
+                }),
+                bunny('Inter', {
+                    weights: [400, 500, 600],
+                }),
             ],
         }),
         react(),

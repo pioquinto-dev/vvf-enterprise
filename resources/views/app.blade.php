@@ -7,11 +7,22 @@
 
         <title inertia>{{ config('app.name', 'Laravel') }}</title>
 
+        {{-- Apply the stored theme before first paint so there is no flash of the wrong theme. --}}
+        <script>
+            (function () {
+                try {
+                    var stored = localStorage.getItem('vvf-theme');
+                    var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+                    document.documentElement.classList.toggle('dark', (stored || (prefersDark ? 'dark' : 'light')) === 'dark');
+                } catch (e) {}
+            })();
+        </script>
+
         @viteReactRefresh
         @vite(['resources/css/app.css', 'resources/js/app.jsx'])
         @inertiaHead
     </head>
-    <body class="min-h-screen bg-stone-950 text-stone-100 antialiased">
+    <body class="min-h-screen bg-canvas text-ink antialiased dark:bg-canvas-dark dark:text-white">
         @inertia
     </body>
 </html>
