@@ -54,8 +54,11 @@ class SavedSearchManager
         $name = $this->normalizer->name($name, $phrase);
         $signature = $this->normalizer->signature($keywords);
 
-        // Same keywords in any order means the same saved search. Reuse it
-        // instead of cluttering the list with near-duplicates.
+        // Same keywords in any order means the same saved search. The record
+        // is reused so the list stays clean — but re-searching is a real
+        // scrape, so it costs a credit like any other run. New results merge
+        // into the existing rows (persist() updates videos in place) rather
+        // than duplicating them.
         $existing = CustomKeywordSearch::query()
             ->ownedBy($userId, $guestToken)
             ->where('search_type', $type)
@@ -65,7 +68,13 @@ class SavedSearchManager
         if ($existing !== null) {
             $existing->update(['name' => $name, 'frequency' => $frequency]);
 
+            // An already-active run means no new scrape starts, so nothing is
+            // charged — the user is just brought back to the search in flight.
             if (! $existing->hasActiveRun()) {
+                if ($user !== null) {
+                    $this->billing->consumeSearchCredit($user);
+                }
+
                 $this->queueRun($existing);
             }
 

@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\CustomKeywordSearch;
 use App\Models\CustomKeywordSearchRun;
+use App\Models\CustomKeywordSearchVideo;
 use App\Models\ViralVideo;
 use App\Services\CustomKeywordSearch\SearchRunProcessor;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -134,6 +135,116 @@ class SearchRunProcessorTest extends TestCase
 
         $this->assertSame(1, $search->videos()->count());
         $this->assertSame(1, ViralVideo::count());
+    }
+
+    public function test_local_corpus_matches_are_pooled_with_the_scrape(): void
+    {
+        // Imported earlier by a sibling search — this run's scrape does not
+        // return it, but the phrase matches, so recall should surface it.
+        $local = ViralVideo::create([
+            'video_id' => '7100000000000000009',
+            'platform' => 'tiktok',
+            'title' => 'korean skincare dupes i actually use',
+            'hashtags' => ['glassskin'],
+            'username' => 'oldimport',
+            'name' => 'Old Import',
+            'followers' => 30_000,
+            'views' => 500_000,
+            'likes' => 40_000,
+            'comments' => 900,
+            'thumbnail_url' => 'https://example.test/old.jpg',
+            'post_url' => 'https://www.tiktok.com/@oldimport/video/7100000000000000009',
+            'video_status' => 'visible',
+        ]);
+
+        $this->fakeApify([$this->apifyItem()]);
+
+        $search = $this->search();
+        $run = $search->runs()->create(['status' => CustomKeywordSearchRun::STATUS_QUEUED]);
+
+        app(SearchRunProcessor::class)->process($run);
+
+        $this->assertSame(2, $search->videos()->count());
+
+        $summary = $run->refresh()->raw_summary;
+        $this->assertSame(1, $summary['local_pool']);
+        $this->assertSame(1, $summary['kept_local']);
+
+        $pivot = $search->videos()->where('viral_video_id', $local->id)->firstOrFail();
+        $this->assertSame(CustomKeywordSearchVideo::SOURCE_LOCAL_MATCH, $pivot->source);
+
+        // The canonical row was recalled, not re-imported: this run's trigger
+        // must not claim a video it never scraped.
+        $this->assertNull($local->refresh()->apify_trigger_id);
+    }
+
+    public function test_scraped_items_win_collisions_with_stale_local_rows(): void
+    {
+        // Same video already in the corpus with week-old stats.
+        ViralVideo::create([
+            'video_id' => '7300000000000000001',
+            'platform' => 'tiktok',
+            'title' => 'my korean skincare routine #glassskin',
+            'hashtags' => ['glassskin'],
+            'username' => 'tester',
+            'name' => 'Tester',
+            'followers' => 20_000,
+            'views' => 10,
+            'likes' => 1,
+            'comments' => 0,
+            'thumbnail_url' => 'https://example.test/stale.jpg',
+            'post_url' => 'https://www.tiktok.com/@tester/video/7300000000000000001',
+            'video_status' => 'visible',
+        ]);
+
+        $this->fakeApify([$this->apifyItem()]);
+
+        $search = $this->search();
+        $run = $search->runs()->create(['status' => CustomKeywordSearchRun::STATUS_QUEUED]);
+
+        app(SearchRunProcessor::class)->process($run);
+
+        // One video, not two — and the scrape's fresh stats won the collision.
+        $this->assertSame(1, ViralVideo::count());
+        $this->assertSame(1_200_000, ViralVideo::firstOrFail()->views);
+
+        $pivot = $search->videos()->firstOrFail();
+        $this->assertSame(CustomKeywordSearchVideo::SOURCE_EXTERNAL_SCRAPE, $pivot->source);
+
+        $summary = $run->refresh()->raw_summary;
+        $this->assertSame(1, $summary['local_pool']);
+        $this->assertSame(0, $summary['kept_local']);
+    }
+
+    public function test_local_recall_faces_the_same_gates_as_the_scrape(): void
+    {
+        // Matches the phrase but sits under the follower floor — recall must
+        // not become a side door around prescreen.
+        ViralVideo::create([
+            'video_id' => '7100000000000000010',
+            'platform' => 'tiktok',
+            'title' => 'korean skincare haul for you',
+            'hashtags' => [],
+            'username' => 'tinyaccount',
+            'name' => 'Tiny',
+            'followers' => 12,
+            'views' => 900,
+            'likes' => 4,
+            'comments' => 0,
+            'thumbnail_url' => 'https://example.test/tiny.jpg',
+            'post_url' => 'https://www.tiktok.com/@tinyaccount/video/7100000000000000010',
+            'video_status' => 'visible',
+        ]);
+
+        $this->fakeApify([$this->apifyItem()]);
+
+        $search = $this->search();
+        $run = $search->runs()->create(['status' => CustomKeywordSearchRun::STATUS_QUEUED]);
+
+        app(SearchRunProcessor::class)->process($run);
+
+        $this->assertSame(1, $search->videos()->count());
+        $this->assertSame(0, $run->refresh()->raw_summary['kept_local']);
     }
 
     public function test_a_failed_apify_run_fails_the_search_when_it_has_no_results(): void

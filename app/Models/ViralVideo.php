@@ -18,6 +18,7 @@ class ViralVideo extends Model
             'hashtags' => 'array',
             'raw_payload' => 'array',
             'uploaded_at' => 'datetime',
+            'analyzed_at' => 'datetime',
             'followers' => 'integer',
             'views' => 'integer',
             'likes' => 'integer',
@@ -32,6 +33,37 @@ class ViralVideo extends Model
     public function apifyTrigger(): BelongsTo
     {
         return $this->belongsTo(ApifyTrigger::class);
+    }
+
+    /**
+     * Interactions over views, as a percentage. Returns null rather than 0 when
+     * there are no views, so the UI can show a dash instead of a fake "0%".
+     */
+    public function engagementRate(): ?float
+    {
+        if ($this->views <= 0) {
+            return null;
+        }
+
+        $interactions = $this->likes + $this->comments + $this->shares + $this->bookmarks;
+
+        return round(($interactions / $this->views) * 100, 2);
+    }
+
+    /**
+     * One display string for the sounds panel. Sounds are grouped on this, so
+     * the same track credited slightly differently still collapses to one row.
+     */
+    public function soundLabel(): ?string
+    {
+        $song = trim((string) $this->song);
+        $artist = trim((string) $this->artist);
+
+        if ($song === '') {
+            return $artist !== '' ? $artist : null;
+        }
+
+        return $artist !== '' ? "{$song} · {$artist}" : $song;
     }
 
     /**
@@ -52,6 +84,15 @@ class ViralVideo extends Model
             'views' => $this->views,
             'likes' => $this->likes,
             'comments' => $this->comments,
+            'shares' => $this->shares,
+            'saves' => $this->bookmarks,
+            'engagement_rate' => $this->engagementRate(),
+            'song' => $this->song,
+            'artist' => $this->artist,
+            'sound_label' => $this->soundLabel(),
+            'content_format' => $this->content_format,
+            'content_hook' => $this->content_hook,
+            'content_angle' => $this->content_angle,
             'duration' => $this->duration,
             'thumbnail_url' => $this->thumbnail_url ?: $this->cover,
             'video_url' => $this->video_url,

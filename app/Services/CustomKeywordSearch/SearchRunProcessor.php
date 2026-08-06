@@ -2,6 +2,7 @@
 
 namespace App\Services\CustomKeywordSearch;
 
+use App\Jobs\EnrichSearchResults;
 use App\Models\ApifyTrigger;
 use App\Models\CustomKeywordSearch;
 use App\Models\CustomKeywordSearchRun;
@@ -24,6 +25,8 @@ class SearchRunProcessor
         private readonly ApifyClient $apify,
         private readonly TikTokItemMapper $mapper,
         private readonly KeywordMatcher $matcher,
+        private readonly SnapshotRecorder $snapshots,
+        private readonly LocalCorpusRecall $localCorpus,
     ) {}
 
     public function process(CustomKeywordSearchRun $run): void
@@ -150,6 +153,19 @@ class SearchRunProcessor
             }
         }
 
+        // Pool in what the database already holds for this phrase. The corpus
+        // has been paid for by earlier runs and sibling searches — a video we
+        // already imported should not need Apify to resurface it. On a
+        // collision the scraped item wins: its stats are minutes old, the
+        // stored row's are from whenever it was last seen.
+        $localCandidates = $this->localCorpus->candidates($search);
+
+        foreach ($localCandidates as $videoId => $localItem) {
+            if (! isset($mapped[$videoId])) {
+                $mapped[$videoId] = $localItem;
+            }
+        }
+
         ['kept' => $kept, 'summary' => $summary] = $this->matcher->prescreen(
             array_values($mapped),
             $search->phrase,
@@ -158,6 +174,11 @@ class SearchRunProcessor
 
         $summary['received'] += $invalidItems;
         $summary['invalid_item'] += $invalidItems;
+        $summary['local_pool'] = count($localCandidates);
+        $summary['kept_local'] = count(array_filter(
+            $kept,
+            fn (array $item): bool => ($item['origin'] ?? null) === 'local',
+        ));
 
         $ranked = $this->matcher->rank($kept);
         $top = array_slice($ranked, 0, (int) config('custom_keyword_search.limits.max_results', 100));
@@ -186,6 +207,22 @@ class SearchRunProcessor
             'last_run_at' => now(),
             'next_run_at' => $this->nextRunAt($search->frequency),
         ]);
+
+        // Everything past this point is enrichment. The scrape has already
+        // succeeded and the user's results are live — a failure here must not
+        // reopen a finished run.
+        try {
+            $this->snapshots->record($search->refresh(), $run);
+        } catch (Throwable $e) {
+            Log::warning('Snapshot recording failed.', ['search_id' => $search->id, 'error' => $e->getMessage()]);
+        }
+
+        try {
+            EnrichSearchResults::dispatch($search->id)
+                ->onQueue((string) config('custom_keyword_search.queue', 'default'));
+        } catch (Throwable $e) {
+            Log::warning('Enrichment dispatch failed.', ['search_id' => $search->id, 'error' => $e->getMessage()]);
+        }
     }
 
     /**
@@ -217,36 +254,50 @@ class SearchRunProcessor
 
                 $rank++;
 
-                $video = ViralVideo::updateOrCreate(
-                    ['video_id' => $item['video_id']],
-                    [
-                        'platform' => $item['platform'],
-                        'title' => $item['title'],
-                        'hashtags' => $item['hashtags'],
-                        'username' => $item['username'],
-                        'name' => $item['name'],
-                        'avatar' => $item['avatar'],
-                        'followers' => $item['followers'],
-                        'views' => $item['views'],
-                        'likes' => $item['likes'],
-                        'comments' => $item['comments'],
-                        'shares' => $item['shares'],
-                        'bookmarks' => $item['bookmarks'],
-                        'duration' => $item['duration'],
-                        'cover' => $item['cover'],
-                        'thumbnail_url' => $item['thumbnail_url'],
-                        'video_url' => $item['video_url'],
-                        'post_url' => $item['post_url'],
-                        'embed_url' => $item['embed_url'],
-                        'song' => $item['song'],
-                        'artist' => $item['artist'],
-                        'uploaded_at' => $item['uploaded_at'],
-                        'virality_score' => $item['virality_score'],
-                        'scrape_source' => 'apify',
-                        'raw_payload' => $item['raw_payload'],
-                        'apify_trigger_id' => $trigger->id,
-                    ]
-                );
+                $isLocal = ($item['origin'] ?? null) === 'local';
+
+                // A local candidate *is* the canonical row — rewriting it with
+                // itself would only repoint apify_trigger_id at a run that
+                // never scraped it. Only freshly scraped data updates canon.
+                $video = $isLocal
+                    ? ViralVideo::where('video_id', $item['video_id'])->first()
+                    : ViralVideo::updateOrCreate(
+                        ['video_id' => $item['video_id']],
+                        [
+                            'platform' => $item['platform'],
+                            'title' => $item['title'],
+                            'hashtags' => $item['hashtags'],
+                            'username' => $item['username'],
+                            'name' => $item['name'],
+                            'avatar' => $item['avatar'],
+                            'followers' => $item['followers'],
+                            'views' => $item['views'],
+                            'likes' => $item['likes'],
+                            'comments' => $item['comments'],
+                            'shares' => $item['shares'],
+                            'bookmarks' => $item['bookmarks'],
+                            'duration' => $item['duration'],
+                            'cover' => $item['cover'],
+                            'thumbnail_url' => $item['thumbnail_url'],
+                            'video_url' => $item['video_url'],
+                            'post_url' => $item['post_url'],
+                            'embed_url' => $item['embed_url'],
+                            'song' => $item['song'],
+                            'artist' => $item['artist'],
+                            'uploaded_at' => $item['uploaded_at'],
+                            'virality_score' => $item['virality_score'],
+                            'scrape_source' => 'apify',
+                            'raw_payload' => $item['raw_payload'],
+                            'apify_trigger_id' => $trigger->id,
+                        ]
+                    );
+
+                if ($video === null) {
+                    // The canonical row vanished between recall and persist.
+                    $rank--;
+
+                    continue;
+                }
 
                 CustomKeywordSearchVideo::updateOrCreate(
                     [
@@ -255,7 +306,9 @@ class SearchRunProcessor
                     ],
                     [
                         'custom_keyword_search_run_id' => $run->id,
-                        'source' => CustomKeywordSearchVideo::SOURCE_EXTERNAL_SCRAPE,
+                        'source' => $isLocal
+                            ? CustomKeywordSearchVideo::SOURCE_LOCAL_MATCH
+                            : CustomKeywordSearchVideo::SOURCE_EXTERNAL_SCRAPE,
                         'viral_score' => $item['virality_score'],
                         'rank' => $rank,
                         // Only flag a breakout when the search already had

@@ -310,3 +310,1515 @@
         animation: none !important;
     }
 }
+
+/* ==========================================================================
+   Tracker detail pages (brand + competitor)
+
+   A near-verbatim port of the `tracker-brand-detail` mockup stylesheet, kept
+   as CSS rather than translated into utilities: the mockup *is* a stylesheet,
+   and rewriting 200 rules as arbitrary-value classes loses fidelity for no
+   gain. Everything is namespaced under `.tracker` so none of it can leak into
+   the landing page or the rest of the app.
+
+   Colours come from the mockup's own palette, not the landing tokens, so the
+   page matches the design exactly in light mode. The `.dark` block re-maps the
+   same variable names — every rule below is written against the variables, so
+   dark mode needs no duplicated rules.
+   ========================================================================== */
+
+.tracker {
+    --paper: #edebf3;
+    --paper-2: #f6f5fa;
+    --ink: #1b1834;
+    --ink-soft: #565273;
+    --line: #d8d4e6;
+    --violet: #6d5ae0;
+    --violet-soft: #ebe7fb;
+    --coral: #ff5361;
+    --coral-soft: #ffe4e6;
+    --good: #12a386;
+    --card: #ffffff;
+    --shadow:
+        0 1px 2px rgba(27, 24, 52, 0.04), 0 10px 30px -8px rgba(27, 24, 52, 0.08);
+    --shadow-lg:
+        0 2px 4px rgba(27, 24, 52, 0.05), 0 24px 56px -20px rgba(27, 24, 52, 0.18);
+
+    font-family: 'Inter', ui-sans-serif, system-ui, sans-serif;
+    font-feature-settings: 'ss01', 'cv05';
+    line-height: 1.45;
+    color: var(--ink);
+
+    /* Own stacking context so the paper wash below can cover the app shell's
+       grid and blur decorations without also covering the sidebar, which sits
+       at z-40 in the parent context. */
+    position: relative;
+    z-index: 0;
+}
+
+.tracker::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: var(--paper);
+    z-index: -1;
+}
+
+.dark .tracker {
+    --paper: #14121f;
+    --paper-2: #1b1830;
+    --ink: #f2f0fa;
+    --ink-soft: #a8a2c8;
+    --line: #302b4d;
+    --violet: #8f7cf0;
+    --violet-soft: #251f45;
+    --coral: #ff6b77;
+    --coral-soft: #3c1f27;
+    --good: #2cc79e;
+    --card: #1a1730;
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.35), 0 10px 30px -8px rgba(0, 0, 0, 0.5);
+    --shadow-lg: 0 2px 4px rgba(0, 0, 0, 0.4), 0 24px 56px -20px rgba(0, 0, 0, 0.65);
+}
+
+/* Keyboard focus reads as considered, not browser-default. */
+.tracker button:focus-visible,
+.tracker a:focus-visible {
+    outline: 2px solid var(--violet);
+    outline-offset: 2px;
+    border-radius: 8px;
+}
+
+/* ---------- top view bar (back link + outliers/their-content switch) ---------- */
+
+.tracker .viewbar {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    padding-bottom: 14px;
+    margin-bottom: 22px;
+    border-bottom: 1px solid var(--line);
+}
+
+.tracker .viewbar .back {
+    color: var(--ink-soft);
+    font-size: 13px;
+    text-decoration: none;
+}
+
+.tracker .viewbar .back:hover {
+    color: var(--ink);
+}
+
+.tracker .viewbar .spring {
+    flex: 1;
+}
+
+.tracker .viewswitch button:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
+/* ---------- page head ---------- */
+
+.tracker .crumb {
+    font-size: 12.5px;
+    color: var(--ink-soft);
+    margin-bottom: 14px;
+}
+
+.tracker .brandrow {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+}
+
+.tracker .logo {
+    width: 56px;
+    height: 56px;
+    border-radius: 15px;
+    background: var(--violet-soft);
+    border: 1px solid var(--line);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    overflow: hidden;
+    font-family: 'Bricolage Grotesque', ui-sans-serif, system-ui, sans-serif;
+    font-weight: 800;
+    font-size: 22px;
+    color: var(--violet);
+}
+
+.tracker .logo img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.tracker .titlewrap h1 {
+    font-family: 'Bricolage Grotesque', ui-sans-serif, system-ui, sans-serif;
+    font-weight: 800;
+    font-size: 40px;
+    line-height: 1;
+    letter-spacing: -0.03em;
+}
+
+.tracker .handles {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-top: 8px;
+    font-size: 13px;
+    color: var(--ink-soft);
+    flex-wrap: wrap;
+}
+
+.tracker .handles .h {
+    color: var(--ink);
+    font-weight: 500;
+}
+
+.tracker .handles .sep {
+    width: 1px;
+    height: 12px;
+    background: var(--line);
+}
+
+.tracker .badge {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    padding: 5px 10px;
+    border-radius: 6px;
+    background: var(--violet-soft);
+    color: var(--violet);
+}
+
+.tracker .head-actions {
+    margin-left: auto;
+    display: flex;
+    gap: 8px;
+}
+
+.tracker .tbtn {
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 500;
+    padding: 8px 14px;
+    border-radius: 9px;
+    border: 1px solid var(--line);
+    background: var(--card);
+    color: var(--ink);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    white-space: nowrap;
+    text-decoration: none;
+    box-shadow: 0 1px 2px rgba(27, 24, 52, 0.04);
+    transition:
+        border-color 0.15s,
+        opacity 0.15s,
+        transform 0.15s,
+        box-shadow 0.15s;
+}
+
+.tracker .tbtn:hover {
+    border-color: color-mix(in srgb, var(--violet) 45%, var(--line));
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px -4px rgba(27, 24, 52, 0.14);
+}
+
+.tracker .tbtn:active {
+    transform: translateY(0) scale(0.985);
+}
+
+.tracker .tbtn:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
+.tracker .tbtn.primary {
+    background: var(--ink);
+    color: var(--card);
+    border-color: var(--ink);
+}
+
+.tracker .tbtn.primary:hover {
+    box-shadow: 0 8px 20px -8px rgba(27, 24, 52, 0.45);
+}
+
+.tracker .tbtn.danger {
+    color: var(--coral);
+    border-color: color-mix(in srgb, var(--coral) 35%, transparent);
+}
+
+/* ---------- view switch ---------- */
+
+.tracker .viewswitch {
+    display: flex;
+    background: var(--paper-2);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 3px;
+    width: fit-content;
+}
+
+.tracker .viewswitch button {
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--ink-soft);
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 6px 14px;
+    border-radius: 7px;
+}
+
+.tracker .viewswitch button.on {
+    background: var(--card);
+    color: var(--ink);
+    box-shadow: var(--shadow);
+}
+
+/* ---------- AI summary bar ---------- */
+
+.tracker .ai {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    background: linear-gradient(
+        90deg,
+        color-mix(in srgb, var(--violet) 10%, var(--card)),
+        var(--card) 60%
+    );
+    border: 1px solid color-mix(in srgb, var(--violet) 28%, var(--line));
+    border-radius: 13px;
+    padding: 13px 16px;
+    margin-top: 22px;
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.6),
+        0 6px 18px -10px color-mix(in srgb, var(--violet) 35%, transparent);
+}
+
+.dark .tracker .ai {
+    box-shadow: 0 6px 18px -10px rgba(0, 0, 0, 0.6);
+}
+
+.tracker .ai .spark {
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
+    margin-top: 2px;
+    fill: var(--violet);
+}
+
+.tracker .ai .txt {
+    font-size: 13.5px;
+    line-height: 1.5;
+}
+
+.tracker .ai .txt b {
+    font-weight: 600;
+}
+
+.tracker .ai .when {
+    font-size: 11px;
+    color: var(--ink-soft);
+    white-space: nowrap;
+    margin-left: auto;
+    padding-left: 12px;
+    flex-shrink: 0;
+}
+
+/* ---------- signal tiles ---------- */
+
+.tracker .stats {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 1px;
+    background: var(--line);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    overflow: hidden;
+    margin-top: 14px;
+}
+
+.tracker .stat {
+    background: var(--card);
+    padding: 17px 18px 15px;
+    transition: background 0.2s;
+}
+
+.tracker .stat:hover {
+    background: color-mix(in srgb, var(--violet) 3%, var(--card));
+}
+
+.tracker .stat .k {
+    font-size: 11px;
+    color: var(--ink-soft);
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    margin-bottom: 9px;
+}
+
+.tracker .stat .v {
+    font-family: 'Space Mono', ui-monospace, monospace;
+    font-weight: 700;
+    font-size: 25px;
+    letter-spacing: -0.02em;
+    line-height: 1;
+}
+
+.tracker .stat .v small {
+    font-size: 14px;
+    color: var(--ink-soft);
+    font-weight: 400;
+}
+
+.tracker .stat .d {
+    font-size: 12px;
+    margin-top: 7px;
+    font-weight: 600;
+    min-height: 15px;
+}
+
+.tracker .up {
+    color: var(--good);
+}
+
+.tracker .down {
+    color: var(--coral);
+}
+
+.tracker .flat {
+    color: var(--ink-soft);
+}
+
+.tracker .stat.hero .v {
+    color: var(--coral);
+}
+
+/* ---------- section heads ---------- */
+
+.tracker .sect-head {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    margin: 44px 0 18px;
+    flex-wrap: wrap;
+}
+
+.tracker .sect-head h2 {
+    font-family: 'Bricolage Grotesque', ui-sans-serif, system-ui, sans-serif;
+    font-weight: 800;
+    font-size: 24px;
+    letter-spacing: -0.02em;
+    display: flex;
+    align-items: center;
+    gap: 11px;
+}
+
+/* Violet tick before each section title — quiet hierarchy marker. */
+.tracker .sect-head h2::before {
+    content: '';
+    width: 5px;
+    height: 19px;
+    border-radius: 3px;
+    flex-shrink: 0;
+    background: linear-gradient(
+        180deg,
+        var(--violet),
+        color-mix(in srgb, var(--violet) 35%, transparent)
+    );
+}
+
+.tracker .sect-head .note {
+    font-size: 13px;
+    color: var(--ink-soft);
+}
+
+/* ---------- winner block ---------- */
+
+.tracker .winner {
+    display: grid;
+    grid-template-columns: 300px 1fr;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 20px;
+    overflow: hidden;
+    box-shadow: var(--shadow-lg);
+}
+
+.tracker .winner .vid {
+    position: relative;
+    aspect-ratio: 9 / 16;
+    background: #241f45;
+    overflow: hidden;
+}
+
+.tracker .winner .vid img.cov {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.tracker .winner .grad {
+    position: absolute;
+    inset: 0;
+}
+
+.tracker .flag {
+    position: absolute;
+    top: 12px;
+    left: 12px;
+    z-index: 3;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--coral);
+    color: #fff;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    padding: 5px 10px;
+    border-radius: 8px;
+}
+
+.tracker .play {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.92);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 2;
+    box-shadow: 0 8px 24px -8px rgba(0, 0, 0, 0.45);
+    backdrop-filter: blur(4px);
+    transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.tracker .vid:hover .play,
+.tracker .thumb:hover .play {
+    transform: translate(-50%, -50%) scale(1.08);
+}
+
+.tracker .card .play {
+    width: 44px;
+    height: 44px;
+    background: rgba(255, 255, 255, 0.9);
+}
+
+.tracker .views-ov {
+    position: absolute;
+    bottom: 12px;
+    left: 12px;
+    z-index: 3;
+    font-family: 'Space Mono', ui-monospace, monospace;
+    font-size: 13px;
+    font-weight: 700;
+    color: #fff;
+    text-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
+}
+
+.tracker .card .views-ov {
+    bottom: 10px;
+    left: 10px;
+    font-size: 12px;
+}
+
+.tracker .winner .detail {
+    padding: 24px 26px;
+    display: flex;
+    flex-direction: column;
+}
+
+.tracker .winner .dtop {
+    display: flex;
+    align-items: flex-start;
+    gap: 20px;
+    flex-wrap: wrap;
+}
+
+.tracker .bigscore .n {
+    font-family: 'Space Mono', ui-monospace, monospace;
+    font-weight: 700;
+    font-size: 52px;
+    line-height: 0.9;
+    color: var(--coral);
+    letter-spacing: -0.02em;
+}
+
+.tracker .bigscore .l {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.09em;
+    color: var(--ink-soft);
+    margin-top: 4px;
+}
+
+.tracker .devbig {
+    flex: 1;
+    min-width: 220px;
+    align-self: center;
+}
+
+.tracker .devbig .track {
+    position: relative;
+    height: 26px;
+}
+
+.tracker .devbig .ln {
+    position: absolute;
+    top: 16px;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: var(--line);
+}
+
+.tracker .devbig .pack {
+    position: absolute;
+    top: 12px;
+    height: 10px;
+    background: var(--violet-soft);
+    border: 1px solid color-mix(in srgb, var(--violet) 35%, transparent);
+    border-radius: 5px;
+}
+
+.tracker .devbig .med {
+    position: absolute;
+    top: 9px;
+    width: 2px;
+    height: 16px;
+    background: var(--ink-soft);
+}
+
+.tracker .devbig .pt {
+    position: absolute;
+    top: 10px;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: var(--coral);
+    border: 2px solid var(--card);
+    box-shadow: 0 1px 5px rgba(255, 83, 97, 0.5);
+    transform: translateX(-50%);
+}
+
+.tracker .devbig .cap {
+    display: flex;
+    justify-content: space-between;
+    font-size: 11px;
+    color: var(--ink-soft);
+    margin-top: 4px;
+}
+
+.tracker .devbig .cap b {
+    font-family: 'Space Mono', ui-monospace, monospace;
+    color: var(--ink);
+}
+
+.tracker .winner h3 {
+    font-size: 16px;
+    font-weight: 600;
+    margin: 20px 0 4px;
+    line-height: 1.35;
+}
+
+.tracker .winner .creator {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    margin-bottom: 18px;
+}
+
+.tracker .winner .creator .av {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    object-fit: cover;
+    background: var(--violet-soft);
+}
+
+.tracker .winner .creator .cn {
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.tracker .winner .creator .cs {
+    font-size: 11px;
+    color: var(--ink-soft);
+}
+
+.tracker .kv {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px 22px;
+    border-top: 1px solid var(--line);
+    padding-top: 18px;
+}
+
+.tracker .kv .row {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.tracker .kv .row .k {
+    font-size: 11px;
+    color: var(--ink-soft);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.tracker .kv .row .val {
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.tracker .kv .row .val.mono {
+    font-family: 'Space Mono', ui-monospace, monospace;
+}
+
+.tracker .kv .row .val.empty {
+    color: var(--ink-soft);
+    font-weight: 400;
+}
+
+.tracker .tag {
+    display: inline-block;
+    background: var(--violet-soft);
+    color: var(--violet);
+    font-size: 12px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 6px;
+}
+
+.tracker .winner .cta {
+    margin-top: 20px;
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+/* ---------- results feed ---------- */
+
+.tracker .feed {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 18px;
+}
+
+.tracker .card {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: var(--shadow);
+    transition:
+        transform 0.15s,
+        box-shadow 0.15s;
+}
+
+.tracker .card:hover {
+    transform: translateY(-3px);
+    border-color: color-mix(in srgb, var(--violet) 30%, var(--line));
+    box-shadow: var(--shadow-lg);
+}
+
+.tracker .thumb img.cov,
+.tracker .winner .vid img.cov {
+    transition: transform 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.tracker .card:hover .thumb img.cov,
+.tracker .winner .vid:hover img.cov {
+    transform: scale(1.045);
+}
+
+.tracker .thumb {
+    position: relative;
+    aspect-ratio: 9 / 16;
+    background: #241f45;
+    overflow: hidden;
+}
+
+.tracker .thumb img.cov {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.tracker .thumb .grad {
+    position: absolute;
+    inset: 0;
+}
+
+.tracker .rank {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    font-family: 'Space Mono', ui-monospace, monospace;
+    font-weight: 700;
+    font-size: 12px;
+    color: #fff;
+    background: rgba(20, 17, 40, 0.55);
+    padding: 3px 8px;
+    border-radius: 7px;
+    z-index: 3;
+}
+
+.tracker .score-tag {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    z-index: 3;
+    background: rgba(255, 255, 255, 0.94);
+    border-radius: 10px;
+    padding: 7px 9px 6px;
+    text-align: right;
+    min-width: 58px;
+    box-shadow: 0 4px 14px -6px rgba(0, 0, 0, 0.35);
+    backdrop-filter: blur(6px);
+}
+
+.tracker .score-tag .num {
+    font-family: 'Space Mono', ui-monospace, monospace;
+    font-weight: 700;
+    font-size: 18px;
+    line-height: 1;
+    color: var(--coral);
+    display: block;
+}
+
+.tracker .score-tag .lbl {
+    font-size: 9px;
+    text-transform: uppercase;
+    letter-spacing: 0.09em;
+    color: #565273;
+    margin-top: 2px;
+    display: block;
+}
+
+.tracker .score-tag.mid .num {
+    color: var(--violet);
+}
+
+.tracker .card-body {
+    padding: 12px 13px 13px;
+}
+
+.tracker .dev {
+    margin-bottom: 11px;
+}
+
+.tracker .dev-track {
+    position: relative;
+    height: 22px;
+}
+
+.tracker .dev-line {
+    position: absolute;
+    top: 14px;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: var(--line);
+    border-radius: 2px;
+}
+
+.tracker .dev-pack {
+    position: absolute;
+    top: 11px;
+    height: 8px;
+    background: var(--violet-soft);
+    border: 1px solid color-mix(in srgb, var(--violet) 35%, transparent);
+    border-radius: 4px;
+}
+
+.tracker .dev-median {
+    position: absolute;
+    top: 8px;
+    width: 2px;
+    height: 14px;
+    background: var(--ink-soft);
+    border-radius: 2px;
+}
+
+.tracker .dev-pt {
+    position: absolute;
+    top: 9px;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: var(--coral);
+    border: 2px solid var(--card);
+    box-shadow: 0 1px 4px rgba(255, 83, 97, 0.5);
+    transform: translateX(-50%);
+}
+
+.tracker .dev-pt.mid {
+    background: var(--violet);
+}
+
+.tracker .dev-cap {
+    display: flex;
+    justify-content: space-between;
+    font-size: 9.5px;
+    color: var(--ink-soft);
+    margin-top: 2px;
+}
+
+.tracker .dev-cap b {
+    font-family: 'Space Mono', ui-monospace, monospace;
+    color: var(--ink);
+}
+
+.tracker .creator {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.tracker .card .av {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    object-fit: cover;
+    background: var(--violet-soft);
+}
+
+.tracker .creator .h2n {
+    font-size: 13px;
+    font-weight: 600;
+    line-height: 1.1;
+}
+
+.tracker .creator .sub {
+    font-size: 11px;
+    color: var(--ink-soft);
+}
+
+.tracker .card-foot {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 11px;
+    padding-top: 11px;
+    border-top: 1px solid var(--line);
+}
+
+.tracker .metric {
+    font-size: 11.5px;
+    color: var(--ink-soft);
+}
+
+.tracker .metric b {
+    font-family: 'Space Mono', ui-monospace, monospace;
+    color: var(--ink);
+    font-weight: 700;
+}
+
+.tracker .open {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--violet);
+    text-decoration: none;
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0;
+    font-family: inherit;
+}
+
+.tracker .open:hover {
+    opacity: 0.75;
+}
+
+/* ---------- panels ---------- */
+
+.tracker .datagrid {
+    display: grid;
+    grid-template-columns: 1.4fr 1fr;
+    gap: 18px;
+}
+
+.tracker .panel {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    padding: 22px;
+    box-shadow: var(--shadow);
+}
+
+.tracker .panel h3 {
+    font-size: 13px;
+    font-weight: 600;
+    margin-bottom: 4px;
+}
+
+.tracker .panel .psub {
+    font-size: 12px;
+    color: var(--ink-soft);
+    margin-bottom: 18px;
+}
+
+.tracker .panel .empty {
+    font-size: 12.5px;
+    color: var(--ink-soft);
+    text-align: center;
+    padding: 26px 0;
+}
+
+.tracker .spark {
+    display: flex;
+    align-items: flex-end;
+    gap: 10px;
+    height: 130px;
+}
+
+.tracker .spark .col {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    height: 100%;
+    justify-content: flex-end;
+}
+
+.tracker .spark .bar2 {
+    width: 100%;
+    max-width: 34px;
+    background: var(--violet-soft);
+    border: 1px solid color-mix(in srgb, var(--violet) 35%, transparent);
+    border-radius: 6px 6px 0 0;
+    position: relative;
+}
+
+.tracker .spark .bar2.now {
+    background: var(--violet);
+    border-color: var(--violet);
+}
+
+.tracker .spark .bar2 em {
+    position: absolute;
+    top: -19px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-family: 'Space Mono', ui-monospace, monospace;
+    font-size: 11px;
+    font-weight: 700;
+    font-style: normal;
+    color: var(--ink);
+}
+
+.tracker .spark .wl {
+    font-size: 11px;
+    color: var(--ink-soft);
+}
+
+/* Empty-state ghost bars: keep the panel's silhouette, drain its ink. */
+.tracker .spark.ghost {
+    opacity: 0.55;
+}
+
+.tracker .spark.ghost .bar2 {
+    background: var(--paper-2);
+    border-color: var(--line);
+    border-style: dashed;
+}
+
+.tracker .ghostnote {
+    font-size: 12.5px;
+    line-height: 1.55;
+    color: var(--ink-soft);
+    margin-top: 14px;
+    padding: 10px 13px;
+    background: var(--paper-2);
+    border-radius: 9px;
+}
+
+.tracker .dist {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    margin-top: 4px;
+}
+
+.tracker .dline {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.tracker .dline .rng {
+    font-family: 'Space Mono', ui-monospace, monospace;
+    font-size: 12px;
+    width: 70px;
+    color: var(--ink-soft);
+}
+
+.tracker .dline .dbar {
+    flex: 1;
+    height: 10px;
+    background: var(--paper-2);
+    border-radius: 5px;
+    overflow: hidden;
+}
+
+.tracker .dline .dbar span {
+    display: block;
+    height: 100%;
+    border-radius: 5px;
+}
+
+.tracker .dline .cnt {
+    font-family: 'Space Mono', ui-monospace, monospace;
+    font-size: 12px;
+    font-weight: 700;
+    width: 24px;
+    text-align: right;
+}
+
+/* ---------- hashtags + sounds ---------- */
+
+.tracker .hs {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 18px;
+}
+
+.tracker .hspanel {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    padding: 20px 22px;
+    box-shadow: var(--shadow);
+}
+
+.tracker .hspanel h3 {
+    font-size: 13px;
+    font-weight: 600;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.tracker .hrow {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 8px;
+    margin: 0 -8px;
+    border-top: 1px solid var(--line);
+    border-radius: 8px;
+    transition: background 0.15s;
+}
+
+.tracker .hrow:hover {
+    background: color-mix(in srgb, var(--violet) 4%, transparent);
+}
+
+.tracker .hrow:first-of-type {
+    border-top: none;
+}
+
+.tracker .hrow .idx {
+    font-family: 'Space Mono', ui-monospace, monospace;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--ink-soft);
+    width: 14px;
+    flex-shrink: 0;
+}
+
+.tracker .hrow .splay {
+    width: 30px;
+    height: 30px;
+    border-radius: 8px;
+    background: var(--violet-soft);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.tracker .hrow .nm {
+    font-size: 14px;
+    font-weight: 600;
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.tracker .hrow .nm .u {
+    color: var(--ink-soft);
+    font-weight: 400;
+    font-size: 11px;
+    display: block;
+    margin-top: 1px;
+}
+
+.tracker .hrow .cnt {
+    font-family: 'Space Mono', ui-monospace, monospace;
+    font-size: 13px;
+    font-weight: 700;
+    text-align: right;
+    white-space: nowrap;
+}
+
+.tracker .hrow .gro {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--good);
+    width: 50px;
+    text-align: right;
+    flex-shrink: 0;
+}
+
+.tracker .hrow .gro.flat {
+    color: var(--ink-soft);
+}
+
+.tracker .hrow .gro.down {
+    color: var(--coral);
+}
+
+/* ---------- performance over time ---------- */
+
+.tracker .ts-tabs {
+    display: flex;
+    gap: 3px;
+    background: var(--paper-2);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 3px;
+    width: fit-content;
+    margin-bottom: 20px;
+}
+
+.tracker .ts-tabs button {
+    font-family: inherit;
+    font-size: 12.5px;
+    font-weight: 500;
+    color: var(--ink-soft);
+    background: none;
+    border: none;
+    padding: 7px 14px;
+    border-radius: 7px;
+    cursor: pointer;
+}
+
+.tracker .ts-tabs button.on {
+    background: var(--card);
+    color: var(--ink);
+    box-shadow: var(--shadow);
+}
+
+.tracker .ts-head {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    margin-bottom: 8px;
+    flex-wrap: wrap;
+}
+
+.tracker .ts-val {
+    font-family: 'Space Mono', ui-monospace, monospace;
+    font-weight: 700;
+    font-size: 30px;
+    letter-spacing: -0.02em;
+}
+
+.tracker .ts-delta {
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.tracker .ts-svg {
+    width: 100%;
+    height: 210px;
+    display: block;
+}
+
+.tracker .ts-x {
+    display: flex;
+    justify-content: space-between;
+    font-size: 10.5px;
+    color: var(--ink-soft);
+    font-family: 'Space Mono', ui-monospace, monospace;
+    margin-top: 6px;
+}
+
+/* ---------- heat map ---------- */
+
+.tracker .heat {
+    overflow-x: auto;
+}
+
+.tracker .heatgrid {
+    display: grid;
+    grid-template-columns: 40px repeat(24, 1fr);
+    gap: 3px;
+    min-width: 660px;
+}
+
+.tracker .heatgrid .hh {
+    font-size: 10px;
+    color: var(--ink-soft);
+    font-family: 'Space Mono', ui-monospace, monospace;
+    text-align: center;
+    height: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.tracker .heatgrid .dl {
+    font-size: 11px;
+    color: var(--ink-soft);
+    display: flex;
+    align-items: center;
+    height: 22px;
+    font-weight: 500;
+}
+
+.tracker .heatgrid .cell {
+    height: 22px;
+    border-radius: 4px;
+    background: var(--paper-2);
+}
+
+.tracker .heatlegend {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 16px;
+    font-size: 11px;
+    color: var(--ink-soft);
+}
+
+.tracker .heatlegend .scale {
+    display: flex;
+    gap: 3px;
+}
+
+.tracker .heatlegend .scale i {
+    width: 20px;
+    height: 12px;
+    border-radius: 3px;
+}
+
+.tracker .heat-note {
+    font-size: 13px;
+    margin-top: 16px;
+    padding: 11px 14px;
+    background: var(--violet-soft);
+    border-radius: 10px;
+    color: var(--ink);
+}
+
+.tracker .heat-note b {
+    font-weight: 600;
+}
+
+/* ---------- provenance badges ---------- */
+
+.tracker .prov {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 9.5px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    padding: 3px 7px;
+    border-radius: 5px;
+    white-space: nowrap;
+    vertical-align: middle;
+}
+
+.tracker .prov.sample {
+    background: color-mix(in srgb, #f59e0b 16%, transparent);
+    border: 1px solid color-mix(in srgb, #f59e0b 45%, transparent);
+    color: #b45309;
+}
+
+.dark .tracker .prov.sample {
+    color: #fbbf24;
+}
+
+.tracker .prov.rebuilt {
+    background: var(--violet-soft);
+    border: 1px solid color-mix(in srgb, var(--violet) 35%, transparent);
+    color: var(--violet);
+}
+
+.tracker .provnote {
+    font-size: 12px;
+    color: var(--ink-soft);
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    line-height: 1.5;
+}
+
+.tracker .provnote code {
+    font-family: 'Space Mono', ui-monospace, monospace;
+    background: var(--paper-2);
+    border-radius: 4px;
+    padding: 1px 5px;
+    font-size: 11px;
+}
+
+.tracker .provbox {
+    margin-top: 24px;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: var(--paper-2);
+    padding: 14px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 9px;
+}
+
+.tracker .loadmore {
+    text-align: center;
+    margin-top: 26px;
+}
+
+.tracker .gate {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 18px;
+    padding: 40px 28px;
+    text-align: center;
+    box-shadow: var(--shadow);
+    margin-top: 18px;
+}
+
+.tracker .gate h2 {
+    font-family: 'Bricolage Grotesque', ui-sans-serif, system-ui, sans-serif;
+    font-weight: 800;
+    font-size: 26px;
+    letter-spacing: -0.02em;
+}
+
+.tracker .gate p {
+    font-size: 13.5px;
+    color: var(--ink-soft);
+    margin: 10px auto 0;
+    max-width: 460px;
+    line-height: 1.55;
+}
+
+.tracker .gate .acts {
+    margin-top: 22px;
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.tracker .footnote {
+    padding: 40px 0 8px;
+    text-align: center;
+    font-size: 12px;
+    color: var(--ink-soft);
+}
+
+/* ---------- responsive ---------- */
+
+@media (max-width: 1080px) {
+    .tracker .feed {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 820px) {
+    .tracker .stats {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .tracker .datagrid,
+    .tracker .hs {
+        grid-template-columns: 1fr;
+    }
+
+    .tracker .winner {
+        grid-template-columns: 1fr;
+    }
+
+    .tracker .winner .vid {
+        aspect-ratio: 16 / 10;
+    }
+
+    .tracker .titlewrap h1 {
+        font-size: 32px;
+    }
+
+    .tracker .head-actions {
+        margin-left: 0;
+        width: 100%;
+    }
+}
+
+@media (max-width: 560px) {
+    .tracker .feed {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .tracker .kv {
+        grid-template-columns: 1fr;
+    }
+
+    .tracker .viewbar {
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    /* Kill motion, but never the play button's centering transform. */
+    .tracker .tbtn,
+    .tracker .card,
+    .tracker .stat,
+    .tracker .hrow,
+    .tracker .play,
+    .tracker .thumb img.cov,
+    .tracker .winner .vid img.cov {
+        transition: none !important;
+    }
+
+    .tracker .tbtn:hover,
+    .tracker .card:hover,
+    .tracker .card:hover .thumb img.cov,
+    .tracker .winner .vid:hover img.cov {
+        transform: none !important;
+    }
+
+    .tracker .vid:hover .play,
+    .tracker .thumb:hover .play {
+        transform: translate(-50%, -50%) !important;
+    }
+}

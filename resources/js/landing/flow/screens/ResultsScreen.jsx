@@ -6,7 +6,7 @@ import { bookmarks } from '../api.js';
 
 const PAGE_STEP = 12;
 
-function EmptyState({ phrase, onRefresh, refreshing }) {
+export function EmptyState({ phrase, onRefresh, refreshing }) {
   return (
     <div className="ring-gradient mt-6 rounded-3xl bg-white/70 p-10 text-center backdrop-blur-2xl dark:bg-white/[.04]">
       <h2 className="font-display text-[20px] font-bold">No videos cleared the bar</h2>
@@ -22,7 +22,7 @@ function EmptyState({ phrase, onRefresh, refreshing }) {
   );
 }
 
-function LoginGate({ resultCount }) {
+export function LoginGate({ resultCount }) {
   return (
     <div className="ring-gradient relative mt-6 overflow-hidden rounded-3xl bg-white/72 p-8 backdrop-blur-2xl dark:bg-white/[.04]">
       <div aria-hidden className="pointer-events-none absolute inset-0">

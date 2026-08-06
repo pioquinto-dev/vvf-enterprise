@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { usePage } from '@inertiajs/react';
 import { Google, Arrow, Check } from '../../components/Icons.jsx';
 import { fetchNotifications, updateTracked } from '../api.js';
 
@@ -12,6 +13,12 @@ const STAGES = [
 ];
 
 export default function RunningScreen({ searchId, onBack, onDone }) {
+  // The capture card exists to get an anonymous visitor an account before the
+  // run finishes. Someone already signed in has nothing to claim, so it is
+  // theirs by default and the card would just be asking them to log in twice.
+  const { auth = {} } = usePage().props;
+  const signedIn = auth.signedIn ?? Boolean(auth.user);
+
   const [search, setSearch] = useState(null);
   const [failed, setFailed] = useState(null);
   const [email, setEmail] = useState('');
@@ -144,43 +151,45 @@ export default function RunningScreen({ searchId, onBack, onDone }) {
               })}
             </ol>
 
-            <div className="ring-gradient mt-8 rounded-3xl bg-white/70 p-6 text-left backdrop-blur-2xl dark:bg-white/[.04]">
-              <p className="mb-4 text-center font-display text-sm font-semibold">
-                Or have them emailed when they're done
-              </p>
+            {!signedIn && (
+              <div className="ring-gradient mt-8 rounded-3xl bg-white/70 p-6 text-left backdrop-blur-2xl dark:bg-white/[.04]">
+                <p className="mb-4 text-center font-display text-sm font-semibold">
+                  Or have them emailed when they're done
+                </p>
 
-              <button className="btn-ghost h-[52px] w-full text-[15px]">
-                <Google /> Continue with Google
-              </button>
+                <a href="/auth/google" className="btn-ghost h-[52px] w-full text-[15px]">
+                  <Google /> Continue with Google
+                </a>
 
-              <div className="my-4 flex items-center gap-3 text-xs faint">
-                <span className="h-px flex-1 bg-black/[.08] dark:bg-white/10" />
-                or
-                <span className="h-px flex-1 bg-black/[.08] dark:bg-white/10" />
+                <div className="my-4 flex items-center gap-3 text-xs faint">
+                  <span className="h-px flex-1 bg-black/[.08] dark:bg-white/10" />
+                  or
+                  <span className="h-px flex-1 bg-black/[.08] dark:bg-white/10" />
+                </div>
+
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    setEmailSaved(true);
+                  }}
+                  className="flex flex-col gap-2 sm:flex-row"
+                >
+                  <input
+                    type="email"
+                    required
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="you@brand.com"
+                    className="field h-[52px] flex-1"
+                  />
+                  <button type="submit" className="btn-accent h-[52px] px-5 text-[15px]">
+                    {emailSaved ? 'Saved' : 'Email me'} {!emailSaved && <Arrow />}
+                  </button>
+                </form>
               </div>
+            )}
 
-              <form
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  setEmailSaved(true);
-                }}
-                className="flex flex-col gap-2 sm:flex-row"
-              >
-                <input
-                  type="email"
-                  required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="you@brand.com"
-                  className="field h-[52px] flex-1"
-                />
-                <button type="submit" className="btn-accent h-[52px] px-5 text-[15px]">
-                  {emailSaved ? 'Saved' : 'Email me'} {!emailSaved && <Arrow />}
-                </button>
-              </form>
-            </div>
-
-            <p className="mt-5 text-[12.5px] leading-relaxed faint">
+            <p className={`text-[12.5px] leading-relaxed faint ${signedIn ? 'mt-8' : 'mt-5'}`}>
               Safe to close this tab — the search keeps running and stays on your watchlist.
             </p>
           </>

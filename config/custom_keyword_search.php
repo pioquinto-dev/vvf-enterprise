@@ -71,9 +71,58 @@ return [
         // Each supporting keyword that matches adds this much to the score.
         'supporting_keyword_bonus' => 0.05,
 
+        /*
+        | Rescue tiers. The phrase gate alone starves narrow searches — a
+        | brand's own posts often caption with emoji, and topical videos often
+        | use variants rather than the exact phrase. These recover both classes
+        | with weaker-but-real evidence; rescued items take a score haircut so
+        | they rank below phrase matches, never among them.
+        */
+
+        // Match the compacted phrase inside the creator's handle/display name.
+        'handle_match_enabled' => filter_var(env('CUSTOM_KEYWORD_SEARCH_HANDLE_MATCH', true), FILTER_VALIDATE_BOOL),
+
+        // Compacted phrases shorter than this never handle-match, so a
+        // two-letter brand cannot claim half of TikTok.
+        'handle_match_min_length' => (int) env('CUSTOM_KEYWORD_SEARCH_HANDLE_MATCH_MIN_LENGTH', 4),
+
+        // Distinct supporting keywords required to rescue a phrase miss.
+        // One is coincidence; several is the topic.
+        'supporting_rescue_min' => (int) env('CUSTOM_KEYWORD_SEARCH_SUPPORTING_RESCUE_MIN', 2),
+
+        // Score multiplier applied to rescued items.
+        'rescue_score_multiplier' => (float) env('CUSTOM_KEYWORD_SEARCH_RESCUE_SCORE_MULTIPLIER', 0.65),
+
+        // Max already-imported videos pooled into a run from the local corpus
+        // before prescreen. 0 disables local recall entirely.
+        'local_pool_limit' => (int) env('CUSTOM_KEYWORD_SEARCH_LOCAL_POOL_LIMIT', 400),
+
         // Recency: full bonus today, decaying to zero across this window.
         'recency_bonus' => 0.25,
         'recency_window_days' => 90,
+    ],
+
+    'analysis' => [
+        // Creative classification (format / hook / angle) on the top results.
+        'enabled' => filter_var(env('CUSTOM_KEYWORD_SEARCH_ANALYSIS_ENABLED', true), FILTER_VALIDATE_BOOL),
+
+        // The one-line read at the top of a tracker page.
+        'summary_enabled' => filter_var(env('CUSTOM_KEYWORD_SEARCH_SUMMARY_ENABLED', true), FILTER_VALIDATE_BOOL),
+
+        'model' => env('CUSTOM_KEYWORD_SEARCH_ANALYSIS_MODEL', 'gpt-4.1-mini'),
+        'timeout' => (int) env('CUSTOM_KEYWORD_SEARCH_ANALYSIS_TIMEOUT', 45),
+
+        // How long the "which account is the brand" decision is memoised.
+        // The detail page resolves the account on every render, so without a
+        // cache this is a paid call per page view. The key includes the
+        // candidate handles, so a run that surfaces new accounts re-asks
+        // regardless of this TTL.
+        'account_cache_seconds' => (int) env('CUSTOM_KEYWORD_SEARCH_ACCOUNT_CACHE_SECONDS', 604800),
+
+        // Videos classified per run. The detail page only surfaces these fields
+        // on the winner, so raising this buys labels nobody reads — it exists
+        // for when the grid starts showing them too.
+        'top_videos' => (int) env('CUSTOM_KEYWORD_SEARCH_ANALYSIS_TOP_VIDEOS', 10),
     ],
 
     'schedule' => [

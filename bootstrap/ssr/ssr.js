@@ -15,6 +15,46 @@ var __exportAll = (all, no_symbols) => {
 	return target;
 };
 //#endregion
+//#region resources/js/Pages/components/AppFooter.jsx
+var AppFooter_exports = /* @__PURE__ */ __exportAll({ default: () => AppFooter });
+var FOOT_NAV = [
+	{
+		label: "Home",
+		href: "/"
+	},
+	{
+		label: "Watchlist",
+		href: "/saved-searches"
+	},
+	{
+		label: "Pricing",
+		href: "/trial"
+	}
+];
+/**
+* Shared footer that sits under the content column in AppLayout. Hidden on
+* mobile, where the bottom tab bar owns that space instead.
+*/
+function AppFooter({ label = "© VVF — find viral videos daily", className = "" }) {
+	return /* @__PURE__ */ jsx("footer", {
+		className: `border-t border-black/[.06] dark:border-white/[.08] ${className}`.trim(),
+		children: /* @__PURE__ */ jsxs("div", {
+			className: "flex flex-wrap items-center justify-between gap-4 px-4 py-4 sm:px-6 lg:px-8",
+			children: [/* @__PURE__ */ jsx("nav", {
+				className: "flex flex-wrap items-center gap-1",
+				children: FOOT_NAV.map((item) => /* @__PURE__ */ jsx(Link, {
+					href: item.href,
+					className: "rounded-lg px-2.5 py-1.5 text-[12.5px] font-semibold muted transition hover:bg-black/[.04] hover:text-ink dark:hover:bg-white/[.06] dark:hover:text-white",
+					children: item.label
+				}, item.href))
+			}), /* @__PURE__ */ jsx("p", {
+				className: "text-[12px] faint",
+				children: label
+			})]
+		})
+	});
+}
+//#endregion
 //#region resources/js/Pages/Auth/Login.jsx
 var Login_exports = /* @__PURE__ */ __exportAll({ default: () => Login });
 function Login() {
@@ -29,7 +69,7 @@ function Login() {
 		form.post("/login");
 	};
 	return /* @__PURE__ */ jsxs(Fragment, { children: [/* @__PURE__ */ jsx(Head, { title: "Log in — VVF" }), /* @__PURE__ */ jsxs("div", {
-		className: "vvf-landing relative min-h-screen overflow-hidden px-4 py-10 sm:px-6",
+		className: "vvf-landing relative flex min-h-screen flex-col overflow-hidden px-4 py-10 sm:px-6",
 		children: [
 			/* @__PURE__ */ jsxs("div", {
 				"aria-hidden": true,
@@ -49,7 +89,7 @@ function Login() {
 				})]
 			}),
 			/* @__PURE__ */ jsxs("div", {
-				className: "mx-auto mt-14 grid max-w-5xl gap-10 lg:grid-cols-[1.1fr_.9fr] lg:items-center",
+				className: "mx-auto mt-14 flex-1 grid max-w-5xl gap-10 lg:grid-cols-[1.1fr_.9fr] lg:items-center",
 				children: [/* @__PURE__ */ jsxs("div", { children: [
 					/* @__PURE__ */ jsxs("p", {
 						className: "eyebrow",
@@ -61,7 +101,7 @@ function Login() {
 					}),
 					/* @__PURE__ */ jsx("p", {
 						className: "mt-5 max-w-xl text-[15px] leading-relaxed muted sm:text-[16px]",
-						children: "Access saved searches, plan limits, bookmarks, and billing. Google sign-in can still be added later, but your email and password flow works independently."
+						children: "Access your watchlist, plan limits, saved videos, and billing. Google sign-in can still be added later, but your email and password flow works independently."
 					})
 				] }), /* @__PURE__ */ jsxs("div", {
 					className: "rounded-[28px] border border-black/[.06] bg-white/78 p-7 shadow-[0_30px_90px_-50px_rgba(16,18,32,.45)] backdrop-blur-xl dark:border-white/[.08] dark:bg-white/[.05] sm:p-8",
@@ -149,6 +189,10 @@ function Login() {
 						})
 					]
 				})]
+			}),
+			/* @__PURE__ */ jsx(AppFooter, {
+				label: "VVF account access",
+				className: "mt-12"
 			})
 		]
 	})] });
@@ -168,7 +212,7 @@ function Register() {
 		form.post("/register");
 	};
 	return /* @__PURE__ */ jsxs(Fragment, { children: [/* @__PURE__ */ jsx(Head, { title: "Create account — VVF" }), /* @__PURE__ */ jsxs("div", {
-		className: "vvf-landing relative min-h-screen overflow-hidden px-4 py-10 sm:px-6",
+		className: "vvf-landing relative flex min-h-screen flex-col overflow-hidden px-4 py-10 sm:px-6",
 		children: [
 			/* @__PURE__ */ jsxs("div", {
 				"aria-hidden": true,
@@ -188,7 +232,7 @@ function Register() {
 				})]
 			}),
 			/* @__PURE__ */ jsxs("div", {
-				className: "mx-auto mt-14 grid max-w-5xl gap-10 lg:grid-cols-[1.05fr_.95fr] lg:items-center",
+				className: "mx-auto mt-14 flex-1 grid max-w-5xl gap-10 lg:grid-cols-[1.05fr_.95fr] lg:items-center",
 				children: [/* @__PURE__ */ jsxs("div", { children: [
 					/* @__PURE__ */ jsxs("p", {
 						className: "eyebrow",
@@ -304,351 +348,13 @@ function Register() {
 						})
 					]
 				})]
+			}),
+			/* @__PURE__ */ jsx(AppFooter, {
+				label: "VVF account creation",
+				className: "mt-12"
 			})
 		]
 	})] });
-}
-//#endregion
-//#region resources/js/Pages/Dashboard.jsx
-var Dashboard_exports = /* @__PURE__ */ __exportAll({ default: () => Dashboard });
-var TOP_NAV = [
-	{
-		label: "Dashboard",
-		href: "/dashboard"
-	},
-	{
-		label: "Saved searches",
-		href: "/saved-searches"
-	},
-	{
-		label: "Pricing",
-		href: "/trial"
-	}
-];
-var FOOT_NAV = [
-	{
-		label: "Home",
-		href: "/"
-	},
-	{
-		label: "Saved searches",
-		href: "/saved-searches"
-	},
-	{
-		label: "Trial",
-		href: "/trial"
-	}
-];
-function Dashboard() {
-	const { auth = {}, billing = {}, flash = {} } = usePage().props;
-	const logout = useForm({});
-	const signOut = () => {
-		logout.post("/logout");
-	};
-	return /* @__PURE__ */ jsxs(Fragment, { children: [/* @__PURE__ */ jsx(Head, { title: "Dashboard — VVF" }), /* @__PURE__ */ jsxs("div", {
-		className: "vvf-landing relative min-h-screen overflow-hidden",
-		children: [
-			/* @__PURE__ */ jsxs("div", {
-				"aria-hidden": true,
-				className: "pointer-events-none absolute inset-0 -z-10",
-				children: [/* @__PURE__ */ jsx("div", { className: "bg-grid mask-radial-fade absolute inset-0" }), /* @__PURE__ */ jsx("div", { className: "absolute top-[-12%] left-1/2 h-[420px] w-[820px] -translate-x-1/2 rounded-full bg-accent/14 blur-[150px]" })]
-			}),
-			/* @__PURE__ */ jsx("header", {
-				className: "border-b border-black/[.06] bg-canvas/80 backdrop-blur-xl dark:border-white/[.08] dark:bg-canvas-dark/80",
-				children: /* @__PURE__ */ jsxs("div", {
-					className: "mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-4 sm:px-6 lg:px-8",
-					children: [
-						/* @__PURE__ */ jsx(Link, {
-							href: "/dashboard",
-							className: "font-display text-[20px] font-bold tracking-[-.025em]",
-							children: "VVF"
-						}),
-						/* @__PURE__ */ jsx("nav", {
-							className: "hidden items-center gap-2 md:flex",
-							children: TOP_NAV.map((item) => /* @__PURE__ */ jsx(Link, {
-								href: item.href,
-								className: `rounded-xl px-4 py-2 text-[13px] font-semibold transition ${item.href === "/dashboard" ? "bg-black/[.06] text-ink dark:bg-white/[.08] dark:text-white" : "muted hover:bg-black/[.04] hover:text-ink dark:hover:bg-white/[.05] dark:hover:text-white"}`,
-								children: item.label
-							}, item.href))
-						}),
-						/* @__PURE__ */ jsx("button", {
-							onClick: signOut,
-							className: "btn-ghost h-10 px-4 text-sm",
-							disabled: logout.processing,
-							children: logout.processing ? "Signing out…" : "Log out"
-						})
-					]
-				})
-			}),
-			/* @__PURE__ */ jsx("main", {
-				className: "mx-auto max-w-6xl px-4 py-10 sm:px-6 lg:px-8",
-				children: /* @__PURE__ */ jsxs("div", {
-					className: "grid gap-6 lg:grid-cols-[1.3fr_.7fr]",
-					children: [/* @__PURE__ */ jsxs("section", {
-						className: "rounded-[28px] border border-black/[.06] bg-white/78 p-7 shadow-[0_30px_90px_-55px_rgba(16,18,32,.45)] backdrop-blur-xl dark:border-white/[.08] dark:bg-white/[.05] sm:p-8",
-						children: [
-							/* @__PURE__ */ jsxs("p", {
-								className: "eyebrow",
-								children: [/* @__PURE__ */ jsx("span", { className: "h-px w-6 bg-accent/50" }), " Dashboard"]
-							}),
-							/* @__PURE__ */ jsxs("h1", {
-								className: "mt-4 font-display text-[32px] font-bold tracking-[-.03em] sm:text-[42px]",
-								children: [
-									"Welcome back",
-									auth.user?.name ? `, ${auth.user.name}` : "",
-									"."
-								]
-							}),
-							/* @__PURE__ */ jsx("p", {
-								className: "mt-4 max-w-2xl text-[15px] leading-relaxed muted",
-								children: "This is your account home. From here you can head to saved searches, review your plan state, and later plug in billing, bookmarks, and account settings without changing the overall shell."
-							}),
-							flash.status && /* @__PURE__ */ jsx("div", {
-								className: "mt-6 rounded-2xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-700 dark:text-emerald-300",
-								children: flash.status
-							}),
-							/* @__PURE__ */ jsxs("div", {
-								className: "mt-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-3",
-								children: [
-									/* @__PURE__ */ jsxs("div", {
-										className: "rounded-2xl border border-black/[.06] bg-black/[.02] p-4 dark:border-white/[.08] dark:bg-white/[.04]",
-										children: [/* @__PURE__ */ jsx("p", {
-											className: "text-[12px] font-semibold uppercase tracking-[.14em] faint",
-											children: "Current plan"
-										}), /* @__PURE__ */ jsx("p", {
-											className: "mt-3 font-display text-[24px] font-bold capitalize",
-											children: billing.currentPlan ?? "free"
-										})]
-									}),
-									/* @__PURE__ */ jsxs("div", {
-										className: "rounded-2xl border border-black/[.06] bg-black/[.02] p-4 dark:border-white/[.08] dark:bg-white/[.04]",
-										children: [/* @__PURE__ */ jsx("p", {
-											className: "text-[12px] font-semibold uppercase tracking-[.14em] faint",
-											children: "Credits remaining"
-										}), /* @__PURE__ */ jsxs("p", {
-											className: "mt-3 font-display text-[24px] font-bold",
-											children: [billing.searchCreditsRemaining ?? 0, typeof billing.searchCreditsLimit === "number" ? ` / ${billing.searchCreditsLimit}` : ""]
-										})]
-									}),
-									/* @__PURE__ */ jsxs("div", {
-										className: "rounded-2xl border border-black/[.06] bg-black/[.02] p-4 dark:border-white/[.08] dark:bg-white/[.04]",
-										children: [/* @__PURE__ */ jsx("p", {
-											className: "text-[12px] font-semibold uppercase tracking-[.14em] faint",
-											children: "Bookmarks"
-										}), /* @__PURE__ */ jsxs("p", {
-											className: "mt-3 font-display text-[24px] font-bold",
-											children: [billing.bookmarkCount ?? 0, billing.bookmarkLimit === -1 ? "" : ` / ${billing.bookmarkLimit ?? 0}`]
-										})]
-									})
-								]
-							})
-						]
-					}), /* @__PURE__ */ jsxs("aside", {
-						className: "rounded-[28px] border border-black/[.06] bg-white/78 p-7 shadow-[0_30px_90px_-55px_rgba(16,18,32,.45)] backdrop-blur-xl dark:border-white/[.08] dark:bg-white/[.05] sm:p-8",
-						children: [
-							/* @__PURE__ */ jsx("h2", {
-								className: "font-display text-[22px] font-bold",
-								children: "Quick links"
-							}),
-							/* @__PURE__ */ jsxs("div", {
-								className: "mt-5 space-y-3",
-								children: [
-									/* @__PURE__ */ jsx(Link, {
-										href: "/saved-searches",
-										className: "btn-accent h-11 w-full justify-center text-sm",
-										children: "Open saved searches"
-									}),
-									/* @__PURE__ */ jsx(Link, {
-										href: "/trial",
-										className: "btn-ghost h-11 w-full justify-center text-sm",
-										children: "View plans"
-									}),
-									/* @__PURE__ */ jsx(Link, {
-										href: "/",
-										className: "btn-ghost h-11 w-full justify-center text-sm",
-										children: "Run a new search"
-									})
-								]
-							}),
-							/* @__PURE__ */ jsxs("div", {
-								className: "mt-8 rounded-2xl border border-black/[.06] bg-black/[.02] p-4 dark:border-white/[.08] dark:bg-white/[.04]",
-								children: [/* @__PURE__ */ jsx("p", {
-									className: "text-[12px] font-semibold uppercase tracking-[.14em] faint",
-									children: "Signed in as"
-								}), /* @__PURE__ */ jsx("p", {
-									className: "mt-3 text-[14px] font-semibold",
-									children: auth.user?.email ?? "Unknown account"
-								})]
-							})
-						]
-					})]
-				})
-			}),
-			/* @__PURE__ */ jsx("footer", {
-				className: "border-t border-black/[.06] bg-canvas/80 backdrop-blur-xl dark:border-white/[.08] dark:bg-canvas-dark/80",
-				children: /* @__PURE__ */ jsxs("div", {
-					className: "mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4 px-4 py-4 sm:px-6 lg:px-8",
-					children: [/* @__PURE__ */ jsx("nav", {
-						className: "flex flex-wrap items-center gap-2",
-						children: FOOT_NAV.map((item) => /* @__PURE__ */ jsx(Link, {
-							href: item.href,
-							className: "rounded-xl px-3 py-2 text-[13px] font-semibold muted transition hover:bg-black/[.04] hover:text-ink dark:hover:bg-white/[.05] dark:hover:text-white",
-							children: item.label
-						}, item.href))
-					}), /* @__PURE__ */ jsx("p", {
-						className: "text-[12px] faint",
-						children: "VVF dashboard shell"
-					})]
-				})
-			})
-		]
-	})] });
-}
-//#endregion
-//#region resources/js/Pages/Home.jsx
-var Home_exports = /* @__PURE__ */ __exportAll({ default: () => Home });
-function Home({ stack, integrations }) {
-	const { props } = usePage();
-	const status = props.flash?.status;
-	return /* @__PURE__ */ jsxs(Fragment, { children: [/* @__PURE__ */ jsx(Head, { title: "Project Base" }), /* @__PURE__ */ jsx("main", {
-		className: "min-h-screen bg-[radial-gradient(circle_at_top,_rgba(249,115,22,0.18),_transparent_32%),linear-gradient(160deg,_#0c0a09,_#1c1917_55%,_#0f172a)]",
-		children: /* @__PURE__ */ jsxs("div", {
-			className: "mx-auto flex min-h-screen max-w-6xl flex-col gap-10 px-6 py-10 lg:px-10",
-			children: [/* @__PURE__ */ jsxs("section", {
-				className: "rounded-3xl border border-white/10 bg-white/6 p-8 shadow-2xl shadow-orange-950/20 backdrop-blur",
-				children: [
-					/* @__PURE__ */ jsx("p", {
-						className: "text-sm uppercase tracking-[0.35em] text-orange-300",
-						children: "Laravel + React Starter"
-					}),
-					/* @__PURE__ */ jsx("h1", {
-						className: "mt-4 max-w-3xl font-serif text-4xl leading-tight text-white md:text-6xl",
-						children: "A base app for content ops, scraping workflows, and paid access."
-					}),
-					/* @__PURE__ */ jsx("p", {
-						className: "mt-5 max-w-2xl text-base text-stone-300 md:text-lg",
-						children: "This starter is wired for Inertia React on the frontend, Laravel on the backend, PostgreSQL for persistence, and Redis for cache, queues, and sessions."
-					}),
-					status ? /* @__PURE__ */ jsx("div", {
-						className: "mt-6 rounded-2xl border border-emerald-400/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200",
-						children: status
-					}) : null
-				]
-			}), /* @__PURE__ */ jsxs("section", {
-				className: "grid gap-6 lg:grid-cols-[1.2fr,0.8fr]",
-				children: [/* @__PURE__ */ jsxs("article", {
-					className: "rounded-3xl border border-white/10 bg-black/20 p-6",
-					children: [/* @__PURE__ */ jsx("h2", {
-						className: "text-xl font-semibold text-white",
-						children: "Stack"
-					}), /* @__PURE__ */ jsx("div", {
-						className: "mt-5 grid gap-4 sm:grid-cols-2",
-						children: Object.entries(stack).map(([label, value]) => /* @__PURE__ */ jsxs("div", {
-							className: "rounded-2xl border border-white/10 bg-white/5 p-4",
-							children: [/* @__PURE__ */ jsx("p", {
-								className: "text-xs uppercase tracking-[0.25em] text-stone-400",
-								children: label
-							}), /* @__PURE__ */ jsx("p", {
-								className: "mt-2 text-lg text-stone-100",
-								children: value
-							})]
-						}, label))
-					})]
-				}), /* @__PURE__ */ jsxs("article", {
-					className: "rounded-3xl border border-white/10 bg-black/20 p-6",
-					children: [
-						/* @__PURE__ */ jsx("h2", {
-							className: "text-xl font-semibold text-white",
-							children: "Integrations"
-						}),
-						/* @__PURE__ */ jsx("div", {
-							className: "mt-5 space-y-3",
-							children: integrations.map((integration) => /* @__PURE__ */ jsx("div", {
-								className: "rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-stone-200",
-								children: integration
-							}, integration))
-						}),
-						/* @__PURE__ */ jsxs("div", {
-							className: "mt-6 rounded-2xl border border-orange-300/20 bg-orange-400/10 p-4 text-sm text-orange-100",
-							children: [
-								"Google auth routes and service env keys are stubbed. Stripe and Apify credentials are ready to drop into ",
-								/* @__PURE__ */ jsx("code", { children: ".env" }),
-								"."
-							]
-						})
-					]
-				})]
-			})]
-		})
-	})] });
-}
-//#endregion
-//#region resources/js/landing/components/useTheme.js
-var STORAGE_KEY = "vvf-theme";
-function readInitial() {
-	if (typeof window === "undefined") return "dark";
-	try {
-		const stored = window.localStorage.getItem(STORAGE_KEY);
-		if (stored === "dark" || stored === "light") return stored;
-	} catch (e) {}
-	return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
-}
-function useTheme() {
-	const [theme, setTheme] = useState(readInitial);
-	useEffect(() => {
-		document.documentElement.classList.toggle("dark", theme === "dark");
-		try {
-			window.localStorage.setItem(STORAGE_KEY, theme);
-		} catch (e) {}
-	}, [theme]);
-	return {
-		theme,
-		toggle: useCallback(() => setTheme((t) => t === "dark" ? "light" : "dark"), []),
-		setTheme
-	};
-}
-//#endregion
-//#region resources/js/landing/components/Reveal.jsx
-/**
-* Releases `[data-reveal]` elements as they scroll into view. The hidden state
-* lives in CSS, so anything server-rendered still reads fine without JS, and
-* prefers-reduced-motion short-circuits the whole thing.
-*/
-function useReveal() {
-	const ref = useRef(null);
-	useEffect(() => {
-		const root = ref.current;
-		if (!root) return void 0;
-		const targets = root.querySelectorAll("[data-reveal]");
-		if (!targets.length) return void 0;
-		if (window.matchMedia("(prefers-reduced-motion: reduce)").matches || typeof IntersectionObserver === "undefined") {
-			targets.forEach((el) => el.setAttribute("data-reveal", "shown"));
-			return;
-		}
-		const observer = new IntersectionObserver((entries) => {
-			entries.forEach((entry) => {
-				if (!entry.isIntersecting) return;
-				entry.target.setAttribute("data-reveal", "shown");
-				observer.unobserve(entry.target);
-			});
-		}, {
-			rootMargin: "0px 0px -12% 0px",
-			threshold: .08
-		});
-		targets.forEach((el) => observer.observe(el));
-		return () => observer.disconnect();
-	}, []);
-	return ref;
-}
-/** Convenience wrapper: <Reveal delay={120}>…</Reveal> */
-function Reveal({ delay = 0, as: Tag = "div", className = "", children, ...rest }) {
-	return /* @__PURE__ */ jsx(Tag, {
-		"data-reveal": "",
-		style: { "--reveal-delay": `${delay}ms` },
-		className,
-		...rest,
-		children
-	});
 }
 //#endregion
 //#region resources/js/landing/components/Icons.jsx
@@ -935,6 +641,149 @@ var Plus = ({ className = "h-4 w-4" }) => /* @__PURE__ */ jsx("svg", {
 		strokeLinecap: "round"
 	})
 });
+var Search = ({ className = "h-4 w-4" }) => /* @__PURE__ */ jsxs("svg", {
+	viewBox: "0 0 16 16",
+	fill: "none",
+	className,
+	"aria-hidden": "true",
+	children: [/* @__PURE__ */ jsx("circle", {
+		cx: "7",
+		cy: "7",
+		r: "4.4",
+		stroke: "currentColor",
+		strokeWidth: "1.5"
+	}), /* @__PURE__ */ jsx("path", {
+		d: "M10.3 10.3 13.5 13.5",
+		stroke: "currentColor",
+		strokeWidth: "1.5",
+		strokeLinecap: "round"
+	})]
+});
+var Library = ({ className = "h-4 w-4" }) => /* @__PURE__ */ jsxs("svg", {
+	viewBox: "0 0 16 16",
+	fill: "none",
+	className,
+	"aria-hidden": "true",
+	children: [
+		/* @__PURE__ */ jsx("rect", {
+			x: "2.2",
+			y: "2.5",
+			width: "4",
+			height: "11",
+			rx: "1.3",
+			stroke: "currentColor",
+			strokeWidth: "1.4"
+		}),
+		/* @__PURE__ */ jsx("rect", {
+			x: "7.6",
+			y: "2.5",
+			width: "3.2",
+			height: "11",
+			rx: "1.3",
+			stroke: "currentColor",
+			strokeWidth: "1.4"
+		}),
+		/* @__PURE__ */ jsx("path", {
+			d: "M12.3 3.6 14.3 12.4",
+			stroke: "currentColor",
+			strokeWidth: "1.4",
+			strokeLinecap: "round"
+		})
+	]
+});
+var Store = ({ className = "h-4 w-4" }) => /* @__PURE__ */ jsxs("svg", {
+	viewBox: "0 0 16 16",
+	fill: "none",
+	className,
+	"aria-hidden": "true",
+	children: [/* @__PURE__ */ jsx("path", {
+		d: "M2.6 6.2 3.6 2.8h8.8l1 3.4a2 2 0 0 1-3.8.9 2 2 0 0 1-3.6 0 2 2 0 0 1-3.4-.9Z",
+		stroke: "currentColor",
+		strokeWidth: "1.3",
+		strokeLinejoin: "round"
+	}), /* @__PURE__ */ jsx("path", {
+		d: "M3.4 8.2v4.4a.8.8 0 0 0 .8.8h7.6a.8.8 0 0 0 .8-.8V8.2",
+		stroke: "currentColor",
+		strokeWidth: "1.3",
+		strokeLinecap: "round"
+	})]
+});
+var Target = ({ className = "h-4 w-4" }) => /* @__PURE__ */ jsxs("svg", {
+	viewBox: "0 0 16 16",
+	fill: "none",
+	className,
+	"aria-hidden": "true",
+	children: [
+		/* @__PURE__ */ jsx("circle", {
+			cx: "8",
+			cy: "8",
+			r: "5.6",
+			stroke: "currentColor",
+			strokeWidth: "1.4"
+		}),
+		/* @__PURE__ */ jsx("circle", {
+			cx: "8",
+			cy: "8",
+			r: "2.6",
+			stroke: "currentColor",
+			strokeWidth: "1.4"
+		}),
+		/* @__PURE__ */ jsx("circle", {
+			cx: "8",
+			cy: "8",
+			r: ".9",
+			fill: "currentColor"
+		})
+	]
+});
+var User = ({ className = "h-4 w-4" }) => /* @__PURE__ */ jsxs("svg", {
+	viewBox: "0 0 16 16",
+	fill: "none",
+	className,
+	"aria-hidden": "true",
+	children: [/* @__PURE__ */ jsx("circle", {
+		cx: "8",
+		cy: "5.6",
+		r: "2.7",
+		stroke: "currentColor",
+		strokeWidth: "1.4"
+	}), /* @__PURE__ */ jsx("path", {
+		d: "M2.9 13.4a5.1 5.1 0 0 1 10.2 0",
+		stroke: "currentColor",
+		strokeWidth: "1.4",
+		strokeLinecap: "round"
+	})]
+});
+var Exit = ({ className = "h-4 w-4" }) => /* @__PURE__ */ jsxs("svg", {
+	viewBox: "0 0 16 16",
+	fill: "none",
+	className,
+	"aria-hidden": "true",
+	children: [/* @__PURE__ */ jsx("path", {
+		d: "M6.4 2.6H3.6a1 1 0 0 0-1 1v8.8a1 1 0 0 0 1 1h2.8",
+		stroke: "currentColor",
+		strokeWidth: "1.4",
+		strokeLinecap: "round"
+	}), /* @__PURE__ */ jsx("path", {
+		d: "M10 5.2 12.8 8l-2.8 2.8M12.4 8H6.2",
+		stroke: "currentColor",
+		strokeWidth: "1.4",
+		strokeLinecap: "round",
+		strokeLinejoin: "round"
+	})]
+});
+var Spark = ({ className = "h-4 w-4" }) => /* @__PURE__ */ jsx("svg", {
+	viewBox: "0 0 16 16",
+	fill: "none",
+	className,
+	"aria-hidden": "true",
+	children: /* @__PURE__ */ jsx("path", {
+		d: "M8 1.8 9.5 6.1 13.8 7.6 9.5 9.1 8 13.4 6.5 9.1 2.2 7.6 6.5 6.1Z",
+		stroke: "currentColor",
+		strokeWidth: "1.3",
+		strokeLinejoin: "round"
+	})
+});
 var Google = ({ className = "h-4 w-4" }) => /* @__PURE__ */ jsxs("svg", {
 	viewBox: "0 0 24 24",
 	className,
@@ -958,6 +807,49 @@ var Google = ({ className = "h-4 w-4" }) => /* @__PURE__ */ jsxs("svg", {
 		})
 	]
 });
+var Lock = ({ className = "h-4 w-4" }) => /* @__PURE__ */ jsxs("svg", {
+	viewBox: "0 0 16 16",
+	fill: "none",
+	className,
+	"aria-hidden": "true",
+	children: [/* @__PURE__ */ jsx("rect", {
+		x: "3",
+		y: "7",
+		width: "10",
+		height: "6.5",
+		rx: "1.6",
+		stroke: "currentColor",
+		strokeWidth: "1.4"
+	}), /* @__PURE__ */ jsx("path", {
+		d: "M5.2 7V5.8a2.8 2.8 0 1 1 5.6 0V7",
+		stroke: "currentColor",
+		strokeWidth: "1.4",
+		strokeLinecap: "round"
+	})]
+});
+var Dots = ({ className = "h-4 w-4" }) => /* @__PURE__ */ jsxs("svg", {
+	viewBox: "0 0 16 16",
+	fill: "currentColor",
+	className,
+	"aria-hidden": "true",
+	children: [
+		/* @__PURE__ */ jsx("circle", {
+			cx: "3",
+			cy: "8",
+			r: "1.2"
+		}),
+		/* @__PURE__ */ jsx("circle", {
+			cx: "8",
+			cy: "8",
+			r: "1.2"
+		}),
+		/* @__PURE__ */ jsx("circle", {
+			cx: "13",
+			cy: "8",
+			r: "1.2"
+		})
+	]
+});
 //#endregion
 //#region resources/js/landing/components/ThemeToggle.jsx
 function ThemeToggle({ theme, onToggle, className = "" }) {
@@ -975,6 +867,706 @@ function ThemeToggle({ theme, onToggle, className = "" }) {
 			className: "relative z-10 flex w-full items-center justify-between px-[7px]",
 			children: [/* @__PURE__ */ jsx(Sun, { className: `h-3.5 w-3.5 transition-colors ${isDark ? "text-white/40" : "text-amber-500"}` }), /* @__PURE__ */ jsx(Moon, { className: `h-3.5 w-3.5 transition-colors ${isDark ? "text-white" : "text-ink/35"}` })]
 		})]
+	});
+}
+//#endregion
+//#region resources/js/landing/components/useTheme.js
+var STORAGE_KEY = "vvf-theme";
+function readInitial() {
+	if (typeof window === "undefined") return "dark";
+	try {
+		const stored = window.localStorage.getItem(STORAGE_KEY);
+		if (stored === "dark" || stored === "light") return stored;
+	} catch (e) {}
+	return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+}
+function useTheme() {
+	const [theme, setTheme] = useState(readInitial);
+	useEffect(() => {
+		document.documentElement.classList.toggle("dark", theme === "dark");
+		try {
+			window.localStorage.setItem(STORAGE_KEY, theme);
+		} catch (e) {}
+	}, [theme]);
+	return {
+		theme,
+		toggle: useCallback(() => setTheme((t) => t === "dark" ? "light" : "dark"), []),
+		setTheme
+	};
+}
+//#endregion
+//#region resources/js/Pages/components/AppLayout.jsx
+var AppLayout_exports = /* @__PURE__ */ __exportAll({ default: () => AppLayout });
+var TONES = {
+	ok: "border-emerald-500/20 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+	accent: "border-accent/25 bg-accent/10 text-accent dark:text-accent-glow"
+};
+var STEP_ORDER = [
+	"keywords",
+	"running",
+	"results"
+];
+/**
+* Primary sidebar navigation. Every entry points at a route that exists —
+* "Brand searches" and "Competitor searches" seed the search flow with the
+* matching `type`, which `routes/public.php` already accepts.
+*/
+var NAV$1 = [
+	{
+		label: "Watchlist",
+		href: "/saved-searches",
+		icon: Library,
+		match: "/saved-searches",
+		exact: "/saved-searches"
+	},
+	{
+		label: "Brand searches",
+		href: "/saved-searches?type=brand",
+		icon: Store,
+		match: "/saved-searches",
+		exact: "/saved-searches?type=brand"
+	},
+	{
+		label: "Competitor searches",
+		href: "/saved-searches?type=competitor",
+		icon: Target,
+		match: "/saved-searches",
+		exact: "/saved-searches?type=competitor"
+	},
+	{
+		label: "Product searches",
+		href: "/saved-searches?type=product",
+		icon: Search,
+		match: "/saved-searches",
+		exact: "/saved-searches?type=product",
+		locked: true
+	}
+];
+var TABS = [
+	{
+		label: "Watchlist",
+		href: "/saved-searches",
+		icon: Library,
+		match: "/saved-searches"
+	},
+	{
+		label: "Search",
+		href: "/search",
+		icon: Search,
+		match: "/search"
+	},
+	{
+		label: "Account",
+		href: "/settings/account",
+		icon: User,
+		match: "/settings"
+	}
+];
+function isActive(currentUrl, match) {
+	const path = (currentUrl || "/").split("?")[0];
+	return match === "/" ? path === "/" : path.startsWith(match);
+}
+function SidebarSearch({ onSubmitted }) {
+	const [phrase, setPhrase] = useState("");
+	const submit = (event) => {
+		event.preventDefault();
+		const q = phrase.trim();
+		if (!q) return;
+		onSubmitted?.();
+		router.visit(`/search?type=brand&q=${encodeURIComponent(q)}`);
+	};
+	return /* @__PURE__ */ jsxs("form", {
+		onSubmit: submit,
+		className: "relative",
+		children: [/* @__PURE__ */ jsx(Search, { className: "pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 faint" }), /* @__PURE__ */ jsx("input", {
+			value: phrase,
+			onChange: (event) => setPhrase(event.target.value),
+			placeholder: "Search a brand or topic",
+			"aria-label": "Search a brand or topic",
+			className: "field h-11 pl-9 text-[13.5px]"
+		})]
+	});
+}
+function AffiliateCard() {
+	return /* @__PURE__ */ jsxs("div", {
+		title: "Affiliate program coming soon",
+		className: "flex items-center justify-between gap-2 rounded-xl border border-emerald-500/25 bg-emerald-500/[.08] px-3 py-2.5",
+		children: [/* @__PURE__ */ jsxs("span", {
+			className: "flex items-center gap-2 text-[13px] font-semibold text-emerald-700 dark:text-emerald-400",
+			children: [/* @__PURE__ */ jsx(Spark, { className: "h-3.5 w-3.5" }), "Be an affiliate"]
+		}), /* @__PURE__ */ jsx("span", {
+			className: "rounded-md bg-emerald-500/15 px-1.5 py-0.5 text-[10px] font-bold tracking-[.08em] text-emerald-700 uppercase dark:text-emerald-400",
+			children: "Soon"
+		})]
+	});
+}
+function NavList({ currentUrl, onNavigate, className = "" }) {
+	return /* @__PURE__ */ jsx("nav", {
+		className: `space-y-1 ${className}`.trim(),
+		children: NAV$1.map((item) => {
+			const Icon = item.icon;
+			const active = item.exact ? currentUrl === item.exact : isActive(currentUrl, item.match);
+			if (item.locked) return /* @__PURE__ */ jsxs("div", {
+				"aria-disabled": "true",
+				title: "Locked for now",
+				className: "flex cursor-not-allowed items-center justify-between gap-2.5 rounded-xl px-3 py-2.5 text-[13.5px] font-semibold text-ink/40 dark:text-white/35",
+				children: [/* @__PURE__ */ jsxs("span", {
+					className: "flex items-center gap-2.5",
+					children: [/* @__PURE__ */ jsx(Icon, { className: "h-4 w-4 shrink-0" }), item.label]
+				}), /* @__PURE__ */ jsx(Lock, { className: "h-3.5 w-3.5 shrink-0" })]
+			}, item.label);
+			return /* @__PURE__ */ jsxs(Link, {
+				href: item.href,
+				onClick: onNavigate,
+				className: `flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-[13.5px] font-semibold transition ${active ? "bg-accent/10 text-accent dark:bg-accent/15 dark:text-accent-glow" : "muted hover:bg-black/[.04] hover:text-ink dark:hover:bg-white/[.06] dark:hover:text-white"}`,
+				children: [/* @__PURE__ */ jsx(Icon, { className: "h-4 w-4 shrink-0" }), item.label]
+			}, item.label);
+		})
+	});
+}
+/**
+* Account block pinned to the bottom of the sidebar and the mobile drawer.
+* Signed-out visitors get log in / sign up in the same slot.
+*/
+function AccountBlock({ signedIn, email, onSignOut, signingOut, onNavigate }) {
+	if (!signedIn) return /* @__PURE__ */ jsxs("div", {
+		className: "space-y-2",
+		children: [/* @__PURE__ */ jsx(Link, {
+			href: "/login",
+			onClick: onNavigate,
+			className: "btn-ghost h-10 w-full justify-center text-[13px]",
+			children: "Log in"
+		}), /* @__PURE__ */ jsxs(Link, {
+			href: "/register",
+			onClick: onNavigate,
+			className: "btn-accent h-10 w-full justify-center text-[13px]",
+			children: ["Sign up ", /* @__PURE__ */ jsx(Arrow, {})]
+		})]
+	});
+	return /* @__PURE__ */ jsxs("div", {
+		className: "flex items-stretch gap-2",
+		children: [/* @__PURE__ */ jsxs(Link, {
+			href: "/settings/account",
+			onClick: onNavigate,
+			className: "flex min-w-0 flex-1 items-center gap-2.5 rounded-xl border border-black/[.07] bg-black/[.02] px-3 py-2.5 transition hover:border-accent/30 dark:border-white/[.09] dark:bg-white/[.04]",
+			children: [/* @__PURE__ */ jsx(User, { className: "h-4 w-4 shrink-0 faint" }), /* @__PURE__ */ jsxs("span", {
+				className: "min-w-0",
+				children: [/* @__PURE__ */ jsx("span", {
+					className: "block text-[13px] font-semibold",
+					children: "Account"
+				}), email && /* @__PURE__ */ jsx("span", {
+					className: "block truncate text-[11px] faint",
+					children: email
+				})]
+			})]
+		}), /* @__PURE__ */ jsx("button", {
+			onClick: onSignOut,
+			disabled: signingOut,
+			title: "Log out",
+			"aria-label": "Log out",
+			className: "flex w-11 shrink-0 items-center justify-center rounded-xl border border-black/[.07] transition hover:border-hot/40 hover:text-hot disabled:opacity-40 dark:border-white/[.09]",
+			children: /* @__PURE__ */ jsx(Exit, { className: "h-4 w-4" })
+		})]
+	});
+}
+/**
+* The app shell: a persistent sidebar on desktop, a top bar plus slide-in
+* drawer and bottom tab bar on mobile, and a shared footer under the content.
+*
+* Props mirror the old SearchShell so flow screens drop in unchanged:
+*   pill     — small status chip shown next to the title
+*   step     — 'keywords' | 'running' | 'results', draws the progress rail
+*   width    — optional max-width for the content column
+*   actions  — right side of the title row. Keep this to one or two buttons;
+*              anything denser belongs in `toolbar` or it wraps into a column.
+*   subtitle — one line of context under the title
+*   toolbar  — full-width row under the header for search, filters, and sort
+*/
+function AppLayout({ pill, step, title, subtitle, actions, toolbar, width = "max-w-6xl", children }) {
+	const { props, url: currentUrl } = usePage();
+	const { auth = {} } = props;
+	const { theme, toggle } = useTheme();
+	const logout = useForm({});
+	const [drawerOpen, setDrawerOpen] = useState(false);
+	const signedIn = auth.signedIn ?? Boolean(auth.user);
+	const stepIndex = STEP_ORDER.indexOf(step);
+	const signOut = () => {
+		setDrawerOpen(false);
+		logout.post("/logout");
+	};
+	useEffect(() => {
+		if (typeof document === "undefined") return void 0;
+		document.body.style.overflow = drawerOpen ? "hidden" : "";
+		return () => {
+			document.body.style.overflow = "";
+		};
+	}, [drawerOpen]);
+	const closeDrawer = () => setDrawerOpen(false);
+	const brand = /* @__PURE__ */ jsxs(Link, {
+		href: "/",
+		onClick: closeDrawer,
+		className: "flex items-center gap-2.5",
+		children: [/* @__PURE__ */ jsx(Logo, { className: "h-8 w-8" }), /* @__PURE__ */ jsxs("span", {
+			className: "leading-none",
+			children: [/* @__PURE__ */ jsx("span", {
+				className: "block font-display text-[19px] font-bold tracking-[-.03em]",
+				children: "vvf"
+			}), /* @__PURE__ */ jsx("span", {
+				className: "mt-1 block text-[9px] font-semibold tracking-[.16em] faint uppercase",
+				children: "Find viral videos daily"
+			})]
+		})]
+	});
+	return /* @__PURE__ */ jsxs("div", {
+		className: "vvf-landing relative isolate min-h-screen font-body",
+		children: [
+			/* @__PURE__ */ jsxs("div", {
+				"aria-hidden": true,
+				className: "pointer-events-none fixed inset-0 -z-10 overflow-hidden",
+				children: [/* @__PURE__ */ jsx("div", { className: "bg-grid mask-radial-fade absolute inset-0" }), /* @__PURE__ */ jsx("div", { className: "absolute top-[-20%] left-1/2 h-[420px] w-[760px] max-w-[140vw] -translate-x-1/2 rounded-full bg-accent/15 blur-[140px] dark:bg-accent/20" })]
+			}),
+			/* @__PURE__ */ jsxs("aside", {
+				className: "fixed inset-y-0 left-0 z-40 hidden w-[268px] flex-col border-r border-black/[.06] bg-canvas/80 px-4 py-5 backdrop-blur-xl lg:flex dark:border-white/[.08] dark:bg-canvas-dark/80",
+				children: [
+					/* @__PURE__ */ jsx("div", {
+						className: "px-1",
+						children: brand
+					}),
+					/* @__PURE__ */ jsx("div", {
+						className: "mt-6",
+						children: /* @__PURE__ */ jsx(SidebarSearch, {})
+					}),
+					/* @__PURE__ */ jsx(NavList, {
+						currentUrl,
+						className: "mt-5"
+					}),
+					/* @__PURE__ */ jsx("div", { className: "flex-1" }),
+					/* @__PURE__ */ jsxs("div", {
+						className: "space-y-3 border-t border-black/[.06] pt-4 dark:border-white/[.08]",
+						children: [
+							/* @__PURE__ */ jsx(AffiliateCard, {}),
+							/* @__PURE__ */ jsx(AccountBlock, {
+								signedIn,
+								email: auth.user?.email,
+								onSignOut: signOut,
+								signingOut: logout.processing
+							}),
+							/* @__PURE__ */ jsxs("div", {
+								className: "flex items-center justify-between px-1",
+								children: [/* @__PURE__ */ jsx("span", {
+									className: "text-[11.5px] faint",
+									children: "Appearance"
+								}), /* @__PURE__ */ jsx(ThemeToggle, {
+									theme,
+									onToggle: toggle
+								})]
+							})
+						]
+					})
+				]
+			}),
+			/* @__PURE__ */ jsxs("header", {
+				className: "sticky top-0 z-40 border-b border-black/[.06] bg-canvas/80 backdrop-blur-xl lg:hidden dark:border-white/[.08] dark:bg-canvas-dark/80",
+				children: [/* @__PURE__ */ jsxs("div", {
+					className: "flex h-[62px] items-center justify-between px-4",
+					children: [brand, /* @__PURE__ */ jsx("button", {
+						onClick: () => setDrawerOpen((open) => !open),
+						"aria-label": drawerOpen ? "Close menu" : "Open menu",
+						"aria-expanded": drawerOpen,
+						className: "flex h-10 w-10 items-center justify-center rounded-xl border border-black/[.09] transition hover:border-accent/40 dark:border-white/[.12]",
+						children: /* @__PURE__ */ jsx(Menu, { className: "h-5 w-5" })
+					})]
+				}), stepIndex >= 0 && /* @__PURE__ */ jsx("div", {
+					className: "h-[2px] w-full bg-black/[.05] dark:bg-white/[.06]",
+					children: /* @__PURE__ */ jsx("div", {
+						className: "h-full bg-linear-to-r from-accent-glow to-accent transition-all duration-700 ease-out",
+						style: { width: `${(stepIndex + 1) / STEP_ORDER.length * 100}%` }
+					})
+				})]
+			}),
+			drawerOpen && /* @__PURE__ */ jsxs("div", {
+				className: "fixed inset-0 z-50 lg:hidden",
+				children: [/* @__PURE__ */ jsx("button", {
+					"aria-label": "Close menu",
+					onClick: closeDrawer,
+					className: "absolute inset-0 bg-black/40 backdrop-blur-sm"
+				}), /* @__PURE__ */ jsxs("div", {
+					className: "animate-fade-up absolute top-0 right-0 flex h-full w-[85%] max-w-[320px] flex-col border-l border-black/[.06] bg-canvas px-4 py-5 dark:border-white/[.08] dark:bg-canvas-dark",
+					children: [
+						/* @__PURE__ */ jsxs("div", {
+							className: "flex items-center justify-between",
+							children: [/* @__PURE__ */ jsx("span", {
+								className: "font-display text-[15px] font-bold",
+								children: "Menu"
+							}), /* @__PURE__ */ jsx("button", {
+								onClick: closeDrawer,
+								"aria-label": "Close menu",
+								className: "flex h-9 w-9 items-center justify-center rounded-xl border border-black/[.09] dark:border-white/[.12]",
+								children: /* @__PURE__ */ jsx(Close, { className: "h-4 w-4" })
+							})]
+						}),
+						/* @__PURE__ */ jsx("div", {
+							className: "mt-5",
+							children: /* @__PURE__ */ jsx(SidebarSearch, { onSubmitted: closeDrawer })
+						}),
+						/* @__PURE__ */ jsx(NavList, {
+							currentUrl,
+							onNavigate: closeDrawer,
+							className: "mt-4"
+						}),
+						/* @__PURE__ */ jsx("div", { className: "flex-1" }),
+						/* @__PURE__ */ jsxs("div", {
+							className: "space-y-3 border-t border-black/[.06] pt-4 dark:border-white/[.08]",
+							children: [
+								/* @__PURE__ */ jsx(AffiliateCard, {}),
+								/* @__PURE__ */ jsxs("div", {
+									className: "flex items-center justify-between px-1",
+									children: [/* @__PURE__ */ jsx("span", {
+										className: "text-[12px] faint",
+										children: "Appearance"
+									}), /* @__PURE__ */ jsx(ThemeToggle, {
+										theme,
+										onToggle: toggle
+									})]
+								}),
+								/* @__PURE__ */ jsx(AccountBlock, {
+									signedIn,
+									email: auth.user?.email,
+									onSignOut: signOut,
+									signingOut: logout.processing,
+									onNavigate: closeDrawer
+								})
+							]
+						})
+					]
+				})]
+			}),
+			/* @__PURE__ */ jsxs("div", {
+				className: "flex min-h-screen flex-col lg:pl-[268px]",
+				children: [
+					stepIndex >= 0 && /* @__PURE__ */ jsx("div", {
+						className: "hidden h-[2px] w-full bg-black/[.05] lg:block dark:bg-white/[.06]",
+						children: /* @__PURE__ */ jsx("div", {
+							className: "h-full bg-linear-to-r from-accent-glow to-accent transition-all duration-700 ease-out",
+							style: { width: `${(stepIndex + 1) / STEP_ORDER.length * 100}%` }
+						})
+					}),
+					/* @__PURE__ */ jsx("main", {
+						className: "flex-1 px-4 pt-6 pb-28 sm:px-6 lg:px-8 lg:pt-8 lg:pb-10",
+						children: /* @__PURE__ */ jsxs("div", {
+							className: `mx-auto w-full ${width}`,
+							children: [
+								(title || pill || actions || subtitle) && /* @__PURE__ */ jsxs("div", {
+									className: "mb-5",
+									children: [/* @__PURE__ */ jsxs("div", {
+										className: "flex flex-wrap items-center justify-between gap-x-4 gap-y-3",
+										children: [/* @__PURE__ */ jsxs("div", {
+											className: "flex items-center gap-2.5",
+											children: [title && /* @__PURE__ */ jsx("h1", {
+												className: "font-display text-[22px] font-bold tracking-[-.025em] sm:text-[26px]",
+												children: title
+											}), pill && /* @__PURE__ */ jsx("span", {
+												className: `rounded-full border px-2.5 py-1 text-[11.5px] font-semibold ${TONES[pill.tone] ?? TONES.accent}`,
+												children: pill.text
+											})]
+										}), actions && /* @__PURE__ */ jsx("div", {
+											className: "flex flex-wrap items-center gap-2",
+											children: actions
+										})]
+									}), subtitle && /* @__PURE__ */ jsx("p", {
+										className: "mt-2 max-w-2xl text-[13.5px] muted",
+										children: subtitle
+									})]
+								}),
+								toolbar && /* @__PURE__ */ jsx("div", {
+									className: "mb-6",
+									children: toolbar
+								}),
+								children
+							]
+						})
+					}),
+					/* @__PURE__ */ jsx(AppFooter, { className: "hidden lg:block" })
+				]
+			}),
+			/* @__PURE__ */ jsx("nav", {
+				className: "fixed inset-x-0 bottom-0 z-40 border-t border-black/[.06] bg-canvas/90 backdrop-blur-xl lg:hidden dark:border-white/[.08] dark:bg-canvas-dark/90",
+				children: /* @__PURE__ */ jsx("div", {
+					className: "grid grid-cols-3",
+					children: TABS.map((tab) => {
+						const Icon = tab.icon;
+						const active = isActive(currentUrl, tab.match);
+						return /* @__PURE__ */ jsxs(Link, {
+							href: tab.href,
+							className: `flex flex-col items-center gap-1 py-2.5 text-[11px] font-semibold transition ${active ? "text-accent dark:text-accent-glow" : "faint"}`,
+							children: [/* @__PURE__ */ jsx(Icon, { className: "h-[18px] w-[18px]" }), tab.label]
+						}, tab.label);
+					})
+				})
+			})
+		]
+	});
+}
+//#endregion
+//#region resources/js/Pages/Dashboard.jsx
+var Dashboard_exports = /* @__PURE__ */ __exportAll({ default: () => Dashboard });
+function Stat({ label, value, hint }) {
+	return /* @__PURE__ */ jsxs("div", {
+		className: "surface p-5",
+		children: [
+			/* @__PURE__ */ jsx("p", {
+				className: "text-[11.5px] font-semibold tracking-[.14em] faint uppercase",
+				children: label
+			}),
+			/* @__PURE__ */ jsx("p", {
+				className: "mt-3 font-display text-[26px] font-bold tracking-[-.02em]",
+				children: value
+			}),
+			hint && /* @__PURE__ */ jsx("p", {
+				className: "mt-1.5 text-[12px] faint",
+				children: hint
+			})
+		]
+	});
+}
+function QuickLink({ href, icon: Icon, title, blurb }) {
+	return /* @__PURE__ */ jsxs(Link, {
+		href,
+		className: "surface-hover group flex items-start gap-3.5 p-5",
+		children: [/* @__PURE__ */ jsx("span", {
+			className: "mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-accent/10 text-accent dark:text-accent-glow",
+			children: /* @__PURE__ */ jsx(Icon, { className: "h-4 w-4" })
+		}), /* @__PURE__ */ jsxs("span", {
+			className: "min-w-0",
+			children: [/* @__PURE__ */ jsxs("span", {
+				className: "flex items-center gap-1.5 font-display text-[15px] font-bold",
+				children: [title, /* @__PURE__ */ jsx(Arrow, { className: "h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" })]
+			}), /* @__PURE__ */ jsx("span", {
+				className: "mt-1 block text-[13px] leading-relaxed muted",
+				children: blurb
+			})]
+		})]
+	});
+}
+function Dashboard() {
+	const { auth = {}, billing = {}, flash = {} } = usePage().props;
+	const creditsLimit = typeof billing.searchCreditsLimit === "number" ? billing.searchCreditsLimit : null;
+	const bookmarkLimit = billing.bookmarkLimit === -1 ? null : billing.bookmarkLimit ?? 0;
+	return /* @__PURE__ */ jsxs(Fragment, { children: [/* @__PURE__ */ jsx(Head, { title: "Dashboard — VVF" }), /* @__PURE__ */ jsxs(AppLayout, {
+		title: `Welcome back${auth.user?.name ? `, ${auth.user.name}` : ""}`,
+		pill: {
+			text: billing.currentPlan ?? "free",
+			tone: billing.hasPaidPlan ? "ok" : "accent"
+		},
+		actions: /* @__PURE__ */ jsxs(Link, {
+			href: "/search?type=brand",
+			className: "btn-accent h-10 px-4 text-[13px]",
+			children: ["New search ", /* @__PURE__ */ jsx(Arrow, {})]
+		}),
+		children: [
+			flash.status && /* @__PURE__ */ jsx("div", {
+				className: "mb-6 rounded-2xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-700 dark:text-emerald-300",
+				children: flash.status
+			}),
+			/* @__PURE__ */ jsxs("div", {
+				className: "animate-fade-up grid gap-4 sm:grid-cols-2 xl:grid-cols-3",
+				children: [
+					/* @__PURE__ */ jsx(Stat, {
+						label: "Current plan",
+						value: /* @__PURE__ */ jsx("span", {
+							className: "capitalize",
+							children: billing.currentPlan ?? "free"
+						})
+					}),
+					/* @__PURE__ */ jsx(Stat, {
+						label: "Search credits",
+						value: `${billing.searchCreditsRemaining ?? 0}${creditsLimit !== null ? ` / ${creditsLimit}` : ""}`,
+						hint: `${billing.searchCreditsUsed ?? 0} used`
+					}),
+					/* @__PURE__ */ jsx(Stat, {
+						label: "Bookmarks",
+						value: `${billing.bookmarkCount ?? 0}${bookmarkLimit !== null ? ` / ${bookmarkLimit}` : ""}`,
+						hint: bookmarkLimit === null ? "Unlimited" : void 0
+					})
+				]
+			}),
+			/* @__PURE__ */ jsx("h2", {
+				className: "mt-10 font-display text-[17px] font-bold",
+				children: "Jump back in"
+			}),
+			/* @__PURE__ */ jsxs("div", {
+				className: "mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-3",
+				children: [
+					/* @__PURE__ */ jsx(QuickLink, {
+						href: "/saved-searches",
+						icon: Library,
+						title: "Watchlist",
+						blurb: "Every saved search, refreshing on its own schedule."
+					}),
+					/* @__PURE__ */ jsx(QuickLink, {
+						href: "/search?type=brand",
+						icon: Search,
+						title: "Run a new search",
+						blurb: "Turn one phrase into a self-refreshing list of viral videos."
+					}),
+					/* @__PURE__ */ jsx(QuickLink, {
+						href: "/settings/subscription",
+						icon: Bookmark,
+						title: "Plans & billing",
+						blurb: "Compare plans and unlock unlimited refreshes."
+					})
+				]
+			}),
+			/* @__PURE__ */ jsxs("div", {
+				className: "surface mt-10 p-5",
+				children: [
+					/* @__PURE__ */ jsx("p", {
+						className: "text-[11.5px] font-semibold tracking-[.14em] faint uppercase",
+						children: "Signed in as"
+					}),
+					/* @__PURE__ */ jsx("p", {
+						className: "mt-2.5 text-[14px] font-semibold",
+						children: auth.user?.email ?? "Unknown account"
+					}),
+					/* @__PURE__ */ jsx("div", {
+						className: "mt-4",
+						children: /* @__PURE__ */ jsxs(Link, {
+							href: "/settings/account",
+							className: "inline-flex items-center gap-1.5 text-[13px] font-semibold text-accent transition hover:gap-2 dark:text-accent-glow",
+							children: ["Manage account ", /* @__PURE__ */ jsx(Arrow, { className: "h-3.5 w-3.5" })]
+						})
+					})
+				]
+			})
+		]
+	})] });
+}
+//#endregion
+//#region resources/js/Pages/Home.jsx
+var Home_exports = /* @__PURE__ */ __exportAll({ default: () => Home });
+function Home({ stack, integrations }) {
+	const { props } = usePage();
+	const status = props.flash?.status;
+	return /* @__PURE__ */ jsxs(Fragment, { children: [/* @__PURE__ */ jsx(Head, { title: "Project Base" }), /* @__PURE__ */ jsx("main", {
+		className: "min-h-screen bg-[radial-gradient(circle_at_top,_rgba(249,115,22,0.18),_transparent_32%),linear-gradient(160deg,_#0c0a09,_#1c1917_55%,_#0f172a)]",
+		children: /* @__PURE__ */ jsxs("div", {
+			className: "mx-auto flex min-h-screen max-w-6xl flex-col gap-10 px-6 py-10 lg:px-10",
+			children: [
+				/* @__PURE__ */ jsxs("section", {
+					className: "rounded-3xl border border-white/10 bg-white/6 p-8 shadow-2xl shadow-orange-950/20 backdrop-blur",
+					children: [
+						/* @__PURE__ */ jsx("p", {
+							className: "text-sm uppercase tracking-[0.35em] text-orange-300",
+							children: "Laravel + React Starter"
+						}),
+						/* @__PURE__ */ jsx("h1", {
+							className: "mt-4 max-w-3xl font-serif text-4xl leading-tight text-white md:text-6xl",
+							children: "A base app for content ops, scraping workflows, and paid access."
+						}),
+						/* @__PURE__ */ jsx("p", {
+							className: "mt-5 max-w-2xl text-base text-stone-300 md:text-lg",
+							children: "This starter is wired for Inertia React on the frontend, Laravel on the backend, PostgreSQL for persistence, and Redis for cache, queues, and sessions."
+						}),
+						status ? /* @__PURE__ */ jsx("div", {
+							className: "mt-6 rounded-2xl border border-emerald-400/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200",
+							children: status
+						}) : null
+					]
+				}),
+				/* @__PURE__ */ jsxs("section", {
+					className: "grid gap-6 lg:grid-cols-[1.2fr,0.8fr]",
+					children: [/* @__PURE__ */ jsxs("article", {
+						className: "rounded-3xl border border-white/10 bg-black/20 p-6",
+						children: [/* @__PURE__ */ jsx("h2", {
+							className: "text-xl font-semibold text-white",
+							children: "Stack"
+						}), /* @__PURE__ */ jsx("div", {
+							className: "mt-5 grid gap-4 sm:grid-cols-2",
+							children: Object.entries(stack).map(([label, value]) => /* @__PURE__ */ jsxs("div", {
+								className: "rounded-2xl border border-white/10 bg-white/5 p-4",
+								children: [/* @__PURE__ */ jsx("p", {
+									className: "text-xs uppercase tracking-[0.25em] text-stone-400",
+									children: label
+								}), /* @__PURE__ */ jsx("p", {
+									className: "mt-2 text-lg text-stone-100",
+									children: value
+								})]
+							}, label))
+						})]
+					}), /* @__PURE__ */ jsxs("article", {
+						className: "rounded-3xl border border-white/10 bg-black/20 p-6",
+						children: [
+							/* @__PURE__ */ jsx("h2", {
+								className: "text-xl font-semibold text-white",
+								children: "Integrations"
+							}),
+							/* @__PURE__ */ jsx("div", {
+								className: "mt-5 space-y-3",
+								children: integrations.map((integration) => /* @__PURE__ */ jsx("div", {
+									className: "rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-stone-200",
+									children: integration
+								}, integration))
+							}),
+							/* @__PURE__ */ jsxs("div", {
+								className: "mt-6 rounded-2xl border border-orange-300/20 bg-orange-400/10 p-4 text-sm text-orange-100",
+								children: [
+									"Google auth routes and service env keys are stubbed. Stripe and Apify credentials are ready to drop into ",
+									/* @__PURE__ */ jsx("code", { children: ".env" }),
+									"."
+								]
+							})
+						]
+					})]
+				}),
+				/* @__PURE__ */ jsx(AppFooter, {
+					label: "VVF starter shell",
+					className: "mt-auto border-white/10 bg-white/5 dark:border-white/10 dark:bg-white/5"
+				})
+			]
+		})
+	})] });
+}
+//#endregion
+//#region resources/js/landing/components/Reveal.jsx
+/**
+* Releases `[data-reveal]` elements as they scroll into view. The hidden state
+* lives in CSS, so anything server-rendered still reads fine without JS, and
+* prefers-reduced-motion short-circuits the whole thing.
+*/
+function useReveal() {
+	const ref = useRef(null);
+	useEffect(() => {
+		const root = ref.current;
+		if (!root) return void 0;
+		const targets = root.querySelectorAll("[data-reveal]");
+		if (!targets.length) return void 0;
+		if (window.matchMedia("(prefers-reduced-motion: reduce)").matches || typeof IntersectionObserver === "undefined") {
+			targets.forEach((el) => el.setAttribute("data-reveal", "shown"));
+			return;
+		}
+		const observer = new IntersectionObserver((entries) => {
+			entries.forEach((entry) => {
+				if (!entry.isIntersecting) return;
+				entry.target.setAttribute("data-reveal", "shown");
+				observer.unobserve(entry.target);
+			});
+		}, {
+			rootMargin: "0px 0px -12% 0px",
+			threshold: .08
+		});
+		targets.forEach((el) => observer.observe(el));
+		return () => observer.disconnect();
+	}, []);
+	return ref;
+}
+/** Convenience wrapper: <Reveal delay={120}>…</Reveal> */
+function Reveal({ delay = 0, as: Tag = "div", className = "", children, ...rest }) {
+	return /* @__PURE__ */ jsx(Tag, {
+		"data-reveal": "",
+		style: { "--reveal-delay": `${delay}ms` },
+		className,
+		...rest,
+		children
 	});
 }
 //#endregion
@@ -1210,6 +1802,7 @@ var PRICING = { monthly: [
 		cta: "Run a free search",
 		features: [
 			"1 free search",
+			"0 watchlist slots",
 			"Last 90 days",
 			"Top 100 viral videos"
 		],
@@ -1227,6 +1820,7 @@ var PRICING = { monthly: [
 		popular: true,
 		features: [
 			"150 searches",
+			"50 watchlist slots",
 			"Weekly + monthly scheduling",
 			"CSV export for reports",
 			"Virality alerts",
@@ -1245,6 +1839,7 @@ var PRICING = { monthly: [
 		cta: "Choose Premium",
 		features: [
 			"400 searches",
+			"Unlimited watchlist",
 			"Weekly + monthly scheduling",
 			"Virality alerts",
 			"CSV export for reports",
@@ -2541,83 +3136,169 @@ function Landing() {
 	})] });
 }
 //#endregion
-//#region resources/js/landing/flow/SearchShell.jsx
-var TONES = {
-	ok: "border-emerald-500/20 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
-	accent: "border-accent/25 bg-accent/10 text-accent dark:text-accent-glow"
-};
-var STEP_ORDER = [
-	"keywords",
-	"running",
-	"results"
-];
+//#region resources/js/landing/flow/api.js
 /**
-* Page chrome for the search flow screens. Each step is its own page, so this
-* renders a real sticky header rather than modal furniture.
+* Small fetch wrapper for the saved-search endpoints. Inertia handles page
+* navigation; these calls are the in-page ones that should not re-render the
+* whole document.
 */
-function SearchShell({ pill, step, onNewSearch, onExit, width = "max-w-4xl", children }) {
-	const { theme, toggle } = useTheme();
-	const stepIndex = STEP_ORDER.indexOf(step);
-	return /* @__PURE__ */ jsxs("div", {
-		className: "vvf-landing relative isolate min-h-screen font-body",
-		children: [
-			/* @__PURE__ */ jsxs("div", {
-				"aria-hidden": true,
-				className: "pointer-events-none absolute inset-0 -z-10 overflow-hidden",
-				children: [/* @__PURE__ */ jsx("div", { className: "bg-grid mask-radial-fade absolute inset-0" }), /* @__PURE__ */ jsx("div", { className: "absolute top-[-20%] left-1/2 h-[420px] w-[760px] max-w-[140vw] -translate-x-1/2 rounded-full bg-accent/15 blur-[140px] dark:bg-accent/20" })]
-			}),
-			/* @__PURE__ */ jsxs("header", {
-				className: "sticky top-0 z-40 border-b border-black/[.06] bg-canvas/70 backdrop-blur-xl dark:border-white/[.07] dark:bg-canvas-dark/70",
-				children: [/* @__PURE__ */ jsxs("div", {
-					className: `mx-auto flex h-[68px] ${width} items-center justify-between px-4 sm:px-6`,
-					children: [/* @__PURE__ */ jsxs("button", {
-						onClick: onExit,
-						className: "flex items-center gap-2.5 font-display text-[17px] font-bold",
-						"aria-label": "Back to home",
-						children: [/* @__PURE__ */ jsx(Logo, {}), "VVF"]
-					}), /* @__PURE__ */ jsxs("div", {
-						className: "flex items-center gap-2 sm:gap-3",
-						children: [
-							pill && /* @__PURE__ */ jsx("span", {
-								className: `rounded-full border px-3 py-1 text-[11.5px] font-semibold ${TONES[pill.tone]}`,
-								children: pill.text
-							}),
-							/* @__PURE__ */ jsx(ThemeToggle, {
-								theme,
-								onToggle: toggle,
-								className: "hidden sm:inline-flex"
-							}),
-							/* @__PURE__ */ jsx("button", {
-								onClick: onNewSearch,
-								className: "btn-ghost hidden h-10 px-4 text-[13px] sm:inline-flex",
-								children: "New search"
-							}),
-							/* @__PURE__ */ jsx("button", {
-								onClick: onExit,
-								"aria-label": "Close",
-								className: "flex h-10 w-10 items-center justify-center rounded-xl border border-black/[.09] transition-all duration-300 hover:-translate-y-px hover:border-accent/40 dark:border-white/[.12]",
-								children: /* @__PURE__ */ jsx(Close, { className: "h-4 w-4" })
-							})
-						]
-					})]
-				}), stepIndex >= 0 && /* @__PURE__ */ jsx("div", {
-					className: "h-[2px] w-full bg-black/[.05] dark:bg-white/[.06]",
-					children: /* @__PURE__ */ jsx("div", {
-						className: "h-full bg-linear-to-r from-accent-glow to-accent transition-all duration-700 ease-out",
-						style: { width: `${(stepIndex + 1) / STEP_ORDER.length * 100}%` }
-					})
-				})]
-			}),
-			/* @__PURE__ */ jsx("main", {
-				className: `mx-auto ${width} px-4 py-10 sm:px-6 sm:py-12`,
-				children
-			})
-		]
+function csrfToken() {
+	return document.querySelector("meta[name=\"csrf-token\"]")?.getAttribute("content") ?? "";
+}
+var API_V1 = "/api/v1";
+async function request(url, { method = "GET", body } = {}) {
+	const response = await fetch(url, {
+		method,
+		credentials: "same-origin",
+		headers: {
+			Accept: "application/json",
+			"X-Requested-With": "XMLHttpRequest",
+			...body ? { "Content-Type": "application/json" } : {},
+			...method === "GET" ? {} : { "X-CSRF-TOKEN": csrfToken() }
+		},
+		...body ? { body: JSON.stringify(body) } : {}
 	});
+	const payload = await response.json().catch(() => null);
+	if (!response.ok) {
+		const error = new Error(payload?.message || `Request failed (${response.status})`);
+		error.status = response.status;
+		error.payload = payload;
+		throw error;
+	}
+	return payload;
+}
+function expandKeywords(phrase, { signal } = {}) {
+	return fetch(`${API_V1}/saved-searches/expand`, {
+		method: "POST",
+		credentials: "same-origin",
+		signal,
+		headers: {
+			Accept: "application/json",
+			"Content-Type": "application/json",
+			"X-Requested-With": "XMLHttpRequest",
+			"X-CSRF-TOKEN": csrfToken()
+		},
+		body: JSON.stringify({ phrase })
+	}).then(async (response) => {
+		const payload = await response.json().catch(() => null);
+		if (!response.ok) throw new Error(payload?.message || "Could not suggest keywords.");
+		return payload;
+	});
+}
+function createSavedSearch({ type, phrase, name, keywords, frequency }) {
+	return request(`${API_V1}/saved-searches`, {
+		method: "POST",
+		body: {
+			type,
+			phrase,
+			name,
+			keywords,
+			frequency
+		}
+	});
+}
+function fetchNotifications(ids) {
+	return request(`${API_V1}/saved-searches/notifications?${ids.map((id) => `ids[]=${encodeURIComponent(id)}`).join("&")}`);
+}
+var savedSearch = {
+	get: (id) => request(`${API_V1}/saved-searches/${id}/json`),
+	watchlist: (id, watchlisted) => request(`${API_V1}/saved-searches/${id}/watchlist`, {
+		method: "PATCH",
+		body: { watchlisted }
+	}),
+	pause: (id) => request(`${API_V1}/saved-searches/${id}/pause`, { method: "PATCH" }),
+	resume: (id) => request(`${API_V1}/saved-searches/${id}/resume`, { method: "PATCH" }),
+	update: (id, body) => request(`${API_V1}/saved-searches/${id}/frequency`, {
+		method: "PATCH",
+		body
+	}),
+	refresh: (id) => request(`${API_V1}/saved-searches/${id}/refresh`, { method: "POST" }),
+	destroy: (id) => request(`${API_V1}/saved-searches/${id}`, { method: "DELETE" })
+};
+var billing = { checkout: (slug) => {
+	window.location.assign(`/billing/checkout/${encodeURIComponent(slug)}`);
+} };
+var bookmarks = {
+	save: (id) => request(`${API_V1}/videos/${id}/bookmark`, { method: "POST" }),
+	remove: (id) => request(`${API_V1}/videos/${id}/bookmark`, { method: "DELETE" })
+};
+var TRACKED_KEY = "vvf-tracked-searches";
+function readTracked() {
+	try {
+		const raw = window.sessionStorage.getItem(TRACKED_KEY);
+		const parsed = raw ? JSON.parse(raw) : [];
+		return Array.isArray(parsed) ? parsed : [];
+	} catch {
+		return [];
+	}
+}
+function writeTracked(entries) {
+	try {
+		window.sessionStorage.setItem(TRACKED_KEY, JSON.stringify(entries.slice(0, 10)));
+	} catch {}
+}
+function trackSearch(entry) {
+	const existing = readTracked().filter((t) => String(t.id) !== String(entry.id));
+	writeTracked([{
+		runningPromptShown: false,
+		completedPromptShown: false,
+		...entry
+	}, ...existing]);
+}
+function updateTracked(id, patch) {
+	writeTracked(readTracked().map((t) => String(t.id) === String(id) ? {
+		...t,
+		...patch
+	} : t));
+}
+function untrackSearch(id) {
+	writeTracked(readTracked().filter((t) => String(t.id) !== String(id)));
 }
 //#endregion
 //#region resources/js/Pages/SavedSearches/Index.jsx
 var Index_exports = /* @__PURE__ */ __exportAll({ default: () => Index });
+function FilterSelect({ value, onChange, active, label, children }) {
+	return /* @__PURE__ */ jsxs("div", {
+		className: "relative",
+		children: [/* @__PURE__ */ jsx("select", {
+			"aria-label": label,
+			value,
+			onChange,
+			className: `h-9 cursor-pointer appearance-none rounded-lg border pr-8 pl-3 text-[12.5px] font-semibold outline-none transition duration-200 focus:border-accent/50 focus:ring-4 focus:ring-accent/12 ${active ? "border-accent/30 bg-accent/10 text-accent dark:border-accent/35 dark:text-accent-glow" : "border-black/[.08] bg-white text-ink hover:border-black/[.18] dark:border-white/[.1] dark:bg-white/[.05] dark:text-white dark:hover:border-white/[.2]"}`,
+			children
+		}), /* @__PURE__ */ jsx(Chevron, { className: "pointer-events-none absolute top-1/2 right-2.5 h-3.5 w-3.5 -translate-y-1/2 opacity-45" })]
+	});
+}
+function Divider() {
+	return /* @__PURE__ */ jsx("div", { className: "hidden h-6 w-px shrink-0 bg-black/[.08] lg:block dark:bg-white/[.1]" });
+}
+function ModalShell({ title, body, children, onClose }) {
+	return /* @__PURE__ */ jsxs("div", {
+		className: "fixed inset-0 z-[70] flex items-center justify-center bg-black/45 px-4 backdrop-blur-sm",
+		children: [/* @__PURE__ */ jsx("button", {
+			"aria-label": "Close modal",
+			onClick: onClose,
+			className: "absolute inset-0"
+		}), /* @__PURE__ */ jsxs("div", {
+			className: "relative z-10 w-full max-w-lg rounded-[28px] border border-black/[.06] bg-white p-6 shadow-[0_30px_90px_-45px_rgba(16,18,32,.55)] dark:border-white/[.08] dark:bg-canvas-dark",
+			children: [/* @__PURE__ */ jsxs("div", {
+				className: "flex items-start justify-between gap-4",
+				children: [/* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsx("h2", {
+					className: "font-display text-[24px] font-bold",
+					children: title
+				}), body && /* @__PURE__ */ jsx("p", {
+					className: "mt-2 text-[13.5px] leading-relaxed muted",
+					children: body
+				})] }), /* @__PURE__ */ jsx("button", {
+					type: "button",
+					onClick: onClose,
+					className: "inline-flex h-9 w-9 items-center justify-center rounded-xl border border-black/[.08] transition hover:border-accent/35 dark:border-white/[.12]",
+					children: /* @__PURE__ */ jsx(Close, { className: "h-4 w-4" })
+				})]
+			}), children]
+		})]
+	});
+}
 var STATUS = {
 	scraping: {
 		label: "Refreshing",
@@ -2636,69 +3317,417 @@ var STATUS = {
 		className: "border-hot/25 bg-hot/10 text-hot"
 	}
 };
-function formatDate(iso) {
+var FILTER_LABELS = {
+	brand: "Brand searches",
+	competitor: "Competitor searches",
+	product: "Product searches"
+};
+var SORT_OPTIONS = {
+	recent_refresh: "Most recent refresh",
+	video_count: "Video count",
+	az: "Name A-Z",
+	za: "Name Z-A"
+};
+function formatDate$2(iso) {
 	return iso ? new Date(iso).toLocaleDateString(void 0, {
 		month: "short",
 		day: "numeric"
-	}) : "—";
+	}) : "-";
 }
-function Index({ searches }) {
-	return /* @__PURE__ */ jsxs(Fragment, { children: [/* @__PURE__ */ jsx(Head, { title: "Saved searches — VVF" }), /* @__PURE__ */ jsx(SearchShell, {
-		pill: {
-			text: `${searches.length} saved`,
-			tone: "accent"
-		},
-		onNewSearch: () => router.visit("/"),
-		onExit: () => router.visit("/"),
-		width: "max-w-5xl",
-		children: /* @__PURE__ */ jsxs("div", {
-			className: "animate-fade-up",
-			children: [/* @__PURE__ */ jsxs("div", {
-				className: "flex flex-wrap items-end justify-between gap-4",
-				children: [/* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsx("h1", {
-					className: "font-display text-[28px] leading-tight font-bold tracking-[-.025em] sm:text-[36px]",
-					children: "Saved searches"
-				}), /* @__PURE__ */ jsx("p", {
-					className: "mt-2.5 text-[13.5px] muted",
-					children: "Each one re-runs on its own schedule and keeps the top matches."
-				})] }), /* @__PURE__ */ jsxs("button", {
-					onClick: () => router.visit("/"),
-					className: "btn-accent h-11 px-5 text-sm",
-					children: [/* @__PURE__ */ jsx(Plus, { className: "h-3.5 w-3.5" }), " New search"]
-				})]
-			}), searches.length === 0 ? /* @__PURE__ */ jsxs("div", {
-				className: "ring-gradient mt-8 rounded-3xl bg-white/70 p-12 text-center backdrop-blur-2xl dark:bg-white/[.04]",
+function compareDates(a, b) {
+	const aTime = a ? new Date(a).getTime() : 0;
+	return (b ? new Date(b).getTime() : 0) - aTime;
+}
+function Index({ searches: initialSearches, filterType = null, watchlistedOnly = true }) {
+	const [searches, setSearches] = useState(initialSearches);
+	const [animatingId, setAnimatingId] = useState(null);
+	const [openMenuId, setOpenMenuId] = useState(null);
+	const [query, setQuery] = useState("");
+	const [statusFilter, setStatusFilter] = useState("all");
+	const [frequencyFilter, setFrequencyFilter] = useState("all");
+	const [searchTypeFilter, setSearchTypeFilter] = useState(filterType ?? "all");
+	const [sortBy, setSortBy] = useState("recent_refresh");
+	const [modalState, setModalState] = useState({
+		type: null,
+		search: null
+	});
+	const [formState, setFormState] = useState({
+		name: "",
+		frequency: "weekly"
+	});
+	const [submitting, setSubmitting] = useState(false);
+	const menuRef = useRef(null);
+	const title = filterType ? FILTER_LABELS[filterType] ?? "Watchlist" : "Watchlist";
+	const searchHref = `/search?type=${filterType ?? "brand"}`;
+	useEffect(() => {
+		if (openMenuId === null) return;
+		const handlePointerDown = (event) => {
+			if (menuRef.current && !menuRef.current.contains(event.target)) setOpenMenuId(null);
+		};
+		const handleEscape = (event) => {
+			if (event.key === "Escape") setOpenMenuId(null);
+		};
+		document.addEventListener("mousedown", handlePointerDown);
+		document.addEventListener("keydown", handleEscape);
+		return () => {
+			document.removeEventListener("mousedown", handlePointerDown);
+			document.removeEventListener("keydown", handleEscape);
+		};
+	}, [openMenuId]);
+	useEffect(() => {
+		if (modalState.type === null) return;
+		const handleEscape = (event) => {
+			if (event.key === "Escape") closeModal();
+		};
+		document.addEventListener("keydown", handleEscape);
+		return () => {
+			document.removeEventListener("keydown", handleEscape);
+		};
+	}, [modalState.type, submitting]);
+	const filteredSearches = useMemo(() => {
+		const normalizedQuery = query.trim().toLowerCase();
+		const next = searches.filter((search) => {
+			const matchesQuery = normalizedQuery === "" || search.name?.toLowerCase().includes(normalizedQuery) || search.keywords?.some((keyword) => keyword.toLowerCase().includes(normalizedQuery));
+			const matchesStatus = statusFilter === "all" || search.status === statusFilter;
+			const matchesFrequency = frequencyFilter === "all" || search.frequency === frequencyFilter;
+			const matchesType = !watchlistedOnly || searchTypeFilter === "all" || search.search_type === searchTypeFilter;
+			return matchesQuery && matchesStatus && matchesFrequency && matchesType;
+		});
+		next.sort((left, right) => {
+			switch (sortBy) {
+				case "video_count": return (right.result_count ?? 0) - (left.result_count ?? 0);
+				case "az": return (left.name ?? "").localeCompare(right.name ?? "");
+				case "za": return (right.name ?? "").localeCompare(left.name ?? "");
+				default: return compareDates(left.last_run_at, right.last_run_at);
+			}
+		});
+		return next;
+	}, [
+		frequencyFilter,
+		query,
+		searches,
+		searchTypeFilter,
+		sortBy,
+		statusFilter,
+		watchlistedOnly
+	]);
+	const filtersActive = query.trim() !== "" || statusFilter !== "all" || frequencyFilter !== "all" || watchlistedOnly && searchTypeFilter !== "all";
+	const resetFilters = () => {
+		setQuery("");
+		setStatusFilter("all");
+		setFrequencyFilter("all");
+		setSearchTypeFilter(filterType ?? "all");
+	};
+	const openModal = (type, search) => {
+		setOpenMenuId(null);
+		setModalState({
+			type,
+			search
+		});
+		if (type === "edit") setFormState({
+			name: search.name ?? "",
+			frequency: search.frequency ?? "weekly"
+		});
+	};
+	const closeModal = () => {
+		if (submitting) return;
+		setModalState({
+			type: null,
+			search: null
+		});
+	};
+	const patchSearch = (searchId, patch) => {
+		setSearches((current) => current.map((item) => item.id === searchId ? {
+			...item,
+			...patch
+		} : item));
+	};
+	const removeSearch = (searchId) => {
+		setSearches((current) => current.filter((item) => item.id !== searchId));
+	};
+	const toggleWatchlist = async (event, search) => {
+		event.preventDefault();
+		event.stopPropagation();
+		setAnimatingId(search.id);
+		try {
+			const payload = await savedSearch.watchlist(search.id, !search.is_watchlisted);
+			setSearches((current) => current.map((item) => item.id === search.id ? {
+				...item,
+				...payload.search
+			} : item).filter((item) => watchlistedOnly ? item.is_watchlisted : true));
+		} finally {
+			window.setTimeout(() => setAnimatingId((current) => current === search.id ? null : current), 280);
+		}
+	};
+	const submitEdit = async () => {
+		if (!modalState.search) return;
+		setSubmitting(true);
+		try {
+			const { search: updated } = await savedSearch.update(modalState.search.id, {
+				name: formState.name.trim(),
+				frequency: formState.frequency
+			});
+			patchSearch(modalState.search.id, updated);
+			closeModal();
+		} finally {
+			setSubmitting(false);
+		}
+	};
+	const confirmPause = async () => {
+		if (!modalState.search) return;
+		setSubmitting(true);
+		try {
+			const { search: updated } = await savedSearch.pause(modalState.search.id);
+			patchSearch(modalState.search.id, updated);
+			closeModal();
+		} finally {
+			setSubmitting(false);
+		}
+	};
+	const confirmDelete = async () => {
+		if (!modalState.search) return;
+		setSubmitting(true);
+		try {
+			await savedSearch.destroy(modalState.search.id);
+			removeSearch(modalState.search.id);
+			closeModal();
+		} finally {
+			setSubmitting(false);
+		}
+	};
+	return /* @__PURE__ */ jsxs(Fragment, { children: [
+		/* @__PURE__ */ jsx(Head, { title: `${title} - VVF` }),
+		/* @__PURE__ */ jsx(AppLayout, {
+			title,
+			pill: {
+				text: `${filteredSearches.length} saved`,
+				tone: "accent"
+			},
+			subtitle: watchlistedOnly ? "Each one re-runs on its own schedule and keeps the top matches." : filterType ? `These ${filterType} searches re-run on their own schedule and keep the top matches.` : "Each one re-runs on its own schedule and keeps the top matches.",
+			actions: /* @__PURE__ */ jsxs(Link, {
+				href: searchHref,
+				className: "btn-accent h-10 px-4 text-[13px]",
+				children: [/* @__PURE__ */ jsx(Plus, { className: "h-3.5 w-3.5" }), " New search"]
+			}),
+			toolbar: /* @__PURE__ */ jsxs("div", {
+				className: "surface flex flex-col gap-2 p-2 lg:flex-row lg:items-center",
+				children: [
+					/* @__PURE__ */ jsxs("label", {
+						className: "relative min-w-0 flex-1",
+						children: [/* @__PURE__ */ jsx(Search, { className: "pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 faint" }), /* @__PURE__ */ jsx("input", {
+							value: query,
+							onChange: (event) => setQuery(event.target.value),
+							placeholder: "Search keyword set or label",
+							"aria-label": "Search keyword set or label",
+							className: "h-9 w-full rounded-lg border border-transparent bg-transparent pr-3 pl-9 text-[13px] text-ink outline-none transition duration-200 placeholder:text-ink/35 focus:border-accent/40 focus:ring-4 focus:ring-accent/12 dark:text-white dark:placeholder:text-white/35"
+						})]
+					}),
+					/* @__PURE__ */ jsx(Divider, {}),
+					/* @__PURE__ */ jsxs("div", {
+						className: "flex flex-wrap items-center gap-2",
+						children: [
+							watchlistedOnly && /* @__PURE__ */ jsxs(FilterSelect, {
+								label: "Search type",
+								value: searchTypeFilter,
+								active: searchTypeFilter !== "all",
+								onChange: (event) => setSearchTypeFilter(event.target.value),
+								children: [
+									/* @__PURE__ */ jsx("option", {
+										value: "all",
+										children: "All types"
+									}),
+									/* @__PURE__ */ jsx("option", {
+										value: "brand",
+										children: "Brand"
+									}),
+									/* @__PURE__ */ jsx("option", {
+										value: "competitor",
+										children: "Competitor"
+									}),
+									/* @__PURE__ */ jsx("option", {
+										value: "product",
+										children: "Product"
+									})
+								]
+							}),
+							/* @__PURE__ */ jsxs(FilterSelect, {
+								label: "Status",
+								value: statusFilter,
+								active: statusFilter !== "all",
+								onChange: (event) => setStatusFilter(event.target.value),
+								children: [
+									/* @__PURE__ */ jsx("option", {
+										value: "all",
+										children: "Any status"
+									}),
+									/* @__PURE__ */ jsx("option", {
+										value: "done",
+										children: "Ready"
+									}),
+									/* @__PURE__ */ jsx("option", {
+										value: "scraping",
+										children: "Refreshing"
+									}),
+									/* @__PURE__ */ jsx("option", {
+										value: "paused",
+										children: "Paused"
+									}),
+									/* @__PURE__ */ jsx("option", {
+										value: "failed",
+										children: "Failed"
+									})
+								]
+							}),
+							/* @__PURE__ */ jsxs(FilterSelect, {
+								label: "Frequency",
+								value: frequencyFilter,
+								active: frequencyFilter !== "all",
+								onChange: (event) => setFrequencyFilter(event.target.value),
+								children: [
+									/* @__PURE__ */ jsx("option", {
+										value: "all",
+										children: "Any cadence"
+									}),
+									/* @__PURE__ */ jsx("option", {
+										value: "weekly",
+										children: "Weekly"
+									}),
+									/* @__PURE__ */ jsx("option", {
+										value: "monthly",
+										children: "Monthly"
+									})
+								]
+							}),
+							filtersActive && /* @__PURE__ */ jsxs("button", {
+								type: "button",
+								onClick: resetFilters,
+								className: "inline-flex h-9 items-center gap-1.5 rounded-lg px-2.5 text-[12.5px] font-semibold muted transition hover:bg-black/[.04] hover:text-ink dark:hover:bg-white/[.06] dark:hover:text-white",
+								children: [/* @__PURE__ */ jsx(Close, { className: "h-3.5 w-3.5" }), " Clear"]
+							})
+						]
+					}),
+					/* @__PURE__ */ jsx(Divider, {}),
+					/* @__PURE__ */ jsxs("div", {
+						className: "flex items-center gap-2",
+						children: [/* @__PURE__ */ jsx("span", {
+							className: "hidden shrink-0 text-[12px] faint sm:inline",
+							children: "Sort"
+						}), /* @__PURE__ */ jsx(FilterSelect, {
+							label: "Sort by",
+							value: sortBy,
+							onChange: (event) => setSortBy(event.target.value),
+							children: Object.entries(SORT_OPTIONS).map(([value, label]) => /* @__PURE__ */ jsx("option", {
+								value,
+								children: label
+							}, value))
+						})]
+					})
+				]
+			}),
+			children: filteredSearches.length === 0 ? /* @__PURE__ */ jsxs("div", {
+				className: "ring-gradient animate-fade-up rounded-3xl bg-white/70 p-12 text-center backdrop-blur-2xl dark:bg-white/[.04]",
 				children: [
 					/* @__PURE__ */ jsx("h2", {
 						className: "font-display text-[20px] font-bold",
-						children: "Nothing saved yet"
+						children: watchlistedOnly ? "Nothing matched your watchlist filters" : `No ${filterType ?? "saved"} searches matched`
 					}),
 					/* @__PURE__ */ jsx("p", {
 						className: "mx-auto mt-3 max-w-sm text-[13.5px] leading-relaxed muted",
-						children: "Run a search from the home page and it will land here, refreshing on the cadence you pick."
+						children: searches.length === 0 ? watchlistedOnly ? "Run a search, then bookmark it to keep it on your watchlist." : "Run a search in this category and it will show up here automatically." : "Try a different keyword, status, frequency, or sort combination."
 					}),
-					/* @__PURE__ */ jsxs("button", {
-						onClick: () => router.visit("/"),
+					/* @__PURE__ */ jsxs(Link, {
+						href: searchHref,
 						className: "btn-accent mx-auto mt-6 h-11 px-5 text-sm",
 						children: ["Run your first search ", /* @__PURE__ */ jsx(Arrow, {})]
 					})
 				]
 			}) : /* @__PURE__ */ jsx("div", {
-				className: "mt-8 grid gap-4 sm:grid-cols-2",
-				children: searches.map((s) => {
+				className: "animate-fade-up grid gap-4 sm:grid-cols-2 xl:grid-cols-3",
+				children: filteredSearches.map((s) => {
 					const status = STATUS[s.status] ?? STATUS.done;
-					return /* @__PURE__ */ jsxs("button", {
+					return /* @__PURE__ */ jsxs("div", {
+						role: "button",
+						tabIndex: 0,
 						onClick: () => router.visit(s.url),
-						className: "surface-hover p-5 text-left",
+						onKeyDown: (event) => {
+							if (event.key === "Enter" || event.key === " ") {
+								event.preventDefault();
+								router.visit(s.url);
+							}
+						},
+						className: `surface-hover cursor-pointer p-5 text-left transition duration-300 ${animatingId === s.id ? "scale-[1.02] shadow-[0_20px_44px_-24px_rgba(91,52,245,.55)] ring-1 ring-accent/30" : ""}`,
 						children: [
 							/* @__PURE__ */ jsxs("div", {
 								className: "flex items-start justify-between gap-3",
-								children: [/* @__PURE__ */ jsx("h2", {
-									className: "font-display text-[16px] font-bold",
-									children: s.name
-								}), /* @__PURE__ */ jsx("span", {
-									className: `shrink-0 rounded-full border px-2.5 py-1 text-[11px] font-semibold ${status.className}`,
-									children: status.label
+								children: [/* @__PURE__ */ jsxs("div", {
+									className: "min-w-0",
+									children: [/* @__PURE__ */ jsx("h2", {
+										className: "font-display text-[16px] font-bold",
+										children: s.name
+									}), /* @__PURE__ */ jsx("p", {
+										className: "mt-1 text-[11px] font-semibold uppercase tracking-[.12em] faint",
+										children: s.search_type
+									})]
+								}), /* @__PURE__ */ jsxs("div", {
+									className: "flex items-center gap-2",
+									children: [
+										/* @__PURE__ */ jsx("button", {
+											type: "button",
+											onClick: (event) => toggleWatchlist(event, s),
+											className: `inline-flex h-8 w-8 items-center justify-center rounded-lg border transition duration-300 hover:border-accent/35 hover:text-accent dark:hover:text-accent-glow ${animatingId === s.id ? "scale-110 border-accent/45 bg-accent/10 text-accent dark:border-accent/40 dark:text-accent-glow" : "border-black/[.08] dark:border-white/[.12]"}`,
+											title: s.is_watchlisted ? "Remove from watchlist" : "Add to watchlist",
+											children: /* @__PURE__ */ jsx(Bookmark, {
+												className: "h-3.5 w-3.5",
+												filled: Boolean(s.is_watchlisted)
+											})
+										}),
+										/* @__PURE__ */ jsxs("div", {
+											ref: openMenuId === s.id ? menuRef : null,
+											className: "relative",
+											children: [/* @__PURE__ */ jsx("button", {
+												type: "button",
+												onClick: (event) => {
+													event.preventDefault();
+													event.stopPropagation();
+													setOpenMenuId((current) => current === s.id ? null : s.id);
+												},
+												className: "inline-flex h-8 w-8 items-center justify-center rounded-lg border border-black/[.08] transition hover:border-accent/35 hover:text-accent dark:border-white/[.12] dark:hover:text-accent-glow",
+												title: "Search actions",
+												children: /* @__PURE__ */ jsx(Dots, { className: "h-4 w-4" })
+											}), openMenuId === s.id && /* @__PURE__ */ jsxs("div", {
+												className: "absolute top-10 right-0 z-20 w-44 rounded-2xl border border-black/[.08] bg-white p-1.5 shadow-[0_20px_44px_-24px_rgba(16,18,32,.45)] dark:border-white/[.12] dark:bg-canvas-dark",
+												onClick: (event) => {
+													event.preventDefault();
+													event.stopPropagation();
+												},
+												children: [
+													/* @__PURE__ */ jsx("button", {
+														type: "button",
+														onClick: () => openModal("edit", s),
+														className: "flex w-full rounded-xl px-3 py-2 text-left text-[13px] font-semibold transition hover:bg-black/[.04] dark:hover:bg-white/[.06]",
+														children: "Edit keyword details"
+													}),
+													/* @__PURE__ */ jsx("button", {
+														type: "button",
+														onClick: () => openModal("pause", s),
+														disabled: s.status === "paused",
+														className: "flex w-full rounded-xl px-3 py-2 text-left text-[13px] font-semibold transition hover:bg-black/[.04] disabled:cursor-not-allowed disabled:opacity-40 dark:hover:bg-white/[.06]",
+														children: "Pause search"
+													}),
+													/* @__PURE__ */ jsx("button", {
+														type: "button",
+														onClick: () => openModal("delete", s),
+														className: "flex w-full rounded-xl px-3 py-2 text-left text-[13px] font-semibold text-hot transition hover:bg-hot/10",
+														children: "Delete search"
+													})
+												]
+											})]
+										}),
+										/* @__PURE__ */ jsx("span", {
+											className: `shrink-0 rounded-full border px-2.5 py-1 text-[11px] font-semibold ${status.className}`,
+											children: status.label
+										})
+									]
 								})]
 							}),
 							/* @__PURE__ */ jsx("p", {
@@ -2720,7 +3749,7 @@ function Index({ searches }) {
 										className: "capitalize",
 										children: s.frequency
 									}),
-									/* @__PURE__ */ jsxs("span", { children: ["Last run ", formatDate(s.last_run_at)] })
+									/* @__PURE__ */ jsxs("span", { children: ["Last run ", formatDate$2(s.last_run_at)] })
 								]
 							}),
 							/* @__PURE__ */ jsxs("div", {
@@ -2736,9 +3765,133 @@ function Index({ searches }) {
 						]
 					}, s.id);
 				})
+			})
+		}),
+		modalState.type === "edit" && modalState.search && /* @__PURE__ */ jsxs(ModalShell, {
+			title: "Edit keyword details",
+			body: "Update the saved label and refresh schedule. The keyword set stays fixed for this search.",
+			onClose: closeModal,
+			children: [/* @__PURE__ */ jsxs("div", {
+				className: "mt-6 space-y-4",
+				children: [
+					/* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsx("p", {
+						className: "mb-2 text-[12px] font-semibold uppercase tracking-[.14em] faint",
+						children: "Keyword set"
+					}), /* @__PURE__ */ jsx("div", {
+						className: "rounded-2xl border border-black/[.08] bg-black/[.03] p-3 dark:border-white/[.12] dark:bg-white/[.04]",
+						children: /* @__PURE__ */ jsx("div", {
+							className: "flex flex-wrap gap-1.5",
+							children: modalState.search.keywords.map((keyword) => /* @__PURE__ */ jsx("span", {
+								className: "rounded-lg border border-black/[.06] bg-white px-2 py-1 text-[11.5px] faint dark:border-white/[.08] dark:bg-white/[.05]",
+								children: keyword
+							}, keyword))
+						})
+					})] }),
+					/* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsx("label", {
+						className: "mb-2 block text-[12px] font-semibold uppercase tracking-[.14em] faint",
+						children: "Label"
+					}), /* @__PURE__ */ jsx("input", {
+						value: formState.name,
+						onChange: (event) => setFormState((current) => ({
+							...current,
+							name: event.target.value
+						})),
+						className: "field h-11 text-sm"
+					})] }),
+					/* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsx("label", {
+						className: "mb-2 block text-[12px] font-semibold uppercase tracking-[.14em] faint",
+						children: "Schedule"
+					}), /* @__PURE__ */ jsx("div", {
+						className: "flex gap-2",
+						children: ["weekly", "monthly"].map((frequency) => /* @__PURE__ */ jsx("button", {
+							type: "button",
+							onClick: () => setFormState((current) => ({
+								...current,
+								frequency
+							})),
+							className: `h-11 flex-1 rounded-xl border text-[13px] font-semibold transition ${formState.frequency === frequency ? "border-accent/45 bg-accent/10 text-accent dark:text-accent-glow" : "border-black/[.08] muted hover:border-accent/35 dark:border-white/[.12]"}`,
+							children: frequency === "weekly" ? "Weekly" : "Monthly"
+						}, frequency))
+					})] })
+				]
+			}), /* @__PURE__ */ jsxs("div", {
+				className: "mt-6 flex justify-end gap-2",
+				children: [/* @__PURE__ */ jsx("button", {
+					type: "button",
+					onClick: closeModal,
+					className: "btn-ghost h-10 px-4 text-sm",
+					disabled: submitting,
+					children: "Cancel"
+				}), /* @__PURE__ */ jsx("button", {
+					type: "button",
+					onClick: submitEdit,
+					className: "btn-accent h-10 px-4 text-sm",
+					disabled: submitting,
+					children: submitting ? "Saving..." : "Save changes"
+				})]
+			})]
+		}),
+		modalState.type === "pause" && modalState.search && /* @__PURE__ */ jsxs(ModalShell, {
+			title: "Pause search",
+			body: "This will keep the search record, but it will not trigger future refreshes until resumed.",
+			onClose: closeModal,
+			children: [/* @__PURE__ */ jsxs("div", {
+				className: "mt-6 rounded-2xl border border-black/[.08] bg-black/[.03] p-4 text-[13.5px] muted dark:border-white/[.12] dark:bg-white/[.04]",
+				children: [/* @__PURE__ */ jsx("p", {
+					className: "font-semibold text-ink dark:text-white",
+					children: modalState.search.name
+				}), /* @__PURE__ */ jsx("p", {
+					className: "mt-1",
+					children: "Keyword set stays intact and results remain available."
+				})]
+			}), /* @__PURE__ */ jsxs("div", {
+				className: "mt-6 flex justify-end gap-2",
+				children: [/* @__PURE__ */ jsx("button", {
+					type: "button",
+					onClick: closeModal,
+					className: "btn-ghost h-10 px-4 text-sm",
+					disabled: submitting,
+					children: "Cancel"
+				}), /* @__PURE__ */ jsx("button", {
+					type: "button",
+					onClick: confirmPause,
+					className: "btn-accent h-10 px-4 text-sm",
+					disabled: submitting,
+					children: submitting ? "Pausing..." : "Pause search"
+				})]
+			})]
+		}),
+		modalState.type === "delete" && modalState.search && /* @__PURE__ */ jsxs(ModalShell, {
+			title: "Delete search",
+			body: "This removes the saved keyword record only. It does not delete the underlying viral video records.",
+			onClose: closeModal,
+			children: [/* @__PURE__ */ jsxs("div", {
+				className: "mt-6 rounded-2xl border border-hot/20 bg-hot/10 p-4 text-[13.5px] text-hot",
+				children: [/* @__PURE__ */ jsx("p", {
+					className: "font-semibold",
+					children: modalState.search.name
+				}), /* @__PURE__ */ jsx("p", {
+					className: "mt-1",
+					children: "This action hides the search from your lists and stops future runs."
+				})]
+			}), /* @__PURE__ */ jsxs("div", {
+				className: "mt-6 flex justify-end gap-2",
+				children: [/* @__PURE__ */ jsx("button", {
+					type: "button",
+					onClick: closeModal,
+					className: "btn-ghost h-10 px-4 text-sm",
+					disabled: submitting,
+					children: "Cancel"
+				}), /* @__PURE__ */ jsx("button", {
+					type: "button",
+					onClick: confirmDelete,
+					className: "h-10 rounded-xl border border-hot/30 px-4 text-sm font-semibold text-hot transition hover:bg-hot/10",
+					disabled: submitting,
+					children: submitting ? "Deleting..." : "Delete search"
+				})]
 			})]
 		})
-	})] });
+	] });
 }
 //#endregion
 //#region resources/js/landing/flow/format.js
@@ -2786,7 +3939,23 @@ function multiplier(score) {
 	if (n <= 0) return null;
 	return `${n >= 10 ? Math.round(n) : Math.round(n * 10) / 10}x`;
 }
-var GRADIENTS = [
+/**
+* Outlier multiple → "11.4x". This is views over the median of the search the
+* video appears in, not the creator's own account baseline — label it as such
+* wherever it renders.
+*/
+function outlierLabel(value) {
+	const n = Number(value);
+	if (!Number.isFinite(n) || n <= 0) return null;
+	return `${n >= 10 ? Math.round(n) : Math.round(n * 10) / 10}x`;
+}
+/** 8.24 → "8.2%". Returns null for missing rates so the UI can show a dash. */
+function percent(value, digits = 1) {
+	const n = Number(value);
+	if (!Number.isFinite(n)) return null;
+	return `${n.toFixed(digits)}%`;
+}
+var GRADIENTS$1 = [
 	"from-[#3a2b6b] to-[#8b3df0]",
 	"from-[#0f3d5c] to-[#2aa7c4]",
 	"from-[#5c1030] to-[#ff3d71]",
@@ -2801,7 +3970,7 @@ function gradientFor(key) {
 	const str = String(key ?? "");
 	let hash = 0;
 	for (let i = 0; i < str.length; i++) hash = hash * 31 + str.charCodeAt(i) >>> 0;
-	return GRADIENTS[hash % GRADIENTS.length];
+	return GRADIENTS$1[hash % GRADIENTS$1.length];
 }
 //#endregion
 //#region resources/js/landing/flow/VideoCard.jsx
@@ -2997,122 +4166,8 @@ function GridVideo({ video, onToggleBookmark, bookmarking = false }) {
 	});
 }
 //#endregion
-//#region resources/js/landing/flow/api.js
-/**
-* Small fetch wrapper for the saved-search endpoints. Inertia handles page
-* navigation; these calls are the in-page ones that should not re-render the
-* whole document.
-*/
-function csrfToken() {
-	return document.querySelector("meta[name=\"csrf-token\"]")?.getAttribute("content") ?? "";
-}
-var API_V1 = "/api/v1";
-async function request(url, { method = "GET", body } = {}) {
-	const response = await fetch(url, {
-		method,
-		credentials: "same-origin",
-		headers: {
-			Accept: "application/json",
-			"X-Requested-With": "XMLHttpRequest",
-			...body ? { "Content-Type": "application/json" } : {},
-			...method === "GET" ? {} : { "X-CSRF-TOKEN": csrfToken() }
-		},
-		...body ? { body: JSON.stringify(body) } : {}
-	});
-	const payload = await response.json().catch(() => null);
-	if (!response.ok) {
-		const error = new Error(payload?.message || `Request failed (${response.status})`);
-		error.status = response.status;
-		error.payload = payload;
-		throw error;
-	}
-	return payload;
-}
-function expandKeywords(phrase, { signal } = {}) {
-	return fetch(`${API_V1}/saved-searches/expand`, {
-		method: "POST",
-		credentials: "same-origin",
-		signal,
-		headers: {
-			Accept: "application/json",
-			"Content-Type": "application/json",
-			"X-Requested-With": "XMLHttpRequest",
-			"X-CSRF-TOKEN": csrfToken()
-		},
-		body: JSON.stringify({ phrase })
-	}).then(async (response) => {
-		const payload = await response.json().catch(() => null);
-		if (!response.ok) throw new Error(payload?.message || "Could not suggest keywords.");
-		return payload;
-	});
-}
-function createSavedSearch({ phrase, name, keywords, frequency }) {
-	return request(`${API_V1}/saved-searches`, {
-		method: "POST",
-		body: {
-			phrase,
-			name,
-			keywords,
-			frequency
-		}
-	});
-}
-function fetchNotifications(ids) {
-	return request(`${API_V1}/saved-searches/notifications?${ids.map((id) => `ids[]=${encodeURIComponent(id)}`).join("&")}`);
-}
-var savedSearch = {
-	get: (id) => request(`${API_V1}/saved-searches/${id}/json`),
-	pause: (id) => request(`${API_V1}/saved-searches/${id}/pause`, { method: "PATCH" }),
-	resume: (id) => request(`${API_V1}/saved-searches/${id}/resume`, { method: "PATCH" }),
-	update: (id, body) => request(`${API_V1}/saved-searches/${id}/frequency`, {
-		method: "PATCH",
-		body
-	}),
-	refresh: (id) => request(`${API_V1}/saved-searches/${id}/refresh`, { method: "POST" }),
-	destroy: (id) => request(`${API_V1}/saved-searches/${id}`, { method: "DELETE" })
-};
-var billing = { checkout: (slug) => {
-	window.location.assign(`/billing/checkout/${encodeURIComponent(slug)}`);
-} };
-var bookmarks = {
-	save: (id) => request(`${API_V1}/videos/${id}/bookmark`, { method: "POST" }),
-	remove: (id) => request(`${API_V1}/videos/${id}/bookmark`, { method: "DELETE" })
-};
-var TRACKED_KEY = "vvf-tracked-searches";
-function readTracked() {
-	try {
-		const raw = window.sessionStorage.getItem(TRACKED_KEY);
-		const parsed = raw ? JSON.parse(raw) : [];
-		return Array.isArray(parsed) ? parsed : [];
-	} catch {
-		return [];
-	}
-}
-function writeTracked(entries) {
-	try {
-		window.sessionStorage.setItem(TRACKED_KEY, JSON.stringify(entries.slice(0, 10)));
-	} catch {}
-}
-function trackSearch(entry) {
-	const existing = readTracked().filter((t) => String(t.id) !== String(entry.id));
-	writeTracked([{
-		runningPromptShown: false,
-		completedPromptShown: false,
-		...entry
-	}, ...existing]);
-}
-function updateTracked(id, patch) {
-	writeTracked(readTracked().map((t) => String(t.id) === String(id) ? {
-		...t,
-		...patch
-	} : t));
-}
-function untrackSearch(id) {
-	writeTracked(readTracked().filter((t) => String(t.id) !== String(id)));
-}
-//#endregion
 //#region resources/js/landing/flow/screens/ResultsScreen.jsx
-var PAGE_STEP = 12;
+var PAGE_STEP$1 = 12;
 function EmptyState({ phrase, onRefresh, refreshing }) {
 	return /* @__PURE__ */ jsxs("div", {
 		className: "ring-gradient mt-6 rounded-3xl bg-white/70 p-10 text-center backdrop-blur-2xl dark:bg-white/[.04]",
@@ -3198,7 +4253,7 @@ function LoginGate({ resultCount }) {
 		]
 	});
 }
-function ResultsScreen({ search, isAuthenticated = false, billingState = null, onStartTrial, onRefresh, refreshing = false, freeSearch = true }) {
+function ResultsScreen({ search, isAuthenticated = false, billingState = null, onStartTrial, onToggleWatchlist, onRefresh, refreshing = false, freeSearch = true, watchlistUpdating = false }) {
 	const [visible, setVisible] = useState(13);
 	const [copied, setCopied] = useState(false);
 	const [bookmarkingId, setBookmarkingId] = useState(null);
@@ -3242,19 +4297,34 @@ function ResultsScreen({ search, isAuthenticated = false, billingState = null, o
 				}) : /* @__PURE__ */ jsxs("p", {
 					className: "inline-flex items-center gap-2 rounded-full border border-black/[.08] px-3 py-1 text-[12px] font-semibold muted dark:border-white/[.12]",
 					children: ["Refreshes ", search?.frequency ?? "weekly"]
-				}), /* @__PURE__ */ jsxs("button", {
-					onClick: share,
-					className: "btn-ghost h-10 px-3.5 text-[13px]",
-					children: [
-						copied ? /* @__PURE__ */ jsx(Check, { className: "h-3 w-3" }) : /* @__PURE__ */ jsx(Share, {}),
-						" ",
-						copied ? "Link copied" : "Share"
-					]
+				}), /* @__PURE__ */ jsxs("div", {
+					className: "flex flex-wrap items-center gap-2",
+					children: [onToggleWatchlist && /* @__PURE__ */ jsxs("button", {
+						onClick: onToggleWatchlist,
+						disabled: watchlistUpdating,
+						className: "btn-ghost h-10 px-3.5 text-[13px]",
+						children: [/* @__PURE__ */ jsx(Bookmark, {
+							className: "h-3.5 w-3.5",
+							filled: Boolean(search?.is_watchlisted)
+						}), search?.is_watchlisted ? "Watchlisted" : "Add to watchlist"]
+					}), /* @__PURE__ */ jsxs("button", {
+						onClick: share,
+						className: "btn-ghost h-10 px-3.5 text-[13px]",
+						children: [
+							copied ? /* @__PURE__ */ jsx(Check, { className: "h-3 w-3" }) : /* @__PURE__ */ jsx(Share, {}),
+							" ",
+							copied ? "Link copied" : "Share"
+						]
+					})]
 				})]
 			}),
 			/* @__PURE__ */ jsx("h1", {
 				className: "mt-4 font-display text-[28px] leading-tight font-bold tracking-[-.025em] sm:text-[36px]",
 				children: search?.name ?? "Recent viral videos"
+			}),
+			search?.search_type && /* @__PURE__ */ jsx("p", {
+				className: "mt-2 text-[11.5px] font-semibold uppercase tracking-[.14em] faint",
+				children: search.search_type
 			}),
 			/* @__PURE__ */ jsxs("div", {
 				className: "mt-4 flex flex-wrap gap-2",
@@ -3313,7 +4383,7 @@ function ResultsScreen({ search, isAuthenticated = false, billingState = null, o
 						/* @__PURE__ */ jsxs("span", { children: [
 							billingState.bookmarkCount,
 							billingState.bookmarkLimit === -1 ? "" : ` / ${billingState.bookmarkLimit}`,
-							" bookmarks"
+							" watchlist"
 						] })
 					]
 				}),
@@ -3334,7 +4404,7 @@ function ResultsScreen({ search, isAuthenticated = false, billingState = null, o
 					}, v.id))
 				})] }),
 				visible < results.length && /* @__PURE__ */ jsx("button", {
-					onClick: () => setVisible((v) => v + PAGE_STEP),
+					onClick: () => setVisible((v) => v + PAGE_STEP$1),
 					className: "btn-ghost mx-auto mt-8 flex h-12 px-6 text-sm",
 					children: "Load more"
 				}),
@@ -3361,7 +4431,7 @@ function ResultsScreen({ search, isAuthenticated = false, billingState = null, o
 						children: "Want another search, or weekly tracking?"
 					}), /* @__PURE__ */ jsx("p", {
 						className: "mt-1.5 text-[13.5px] text-white/60",
-						children: "Basic includes 150 credits and 50 bookmarks. Premium includes 400 credits and unlimited bookmarks."
+						children: "Free includes 1 search and 0 watchlist slots. Basic includes 150 searches and 50 watchlist slots. Premium includes 400 searches and unlimited watchlist."
 					})] }),
 					/* @__PURE__ */ jsxs("button", {
 						onClick: onStartTrial,
@@ -3374,8 +4444,1392 @@ function ResultsScreen({ search, isAuthenticated = false, billingState = null, o
 	});
 }
 //#endregion
+//#region resources/js/Pages/SavedSearches/detail/OutlierVideos.jsx
+var OutlierVideos_exports = /* @__PURE__ */ __exportAll({
+	OutlierCard: () => OutlierCard,
+	WinnerVideo: () => WinnerVideo
+});
+var GRADIENTS = [
+	"linear-gradient(150deg,#a7e0c4,#4aa886 50%,#2f6a7a)",
+	"linear-gradient(150deg,#ffd27a,#ff9a5a 55%,#c0607a)",
+	"linear-gradient(150deg,#c5b8ff,#7a5ae0 55%,#3a2f6a)",
+	"linear-gradient(150deg,#8fd0ff,#5a7ce0 55%,#3a2f8a)",
+	"linear-gradient(150deg,#7affc4,#3ac0a0 55%,#2a6a7a)",
+	"linear-gradient(150deg,#ffb0d8,#d1409a 55%,#5a2060)"
+];
+/** Stable per-video gradient behind a thumbnail that fails to load. */
+function gradientStyle(video) {
+	const key = String(video?.video_id ?? video?.id ?? "");
+	let hash = 0;
+	for (let i = 0; i < key.length; i++) hash = hash * 31 + key.charCodeAt(i) >>> 0;
+	return GRADIENTS[hash % GRADIENTS.length];
+}
+var PlayIcon = ({ w = 14, h = 16 }) => /* @__PURE__ */ jsx("svg", {
+	width: w,
+	height: h,
+	viewBox: "0 0 14 16",
+	fill: "#1B1834",
+	"aria-hidden": true,
+	children: /* @__PURE__ */ jsx("path", { d: "M0 0l14 8-14 8z" })
+});
+function Cover({ video }) {
+	const [broken, setBroken] = useState(false);
+	const src = video?.thumbnail_url;
+	return /* @__PURE__ */ jsxs(Fragment, { children: [/* @__PURE__ */ jsx("span", {
+		className: "grad",
+		style: { background: gradientStyle(video) }
+	}), src && !broken && /* @__PURE__ */ jsx("img", {
+		className: "cov",
+		src,
+		alt: "",
+		loading: "lazy",
+		referrerPolicy: "no-referrer",
+		onError: () => setBroken(true)
+	})] });
+}
+/**
+* Where a video sits on the rail, as a percentage. Inset on both ends so the
+* dot and the median tick never clip.
+*/
+function position(multiple, max) {
+	const n = Number(multiple);
+	if (!Number.isFinite(n) || n <= 0 || !max || max <= 0) return null;
+	return 2 + Math.min(n / max, 1) * 93;
+}
+function Avatar({ video, className }) {
+	const [broken, setBroken] = useState(false);
+	if (!video?.avatar || broken) return /* @__PURE__ */ jsx("span", {
+		className,
+		style: { background: gradientStyle(video) }
+	});
+	return /* @__PURE__ */ jsx("img", {
+		className,
+		src: video.avatar,
+		alt: "",
+		referrerPolicy: "no-referrer",
+		onError: () => setBroken(true)
+	});
+}
+/**
+* The winner block: big score, deviation rail, creative detail, actions.
+*/
+function WinnerVideo({ video, medianViews, max, onToggleBookmark, bookmarking = false }) {
+	if (!video) return null;
+	const dot = position(video.outlier_multiple, max);
+	const median = position(1, max);
+	const packEnd = position(Math.min(2, max), max);
+	const rate = percent(video.engagement_rate);
+	const hasCreative = video.content_format || video.content_hook || video.content_angle;
+	return /* @__PURE__ */ jsxs("div", {
+		className: "winner",
+		children: [/* @__PURE__ */ jsxs("div", {
+			className: "vid",
+			children: [
+				/* @__PURE__ */ jsx(Cover, { video }),
+				/* @__PURE__ */ jsx("span", {
+					className: "flag",
+					children: "★ winner"
+				}),
+				/* @__PURE__ */ jsx("div", {
+					className: "play",
+					children: /* @__PURE__ */ jsx(PlayIcon, {
+						w: 16,
+						h: 18
+					})
+				}),
+				/* @__PURE__ */ jsxs("span", {
+					className: "views-ov",
+					children: ["▶ ", compactNumber(video.views)]
+				})
+			]
+		}), /* @__PURE__ */ jsxs("div", {
+			className: "detail",
+			children: [
+				/* @__PURE__ */ jsxs("div", {
+					className: "dtop",
+					children: [/* @__PURE__ */ jsxs("div", {
+						className: "bigscore",
+						children: [/* @__PURE__ */ jsx("div", {
+							className: "n",
+							children: outlierLabel(video.outlier_multiple) ?? "—"
+						}), /* @__PURE__ */ jsx("div", {
+							className: "l",
+							children: "outlier score"
+						})]
+					}), dot !== null && /* @__PURE__ */ jsxs("div", {
+						className: "devbig",
+						children: [/* @__PURE__ */ jsxs("div", {
+							className: "track",
+							children: [
+								/* @__PURE__ */ jsx("div", { className: "ln" }),
+								/* @__PURE__ */ jsx("div", {
+									className: "pack",
+									style: {
+										left: "2%",
+										width: `${Math.max(packEnd - 2, 2)}%`
+									}
+								}),
+								/* @__PURE__ */ jsx("div", {
+									className: "med",
+									style: { left: `${median}%` }
+								}),
+								/* @__PURE__ */ jsx("div", {
+									className: "pt",
+									style: { left: `${dot}%` }
+								})
+							]
+						}), /* @__PURE__ */ jsxs("div", {
+							className: "cap",
+							children: [/* @__PURE__ */ jsxs("span", { children: ["search median ", /* @__PURE__ */ jsx("b", { children: compactNumber(medianViews) })] }), /* @__PURE__ */ jsxs("span", { children: ["this video ", /* @__PURE__ */ jsx("b", { children: compactNumber(video.views) })] })]
+						})]
+					})]
+				}),
+				video.title && /* @__PURE__ */ jsx("h3", { children: video.title }),
+				/* @__PURE__ */ jsxs("div", {
+					className: "creator",
+					children: [/* @__PURE__ */ jsx(Avatar, {
+						video,
+						className: "av"
+					}), /* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsx("div", {
+						className: "cn",
+						children: video.handle ?? video.creator_name
+					}), /* @__PURE__ */ jsxs("div", {
+						className: "cs",
+						children: [video.uploaded_at ? relativeTime(video.uploaded_at) : "date unknown", " · TikTok"]
+					})] })]
+				}),
+				/* @__PURE__ */ jsxs("div", {
+					className: "kv",
+					children: [
+						/* @__PURE__ */ jsxs("div", {
+							className: "row",
+							children: [/* @__PURE__ */ jsx("span", {
+								className: "k",
+								children: "views"
+							}), /* @__PURE__ */ jsx("span", {
+								className: "val mono",
+								children: compactNumber(video.views)
+							})]
+						}),
+						/* @__PURE__ */ jsxs("div", {
+							className: "row",
+							children: [/* @__PURE__ */ jsx("span", {
+								className: "k",
+								children: "engagement rate"
+							}), /* @__PURE__ */ jsx("span", {
+								className: `val ${rate ? "mono" : "empty"}`,
+								children: rate ?? "—"
+							})]
+						}),
+						/* @__PURE__ */ jsxs("div", {
+							className: "row",
+							children: [/* @__PURE__ */ jsx("span", {
+								className: "k",
+								children: "format"
+							}), /* @__PURE__ */ jsx("span", {
+								className: `val ${video.content_format ? "" : "empty"}`,
+								children: video.content_format ? /* @__PURE__ */ jsx("span", {
+									className: "tag",
+									children: video.content_format
+								}) : "—"
+							})]
+						}),
+						/* @__PURE__ */ jsxs("div", {
+							className: "row",
+							children: [/* @__PURE__ */ jsx("span", {
+								className: "k",
+								children: "sound"
+							}), /* @__PURE__ */ jsx("span", {
+								className: `val ${video.sound_label ? "" : "empty"}`,
+								children: video.sound_label ? /* @__PURE__ */ jsx("span", {
+									className: "tag",
+									children: video.sound_label
+								}) : "—"
+							})]
+						}),
+						/* @__PURE__ */ jsxs("div", {
+							className: "row",
+							children: [/* @__PURE__ */ jsx("span", {
+								className: "k",
+								children: "hook"
+							}), /* @__PURE__ */ jsx("span", {
+								className: `val ${video.content_hook ? "" : "empty"}`,
+								children: video.content_hook ?? "—"
+							})]
+						}),
+						/* @__PURE__ */ jsxs("div", {
+							className: "row",
+							children: [/* @__PURE__ */ jsx("span", {
+								className: "k",
+								children: "angle"
+							}), /* @__PURE__ */ jsx("span", {
+								className: `val ${video.content_angle ? "" : "empty"}`,
+								children: video.content_angle ?? "—"
+							})]
+						})
+					]
+				}),
+				hasCreative && /* @__PURE__ */ jsx("p", {
+					className: "provnote",
+					style: { marginTop: "12px" },
+					children: "Format, hook and angle are inferred from the caption, not the footage."
+				}),
+				/* @__PURE__ */ jsxs("div", {
+					className: "cta",
+					children: [/* @__PURE__ */ jsx("a", {
+						href: video.post_url,
+						target: "_blank",
+						rel: "noreferrer noopener",
+						className: "tbtn primary",
+						children: "open in TikTok ↗"
+					}), onToggleBookmark && /* @__PURE__ */ jsx("button", {
+						type: "button",
+						className: "tbtn",
+						onClick: () => onToggleBookmark(video),
+						disabled: bookmarking,
+						children: video.bookmarked ? "saved to board" : "save to board"
+					})]
+				})
+			]
+		})]
+	});
+}
+/**
+* One card in the ranked feed beneath the winner.
+*/
+function OutlierCard({ video, rank, medianViews, max, onToggleBookmark, bookmarking = false }) {
+	const dot = position(video.outlier_multiple, max);
+	const median = position(1, max);
+	const packEnd = position(Math.min(2, max), max);
+	const label = outlierLabel(video.outlier_multiple);
+	const hot = video.outlier_multiple >= 3;
+	return /* @__PURE__ */ jsxs("article", {
+		className: "card",
+		children: [/* @__PURE__ */ jsxs("div", {
+			className: "thumb",
+			children: [
+				/* @__PURE__ */ jsx(Cover, { video }),
+				/* @__PURE__ */ jsx("span", {
+					className: "rank",
+					children: String(rank).padStart(2, "0")
+				}),
+				label && /* @__PURE__ */ jsxs("span", {
+					className: `score-tag ${hot ? "" : "mid"}`,
+					children: [/* @__PURE__ */ jsx("span", {
+						className: "num",
+						children: label
+					}), /* @__PURE__ */ jsx("span", {
+						className: "lbl",
+						children: "outlier"
+					})]
+				}),
+				/* @__PURE__ */ jsx("div", {
+					className: "play",
+					children: /* @__PURE__ */ jsx(PlayIcon, {})
+				}),
+				/* @__PURE__ */ jsxs("span", {
+					className: "views-ov",
+					children: ["▶ ", compactNumber(video.views)]
+				})
+			]
+		}), /* @__PURE__ */ jsxs("div", {
+			className: "card-body",
+			children: [
+				dot !== null && /* @__PURE__ */ jsxs("div", {
+					className: "dev",
+					children: [/* @__PURE__ */ jsxs("div", {
+						className: "dev-track",
+						children: [
+							/* @__PURE__ */ jsx("div", { className: "dev-line" }),
+							/* @__PURE__ */ jsx("div", {
+								className: "dev-pack",
+								style: {
+									left: "2%",
+									width: `${Math.max(packEnd - 2, 2)}%`
+								}
+							}),
+							/* @__PURE__ */ jsx("div", {
+								className: "dev-median",
+								style: { left: `${median}%` }
+							}),
+							/* @__PURE__ */ jsx("div", {
+								className: `dev-pt ${hot ? "" : "mid"}`,
+								style: { left: `${dot}%` }
+							})
+						]
+					}), /* @__PURE__ */ jsxs("div", {
+						className: "dev-cap",
+						children: [/* @__PURE__ */ jsxs("span", { children: ["median ", /* @__PURE__ */ jsx("b", { children: compactNumber(medianViews) })] }), /* @__PURE__ */ jsxs("span", { children: [/* @__PURE__ */ jsx("b", { children: label }), " out"] })]
+					})]
+				}),
+				/* @__PURE__ */ jsxs("div", {
+					className: "creator",
+					children: [/* @__PURE__ */ jsx(Avatar, {
+						video,
+						className: "av"
+					}), /* @__PURE__ */ jsxs("div", {
+						style: { minWidth: 0 },
+						children: [/* @__PURE__ */ jsx("div", {
+							className: "h2n",
+							children: video.handle ?? video.creator_name
+						}), /* @__PURE__ */ jsx("div", {
+							className: "sub",
+							children: video.uploaded_at ? relativeTime(video.uploaded_at) : "date unknown"
+						})]
+					})]
+				}),
+				/* @__PURE__ */ jsxs("div", {
+					className: "card-foot",
+					children: [/* @__PURE__ */ jsxs("span", {
+						className: "metric",
+						children: [/* @__PURE__ */ jsx("b", { children: compactNumber(video.views) }), " views"]
+					}), /* @__PURE__ */ jsxs("span", {
+						style: {
+							display: "flex",
+							gap: "10px",
+							alignItems: "center"
+						},
+						children: [/* @__PURE__ */ jsx("button", {
+							type: "button",
+							className: "open",
+							onClick: () => onToggleBookmark?.(video),
+							disabled: !onToggleBookmark || bookmarking,
+							title: video.bookmarked ? "Remove from board" : "Save to board",
+							children: video.bookmarked ? "saved" : "save"
+						}), /* @__PURE__ */ jsx("a", {
+							href: video.post_url,
+							target: "_blank",
+							rel: "noreferrer noopener",
+							className: "open",
+							children: "open ↗"
+						})]
+					})]
+				})
+			]
+		})]
+	});
+}
+//#endregion
+//#region resources/js/Pages/SavedSearches/detail/Badges.jsx
+var Badges_exports = /* @__PURE__ */ __exportAll({
+	DeltaLine: () => DeltaLine,
+	RebuiltBadge: () => RebuiltBadge,
+	SampleBadge: () => SampleBadge
+});
+/**
+* Two different kinds of "this is not a normal measurement", kept visually
+* distinct because they mean genuinely different things.
+*
+*  - SampleBadge:        invented. Needs the TikTok profile actor, which is not
+*                        built. Comes from PlaceholderProfileData on the server.
+*  - RebuiltBadge:       derived from real videos, but describing when posts
+*                        went up rather than what the metric read at the time.
+*
+* Never use one for the other. Amber says "do not trust this number", violet
+* says "trust it, but know what it measures".
+*/
+function SampleBadge({ className = "" }) {
+	return /* @__PURE__ */ jsx("span", {
+		className: `prov sample ${className}`,
+		title: "Sample data — needs the TikTok profile scrape, which isn't built yet",
+		children: "sample"
+	});
+}
+function RebuiltBadge({ className = "" }) {
+	return /* @__PURE__ */ jsx("span", {
+		className: `prov rebuilt ${className}`,
+		title: "Rebuilt from upload dates — shows when posts went up and what they're worth now, not what the metric read at the time",
+		children: "rebuilt"
+	});
+}
+/**
+* The `.d` line under a signal tile. Renders nothing when the change is
+* unknown — a missing line is honest, a "0%" line is not.
+*/
+function DeltaLine({ delta }) {
+	if (!delta || delta.value === null || delta.value === void 0) return /* @__PURE__ */ jsx("div", { className: "d" });
+	const { value, unit, direction, reconstructed } = delta;
+	return /* @__PURE__ */ jsxs("div", {
+		className: `d ${direction === "up" ? "up" : direction === "down" ? "down" : "flat"}`,
+		title: reconstructed ? "Compared against a week rebuilt from upload dates" : "Versus the previous week",
+		children: [
+			direction === "up" ? "↑" : direction === "down" ? "↓" : "→",
+			" ",
+			Math.abs(value),
+			unit === "percent" ? "%" : unit === "points" ? " pts" : unit === "multiple" ? "x" : "",
+			" wk",
+			reconstructed ? " ~" : ""
+		]
+	});
+}
+//#endregion
+//#region resources/js/Pages/SavedSearches/detail/InsightPanels.jsx
+var InsightPanels_exports = /* @__PURE__ */ __exportAll({
+	HashtagPanel: () => HashtagPanel,
+	OutliersPerWeek: () => OutliersPerWeek,
+	PostingHeatmap: () => PostingHeatmap,
+	ScoreDistribution: () => ScoreDistribution,
+	SignalTiles: () => SignalTiles,
+	SoundPanel: () => SoundPanel
+});
+var HOUR_LABELS = {
+	0: "12a",
+	6: "6a",
+	12: "12p",
+	18: "6p"
+};
+/**
+* Splits a formatted figure into the big number and its trailing unit, so the
+* unit renders in the mockup's smaller muted `small`.
+*/
+function splitUnit(text) {
+	const match = String(text).match(/^([\d.,]+)(.*)$/);
+	return match ? [match[1], match[2]] : [text, ""];
+}
+function tileValue(tile) {
+	if (tile.value === null || tile.value === void 0) return ["—", ""];
+	switch (tile.format) {
+		case "multiple": return splitUnit(outlierLabel(tile.value) ?? "—");
+		case "percent": return splitUnit(percent(tile.value) ?? "—");
+		case "compact": return splitUnit(compactNumber(tile.value));
+		default: return [String(tile.value), ""];
+	}
+}
+/**
+* The five signal tiles, each with a week-over-week line where one can be
+* sourced. `deltas` is keyed by tile key; a missing entry renders an empty
+* line rather than a zero. A tile may instead carry its own `deltaNode`
+* (e.g. the sample-data follower growth), which wins over the computed line.
+*/
+function SignalTiles({ tiles = [], deltas = {} }) {
+	if (tiles.length === 0) return null;
+	return /* @__PURE__ */ jsx("div", {
+		className: "stats",
+		children: tiles.map((tile) => {
+			const [value, unit] = tileValue(tile);
+			return /* @__PURE__ */ jsxs("div", {
+				className: `stat ${tile.hero ? "hero" : ""}`,
+				title: tile.hint ?? void 0,
+				children: [
+					/* @__PURE__ */ jsx("div", {
+						className: "k",
+						children: tile.label
+					}),
+					/* @__PURE__ */ jsxs("div", {
+						className: "v",
+						children: [value, unit && /* @__PURE__ */ jsx("small", { children: unit })]
+					}),
+					tile.deltaNode ?? /* @__PURE__ */ jsx(DeltaLine, { delta: deltas[tile.key] })
+				]
+			}, tile.key);
+		})
+	});
+}
+/** Run-over-run movement for a hashtag or sound. */
+function Growth({ growth }) {
+	if (!growth) return /* @__PURE__ */ jsx("span", {
+		className: "gro flat",
+		children: "—"
+	});
+	if (growth.is_new) return /* @__PURE__ */ jsx("span", {
+		className: "gro",
+		children: "new"
+	});
+	if (growth.change_pct === null || growth.change_pct === 0) return /* @__PURE__ */ jsx("span", {
+		className: "gro flat",
+		children: "flat"
+	});
+	const up = growth.change_pct > 0;
+	return /* @__PURE__ */ jsxs("span", {
+		className: `gro ${up ? "" : "down"}`,
+		children: [
+			up ? "↑" : "↓",
+			" ",
+			Math.abs(growth.change_pct),
+			"%"
+		]
+	});
+}
+function HashtagPanel({ hashtags = [] }) {
+	return /* @__PURE__ */ jsxs("div", {
+		className: "hspanel",
+		children: [/* @__PURE__ */ jsx("h3", { children: "# hashtags" }), hashtags.length === 0 ? /* @__PURE__ */ jsx("p", {
+			className: "empty",
+			children: "No hashtags on the matched videos."
+		}) : hashtags.map((row, index) => /* @__PURE__ */ jsxs("div", {
+			className: "hrow",
+			children: [
+				/* @__PURE__ */ jsx("span", {
+					className: "idx",
+					children: index + 1
+				}),
+				/* @__PURE__ */ jsxs("span", {
+					className: "nm",
+					children: ["#", row.tag]
+				}),
+				/* @__PURE__ */ jsxs("span", {
+					className: "cnt",
+					children: [
+						"on ",
+						row.posts,
+						" posts"
+					]
+				}),
+				/* @__PURE__ */ jsx(Growth, { growth: row.growth })
+			]
+		}, row.tag))]
+	});
+}
+function SoundPanel({ sounds = [] }) {
+	return /* @__PURE__ */ jsxs("div", {
+		className: "hspanel",
+		children: [/* @__PURE__ */ jsx("h3", { children: "♪ sounds" }), sounds.length === 0 ? /* @__PURE__ */ jsx("p", {
+			className: "empty",
+			children: "No sound credited on the matched videos."
+		}) : sounds.map((row, index) => /* @__PURE__ */ jsxs("div", {
+			className: "hrow",
+			children: [
+				/* @__PURE__ */ jsx("span", {
+					className: "idx",
+					children: index + 1
+				}),
+				/* @__PURE__ */ jsx("span", {
+					className: "splay",
+					children: /* @__PURE__ */ jsx("svg", {
+						width: "11",
+						height: "12",
+						viewBox: "0 0 14 16",
+						fill: "var(--violet)",
+						"aria-hidden": true,
+						children: /* @__PURE__ */ jsx("path", { d: "M0 0l14 8-14 8z" })
+					})
+				}),
+				/* @__PURE__ */ jsxs("span", {
+					className: "nm",
+					children: [row.label, row.on_top_video && /* @__PURE__ */ jsx("span", {
+						className: "u",
+						children: "used on the winner"
+					})]
+				}),
+				/* @__PURE__ */ jsxs("span", {
+					className: "cnt",
+					children: [row.posts, " posts"]
+				}),
+				/* @__PURE__ */ jsx(Growth, { growth: row.growth })
+			]
+		}, row.label))]
+	});
+}
+/**
+* Posting rhythm by weekday and hour. Hours are UTC — `uploaded_at` is stored
+* in UTC and no creator timezone is captured, so the label says so plainly
+* rather than implying local time.
+*/
+function PostingHeatmap({ heatmap }) {
+	if (!heatmap || heatmap.counted === 0) return /* @__PURE__ */ jsx("div", {
+		className: "panel",
+		children: /* @__PURE__ */ jsx("p", {
+			className: "empty",
+			children: "No upload timestamps on the matched videos yet."
+		})
+	});
+	const { days = [], cells = [], max = 0, peak, timezone } = heatmap;
+	return /* @__PURE__ */ jsxs("div", {
+		className: "panel",
+		children: [
+			/* @__PURE__ */ jsx("div", {
+				className: "heat",
+				children: /* @__PURE__ */ jsxs("div", {
+					className: "heatgrid",
+					children: [
+						/* @__PURE__ */ jsx("div", {}),
+						Array.from({ length: 24 }).map((_, hour) => /* @__PURE__ */ jsx("div", {
+							className: "hh",
+							children: HOUR_LABELS[hour] ?? ""
+						}, hour)),
+						days.map((day, dayIndex) => /* @__PURE__ */ jsxs("div", {
+							className: "contents",
+							style: { display: "contents" },
+							children: [/* @__PURE__ */ jsx("div", {
+								className: "dl",
+								children: day
+							}), (cells[dayIndex] ?? []).map((count, hour) => {
+								const t = max > 0 ? count / max : 0;
+								const isPeak = peak && peak.day === day && peak.hour === hour && count > 0;
+								return /* @__PURE__ */ jsx("div", {
+									className: "cell",
+									title: `${day} ${String(hour).padStart(2, "0")}:00 ${timezone} — ${count} ${count === 1 ? "post" : "posts"}`,
+									style: count > 0 ? { background: isPeak ? "var(--coral)" : `color-mix(in srgb, var(--violet) ${Math.round(18 + t * 82)}%, var(--paper-2))` } : void 0
+								}, hour);
+							})]
+						}, day))
+					]
+				})
+			}),
+			/* @__PURE__ */ jsxs("div", {
+				className: "heatlegend",
+				children: [
+					"less",
+					/* @__PURE__ */ jsxs("span", {
+						className: "scale",
+						children: [[
+							10,
+							30,
+							50,
+							70,
+							100
+						].map((step) => /* @__PURE__ */ jsx("i", { style: { background: `color-mix(in srgb, var(--violet) ${step}%, var(--paper-2))` } }, step)), /* @__PURE__ */ jsx("i", { style: { background: "var(--coral)" } })]
+					}),
+					"more"
+				]
+			}),
+			peak && /* @__PURE__ */ jsxs("div", {
+				className: "heat-note",
+				children: [
+					/* @__PURE__ */ jsx("b", { children: "Their rhythm:" }),
+					" busiest slot is ",
+					peak.day,
+					" around ",
+					String(peak.hour).padStart(2, "0"),
+					":00 ",
+					timezone,
+					", with ",
+					peak.count,
+					" ",
+					peak.count === 1 ? "post" : "posts",
+					". Hours are ",
+					timezone,
+					""
+				]
+			})
+		]
+	});
+}
+/** Six-week outlier bars. */
+function OutliersPerWeek({ bars = [], threshold = 3 }) {
+	const max = Math.max(...bars.map((b) => b.value), 1);
+	const anyRebuilt = bars.some((b) => b.reconstructed);
+	return /* @__PURE__ */ jsxs("div", {
+		className: "panel",
+		children: [
+			/* @__PURE__ */ jsxs("h3", { children: ["outliers per week ", anyRebuilt && /* @__PURE__ */ jsx(RebuiltBadge, { className: "ml-2" })] }),
+			/* @__PURE__ */ jsxs("div", {
+				className: "psub",
+				children: [
+					"their posts scoring ",
+					outlierLabel(threshold) ?? "3x",
+					" or higher"
+				]
+			}),
+			/* @__PURE__ */ jsx("div", {
+				className: "spark",
+				children: bars.map((bar, index) => /* @__PURE__ */ jsxs("div", {
+					className: "col",
+					children: [/* @__PURE__ */ jsx("div", {
+						className: `bar2 ${index === bars.length - 1 ? "now" : ""}`,
+						style: { height: `${Math.max(bar.value / max * 100, 4)}%` },
+						children: /* @__PURE__ */ jsx("em", { children: bar.value })
+					}), /* @__PURE__ */ jsx("span", {
+						className: "wl",
+						children: index === bars.length - 1 ? "now" : `wk ${index + 1}`
+					})]
+				}, `${bar.label}-${index}`))
+			})
+		]
+	});
+}
+/** Mockup bar colours by bucket floor: violet-soft, violet, then coral. */
+function bucketColor(min) {
+	if (min >= 8) return "var(--coral)";
+	if (min >= 5) return "var(--violet)";
+	return "var(--violet-soft)";
+}
+function ScoreDistribution({ distribution = [] }) {
+	const top = Math.max(...distribution.map((row) => row.count), 1);
+	const outliers = distribution.reduce((sum, row) => sum + row.count, 0);
+	return /* @__PURE__ */ jsxs("div", {
+		className: "panel",
+		children: [
+			/* @__PURE__ */ jsx("h3", { children: "score distribution" }),
+			/* @__PURE__ */ jsxs("div", {
+				className: "psub",
+				children: [
+					"this search's ",
+					outliers,
+					" ",
+					outliers === 1 ? "outlier" : "outliers"
+				]
+			}),
+			/* @__PURE__ */ jsx("div", {
+				className: "dist",
+				children: distribution.map((row) => /* @__PURE__ */ jsxs("div", {
+					className: "dline",
+					children: [
+						/* @__PURE__ */ jsx("span", {
+							className: "rng",
+							children: row.label
+						}),
+						/* @__PURE__ */ jsx("span", {
+							className: "dbar",
+							children: /* @__PURE__ */ jsx("span", { style: {
+								width: `${row.count / top * 100}%`,
+								background: bucketColor(row.min)
+							} })
+						}),
+						/* @__PURE__ */ jsx("span", {
+							className: "cnt",
+							children: row.count
+						})
+					]
+				}, row.label))
+			})
+		]
+	});
+}
+//#endregion
+//#region resources/js/Pages/SavedSearches/detail/TrendPanels.jsx
+var TrendPanels_exports = /* @__PURE__ */ __exportAll({
+	AiSummary: () => AiSummary,
+	PerformanceChart: () => PerformanceChart,
+	TrackerHead: () => TrackerHead
+});
+var W = 560;
+var H = 180;
+function formatValue(value, format) {
+	if (value === null || value === void 0) return "—";
+	if (format === "compact") return compactNumber(value);
+	if (format === "percent") return percent(value) ?? "—";
+	return String(value);
+}
+/** Maps a series onto the viewBox. A flat series sits mid-height, not on the floor. */
+function toPoints(values) {
+	if (!values || values.length < 2) return [];
+	const max = Math.max(...values);
+	const min = Math.min(...values);
+	const range = max - min;
+	return values.map((v, i) => {
+		return [i / (values.length - 1) * W, range === 0 ? H / 2 : 170 - (v - min) / range * 160];
+	});
+}
+/**
+* The 12-week performance chart. Weeks rebuilt from upload dates are drawn
+* dashed and the measured tail solid, so the eye can tell reconstructed
+* history from real history without reading the caption.
+*/
+function PerformanceChart({ trend }) {
+	const [metric, setMetric] = useState("views");
+	const series = trend?.metrics?.[metric];
+	const points = trend?.points ?? [];
+	const geometry = useMemo(() => {
+		const coords = toPoints(series?.values ?? []);
+		if (coords.length === 0) return null;
+		const asPoly = (list) => list.map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`).join(" ");
+		const line = asPoly(coords);
+		const firstRecorded = points.findIndex((p) => !p.reconstructed);
+		return {
+			line,
+			recorded: firstRecorded >= 0 && firstRecorded < coords.length - 1 ? asPoly(coords.slice(firstRecorded)) : null,
+			area: `${line} ${W},${H} 0,${H}`,
+			last: coords[coords.length - 1]
+		};
+	}, [series, points]);
+	if (!series || !geometry) return /* @__PURE__ */ jsx("div", {
+		className: "panel",
+		children: /* @__PURE__ */ jsx("p", {
+			className: "empty",
+			children: "Not enough history to plot yet."
+		})
+	});
+	const delta = series.delta;
+	const deltaTone = !delta ? "flat" : delta.direction === "up" ? "up" : delta.direction === "down" ? "down" : "flat";
+	const deltaSuffix = delta?.unit === "points" ? " pts" : "%";
+	return /* @__PURE__ */ jsxs("div", {
+		className: "panel",
+		children: [
+			/* @__PURE__ */ jsx("div", {
+				className: "ts-tabs",
+				children: Object.entries(trend.metrics).map(([key, definition]) => /* @__PURE__ */ jsx("button", {
+					className: metric === key ? "on" : "",
+					onClick: () => setMetric(key),
+					children: definition.label
+				}, key))
+			}),
+			/* @__PURE__ */ jsxs("div", {
+				className: "ts-head",
+				children: [
+					/* @__PURE__ */ jsx("span", {
+						className: "ts-val",
+						children: formatValue(series.current, series.format)
+					}),
+					delta && /* @__PURE__ */ jsxs("span", {
+						className: `ts-delta ${deltaTone}`,
+						children: [
+							delta.direction === "up" ? "↑" : delta.direction === "down" ? "↓" : "→",
+							" ",
+							Math.abs(delta.value),
+							deltaSuffix,
+							" vs 12 wk ago"
+						]
+					}),
+					trend.has_reconstructed && /* @__PURE__ */ jsx(RebuiltBadge, {})
+				]
+			}),
+			/* @__PURE__ */ jsxs("svg", {
+				className: "ts-svg",
+				viewBox: `0 0 ${W} ${H}`,
+				preserveAspectRatio: "none",
+				children: [
+					/* @__PURE__ */ jsx("defs", { children: /* @__PURE__ */ jsxs("linearGradient", {
+						id: "tsfill",
+						x1: "0",
+						y1: "0",
+						x2: "0",
+						y2: "1",
+						children: [/* @__PURE__ */ jsx("stop", {
+							offset: "0",
+							stopColor: "var(--violet)",
+							stopOpacity: ".2"
+						}), /* @__PURE__ */ jsx("stop", {
+							offset: "1",
+							stopColor: "var(--violet)",
+							stopOpacity: "0"
+						})]
+					}) }),
+					/* @__PURE__ */ jsx("polygon", {
+						points: geometry.area,
+						fill: "url(#tsfill)"
+					}),
+					/* @__PURE__ */ jsx("polyline", {
+						points: geometry.line,
+						fill: "none",
+						stroke: "var(--violet)",
+						strokeWidth: "2.5",
+						strokeLinejoin: "round",
+						strokeLinecap: "round",
+						strokeDasharray: trend.has_reconstructed ? "5 4" : void 0,
+						opacity: trend.has_reconstructed ? .55 : 1
+					}),
+					geometry.recorded && /* @__PURE__ */ jsx("polyline", {
+						points: geometry.recorded,
+						fill: "none",
+						stroke: "var(--violet)",
+						strokeWidth: "2.5",
+						strokeLinejoin: "round",
+						strokeLinecap: "round"
+					}),
+					/* @__PURE__ */ jsx("circle", {
+						cx: geometry.last[0],
+						cy: geometry.last[1],
+						r: "4.5",
+						fill: "var(--violet)",
+						stroke: "#fff",
+						strokeWidth: "2"
+					})
+				]
+			}),
+			/* @__PURE__ */ jsxs("div", {
+				className: "ts-x",
+				children: [
+					/* @__PURE__ */ jsx("span", { children: "12 wk ago" }),
+					/* @__PURE__ */ jsx("span", { children: "8 wk" }),
+					/* @__PURE__ */ jsx("span", { children: "4 wk" }),
+					/* @__PURE__ */ jsx("span", { children: "now" })
+				]
+			}),
+			trend.has_reconstructed && /* @__PURE__ */ jsxs("div", {
+				className: "heat-note",
+				children: [
+					/* @__PURE__ */ jsx("b", { children: "Dashed is rebuilt." }),
+					" Those weeks group videos by the date they were posted and show what those posts are worth today, not what the number read that week. Solid is measured:",
+					" ",
+					trend.recorded_count > 0 ? `${trend.recorded_count} of ${trend.weeks} weeks` : "no weeks",
+					" so far."
+				]
+			})
+		]
+	});
+}
+/**
+* Page head: logo, title, handles row, actions. The avatar, handle and
+* follower count are read off scraped videos and are real. The category is
+* invented — hence the badge beside it.
+*/
+function TrackerHead({ search, account, lastRun, onToggleWatchlist, onShare, copied, watchlistUpdating }) {
+	const profile = account?.profile ?? {};
+	const initial = (search?.name ?? "?").slice(0, 1).toUpperCase();
+	return /* @__PURE__ */ jsxs("header", { children: [
+		/* @__PURE__ */ jsxs("div", {
+			className: "crumb",
+			children: ["trackers / ", search?.search_type ?? "brand"]
+		}),
+		/* @__PURE__ */ jsxs("div", {
+			className: "brandrow",
+			children: [
+				/* @__PURE__ */ jsx("span", {
+					className: "logo",
+					title: "brand logo",
+					children: account?.avatar ? /* @__PURE__ */ jsx("img", {
+						src: account.avatar,
+						alt: "",
+						referrerPolicy: "no-referrer"
+					}) : initial
+				}),
+				/* @__PURE__ */ jsxs("div", {
+					className: "titlewrap",
+					children: [/* @__PURE__ */ jsx("h1", { children: search?.name ?? "Tracker" }), /* @__PURE__ */ jsxs("div", {
+						className: "handles",
+						children: [
+							/* @__PURE__ */ jsx("span", {
+								className: "badge",
+								children: search?.search_type ?? "brand"
+							}),
+							account?.handle && /* @__PURE__ */ jsx("span", {
+								className: "h",
+								children: account.handle
+							}),
+							account?.followers > 0 && /* @__PURE__ */ jsxs(Fragment, { children: [/* @__PURE__ */ jsx("span", { className: "sep" }), /* @__PURE__ */ jsxs("span", { children: [compactNumber(account.followers), " followers"] })] }),
+							profile.category && /* @__PURE__ */ jsxs(Fragment, { children: [/* @__PURE__ */ jsx("span", { className: "sep" }), /* @__PURE__ */ jsxs("span", { children: [
+								profile.category,
+								" ",
+								/* @__PURE__ */ jsx(SampleBadge, {})
+							] })] }),
+							/* @__PURE__ */ jsx("span", { className: "sep" }),
+							/* @__PURE__ */ jsxs("span", { children: [
+								"checked ",
+								search?.frequency ?? "weekly",
+								lastRun ? ` · last run ${lastRun}` : ""
+							] })
+						]
+					})]
+				}),
+				/* @__PURE__ */ jsxs("div", {
+					className: "head-actions",
+					children: [onToggleWatchlist && /* @__PURE__ */ jsx("button", {
+						className: "tbtn",
+						onClick: onToggleWatchlist,
+						disabled: watchlistUpdating,
+						children: search?.is_watchlisted ? "watchlisted" : "add to watchlist"
+					}), /* @__PURE__ */ jsx("button", {
+						className: "tbtn primary",
+						onClick: onShare,
+						children: copied ? "link copied" : "share"
+					})]
+				})
+			]
+		}),
+		account && !account.is_confident && /* @__PURE__ */ jsxs("p", {
+			className: "provnote",
+			style: { marginTop: "12px" },
+			children: [
+				/* @__PURE__ */ jsx(SampleBadge, {}),
+				"Account inferred from results — ",
+				account.handle,
+				" posted ",
+				Math.round(account.confidence * 100),
+				"% of the matched videos across ",
+				account.distinct_accounts,
+				" accounts. Treat the identity as a guess."
+			]
+		})
+	] });
+}
+/**
+* The one-line read. Absent until the enrichment job has run, which is correct
+* on a brand new search — it never renders a placeholder sentence.
+*/
+function AiSummary({ summary, generatedAt }) {
+	if (!summary) return null;
+	const when = generatedAt ? new Date(generatedAt) : null;
+	const breakAt = summary.search(/[.!?](\s|$)/);
+	const lead = breakAt >= 0 ? summary.slice(0, breakAt + 1) : summary;
+	const tail = breakAt >= 0 ? summary.slice(breakAt + 1) : "";
+	return /* @__PURE__ */ jsxs("div", {
+		className: "ai",
+		children: [
+			/* @__PURE__ */ jsx("svg", {
+				className: "spark",
+				viewBox: "0 0 24 24",
+				"aria-hidden": true,
+				children: /* @__PURE__ */ jsx("path", { d: "M12 2l1.8 6.2L20 10l-6.2 1.8L12 18l-1.8-6.2L4 10l6.2-1.8z" })
+			}),
+			/* @__PURE__ */ jsxs("div", {
+				className: "txt",
+				children: [/* @__PURE__ */ jsx("b", { children: lead }), tail]
+			}),
+			when && !Number.isNaN(when.getTime()) && /* @__PURE__ */ jsx("span", {
+				className: "when",
+				children: when.toLocaleDateString(void 0, {
+					month: "short",
+					day: "numeric"
+				})
+			})
+		]
+	});
+}
+//#endregion
+//#region resources/js/Pages/SavedSearches/detail/DetailScreen.jsx
+var DetailScreen_exports = /* @__PURE__ */ __exportAll({ default: () => DetailScreen });
+var PAGE_STEP = 4;
+function SectionHead({ title, note, small = false }) {
+	return /* @__PURE__ */ jsxs("div", {
+		className: "sect-head",
+		children: [/* @__PURE__ */ jsx("h2", {
+			style: small ? { fontSize: "19px" } : void 0,
+			children: title
+		}), note && /* @__PURE__ */ jsx("span", {
+			className: "note",
+			children: note
+		})]
+	});
+}
+function formatDate$1(iso) {
+	if (!iso) return null;
+	const date = new Date(iso);
+	return Number.isNaN(date.getTime()) ? null : date.toLocaleDateString(void 0, {
+		month: "short",
+		day: "numeric"
+	});
+}
+/**
+* Detail view for brand and competitor searches — a direct port of the
+* `tracker-brand-detail` mockup, minus the reach and engagement channel table
+* which was omitted by request (it needs Reels and Meta Ads integrations that
+* do not exist).
+*
+* Everything on this page is one of three things, and the UI says which:
+*
+*  - Measured. Scraped videos and recorded snapshots.
+*  - Rebuilt (violet badge). Derived by bucketing videos on upload date, so a
+*    new search has a chart before 12 weeks of runs exist.
+*  - Sample (amber badge). Invented by PlaceholderProfileData because it needs
+*    a TikTok profile scrape that has not been built.
+*/
+function DetailScreen({ search, isAuthenticated = false, onToggleWatchlist, onRefresh, onTogglePause, onDelete, refreshing = false, watchlistUpdating = false }) {
+	const [visible, setVisible] = useState(PAGE_STEP);
+	const [copied, setCopied] = useState(false);
+	const [bookmarkingId, setBookmarkingId] = useState(null);
+	const [items, setItems] = useState(search?.results ?? []);
+	const [view, setView] = useState("outliers");
+	const insights = search?.insights ?? {};
+	const medianViews = insights.baseline?.median_views ?? 0;
+	const threshold = insights.baseline?.outlier_threshold ?? 3;
+	const account = insights.account ?? null;
+	const trend = insights.trend ?? null;
+	const profile = account?.profile ?? {};
+	const brandHandle = account?.handle ? account.handle.toLowerCase() : null;
+	const feedItems = view === "their" && brandHandle ? items.filter((v) => (v.handle ?? "").toLowerCase() === brandHandle) : items;
+	const [winner, ...rest] = feedItems;
+	const shown = rest.slice(0, visible);
+	const maxMultiple = Math.max(...feedItems.map((v) => Number(v.outlier_multiple) || 0), 1);
+	const serverTile = (key) => (insights.tiles ?? []).find((t) => t.key === key) ?? {};
+	const multiples = items.map((v) => Number(v.outlier_multiple) || 0).filter((m) => m > 0);
+	const avgScore = multiples.length ? multiples.reduce((a, b) => a + b, 0) / multiples.length : null;
+	const nowPoint = trend?.points?.[trend.points.length - 1] ?? null;
+	const tiles = [
+		account?.followers > 0 ? {
+			key: "followers",
+			label: "followers",
+			value: account.followers,
+			format: "compact",
+			deltaNode: profile.follower_growth_pct != null ? /* @__PURE__ */ jsxs("div", {
+				className: `d ${profile.follower_growth_pct >= 0 ? "up" : "down"}`,
+				children: [
+					profile.follower_growth_pct >= 0 ? "↑" : "↓",
+					" ",
+					Math.abs(profile.follower_growth_pct),
+					"% mo",
+					" ",
+					/* @__PURE__ */ jsx(SampleBadge, {})
+				]
+			}) : /* @__PURE__ */ jsx("div", { className: "d" })
+		} : {
+			key: "videos",
+			label: "videos matched",
+			value: items.length,
+			format: "count"
+		},
+		{
+			key: "outliers",
+			label: "outliers this week",
+			value: nowPoint ? nowPoint.outliers : serverTile("outliers").value ?? null,
+			format: "count"
+		},
+		{
+			...serverTile("top_multiple"),
+			label: "top outlier score"
+		},
+		{
+			key: "avg_score",
+			label: "avg score",
+			value: avgScore,
+			format: "multiple"
+		},
+		{
+			...serverTile("avg_engagement"),
+			label: "avg eng rate"
+		}
+	];
+	const share = async () => {
+		try {
+			await navigator.clipboard.writeText(window.location.href);
+			setCopied(true);
+			window.setTimeout(() => setCopied(false), 2e3);
+		} catch {}
+	};
+	const toggleBookmark = async (video) => {
+		if (!isAuthenticated) {
+			window.location.assign("/auth/google");
+			return;
+		}
+		try {
+			setBookmarkingId(video.id);
+			const payload = video.bookmarked ? await bookmarks.remove(video.id) : await bookmarks.save(video.id);
+			setItems((current) => current.map((item) => item.id === video.id ? {
+				...item,
+				bookmarked: payload.bookmarked
+			} : item));
+		} catch (error) {
+			if (error?.status === 422 || error?.status === 401) window.alert(error.payload?.errors?.billing?.[0] || error.payload?.errors?.auth?.[0] || error.message);
+		} finally {
+			setBookmarkingId(null);
+		}
+	};
+	return /* @__PURE__ */ jsxs("div", {
+		className: "tracker",
+		children: [
+			/* @__PURE__ */ jsxs("div", {
+				className: "viewbar",
+				children: [
+					/* @__PURE__ */ jsx("a", {
+						href: "/saved-searches",
+						className: "back",
+						children: "← all trackers"
+					}),
+					/* @__PURE__ */ jsx("span", { className: "spring" }),
+					/* @__PURE__ */ jsxs("div", {
+						className: "viewswitch",
+						children: [/* @__PURE__ */ jsx("button", {
+							className: view === "outliers" ? "on" : "",
+							onClick: () => setView("outliers"),
+							children: "outliers"
+						}), /* @__PURE__ */ jsx("button", {
+							className: view === "their" ? "on" : "",
+							onClick: () => setView("their"),
+							disabled: !brandHandle,
+							title: brandHandle ? `Only posts by ${account.handle}` : "No brand account detected in the results yet",
+							children: "their content"
+						})]
+					})
+				]
+			}),
+			/* @__PURE__ */ jsx(TrackerHead, {
+				search,
+				account,
+				lastRun: formatDate$1(search?.last_run_at),
+				onToggleWatchlist,
+				onShare: share,
+				copied,
+				watchlistUpdating
+			}),
+			/* @__PURE__ */ jsx(AiSummary, {
+				summary: search?.ai_summary,
+				generatedAt: search?.ai_summary_generated_at
+			}),
+			/* @__PURE__ */ jsx(SignalTiles, {
+				tiles,
+				deltas: insights.tile_deltas ?? {}
+			}),
+			items.length === 0 ? /* @__PURE__ */ jsxs("div", {
+				className: "gate",
+				children: [
+					/* @__PURE__ */ jsx("h2", { children: "No videos cleared the bar" }),
+					/* @__PURE__ */ jsxs("p", { children: [
+						"We scanned TikTok for ",
+						/* @__PURE__ */ jsx("b", { children: search?.phrase }),
+						" but nothing matched the phrase with a real creator behind it. Narrower phrases and brand names often do this — try a broader one, or run it again."
+					] }),
+					/* @__PURE__ */ jsx("div", {
+						className: "acts",
+						children: /* @__PURE__ */ jsx("button", {
+							className: "tbtn primary",
+							onClick: onRefresh,
+							disabled: refreshing,
+							children: refreshing ? "refreshing…" : "run it again"
+						})
+					})
+				]
+			}) : !isAuthenticated ? /* @__PURE__ */ jsxs("div", {
+				className: "gate",
+				children: [
+					/* @__PURE__ */ jsx("h2", { children: "Sign in to view the matched videos" }),
+					/* @__PURE__ */ jsxs("p", { children: [
+						"We found ",
+						items.length,
+						" videos for this search. Continue with Google to unlock the winner, the ranked list, and outbound TikTok links."
+					] }),
+					/* @__PURE__ */ jsxs("div", {
+						className: "acts",
+						children: [/* @__PURE__ */ jsx("a", {
+							href: "/auth/google",
+							className: "tbtn primary",
+							children: "continue with Google"
+						}), /* @__PURE__ */ jsx("a", {
+							href: "/trial",
+							className: "tbtn",
+							children: "start free trial"
+						})]
+					})
+				]
+			}) : /* @__PURE__ */ jsxs(Fragment, { children: [
+				/* @__PURE__ */ jsx(SectionHead, {
+					title: view === "their" ? "their content" : "outlier videos",
+					note: view === "their" ? `${account?.handle}'s own posts in this search. ranked by outlier score.` : "their posts that beat the search median. ranked by outlier score."
+				}),
+				feedItems.length === 0 ? /* @__PURE__ */ jsx("div", {
+					className: "panel",
+					children: /* @__PURE__ */ jsxs("p", {
+						className: "empty",
+						children: [
+							"None of the matched videos were posted by ",
+							account?.handle,
+							". The outliers view still has all",
+							" ",
+							items.length,
+							"."
+						]
+					})
+				}) : null,
+				/* @__PURE__ */ jsx(WinnerVideo, {
+					video: winner,
+					medianViews,
+					max: maxMultiple,
+					onToggleBookmark: toggleBookmark,
+					bookmarking: bookmarkingId === winner?.id
+				}),
+				rest.length > 0 && /* @__PURE__ */ jsxs(Fragment, { children: [
+					/* @__PURE__ */ jsxs("div", {
+						className: "sect-head",
+						style: { marginTop: "34px" },
+						children: [/* @__PURE__ */ jsx("h2", {
+							style: { fontSize: "19px" },
+							children: view === "their" ? "more of their posts" : "more outliers"
+						}), /* @__PURE__ */ jsxs("span", {
+							className: "note",
+							children: [rest.length, " more."]
+						})]
+					}),
+					/* @__PURE__ */ jsx("div", {
+						className: "feed",
+						children: shown.map((video, index) => /* @__PURE__ */ jsx(OutlierCard, {
+							video,
+							rank: index + 2,
+							medianViews,
+							max: maxMultiple,
+							onToggleBookmark: toggleBookmark,
+							bookmarking: bookmarkingId === video.id
+						}, video.id))
+					}),
+					/* @__PURE__ */ jsx("div", {
+						className: "loadmore",
+						children: /* @__PURE__ */ jsx("button", {
+							className: "tbtn",
+							disabled: visible >= rest.length,
+							onClick: () => setVisible((v) => v + PAGE_STEP),
+							children: visible >= rest.length ? "no more this week" : `load ${Math.min(PAGE_STEP, rest.length - visible)} more ↓`
+						})
+					})
+				] }),
+				/* @__PURE__ */ jsx(SectionHead, {
+					title: "hashtags & sounds they use",
+					note: "from the videos matched by this search."
+				}),
+				/* @__PURE__ */ jsxs("div", {
+					className: "hs",
+					children: [/* @__PURE__ */ jsx(HashtagPanel, { hashtags: insights.hashtags }), /* @__PURE__ */ jsx(SoundPanel, { sounds: insights.sounds })]
+				}),
+				/* @__PURE__ */ jsx(SectionHead, {
+					title: "performance over time",
+					note: "this tracker, past 12 weeks."
+				}),
+				/* @__PURE__ */ jsx(PerformanceChart, { trend }),
+				/* @__PURE__ */ jsx(SectionHead, {
+					title: "when they post",
+					note: "posting schedule by day and hour."
+				}),
+				/* @__PURE__ */ jsx(PostingHeatmap, { heatmap: insights.heatmap }),
+				/* @__PURE__ */ jsx(SectionHead, {
+					title: "more data",
+					note: "how the tracker is moving."
+				}),
+				/* @__PURE__ */ jsxs("div", {
+					className: "datagrid",
+					children: [/* @__PURE__ */ jsx(OutliersPerWeek, {
+						bars: trend?.outliers_per_week ?? [],
+						threshold
+					}), /* @__PURE__ */ jsx(ScoreDistribution, { distribution: insights.distribution ?? [] })]
+				}),
+				/* @__PURE__ */ jsxs("div", {
+					className: "provbox",
+					children: [/* @__PURE__ */ jsx("p", {
+						className: "provnote",
+						children: "Outlier scores compare each video against the median of this search, not the creator's own account history — that needs a profile scrape."
+					}), (insights.placeholders ?? []).length > 0 && /* @__PURE__ */ jsxs("p", {
+						className: "provnote",
+						children: [/* @__PURE__ */ jsx(SampleBadge, {}), /* @__PURE__ */ jsxs("span", { children: [
+							"Anything carrying this badge is invented and safe to ignore. It all comes from",
+							" ",
+							/* @__PURE__ */ jsx("code", { children: "PlaceholderProfileData" }),
+							" — delete that class once the TikTok profile actor exists and the badges disappear on their own."
+						] })]
+					})]
+				})
+			] }),
+			/* @__PURE__ */ jsxs("div", {
+				className: "sect-head",
+				style: { marginBottom: "0" },
+				children: [/* @__PURE__ */ jsx("span", {
+					className: "note",
+					children: search?.status === "paused" ? "paused — no refreshes will run." : search?.next_run_at ? `next refresh ${new Date(search.next_run_at).toLocaleDateString()}` : "no refresh scheduled."
+				}), /* @__PURE__ */ jsxs("div", {
+					className: "head-actions",
+					children: [
+						onTogglePause && /* @__PURE__ */ jsx("button", {
+							className: "tbtn",
+							onClick: onTogglePause,
+							children: search?.status === "paused" ? "resume" : "pause"
+						}),
+						/* @__PURE__ */ jsx("button", {
+							className: "tbtn",
+							onClick: onRefresh,
+							disabled: refreshing || search?.status === "scraping",
+							children: refreshing ? "refreshing…" : "refresh now"
+						}),
+						onDelete && /* @__PURE__ */ jsx("button", {
+							className: "tbtn danger",
+							onClick: onDelete,
+							children: "delete"
+						})
+					]
+				})]
+			}),
+			/* @__PURE__ */ jsxs("div", {
+				className: "footnote",
+				children: [
+					search?.name,
+					" · ",
+					items.length,
+					" matched ",
+					items.length === 1 ? "video" : "videos"
+				]
+			})
+		]
+	});
+}
+//#endregion
 //#region resources/js/Pages/SavedSearches/Show.jsx
 var Show_exports = /* @__PURE__ */ __exportAll({ default: () => Show });
+/** Types that get the tracker detail layout. Product keeps the results view. */
+var TRACKER_TYPES = ["brand", "competitor"];
 var PILL = {
 	scraping: {
 		text: "Refreshing",
@@ -3397,6 +5851,7 @@ var PILL = {
 function Show({ search: initial, isAuthenticated = false, billing }) {
 	const [search, setSearch] = useState(initial);
 	const [refreshing, setRefreshing] = useState(false);
+	const [watchlistUpdating, setWatchlistUpdating] = useState(false);
 	const refresh = async () => {
 		setRefreshing(true);
 		try {
@@ -3418,18 +5873,41 @@ function Show({ search: initial, isAuthenticated = false, billing }) {
 			...updated
 		}));
 	};
-	return /* @__PURE__ */ jsxs(Fragment, { children: [/* @__PURE__ */ jsx(Head, { title: `${search.name} — VVF` }), /* @__PURE__ */ jsxs(SearchShell, {
-		pill: PILL[search.status] ?? PILL.done,
+	const toggleWatchlist = async () => {
+		setWatchlistUpdating(true);
+		try {
+			const { search: updated } = await savedSearch.watchlist(search.id, !search.is_watchlisted);
+			setSearch((prev) => ({
+				...prev,
+				...updated
+			}));
+		} finally {
+			setWatchlistUpdating(false);
+		}
+	};
+	const isTracker = TRACKER_TYPES.includes(search.search_type);
+	return /* @__PURE__ */ jsxs(Fragment, { children: [/* @__PURE__ */ jsx(Head, { title: `${search.name} — VVF` }), /* @__PURE__ */ jsx(AppLayout, {
+		pill: isTracker ? void 0 : PILL[search.status] ?? PILL.done,
 		step: "results",
-		onNewSearch: () => router.visit("/"),
-		onExit: () => router.visit("/saved-searches"),
-		children: [/* @__PURE__ */ jsx(ResultsScreen, {
+		width: isTracker ? "max-w-[1240px]" : "max-w-6xl",
+		children: isTracker ? /* @__PURE__ */ jsx(DetailScreen, {
+			search,
+			isAuthenticated,
+			refreshing,
+			watchlistUpdating,
+			onRefresh: refresh,
+			onToggleWatchlist: toggleWatchlist,
+			onTogglePause: togglePause,
+			onDelete: remove
+		}) : /* @__PURE__ */ jsxs(Fragment, { children: [/* @__PURE__ */ jsx(ResultsScreen, {
 			search,
 			isAuthenticated,
 			billingState: billing,
 			refreshing,
+			watchlistUpdating,
 			onRefresh: refresh,
-			onStartTrial: () => router.visit("/trial")
+			onStartTrial: () => router.visit("/trial"),
+			onToggleWatchlist: toggleWatchlist
 		}), /* @__PURE__ */ jsxs("div", {
 			className: "mt-8 flex flex-wrap items-center justify-between gap-3 border-t border-black/[.06] pt-6 dark:border-white/[.07]",
 			children: [/* @__PURE__ */ jsx("p", {
@@ -3456,7 +5934,7 @@ function Show({ search: initial, isAuthenticated = false, billing }) {
 					})
 				]
 			})]
-		})]
+		})] })
 	})] });
 }
 //#endregion
@@ -3713,7 +6191,7 @@ function KeywordsScreen({ phrase, onBack, onSubmit, submitting = false, error = 
 //#endregion
 //#region resources/js/Pages/Search/Keywords.jsx
 var Keywords_exports = /* @__PURE__ */ __exportAll({ default: () => Keywords });
-function Keywords({ phrase }) {
+function Keywords({ phrase, type = "brand" }) {
 	const [submitting, setSubmitting] = useState(false);
 	const [error, setError] = useState(null);
 	const submit = async ({ keywords, frequency, name }) => {
@@ -3721,6 +6199,7 @@ function Keywords({ phrase }) {
 		setError(null);
 		try {
 			const created = await createSavedSearch({
+				type,
 				phrase,
 				name,
 				keywords,
@@ -3737,14 +6216,13 @@ function Keywords({ phrase }) {
 			setSubmitting(false);
 		}
 	};
-	return /* @__PURE__ */ jsxs(Fragment, { children: [/* @__PURE__ */ jsx(Head, { title: "Add keywords — VVF" }), /* @__PURE__ */ jsx(SearchShell, {
+	return /* @__PURE__ */ jsxs(Fragment, { children: [/* @__PURE__ */ jsx(Head, { title: "Add keywords — VVF" }), /* @__PURE__ */ jsx(AppLayout, {
 		pill: {
 			text: "1 free search",
 			tone: "ok"
 		},
 		step: "keywords",
-		onNewSearch: () => router.visit("/"),
-		onExit: () => router.visit("/"),
+		width: "max-w-4xl",
 		children: /* @__PURE__ */ jsx(KeywordsScreen, {
 			phrase,
 			submitting,
@@ -3764,6 +6242,8 @@ var STAGES = [
 	"Ranking by outlier score"
 ];
 function RunningScreen({ searchId, onBack, onDone }) {
+	const { auth = {} } = usePage().props;
+	const signedIn = auth.signedIn ?? Boolean(auth.user);
 	const [search, setSearch] = useState(null);
 	const [failed, setFailed] = useState(null);
 	const [email, setEmail] = useState("");
@@ -3869,14 +6349,15 @@ function RunningScreen({ searchId, onBack, onDone }) {
 						}, label);
 					})
 				}),
-				/* @__PURE__ */ jsxs("div", {
+				!signedIn && /* @__PURE__ */ jsxs("div", {
 					className: "ring-gradient mt-8 rounded-3xl bg-white/70 p-6 text-left backdrop-blur-2xl dark:bg-white/[.04]",
 					children: [
 						/* @__PURE__ */ jsx("p", {
 							className: "mb-4 text-center font-display text-sm font-semibold",
 							children: "Or have them emailed when they're done"
 						}),
-						/* @__PURE__ */ jsxs("button", {
+						/* @__PURE__ */ jsxs("a", {
+							href: "/auth/google",
 							className: "btn-ghost h-[52px] w-full text-[15px]",
 							children: [/* @__PURE__ */ jsx(Google, {}), " Continue with Google"]
 						}),
@@ -3914,8 +6395,8 @@ function RunningScreen({ searchId, onBack, onDone }) {
 					]
 				}),
 				/* @__PURE__ */ jsx("p", {
-					className: "mt-5 text-[12.5px] leading-relaxed faint",
-					children: "Safe to close this tab — the search keeps running and stays in your saved searches."
+					className: `text-[12.5px] leading-relaxed faint ${signedIn ? "mt-8" : "mt-5"}`,
+					children: "Safe to close this tab — the search keeps running and stays on your watchlist."
 				})
 			] })
 		})]
@@ -3925,18 +6406,415 @@ function RunningScreen({ searchId, onBack, onDone }) {
 //#region resources/js/Pages/Search/Running.jsx
 var Running_exports = /* @__PURE__ */ __exportAll({ default: () => Running });
 function Running({ searchId }) {
-	return /* @__PURE__ */ jsxs(Fragment, { children: [/* @__PURE__ */ jsx(Head, { title: "Search running — VVF" }), /* @__PURE__ */ jsx(SearchShell, {
+	return /* @__PURE__ */ jsxs(Fragment, { children: [/* @__PURE__ */ jsx(Head, { title: "Search running — VVF" }), /* @__PURE__ */ jsx(AppLayout, {
 		pill: {
 			text: "Search running",
 			tone: "ok"
 		},
 		step: "running",
-		onNewSearch: () => router.visit("/"),
-		onExit: () => router.visit("/"),
+		width: "max-w-4xl",
 		children: /* @__PURE__ */ jsx(RunningScreen, {
 			searchId,
-			onBack: () => router.visit("/"),
+			onBack: () => router.visit("/saved-searches"),
 			onDone: () => router.visit(`/saved-searches/${searchId}`)
+		})
+	})] });
+}
+//#endregion
+//#region resources/js/Pages/Settings/SettingsShell.jsx
+var SettingsShell_exports = /* @__PURE__ */ __exportAll({ default: () => SettingsShell });
+var NAV = [
+	{
+		key: "account",
+		label: "Account",
+		href: "/settings/account",
+		icon: User
+	},
+	{
+		key: "appearance",
+		label: "Appearance",
+		href: "/settings/appearance",
+		icon: Sun
+	},
+	{
+		key: "subscription",
+		label: "Subscription",
+		href: "/settings/subscription",
+		icon: Store
+	}
+];
+function SettingsShell({ section, heading, eyebrow, children }) {
+	const { auth = {} } = usePage().props;
+	const logout = useForm({});
+	const signOut = () => {
+		logout.post("/logout");
+	};
+	return /* @__PURE__ */ jsx(AppLayout, {
+		width: "max-w-7xl",
+		children: /* @__PURE__ */ jsxs("div", {
+			className: "grid gap-5 xl:grid-cols-[240px_minmax(0,1fr)]",
+			children: [/* @__PURE__ */ jsxs("aside", {
+				className: "space-y-4",
+				children: [/* @__PURE__ */ jsx("div", {
+					className: "surface p-4",
+					children: /* @__PURE__ */ jsxs("div", {
+						className: "flex items-center gap-3",
+						children: [/* @__PURE__ */ jsx("div", {
+							className: "flex h-12 w-12 items-center justify-center rounded-2xl bg-accent/12 font-display text-[18px] font-bold text-accent dark:text-accent-glow",
+							children: (auth.user?.name ?? "V").slice(0, 1).toUpperCase()
+						}), /* @__PURE__ */ jsxs("div", {
+							className: "min-w-0",
+							children: [/* @__PURE__ */ jsx("p", {
+								className: "truncate text-[13px] font-semibold text-ink dark:text-white",
+								children: auth.user?.name ?? "Account"
+							}), /* @__PURE__ */ jsx("p", {
+								className: "truncate text-[11.5px] faint",
+								children: auth.user?.email ?? "No email found"
+							})]
+						})]
+					})
+				}), /* @__PURE__ */ jsxs("div", {
+					className: "surface p-3",
+					children: [/* @__PURE__ */ jsx("nav", {
+						className: "space-y-1",
+						children: NAV.map((item) => {
+							const Icon = item.icon;
+							const active = item.key === section;
+							return /* @__PURE__ */ jsxs(Link, {
+								href: item.href,
+								className: `flex items-center gap-3 rounded-2xl px-3 py-3 text-[13px] font-semibold transition ${active ? "bg-accent/10 text-accent dark:bg-accent/15 dark:text-accent-glow" : "muted hover:bg-black/[.04] hover:text-ink dark:hover:bg-white/[.06] dark:hover:text-white"}`,
+								children: [
+									/* @__PURE__ */ jsx("span", {
+										className: `flex h-8 w-8 items-center justify-center rounded-xl border ${active ? "border-accent/20 bg-white dark:bg-white/[.06]" : "border-black/[.06] bg-black/[.02] dark:border-white/[.08] dark:bg-white/[.03]"}`,
+										children: /* @__PURE__ */ jsx(Icon, { className: "h-4 w-4" })
+									}),
+									item.label,
+									active && /* @__PURE__ */ jsx("span", { className: "ml-auto h-2 w-2 rounded-full bg-[#ff4f87]" })
+								]
+							}, item.key);
+						})
+					}), /* @__PURE__ */ jsx("div", {
+						className: "mt-3 border-t border-black/[.06] pt-3 dark:border-white/[.08]",
+						children: /* @__PURE__ */ jsxs("button", {
+							type: "button",
+							className: "flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-[13px] font-semibold text-ink/45 transition hover:bg-hot/8 hover:text-hot dark:text-white/40",
+							disabled: true,
+							title: "Delete account flow will be added later",
+							children: [/* @__PURE__ */ jsx("span", {
+								className: "flex h-8 w-8 items-center justify-center rounded-xl border border-black/[.06] bg-black/[.02] dark:border-white/[.08] dark:bg-white/[.03]",
+								children: /* @__PURE__ */ jsx(Exit, { className: "h-4 w-4" })
+							}), "Delete account"]
+						})
+					})]
+				})]
+			}), /* @__PURE__ */ jsxs("section", {
+				className: "surface overflow-hidden",
+				children: [/* @__PURE__ */ jsxs("div", {
+					className: "flex flex-wrap items-center justify-between gap-3 border-b border-black/[.06] px-6 py-5 dark:border-white/[.08]",
+					children: [/* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsx("p", {
+						className: "text-[11px] font-semibold tracking-[.18em] text-accent uppercase dark:text-accent-glow",
+						children: eyebrow
+					}), /* @__PURE__ */ jsx("h1", {
+						className: "mt-1 font-display text-[24px] font-bold tracking-[-.02em]",
+						children: heading
+					})] }), /* @__PURE__ */ jsxs("button", {
+						type: "button",
+						onClick: signOut,
+						disabled: logout.processing,
+						className: "inline-flex h-11 items-center gap-2 rounded-2xl border border-black/[.08] px-4 text-[13px] font-semibold transition hover:border-accent/35 hover:text-accent dark:border-white/[.12] dark:hover:text-accent-glow",
+						children: [/* @__PURE__ */ jsx(Exit, { className: "h-4 w-4" }), logout.processing ? "Logging out..." : "Log out"]
+					})]
+				}), /* @__PURE__ */ jsx("div", {
+					className: "px-6 py-6",
+					children
+				})]
+			})]
+		})
+	});
+}
+//#endregion
+//#region resources/js/Pages/Settings/Account.jsx
+var Account_exports = /* @__PURE__ */ __exportAll({ default: () => Account });
+function Account() {
+	const { auth = {}, flash = {} } = usePage().props;
+	const form = useForm({ name: auth.user?.name ?? "" });
+	const submit = (event) => {
+		event.preventDefault();
+		form.patch("/settings/account");
+	};
+	return /* @__PURE__ */ jsxs(Fragment, { children: [/* @__PURE__ */ jsx(Head, { title: "Account settings - VVF" }), /* @__PURE__ */ jsx(SettingsShell, {
+		section: "account",
+		eyebrow: "Identity",
+		heading: "Account Information",
+		children: /* @__PURE__ */ jsxs("div", {
+			className: "max-w-3xl",
+			children: [
+				/* @__PURE__ */ jsx("h2", {
+					className: "font-display text-[18px] font-bold",
+					children: "Account Information"
+				}),
+				/* @__PURE__ */ jsx("p", {
+					className: "mt-2 text-[13.5px] muted",
+					children: "Update your display name. Your email address is locked after account creation."
+				}),
+				flash.status && /* @__PURE__ */ jsx("div", {
+					className: "mt-5 rounded-2xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-700 dark:text-emerald-300",
+					children: flash.status
+				}),
+				/* @__PURE__ */ jsxs("form", {
+					onSubmit: submit,
+					className: "mt-6 space-y-5",
+					children: [
+						/* @__PURE__ */ jsxs("div", { children: [
+							/* @__PURE__ */ jsx("label", {
+								className: "mb-2 block text-[12px] font-semibold text-ink dark:text-white",
+								children: "Name"
+							}),
+							/* @__PURE__ */ jsx("input", {
+								value: form.data.name,
+								onChange: (event) => form.setData("name", event.target.value),
+								className: "field h-12 text-sm"
+							}),
+							form.errors.name && /* @__PURE__ */ jsx("p", {
+								className: "mt-2 text-[12px] text-hot",
+								children: form.errors.name
+							})
+						] }),
+						/* @__PURE__ */ jsxs("div", { children: [
+							/* @__PURE__ */ jsx("label", {
+								className: "mb-2 block text-[12px] font-semibold text-ink dark:text-white",
+								children: "Email"
+							}),
+							/* @__PURE__ */ jsx("input", {
+								value: auth.user?.email ?? "",
+								readOnly: true,
+								className: "field h-12 cursor-not-allowed bg-black/[.03] text-sm opacity-75 dark:bg-white/[.05]"
+							}),
+							/* @__PURE__ */ jsx("p", {
+								className: "mt-2 text-[12px] faint",
+								children: "Contact support if you need help updating your email address."
+							})
+						] }),
+						/* @__PURE__ */ jsx("button", {
+							type: "submit",
+							disabled: form.processing,
+							className: "btn-accent h-11 px-6 text-[12px] tracking-[.14em] uppercase",
+							children: form.processing ? "Saving..." : "Save"
+						})
+					]
+				})
+			]
+		})
+	})] });
+}
+//#endregion
+//#region resources/js/Pages/Settings/Appearance.jsx
+var Appearance_exports = /* @__PURE__ */ __exportAll({ default: () => Appearance });
+function Appearance() {
+	const { theme, toggle } = useTheme();
+	return /* @__PURE__ */ jsxs(Fragment, { children: [/* @__PURE__ */ jsx(Head, { title: "Appearance settings - VVF" }), /* @__PURE__ */ jsx(SettingsShell, {
+		section: "appearance",
+		eyebrow: "Display",
+		heading: "Appearance",
+		children: /* @__PURE__ */ jsx("div", {
+			className: "max-w-4xl",
+			children: /* @__PURE__ */ jsxs("div", {
+				className: "flex items-center justify-between gap-4 dark:border-white/[.08]",
+				children: [/* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsx("h2", {
+					className: "font-display text-[18px] font-bold",
+					children: "Color theme"
+				}), /* @__PURE__ */ jsx("p", {
+					className: "mt-2 text-[13.5px] muted",
+					children: "Switch between light and dark mode."
+				})] }), /* @__PURE__ */ jsx(ThemeToggle, {
+					theme,
+					onToggle: toggle
+				})]
+			})
+		})
+	})] });
+}
+//#endregion
+//#region resources/js/Pages/Settings/Subscription.jsx
+var Subscription_exports = /* @__PURE__ */ __exportAll({ default: () => Subscription });
+function formatDate(iso) {
+	if (!iso) return null;
+	return new Date(iso).toLocaleString(void 0, {
+		month: "short",
+		day: "numeric",
+		year: "numeric",
+		hour: "numeric",
+		minute: "2-digit",
+		timeZoneName: "short"
+	});
+}
+function usageRatio(used, limit) {
+	if (limit === -1 || limit === 0) return 0;
+	return Math.min(100, Math.max(0, used / limit * 100));
+}
+function LimitCard({ title, blurb, remainingLabel, chip, ratio, tone = "sky" }) {
+	const tones = {
+		sky: "from-sky-500/10 to-cyan-500/10 border-sky-500/15",
+		mint: "from-emerald-500/10 to-teal-500/10 border-emerald-500/15",
+		rose: "from-pink-500/10 to-rose-500/10 border-pink-500/15",
+		violet: "from-violet-500/10 to-fuchsia-500/10 border-violet-500/15"
+	};
+	return /* @__PURE__ */ jsxs("div", {
+		className: `rounded-[26px] border bg-linear-to-br p-5 ${tones[tone] ?? tones.sky}`,
+		children: [
+			/* @__PURE__ */ jsxs("div", {
+				className: "flex items-start justify-between gap-3",
+				children: [/* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsx("h3", {
+					className: "font-display text-[18px] font-bold",
+					children: title
+				}), /* @__PURE__ */ jsx("p", {
+					className: "mt-1 max-w-[230px] text-[12.5px] muted",
+					children: blurb
+				})] }), /* @__PURE__ */ jsx("div", {
+					className: "flex h-9 items-center rounded-full bg-white/80 px-3 text-[11px] font-semibold tracking-[.12em] text-ink uppercase dark:bg-white/[.08] dark:text-white",
+					children: chip
+				})]
+			}),
+			/* @__PURE__ */ jsx("p", {
+				className: "mt-5 text-[13px] font-semibold text-ink dark:text-white",
+				children: remainingLabel
+			}),
+			/* @__PURE__ */ jsx("div", {
+				className: "mt-3 h-2.5 overflow-hidden rounded-full bg-black/[.06] dark:bg-white/[.08]",
+				children: /* @__PURE__ */ jsx("div", {
+					className: "h-full rounded-full bg-linear-to-r from-accent-glow to-accent",
+					style: { width: `${ratio}%` }
+				})
+			})
+		]
+	});
+}
+function Subscription({ subscription }) {
+	const [tab, setTab] = useState("plan");
+	const limits = subscription?.limits ?? {};
+	const bookmarkLimit = limits.bookmarkLimit ?? 0;
+	const searchLimit = limits.searchCreditsLimit ?? 0;
+	const bookmarksUsed = limits.bookmarksUsed ?? 0;
+	const searchUsed = limits.searchCreditsUsed ?? 0;
+	const planFeatures = useMemo(() => {
+		return [
+			bookmarkLimit === -1 ? "Unlimited watchlist" : `${bookmarkLimit} watchlist slots`,
+			`${searchLimit} searches`,
+			subscription?.status === "active" ? "Active subscription" : "Billing available"
+		];
+	}, [
+		bookmarkLimit,
+		searchLimit,
+		subscription?.status
+	]);
+	return /* @__PURE__ */ jsxs(Fragment, { children: [/* @__PURE__ */ jsx(Head, { title: "Subscription settings - VVF" }), /* @__PURE__ */ jsx(SettingsShell, {
+		section: "subscription",
+		eyebrow: "Plan",
+		heading: "Subscription",
+		children: /* @__PURE__ */ jsxs("div", {
+			className: "space-y-4",
+			children: [/* @__PURE__ */ jsx("div", {
+				className: "rounded-[26px] border border-black/[.06] p-1 dark:border-white/[.08]",
+				children: /* @__PURE__ */ jsx("div", {
+					className: "grid grid-cols-2 gap-1",
+					children: [{
+						key: "plan",
+						label: "Plan"
+					}, {
+						key: "limits",
+						label: "Plan limits"
+					}].map((item) => {
+						const active = tab === item.key;
+						return /* @__PURE__ */ jsx("button", {
+							type: "button",
+							onClick: () => setTab(item.key),
+							className: `rounded-[20px] px-4 py-3 text-[13px] font-semibold transition ${active ? "bg-white shadow-[0_12px_30px_-20px_rgba(16,18,32,.35)] dark:bg-white/[.06]" : "muted"}`,
+							children: item.label
+						}, item.key);
+					})
+				})
+			}), tab === "plan" ? /* @__PURE__ */ jsxs("div", {
+				className: "overflow-hidden rounded-[28px] border border-black/[.06] bg-linear-to-br from-accent/5 via-white to-[#ff4f87]/[.04] dark:border-white/[.08] dark:from-accent/10 dark:via-canvas-dark dark:to-[#ff4f87]/[.07]",
+				children: [
+					/* @__PURE__ */ jsxs("div", {
+						className: "px-6 py-6",
+						children: [
+							/* @__PURE__ */ jsx("p", {
+								className: "text-[11px] font-semibold tracking-[.18em] faint uppercase",
+								children: "Summary"
+							}),
+							/* @__PURE__ */ jsx("p", {
+								className: "mt-4 text-[11px] font-semibold tracking-[.18em] faint uppercase",
+								children: "Current plan"
+							}),
+							/* @__PURE__ */ jsxs("div", {
+								className: "mt-2 flex flex-wrap items-end justify-between gap-4",
+								children: [/* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsxs("div", {
+									className: "flex items-center gap-2",
+									children: [/* @__PURE__ */ jsx("h2", {
+										className: "font-display text-[34px] font-bold tracking-[-.03em]",
+										children: subscription?.planName ?? "Free"
+									}), /* @__PURE__ */ jsx("span", {
+										className: "rounded-full bg-emerald-500/12 px-2.5 py-1 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400",
+										children: subscription?.status ?? "free"
+									})]
+								}), /* @__PURE__ */ jsx("div", {
+									className: "mt-4 flex flex-wrap gap-2",
+									children: planFeatures.map((feature) => /* @__PURE__ */ jsx("span", {
+										className: "rounded-full border border-black/[.06] bg-white/85 px-3 py-1.5 text-[12px] font-semibold dark:border-white/[.08] dark:bg-white/[.06]",
+										children: feature
+									}, feature))
+								})] }), /* @__PURE__ */ jsxs("div", {
+									className: "text-right",
+									children: [/* @__PURE__ */ jsx("p", {
+										className: "font-display text-[40px] font-bold tracking-[-.04em]",
+										children: subscription?.price ? `$${subscription.price}` : "$0.00"
+									}), /* @__PURE__ */ jsxs("p", {
+										className: "text-[13px] muted",
+										children: ["/ ", subscription?.interval ?? "month"]
+									})]
+								})]
+							})
+						]
+					}),
+					/* @__PURE__ */ jsx("div", {
+						className: "border-t border-black/[.06] px-6 py-4 dark:border-white/[.08]",
+						children: /* @__PURE__ */ jsxs("div", {
+							className: "flex flex-wrap gap-x-5 gap-y-2 text-[12px] muted",
+							children: [/* @__PURE__ */ jsxs("span", { children: ["Started ", formatDate(subscription?.startedAt) ?? "Not started yet"] }), /* @__PURE__ */ jsxs("span", { children: ["Renews ", formatDate(subscription?.renewsAt) ?? "No renewal date"] })]
+						})
+					}),
+					/* @__PURE__ */ jsxs("div", {
+						className: "grid gap-3 border-t border-black/[.06] px-6 py-5 sm:grid-cols-2 dark:border-white/[.08]",
+						children: [/* @__PURE__ */ jsx(Link, {
+							href: "/trial",
+							className: "inline-flex h-12 items-center justify-center rounded-2xl bg-[#12172a] px-5 text-[13px] font-semibold text-white transition hover:opacity-95 dark:bg-white dark:text-canvas-dark",
+							children: "Update payment details"
+						}), /* @__PURE__ */ jsx(Link, {
+							href: "/trial",
+							className: "inline-flex h-12 items-center justify-center rounded-2xl border border-black/[.08] px-5 text-[13px] font-semibold transition hover:border-accent/35 hover:text-accent dark:border-white/[.12] dark:hover:text-accent-glow",
+							children: "Manage billing in Stripe"
+						})]
+					})
+				]
+			}) : /* @__PURE__ */ jsxs("div", {
+				className: "grid gap-4 xl:grid-cols-2",
+				children: [/* @__PURE__ */ jsx(LimitCard, {
+					title: "Search",
+					blurb: "Saved searches and search credits available on your current plan.",
+					remainingLabel: searchLimit === -1 ? "Unlimited" : `${Math.max(0, searchLimit - searchUsed)} remaining`,
+					chip: searchLimit === -1 ? "Unlimited" : `${searchUsed} / ${searchLimit} used`,
+					ratio: usageRatio(searchUsed, searchLimit),
+					tone: "sky"
+				}), /* @__PURE__ */ jsx(LimitCard, {
+					title: "Watchlist",
+					blurb: "Watchlist capacity available on your current plan.",
+					remainingLabel: bookmarkLimit === -1 ? "Unlimited" : `${Math.max(0, bookmarkLimit - bookmarksUsed)} remaining`,
+					chip: bookmarkLimit === -1 ? "Unlimited" : `${bookmarksUsed} / ${bookmarkLimit} used`,
+					ratio: usageRatio(bookmarksUsed, bookmarkLimit),
+					tone: "mint"
+				})]
+			})]
 		})
 	})] });
 }
@@ -3982,7 +6860,7 @@ function TrialScreen({ onBack, backLabel = "Back to results" }) {
 				}),
 				/* @__PURE__ */ jsx("p", {
 					className: "mt-3 text-[14.5px] muted",
-					children: "Basic gives you 150 search credits and 50 bookmarks. Premium gives you 400 search credits and unlimited bookmarks."
+					children: "Free includes 1 search and 0 watchlist slots. Basic gives you 150 searches and 50 watchlist slots. Premium gives you 400 searches and unlimited watchlist."
 				}),
 				/* @__PURE__ */ jsx("div", {
 					className: "mx-auto mt-9 grid max-w-2xl gap-5 text-left sm:grid-cols-2",
@@ -4016,9 +6894,9 @@ function TrialScreen({ onBack, backLabel = "Back to results" }) {
 								className: "mt-4 text-[12px] faint",
 								children: [
 									t.searchCreditsLimit,
-									" credits · ",
+									" searches · ",
 									t.bookmarkLimit === -1 ? "Unlimited" : t.bookmarkLimit,
-									" bookmarks"
+									" watchlist"
 								]
 							}),
 							/* @__PURE__ */ jsx("ul", {
@@ -4065,13 +6943,12 @@ function TrialScreen({ onBack, backLabel = "Back to results" }) {
 //#region resources/js/Pages/Trial.jsx
 var Trial_exports = /* @__PURE__ */ __exportAll({ default: () => Trial });
 function Trial() {
-	return /* @__PURE__ */ jsxs(Fragment, { children: [/* @__PURE__ */ jsx(Head, { title: "Start your trial — VVF" }), /* @__PURE__ */ jsx(SearchShell, {
+	return /* @__PURE__ */ jsxs(Fragment, { children: [/* @__PURE__ */ jsx(Head, { title: "Start your trial — VVF" }), /* @__PURE__ */ jsx(AppLayout, {
 		pill: {
 			text: "Trial",
 			tone: "accent"
 		},
-		onNewSearch: () => router.visit("/"),
-		onExit: () => router.visit("/"),
+		width: "max-w-4xl",
 		children: /* @__PURE__ */ jsx(TrialScreen, {
 			backLabel: "Back to home",
 			onBack: () => router.visit("/")
@@ -4092,9 +6969,20 @@ createServer((page) => createInertiaApp({
 			"./Pages/Landing.jsx": Landing_exports,
 			"./Pages/SavedSearches/Index.jsx": Index_exports,
 			"./Pages/SavedSearches/Show.jsx": Show_exports,
+			"./Pages/SavedSearches/detail/Badges.jsx": Badges_exports,
+			"./Pages/SavedSearches/detail/DetailScreen.jsx": DetailScreen_exports,
+			"./Pages/SavedSearches/detail/InsightPanels.jsx": InsightPanels_exports,
+			"./Pages/SavedSearches/detail/OutlierVideos.jsx": OutlierVideos_exports,
+			"./Pages/SavedSearches/detail/TrendPanels.jsx": TrendPanels_exports,
 			"./Pages/Search/Keywords.jsx": Keywords_exports,
 			"./Pages/Search/Running.jsx": Running_exports,
-			"./Pages/Trial.jsx": Trial_exports
+			"./Pages/Settings/Account.jsx": Account_exports,
+			"./Pages/Settings/Appearance.jsx": Appearance_exports,
+			"./Pages/Settings/SettingsShell.jsx": SettingsShell_exports,
+			"./Pages/Settings/Subscription.jsx": Subscription_exports,
+			"./Pages/Trial.jsx": Trial_exports,
+			"./Pages/components/AppFooter.jsx": AppFooter_exports,
+			"./Pages/components/AppLayout.jsx": AppLayout_exports
 		}))[`./Pages/${name}.jsx`];
 	},
 	setup: ({ App, props }) => /* @__PURE__ */ jsx(App, { ...props })

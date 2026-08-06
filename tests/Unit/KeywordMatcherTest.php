@@ -199,6 +199,103 @@ class KeywordMatcherTest extends TestCase
         $this->assertGreaterThan($result['kept'][1]['virality_score'], $result['kept'][0]['virality_score']);
     }
 
+    public function test_plural_and_singular_phrase_forms_match_each_other(): void
+    {
+        $plural = $this->item(['title' => 'stacking my brand rings today']);
+        $singular = $this->item(['title' => 'my favorite brand ring']);
+
+        $this->assertTrue($this->matcher->matchesPhrase($plural, 'brand ring'));
+        $this->assertTrue($this->matcher->matchesPhrase($singular, 'brand rings'));
+    }
+
+    public function test_plural_tolerance_does_not_loosen_into_substrings(): void
+    {
+        $item = $this->item(['title' => 'my gopurest routine']);
+
+        $this->assertFalse($this->matcher->matchesPhrase($item, 'gopure beauty'));
+    }
+
+    public function test_a_brands_own_emoji_captioned_post_is_rescued_by_its_handle(): void
+    {
+        // The classic miss: the brand posts its own video and the caption is
+        // three emoji. The phrase gate alone throws the brand's content away.
+        $item = $this->item([
+            'title' => 'obsessed with this glow routine',
+            'hashtags' => [],
+            'username' => 'gopurebeauty',
+            'name' => 'goPure Beauty',
+        ]);
+
+        $result = $this->matcher->prescreen([$item], 'gopure', ['gopure', 'gopure review']);
+
+        $this->assertSame(1, $result['summary']['kept']);
+        $this->assertSame(1, $result['summary']['rescued_by_handle']);
+        $this->assertSame(KeywordMatcher::MATCH_HANDLE, $result['kept'][0]['match_type']);
+    }
+
+    public function test_short_phrases_never_handle_match(): void
+    {
+        $item = $this->item([
+            'title' => 'my unrelated video',
+            'hashtags' => [],
+            'username' => 'cocacola',
+        ]);
+
+        $this->assertFalse($this->matcher->matchesCreatorIdentity($item, 'co'));
+    }
+
+    public function test_two_supporting_keywords_rescue_a_phrase_miss(): void
+    {
+        $item = $this->item(['title' => 'glass skin with snail mucin tonight', 'hashtags' => []]);
+
+        $result = $this->matcher->prescreen(
+            [$item],
+            'korean skincare',
+            ['korean skincare', 'glass skin', 'snail mucin'],
+        );
+
+        $this->assertSame(1, $result['summary']['kept']);
+        $this->assertSame(1, $result['summary']['rescued_by_supporting']);
+        $this->assertSame(KeywordMatcher::MATCH_SUPPORTING, $result['kept'][0]['match_type']);
+    }
+
+    public function test_one_supporting_keyword_is_not_enough_to_rescue(): void
+    {
+        $item = $this->item(['title' => 'glass skin goals for summer', 'hashtags' => []]);
+
+        $result = $this->matcher->prescreen(
+            [$item],
+            'korean skincare',
+            ['korean skincare', 'glass skin', 'snail mucin'],
+        );
+
+        $this->assertSame(0, $result['summary']['kept']);
+        $this->assertSame(1, $result['summary']['main_keyword_mismatch']);
+    }
+
+    public function test_rescued_items_score_below_an_identical_phrase_match(): void
+    {
+        $phraseMatch = $this->item(['title' => 'korean skincare glass skin snail mucin', 'video_id' => 'a']);
+        $rescued = $this->item(['title' => 'glass skin with snail mucin', 'hashtags' => [], 'video_id' => 'b']);
+
+        $result = $this->matcher->prescreen(
+            [$phraseMatch, $rescued],
+            'korean skincare',
+            ['korean skincare', 'glass skin', 'snail mucin'],
+        );
+
+        $this->assertSame(2, $result['summary']['kept']);
+
+        $byId = collect($result['kept'])->keyBy('video_id');
+
+        // Same engagement, weaker evidence — the haircut must hold the rescued
+        // item strictly below the phrase match.
+        $this->assertLessThan(
+            $byId['a']['virality_score'],
+            $byId['b']['virality_score'],
+        );
+    }
+
     public function test_score_rewards_engagement_relative_to_following(): void
     {
         $smallCreator = $this->item(['followers' => 1_000, 'views' => 1_000_000]);

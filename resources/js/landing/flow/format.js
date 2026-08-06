@@ -55,6 +55,24 @@ export function multiplier(score) {
   return `${n >= 10 ? Math.round(n) : Math.round(n * 10) / 10}x`;
 }
 
+/**
+ * Outlier multiple → "11.4x". This is views over the median of the search the
+ * video appears in, not the creator's own account baseline — label it as such
+ * wherever it renders.
+ */
+export function outlierLabel(value) {
+  const n = Number(value);
+  if (!Number.isFinite(n) || n <= 0) return null;
+  return `${n >= 10 ? Math.round(n) : Math.round(n * 10) / 10}x`;
+}
+
+/** 8.24 → "8.2%". Returns null for missing rates so the UI can show a dash. */
+export function percent(value, digits = 1) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return null;
+  return `${n.toFixed(digits)}%`;
+}
+
 const GRADIENTS = [
   'from-[#3a2b6b] to-[#8b3df0]',
   'from-[#0f3d5c] to-[#2aa7c4]',

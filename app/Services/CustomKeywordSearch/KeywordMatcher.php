@@ -11,6 +11,12 @@ use Carbon\CarbonImmutable;
  */
 class KeywordMatcher
 {
+    public const MATCH_PHRASE = 'phrase';
+
+    public const MATCH_HANDLE = 'handle';
+
+    public const MATCH_SUPPORTING = 'supporting';
+
     private const GENERIC_SECONDARY_TOKENS = [
         'and', 'beauty', 'brand', 'care', 'clothing', 'co', 'company', 'cosmetics',
         'fashion', 'for', 'hair', 'jewelry', 'life', 'makeup', 'official', 'shop',
@@ -75,6 +81,7 @@ class KeywordMatcher
     public function prescreen(array $items, string $phrase, array $keywords): array
     {
         $minFollowers = (int) config('custom_keyword_search.matching.min_followers', 500);
+        $rescueMultiplier = (float) config('custom_keyword_search.matching.rescue_score_multiplier', 0.65);
 
         $kept = [];
         $summary = [
@@ -85,6 +92,9 @@ class KeywordMatcher
             'non_english_title_confidence' => 0,
             'main_keyword_mismatch' => 0,
             'kept' => 0,
+            'kept_phrase' => 0,
+            'rescued_by_handle' => 0,
+            'rescued_by_supporting' => 0,
         ];
 
         foreach ($items as $item) {
@@ -112,20 +122,103 @@ class KeywordMatcher
                 continue;
             }
 
-            if (! $this->matchesPhrase($item, $phrase)) {
+            $item['matched_keywords'] = $this->matchedSupporting($item, $phrase, $keywords);
+            $matchType = $this->matchType($item, $phrase);
+
+            if ($matchType === null) {
                 $summary['main_keyword_mismatch']++;
 
                 continue;
             }
 
-            $item['matched_keywords'] = $this->matchedSupporting($item, $phrase, $keywords);
+            $item['match_type'] = $matchType;
             $item['virality_score'] = $this->score($item, count($item['matched_keywords']));
+
+            // Rescued items are real matches on weaker evidence, so they carry
+            // a score haircut: they appear, but below phrase-matched items of
+            // the same raw engagement rather than shuffled in among them.
+            if ($matchType !== self::MATCH_PHRASE) {
+                $item['virality_score'] = round($item['virality_score'] * $rescueMultiplier, 6);
+            }
 
             $kept[] = $item;
             $summary['kept']++;
+            $summary[match ($matchType) {
+                self::MATCH_PHRASE => 'kept_phrase',
+                self::MATCH_HANDLE => 'rescued_by_handle',
+                default => 'rescued_by_supporting',
+            }]++;
         }
 
         return ['kept' => $kept, 'summary' => $summary];
+    }
+
+    /**
+     * The tiered main-keyword gate, strongest evidence first:
+     *
+     *  1. phrase      — the phrase (or its primary token) in caption/hashtags.
+     *  2. handle      — the compacted phrase inside the creator's own handle or
+     *                   display name. A video *by* @gopurebeauty is about
+     *                   gopure whether or not the caption says so; this is what
+     *                   recovers a brand's own posts, which routinely caption
+     *                   with emoji and nothing else.
+     *  3. supporting  — enough of the AI-expanded supporting keywords matched.
+     *                   One supporting keyword is coincidence; several is the
+     *                   topic. The threshold is config, default 2.
+     *
+     * Null means no tier matched and the item is dropped.
+     *
+     * @param  array<string, mixed>  $item  with matched_keywords already set
+     */
+    public function matchType(array $item, string $phrase): ?string
+    {
+        if ($this->matchesPhrase($item, $phrase)) {
+            return self::MATCH_PHRASE;
+        }
+
+        if ($this->matchesCreatorIdentity($item, $phrase)) {
+            return self::MATCH_HANDLE;
+        }
+
+        $rescueMin = max(1, (int) config('custom_keyword_search.matching.supporting_rescue_min', 2));
+
+        if (count((array) ($item['matched_keywords'] ?? [])) >= $rescueMin) {
+            return self::MATCH_SUPPORTING;
+        }
+
+        return null;
+    }
+
+    /**
+     * Does the phrase live in who posted this, rather than in what they wrote?
+     * Compact containment ("gopure beauty" → "gopurebeauty" ⊂ "gopurebeautyhq")
+     * against the handle and display name. Gated on a minimum compact length so
+     * a two-letter phrase cannot claim half of TikTok.
+     *
+     * @param  array<string, mixed>  $item
+     */
+    public function matchesCreatorIdentity(array $item, string $phrase): bool
+    {
+        if (! filter_var(config('custom_keyword_search.matching.handle_match_enabled', true), FILTER_VALIDATE_BOOL)) {
+            return false;
+        }
+
+        $compactPhrase = $this->normalizer->compact($phrase);
+        $minLength = max(3, (int) config('custom_keyword_search.matching.handle_match_min_length', 4));
+
+        if (mb_strlen($compactPhrase) < $minLength) {
+            return false;
+        }
+
+        foreach (['username', 'name'] as $field) {
+            $identity = $this->normalizer->compact(ltrim((string) ($item[$field] ?? ''), '@'));
+
+            if ($identity !== '' && str_contains($identity, $compactPhrase)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
@@ -340,16 +433,35 @@ class KeywordMatcher
             return false;
         }
 
-        return preg_match('/(?:^|\s)'.preg_quote($needle, '/').'(?:$|\s)/u', $haystack) === 1;
+        return preg_match('/(?:^|\s)'.$this->flexiblePattern($needle).'(?:$|\s)/u', $haystack) === 1;
     }
 
     private function containsWholeWord(string $haystack, string $needle): bool
     {
-        if ($haystack === '' || $needle === '') {
-            return false;
-        }
+        return $this->containsWholePhrase($haystack, $needle);
+    }
 
-        return preg_match('/(?:^|\s)'.preg_quote($needle, '/').'(?:$|\s)/u', $haystack) === 1;
+    /**
+     * Word-boundary pattern with singular/plural tolerance: "brand ring"
+     * matches "brand rings" and vice versa. Each token allows one optional
+     * trailing "s", and a token already ending in "s" also matches without it.
+     * The tolerance only kicks in on tokens long enough that the trailing "s"
+     * is plausibly a plural, so it can never loosen a match into a substring
+     * ("gopure" still refuses "gopurest").
+     */
+    private function flexiblePattern(string $needle): string
+    {
+        $parts = array_map(function (string $token): string {
+            $base = mb_strlen($token) >= 4 && str_ends_with($token, 's')
+                ? mb_substr($token, 0, -1)
+                : $token;
+
+            return mb_strlen($base) >= 3
+                ? preg_quote($base, '/').'s?'
+                : preg_quote($token, '/');
+        }, $this->tokens($needle));
+
+        return implode('\s+', $parts);
     }
 
     private function isCompactPhraseMatchAllowed(string $needle): bool

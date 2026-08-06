@@ -3,6 +3,8 @@
 namespace App\Http\Resources;
 
 use App\Models\CustomKeywordSearch;
+use App\Services\CustomKeywordSearch\SearchInsights;
+use App\Services\CustomKeywordSearch\TrendBuilder;
 
 /**
  * One place that decides what a saved search looks like over the wire, so the
@@ -38,11 +40,16 @@ class SavedSearchPresenter
     }
 
     /**
-     * @return array<string, mixed>
+     * The ranked card rows for a search. Public because the snapshot recorder
+     * and the AI enrichment job must measure exactly what the page renders —
+     * a second definition of "the results" is how a chart ends up disagreeing
+     * with the grid beneath it.
+     *
+     * @return array<int, array<string, mixed>>
      */
-    public static function detail(CustomKeywordSearch $search, array $bookmarkedVideoIds = []): array
+    public static function resultRows(CustomKeywordSearch $search, array $bookmarkedVideoIds = []): array
     {
-        $results = $search->videos()
+        return $search->videos()
             ->with('video')
             ->orderBy('rank')
             ->get()
@@ -59,10 +66,63 @@ class SavedSearchPresenter
             ->filter(fn (array $row): bool => isset($row['id']))
             ->values()
             ->all();
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public static function detail(CustomKeywordSearch $search, array $bookmarkedVideoIds = []): array
+    {
+        $results = self::resultRows($search, $bookmarkedVideoIds);
+
+        // Insights are derived from the same rows the cards render, so the
+        // median a card is measured against is always the median of what the
+        // user is actually looking at.
+        $insights = app(SearchInsights::class);
+        $results = $insights->withMultiples($results);
+        $payload = $insights->build($results, $search->phrase);
+
+        $trends = app(TrendBuilder::class);
+        $snapshots = $search->snapshots()->orderBy('captured_at')->get();
+        $trend = $trends->build($results, $snapshots);
+
+        $payload['trend'] = $trend;
+        $payload['tile_deltas'] = $trends->tileDeltas($trend);
+        $payload['hashtags'] = self::withGrowth(
+            $payload['hashtags'],
+            $trends->tagGrowth($snapshots, 'hashtag_counts'),
+            'tag',
+        );
+        $payload['sounds'] = self::withGrowth(
+            $payload['sounds'],
+            $trends->tagGrowth($snapshots, 'sound_counts'),
+            'label',
+        );
 
         return self::summary($search) + [
             'results' => $results,
             'scanned_count' => (int) data_get($search->latestRun?->raw_summary, 'received', 0),
+            'ai_summary' => $search->ai_summary,
+            'ai_summary_generated_at' => $search->ai_summary_generated_at?->toIso8601String(),
+            'insights' => $payload,
         ];
+    }
+
+    /**
+     * Attaches run-over-run growth to hashtag or sound rows. Rows keep a null
+     * `growth` until two recorded snapshots exist — an unknown trend renders as
+     * nothing, never as flat.
+     *
+     * @param  array<int, array<string, mixed>>  $rows
+     * @param  array<string, array<string, mixed>>  $growth
+     * @return array<int, array<string, mixed>>
+     */
+    private static function withGrowth(array $rows, array $growth, string $key): array
+    {
+        return array_map(function (array $row) use ($growth, $key): array {
+            $row['growth'] = $growth[mb_strtolower((string) $row[$key])] ?? null;
+
+            return $row;
+        }, $rows);
     }
 }

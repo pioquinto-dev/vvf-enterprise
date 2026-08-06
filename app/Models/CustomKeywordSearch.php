@@ -33,6 +33,7 @@ class CustomKeywordSearch extends Model
             'last_run_at' => 'datetime',
             'next_run_at' => 'datetime',
             'is_watchlisted' => 'boolean',
+            'ai_summary_generated_at' => 'datetime',
         ];
     }
 
@@ -54,6 +55,11 @@ class CustomKeywordSearch extends Model
     public function videos(): HasMany
     {
         return $this->hasMany(CustomKeywordSearchVideo::class);
+    }
+
+    public function snapshots(): HasMany
+    {
+        return $this->hasMany(CustomKeywordSearchSnapshot::class);
     }
 
     /** Supporting keywords are everything except the phrase itself. */
