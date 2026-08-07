@@ -257,8 +257,8 @@ export const FOOTER_LINKS = [
 export const SEARCH_TYPES = {
   brand: {
     key: 'brand',
-    label: 'Your brand',
-    placeholder: 'Enter your complete brand name',
+    label: 'Brand',
+    placeholder: 'Enter brand name',
     sectionHeading: 'Add terms to expand on your brand',
     sample: 'GoPure',
     keywords: ['beauty', 'skincare', 'eye gel', 'serum', 'reviews', 'routine'],
