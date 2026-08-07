@@ -42,8 +42,14 @@ export function LoginGate({ resultCount, trialEligible = true }) {
         </p>
 
         <div className="mt-6 flex flex-col items-center justify-center gap-3 sm:flex-row">
-          <a href="/auth/google" className="btn-accent h-12 px-5 text-sm">
-            Continue with Google <Arrow />
+          <a
+            href="/auth/google"
+            className="flex h-12 items-center justify-center gap-3 rounded-full bg-[#2f2a2a] px-5 text-sm font-semibold text-white shadow-[0_18px_40px_-26px_rgba(0,0,0,.55)] transition hover:opacity-95"
+          >
+            <span className="flex h-8 w-8 items-center justify-center rounded-full bg-white">
+              <Google />
+            </span>
+            Continue with Google
           </a>
           {trialEligible ? (
             <a href="/trial" className="btn-ghost h-12 px-5 text-sm">
