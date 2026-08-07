@@ -133,6 +133,10 @@ class SavedSearchFlowTest extends TestCase
 
     public function test_creating_the_same_keyword_set_reuses_the_existing_search(): void
     {
+        // This exercises dedupe, not the quota — a real guest only gets one
+        // search, so give this visitor headroom to make the second call.
+        config()->set('custom_keyword_search.limits.max_saved_guest', 5);
+
         $this->postJson('/saved-searches', [
             'phrase' => 'side hustle ideas',
             'keywords' => ['side hustle ideas', 'make money online'],

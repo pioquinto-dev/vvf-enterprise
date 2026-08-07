@@ -7,6 +7,7 @@ use App\Services\Billing\BillingService;
 use App\Jobs\RunCustomKeywordSearch;
 use App\Models\CustomKeywordSearch;
 use App\Models\CustomKeywordSearchRun;
+use Closure;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -23,6 +24,10 @@ class SavedSearchManager
 
     /**
      * @param  array<int, string>  $keywords
+     * @param  ?Closure():void  $chargeGuest  Called instead of the credit
+     *                                        deduction when there is no user,
+     *                                        at exactly the points a real
+     *                                        scrape is about to start.
      */
     public function create(
         ?User $user,
@@ -32,6 +37,7 @@ class SavedSearchManager
         array $keywords,
         ?string $name,
         string $frequency,
+        ?Closure $chargeGuest = null,
     ): CustomKeywordSearch {
         $type = in_array($type, CustomKeywordSearch::allowedTypes(), true)
             ? $type
@@ -73,6 +79,10 @@ class SavedSearchManager
             if (! $existing->hasActiveRun()) {
                 if ($user !== null) {
                     $this->billing->consumeSearchCredit($user);
+                } elseif ($chargeGuest !== null) {
+                    // A guest re-running the same keywords is still a fresh
+                    // scrape, so it costs them their allowance too.
+                    $chargeGuest();
                 }
 
                 $this->queueRun($existing);
@@ -97,6 +107,8 @@ class SavedSearchManager
 
         if ($user !== null) {
             $this->billing->consumeSearchCredit($user);
+        } elseif ($chargeGuest !== null) {
+            $chargeGuest();
         }
 
         $this->queueRun($search);

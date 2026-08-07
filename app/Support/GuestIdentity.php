@@ -36,4 +36,25 @@ class GuestIdentity
     {
         $request->session()->forget(self::SESSION_KEY);
     }
+
+    /**
+     * A quota key that outlives the session. The session token is useless for
+     * limiting anything — logging out regenerates the session, so the visitor
+     * comes back looking brand new and earns another free search. This is
+     * derived from the request itself instead, and only ever stored hashed.
+     *
+     * Coarse by nature: office NATs share it, VPN hops break it. It is a speed
+     * bump on abuse, not an identity.
+     */
+    public static function fingerprint(Request $request): string
+    {
+        return hash_hmac(
+            'sha256',
+            implode('|', [
+                (string) $request->ip(),
+                (string) $request->userAgent(),
+            ]),
+            (string) config('app.key')
+        );
+    }
 }

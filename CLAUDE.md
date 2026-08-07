@@ -61,6 +61,9 @@ The product's core loop. One phrase becomes a saved, self-refreshing list of vir
 - Keywords are fixed after creation by design. Name and frequency stay editable.
 - A failed refresh on a search that already has results leaves the search `done` and only the run `failed` — an established search should never look broken because one refresh died.
 - Guests get a `guest_token` in session so the free search works before sign-in; `AppServiceProvider` claims those rows on the `Login` event.
+- **The free search is one forever, and the session cannot be trusted to enforce that.** Logging out regenerates the session, so `guest_token` is an ownership handle only — never a quota key. The allowance lives in `guest_search_grants`, keyed on a hashed IP + user agent fingerprint (`GuestIdentity::fingerprint`) and enforced by `GuestSearchQuota`. Claiming a guest search on login charges the account (`absorbClaimedGuestSearches`) and marks the grant claimed, so the log-out-and-search-again cycle earns nothing.
+- `users.free_search_used_at` is the permanent record that an account has spent its free search. Do not re-derive this from row counts — searches are soft-deleted, so "has no searches" is not "has never searched", and that inference was previously an unlimited credit refill. Nothing clears this stamp, including a plan lapsing back to free.
+- Every path that starts a real scrape must charge: creating a search, re-searching an existing keyword signature with no active run, and `refresh()`. A refresh costs exactly what a create costs.
 - Scheduled: `custom-keyword-search:dispatch-due` (hourly) and `custom-keyword-search:fail-stale-runs` (every 15 min). Runs need a queue worker — `php artisan queue:work`.
 
 ### `app/Repositories`

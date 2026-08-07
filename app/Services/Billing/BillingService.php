@@ -103,6 +103,16 @@ class BillingService
         $this->entitlements->consumeSearchCredit($user);
     }
 
+    public function absorbClaimedGuestSearches(User $user, int $claimedCount): void
+    {
+        $this->entitlements->absorbClaimedGuestSearches($user, $claimedCount);
+    }
+
+    public function markFreeSearchUsed(User $user): void
+    {
+        $this->entitlements->markFreeSearchUsed($user);
+    }
+
     public function ensureCanBookmark(User $user): void
     {
         $this->entitlements->ensureCanBookmark($user);

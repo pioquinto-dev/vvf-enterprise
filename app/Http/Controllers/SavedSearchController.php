@@ -7,6 +7,7 @@ use App\Http\Resources\SavedSearchPresenter;
 use App\Models\CustomKeywordSearch;
 use App\Services\Bookmarks\BookmarkService;
 use App\Services\Billing\BillingService;
+use App\Services\CustomKeywordSearch\GuestSearchQuota;
 use App\Services\CustomKeywordSearch\KeywordExpansionService;
 use App\Services\CustomKeywordSearch\OwnedSearchResolver;
 use App\Services\CustomKeywordSearch\SavedSearchManager;
@@ -25,6 +26,7 @@ class SavedSearchController extends Controller
         private readonly BillingService $billing,
         private readonly OwnedSearchResolver $searches,
         private readonly BookmarkService $bookmarks,
+        private readonly GuestSearchQuota $guestQuota,
     ) {}
 
     /**
@@ -55,8 +57,12 @@ class SavedSearchController extends Controller
      */
     public function store(StoreSavedSearchRequest $request): JsonResponse
     {
+        // A scrape costs real money whoever starts it, so both branches are
+        // checked here. Guests used to fall through unchecked entirely.
         if ($request->user() !== null) {
             $this->billing->ensureCanCreateSearch($request->user());
+        } else {
+            $this->guestQuota->ensureCanCreateSearch($request);
         }
 
         $search = $this->manager->create(
@@ -67,6 +73,7 @@ class SavedSearchController extends Controller
             keywords: $request->input('keywords', []),
             name: $request->input('name'),
             frequency: $request->string('frequency')->toString(),
+            chargeGuest: fn () => $this->guestQuota->consume($request),
         );
 
         return response()->json([
@@ -178,6 +185,17 @@ class SavedSearchController extends Controller
                 'message' => 'This search is already refreshing.',
                 'search' => SavedSearchPresenter::summary($search),
             ], 409);
+        }
+
+        // A refresh is a full scrape, identical in cost to creating a search.
+        // It was previously free and unmetered, so a plan's credit limit could
+        // be sidestepped entirely by refreshing one saved search on a loop.
+        if ($request->user() === null) {
+            $this->guestQuota->ensureCanCreateSearch($request);
+            $this->guestQuota->consume($request);
+        } else {
+            $this->billing->ensureCanCreateSearch($request->user());
+            $this->billing->consumeSearchCredit($request->user());
         }
 
         $this->manager->queueRun($search);

@@ -2,7 +2,6 @@
 
 namespace App\Services\Billing;
 
-use App\Models\CustomKeywordSearch;
 use App\Models\PricingPlan;
 use App\Models\Subscription;
 use App\Models\User;
@@ -37,7 +36,51 @@ class BillingEntitlementService
         $this->initializeFreeCreditsIfNeeded($user);
         $this->refreshCreditsIfNeeded($user);
 
-        $user->decrement('monthly_credits_remaining');
+        // The column is unsigned, so a raw decrement at zero is a database
+        // error rather than a clamp. Floor it here.
+        $user->forceFill([
+            'monthly_credits_remaining' => max(0, (int) $user->monthly_credits_remaining - 1),
+        ])->save();
+
+        $this->markFreeSearchUsed($user);
+        $this->syncSubscriptionUsage($user);
+    }
+
+    /**
+     * Records, permanently, that this account has spent its one free search.
+     *
+     * Everything else about a free user's balance is derived and resettable;
+     * this is not. It is what stops the allowance being re-earned by deleting
+     * searches or by cycling through a signed-out session.
+     */
+    public function markFreeSearchUsed(User $user): void
+    {
+        if ($user->free_search_used_at !== null) {
+            return;
+        }
+
+        $user->forceFill(['free_search_used_at' => now()])->save();
+    }
+
+    /**
+     * Folds searches run while signed out into the account's balance.
+     *
+     * Claiming used to be free: the row's user_id was reassigned and no credit
+     * was ever charged, so log out / search / log back in minted an unlimited
+     * supply of scrapes. Each claimed search is now paid for.
+     */
+    public function absorbClaimedGuestSearches(User $user, int $claimedCount): void
+    {
+        if ($claimedCount <= 0) {
+            return;
+        }
+
+        $this->markFreeSearchUsed($user);
+
+        $user->forceFill([
+            'monthly_credits_remaining' => max(0, (int) $user->monthly_credits_remaining - $claimedCount),
+        ])->save();
+
         $this->syncSubscriptionUsage($user);
     }
 
@@ -179,9 +222,11 @@ class BillingEntitlementService
         $plan = PricingPlan::query()->where('slug', $user->current_plan_slug)->first();
 
         if ($plan === null) {
+            // Falling back to free must not hand back a free search that was
+            // already spent, or lapsing a plan becomes a way to re-earn one.
             $user->forceFill([
                 'current_plan_slug' => 'free',
-                'monthly_credits_remaining' => 1,
+                'monthly_credits_remaining' => $user->free_search_used_at === null ? 1 : 0,
                 'plan_renews_at' => null,
             ])->save();
 
@@ -205,11 +250,13 @@ class BillingEntitlementService
             return;
         }
 
-        $hasUsedFreeSearch = CustomKeywordSearch::query()
-            ->where('user_id', $user->id)
-            ->exists();
-
-        if ($hasUsedFreeSearch) {
+        /*
+         * This used to ask whether any custom_keyword_searches rows existed.
+         * They are soft-deletable, so deleting your searches made the query
+         * come back empty and handed the credit straight back — an unlimited
+         * refill loop. The stamp below is written once and never cleared.
+         */
+        if ($user->free_search_used_at !== null) {
             return;
         }
 

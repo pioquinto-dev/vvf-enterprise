@@ -2,7 +2,9 @@
 
 namespace App\Providers;
 
+use App\Models\User;
 use App\Services\Billing\BillingService;
+use App\Services\CustomKeywordSearch\GuestSearchQuota;
 use App\Services\CustomKeywordSearch\SavedSearchManager;
 use App\Services\Stripe\StripeClient;
 use App\Support\GuestIdentity;
@@ -31,6 +33,13 @@ class AppServiceProvider extends ServiceProvider
          * A visitor can run their free search before signing in. When they do
          * sign in, hand those searches over so the results they just waited for
          * are still there.
+         *
+         * Handing them over is not free. Claiming used only to reassign the
+         * row, so signing out and searching again produced an endless supply of
+         * scrapes that each got laundered into the account at no cost. Every
+         * claimed search is now charged, the account is permanently marked as
+         * having spent its free search, and the browser's guest allowance is
+         * tied off so the same visitor cannot start over.
          */
         Event::listen(function (Login $event): void {
             $request = request();
@@ -39,13 +48,24 @@ class AppServiceProvider extends ServiceProvider
                 return;
             }
 
+            $user = $event->user;
+
+            if ($user instanceof User) {
+                app(GuestSearchQuota::class)->claimFor($request, $user);
+            }
+
             $token = GuestIdentity::token($request);
 
             if ($token === null) {
                 return;
             }
 
-            app(SavedSearchManager::class)->claimGuestSearches($event->user->getAuthIdentifier(), $token);
+            $claimed = app(SavedSearchManager::class)
+                ->claimGuestSearches($user->getAuthIdentifier(), $token);
+
+            if ($user instanceof User) {
+                app(BillingService::class)->absorbClaimedGuestSearches($user, $claimed);
+            }
 
             GuestIdentity::forget($request);
         });
