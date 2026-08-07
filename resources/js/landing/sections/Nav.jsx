@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Logo, Menu, Close, Chevron } from '../components/Icons.jsx';
 import ThemeToggle from '../components/ThemeToggle.jsx';
-import { NAV_LINKS } from '../data/dummy.js';
 
 export default function Nav({ theme, onToggleTheme, onStart }) {
   const [open, setOpen] = useState(false);
@@ -35,18 +34,6 @@ export default function Nav({ theme, onToggleTheme, onStart }) {
             Outlier Vault
           </a>
 
-          <nav className="hidden items-center justify-center gap-7 xl:flex">
-            {NAV_LINKS.map((l) => (
-              <a
-                key={l.href}
-                href={l.href}
-                className="py-2 text-[15px] font-medium text-ink/76 transition-all duration-300 hover:text-ink dark:text-white/72 dark:hover:text-white"
-              >
-                {l.label}
-              </a>
-            ))}
-          </nav>
-
           <div className="flex items-center justify-end gap-3 sm:gap-4">
             <div className="hidden xl:block">
               <ThemeToggle theme={theme} onToggle={onToggleTheme} />
@@ -73,18 +60,6 @@ export default function Nav({ theme, onToggleTheme, onStart }) {
 
       {open && (
         <div className="border-b border-black/[.06] bg-canvas/95 px-4 pt-3 pb-5 backdrop-blur-xl lg:hidden dark:border-white/[.07] dark:bg-canvas-dark/95">
-          <nav className="flex flex-col">
-            {NAV_LINKS.map((l) => (
-              <a
-                key={l.href}
-                href={l.href}
-                onClick={() => setOpen(false)}
-                className="rounded-xl px-3 py-3 text-[15px] font-medium muted transition hover:bg-black/[.04] dark:hover:bg-white/[.06]"
-              >
-                {l.label}
-              </a>
-            ))}
-          </nav>
           <div className="mt-3 flex flex-col gap-2">
             <button className="btn-ghost h-11 w-full justify-between px-4 text-sm">
               <span>Theme</span>

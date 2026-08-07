@@ -13,9 +13,10 @@ class RememberTrialCheckoutIntent
     {
         if ($request->user() === null && $request->query('redirect') === 'trial_checkout') {
             $plan = (string) $request->query('plan', 'basic');
+            $withTrial = $request->boolean('trial');
 
             if (in_array($plan, ['basic', 'premium'], true)) {
-                TrialCheckoutIntent::store($request, $plan);
+                TrialCheckoutIntent::store($request, $plan, $withTrial);
             }
         }
 

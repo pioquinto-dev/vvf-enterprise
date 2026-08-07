@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Mascot, Arrow, Play, Trend } from '../components/Icons.jsx';
+import { Mascot, Arrow, Trend } from '../components/Icons.jsx';
 import CountUp from '../components/CountUp.jsx';
 import Reveal from '../components/Reveal.jsx';
 import { SEARCH_TYPES, STATS } from '../data/dummy.js';
@@ -18,7 +18,6 @@ export default function Hero({ onStart }) {
 
   return (
     <section id="top" className="relative isolate overflow-hidden pt-12 sm:pt-20 lg:pt-24">
-      {/* backdrop: grid, then two soft light sources */}
       <div aria-hidden className="pointer-events-none absolute inset-0 -z-10">
         <div className="bg-grid mask-radial-fade absolute inset-0" />
         <div className="absolute top-[-18%] left-1/2 h-[560px] w-[900px] max-w-[140vw] -translate-x-1/2 rounded-full bg-accent/25 blur-[150px] dark:bg-accent/30" />
@@ -55,7 +54,6 @@ export default function Hero({ onStart }) {
           </Reveal>
         </div>
 
-        {/* search widget = step one of the flow */}
         <Reveal delay={200} className="mx-auto mt-11 max-w-2xl">
           <div className="ring-gradient rounded-[26px] bg-white/70 p-1.5 shadow-[0_40px_100px_-50px_rgba(20,20,50,.5)] backdrop-blur-2xl dark:bg-white/[.045] dark:shadow-[0_50px_120px_-60px_rgba(0,0,0,1)]">
             <div className="rounded-[20px] bg-white/85 p-4 sm:p-5 dark:bg-black/25">
@@ -70,7 +68,12 @@ export default function Hero({ onStart }) {
                 </div>
               </div>
 
-              <p className="mb-2.5 text-left font-display text-[15px] font-semibold">What do you want to research?</p>
+              <div className="mb-2.5 flex items-center justify-between gap-3">
+                <p className="text-left font-display text-[15px] font-semibold">What do you want to research?</p>
+                <span className="rounded-full border border-accent/15 bg-accent/8 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.24em] text-accent dark:border-accent-glow/20 dark:bg-accent-glow/10 dark:text-accent-glow">
+                  Search
+                </span>
+              </div>
 
               <div className="flex gap-1.5 rounded-2xl bg-black/[.045] p-1.5 dark:bg-white/[.05]">
                 {TYPE_KEYS.map((k) => (
@@ -89,13 +92,33 @@ export default function Hero({ onStart }) {
               </div>
 
               <form onSubmit={submit} className="mt-3 flex flex-col gap-2 sm:flex-row">
-                <input
-                  id="search-subject"
-                  value={value}
-                  onChange={(e) => setValue(e.target.value)}
-                  placeholder={config.placeholder}
-                  className="field h-[54px] flex-1"
-                />
+                <label className="group flex h-[54px] flex-1 items-center gap-3 rounded-[18px] border border-black/8 bg-white px-4 shadow-[0_16px_40px_-28px_rgba(76,56,255,.55)] transition-all duration-300 focus-within:-translate-y-0.5 focus-within:border-accent/35 focus-within:shadow-[0_22px_50px_-28px_rgba(76,56,255,.6)] dark:border-white/10 dark:bg-white/[.04] dark:focus-within:border-accent-glow/35">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,rgba(123,92,255,.16),rgba(255,83,143,.12))] text-accent dark:text-accent-glow">
+                    <svg
+                      viewBox="0 0 24 24"
+                      aria-hidden
+                      className="h-4.5 w-4.5"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <circle cx="11" cy="11" r="7" />
+                      <path d="m20 20-3.5-3.5" />
+                    </svg>
+                  </div>
+
+                  <div className="min-w-0 flex-1 text-left">
+                    <input
+                      id="search-subject"
+                      value={value}
+                      onChange={(e) => setValue(e.target.value)}
+                      placeholder={config.placeholder}
+                      className="w-full border-0 bg-transparent p-0 text-[14px] font-medium text-ink placeholder:text-black/35 focus:outline-none focus:ring-0 dark:text-white dark:placeholder:text-white/28"
+                    />
+                  </div>
+                </label>
                 <button type="submit" className="btn-accent h-[54px] px-6 text-[15px]">
                   Scout viral videos <Arrow />
                 </button>
@@ -108,25 +131,18 @@ export default function Hero({ onStart }) {
                   onClick={() => setValue(config.sample)}
                   className="font-semibold text-accent underline-offset-4 hover:underline dark:text-accent-glow"
                 >
-                  “{config.sample}”
+                  "{config.sample}"
                 </button>{' '}
-                · one subject per search keeps each result tight.
+                - one subject per search keeps each result tight.
               </p>
             </div>
           </div>
 
-          <div className="mt-5 flex flex-col items-center justify-center gap-3 sm:flex-row sm:gap-6">
-            <button className="group inline-flex items-center gap-2.5 text-[13.5px] font-semibold muted transition hover:text-accent dark:hover:text-accent-glow">
-              <span className="flex h-8 w-8 items-center justify-center rounded-full border border-black/[.09] transition group-hover:border-accent/50 group-hover:bg-accent/10 dark:border-white/15">
-                <Play className="h-3 w-3" />
-              </span>
-              Watch 2 min demo
-            </button>
-            <span className="text-[13px] faint">1 free search · no credit card</span>
+          <div className="mt-5 flex items-center justify-center">
+            <span className="text-[13px] faint">1 free search - no credit card</span>
           </div>
         </Reveal>
 
-        {/* stats */}
         <dl className="mx-auto mt-16 grid max-w-4xl grid-cols-2 gap-px overflow-hidden rounded-2xl border border-black/[.06] bg-black/[.06] sm:mt-20 sm:grid-cols-4 dark:border-white/[.08] dark:bg-white/[.08]">
           {STATS.map((s, i) => (
             <Reveal

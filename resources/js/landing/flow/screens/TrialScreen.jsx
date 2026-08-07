@@ -18,11 +18,11 @@ export default function TrialScreen({ onBack, backLabel = 'Back to results' }) {
 
   const startCheckout = (slug) => {
     if (!auth.signedIn) {
-      window.location.assign('/auth/google');
+      window.location.assign(`/login?redirect=trial_checkout&plan=${encodeURIComponent(slug)}&trial=1`);
       return;
     }
 
-    billing.checkout(slug);
+    billing.trialCheckout(slug);
   };
 
   return (
@@ -40,8 +40,8 @@ export default function TrialScreen({ onBack, backLabel = 'Back to results' }) {
           Unlock paid tracking
         </h1>
         <p className="mt-3 text-[14.5px] muted">
-          Free includes 1 search and 0 watchlist slots. Basic gives you 150 searches and 50 watchlist slots. Premium
-          gives you 400 searches and unlimited watchlist.
+          Start on a 7-day trial. Basic includes 150 searches and 50 watchlist slots. Premium includes 400 searches and
+          unlimited watchlist.
         </p>
 
         <div className="mx-auto mt-9 grid max-w-2xl gap-5 text-left sm:grid-cols-2">
@@ -63,10 +63,8 @@ export default function TrialScreen({ onBack, backLabel = 'Back to results' }) {
               <p className="font-display text-[16px] font-bold">{t.name}</p>
               <p className="mt-1 text-[12.5px] faint">{t.tagline}</p>
 
-              <p className="mt-3 font-display text-[32px] leading-none font-bold tracking-[-.03em]">
-                ${t.price}
-                <span className="text-[13px] font-medium muted">/mo</span>
-              </p>
+              <p className="mt-3 font-display text-[32px] leading-none font-bold tracking-[-.03em]">$0</p>
+              <p className="mt-2 min-h-[32px] text-[11.5px] leading-[1.35] faint">then ${t.price} after 7 days</p>
 
               <p className="mt-4 text-[12px] faint">
                 {t.searchCreditsLimit} searches · {t.bookmarkLimit === -1 ? 'Unlimited' : t.bookmarkLimit} watchlist
@@ -87,17 +85,17 @@ export default function TrialScreen({ onBack, backLabel = 'Back to results' }) {
                 onClick={() => startCheckout(t.slug)}
                 className={`mt-6 h-11 w-full text-sm ${t.popular ? 'btn-accent' : 'btn-ghost'}`}
               >
-                {t.cta} <Arrow />
+                Start {t.name} trial <Arrow />
               </button>
             </div>
           ))}
         </div>
 
         <button onClick={() => startCheckout(trialTier.slug)} className="btn-accent mx-auto mt-9 h-[52px] px-8 text-[15px]">
-          Start {trialTier.name} plan <Arrow />
+          Start {trialTier.name} trial <Arrow />
         </button>
         <p className="mt-4 text-xs faint">
-          Checkout uses Stripe subscriptions. Sign in first if you want the subscription attached to your account.
+          Card details are collected up front, and billing starts after 7 days unless you cancel.
         </p>
       </div>
     </div>

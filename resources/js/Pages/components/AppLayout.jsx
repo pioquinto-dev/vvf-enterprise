@@ -239,7 +239,7 @@ export default function AppLayout({
         <Link href="/" onClick={closeDrawer} className="flex items-center gap-2.5">
             <Logo className="h-8 w-8" />
             <span className="leading-none">
-                <span className="block font-display text-[19px] font-bold tracking-[-.03em]">vvf</span>
+                <span className="block font-display text-[17px] font-bold tracking-[-.03em]">Outlier Vault</span>
                 <span className="mt-1 block text-[9px] font-semibold tracking-[.16em] faint uppercase">
                     Find outlier videos daily
                 </span>

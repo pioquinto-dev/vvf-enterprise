@@ -8,10 +8,11 @@ class TrialCheckoutIntent
 {
     public const SESSION_KEY = 'billing.pending_checkout';
 
-    public static function store(Request $request, string $planSlug): void
+    public static function store(Request $request, string $planSlug, bool $withTrial = false): void
     {
         $request->session()->put(self::SESSION_KEY, [
             'plan_slug' => $planSlug,
+            'with_trial' => $withTrial,
             'stored_at' => now()->toIso8601String(),
         ]);
     }

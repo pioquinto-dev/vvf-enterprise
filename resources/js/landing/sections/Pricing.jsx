@@ -19,11 +19,26 @@ export default function Pricing({ onStart, onTrial, onTrialStart, compact = fals
   const trialEligible = billing.trialEligible ?? true;
   const launchTrial = () => {
     if (typeof onTrialStart === 'function') {
-      onTrialStart();
+      onTrialStart({ slug: 'basic' });
       return;
     }
 
     onTrial?.({ slug: 'basic' });
+  };
+  const priceBlock = (plan) => {
+    if (plan.slug === 'basic' || plan.slug === 'premium') {
+      return {
+        primary: '$0',
+        suffix: '',
+        secondary: `then $${plan.price} after 7 days`,
+      };
+    }
+
+    return {
+      primary: `$${plan.price}`,
+      suffix: '/mo',
+      secondary: plan.price > 0 ? 'Billed monthly' : '',
+    };
   };
 
   const trialHeading = onBasicTrial ? 'Your 7-day Basic trial is active' : 'Start a 7-day Basic trial';
@@ -170,14 +185,22 @@ export default function Pricing({ onStart, onTrial, onTrialStart, compact = fals
               <h3 className="font-display text-[17px] font-bold">{t.name}</h3>
               <p className="mt-1 text-[12.5px] faint">{t.tagline}</p>
 
+              {(() => {
+                const pricing = priceBlock(t);
+
+                return (
+                  <>
               <p className="mt-5 font-display text-[40px] leading-none font-bold tracking-[-.03em]">
-                ${t.price}
-                <span className="text-[13px] font-medium muted">/mo</span>
+                {pricing.primary}
+                {pricing.suffix && <span className="text-[13px] font-medium muted">{pricing.suffix}</span>}
               </p>
-              <p className="mt-2 h-4 text-[11.5px] faint">{t.price > 0 ? 'Billed monthly' : ''}</p>
+              <p className="mt-2 min-h-[32px] text-[11.5px] leading-[1.35] faint">{pricing.secondary}</p>
+                  </>
+                );
+              })()}
 
               <button
-                onClick={() => (t.price === 0 ? onStart() : onTrial(t))}
+                onClick={() => (t.slug === 'free' ? onStart() : onTrial?.(t))}
                 disabled={state.disabled}
                 className={`mt-6 h-12 w-full text-sm ${
                   state.disabled

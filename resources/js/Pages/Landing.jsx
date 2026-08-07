@@ -13,6 +13,7 @@ import Pricing from '../landing/sections/Pricing.jsx';
 import Faq from '../landing/sections/Faq.jsx';
 import FinalCta from '../landing/sections/FinalCta.jsx';
 import Footer from '../landing/sections/Footer.jsx';
+import { billing } from '../landing/flow/api.js';
 
 export default function Landing() {
     const { theme, toggle } = useTheme();
@@ -48,7 +49,11 @@ export default function Landing() {
                     <Features />
                     <HowItWorks onStart={startSearch} />
                     <Testimonials />
-                    <Pricing onStart={startSearch} onTrial={() => router.visit('/trial')} />
+                    <Pricing
+                        onStart={startSearch}
+                        onTrial={(plan) => window.location.assign(`/login?redirect=trial_checkout&plan=${encodeURIComponent(plan?.slug ?? 'basic')}&trial=1`)}
+                        onTrialStart={(plan) => window.location.assign(`/login?redirect=trial_checkout&plan=${encodeURIComponent(plan?.slug ?? 'basic')}&trial=1`)}
+                    />
                     <Faq />
                     <FinalCta onStart={startSearch} />
                 </main>

@@ -7,6 +7,7 @@ use App\Http\Middleware\EnsurePaidFeaturesAccess;
 use Illuminate\Http\Request;
 use App\Http\Middleware\HandleInertiaRequests;
 use App\Http\Middleware\RememberTrialCheckoutIntent;
+use Illuminate\Auth\Middleware\RedirectIfAuthenticated;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -18,6 +19,21 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->web(append: [
             HandleInertiaRequests::class,
         ]);
+
+        RedirectIfAuthenticated::redirectUsing(function (Request $request): string {
+            if ($request->query('redirect') === 'trial_checkout') {
+                $plan = (string) $request->query('plan', 'basic');
+
+                if (in_array($plan, ['basic', 'premium'], true)) {
+                    return route('billing.checkout', [
+                        'slug' => $plan,
+                        'trial' => $request->boolean('trial') ? '1' : null,
+                    ]);
+                }
+            }
+
+            return '/dashboard';
+        });
 
         $middleware->validateCsrfTokens(except: [
             'stripe/webhook',

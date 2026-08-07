@@ -3,6 +3,9 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Models\User;
+use App\Models\PricingPlan;
+use App\Services\Billing\BillingService;
+use App\Support\TrialCheckoutIntent;
 use App\Services\Auth\PostAuthenticationRedirector;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\RedirectResponse;
@@ -12,18 +15,24 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rules;
 use Inertia\Inertia;
+use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
 use Inertia\Response;
 
 class RegisteredUserController extends Controller
 {
-    public function __construct(private readonly PostAuthenticationRedirector $redirector) {}
+    public function __construct(
+        private readonly PostAuthenticationRedirector $redirector,
+        private readonly BillingService $billing,
+    ) {}
 
-    public function create(): Response
+    public function create(Request $request): Response
     {
+        $this->rememberCheckoutIntent($request);
+
         return Inertia::render('Auth/Register');
     }
 
-    public function store(Request $request): RedirectResponse
+    public function store(Request $request): RedirectResponse|SymfonyResponse
     {
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
@@ -44,6 +53,47 @@ class RegisteredUserController extends Controller
 
         $request->session()->regenerate();
 
+        if ($checkout = $this->checkoutRedirect($request)) {
+            return Inertia::location($checkout);
+        }
+
         return redirect($this->redirector->destination($request));
+    }
+
+    private function rememberCheckoutIntent(Request $request): void
+    {
+        if ($request->user() !== null || $request->query('redirect') !== 'trial_checkout') {
+            return;
+        }
+
+        $plan = (string) $request->query('plan', 'basic');
+        $withTrial = $request->boolean('trial');
+
+        if (in_array($plan, ['basic', 'premium'], true)) {
+            TrialCheckoutIntent::store($request, $plan, $withTrial);
+        }
+    }
+
+    private function checkoutRedirect(Request $request): ?string
+    {
+        $intent = TrialCheckoutIntent::pull($request);
+
+        if (! is_array($intent) || ! in_array($intent['plan_slug'] ?? null, ['basic', 'premium'], true)) {
+            return null;
+        }
+
+        $user = $request->user();
+
+        if ($user === null) {
+            return null;
+        }
+
+        $plan = PricingPlan::query()->where('slug', $intent['plan_slug'])->first();
+
+        if ($plan === null) {
+            return null;
+        }
+
+        return $this->billing->checkout($user, $plan, (bool) ($intent['with_trial'] ?? false));
     }
 }

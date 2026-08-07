@@ -1,6 +1,6 @@
 import { Head, Link, createInertiaApp, router, useForm, usePage } from "@inertiajs/react";
-import { Fragment, jsx, jsxs } from "react/jsx-runtime";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, jsx, jsxs } from "react/jsx-runtime";
 import createServer from "@inertiajs/react/server";
 import { renderToString } from "react-dom/server";
 //#region \0rolldown/runtime.js
@@ -35,14 +35,16 @@ var FOOT_NAV = [
 * Shared footer that sits under the content column in AppLayout. Hidden on
 * mobile, where the bottom tab bar owns that space instead.
 */
-function AppFooter({ label = "© VVF — find viral videos daily", className = "" }) {
+function AppFooter({ label = "© Outlier Vault - find outlier videos daily", className = "" }) {
+	const { billing = {} } = usePage().props;
+	const navItems = FOOT_NAV.filter((item) => item.href !== "/trial" || (billing.trialEligible ?? true));
 	return /* @__PURE__ */ jsx("footer", {
 		className: `border-t border-black/[.06] dark:border-white/[.08] ${className}`.trim(),
 		children: /* @__PURE__ */ jsxs("div", {
 			className: "flex flex-wrap items-center justify-between gap-4 px-4 py-4 sm:px-6 lg:px-8",
 			children: [/* @__PURE__ */ jsx("nav", {
 				className: "flex flex-wrap items-center gap-1",
-				children: FOOT_NAV.map((item) => /* @__PURE__ */ jsx(Link, {
+				children: navItems.map((item) => /* @__PURE__ */ jsx(Link, {
 					href: item.href,
 					className: "rounded-lg px-2.5 py-1.5 text-[12.5px] font-semibold muted transition hover:bg-black/[.04] hover:text-ink dark:hover:bg-white/[.06] dark:hover:text-white",
 					children: item.label
@@ -57,6 +59,62 @@ function AppFooter({ label = "© VVF — find viral videos daily", className = "
 //#endregion
 //#region resources/js/Pages/Auth/Login.jsx
 var Login_exports = /* @__PURE__ */ __exportAll({ default: () => Login });
+function GoogleMark$1() {
+	return /* @__PURE__ */ jsxs("svg", {
+		viewBox: "0 0 24 24",
+		className: "h-5 w-5",
+		"aria-hidden": true,
+		children: [
+			/* @__PURE__ */ jsx("path", {
+				fill: "#EA4335",
+				d: "M12 10.2v3.9h5.4c-.2 1.2-.9 2.3-1.9 3l3.1 2.4c1.8-1.7 2.9-4.1 2.9-7 0-.7-.1-1.4-.2-2H12z"
+			}),
+			/* @__PURE__ */ jsx("path", {
+				fill: "#34A853",
+				d: "M12 22c2.6 0 4.7-.8 6.3-2.4l-3.1-2.4c-.8.6-1.9 1-3.2 1-2.4 0-4.5-1.7-5.2-3.9l-3.2 2.5C5.2 19.8 8.3 22 12 22z"
+			}),
+			/* @__PURE__ */ jsx("path", {
+				fill: "#4A90E2",
+				d: "M6.8 14.3c-.2-.6-.3-1.2-.3-1.8s.1-1.2.3-1.8L3.6 8.2C2.9 9.6 2.5 11 2.5 12.5s.4 2.9 1.1 4.3l3.2-2.5z"
+			}),
+			/* @__PURE__ */ jsx("path", {
+				fill: "#FBBC05",
+				d: "M12 6.8c1.4 0 2.7.5 3.7 1.4l2.8-2.8C16.7 3.8 14.6 3 12 3 8.3 3 5.2 5.2 3.6 8.2l3.2 2.5c.7-2.2 2.8-3.9 5.2-3.9z"
+			})
+		]
+	});
+}
+function PasswordField$1({ value, onChange, placeholder, autoComplete }) {
+	const [visible, setVisible] = useState(false);
+	return /* @__PURE__ */ jsxs("div", {
+		className: "relative",
+		children: [/* @__PURE__ */ jsx("input", {
+			type: visible ? "text" : "password",
+			value,
+			onChange,
+			className: "field h-12 pr-12 text-[14px]",
+			placeholder,
+			autoComplete
+		}), /* @__PURE__ */ jsx("button", {
+			type: "button",
+			onClick: () => setVisible((current) => !current),
+			"aria-label": visible ? "Hide password" : "Show password",
+			className: "absolute top-1/2 right-3 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full text-ink/40 transition hover:bg-black/[.04] hover:text-ink dark:text-white/40 dark:hover:bg-white/[.06] dark:hover:text-white",
+			children: /* @__PURE__ */ jsxs("svg", {
+				viewBox: "0 0 24 24",
+				className: "h-4 w-4",
+				fill: "none",
+				stroke: "currentColor",
+				strokeWidth: "1.8",
+				children: [/* @__PURE__ */ jsx("path", { d: "M1.5 12s3.8-6 10.5-6 10.5 6 10.5 6-3.8 6-10.5 6S1.5 12 1.5 12Z" }), /* @__PURE__ */ jsx("circle", {
+					cx: "12",
+					cy: "12",
+					r: "3.2"
+				})]
+			})
+		})]
+	});
+}
 function Login() {
 	const { flash = {} } = usePage().props;
 	const form = useForm({
@@ -68,55 +126,64 @@ function Login() {
 		event.preventDefault();
 		form.post("/login");
 	};
-	return /* @__PURE__ */ jsxs(Fragment, { children: [/* @__PURE__ */ jsx(Head, { title: "Log in — VVF" }), /* @__PURE__ */ jsxs("div", {
+	return /* @__PURE__ */ jsxs(Fragment, { children: [/* @__PURE__ */ jsx(Head, { title: "Sign in - Outlier Vault" }), /* @__PURE__ */ jsxs("div", {
 		className: "vvf-landing relative flex min-h-screen flex-col overflow-hidden px-4 py-10 sm:px-6",
 		children: [
 			/* @__PURE__ */ jsxs("div", {
 				"aria-hidden": true,
 				className: "pointer-events-none absolute inset-0 -z-10",
-				children: [/* @__PURE__ */ jsx("div", { className: "bg-grid mask-radial-fade absolute inset-0" }), /* @__PURE__ */ jsx("div", { className: "absolute top-[-10%] left-1/2 h-[380px] w-[760px] -translate-x-1/2 rounded-full bg-accent/18 blur-[140px]" })]
+				children: [/* @__PURE__ */ jsx("div", { className: "bg-grid mask-radial-fade absolute inset-0" }), /* @__PURE__ */ jsx("div", { className: "absolute top-[-12%] left-1/2 h-[420px] w-[760px] -translate-x-1/2 rounded-full bg-accent/16 blur-[150px]" })]
 			}),
 			/* @__PURE__ */ jsxs("div", {
-				className: "mx-auto flex max-w-5xl items-center justify-between",
+				className: "mx-auto flex w-full max-w-5xl items-center justify-between",
 				children: [/* @__PURE__ */ jsx(Link, {
 					href: "/",
 					className: "font-display text-[20px] font-bold tracking-[-.02em]",
-					children: "VVF"
+					children: "Outlier Vault"
 				}), /* @__PURE__ */ jsx(Link, {
 					href: "/register",
 					className: "btn-ghost h-10 px-4 text-sm",
-					children: "Create account"
+					children: "Sign up"
 				})]
 			}),
-			/* @__PURE__ */ jsxs("div", {
-				className: "mx-auto mt-14 flex-1 grid max-w-5xl gap-10 lg:grid-cols-[1.1fr_.9fr] lg:items-center",
-				children: [/* @__PURE__ */ jsxs("div", { children: [
-					/* @__PURE__ */ jsxs("p", {
-						className: "eyebrow",
-						children: [/* @__PURE__ */ jsx("span", { className: "h-px w-6 bg-accent/50" }), " Account access"]
-					}),
-					/* @__PURE__ */ jsx("h1", {
-						className: "mt-4 font-display text-[36px] font-bold tracking-[-.03em] sm:text-[52px]",
-						children: "Log in to your VVF workspace"
-					}),
-					/* @__PURE__ */ jsx("p", {
-						className: "mt-5 max-w-xl text-[15px] leading-relaxed muted sm:text-[16px]",
-						children: "Access your watchlist, plan limits, saved videos, and billing. Google sign-in can still be added later, but your email and password flow works independently."
-					})
-				] }), /* @__PURE__ */ jsxs("div", {
-					className: "rounded-[28px] border border-black/[.06] bg-white/78 p-7 shadow-[0_30px_90px_-50px_rgba(16,18,32,.45)] backdrop-blur-xl dark:border-white/[.08] dark:bg-white/[.05] sm:p-8",
+			/* @__PURE__ */ jsx("div", {
+				className: "mx-auto mt-12 flex w-full max-w-5xl flex-1 items-center justify-center",
+				children: /* @__PURE__ */ jsxs("div", {
+					className: "w-full max-w-[430px] rounded-[26px] border border-black/[.06] bg-white/90 p-8 shadow-[0_28px_90px_-50px_rgba(16,18,32,.42)] backdrop-blur-xl dark:border-white/[.08] dark:bg-white/[.05] sm:p-9",
 					children: [
-						/* @__PURE__ */ jsx("h2", {
-							className: "font-display text-[24px] font-bold",
-							children: "Welcome back"
+						/* @__PURE__ */ jsxs("h1", {
+							className: "font-display text-[30px] font-bold tracking-[-.04em] text-ink sm:text-[40px] dark:text-white",
+							children: ["Welcome ", /* @__PURE__ */ jsx("span", {
+								className: "text-[#3568f3] italic",
+								children: "back"
+							})]
 						}),
 						/* @__PURE__ */ jsx("p", {
-							className: "mt-2 text-[13.5px] muted",
-							children: "Use your email and password to continue."
+							className: "mt-1 text-[15px] muted",
+							children: "Sign in to continue growing your channel."
 						}),
 						flash.status && /* @__PURE__ */ jsx("div", {
 							className: "mt-5 rounded-2xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-700 dark:text-emerald-300",
 							children: flash.status
+						}),
+						/* @__PURE__ */ jsxs("a", {
+							href: "/auth/google",
+							className: "mt-6 flex h-12 w-full items-center justify-center gap-3 rounded-full bg-[#2f2a2a] px-5 text-[15px] font-semibold text-white shadow-[0_18px_40px_-26px_rgba(0,0,0,.55)] transition hover:opacity-95",
+							children: [/* @__PURE__ */ jsx("span", {
+								className: "flex h-8 w-8 items-center justify-center rounded-full bg-white",
+								children: /* @__PURE__ */ jsx(GoogleMark$1, {})
+							}), "Continue with Google"]
+						}),
+						/* @__PURE__ */ jsxs("div", {
+							className: "mt-6 flex items-center gap-4",
+							children: [
+								/* @__PURE__ */ jsx("div", { className: "h-px flex-1 bg-black/[.08] dark:bg-white/[.1]" }),
+								/* @__PURE__ */ jsx("span", {
+									className: "text-[12px] font-semibold tracking-[.14em] faint uppercase",
+									children: "Or"
+								}),
+								/* @__PURE__ */ jsx("div", { className: "h-px flex-1 bg-black/[.08] dark:bg-white/[.1]" })
+							]
 						}),
 						/* @__PURE__ */ jsxs("form", {
 							onSubmit: submit,
@@ -124,15 +191,15 @@ function Login() {
 							children: [
 								/* @__PURE__ */ jsxs("div", { children: [
 									/* @__PURE__ */ jsx("label", {
-										className: "mb-2 block text-[12px] font-semibold uppercase tracking-[.14em] faint",
+										className: "mb-2 block text-[14px] font-semibold text-ink dark:text-white",
 										children: "Email"
 									}),
 									/* @__PURE__ */ jsx("input", {
 										type: "email",
 										value: form.data.email,
 										onChange: (event) => form.setData("email", event.target.value),
-										className: "w-full rounded-2xl border border-black/[.08] bg-white px-4 py-3 text-[14px] outline-none transition focus:border-accent/45 dark:border-white/[.12] dark:bg-white/[.04]",
-										placeholder: "you@company.com",
+										className: "field h-12 text-[14px]",
+										placeholder: "you@example.com",
 										autoComplete: "email"
 									}),
 									form.errors.email && /* @__PURE__ */ jsx("p", {
@@ -141,16 +208,21 @@ function Login() {
 									})
 								] }),
 								/* @__PURE__ */ jsxs("div", { children: [
-									/* @__PURE__ */ jsx("label", {
-										className: "mb-2 block text-[12px] font-semibold uppercase tracking-[.14em] faint",
-										children: "Password"
+									/* @__PURE__ */ jsxs("div", {
+										className: "mb-2 flex items-center justify-between gap-3",
+										children: [/* @__PURE__ */ jsx("label", {
+											className: "text-[14px] font-semibold text-ink dark:text-white",
+											children: "Password"
+										}), /* @__PURE__ */ jsx("button", {
+											type: "button",
+											className: "text-[13px] font-medium text-[#8d6b59] transition hover:opacity-80",
+											children: "Forgot password?"
+										})]
 									}),
-									/* @__PURE__ */ jsx("input", {
-										type: "password",
+									/* @__PURE__ */ jsx(PasswordField$1, {
 										value: form.data.password,
 										onChange: (event) => form.setData("password", event.target.value),
-										className: "w-full rounded-2xl border border-black/[.08] bg-white px-4 py-3 text-[14px] outline-none transition focus:border-accent/45 dark:border-white/[.12] dark:bg-white/[.04]",
-										placeholder: "Your password",
+										placeholder: "Enter your password",
 										autoComplete: "current-password"
 									}),
 									form.errors.password && /* @__PURE__ */ jsx("p", {
@@ -159,7 +231,7 @@ function Login() {
 									})
 								] }),
 								/* @__PURE__ */ jsxs("label", {
-									className: "flex items-center gap-3 text-[13px] muted",
+									className: "flex items-center gap-3 pt-1 text-[13px] muted",
 									children: [/* @__PURE__ */ jsx("input", {
 										type: "checkbox",
 										checked: form.data.remember,
@@ -170,28 +242,28 @@ function Login() {
 								/* @__PURE__ */ jsx("button", {
 									type: "submit",
 									disabled: form.processing,
-									className: "btn-accent h-12 w-full text-sm",
-									children: form.processing ? "Logging in…" : "Log in"
+									className: "mt-2 h-12 w-full rounded-full bg-[#3568f3] text-[15px] font-semibold text-white shadow-[0_20px_45px_-26px_rgba(53,104,243,.8)] transition hover:opacity-95 disabled:opacity-50",
+									children: form.processing ? "Signing in..." : "Sign in"
 								})
 							]
 						}),
 						/* @__PURE__ */ jsxs("p", {
-							className: "mt-5 text-center text-[13px] muted",
+							className: "mt-6 text-center text-[14px] muted",
 							children: [
-								"Need an account?",
+								"Don't have an account?",
 								" ",
 								/* @__PURE__ */ jsx(Link, {
 									href: "/register",
-									className: "font-semibold text-accent underline-offset-4 hover:underline dark:text-accent-glow",
-									children: "Sign up"
+									className: "font-semibold text-[#3568f3] hover:underline",
+									children: "Sign up free"
 								})
 							]
 						})
 					]
-				})]
+				})
 			}),
 			/* @__PURE__ */ jsx(AppFooter, {
-				label: "VVF account access",
+				label: "Outlier Vault sign in",
 				className: "mt-12"
 			})
 		]
@@ -200,6 +272,62 @@ function Login() {
 //#endregion
 //#region resources/js/Pages/Auth/Register.jsx
 var Register_exports = /* @__PURE__ */ __exportAll({ default: () => Register });
+function GoogleMark() {
+	return /* @__PURE__ */ jsxs("svg", {
+		viewBox: "0 0 24 24",
+		className: "h-5 w-5",
+		"aria-hidden": true,
+		children: [
+			/* @__PURE__ */ jsx("path", {
+				fill: "#EA4335",
+				d: "M12 10.2v3.9h5.4c-.2 1.2-.9 2.3-1.9 3l3.1 2.4c1.8-1.7 2.9-4.1 2.9-7 0-.7-.1-1.4-.2-2H12z"
+			}),
+			/* @__PURE__ */ jsx("path", {
+				fill: "#34A853",
+				d: "M12 22c2.6 0 4.7-.8 6.3-2.4l-3.1-2.4c-.8.6-1.9 1-3.2 1-2.4 0-4.5-1.7-5.2-3.9l-3.2 2.5C5.2 19.8 8.3 22 12 22z"
+			}),
+			/* @__PURE__ */ jsx("path", {
+				fill: "#4A90E2",
+				d: "M6.8 14.3c-.2-.6-.3-1.2-.3-1.8s.1-1.2.3-1.8L3.6 8.2C2.9 9.6 2.5 11 2.5 12.5s.4 2.9 1.1 4.3l3.2-2.5z"
+			}),
+			/* @__PURE__ */ jsx("path", {
+				fill: "#FBBC05",
+				d: "M12 6.8c1.4 0 2.7.5 3.7 1.4l2.8-2.8C16.7 3.8 14.6 3 12 3 8.3 3 5.2 5.2 3.6 8.2l3.2 2.5c.7-2.2 2.8-3.9 5.2-3.9z"
+			})
+		]
+	});
+}
+function PasswordField({ value, onChange, placeholder, autoComplete }) {
+	const [visible, setVisible] = useState(false);
+	return /* @__PURE__ */ jsxs("div", {
+		className: "relative",
+		children: [/* @__PURE__ */ jsx("input", {
+			type: visible ? "text" : "password",
+			value,
+			onChange,
+			className: "field h-12 pr-12 text-[14px]",
+			placeholder,
+			autoComplete
+		}), /* @__PURE__ */ jsx("button", {
+			type: "button",
+			onClick: () => setVisible((current) => !current),
+			"aria-label": visible ? "Hide password" : "Show password",
+			className: "absolute top-1/2 right-3 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full text-ink/40 transition hover:bg-black/[.04] hover:text-ink dark:text-white/40 dark:hover:bg-white/[.06] dark:hover:text-white",
+			children: /* @__PURE__ */ jsxs("svg", {
+				viewBox: "0 0 24 24",
+				className: "h-4 w-4",
+				fill: "none",
+				stroke: "currentColor",
+				strokeWidth: "1.8",
+				children: [/* @__PURE__ */ jsx("path", { d: "M1.5 12s3.8-6 10.5-6 10.5 6 10.5 6-3.8 6-10.5 6S1.5 12 1.5 12Z" }), /* @__PURE__ */ jsx("circle", {
+					cx: "12",
+					cy: "12",
+					r: "3.2"
+				})]
+			})
+		})]
+	});
+}
 function Register() {
 	const form = useForm({
 		name: "",
@@ -211,51 +339,60 @@ function Register() {
 		event.preventDefault();
 		form.post("/register");
 	};
-	return /* @__PURE__ */ jsxs(Fragment, { children: [/* @__PURE__ */ jsx(Head, { title: "Create account — VVF" }), /* @__PURE__ */ jsxs("div", {
+	return /* @__PURE__ */ jsxs(Fragment, { children: [/* @__PURE__ */ jsx(Head, { title: "Sign up - Outlier Vault" }), /* @__PURE__ */ jsxs("div", {
 		className: "vvf-landing relative flex min-h-screen flex-col overflow-hidden px-4 py-10 sm:px-6",
 		children: [
 			/* @__PURE__ */ jsxs("div", {
 				"aria-hidden": true,
 				className: "pointer-events-none absolute inset-0 -z-10",
-				children: [/* @__PURE__ */ jsx("div", { className: "bg-grid mask-radial-fade absolute inset-0" }), /* @__PURE__ */ jsx("div", { className: "absolute top-[-10%] left-1/2 h-[380px] w-[760px] -translate-x-1/2 rounded-full bg-hot/12 blur-[150px]" })]
+				children: [/* @__PURE__ */ jsx("div", { className: "bg-grid mask-radial-fade absolute inset-0" }), /* @__PURE__ */ jsx("div", { className: "absolute top-[-12%] left-1/2 h-[420px] w-[760px] -translate-x-1/2 rounded-full bg-hot/10 blur-[150px]" })]
 			}),
 			/* @__PURE__ */ jsxs("div", {
-				className: "mx-auto flex max-w-5xl items-center justify-between",
+				className: "mx-auto flex w-full max-w-5xl items-center justify-between",
 				children: [/* @__PURE__ */ jsx(Link, {
 					href: "/",
 					className: "font-display text-[20px] font-bold tracking-[-.02em]",
-					children: "VVF"
+					children: "Outlier Vault"
 				}), /* @__PURE__ */ jsx(Link, {
 					href: "/login",
 					className: "btn-ghost h-10 px-4 text-sm",
-					children: "Log in"
+					children: "Sign in"
 				})]
 			}),
-			/* @__PURE__ */ jsxs("div", {
-				className: "mx-auto mt-14 flex-1 grid max-w-5xl gap-10 lg:grid-cols-[1.05fr_.95fr] lg:items-center",
-				children: [/* @__PURE__ */ jsxs("div", { children: [
-					/* @__PURE__ */ jsxs("p", {
-						className: "eyebrow",
-						children: [/* @__PURE__ */ jsx("span", { className: "h-px w-6 bg-accent/50" }), " New account"]
-					}),
-					/* @__PURE__ */ jsx("h1", {
-						className: "mt-4 font-display text-[36px] font-bold tracking-[-.03em] sm:text-[52px]",
-						children: "Create your VVF account"
-					}),
-					/* @__PURE__ */ jsx("p", {
-						className: "mt-5 max-w-xl text-[15px] leading-relaxed muted sm:text-[16px]",
-						children: "Start with email and password, then choose a plan when you’re ready. Any guest searches you ran in this session will be attached to your account after sign-in."
-					})
-				] }), /* @__PURE__ */ jsxs("div", {
-					className: "rounded-[28px] border border-black/[.06] bg-white/78 p-7 shadow-[0_30px_90px_-50px_rgba(16,18,32,.45)] backdrop-blur-xl dark:border-white/[.08] dark:bg-white/[.05] sm:p-8",
+			/* @__PURE__ */ jsx("div", {
+				className: "mx-auto mt-12 flex w-full max-w-5xl flex-1 items-center justify-center",
+				children: /* @__PURE__ */ jsxs("div", {
+					className: "w-full max-w-[430px] rounded-[26px] border border-black/[.06] bg-white/90 p-8 shadow-[0_28px_90px_-50px_rgba(16,18,32,.42)] backdrop-blur-xl dark:border-white/[.08] dark:bg-white/[.05] sm:p-9",
 					children: [
-						/* @__PURE__ */ jsx("h2", {
-							className: "font-display text-[24px] font-bold",
-							children: "Create account"
+						/* @__PURE__ */ jsxs("h1", {
+							className: "font-display text-[30px] font-bold tracking-[-.04em] text-ink sm:text-[40px] dark:text-white",
+							children: ["Create your ", /* @__PURE__ */ jsx("span", {
+								className: "text-[#3568f3] italic",
+								children: "account"
+							})]
 						}),
 						/* @__PURE__ */ jsx("p", {
-							className: "mt-2 text-[13.5px] muted",
-							children: "Use a normal email/password login or add Google later."
+							className: "mt-1 text-[15px] muted",
+							children: "Sign up to start tracking viral videos with your team."
+						}),
+						/* @__PURE__ */ jsxs("a", {
+							href: "/auth/google",
+							className: "mt-6 flex h-12 w-full items-center justify-center gap-3 rounded-full bg-[#2f2a2a] px-5 text-[15px] font-semibold text-white shadow-[0_18px_40px_-26px_rgba(0,0,0,.55)] transition hover:opacity-95",
+							children: [/* @__PURE__ */ jsx("span", {
+								className: "flex h-8 w-8 items-center justify-center rounded-full bg-white",
+								children: /* @__PURE__ */ jsx(GoogleMark, {})
+							}), "Continue with Google"]
+						}),
+						/* @__PURE__ */ jsxs("div", {
+							className: "mt-6 flex items-center gap-4",
+							children: [
+								/* @__PURE__ */ jsx("div", { className: "h-px flex-1 bg-black/[.08] dark:bg-white/[.1]" }),
+								/* @__PURE__ */ jsx("span", {
+									className: "text-[12px] font-semibold tracking-[.14em] faint uppercase",
+									children: "Or"
+								}),
+								/* @__PURE__ */ jsx("div", { className: "h-px flex-1 bg-black/[.08] dark:bg-white/[.1]" })
+							]
 						}),
 						/* @__PURE__ */ jsxs("form", {
 							onSubmit: submit,
@@ -263,14 +400,14 @@ function Register() {
 							children: [
 								/* @__PURE__ */ jsxs("div", { children: [
 									/* @__PURE__ */ jsx("label", {
-										className: "mb-2 block text-[12px] font-semibold uppercase tracking-[.14em] faint",
+										className: "mb-2 block text-[14px] font-semibold text-ink dark:text-white",
 										children: "Name"
 									}),
 									/* @__PURE__ */ jsx("input", {
 										type: "text",
 										value: form.data.name,
 										onChange: (event) => form.setData("name", event.target.value),
-										className: "w-full rounded-2xl border border-black/[.08] bg-white px-4 py-3 text-[14px] outline-none transition focus:border-accent/45 dark:border-white/[.12] dark:bg-white/[.04]",
+										className: "field h-12 text-[14px]",
 										placeholder: "Your name",
 										autoComplete: "name"
 									}),
@@ -281,15 +418,15 @@ function Register() {
 								] }),
 								/* @__PURE__ */ jsxs("div", { children: [
 									/* @__PURE__ */ jsx("label", {
-										className: "mb-2 block text-[12px] font-semibold uppercase tracking-[.14em] faint",
+										className: "mb-2 block text-[14px] font-semibold text-ink dark:text-white",
 										children: "Email"
 									}),
 									/* @__PURE__ */ jsx("input", {
 										type: "email",
 										value: form.data.email,
 										onChange: (event) => form.setData("email", event.target.value),
-										className: "w-full rounded-2xl border border-black/[.08] bg-white px-4 py-3 text-[14px] outline-none transition focus:border-accent/45 dark:border-white/[.12] dark:bg-white/[.04]",
-										placeholder: "you@company.com",
+										className: "field h-12 text-[14px]",
+										placeholder: "you@example.com",
 										autoComplete: "email"
 									}),
 									form.errors.email && /* @__PURE__ */ jsx("p", {
@@ -299,15 +436,13 @@ function Register() {
 								] }),
 								/* @__PURE__ */ jsxs("div", { children: [
 									/* @__PURE__ */ jsx("label", {
-										className: "mb-2 block text-[12px] font-semibold uppercase tracking-[.14em] faint",
+										className: "mb-2 block text-[14px] font-semibold text-ink dark:text-white",
 										children: "Password"
 									}),
-									/* @__PURE__ */ jsx("input", {
-										type: "password",
+									/* @__PURE__ */ jsx(PasswordField, {
 										value: form.data.password,
 										onChange: (event) => form.setData("password", event.target.value),
-										className: "w-full rounded-2xl border border-black/[.08] bg-white px-4 py-3 text-[14px] outline-none transition focus:border-accent/45 dark:border-white/[.12] dark:bg-white/[.04]",
-										placeholder: "Choose a password",
+										placeholder: "Create a password",
 										autoComplete: "new-password"
 									}),
 									form.errors.password && /* @__PURE__ */ jsx("p", {
@@ -316,41 +451,39 @@ function Register() {
 									})
 								] }),
 								/* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsx("label", {
-									className: "mb-2 block text-[12px] font-semibold uppercase tracking-[.14em] faint",
+									className: "mb-2 block text-[14px] font-semibold text-ink dark:text-white",
 									children: "Confirm password"
-								}), /* @__PURE__ */ jsx("input", {
-									type: "password",
+								}), /* @__PURE__ */ jsx(PasswordField, {
 									value: form.data.password_confirmation,
 									onChange: (event) => form.setData("password_confirmation", event.target.value),
-									className: "w-full rounded-2xl border border-black/[.08] bg-white px-4 py-3 text-[14px] outline-none transition focus:border-accent/45 dark:border-white/[.12] dark:bg-white/[.04]",
 									placeholder: "Repeat your password",
 									autoComplete: "new-password"
 								})] }),
 								/* @__PURE__ */ jsx("button", {
 									type: "submit",
 									disabled: form.processing,
-									className: "btn-accent h-12 w-full text-sm",
-									children: form.processing ? "Creating account…" : "Create account"
+									className: "mt-2 h-12 w-full rounded-full bg-[#3568f3] text-[15px] font-semibold text-white shadow-[0_20px_45px_-26px_rgba(53,104,243,.8)] transition hover:opacity-95 disabled:opacity-50",
+									children: form.processing ? "Creating account..." : "Sign up"
 								})
 							]
 						}),
 						/* @__PURE__ */ jsxs("p", {
-							className: "mt-5 text-center text-[13px] muted",
+							className: "mt-6 text-center text-[14px] muted",
 							children: [
 								"Already have an account?",
 								" ",
 								/* @__PURE__ */ jsx(Link, {
 									href: "/login",
-									className: "font-semibold text-accent underline-offset-4 hover:underline dark:text-accent-glow",
-									children: "Log in"
+									className: "font-semibold text-[#3568f3] hover:underline",
+									children: "Sign in"
 								})
 							]
 						})
 					]
-				})]
+				})
 			}),
 			/* @__PURE__ */ jsx(AppFooter, {
-				label: "VVF account creation",
+				label: "Outlier Vault sign up",
 				className: "mt-12"
 			})
 		]
@@ -784,7 +917,7 @@ var Spark = ({ className = "h-4 w-4" }) => /* @__PURE__ */ jsx("svg", {
 		strokeLinejoin: "round"
 	})
 });
-var Google = ({ className = "h-4 w-4" }) => /* @__PURE__ */ jsxs("svg", {
+var Google$1 = ({ className = "h-4 w-4" }) => /* @__PURE__ */ jsxs("svg", {
 	viewBox: "0 0 24 24",
 	className,
 	"aria-hidden": "true",
@@ -1120,7 +1253,7 @@ function AppLayout({ pill, step, title, subtitle, actions, toolbar, width = "max
 				children: "vvf"
 			}), /* @__PURE__ */ jsx("span", {
 				className: "mt-1 block text-[9px] font-semibold tracking-[.16em] faint uppercase",
-				children: "Find viral videos daily"
+				children: "Find outlier videos daily"
 			})]
 		})]
 	});
@@ -1359,7 +1492,7 @@ function Dashboard() {
 	const { auth = {}, billing = {}, flash = {} } = usePage().props;
 	const creditsLimit = typeof billing.searchCreditsLimit === "number" ? billing.searchCreditsLimit : null;
 	const bookmarkLimit = billing.bookmarkLimit === -1 ? null : billing.bookmarkLimit ?? 0;
-	return /* @__PURE__ */ jsxs(Fragment, { children: [/* @__PURE__ */ jsx(Head, { title: "Dashboard — VVF" }), /* @__PURE__ */ jsxs(AppLayout, {
+	return /* @__PURE__ */ jsxs(Fragment, { children: [/* @__PURE__ */ jsx(Head, { title: "Dashboard - Outlier Vault" }), /* @__PURE__ */ jsxs(AppLayout, {
 		title: `Welcome back${auth.user?.name ? `, ${auth.user.name}` : ""}`,
 		pill: {
 			text: billing.currentPlan ?? "free",
@@ -1526,7 +1659,7 @@ function Home({ stack, integrations }) {
 					})]
 				}),
 				/* @__PURE__ */ jsx(AppFooter, {
-					label: "VVF starter shell",
+					label: "Outlier Vault starter shell",
 					className: "mt-auto border-white/10 bg-white/5 dark:border-white/10 dark:bg-white/5"
 				})
 			]
@@ -1577,33 +1710,167 @@ function Reveal({ delay = 0, as: Tag = "div", className = "", children, ...rest 
 	});
 }
 //#endregion
+//#region resources/js/landing/sections/Nav.jsx
+function Nav({ theme, onToggleTheme, onStart }) {
+	const [open, setOpen] = useState(false);
+	const [scrolled, setScrolled] = useState(false);
+	useEffect(() => {
+		const onScroll = () => setScrolled(window.scrollY > 12);
+		onScroll();
+		window.addEventListener("scroll", onScroll, { passive: true });
+		return () => window.removeEventListener("scroll", onScroll);
+	}, []);
+	return /* @__PURE__ */ jsxs("header", {
+		className: "sticky top-0 z-50",
+		children: [/* @__PURE__ */ jsx("div", {
+			className: `transition-all duration-500 ${scrolled ? "border-b border-black/[.06] bg-canvas/88 backdrop-blur-xl dark:border-white/[.07] dark:bg-canvas-dark/88" : "border-b border-transparent"}`,
+			children: /* @__PURE__ */ jsxs("div", {
+				className: "mx-auto grid h-[74px] max-w-page grid-cols-[auto_1fr_auto] items-center gap-8 px-4 sm:px-6 lg:px-8",
+				children: [/* @__PURE__ */ jsxs("a", {
+					href: "#top",
+					className: "group flex shrink-0 items-center gap-3 font-display text-[17px] font-bold",
+					children: [/* @__PURE__ */ jsxs("span", {
+						className: "relative",
+						children: [/* @__PURE__ */ jsx(Logo, {}), /* @__PURE__ */ jsx("span", {
+							"aria-hidden": true,
+							className: "absolute inset-0 rounded-[7px] bg-accent/50 opacity-0 blur-md transition-opacity duration-300 group-hover:opacity-100"
+						})]
+					}), "Outlier Vault"]
+				}), /* @__PURE__ */ jsxs("div", {
+					className: "flex items-center justify-end gap-3 sm:gap-4",
+					children: [
+						/* @__PURE__ */ jsx("div", {
+							className: "hidden xl:block",
+							children: /* @__PURE__ */ jsx(ThemeToggle, {
+								theme,
+								onToggle: onToggleTheme
+							})
+						}),
+						/* @__PURE__ */ jsx("a", {
+							href: "/login",
+							className: "hidden py-2 text-[15px] font-medium text-ink/76 transition hover:text-ink xl:inline-flex dark:text-white/72 dark:hover:text-white",
+							children: "Sign In"
+						}),
+						/* @__PURE__ */ jsx("button", {
+							onClick: () => onStart(),
+							className: "hidden h-[42px] items-center rounded-full bg-ink px-6 text-[15px] font-semibold text-white shadow-[0_12px_30px_-16px_rgba(15,15,15,.55)] transition hover:-translate-y-px hover:bg-black xl:inline-flex dark:bg-white dark:text-ink dark:hover:bg-white/90",
+							children: "Try for Free"
+						}),
+						/* @__PURE__ */ jsx("button", {
+							onClick: () => setOpen((o) => !o),
+							"aria-label": "Menu",
+							className: "flex h-10 w-10 items-center justify-center rounded-xl border border-black/[.09] lg:hidden dark:border-white/[.12]",
+							children: open ? /* @__PURE__ */ jsx(Close, {}) : /* @__PURE__ */ jsx(Menu, {})
+						})
+					]
+				})]
+			})
+		}), open && /* @__PURE__ */ jsx("div", {
+			className: "border-b border-black/[.06] bg-canvas/95 px-4 pt-3 pb-5 backdrop-blur-xl lg:hidden dark:border-white/[.07] dark:bg-canvas-dark/95",
+			children: /* @__PURE__ */ jsxs("div", {
+				className: "mt-3 flex flex-col gap-2",
+				children: [
+					/* @__PURE__ */ jsxs("button", {
+						className: "btn-ghost h-11 w-full justify-between px-4 text-sm",
+						children: [/* @__PURE__ */ jsx("span", { children: "Theme" }), /* @__PURE__ */ jsxs("span", {
+							className: "inline-flex items-center gap-2",
+							children: [/* @__PURE__ */ jsx(ThemeToggle, {
+								theme,
+								onToggle: onToggleTheme
+							}), /* @__PURE__ */ jsx(Chevron, { className: "h-3.5 w-3.5" })]
+						})]
+					}),
+					/* @__PURE__ */ jsx("a", {
+						href: "/login",
+						className: "btn-ghost h-11 w-full text-sm",
+						children: "Sign In"
+					}),
+					/* @__PURE__ */ jsx("button", {
+						onClick: () => {
+							setOpen(false);
+							onStart();
+						},
+						className: "h-11 w-full rounded-full bg-ink text-sm font-semibold text-white transition hover:bg-black dark:bg-white dark:text-ink",
+						children: "Try for Free"
+					})
+				]
+			})
+		})]
+	});
+}
+//#endregion
+//#region resources/js/landing/components/CountUp.jsx
+/**
+* Animates a numeric stat when it first scrolls into view. Values like "62B+"
+* or "<20min" are split into prefix / number / suffix so the units survive.
+*/
+var PARTS = /^(\D*?)([\d.]+)(.*)$/;
+function CountUp({ value, duration = 1400, className = "" }) {
+	const ref = useRef(null);
+	const hasAnimated = useRef(false);
+	const parts = useMemo(() => {
+		const match = String(value).match(PARTS);
+		if (!match) return {
+			prefix: "",
+			numeric: null,
+			suffix: "",
+			decimals: 0
+		};
+		return {
+			prefix: match[1],
+			numeric: parseFloat(match[2]),
+			suffix: match[3],
+			decimals: match[2].includes(".") ? match[2].split(".")[1].length : 0
+		};
+	}, [value]);
+	const [shown, setShown] = useState(() => parts.numeric === null ? value : null);
+	useEffect(() => {
+		if (parts.numeric === null) {
+			setShown(value);
+			return;
+		}
+		const el = ref.current;
+		const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+		const settle = () => setShown(value);
+		if (!el || reduced || typeof IntersectionObserver === "undefined") {
+			hasAnimated.current = true;
+			settle();
+			return;
+		}
+		let frame;
+		const observer = new IntersectionObserver(([entry]) => {
+			if (!entry.isIntersecting || hasAnimated.current) return;
+			hasAnimated.current = true;
+			observer.disconnect();
+			const start = performance.now();
+			const tick = (now) => {
+				const t = Math.min((now - start) / duration, 1);
+				const eased = 1 - Math.pow(1 - t, 3);
+				const current = (parts.numeric * eased).toFixed(parts.decimals);
+				setShown(`${parts.prefix}${current}${parts.suffix}`);
+				if (t < 1) frame = requestAnimationFrame(tick);
+				else settle();
+			};
+			frame = requestAnimationFrame(tick);
+		}, { threshold: .4 });
+		observer.observe(el);
+		return () => {
+			observer.disconnect();
+			if (frame) cancelAnimationFrame(frame);
+		};
+	}, [
+		value,
+		duration,
+		parts
+	]);
+	return /* @__PURE__ */ jsx("span", {
+		ref,
+		className,
+		children: shown ?? `${parts.prefix}0${parts.suffix}`
+	});
+}
+//#endregion
 //#region resources/js/landing/data/dummy.js
-var NAV_LINKS = [
-	{
-		label: "Features",
-		href: "#top"
-	},
-	{
-		label: "Pricing",
-		href: "#top"
-	},
-	{
-		label: "Blog",
-		href: "#top"
-	},
-	{
-		label: "Consulting",
-		href: "#top"
-	},
-	{
-		label: "Affiliate",
-		href: "#top"
-	},
-	{
-		label: "Extension",
-		href: "#top"
-	}
-];
 var BRANDS = [
 	{
 		name: "Glossier",
@@ -1670,7 +1937,7 @@ var FEATURES = [
 	{
 		id: "outliers",
 		tag: "Discovery",
-		title: "Viral Video Finder",
+		title: "Outlier Vault",
 		body: "Surface the TikToks in your category that broke out this week — the ones running 10x above the creator’s own baseline, not just the ones with big follower counts.",
 		bullets: [
 			"Outlier scoring vs creator baseline",
@@ -1683,7 +1950,7 @@ var FEATURES = [
 		id: "competitors",
 		tag: "Monitoring",
 		title: "Competitor Tracking",
-		body: "Point VVF at a competitor and get a running feed of every video mentioning them — organic creator posts, affiliate content, and paid spark ads alike.",
+		body: "Point Outlier Vault at a competitor and get a running feed of every video mentioning them - organic creator posts, affiliate content, and paid spark ads alike.",
 		bullets: [
 			"Unlimited competitor watchlists",
 			"Weekly change digest",
@@ -1735,7 +2002,7 @@ var STEPS = [
 	{
 		n: "04",
 		title: "Track it weekly",
-		body: "Save the search and VVF re-runs it on a schedule, emailing you only what is new."
+		body: "Save the search and Outlier Vault re-runs it on a schedule, emailing you only what is new."
 	}
 ];
 var STATS = [
@@ -1772,7 +2039,7 @@ var TESTIMONIALS = [
 		initials: "MI"
 	},
 	{
-		quote: "The outlier scoring is the part that matters. Big accounts posting mediocre videos are noise. VVF filters those out by default.",
+		quote: "The outlier scoring is the part that matters. Big accounts posting mediocre videos are noise. Outlier Vault filters those out by default.",
 		name: "Priya Raman",
 		role: "Social Director",
 		company: "Olipop",
@@ -1878,7 +2145,7 @@ var FAQS = [
 	},
 	{
 		q: "Can I track competitors I do not name upfront?",
-		a: "On Basic and above, each tracked search can watch a competitor continuously. Add them to a watchlist and VVF re-runs on your schedule, sending only what changed since last time."
+		a: "On Basic and above, each tracked search can watch a competitor continuously. Add them to a watchlist and Outlier Vault re-runs on your schedule, sending only what changed since last time."
 	},
 	{
 		q: "What happens after the 10 day trial?",
@@ -1897,7 +2164,7 @@ var FOOTER_LINKS = [
 	{
 		heading: "Product",
 		links: [
-			"Viral Video Finder",
+			"Outlier Vault",
 			"Competitor Tracking",
 			"Creator Shortlists",
 			"Virality Alerts",
@@ -2080,185 +2347,6 @@ var RESULT_VIDEOS = [
 	}
 ];
 //#endregion
-//#region resources/js/landing/sections/Nav.jsx
-function Nav({ theme, onToggleTheme, onStart }) {
-	const [open, setOpen] = useState(false);
-	const [scrolled, setScrolled] = useState(false);
-	useEffect(() => {
-		const onScroll = () => setScrolled(window.scrollY > 12);
-		onScroll();
-		window.addEventListener("scroll", onScroll, { passive: true });
-		return () => window.removeEventListener("scroll", onScroll);
-	}, []);
-	return /* @__PURE__ */ jsxs("header", {
-		className: "sticky top-0 z-50",
-		children: [/* @__PURE__ */ jsx("div", {
-			className: `transition-all duration-500 ${scrolled ? "border-b border-black/[.06] bg-canvas/88 backdrop-blur-xl dark:border-white/[.07] dark:bg-canvas-dark/88" : "border-b border-transparent"}`,
-			children: /* @__PURE__ */ jsxs("div", {
-				className: "mx-auto grid h-[74px] max-w-page grid-cols-[auto_1fr_auto] items-center gap-8 px-4 sm:px-6 lg:px-8",
-				children: [
-					/* @__PURE__ */ jsxs("a", {
-						href: "#top",
-						className: "group flex shrink-0 items-center gap-3 font-display text-[17px] font-bold",
-						children: [/* @__PURE__ */ jsxs("span", {
-							className: "relative",
-							children: [/* @__PURE__ */ jsx(Logo, {}), /* @__PURE__ */ jsx("span", {
-								"aria-hidden": true,
-								className: "absolute inset-0 rounded-[7px] bg-accent/50 opacity-0 blur-md transition-opacity duration-300 group-hover:opacity-100"
-							})]
-						}), "VVF"]
-					}),
-					/* @__PURE__ */ jsx("nav", {
-						className: "hidden items-center justify-center gap-7 xl:flex",
-						children: NAV_LINKS.map((l) => /* @__PURE__ */ jsx("a", {
-							href: l.href,
-							className: "py-2 text-[15px] font-medium text-ink/76 transition-all duration-300 hover:text-ink dark:text-white/72 dark:hover:text-white",
-							children: l.label
-						}, l.href))
-					}),
-					/* @__PURE__ */ jsxs("div", {
-						className: "flex items-center justify-end gap-3 sm:gap-4",
-						children: [
-							/* @__PURE__ */ jsx("div", {
-								className: "hidden xl:block",
-								children: /* @__PURE__ */ jsx(ThemeToggle, {
-									theme,
-									onToggle: onToggleTheme
-								})
-							}),
-							/* @__PURE__ */ jsx("a", {
-								href: "/login",
-								className: "hidden py-2 text-[15px] font-medium text-ink/76 transition hover:text-ink xl:inline-flex dark:text-white/72 dark:hover:text-white",
-								children: "Sign In"
-							}),
-							/* @__PURE__ */ jsx("button", {
-								onClick: () => onStart(),
-								className: "hidden h-[42px] items-center rounded-full bg-ink px-6 text-[15px] font-semibold text-white shadow-[0_12px_30px_-16px_rgba(15,15,15,.55)] transition hover:-translate-y-px hover:bg-black xl:inline-flex dark:bg-white dark:text-ink dark:hover:bg-white/90",
-								children: "Try for Free"
-							}),
-							/* @__PURE__ */ jsx("button", {
-								onClick: () => setOpen((o) => !o),
-								"aria-label": "Menu",
-								className: "flex h-10 w-10 items-center justify-center rounded-xl border border-black/[.09] lg:hidden dark:border-white/[.12]",
-								children: open ? /* @__PURE__ */ jsx(Close, {}) : /* @__PURE__ */ jsx(Menu, {})
-							})
-						]
-					})
-				]
-			})
-		}), open && /* @__PURE__ */ jsxs("div", {
-			className: "border-b border-black/[.06] bg-canvas/95 px-4 pt-3 pb-5 backdrop-blur-xl lg:hidden dark:border-white/[.07] dark:bg-canvas-dark/95",
-			children: [/* @__PURE__ */ jsx("nav", {
-				className: "flex flex-col",
-				children: NAV_LINKS.map((l) => /* @__PURE__ */ jsx("a", {
-					href: l.href,
-					onClick: () => setOpen(false),
-					className: "rounded-xl px-3 py-3 text-[15px] font-medium muted transition hover:bg-black/[.04] dark:hover:bg-white/[.06]",
-					children: l.label
-				}, l.href))
-			}), /* @__PURE__ */ jsxs("div", {
-				className: "mt-3 flex flex-col gap-2",
-				children: [
-					/* @__PURE__ */ jsxs("button", {
-						className: "btn-ghost h-11 w-full justify-between px-4 text-sm",
-						children: [/* @__PURE__ */ jsx("span", { children: "Theme" }), /* @__PURE__ */ jsxs("span", {
-							className: "inline-flex items-center gap-2",
-							children: [/* @__PURE__ */ jsx(ThemeToggle, {
-								theme,
-								onToggle: onToggleTheme
-							}), /* @__PURE__ */ jsx(Chevron, { className: "h-3.5 w-3.5" })]
-						})]
-					}),
-					/* @__PURE__ */ jsx("a", {
-						href: "/login",
-						className: "btn-ghost h-11 w-full text-sm",
-						children: "Sign In"
-					}),
-					/* @__PURE__ */ jsx("button", {
-						onClick: () => {
-							setOpen(false);
-							onStart();
-						},
-						className: "h-11 w-full rounded-full bg-ink text-sm font-semibold text-white transition hover:bg-black dark:bg-white dark:text-ink",
-						children: "Try for Free"
-					})
-				]
-			})]
-		})]
-	});
-}
-//#endregion
-//#region resources/js/landing/components/CountUp.jsx
-/**
-* Animates a numeric stat when it first scrolls into view. Values like "62B+"
-* or "<20min" are split into prefix / number / suffix so the units survive.
-*/
-var PARTS = /^(\D*?)([\d.]+)(.*)$/;
-function CountUp({ value, duration = 1400, className = "" }) {
-	const ref = useRef(null);
-	const hasAnimated = useRef(false);
-	const parts = useMemo(() => {
-		const match = String(value).match(PARTS);
-		if (!match) return {
-			prefix: "",
-			numeric: null,
-			suffix: "",
-			decimals: 0
-		};
-		return {
-			prefix: match[1],
-			numeric: parseFloat(match[2]),
-			suffix: match[3],
-			decimals: match[2].includes(".") ? match[2].split(".")[1].length : 0
-		};
-	}, [value]);
-	const [shown, setShown] = useState(() => parts.numeric === null ? value : null);
-	useEffect(() => {
-		if (parts.numeric === null) {
-			setShown(value);
-			return;
-		}
-		const el = ref.current;
-		const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-		const settle = () => setShown(value);
-		if (!el || reduced || typeof IntersectionObserver === "undefined") {
-			hasAnimated.current = true;
-			settle();
-			return;
-		}
-		let frame;
-		const observer = new IntersectionObserver(([entry]) => {
-			if (!entry.isIntersecting || hasAnimated.current) return;
-			hasAnimated.current = true;
-			observer.disconnect();
-			const start = performance.now();
-			const tick = (now) => {
-				const t = Math.min((now - start) / duration, 1);
-				const eased = 1 - Math.pow(1 - t, 3);
-				const current = (parts.numeric * eased).toFixed(parts.decimals);
-				setShown(`${parts.prefix}${current}${parts.suffix}`);
-				if (t < 1) frame = requestAnimationFrame(tick);
-				else settle();
-			};
-			frame = requestAnimationFrame(tick);
-		}, { threshold: .4 });
-		observer.observe(el);
-		return () => {
-			observer.disconnect();
-			if (frame) cancelAnimationFrame(frame);
-		};
-	}, [
-		value,
-		duration,
-		parts
-	]);
-	return /* @__PURE__ */ jsx("span", {
-		ref,
-		className,
-		children: shown ?? `${parts.prefix}0${parts.suffix}`
-	});
-}
-//#endregion
 //#region resources/js/landing/sections/Hero.jsx
 var TYPE_KEYS = [
 	"brand",
@@ -2320,7 +2408,7 @@ function Hero({ onStart }) {
 							delay: 140,
 							children: /* @__PURE__ */ jsx("p", {
 								className: "mx-auto mt-6 max-w-xl text-[15.5px] leading-relaxed muted sm:text-[17px]",
-								children: "Point VVF at your brand, a competitor, or a single product. We scan TikTok and hand back the viral videos, the creators behind them, and what changed since last week."
+								children: "Point Outlier Vault at your brand, a competitor, or a single product. We scan TikTok and hand back the viral videos, the creators behind them, and what changed since last week."
 							})
 						})
 					]
@@ -2380,29 +2468,23 @@ function Hero({ onStart }) {
 											onClick: () => setValue(config.sample),
 											className: "font-semibold text-accent underline-offset-4 hover:underline dark:text-accent-glow",
 											children: [
-												"“",
+												"\"",
 												config.sample,
-												"”"
+												"\""
 											]
 										}),
 										" ",
-										"· one subject per search keeps each result tight."
+										"- one subject per search keeps each result tight."
 									]
 								})
 							]
 						})
-					}), /* @__PURE__ */ jsxs("div", {
-						className: "mt-5 flex flex-col items-center justify-center gap-3 sm:flex-row sm:gap-6",
-						children: [/* @__PURE__ */ jsxs("button", {
-							className: "group inline-flex items-center gap-2.5 text-[13.5px] font-semibold muted transition hover:text-accent dark:hover:text-accent-glow",
-							children: [/* @__PURE__ */ jsx("span", {
-								className: "flex h-8 w-8 items-center justify-center rounded-full border border-black/[.09] transition group-hover:border-accent/50 group-hover:bg-accent/10 dark:border-white/15",
-								children: /* @__PURE__ */ jsx(Play, { className: "h-3 w-3" })
-							}), "Watch 2 min demo"]
-						}), /* @__PURE__ */ jsx("span", {
+					}), /* @__PURE__ */ jsx("div", {
+						className: "mt-5 flex items-center justify-center",
+						children: /* @__PURE__ */ jsx("span", {
 							className: "text-[13px] faint",
-							children: "1 free search · no credit card"
-						})]
+							children: "1 free search - no credit card"
+						})
 					})]
 				}),
 				/* @__PURE__ */ jsx("dl", {
@@ -2748,7 +2830,7 @@ function Testimonials() {
 				}),
 				/* @__PURE__ */ jsx("h2", {
 					className: "section-title mt-4",
-					children: "Why brand teams switch to VVF"
+					children: "Why brand teams switch to Outlier Vault"
 				}),
 				/* @__PURE__ */ jsx("p", {
 					className: "mt-5 text-[15.5px] leading-relaxed muted sm:text-base",
@@ -2779,6 +2861,7 @@ function Pricing({ onStart, onTrial, onTrialStart, compact = false }) {
 	const currentPlan = billing.currentPlan ?? "free";
 	const subscriptionStatus = subscription?.status ?? null;
 	const onBasicTrial = currentPlan === "basic" && subscriptionStatus === "trialing";
+	const trialEligible = billing.trialEligible ?? true;
 	const launchTrial = () => {
 		if (typeof onTrialStart === "function") {
 			onTrialStart();
@@ -2862,7 +2945,7 @@ function Pricing({ onStart, onTrial, onTrialStart, compact = false }) {
 					})
 				]
 			}),
-			/* @__PURE__ */ jsx(Reveal, {
+			trialEligible && /* @__PURE__ */ jsx(Reveal, {
 				className: "mx-auto mt-8 max-w-5xl",
 				children: /* @__PURE__ */ jsx("div", {
 					className: "rounded-[30px] border border-accent/20 bg-white/78 p-6 shadow-[0_18px_45px_-36px_rgba(109,75,255,.22)] backdrop-blur-xl dark:border-white/[.08] dark:bg-white/[.05] sm:p-7",
@@ -3120,7 +3203,7 @@ function Footer() {
 					/* @__PURE__ */ jsxs("a", {
 						href: "#top",
 						className: "flex items-center gap-2.5 font-display text-[17px] font-bold",
-						children: [/* @__PURE__ */ jsx(Logo, {}), "VVF"]
+						children: [/* @__PURE__ */ jsx(Logo, {}), "Outlier Vault"]
 					}),
 					/* @__PURE__ */ jsx("p", {
 						className: "mt-4 max-w-xs text-[13.5px] leading-relaxed muted",
@@ -3179,7 +3262,7 @@ function Footer() {
 					children: [
 						"© ",
 						(/* @__PURE__ */ new Date()).getFullYear(),
-						" VVF. Prototype — dummy data throughout."
+						" Outlier Vault. Prototype - dummy data throughout."
 					]
 				}), /* @__PURE__ */ jsx("div", {
 					className: "flex gap-6 text-[12.5px] faint",
@@ -3218,7 +3301,7 @@ function Landing() {
 			q: phrase
 		});
 	};
-	return /* @__PURE__ */ jsxs(Fragment, { children: [/* @__PURE__ */ jsx(Head, { title: "VVF — TikTok viral intelligence for brands" }), /* @__PURE__ */ jsxs("div", {
+	return /* @__PURE__ */ jsxs(Fragment, { children: [/* @__PURE__ */ jsx(Head, { title: "Outlier Vault - TikTok viral intelligence for brands" }), /* @__PURE__ */ jsxs("div", {
 		ref: revealRoot,
 		className: "vvf-landing min-h-screen font-body",
 		children: [
@@ -3391,7 +3474,7 @@ function Plans() {
 		}
 		billing.trialCheckout("basic");
 	};
-	return /* @__PURE__ */ jsxs(Fragment, { children: [/* @__PURE__ */ jsx(Head, { title: "Plans - VVF" }), /* @__PURE__ */ jsx(AppLayout, {
+	return /* @__PURE__ */ jsxs(Fragment, { children: [/* @__PURE__ */ jsx(Head, { title: "Plans - Outlier Vault" }), /* @__PURE__ */ jsx(AppLayout, {
 		width: "max-w-7xl",
 		children: /* @__PURE__ */ jsx("div", {
 			ref: revealRoot,
@@ -3646,7 +3729,7 @@ function Index({ searches: initialSearches, filterType = null, watchlistedOnly =
 		}
 	};
 	return /* @__PURE__ */ jsxs(Fragment, { children: [
-		/* @__PURE__ */ jsx(Head, { title: `${title} - VVF` }),
+		/* @__PURE__ */ jsx(Head, { title: `${title} - Outlier Vault` }),
 		/* @__PURE__ */ jsx(AppLayout, {
 			title,
 			pill: {
@@ -4124,7 +4207,7 @@ function gradientFor(key) {
 }
 //#endregion
 //#region resources/js/landing/flow/VideoCard.jsx
-function embedFor(video) {
+function embedFor$1(video) {
 	if (video.embed_url) return video.embed_url;
 	const id = video.video_id;
 	return id ? `https://www.tiktok.com/embed/v2/${id}` : null;
@@ -4135,7 +4218,7 @@ function Thumb({ video, rank, className = "" }) {
 	const gradient = gradientFor(video.video_id ?? video.id);
 	const src = video.thumbnail_url;
 	const mult = multiplier(video.score ?? video.virality_score);
-	const embed = embedFor(video);
+	const embed = embedFor$1(video);
 	return /* @__PURE__ */ jsx("div", {
 		className: `group relative flex items-center justify-center overflow-hidden rounded-2xl
         bg-linear-to-br ${gradient} shadow-[0_20px_44px_-24px_rgba(0,0,0,.85)] ${className}`,
@@ -4384,7 +4467,7 @@ function EmptyState({ phrase, onRefresh, refreshing }) {
 		]
 	});
 }
-function LoginGate({ resultCount }) {
+function LoginGate({ resultCount, trialEligible = true }) {
 	return /* @__PURE__ */ jsxs("div", {
 		className: "ring-gradient relative mt-6 overflow-hidden rounded-3xl bg-white/72 p-8 backdrop-blur-2xl dark:bg-white/[.04]",
 		children: [
@@ -4416,12 +4499,19 @@ function LoginGate({ resultCount }) {
 						className: "mt-6 flex flex-col items-center justify-center gap-3 sm:flex-row",
 						children: [/* @__PURE__ */ jsxs("a", {
 							href: "/auth/google",
-							className: "btn-accent h-12 px-5 text-sm",
-							children: ["Continue with Google ", /* @__PURE__ */ jsx(Arrow, {})]
-						}), /* @__PURE__ */ jsx("a", {
+							className: "flex h-12 items-center justify-center gap-3 rounded-full bg-[#2f2a2a] px-5 text-sm font-semibold text-white shadow-[0_18px_40px_-26px_rgba(0,0,0,.55)] transition hover:opacity-95",
+							children: [/* @__PURE__ */ jsx("span", {
+								className: "flex h-8 w-8 items-center justify-center rounded-full bg-white",
+								children: /* @__PURE__ */ jsx(Google, {})
+							}), "Continue with Google"]
+						}), trialEligible ? /* @__PURE__ */ jsx("a", {
 							href: "/trial",
 							className: "btn-ghost h-12 px-5 text-sm",
 							children: "Start free trial"
+						}) : /* @__PURE__ */ jsx("button", {
+							disabled: true,
+							className: "h-12 cursor-not-allowed rounded-xl border border-black/[.08] bg-black/[.03] px-5 text-sm font-semibold text-ink/40 dark:border-white/[.12] dark:bg-white/[.04] dark:text-white/40",
+							children: "Trial unavailable"
 						})]
 					})
 				]
@@ -4552,7 +4642,10 @@ function ResultsScreen({ search, isAuthenticated = false, billingState = null, o
 				phrase: search?.phrase,
 				onRefresh,
 				refreshing
-			}) : !isAuthenticated ? /* @__PURE__ */ jsx(LoginGate, { resultCount: results.length }) : /* @__PURE__ */ jsxs(Fragment, { children: [
+			}) : !isAuthenticated ? /* @__PURE__ */ jsx(LoginGate, {
+				resultCount: results.length,
+				trialEligible: billingState?.trialEligible ?? true
+			}) : /* @__PURE__ */ jsxs(Fragment, { children: [
 				billingState && /* @__PURE__ */ jsxs("div", {
 					className: "mt-6 flex flex-wrap items-center gap-2 rounded-2xl border border-black/[.06] bg-black/[.03] px-4 py-3 text-[12.5px] muted dark:border-white/[.08] dark:bg-white/[.04]",
 					children: [
@@ -4606,7 +4699,7 @@ function ResultsScreen({ search, isAuthenticated = false, billingState = null, o
 					]
 				})
 			] }),
-			freeSearch && /* @__PURE__ */ jsxs("div", {
+			freeSearch && (billingState?.trialEligible ?? true) && /* @__PURE__ */ jsxs("div", {
 				className: "relative mt-10 isolate flex flex-col gap-5 overflow-hidden rounded-3xl bg-ink p-7 sm:flex-row sm:items-center sm:justify-between dark:bg-white/[.05]",
 				children: [
 					/* @__PURE__ */ jsx("div", {
@@ -4645,7 +4738,6 @@ var GRADIENTS = [
 	"linear-gradient(150deg,#7affc4,#3ac0a0 55%,#2a6a7a)",
 	"linear-gradient(150deg,#ffb0d8,#d1409a 55%,#5a2060)"
 ];
-/** Stable per-video gradient behind a thumbnail that fails to load. */
 function gradientStyle(video) {
 	const key = String(video?.video_id ?? video?.id ?? "");
 	let hash = 0;
@@ -4660,6 +4752,11 @@ var PlayIcon = ({ w = 14, h = 16 }) => /* @__PURE__ */ jsx("svg", {
 	"aria-hidden": true,
 	children: /* @__PURE__ */ jsx("path", { d: "M0 0l14 8-14 8z" })
 });
+function embedFor(video) {
+	if (video?.embed_url) return video.embed_url;
+	const id = video?.video_id;
+	return id ? `https://www.tiktok.com/player/v1/${id}?autoplay=1&description=0&rel=0` : null;
+}
 function Cover({ video }) {
 	const [broken, setBroken] = useState(false);
 	const src = video?.thumbnail_url;
@@ -4675,10 +4772,6 @@ function Cover({ video }) {
 		onError: () => setBroken(true)
 	})] });
 }
-/**
-* Where a video sits on the rail, as a percentage. Inset on both ends so the
-* dot and the median tick never clip.
-*/
 function position(multiple, max) {
 	const n = Number(multiple);
 	if (!Number.isFinite(n) || n <= 0 || !max || max <= 0) return null;
@@ -4698,10 +4791,45 @@ function Avatar({ video, className }) {
 		onError: () => setBroken(true)
 	});
 }
-/**
-* The winner block: big score, deviation rail, creative detail, actions.
-*/
-function WinnerVideo({ video, medianViews, max, onToggleBookmark, bookmarking = false }) {
+function InlinePlayer({ video, className, buttonClassName = "play", iconProps = {}, activePlayerId = null, onPlay = null, onClose = null }) {
+	const embed = embedFor(video);
+	const playerId = String(video?.id ?? video?.video_id ?? "");
+	if (playerId !== "" && activePlayerId === playerId && embed) return /* @__PURE__ */ jsxs(Fragment, { children: [/* @__PURE__ */ jsx("iframe", {
+		src: embed,
+		title: video?.title || "TikTok video",
+		loading: "lazy",
+		allow: "autoplay; fullscreen; encrypted-media; picture-in-picture",
+		allowFullScreen: true,
+		className: `${className} tracker-embed-frame`
+	}), /* @__PURE__ */ jsx("button", {
+		type: "button",
+		onClick: () => onClose?.(),
+		"aria-label": "Close player",
+		className: "absolute top-2.5 right-2.5 z-20 flex h-8 w-8 items-center justify-center rounded-full bg-black/60 text-white backdrop-blur-md transition hover:bg-black/80",
+		children: /* @__PURE__ */ jsx("svg", {
+			viewBox: "0 0 24 24",
+			className: "h-4 w-4",
+			fill: "none",
+			stroke: "currentColor",
+			strokeWidth: "2.5",
+			strokeLinecap: "round",
+			children: /* @__PURE__ */ jsx("path", { d: "M6 6l12 12M18 6L6 18" })
+		})
+	})] });
+	if (!embed) return /* @__PURE__ */ jsx("div", {
+		className: buttonClassName,
+		"aria-hidden": true,
+		children: /* @__PURE__ */ jsx(PlayIcon, { ...iconProps })
+	});
+	return /* @__PURE__ */ jsx("button", {
+		type: "button",
+		onClick: () => onPlay?.(playerId),
+		"aria-label": video?.title ? `Play: ${video.title}` : "Play video",
+		className: buttonClassName,
+		children: /* @__PURE__ */ jsx(PlayIcon, { ...iconProps })
+	});
+}
+function WinnerVideo({ video, medianViews, max, onToggleBookmark, bookmarking = false, activePlayerId = null, onPlay = null, onClose = null }) {
 	if (!video) return null;
 	const dot = position(video.outlier_multiple, max);
 	const median = position(1, max);
@@ -4718,12 +4846,16 @@ function WinnerVideo({ video, medianViews, max, onToggleBookmark, bookmarking = 
 					className: "flag",
 					children: "★ winner"
 				}),
-				/* @__PURE__ */ jsx("div", {
-					className: "play",
-					children: /* @__PURE__ */ jsx(PlayIcon, {
+				/* @__PURE__ */ jsx(InlinePlayer, {
+					video,
+					className: "absolute inset-0 h-full w-full border-0",
+					iconProps: {
 						w: 16,
 						h: 18
-					})
+					},
+					activePlayerId,
+					onPlay,
+					onClose
 				}),
 				/* @__PURE__ */ jsxs("span", {
 					className: "views-ov",
@@ -4778,13 +4910,20 @@ function WinnerVideo({ video, medianViews, max, onToggleBookmark, bookmarking = 
 					children: [/* @__PURE__ */ jsx(Avatar, {
 						video,
 						className: "av"
-					}), /* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsx("div", {
-						className: "cn",
-						children: video.handle ?? video.creator_name
-					}), /* @__PURE__ */ jsxs("div", {
-						className: "cs",
-						children: [video.uploaded_at ? relativeTime(video.uploaded_at) : "date unknown", " · TikTok"]
-					})] })]
+					}), /* @__PURE__ */ jsxs("div", { children: [
+						/* @__PURE__ */ jsx("div", {
+							className: "cn",
+							children: video.handle ?? video.creator_name
+						}),
+						/* @__PURE__ */ jsxs("div", {
+							className: "cs",
+							children: [video.uploaded_at ? relativeTime(video.uploaded_at) : "date unknown", " · TikTok"]
+						}),
+						video.sound_label && /* @__PURE__ */ jsx("div", {
+							className: "cs",
+							children: video.sound_label
+						})
+					] })]
 				}),
 				/* @__PURE__ */ jsxs("div", {
 					className: "kv",
@@ -4882,10 +5021,7 @@ function WinnerVideo({ video, medianViews, max, onToggleBookmark, bookmarking = 
 		})]
 	});
 }
-/**
-* One card in the ranked feed beneath the winner.
-*/
-function OutlierCard({ video, rank, medianViews, max, onToggleBookmark, bookmarking = false }) {
+function OutlierCard({ video, rank, medianViews, max, onToggleBookmark, bookmarking = false, activePlayerId = null, onPlay = null, onClose = null }) {
 	const dot = position(video.outlier_multiple, max);
 	const median = position(1, max);
 	const packEnd = position(Math.min(2, max), max);
@@ -4911,9 +5047,12 @@ function OutlierCard({ video, rank, medianViews, max, onToggleBookmark, bookmark
 						children: "outlier"
 					})]
 				}),
-				/* @__PURE__ */ jsx("div", {
-					className: "play",
-					children: /* @__PURE__ */ jsx(PlayIcon, {})
+				/* @__PURE__ */ jsx(InlinePlayer, {
+					video,
+					className: "absolute inset-0 z-10 h-full w-full border-0",
+					activePlayerId,
+					onPlay,
+					onClose
 				}),
 				/* @__PURE__ */ jsxs("span", {
 					className: "views-ov",
@@ -4957,13 +5096,20 @@ function OutlierCard({ video, rank, medianViews, max, onToggleBookmark, bookmark
 						className: "av"
 					}), /* @__PURE__ */ jsxs("div", {
 						style: { minWidth: 0 },
-						children: [/* @__PURE__ */ jsx("div", {
-							className: "h2n",
-							children: video.handle ?? video.creator_name
-						}), /* @__PURE__ */ jsx("div", {
-							className: "sub",
-							children: video.uploaded_at ? relativeTime(video.uploaded_at) : "date unknown"
-						})]
+						children: [
+							/* @__PURE__ */ jsx("div", {
+								className: "h2n",
+								children: video.handle ?? video.creator_name
+							}),
+							/* @__PURE__ */ jsx("div", {
+								className: "sub",
+								children: video.uploaded_at ? relativeTime(video.uploaded_at) : "date unknown"
+							}),
+							video.sound_label && /* @__PURE__ */ jsx("div", {
+								className: "sub",
+								children: video.sound_label
+							})
+						]
 					})]
 				}),
 				/* @__PURE__ */ jsxs("div", {
@@ -5692,26 +5838,13 @@ function formatDate$1(iso) {
 		day: "numeric"
 	});
 }
-/**
-* Detail view for brand and competitor searches - a direct port of the
-* `tracker-brand-detail` mockup, minus the reach and engagement channel table
-* which was omitted by request (it needs Reels and Meta Ads integrations that
-* do not exist).
-*
-* Everything on this page is one of three things, and the UI says which:
-*
-*  - Measured. Scraped videos and recorded snapshots.
-*  - Rebuilt (violet badge). Derived by bucketing videos on upload date, so a
-*    new search has a chart before 12 weeks of runs exist.
-*  - Sample (amber badge). Invented by PlaceholderProfileData because it needs
-*    a TikTok profile scrape that has not been built.
-*/
-function DetailScreen({ search, isAuthenticated = false, onToggleWatchlist, onRefresh, onTogglePause, onDelete, refreshing = false, watchlistUpdating = false }) {
+function DetailScreen({ search, isAuthenticated = false, billing = null, onToggleWatchlist, onRefresh, onTogglePause, onDelete, refreshing = false, watchlistUpdating = false }) {
 	const [visible, setVisible] = useState(PAGE_STEP);
 	const [copied, setCopied] = useState(false);
 	const [bookmarkingId, setBookmarkingId] = useState(null);
 	const [items, setItems] = useState(search?.results ?? []);
 	const [view, setView] = useState("outliers");
+	const [activePlayerId, setActivePlayerId] = useState(null);
 	const insights = search?.insights ?? {};
 	const medianViews = insights.baseline?.median_views ?? 0;
 	const threshold = insights.baseline?.outlier_threshold ?? 3;
@@ -5881,10 +6014,14 @@ function DetailScreen({ search, isAuthenticated = false, onToggleWatchlist, onRe
 							href: "/auth/google",
 							className: "tbtn primary",
 							children: "continue with Google"
-						}), /* @__PURE__ */ jsx("a", {
+						}), billing?.trialEligible ?? true ? /* @__PURE__ */ jsx("a", {
 							href: "/trial",
 							className: "tbtn",
 							children: "start free trial"
+						}) : /* @__PURE__ */ jsx("button", {
+							className: "tbtn",
+							disabled: true,
+							children: "trial unavailable"
 						})]
 					})
 				]
@@ -5912,7 +6049,10 @@ function DetailScreen({ search, isAuthenticated = false, onToggleWatchlist, onRe
 					medianViews,
 					max: maxMultiple,
 					onToggleBookmark: toggleBookmark,
-					bookmarking: bookmarkingId === winner?.id
+					bookmarking: bookmarkingId === winner?.id,
+					activePlayerId,
+					onPlay: setActivePlayerId,
+					onClose: () => setActivePlayerId(null)
 				}),
 				rest.length > 0 && /* @__PURE__ */ jsxs(Fragment, { children: [
 					/* @__PURE__ */ jsxs("div", {
@@ -5934,7 +6074,10 @@ function DetailScreen({ search, isAuthenticated = false, onToggleWatchlist, onRe
 							medianViews,
 							max: maxMultiple,
 							onToggleBookmark: toggleBookmark,
-							bookmarking: bookmarkingId === video.id
+							bookmarking: bookmarkingId === video.id,
+							activePlayerId,
+							onPlay: setActivePlayerId,
+							onClose: () => setActivePlayerId(null)
 						}, video.id))
 					}),
 					/* @__PURE__ */ jsx("div", {
@@ -6043,13 +6186,14 @@ function Show({ search: initial, isAuthenticated = false, billing }) {
 		}
 	};
 	const isTracker = TRACKER_TYPES.includes(search.search_type);
-	return /* @__PURE__ */ jsxs(Fragment, { children: [/* @__PURE__ */ jsx(Head, { title: `${search.name} — VVF` }), /* @__PURE__ */ jsx(AppLayout, {
+	return /* @__PURE__ */ jsxs(Fragment, { children: [/* @__PURE__ */ jsx(Head, { title: `${search.name} - Outlier Vault` }), /* @__PURE__ */ jsx(AppLayout, {
 		pill: isTracker ? void 0 : PILL[search.status] ?? PILL.done,
 		step: "results",
 		width: isTracker ? "max-w-[1240px]" : "max-w-6xl",
 		children: isTracker ? /* @__PURE__ */ jsx(DetailScreen, {
 			search,
 			isAuthenticated,
+			billing,
 			refreshing,
 			watchlistUpdating,
 			onRefresh: refresh,
@@ -6373,7 +6517,7 @@ function Keywords({ phrase, type = "brand" }) {
 			setSubmitting(false);
 		}
 	};
-	return /* @__PURE__ */ jsxs(Fragment, { children: [/* @__PURE__ */ jsx(Head, { title: "Add keywords — VVF" }), /* @__PURE__ */ jsx(AppLayout, {
+	return /* @__PURE__ */ jsxs(Fragment, { children: [/* @__PURE__ */ jsx(Head, { title: "Add keywords - Outlier Vault" }), /* @__PURE__ */ jsx(AppLayout, {
 		pill: {
 			text: "1 free search",
 			tone: "ok"
@@ -6515,8 +6659,11 @@ function RunningScreen({ searchId, onBack, onDone }) {
 						}),
 						/* @__PURE__ */ jsxs("a", {
 							href: "/auth/google",
-							className: "btn-ghost h-[52px] w-full text-[15px]",
-							children: [/* @__PURE__ */ jsx(Google, {}), " Continue with Google"]
+							className: "flex h-[52px] w-full items-center justify-center gap-3 rounded-full bg-[#2f2a2a] px-5 text-[15px] font-semibold text-white shadow-[0_18px_40px_-26px_rgba(0,0,0,.55)] transition hover:opacity-95",
+							children: [/* @__PURE__ */ jsx("span", {
+								className: "flex h-8 w-8 items-center justify-center rounded-full bg-white",
+								children: /* @__PURE__ */ jsx(Google$1, {})
+							}), "Continue with Google"]
 						}),
 						/* @__PURE__ */ jsxs("div", {
 							className: "my-4 flex items-center gap-3 text-xs faint",
@@ -6563,7 +6710,7 @@ function RunningScreen({ searchId, onBack, onDone }) {
 //#region resources/js/Pages/Search/Running.jsx
 var Running_exports = /* @__PURE__ */ __exportAll({ default: () => Running });
 function Running({ searchId }) {
-	return /* @__PURE__ */ jsxs(Fragment, { children: [/* @__PURE__ */ jsx(Head, { title: "Search running — VVF" }), /* @__PURE__ */ jsx(AppLayout, {
+	return /* @__PURE__ */ jsxs(Fragment, { children: [/* @__PURE__ */ jsx(Head, { title: "Search running - Outlier Vault" }), /* @__PURE__ */ jsx(AppLayout, {
 		pill: {
 			text: "Search running",
 			tone: "ok"
@@ -6699,7 +6846,7 @@ function Account() {
 		event.preventDefault();
 		form.patch("/settings/account");
 	};
-	return /* @__PURE__ */ jsxs(Fragment, { children: [/* @__PURE__ */ jsx(Head, { title: "Account settings - VVF" }), /* @__PURE__ */ jsx(SettingsShell, {
+	return /* @__PURE__ */ jsxs(Fragment, { children: [/* @__PURE__ */ jsx(Head, { title: "Account settings - Outlier Vault" }), /* @__PURE__ */ jsx(SettingsShell, {
 		section: "account",
 		eyebrow: "Profile",
 		heading: "Account",
@@ -6776,7 +6923,7 @@ function Account() {
 var Appearance_exports = /* @__PURE__ */ __exportAll({ default: () => Appearance });
 function Appearance() {
 	const { theme, toggle } = useTheme();
-	return /* @__PURE__ */ jsxs(Fragment, { children: [/* @__PURE__ */ jsx(Head, { title: "Appearance settings - VVF" }), /* @__PURE__ */ jsx(SettingsShell, {
+	return /* @__PURE__ */ jsxs(Fragment, { children: [/* @__PURE__ */ jsx(Head, { title: "Appearance settings - Outlier Vault" }), /* @__PURE__ */ jsx(SettingsShell, {
 		section: "appearance",
 		eyebrow: "Display",
 		heading: "Appearance",
@@ -6871,7 +7018,7 @@ function Subscription({ subscription }) {
 		searchLimit,
 		subscription?.status
 	]);
-	return /* @__PURE__ */ jsxs(Fragment, { children: [/* @__PURE__ */ jsx(Head, { title: "Subscription settings - VVF" }), /* @__PURE__ */ jsx(SettingsShell, {
+	return /* @__PURE__ */ jsxs(Fragment, { children: [/* @__PURE__ */ jsx(Head, { title: "Subscription settings - Outlier Vault" }), /* @__PURE__ */ jsx(SettingsShell, {
 		section: "subscription",
 		eyebrow: "Plan",
 		heading: "Subscription",
@@ -7107,15 +7254,33 @@ function TrialScreen({ onBack, backLabel = "Back to results" }) {
 //#region resources/js/Pages/Trial.jsx
 var Trial_exports = /* @__PURE__ */ __exportAll({ default: () => Trial });
 function Trial() {
-	return /* @__PURE__ */ jsxs(Fragment, { children: [/* @__PURE__ */ jsx(Head, { title: "Start your trial — VVF" }), /* @__PURE__ */ jsx(AppLayout, {
+	const { billing = {} } = usePage().props;
+	return /* @__PURE__ */ jsxs(Fragment, { children: [/* @__PURE__ */ jsx(Head, { title: "Start your trial - Outlier Vault" }), /* @__PURE__ */ jsx(AppLayout, {
 		pill: {
 			text: "Trial",
 			tone: "accent"
 		},
 		width: "max-w-4xl",
-		children: /* @__PURE__ */ jsx(TrialScreen, {
+		children: billing.trialEligible ?? true ? /* @__PURE__ */ jsx(TrialScreen, {
 			backLabel: "Back to home",
 			onBack: () => router.visit("/")
+		}) : /* @__PURE__ */ jsxs("div", {
+			className: "surface p-8 text-center",
+			children: [
+				/* @__PURE__ */ jsx("h1", {
+					className: "font-display text-[28px] font-bold tracking-[-.03em]",
+					children: "Trial unavailable"
+				}),
+				/* @__PURE__ */ jsx("p", {
+					className: "mt-3 text-[14px] muted",
+					children: "This account is already on a paid plan without trial access, so trial offers are hidden."
+				}),
+				/* @__PURE__ */ jsx("button", {
+					onClick: () => router.visit("/plans"),
+					className: "btn-accent mx-auto mt-6 h-11 px-5 text-[13px]",
+					children: "Back to plans"
+				})
+			]
 		})
 	})] });
 }

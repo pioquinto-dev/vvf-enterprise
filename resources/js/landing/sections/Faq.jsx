@@ -17,10 +17,10 @@ export default function Faq() {
           <p className="mt-5 text-[15.5px] leading-relaxed muted">
             Still stuck? Email{' '}
             <a
-              href="mailto:hello@vvf.app"
+              href="mailto:hello@outliervault.com"
               className="font-semibold text-accent underline-offset-4 hover:underline dark:text-accent-glow"
             >
-              hello@vvf.app
+              hello@outliervault.com
             </a>{' '}
             and a human replies same day.
           </p>

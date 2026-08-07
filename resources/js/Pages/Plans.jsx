@@ -13,22 +13,13 @@ export default function Plans() {
     window.location.assign('/search?type=brand');
   };
 
-  const startPaid = (plan) => {
+  const startTrialCheckout = (plan) => {
     if (!auth.signedIn) {
-      window.location.assign('/auth/google');
+      window.location.assign(`/login?redirect=trial_checkout&plan=${encodeURIComponent(plan?.slug ?? 'basic')}&trial=1`);
       return;
     }
 
-    billing.checkout(plan?.slug ?? 'basic');
-  };
-
-  const startTrial = () => {
-    if (!auth.signedIn) {
-      window.location.assign('/auth/google');
-      return;
-    }
-
-    billing.trialCheckout('basic');
+    billing.trialCheckout(plan?.slug ?? 'basic');
   };
 
   return (
@@ -37,7 +28,7 @@ export default function Plans() {
 
       <AppLayout width="max-w-7xl">
         <div ref={revealRoot}>
-          <Pricing onStart={startFree} onTrial={startPaid} onTrialStart={startTrial} compact />
+          <Pricing onStart={startFree} onTrial={startTrialCheckout} onTrialStart={startTrialCheckout} compact />
         </div>
       </AppLayout>
     </>
