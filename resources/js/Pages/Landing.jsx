@@ -37,7 +37,7 @@ export default function Landing() {
 
     return (
         <>
-            <Head title="VVF — TikTok viral intelligence for brands" />
+            <Head title="Outlier Vault - TikTok viral intelligence for brands" />
 
             <div ref={revealRoot} className="vvf-landing min-h-screen font-body">
                 <Nav theme={theme} onToggleTheme={toggle} onStart={startSearch} />

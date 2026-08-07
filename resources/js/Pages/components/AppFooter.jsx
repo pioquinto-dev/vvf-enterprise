@@ -10,7 +10,7 @@ const FOOT_NAV = [
  * Shared footer that sits under the content column in AppLayout. Hidden on
  * mobile, where the bottom tab bar owns that space instead.
  */
-export default function AppFooter({ label = '© VVF - find viral videos daily', className = '' }) {
+export default function AppFooter({ label = '© Outlier Vault - find outlier videos daily', className = '' }) {
   const { billing = {} } = usePage().props;
   const navItems = FOOT_NAV.filter((item) => item.href !== '/trial' || (billing.trialEligible ?? true));
 

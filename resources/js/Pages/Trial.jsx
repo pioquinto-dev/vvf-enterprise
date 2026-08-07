@@ -8,7 +8,7 @@ export default function Trial() {
 
     return (
         <>
-            <Head title="Start your trial - VVF" />
+            <Head title="Start your trial - Outlier Vault" />
 
             <AppLayout pill={{ text: 'Trial', tone: 'accent' }} width="max-w-4xl">
                 {billing.trialEligible ?? true ? (

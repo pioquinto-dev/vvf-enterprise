@@ -29,7 +29,7 @@ export default function Keywords({ phrase, type = 'brand' }) {
 
     return (
         <>
-            <Head title="Add keywords — VVF" />
+            <Head title="Add keywords - Outlier Vault" />
 
             <AppLayout pill={{ text: '1 free search', tone: 'ok' }} step="keywords" width="max-w-4xl">
                 <KeywordsScreen

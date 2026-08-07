@@ -9,7 +9,7 @@ export default function Appearance() {
 
   return (
     <>
-      <Head title="Appearance settings - VVF" />
+      <Head title="Appearance settings - Outlier Vault" />
 
       <SettingsShell section="appearance" eyebrow="Display" heading="Appearance">
         <div className="max-w-4xl">

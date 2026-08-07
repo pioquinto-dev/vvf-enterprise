@@ -61,7 +61,7 @@ export default function Show({ search: initial, isAuthenticated = false, billing
 
     return (
         <>
-            <Head title={`${search.name} — VVF`} />
+            <Head title={`${search.name} - Outlier Vault`} />
 
             {/* The tracker layout is the mockup's own 1240px wrap and carries its
                 own head, so the shell's title/pill row is suppressed for it. */}

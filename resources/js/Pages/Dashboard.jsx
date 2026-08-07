@@ -38,7 +38,7 @@ export default function Dashboard() {
 
   return (
     <>
-      <Head title="Dashboard — VVF" />
+      <Head title="Dashboard - Outlier Vault" />
 
       <AppLayout
         title={`Welcome back${auth.user?.name ? `, ${auth.user.name}` : ''}`}

@@ -49,7 +49,7 @@ export default function Hero({ onStart }) {
 
           <Reveal delay={140}>
             <p className="mx-auto mt-6 max-w-xl text-[15.5px] leading-relaxed muted sm:text-[17px]">
-              Point VVF at your brand, a competitor, or a single product. We scan TikTok and hand back the viral
+              Point Outlier Vault at your brand, a competitor, or a single product. We scan TikTok and hand back the viral
               videos, the creators behind them, and what changed since last week.
             </p>
           </Reveal>

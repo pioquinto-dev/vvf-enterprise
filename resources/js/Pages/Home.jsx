@@ -67,7 +67,7 @@ export default function Home({ stack, integrations }) {
                     </section>
 
                     <AppFooter
-                        label="VVF starter shell"
+                        label="Outlier Vault starter shell"
                         className="mt-auto border-white/10 bg-white/5 dark:border-white/10 dark:bg-white/5"
                     />
                 </div>

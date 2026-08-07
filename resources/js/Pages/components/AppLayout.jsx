@@ -241,7 +241,7 @@ export default function AppLayout({
             <span className="leading-none">
                 <span className="block font-display text-[19px] font-bold tracking-[-.03em]">vvf</span>
                 <span className="mt-1 block text-[9px] font-semibold tracking-[.16em] faint uppercase">
-                    Find viral videos daily
+                    Find outlier videos daily
                 </span>
             </span>
         </Link>

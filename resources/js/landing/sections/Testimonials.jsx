@@ -30,7 +30,7 @@ export default function Testimonials() {
         <p className="eyebrow">
           <span className="h-px w-6 bg-accent/50" /> Customers
         </p>
-        <h2 className="section-title mt-4">Why brand teams switch to VVF</h2>
+        <h2 className="section-title mt-4">Why brand teams switch to Outlier Vault</h2>
         <p className="mt-5 text-[15.5px] leading-relaxed muted sm:text-base">
           Placeholder quotes for the MVP — swap these for real ones before launch.
         </p>

@@ -33,7 +33,7 @@ export default function Plans() {
 
   return (
     <>
-      <Head title="Plans - VVF" />
+      <Head title="Plans - Outlier Vault" />
 
       <AppLayout width="max-w-7xl">
         <div ref={revealRoot}>

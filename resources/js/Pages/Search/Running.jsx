@@ -6,7 +6,7 @@ import RunningScreen from '../../landing/flow/screens/RunningScreen.jsx';
 export default function Running({ searchId }) {
     return (
         <>
-            <Head title="Search running — VVF" />
+            <Head title="Search running - Outlier Vault" />
 
             <AppLayout pill={{ text: 'Search running', tone: 'ok' }} step="running" width="max-w-4xl">
                 <RunningScreen

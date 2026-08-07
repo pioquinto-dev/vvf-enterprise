@@ -283,7 +283,7 @@ export default function Index({ searches: initialSearches, filterType = null, wa
 
   return (
     <>
-      <Head title={`${title} - VVF`} />
+      <Head title={`${title} - Outlier Vault`} />
 
       <AppLayout
         title={title}

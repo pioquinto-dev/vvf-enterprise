@@ -71,7 +71,7 @@ export default function Subscription({ subscription }) {
 
   return (
     <>
-      <Head title="Subscription settings - VVF" />
+      <Head title="Subscription settings - Outlier Vault" />
 
       <SettingsShell section="subscription" eyebrow="Plan" heading="Subscription">
         <div className="space-y-4">

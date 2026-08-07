@@ -18,7 +18,7 @@ export default function Footer() {
           <div>
             <a href="#top" className="flex items-center gap-2.5 font-display text-[17px] font-bold">
               <Logo />
-              VVF
+              Outlier Vault
             </a>
             <p className="mt-4 max-w-xs text-[13.5px] leading-relaxed muted">
               TikTok social intelligence for brands. Find the viral videos moving your category, and the creators
@@ -75,7 +75,7 @@ export default function Footer() {
         </div>
 
         <div className="mt-16 flex flex-col items-center justify-between gap-3 border-t border-black/[.06] py-7 sm:flex-row dark:border-white/[.07]">
-          <p className="text-[12.5px] faint">© {new Date().getFullYear()} VVF. Prototype — dummy data throughout.</p>
+          <p className="text-[12.5px] faint">© {new Date().getFullYear()} Outlier Vault. Prototype - dummy data throughout.</p>
           <div className="flex gap-6 text-[12.5px] faint">
             {['Terms', 'Privacy', 'Contact'].map((l) => (
               <a key={l} href="#top" className="transition-colors hover:text-accent dark:hover:text-accent-glow">

@@ -15,7 +15,7 @@ export default function Account() {
 
   return (
     <>
-      <Head title="Account settings - VVF" />
+      <Head title="Account settings - Outlier Vault" />
 
       <SettingsShell section="account" eyebrow="Profile" heading="Account">
         <div className="max-w-3xl space-y-6">

@@ -32,7 +32,7 @@ export default function Nav({ theme, onToggleTheme, onStart }) {
                 className="absolute inset-0 rounded-[7px] bg-accent/50 opacity-0 blur-md transition-opacity duration-300 group-hover:opacity-100"
               />
             </span>
-            VVF
+            Outlier Vault
           </a>
 
           <nav className="hidden items-center justify-center gap-7 xl:flex">

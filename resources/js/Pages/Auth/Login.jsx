@@ -57,7 +57,7 @@ export default function Login() {
 
   return (
     <>
-      <Head title="Sign in - VVF" />
+      <Head title="Sign in - Outlier Vault" />
 
       <div className="vvf-landing relative flex min-h-screen flex-col overflow-hidden px-4 py-10 sm:px-6">
         <div aria-hidden className="pointer-events-none absolute inset-0 -z-10">
@@ -67,7 +67,7 @@ export default function Login() {
 
         <div className="mx-auto flex w-full max-w-5xl items-center justify-between">
           <Link href="/" className="font-display text-[20px] font-bold tracking-[-.02em]">
-            VVF
+            Outlier Vault
           </Link>
           <Link href="/register" className="btn-ghost h-10 px-4 text-sm">
             Sign up
@@ -157,7 +157,7 @@ export default function Login() {
           </div>
         </div>
 
-        <AppFooter label="VVF sign in" className="mt-12" />
+        <AppFooter label="Outlier Vault sign in" className="mt-12" />
       </div>
     </>
   );
