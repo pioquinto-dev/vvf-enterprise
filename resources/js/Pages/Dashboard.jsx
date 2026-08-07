@@ -85,7 +85,7 @@ export default function Dashboard() {
             blurb="Turn one phrase into a self-refreshing list of viral videos."
           />
           <QuickLink
-            href="/settings/subscription"
+            href="/plans"
             icon={Bookmark}
             title="Plans & billing"
             blurb="Compare plans and unlock unlimited refreshes."

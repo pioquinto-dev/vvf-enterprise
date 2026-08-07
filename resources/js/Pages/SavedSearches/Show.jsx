@@ -74,6 +74,7 @@ export default function Show({ search: initial, isAuthenticated = false, billing
                     <DetailScreen
                         search={search}
                         isAuthenticated={isAuthenticated}
+                        billing={billing}
                         refreshing={refreshing}
                         watchlistUpdating={watchlistUpdating}
                         onRefresh={refresh}

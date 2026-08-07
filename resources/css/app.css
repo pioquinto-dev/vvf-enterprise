@@ -768,6 +768,14 @@
     object-fit: cover;
 }
 
+.tracker .winner .vid .tracker-embed-frame,
+.tracker .thumb .tracker-embed-frame {
+    width: 126%;
+    height: 124%;
+    top: -8%;
+    left: -13%;
+}
+
 .tracker .winner .grad {
     position: absolute;
     inset: 0;

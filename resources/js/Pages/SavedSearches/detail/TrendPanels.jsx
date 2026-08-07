@@ -1,16 +1,16 @@
 import { useMemo, useState } from 'react';
 
 import { compactNumber, percent } from '../../../landing/flow/format.js';
-import { RebuiltBadge, SampleBadge } from './Badges.jsx';
+import { RebuiltBadge } from './Badges.jsx';
 
 const W = 560;
 const H = 180;
 const PAD = 10;
 
 function formatValue(value, format) {
-  if (value === null || value === undefined) return '—';
+  if (value === null || value === undefined) return 'â€”';
   if (format === 'compact') return compactNumber(value);
-  if (format === 'percent') return percent(value) ?? '—';
+  if (format === 'percent') return percent(value) ?? 'â€”';
   return String(value);
 }
 
@@ -83,7 +83,7 @@ export function PerformanceChart({ trend }) {
         <span className="ts-val">{formatValue(series.current, series.format)}</span>
         {delta && (
           <span className={`ts-delta ${deltaTone}`}>
-            {delta.direction === 'up' ? '↑' : delta.direction === 'down' ? '↓' : '→'} {Math.abs(delta.value)}
+            {delta.direction === 'up' ? 'â†‘' : delta.direction === 'down' ? 'â†“' : 'â†’'} {Math.abs(delta.value)}
             {deltaSuffix} vs 12 wk ago
           </span>
         )}
@@ -136,9 +136,9 @@ export function PerformanceChart({ trend }) {
 }
 
 /**
- * Page head: logo, title, handles row, actions. The avatar, handle and
- * follower count are read off scraped videos and are real. The category is
- * invented — hence the badge beside it.
+ * Page head: logo, title, handles row, actions. The handle can come from a
+ * brand-level OpenAI lookup, while avatar and follower count only render when
+ * the matched videos happened to include that same account.
  */
 export function TrackerHead({
   search,
@@ -149,7 +149,6 @@ export function TrackerHead({
   copied,
   watchlistUpdating,
 }) {
-  const profile = account?.profile ?? {};
   const initial = (search?.name ?? '?').slice(0, 1).toUpperCase();
 
   return (
@@ -176,19 +175,10 @@ export function TrackerHead({
               </>
             )}
 
-            {profile.category && (
-              <>
-                <span className="sep" />
-                <span>
-                  {profile.category} <SampleBadge />
-                </span>
-              </>
-            )}
-
             <span className="sep" />
             <span>
               checked {search?.frequency ?? 'weekly'}
-              {lastRun ? ` · last run ${lastRun}` : ''}
+              {lastRun ? ` Â· last run ${lastRun}` : ''}
             </span>
           </div>
         </div>
@@ -204,21 +194,13 @@ export function TrackerHead({
           </button>
         </div>
       </div>
-
-      {account && !account.is_confident && (
-        <p className="provnote" style={{ marginTop: '12px' }}>
-          <SampleBadge />
-          Account inferred from results — {account.handle} posted {Math.round(account.confidence * 100)}% of the
-          matched videos across {account.distinct_accounts} accounts. Treat the identity as a guess.
-        </p>
-      )}
     </header>
   );
 }
 
 /**
  * The one-line read. Absent until the enrichment job has run, which is correct
- * on a brand new search — it never renders a placeholder sentence.
+ * on a brand new search â€” it never renders a placeholder sentence.
  */
 export function AiSummary({ summary, generatedAt }) {
   if (!summary) return null;

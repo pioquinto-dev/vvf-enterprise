@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\Subscription;
 use App\Services\Billing\BillingEntitlementService;
 use App\Services\Billing\PricingPlanViewService;
 use Illuminate\Http\Request;
@@ -34,6 +35,12 @@ class HandleInertiaRequests extends Middleware
         $billing = app(BillingEntitlementService::class);
         $pricing = app(PricingPlanViewService::class);
         $limits = $request->user() ? $billing->limitsForUser($request->user()) : null;
+        $subscription = $request->user()
+            ? Subscription::query()->where('user_id', $request->user()->id)->first()
+            : null;
+        $trialEligible = $request->user() === null
+            ? true
+            : ! ($billing->hasPaidPlan($request->user()) && $subscription?->trial_started_at === null);
 
         return [
             ...parent::share($request),
@@ -67,6 +74,7 @@ class HandleInertiaRequests extends Middleware
                 'bookmarkLimit' => $billing->bookmarkLimit($request->user()),
                 'bookmarksUsed' => $billing->bookmarksUsed($request->user()),
                 'hasPaidPlan' => $billing->hasPaidPlan($request->user()),
+                'trialEligible' => $trialEligible,
             ],
             'pricingPlans' => fn () => $pricing->activePlans(),
         ];

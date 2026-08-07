@@ -940,6 +940,13 @@ var NAV$1 = [
 		match: "/saved-searches",
 		exact: "/saved-searches?type=product",
 		locked: true
+	},
+	{
+		label: "Plans",
+		href: "/plans",
+		icon: Spark,
+		match: "/plans",
+		exact: "/plans"
 	}
 ];
 var TABS = [
@@ -1410,7 +1417,7 @@ function Dashboard() {
 						blurb: "Turn one phrase into a self-refreshing list of viral videos."
 					}),
 					/* @__PURE__ */ jsx(QuickLink, {
-						href: "/settings/subscription",
+						href: "/plans",
 						icon: Bookmark,
 						title: "Plans & billing",
 						blurb: "Compare plans and unlock unlimited refreshes."
@@ -1816,7 +1823,7 @@ var PRICING = { monthly: [
 		name: "Basic",
 		price: 79,
 		tagline: "For a single brand.",
-		cta: "Start 10 day trial",
+		cta: "Choose Basic",
 		popular: true,
 		features: [
 			"150 searches",
@@ -2760,9 +2767,8 @@ function Testimonials() {
 }
 //#endregion
 //#region resources/js/landing/sections/Pricing.jsx
-function Pricing({ onStart, onTrial }) {
-	const [annual, setAnnual] = useState(false);
-	const { pricingPlans = [] } = usePage().props;
+function Pricing({ onStart, onTrial, onTrialStart, compact = false }) {
+	const { pricingPlans = [], billing = {}, subscription = null } = usePage().props;
 	const plans = (pricingPlans.length > 0 ? [...pricingPlans] : [...PRICING.monthly]).sort((a, b) => {
 		const aKey = a.slug ?? a.name?.toLowerCase();
 		const bKey = b.slug ?? b.name?.toLowerCase();
@@ -2770,98 +2776,201 @@ function Pricing({ onStart, onTrial }) {
 		const bIndex = PRICING_PLAN_ORDER.indexOf(bKey);
 		return (aIndex === -1 ? Number.MAX_SAFE_INTEGER : aIndex) - (bIndex === -1 ? Number.MAX_SAFE_INTEGER : bIndex);
 	});
-	const price = (p) => p === 0 ? 0 : annual ? Math.round(p * 12 * .8 / 12) : p;
+	const currentPlan = billing.currentPlan ?? "free";
+	const subscriptionStatus = subscription?.status ?? null;
+	const onBasicTrial = currentPlan === "basic" && subscriptionStatus === "trialing";
+	const launchTrial = () => {
+		if (typeof onTrialStart === "function") {
+			onTrialStart();
+			return;
+		}
+		onTrial?.({ slug: "basic" });
+	};
+	const trialHeading = onBasicTrial ? "Your 7-day Basic trial is active" : "Start a 7-day Basic trial";
+	const trialBody = onBasicTrial ? "You already have trial access to Basic. Upgrade to Premium any time, or keep using your current trial until it ends." : "Try the full Basic plan for 7 days. Card details are collected up front, and billing starts only after the trial ends unless you cancel.";
+	const trialButtonLabel = onBasicTrial ? "Currently in Trial" : "Start 7-day trial";
+	const cardState = (plan) => {
+		const isCurrent = plan.slug === currentPlan;
+		if (plan.slug === "free") {
+			if (currentPlan !== "free") return {
+				disabled: true,
+				cta: "Free plan unavailable"
+			};
+			return {
+				disabled: true,
+				cta: "Current plan"
+			};
+		}
+		if (plan.slug === "basic") {
+			if (isCurrent) return {
+				disabled: true,
+				cta: subscriptionStatus === "trialing" ? "Currently in Trial" : "Current plan"
+			};
+			return {
+				disabled: false,
+				cta: "Choose Basic"
+			};
+		}
+		if (plan.slug === "premium") {
+			if (isCurrent) return {
+				disabled: true,
+				cta: "Current plan"
+			};
+			return {
+				disabled: false,
+				cta: currentPlan === "basic" ? "Upgrade to Premium" : "Choose Premium"
+			};
+		}
+		return {
+			disabled: false,
+			cta: plan.cta
+		};
+	};
 	return /* @__PURE__ */ jsxs("section", {
 		id: "pricing",
-		className: "mx-auto mt-28 max-w-page px-4 sm:mt-36 sm:px-6 lg:px-8",
-		children: [/* @__PURE__ */ jsxs(Reveal, {
-			className: "mx-auto max-w-2xl text-center",
-			children: [
-				/* @__PURE__ */ jsxs("p", {
-					className: "eyebrow justify-center",
-					children: [/* @__PURE__ */ jsx("span", { className: "h-px w-6 bg-accent/50" }), " Pricing"]
-				}),
-				/* @__PURE__ */ jsx("h2", {
-					className: "section-title mt-4",
-					children: "Simple, per-search pricing"
-				}),
-				/* @__PURE__ */ jsx("p", {
-					className: "mt-5 text-[15.5px] leading-relaxed muted sm:text-base",
-					children: "Start with one free search. Upgrade when you want tracking on a schedule."
-				}),
-				/* @__PURE__ */ jsx("div", {
-					className: "mt-8 inline-flex items-center gap-1 rounded-2xl border border-black/[.06] bg-black/[.035] p-1.5 dark:border-white/[.08] dark:bg-white/[.05]",
-					children: [{
-						k: false,
-						label: "Monthly"
-					}, {
-						k: true,
-						label: "Annual −20%"
-					}].map((o) => /* @__PURE__ */ jsx("button", {
-						onClick: () => setAnnual(o.k),
-						className: `rounded-xl px-5 py-2 text-[13.5px] font-semibold transition-all duration-300 ${annual === o.k ? "bg-white text-ink shadow-[0_2px_10px_-2px_rgba(16,18,32,.2)] dark:bg-ink-700 dark:text-white" : "muted"}`,
-						children: o.label
-					}, o.label))
-				})
-			]
-		}), /* @__PURE__ */ jsx("div", {
-			className: "mx-auto mt-12 grid max-w-5xl gap-5 sm:grid-cols-2 lg:grid-cols-3",
-			children: plans.map((t, i) => /* @__PURE__ */ jsx(Reveal, {
-				delay: i * 90,
-				className: t.popular ? "lg:-mt-4 lg:mb-4" : "",
-				children: /* @__PURE__ */ jsxs("div", {
-					className: `relative flex h-full flex-col rounded-3xl p-6 transition-all duration-300 sm:p-7 ${t.popular ? "ring-gradient bg-white shadow-[0_40px_90px_-45px_rgba(109,75,255,.7)] dark:bg-white/[.06]" : "border border-black/[.06] bg-white hover:-translate-y-1 hover:border-accent/25 dark:border-white/[.08] dark:bg-white/[.03]"}`,
-					children: [
-						t.popular && /* @__PURE__ */ jsx("span", {
-							className: "absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-linear-to-r from-accent-glow to-accent px-3 py-1 text-[10.5px] font-bold tracking-wider text-white uppercase shadow-[0_8px_20px_-8px_rgba(109,75,255,1)]",
-							children: "Most popular"
-						}),
-						/* @__PURE__ */ jsx("h3", {
-							className: "font-display text-[17px] font-bold",
-							children: t.name
-						}),
-						/* @__PURE__ */ jsx("p", {
-							className: "mt-1 text-[12.5px] faint",
-							children: t.tagline
-						}),
-						/* @__PURE__ */ jsxs("p", {
-							className: "mt-5 font-display text-[40px] leading-none font-bold tracking-[-.03em]",
+		className: `mx-auto max-w-page px-4 sm:px-6 lg:px-8 ${compact ? "mt-6 sm:mt-8" : "mt-28 sm:mt-36"}`,
+		children: [
+			/* @__PURE__ */ jsxs(Reveal, {
+				className: "mx-auto max-w-2xl text-center",
+				children: [
+					/* @__PURE__ */ jsxs("p", {
+						className: "eyebrow justify-center",
+						children: [/* @__PURE__ */ jsx("span", { className: "h-px w-6 bg-accent/50" }), " Pricing"]
+					}),
+					/* @__PURE__ */ jsx("h2", {
+						className: "section-title mt-4",
+						children: "Simple, per-search pricing"
+					}),
+					/* @__PURE__ */ jsx("p", {
+						className: "mt-5 text-[15.5px] leading-relaxed muted sm:text-base",
+						children: "Start with one free search. Upgrade when you want tracking on a schedule."
+					}),
+					/* @__PURE__ */ jsxs("div", {
+						className: "mt-8 inline-flex items-center gap-1 rounded-2xl border border-black/[.06] bg-black/[.035] p-1.5 dark:border-white/[.08] dark:bg-white/[.05]",
+						children: [/* @__PURE__ */ jsx("button", {
+							className: "rounded-xl bg-white px-5 py-2 text-[13.5px] font-semibold text-ink shadow-[0_2px_10px_-2px_rgba(16,18,32,.2)] dark:bg-ink-700 dark:text-white",
+							children: "Monthly"
+						}), /* @__PURE__ */ jsxs("div", {
+							"aria-disabled": "true",
+							title: "Annual pricing is coming soon",
+							className: "flex cursor-not-allowed items-center gap-2 rounded-xl px-5 py-2 text-[13.5px] font-semibold text-ink/45 dark:text-white/45",
+							children: [/* @__PURE__ */ jsx("span", { children: "Annual -20%" }), /* @__PURE__ */ jsx("span", {
+								className: "rounded-full bg-accent/10 px-2 py-0.5 text-[10px] font-bold tracking-[.1em] text-accent uppercase dark:text-accent-glow",
+								children: "Soon"
+							})]
+						})]
+					})
+				]
+			}),
+			/* @__PURE__ */ jsx(Reveal, {
+				className: "mx-auto mt-8 max-w-5xl",
+				children: /* @__PURE__ */ jsx("div", {
+					className: "rounded-[30px] border border-accent/20 bg-white/78 p-6 shadow-[0_18px_45px_-36px_rgba(109,75,255,.22)] backdrop-blur-xl dark:border-white/[.08] dark:bg-white/[.05] sm:p-7",
+					children: /* @__PURE__ */ jsxs("div", {
+						className: "flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between",
+						children: [/* @__PURE__ */ jsxs("div", {
+							className: "max-w-2xl",
 							children: [
-								"$",
-								price(t.price),
-								/* @__PURE__ */ jsx("span", {
-									className: "text-[13px] font-medium muted",
-									children: "/mo"
+								/* @__PURE__ */ jsxs("p", {
+									className: "eyebrow",
+									children: [/* @__PURE__ */ jsx("span", { className: "h-px w-6 bg-accent/50" }), " Trial"]
+								}),
+								/* @__PURE__ */ jsx("h3", {
+									className: "mt-3 font-display text-[24px] font-bold tracking-[-.03em] sm:text-[30px]",
+									children: trialHeading
+								}),
+								/* @__PURE__ */ jsx("p", {
+									className: "mt-3 text-[14px] leading-relaxed muted sm:text-[15px]",
+									children: trialBody
 								})
 							]
-						}),
-						/* @__PURE__ */ jsx("p", {
-							className: "mt-2 h-4 text-[11.5px] faint",
-							children: annual && t.price > 0 ? `Billed $${price(t.price) * 12}/year` : t.price > 0 ? "Billed monthly" : ""
-						}),
-						/* @__PURE__ */ jsxs("button", {
-							onClick: () => t.price === 0 ? onStart() : onTrial(),
-							className: `mt-6 h-12 w-full text-sm ${t.popular ? "btn-accent" : "btn-ghost"}`,
-							children: [
-								t.cta,
-								" ",
-								/* @__PURE__ */ jsx(Arrow, {})
-							]
-						}),
-						/* @__PURE__ */ jsx("ul", {
-							className: "mt-6 space-y-3 border-t border-black/[.05] pt-6 dark:border-white/[.07]",
-							children: t.features.map((f) => /* @__PURE__ */ jsxs("li", {
-								className: "flex gap-3 text-[13.5px] muted",
-								children: [/* @__PURE__ */ jsx("span", {
-									className: "mt-0.5 flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full bg-accent/15 text-accent dark:text-accent-glow",
-									children: /* @__PURE__ */ jsx(Check, { className: "h-2.5 w-2.5" })
-								}), f]
-							}, f))
-						})
-					]
+						}), /* @__PURE__ */ jsxs("div", {
+							className: "flex w-full flex-col gap-3 lg:w-auto lg:min-w-[280px]",
+							children: [/* @__PURE__ */ jsxs("button", {
+								onClick: launchTrial,
+								disabled: onBasicTrial,
+								className: "btn-accent h-12 w-full px-6 text-sm",
+								children: [
+									trialButtonLabel,
+									" ",
+									!onBasicTrial && /* @__PURE__ */ jsx(Arrow, {})
+								]
+							}), /* @__PURE__ */ jsx("p", {
+								className: "text-center text-[12px] faint",
+								children: "Includes 150 searches and 50 watchlist slots."
+							})]
+						})]
+					})
 				})
-			}, t.name))
-		})]
+			}),
+			/* @__PURE__ */ jsx("div", {
+				className: "mx-auto mt-12 grid max-w-5xl gap-5 sm:grid-cols-2 lg:grid-cols-3",
+				children: plans.map((t, i) => /* @__PURE__ */ jsx(Reveal, {
+					delay: i * 90,
+					className: t.popular ? "lg:-mt-4 lg:mb-4" : "",
+					children: (() => {
+						const state = cardState(t);
+						const current = t.slug === currentPlan;
+						return /* @__PURE__ */ jsxs("div", {
+							className: `relative flex h-full flex-col rounded-3xl p-6 transition-all duration-300 sm:p-7 ${current ? "border-2 border-accent/45 bg-white shadow-[0_32px_80px_-46px_rgba(109,75,255,.42)] dark:border-accent/40 dark:bg-white/[.06]" : t.popular ? "ring-gradient bg-white shadow-[0_40px_90px_-45px_rgba(109,75,255,.7)] dark:bg-white/[.06]" : "border border-black/[.06] bg-white hover:-translate-y-1 hover:border-accent/25 dark:border-white/[.08] dark:bg-white/[.03]"}`,
+							children: [
+								current && /* @__PURE__ */ jsx("span", {
+									className: "absolute top-4 right-4 rounded-full bg-accent/10 px-2.5 py-1 text-[10.5px] font-bold tracking-[.08em] text-accent uppercase dark:text-accent-glow",
+									children: subscriptionStatus === "trialing" ? "On trial" : "Current plan"
+								}),
+								t.popular && /* @__PURE__ */ jsx("span", {
+									className: "absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-linear-to-r from-accent-glow to-accent px-3 py-1 text-[10.5px] font-bold tracking-wider text-white uppercase shadow-[0_8px_20px_-8px_rgba(109,75,255,1)]",
+									children: "Most popular"
+								}),
+								/* @__PURE__ */ jsx("h3", {
+									className: "font-display text-[17px] font-bold",
+									children: t.name
+								}),
+								/* @__PURE__ */ jsx("p", {
+									className: "mt-1 text-[12.5px] faint",
+									children: t.tagline
+								}),
+								/* @__PURE__ */ jsxs("p", {
+									className: "mt-5 font-display text-[40px] leading-none font-bold tracking-[-.03em]",
+									children: [
+										"$",
+										t.price,
+										/* @__PURE__ */ jsx("span", {
+											className: "text-[13px] font-medium muted",
+											children: "/mo"
+										})
+									]
+								}),
+								/* @__PURE__ */ jsx("p", {
+									className: "mt-2 h-4 text-[11.5px] faint",
+									children: t.price > 0 ? "Billed monthly" : ""
+								}),
+								/* @__PURE__ */ jsxs("button", {
+									onClick: () => t.price === 0 ? onStart() : onTrial(t),
+									disabled: state.disabled,
+									className: `mt-6 h-12 w-full text-sm ${state.disabled ? "cursor-not-allowed rounded-xl border border-black/[.08] bg-black/[.03] text-ink/40 dark:border-white/[.12] dark:bg-white/[.04] dark:text-white/40" : t.popular || current ? "btn-accent" : "btn-ghost"}`,
+									children: [
+										state.cta,
+										" ",
+										!state.disabled && /* @__PURE__ */ jsx(Arrow, {})
+									]
+								}),
+								/* @__PURE__ */ jsx("ul", {
+									className: "mt-6 space-y-3 border-t border-black/[.05] pt-6 dark:border-white/[.07]",
+									children: t.features.map((f) => /* @__PURE__ */ jsxs("li", {
+										className: "flex gap-3 text-[13.5px] muted",
+										children: [/* @__PURE__ */ jsx("span", {
+											className: "mt-0.5 flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full bg-accent/15 text-accent dark:text-accent-glow",
+											children: /* @__PURE__ */ jsx(Check, { className: "h-2.5 w-2.5" })
+										}), f]
+									}, f))
+								})
+							]
+						});
+					})()
+				}, t.name))
+			})
+		]
 	});
 }
 //#endregion
@@ -3215,9 +3324,14 @@ var savedSearch = {
 	refresh: (id) => request(`${API_V1}/saved-searches/${id}/refresh`, { method: "POST" }),
 	destroy: (id) => request(`${API_V1}/saved-searches/${id}`, { method: "DELETE" })
 };
-var billing = { checkout: (slug) => {
-	window.location.assign(`/billing/checkout/${encodeURIComponent(slug)}`);
-} };
+var billing = {
+	checkout: (slug) => {
+		window.location.assign(`/billing/checkout/${encodeURIComponent(slug)}`);
+	},
+	trialCheckout: (slug) => {
+		window.location.assign(`/billing/checkout/${encodeURIComponent(slug)}?trial=1`);
+	}
+};
 var bookmarks = {
 	save: (id) => request(`${API_V1}/videos/${id}/bookmark`, { method: "POST" }),
 	remove: (id) => request(`${API_V1}/videos/${id}/bookmark`, { method: "DELETE" })
@@ -3253,6 +3367,42 @@ function updateTracked(id, patch) {
 }
 function untrackSearch(id) {
 	writeTracked(readTracked().filter((t) => String(t.id) !== String(id)));
+}
+//#endregion
+//#region resources/js/Pages/Plans.jsx
+var Plans_exports = /* @__PURE__ */ __exportAll({ default: () => Plans });
+function Plans() {
+	const { auth = {} } = usePage().props;
+	const revealRoot = useReveal();
+	const startFree = () => {
+		window.location.assign("/search?type=brand");
+	};
+	const startPaid = (plan) => {
+		if (!auth.signedIn) {
+			window.location.assign("/auth/google");
+			return;
+		}
+		billing.checkout(plan?.slug ?? "basic");
+	};
+	const startTrial = () => {
+		if (!auth.signedIn) {
+			window.location.assign("/auth/google");
+			return;
+		}
+		billing.trialCheckout("basic");
+	};
+	return /* @__PURE__ */ jsxs(Fragment, { children: [/* @__PURE__ */ jsx(Head, { title: "Plans - VVF" }), /* @__PURE__ */ jsx(AppLayout, {
+		width: "max-w-7xl",
+		children: /* @__PURE__ */ jsx("div", {
+			ref: revealRoot,
+			children: /* @__PURE__ */ jsx(Pricing, {
+				onStart: startFree,
+				onTrial: startPaid,
+				onTrialStart: startTrial,
+				compact: true
+			})
+		})
+	})] });
 }
 //#endregion
 //#region resources/js/Pages/SavedSearches/Index.jsx
@@ -3974,15 +4124,43 @@ function gradientFor(key) {
 }
 //#endregion
 //#region resources/js/landing/flow/VideoCard.jsx
+function embedFor(video) {
+	if (video.embed_url) return video.embed_url;
+	const id = video.video_id;
+	return id ? `https://www.tiktok.com/embed/v2/${id}` : null;
+}
 function Thumb({ video, rank, className = "" }) {
 	const [broken, setBroken] = useState(false);
+	const [playing, setPlaying] = useState(false);
 	const gradient = gradientFor(video.video_id ?? video.id);
 	const src = video.thumbnail_url;
 	const mult = multiplier(video.score ?? video.virality_score);
-	return /* @__PURE__ */ jsxs("div", {
+	const embed = embedFor(video);
+	return /* @__PURE__ */ jsx("div", {
 		className: `group relative flex items-center justify-center overflow-hidden rounded-2xl
         bg-linear-to-br ${gradient} shadow-[0_20px_44px_-24px_rgba(0,0,0,.85)] ${className}`,
-		children: [
+		children: playing && embed ? /* @__PURE__ */ jsxs(Fragment, { children: [/* @__PURE__ */ jsx("iframe", {
+			src: embed,
+			title: video.title || "TikTok video",
+			loading: "lazy",
+			allow: "autoplay; fullscreen; encrypted-media; picture-in-picture",
+			allowFullScreen: true,
+			className: "absolute inset-0 h-full w-full border-0"
+		}), /* @__PURE__ */ jsx("button", {
+			type: "button",
+			onClick: () => setPlaying(false),
+			"aria-label": "Close player",
+			className: "absolute top-2.5 right-2.5 z-10 flex h-7 w-7 items-center justify-center rounded-full bg-black/60 text-white backdrop-blur-md transition hover:bg-black/80",
+			children: /* @__PURE__ */ jsx("svg", {
+				viewBox: "0 0 24 24",
+				className: "h-3.5 w-3.5",
+				fill: "none",
+				stroke: "currentColor",
+				strokeWidth: "2.5",
+				strokeLinecap: "round",
+				children: /* @__PURE__ */ jsx("path", { d: "M6 6l12 12M18 6L6 18" })
+			})
+		})] }) : /* @__PURE__ */ jsxs(Fragment, { children: [
 			src && !broken && /* @__PURE__ */ jsx("img", {
 				src,
 				alt: "",
@@ -3999,9 +4177,19 @@ function Thumb({ video, rank, className = "" }) {
 				className: "absolute top-2.5 left-2.5 flex h-6 min-w-[24px] items-center justify-center rounded-lg bg-white/95 px-1.5 font-display text-xs font-bold text-ink",
 				children: rank
 			}),
-			/* @__PURE__ */ jsx("span", {
-				className: "relative flex h-11 w-11 items-center justify-center rounded-full bg-white/20 backdrop-blur-md transition-transform duration-300 group-hover:scale-110",
-				children: /* @__PURE__ */ jsx(Play, { className: "h-4 w-4 translate-x-px text-white" })
+			embed ? /* @__PURE__ */ jsx("button", {
+				type: "button",
+				onClick: () => setPlaying(true),
+				"aria-label": video.title ? `Play: ${video.title}` : "Play video",
+				className: "absolute inset-0 z-10 flex cursor-pointer items-center justify-center",
+				children: /* @__PURE__ */ jsx("span", {
+					className: "flex h-11 w-11 items-center justify-center rounded-full bg-white/20 backdrop-blur-md transition-transform duration-300 group-hover:scale-110",
+					children: /* @__PURE__ */ jsx(Play, { className: "h-4 w-4 translate-x-px text-white" })
+				})
+			}) : /* @__PURE__ */ jsx("span", {
+				"aria-hidden": true,
+				className: "relative flex h-11 w-11 items-center justify-center rounded-full bg-white/10 backdrop-blur-md",
+				children: /* @__PURE__ */ jsx(Play, { className: "h-4 w-4 translate-x-px text-white/50" })
 			}),
 			video.duration > 0 && /* @__PURE__ */ jsx("span", {
 				className: "absolute right-2.5 bottom-2.5 rounded-md bg-black/50 px-1.5 py-0.5 text-[10px] font-semibold text-white backdrop-blur-sm",
@@ -4012,7 +4200,7 @@ function Thumb({ video, rank, className = "" }) {
 				title: "Engagement relative to the creator's own following",
 				children: mult
 			})
-		]
+		] })
 	});
 }
 function BookmarkButton({ video, onToggleBookmark, bookmarking = false }) {
@@ -5243,9 +5431,9 @@ var TrendPanels_exports = /* @__PURE__ */ __exportAll({
 var W = 560;
 var H = 180;
 function formatValue(value, format) {
-	if (value === null || value === void 0) return "—";
+	if (value === null || value === void 0) return "â€”";
 	if (format === "compact") return compactNumber(value);
-	if (format === "percent") return percent(value) ?? "—";
+	if (format === "percent") return percent(value) ?? "â€”";
 	return String(value);
 }
 /** Maps a series onto the viewBox. A flat series sits mid-height, not on the floor. */
@@ -5311,7 +5499,7 @@ function PerformanceChart({ trend }) {
 					delta && /* @__PURE__ */ jsxs("span", {
 						className: `ts-delta ${deltaTone}`,
 						children: [
-							delta.direction === "up" ? "↑" : delta.direction === "down" ? "↓" : "→",
+							delta.direction === "up" ? "â†‘" : delta.direction === "down" ? "â†“" : "â†’",
 							" ",
 							Math.abs(delta.value),
 							deltaSuffix,
@@ -5387,92 +5575,69 @@ function PerformanceChart({ trend }) {
 	});
 }
 /**
-* Page head: logo, title, handles row, actions. The avatar, handle and
-* follower count are read off scraped videos and are real. The category is
-* invented — hence the badge beside it.
+* Page head: logo, title, handles row, actions. The handle can come from a
+* brand-level OpenAI lookup, while avatar and follower count only render when
+* the matched videos happened to include that same account.
 */
 function TrackerHead({ search, account, lastRun, onToggleWatchlist, onShare, copied, watchlistUpdating }) {
-	const profile = account?.profile ?? {};
 	const initial = (search?.name ?? "?").slice(0, 1).toUpperCase();
-	return /* @__PURE__ */ jsxs("header", { children: [
-		/* @__PURE__ */ jsxs("div", {
-			className: "crumb",
-			children: ["trackers / ", search?.search_type ?? "brand"]
-		}),
-		/* @__PURE__ */ jsxs("div", {
-			className: "brandrow",
-			children: [
-				/* @__PURE__ */ jsx("span", {
-					className: "logo",
-					title: "brand logo",
-					children: account?.avatar ? /* @__PURE__ */ jsx("img", {
-						src: account.avatar,
-						alt: "",
-						referrerPolicy: "no-referrer"
-					}) : initial
-				}),
-				/* @__PURE__ */ jsxs("div", {
-					className: "titlewrap",
-					children: [/* @__PURE__ */ jsx("h1", { children: search?.name ?? "Tracker" }), /* @__PURE__ */ jsxs("div", {
-						className: "handles",
-						children: [
-							/* @__PURE__ */ jsx("span", {
-								className: "badge",
-								children: search?.search_type ?? "brand"
-							}),
-							account?.handle && /* @__PURE__ */ jsx("span", {
-								className: "h",
-								children: account.handle
-							}),
-							account?.followers > 0 && /* @__PURE__ */ jsxs(Fragment, { children: [/* @__PURE__ */ jsx("span", { className: "sep" }), /* @__PURE__ */ jsxs("span", { children: [compactNumber(account.followers), " followers"] })] }),
-							profile.category && /* @__PURE__ */ jsxs(Fragment, { children: [/* @__PURE__ */ jsx("span", { className: "sep" }), /* @__PURE__ */ jsxs("span", { children: [
-								profile.category,
-								" ",
-								/* @__PURE__ */ jsx(SampleBadge, {})
-							] })] }),
-							/* @__PURE__ */ jsx("span", { className: "sep" }),
-							/* @__PURE__ */ jsxs("span", { children: [
-								"checked ",
-								search?.frequency ?? "weekly",
-								lastRun ? ` · last run ${lastRun}` : ""
-							] })
-						]
-					})]
-				}),
-				/* @__PURE__ */ jsxs("div", {
-					className: "head-actions",
-					children: [onToggleWatchlist && /* @__PURE__ */ jsx("button", {
-						className: "tbtn",
-						onClick: onToggleWatchlist,
-						disabled: watchlistUpdating,
-						children: search?.is_watchlisted ? "watchlisted" : "add to watchlist"
-					}), /* @__PURE__ */ jsx("button", {
-						className: "tbtn primary",
-						onClick: onShare,
-						children: copied ? "link copied" : "share"
-					})]
-				})
-			]
-		}),
-		account && !account.is_confident && /* @__PURE__ */ jsxs("p", {
-			className: "provnote",
-			style: { marginTop: "12px" },
-			children: [
-				/* @__PURE__ */ jsx(SampleBadge, {}),
-				"Account inferred from results — ",
-				account.handle,
-				" posted ",
-				Math.round(account.confidence * 100),
-				"% of the matched videos across ",
-				account.distinct_accounts,
-				" accounts. Treat the identity as a guess."
-			]
-		})
-	] });
+	return /* @__PURE__ */ jsxs("header", { children: [/* @__PURE__ */ jsxs("div", {
+		className: "crumb",
+		children: ["trackers / ", search?.search_type ?? "brand"]
+	}), /* @__PURE__ */ jsxs("div", {
+		className: "brandrow",
+		children: [
+			/* @__PURE__ */ jsx("span", {
+				className: "logo",
+				title: "brand logo",
+				children: account?.avatar ? /* @__PURE__ */ jsx("img", {
+					src: account.avatar,
+					alt: "",
+					referrerPolicy: "no-referrer"
+				}) : initial
+			}),
+			/* @__PURE__ */ jsxs("div", {
+				className: "titlewrap",
+				children: [/* @__PURE__ */ jsx("h1", { children: search?.name ?? "Tracker" }), /* @__PURE__ */ jsxs("div", {
+					className: "handles",
+					children: [
+						/* @__PURE__ */ jsx("span", {
+							className: "badge",
+							children: search?.search_type ?? "brand"
+						}),
+						account?.handle && /* @__PURE__ */ jsx("span", {
+							className: "h",
+							children: account.handle
+						}),
+						account?.followers > 0 && /* @__PURE__ */ jsxs(Fragment, { children: [/* @__PURE__ */ jsx("span", { className: "sep" }), /* @__PURE__ */ jsxs("span", { children: [compactNumber(account.followers), " followers"] })] }),
+						/* @__PURE__ */ jsx("span", { className: "sep" }),
+						/* @__PURE__ */ jsxs("span", { children: [
+							"checked ",
+							search?.frequency ?? "weekly",
+							lastRun ? ` Â· last run ${lastRun}` : ""
+						] })
+					]
+				})]
+			}),
+			/* @__PURE__ */ jsxs("div", {
+				className: "head-actions",
+				children: [onToggleWatchlist && /* @__PURE__ */ jsx("button", {
+					className: "tbtn",
+					onClick: onToggleWatchlist,
+					disabled: watchlistUpdating,
+					children: search?.is_watchlisted ? "watchlisted" : "add to watchlist"
+				}), /* @__PURE__ */ jsx("button", {
+					className: "tbtn primary",
+					onClick: onShare,
+					children: copied ? "link copied" : "share"
+				})]
+			})
+		]
+	})] });
 }
 /**
 * The one-line read. Absent until the enrichment job has run, which is correct
-* on a brand new search — it never renders a placeholder sentence.
+* on a brand new search â€” it never renders a placeholder sentence.
 */
 function AiSummary({ summary, generatedAt }) {
 	if (!summary) return null;
@@ -5528,7 +5693,7 @@ function formatDate$1(iso) {
 	});
 }
 /**
-* Detail view for brand and competitor searches — a direct port of the
+* Detail view for brand and competitor searches - a direct port of the
 * `tracker-brand-detail` mockup, minus the reach and engagement channel table
 * which was omitted by request (it needs Reels and Meta Ads integrations that
 * do not exist).
@@ -5574,9 +5739,7 @@ function DetailScreen({ search, isAuthenticated = false, onToggleWatchlist, onRe
 					profile.follower_growth_pct >= 0 ? "↑" : "↓",
 					" ",
 					Math.abs(profile.follower_growth_pct),
-					"% mo",
-					" ",
-					/* @__PURE__ */ jsx(SampleBadge, {})
+					"% mo"
 				]
 			}) : /* @__PURE__ */ jsx("div", { className: "d" })
 		} : {
@@ -5653,7 +5816,7 @@ function DetailScreen({ search, isAuthenticated = false, onToggleWatchlist, onRe
 							className: view === "their" ? "on" : "",
 							onClick: () => setView("their"),
 							disabled: !brandHandle,
-							title: brandHandle ? `Only posts by ${account.handle}` : "No brand account detected in the results yet",
+							title: brandHandle ? `Only posts by ${account.handle}` : "No brand handle available yet",
 							children: "their content"
 						})]
 					})
@@ -5667,6 +5830,14 @@ function DetailScreen({ search, isAuthenticated = false, onToggleWatchlist, onRe
 				onShare: share,
 				copied,
 				watchlistUpdating
+			}),
+			/* @__PURE__ */ jsx("div", {
+				className: "sect-head",
+				style: { marginTop: "14px" },
+				children: /* @__PURE__ */ jsx("span", {
+					className: "note",
+					children: search?.status === "paused" ? "paused - no refreshes will run." : search?.next_run_at ? `next refresh at ${new Date(search.next_run_at).toLocaleDateString()}` : "no refresh scheduled."
+				})
 			}),
 			/* @__PURE__ */ jsx(AiSummary, {
 				summary: search?.ai_summary,
@@ -5683,7 +5854,7 @@ function DetailScreen({ search, isAuthenticated = false, onToggleWatchlist, onRe
 					/* @__PURE__ */ jsxs("p", { children: [
 						"We scanned TikTok for ",
 						/* @__PURE__ */ jsx("b", { children: search?.phrase }),
-						" but nothing matched the phrase with a real creator behind it. Narrower phrases and brand names often do this — try a broader one, or run it again."
+						" but nothing matched the phrase with a real creator behind it. Narrower phrases and brand names often do this - try a broader one, or run it again."
 					] }),
 					/* @__PURE__ */ jsx("div", {
 						className: "acts",
@@ -5691,7 +5862,7 @@ function DetailScreen({ search, isAuthenticated = false, onToggleWatchlist, onRe
 							className: "tbtn primary",
 							onClick: onRefresh,
 							disabled: refreshing,
-							children: refreshing ? "refreshing…" : "run it again"
+							children: refreshing ? "refreshing..." : "run it again"
 						})
 					})
 				]
@@ -5806,61 +5977,8 @@ function DetailScreen({ search, isAuthenticated = false, onToggleWatchlist, onRe
 						totalOutliers: (insights.distribution ?? []).reduce((sum, row) => sum + row.count, 0),
 						nextRunLabel: formatDate$1(search?.next_run_at)
 					}), /* @__PURE__ */ jsx(ScoreDistribution, { distribution: insights.distribution ?? [] })]
-				}),
-				/* @__PURE__ */ jsxs("div", {
-					className: "provbox",
-					children: [/* @__PURE__ */ jsx("p", {
-						className: "provnote",
-						children: "Outlier scores compare each video against the median of this search, not the creator's own account history — that needs a profile scrape."
-					}), (insights.placeholders ?? []).length > 0 && /* @__PURE__ */ jsxs("p", {
-						className: "provnote",
-						children: [/* @__PURE__ */ jsx(SampleBadge, {}), /* @__PURE__ */ jsxs("span", { children: [
-							"Anything carrying this badge is invented and safe to ignore. It all comes from",
-							" ",
-							/* @__PURE__ */ jsx("code", { children: "PlaceholderProfileData" }),
-							" — delete that class once the TikTok profile actor exists and the badges disappear on their own."
-						] })]
-					})]
 				})
-			] }),
-			/* @__PURE__ */ jsxs("div", {
-				className: "sect-head",
-				style: { marginBottom: "0" },
-				children: [/* @__PURE__ */ jsx("span", {
-					className: "note",
-					children: search?.status === "paused" ? "paused — no refreshes will run." : search?.next_run_at ? `next refresh ${new Date(search.next_run_at).toLocaleDateString()}` : "no refresh scheduled."
-				}), /* @__PURE__ */ jsxs("div", {
-					className: "head-actions",
-					children: [
-						onTogglePause && /* @__PURE__ */ jsx("button", {
-							className: "tbtn",
-							onClick: onTogglePause,
-							children: search?.status === "paused" ? "resume" : "pause"
-						}),
-						/* @__PURE__ */ jsx("button", {
-							className: "tbtn",
-							onClick: onRefresh,
-							disabled: refreshing || search?.status === "scraping",
-							children: refreshing ? "refreshing…" : "refresh now"
-						}),
-						onDelete && /* @__PURE__ */ jsx("button", {
-							className: "tbtn danger",
-							onClick: onDelete,
-							children: "delete"
-						})
-					]
-				})]
-			}),
-			/* @__PURE__ */ jsxs("div", {
-				className: "footnote",
-				children: [
-					search?.name,
-					" · ",
-					items.length,
-					" matched ",
-					items.length === 1 ? "video" : "videos"
-				]
-			})
+			] })
 		]
 	});
 }
@@ -6482,7 +6600,7 @@ var NAV = [
 		icon: Store
 	}
 ];
-function SettingsShell({ section, heading, eyebrow, children }) {
+function SettingsShell({ section, heading, eyebrow, children, hideHeader = false, hideSidebar = false }) {
 	const { auth = {} } = usePage().props;
 	const logout = useForm({});
 	const signOut = () => {
@@ -6491,8 +6609,8 @@ function SettingsShell({ section, heading, eyebrow, children }) {
 	return /* @__PURE__ */ jsx(AppLayout, {
 		width: "max-w-7xl",
 		children: /* @__PURE__ */ jsxs("div", {
-			className: "grid gap-5 xl:grid-cols-[240px_minmax(0,1fr)]",
-			children: [/* @__PURE__ */ jsxs("aside", {
+			className: hideSidebar ? "" : "grid gap-5 xl:grid-cols-[240px_minmax(0,1fr)]",
+			children: [!hideSidebar && /* @__PURE__ */ jsxs("aside", {
 				className: "space-y-4",
 				children: [/* @__PURE__ */ jsx("div", {
 					className: "surface p-4",
@@ -6548,7 +6666,7 @@ function SettingsShell({ section, heading, eyebrow, children }) {
 				})]
 			}), /* @__PURE__ */ jsxs("section", {
 				className: "surface overflow-hidden",
-				children: [/* @__PURE__ */ jsxs("div", {
+				children: [!hideHeader && /* @__PURE__ */ jsxs("div", {
 					className: "flex flex-wrap items-center justify-between gap-3 border-b border-black/[.06] px-6 py-5 dark:border-white/[.08]",
 					children: [/* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsx("p", {
 						className: "text-[11px] font-semibold tracking-[.18em] text-accent uppercase dark:text-accent-glow",
@@ -6583,66 +6701,73 @@ function Account() {
 	};
 	return /* @__PURE__ */ jsxs(Fragment, { children: [/* @__PURE__ */ jsx(Head, { title: "Account settings - VVF" }), /* @__PURE__ */ jsx(SettingsShell, {
 		section: "account",
-		eyebrow: "Identity",
-		heading: "Account Information",
+		eyebrow: "Profile",
+		heading: "Account",
 		children: /* @__PURE__ */ jsxs("div", {
-			className: "max-w-3xl",
-			children: [
-				/* @__PURE__ */ jsx("h2", {
-					className: "font-display text-[18px] font-bold",
-					children: "Account Information"
-				}),
-				/* @__PURE__ */ jsx("p", {
-					className: "mt-2 text-[13.5px] muted",
-					children: "Update your display name. Your email address is locked after account creation."
-				}),
-				flash.status && /* @__PURE__ */ jsx("div", {
-					className: "mt-5 rounded-2xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-700 dark:text-emerald-300",
-					children: flash.status
-				}),
-				/* @__PURE__ */ jsxs("form", {
+			className: "max-w-3xl space-y-6",
+			children: [flash.status && /* @__PURE__ */ jsx("div", {
+				className: "rounded-2xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-700 dark:text-emerald-300",
+				children: flash.status
+			}), /* @__PURE__ */ jsxs("div", {
+				className: "surface p-5",
+				children: [/* @__PURE__ */ jsxs("div", {
+					className: "mb-5",
+					children: [/* @__PURE__ */ jsx("h2", {
+						className: "font-display text-[18px] font-bold",
+						children: "Profile details"
+					}), /* @__PURE__ */ jsx("p", {
+						className: "mt-2 text-[13.5px] muted",
+						children: "Update the name shown across your account."
+					})]
+				}), /* @__PURE__ */ jsxs("form", {
 					onSubmit: submit,
-					className: "mt-6 space-y-5",
+					className: "space-y-5",
 					children: [
 						/* @__PURE__ */ jsxs("div", { children: [
 							/* @__PURE__ */ jsx("label", {
-								className: "mb-2 block text-[12px] font-semibold text-ink dark:text-white",
+								htmlFor: "account-name",
+								className: "mb-2 block text-[12px] font-semibold tracking-[.08em] faint uppercase",
 								children: "Name"
 							}),
 							/* @__PURE__ */ jsx("input", {
+								id: "account-name",
+								type: "text",
 								value: form.data.name,
 								onChange: (event) => form.setData("name", event.target.value),
-								className: "field h-12 text-sm"
+								className: "field h-12"
 							}),
 							form.errors.name && /* @__PURE__ */ jsx("p", {
-								className: "mt-2 text-[12px] text-hot",
+								className: "mt-2 text-sm text-hot",
 								children: form.errors.name
 							})
 						] }),
 						/* @__PURE__ */ jsxs("div", { children: [
 							/* @__PURE__ */ jsx("label", {
-								className: "mb-2 block text-[12px] font-semibold text-ink dark:text-white",
+								htmlFor: "account-email",
+								className: "mb-2 block text-[12px] font-semibold tracking-[.08em] faint uppercase",
 								children: "Email"
 							}),
 							/* @__PURE__ */ jsx("input", {
+								id: "account-email",
+								type: "email",
 								value: auth.user?.email ?? "",
 								readOnly: true,
-								className: "field h-12 cursor-not-allowed bg-black/[.03] text-sm opacity-75 dark:bg-white/[.05]"
+								className: "field h-12 cursor-not-allowed opacity-70"
 							}),
 							/* @__PURE__ */ jsx("p", {
-								className: "mt-2 text-[12px] faint",
-								children: "Contact support if you need help updating your email address."
+								className: "mt-2 text-[12.5px] muted",
+								children: "Email changes are not available yet."
 							})
 						] }),
 						/* @__PURE__ */ jsx("button", {
 							type: "submit",
 							disabled: form.processing,
-							className: "btn-accent h-11 px-6 text-[12px] tracking-[.14em] uppercase",
-							children: form.processing ? "Saving..." : "Save"
+							className: "btn-accent h-11 px-5 text-[13px]",
+							children: form.processing ? "Saving..." : "Save changes"
 						})
 					]
-				})
-			]
+				})]
+			})]
 		})
 	})] });
 }
@@ -6826,13 +6951,13 @@ function Subscription({ subscription }) {
 					/* @__PURE__ */ jsxs("div", {
 						className: "grid gap-3 border-t border-black/[.06] px-6 py-5 sm:grid-cols-2 dark:border-white/[.08]",
 						children: [/* @__PURE__ */ jsx(Link, {
-							href: "/trial",
+							href: "/plans",
 							className: "inline-flex h-12 items-center justify-center rounded-2xl bg-[#12172a] px-5 text-[13px] font-semibold text-white transition hover:opacity-95 dark:bg-white dark:text-canvas-dark",
-							children: "Update payment details"
+							children: "View plans"
 						}), /* @__PURE__ */ jsx(Link, {
-							href: "/trial",
+							href: "/plans",
 							className: "inline-flex h-12 items-center justify-center rounded-2xl border border-black/[.08] px-5 text-[13px] font-semibold transition hover:border-accent/35 hover:text-accent dark:border-white/[.12] dark:hover:text-accent-glow",
-							children: "Manage billing in Stripe"
+							children: "Manage billing"
 						})]
 					})
 				]
@@ -7006,6 +7131,7 @@ createServer((page) => createInertiaApp({
 			"./Pages/Dashboard.jsx": Dashboard_exports,
 			"./Pages/Home.jsx": Home_exports,
 			"./Pages/Landing.jsx": Landing_exports,
+			"./Pages/Plans.jsx": Plans_exports,
 			"./Pages/SavedSearches/Index.jsx": Index_exports,
 			"./Pages/SavedSearches/Show.jsx": Show_exports,
 			"./Pages/SavedSearches/detail/Badges.jsx": Badges_exports,

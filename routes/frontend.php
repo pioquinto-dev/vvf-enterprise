@@ -15,6 +15,7 @@ Route::middleware('auth')->group(function (): void {
     Route::patch('/settings/account', [SettingsController::class, 'updateAccount'])->name('settings.account.update');
     Route::get('/settings/appearance', [SettingsController::class, 'appearance'])->name('settings.appearance');
     Route::get('/settings/subscription', [SettingsController::class, 'subscription'])->name('settings.subscription');
+    Route::get('/plans', [SettingsController::class, 'plans'])->name('plans');
 });
 
 Route::get('/saved-searches/{id}', [SavedSearchController::class, 'show'])

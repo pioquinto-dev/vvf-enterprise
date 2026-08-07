@@ -22,7 +22,7 @@ export function EmptyState({ phrase, onRefresh, refreshing }) {
   );
 }
 
-export function LoginGate({ resultCount }) {
+export function LoginGate({ resultCount, trialEligible = true }) {
   return (
     <div className="ring-gradient relative mt-6 overflow-hidden rounded-3xl bg-white/72 p-8 backdrop-blur-2xl dark:bg-white/[.04]">
       <div aria-hidden className="pointer-events-none absolute inset-0">
@@ -45,9 +45,15 @@ export function LoginGate({ resultCount }) {
           <a href="/auth/google" className="btn-accent h-12 px-5 text-sm">
             Continue with Google <Arrow />
           </a>
-          <a href="/trial" className="btn-ghost h-12 px-5 text-sm">
-            Start free trial
-          </a>
+          {trialEligible ? (
+            <a href="/trial" className="btn-ghost h-12 px-5 text-sm">
+              Start free trial
+            </a>
+          ) : (
+            <button disabled className="h-12 cursor-not-allowed rounded-xl border border-black/[.08] bg-black/[.03] px-5 text-sm font-semibold text-ink/40 dark:border-white/[.12] dark:bg-white/[.04] dark:text-white/40">
+              Trial unavailable
+            </button>
+          )}
         </div>
       </div>
 
@@ -189,7 +195,7 @@ export default function ResultsScreen({
       {results.length === 0 ? (
         <EmptyState phrase={search?.phrase} onRefresh={onRefresh} refreshing={refreshing} />
       ) : !isAuthenticated ? (
-        <LoginGate resultCount={results.length} />
+        <LoginGate resultCount={results.length} trialEligible={billingState?.trialEligible ?? true} />
       ) : (
         <>
           {billingState && (
@@ -248,7 +254,7 @@ export default function ResultsScreen({
         </>
       )}
 
-      {freeSearch && (
+      {freeSearch && (billingState?.trialEligible ?? true) && (
         <div className="relative mt-10 isolate flex flex-col gap-5 overflow-hidden rounded-3xl bg-ink p-7 sm:flex-row sm:items-center sm:justify-between dark:bg-white/[.05]">
           <div aria-hidden className="pointer-events-none absolute inset-0 -z-10">
             <div className="absolute top-0 right-0 h-[220px] w-[420px] translate-x-1/4 -translate-y-1/3 rounded-full bg-accent/45 blur-[110px]" />

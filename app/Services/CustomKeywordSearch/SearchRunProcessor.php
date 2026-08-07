@@ -2,6 +2,7 @@
 
 namespace App\Services\CustomKeywordSearch;
 
+use App\Jobs\ArchiveViralVideoMediaBatch;
 use App\Jobs\EnrichSearchResults;
 use App\Models\ApifyTrigger;
 use App\Models\CustomKeywordSearch;
@@ -241,7 +242,9 @@ class SearchRunProcessor
             return 0;
         }
 
-        return DB::transaction(function () use ($search, $run, $trigger, $items): int {
+        $freshlyScraped = [];
+
+        $attached = DB::transaction(function () use ($search, $run, $trigger, $items, &$freshlyScraped): int {
             $existingIds = $search->videos()->pluck('viral_video_id')->all();
             $existing = array_flip($existingIds);
             $rank = 0;
@@ -299,6 +302,12 @@ class SearchRunProcessor
                     continue;
                 }
 
+                if (! $isLocal) {
+                    // Only freshly scraped rows carry new CDN URLs. A local
+                    // match was archived when it was first imported.
+                    $freshlyScraped[] = $video->id;
+                }
+
                 CustomKeywordSearchVideo::updateOrCreate(
                     [
                         'custom_keyword_search_id' => $search->id,
@@ -322,6 +331,37 @@ class SearchRunProcessor
 
             return $attached;
         });
+
+        $this->queueMediaArchive($freshlyScraped);
+
+        return $attached;
+    }
+
+    /**
+     * Hands the freshly scraped rows to the archiver.
+     *
+     * Queued, never inline: the source URLs are already saved, so a slow or
+     * broken bucket costs the run nothing. It is dispatched after the
+     * transaction commits so the worker cannot race ahead of the rows it is
+     * meant to read.
+     *
+     * @param  array<int, string>  $viralVideoIds
+     */
+    private function queueMediaArchive(array $viralVideoIds): void
+    {
+        if ($viralVideoIds === [] || ! config('viral_videos.media.enabled', false)) {
+            return;
+        }
+
+        if (config('custom_keyword_search.skip_media_archive', true)) {
+            return;
+        }
+
+        $queue = (string) config('viral_videos.media.queue', 'default');
+
+        foreach (array_chunk(array_unique($viralVideoIds), (int) config('viral_videos.media.batch_size', 50)) as $chunk) {
+            ArchiveViralVideoMediaBatch::dispatch($chunk)->onQueue($queue);
+        }
     }
 
     private function failRun(CustomKeywordSearchRun $run, string $message): void

@@ -144,11 +144,11 @@ export default function Subscription({ subscription }) {
               </div>
 
               <div className="grid gap-3 border-t border-black/[.06] px-6 py-5 sm:grid-cols-2 dark:border-white/[.08]">
-                <Link href="/trial" className="inline-flex h-12 items-center justify-center rounded-2xl bg-[#12172a] px-5 text-[13px] font-semibold text-white transition hover:opacity-95 dark:bg-white dark:text-canvas-dark">
-                  Update payment details
+                <Link href="/plans" className="inline-flex h-12 items-center justify-center rounded-2xl bg-[#12172a] px-5 text-[13px] font-semibold text-white transition hover:opacity-95 dark:bg-white dark:text-canvas-dark">
+                  View plans
                 </Link>
-                <Link href="/trial" className="inline-flex h-12 items-center justify-center rounded-2xl border border-black/[.08] px-5 text-[13px] font-semibold transition hover:border-accent/35 hover:text-accent dark:border-white/[.12] dark:hover:text-accent-glow">
-                  Manage billing in Stripe
+                <Link href="/plans" className="inline-flex h-12 items-center justify-center rounded-2xl border border-black/[.08] px-5 text-[13px] font-semibold transition hover:border-accent/35 hover:text-accent dark:border-white/[.12] dark:hover:text-accent-glow">
+                  Manage billing
                 </Link>
               </div>
             </div>

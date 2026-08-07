@@ -31,142 +31,6 @@ class BrandAccountResolverTest extends TestCase
         ], $overrides);
     }
 
-    public function test_it_picks_the_handle_posting_the_most_matched_videos(): void
-    {
-        $account = $this->resolver->resolve([
-            $this->row('@gopurebeauty', 100),
-            $this->row('@gopurebeauty', 200),
-            $this->row('@gopurebeauty', 300),
-            $this->row('@somecreator', 9_000_000),
-        ]);
-
-        // Post count beats view count: one viral fan video does not make that
-        // creator the brand.
-        $this->assertSame('@gopurebeauty', $account['handle']);
-        $this->assertSame(3, $account['posts_in_search']);
-        $this->assertSame(0.75, $account['confidence']);
-        $this->assertTrue($account['is_confident']);
-        $this->assertSame(2, $account['distinct_accounts']);
-    }
-
-    public function test_views_break_a_tie_on_post_count(): void
-    {
-        $account = $this->resolver->resolve([
-            $this->row('@quiet', 100),
-            $this->row('@loud', 5_000),
-        ]);
-
-        $this->assertSame('@loud', $account['handle']);
-    }
-
-    public function test_a_thin_majority_is_flagged_as_low_confidence(): void
-    {
-        $rows = [$this->row('@brand', 100)];
-
-        for ($i = 0; $i < 19; $i++) {
-            $rows[] = $this->row('@creator'.$i, 50);
-        }
-
-        $account = $this->resolver->resolve($rows);
-
-        $this->assertSame('@brand', $account['handle']);
-        $this->assertSame(0.05, $account['confidence']);
-        $this->assertFalse($account['is_confident']);
-    }
-
-    public function test_it_takes_the_highest_follower_count_seen(): void
-    {
-        $account = $this->resolver->resolve([
-            $this->row('@brand', 100, ['followers' => 12_000]),
-            $this->row('@brand', 200, ['followers' => 367_000]),
-        ]);
-
-        $this->assertSame(367_000, $account['followers']);
-    }
-
-    public function test_it_backfills_a_missing_avatar_from_a_later_row(): void
-    {
-        $account = $this->resolver->resolve([
-            $this->row('@brand', 100, ['avatar' => null]),
-            $this->row('@brand', 200, ['avatar' => 'https://cdn/a.jpg']),
-        ]);
-
-        $this->assertSame('https://cdn/a.jpg', $account['avatar']);
-    }
-
-    public function test_it_returns_null_when_no_row_carries_a_handle(): void
-    {
-        $this->assertNull($this->resolver->resolve([]));
-        $this->assertNull($this->resolver->resolve([$this->row('', 100)]));
-    }
-
-    public function test_it_can_use_openai_to_pick_the_official_brand_account_from_the_keyword(): void
-    {
-        config([
-            'services.openai.api_key' => 'test-key',
-            'services.openai.base_url' => 'https://api.openai.test/v1',
-            'custom_keyword_search.analysis.model' => 'gpt-4.1-mini',
-            'custom_keyword_search.analysis.timeout' => 45,
-        ]);
-
-        Http::fake([
-            'https://api.openai.test/v1/chat/completions' => Http::response([
-                'choices' => [[
-                    'message' => [
-                        'content' => json_encode([
-                            'handle' => '@anisadhoorefit',
-                            'confidence' => 0.91,
-                        ]),
-                    ],
-                ]],
-            ]),
-        ]);
-
-        $account = $this->resolver->resolve([
-            $this->row('@creatorfinds', 4_000_000, ['creator_name' => 'creator finds']),
-            $this->row('@anisadhoorefit', 120_000, ['creator_name' => 'trysnow']),
-            $this->row('@creatorfinds', 3_000_000, ['creator_name' => 'creator finds']),
-        ], 'trysnow');
-
-        $this->assertSame('@anisadhoorefit', $account['handle']);
-        $this->assertSame('ai', $account['source']);
-        $this->assertTrue($account['is_confident']);
-        $this->assertSame(1, $account['posts_in_search']);
-    }
-
-    public function test_it_falls_back_to_detected_account_when_openai_is_not_confident(): void
-    {
-        config([
-            'services.openai.api_key' => 'test-key',
-            'services.openai.base_url' => 'https://api.openai.test/v1',
-            'custom_keyword_search.analysis.model' => 'gpt-4.1-mini',
-            'custom_keyword_search.analysis.timeout' => 45,
-        ]);
-
-        Http::fake([
-            'https://api.openai.test/v1/chat/completions' => Http::response([
-                'choices' => [[
-                    'message' => [
-                        'content' => json_encode([
-                            'handle' => '@brand',
-                            'confidence' => 0.2,
-                        ]),
-                    ],
-                ]],
-            ]),
-        ]);
-
-        $account = $this->resolver->resolve([
-            $this->row('@brand', 100),
-            $this->row('@brand', 200),
-            $this->row('@creator', 9_000),
-        ], 'brand');
-
-        $this->assertSame('@brand', $account['handle']);
-        $this->assertSame('detected', $account['source']);
-        $this->assertSame(0.6667, $account['confidence']);
-    }
-
     /**
      * @param  array<string, mixed>  $choice
      */
@@ -181,67 +45,92 @@ class BrandAccountResolverTest extends TestCase
 
         Http::fake([
             'https://api.openai.test/v1/chat/completions' => Http::response([
-                'choices' => [['message' => ['content' => json_encode($choice)]]],
+                'choices' => [[
+                    'message' => [
+                        'content' => json_encode($choice),
+                    ],
+                ]],
             ]),
         ]);
     }
 
-    public function test_the_account_decision_is_only_requested_once_per_candidate_set(): void
+    public function test_it_returns_null_without_a_phrase(): void
     {
-        $this->fakeChoice(['handle' => '@brand', 'confidence' => 0.9]);
-
-        $rows = [$this->row('@brand', 100), $this->row('@creator', 200)];
-
-        $this->resolver->resolve($rows, 'brand');
-        $this->resolver->resolve($rows, 'brand');
-        $this->resolver->resolve($rows, 'brand');
-
-        // The detail page resolves on every render and every poll; one paid
-        // call per page view would be a real bill.
-        Http::assertSentCount(1);
+        $this->assertNull($this->resolver->resolve([$this->row('@brand', 100)]));
+        $this->assertNull($this->resolver->resolve([$this->row('@brand', 100)], ''));
     }
 
-    public function test_a_new_candidate_set_re_asks_the_model(): void
+    public function test_it_returns_null_when_openai_is_not_configured(): void
     {
-        $this->fakeChoice(['handle' => '@brand', 'confidence' => 0.9]);
+        config([
+            'services.openai.api_key' => null,
+        ]);
 
-        $this->resolver->resolve([$this->row('@brand', 100)], 'brand');
-        $this->resolver->resolve([$this->row('@brand', 100), $this->row('@newcomer', 50)], 'brand');
-
-        Http::assertSentCount(2);
+        $this->assertNull($this->resolver->resolve([$this->row('@brand', 100)], 'brand'));
     }
 
-    public function test_candidates_swapping_rank_does_not_re_ask(): void
+    public function test_it_can_use_openai_to_pick_the_official_brand_account_from_the_phrase(): void
     {
-        $this->fakeChoice(['handle' => '@brand', 'confidence' => 0.9]);
+        $this->fakeChoice([
+            'handle' => '@americaneagle',
+            'confidence' => 0.91,
+        ]);
 
-        // Same two accounts, opposite rank order between refreshes.
-        $this->resolver->resolve([
-            $this->row('@brand', 100),
-            $this->row('@brand', 100),
-            $this->row('@creator', 50),
-        ], 'brand');
+        $account = $this->resolver->resolve([
+            $this->row('@abbikallyn1', 4_000_000, ['creator_name' => 'Abbi Kallyn']),
+            $this->row('@americaneagle', 120_000, ['creator_name' => 'American Eagle', 'followers' => 367_000]),
+            $this->row('@abbikallyn1', 3_000_000, ['creator_name' => 'Abbi Kallyn']),
+        ], 'American Eagle Outfitters');
 
-        $this->resolver->resolve([
-            $this->row('@creator', 50),
-            $this->row('@creator', 50),
-            $this->row('@brand', 100),
-        ], 'brand');
+        $this->assertSame('@americaneagle', $account['handle']);
+        $this->assertSame('ai', $account['source']);
+        $this->assertTrue($account['is_confident']);
+        $this->assertSame(1, $account['posts_in_search']);
+        $this->assertSame(367_000, $account['followers']);
+    }
 
-        Http::assertSentCount(1);
+    public function test_it_keeps_the_openai_handle_even_when_it_is_not_in_matched_results(): void
+    {
+        $this->fakeChoice([
+            'handle' => '@americaneagle',
+            'confidence' => 0.88,
+        ]);
+
+        $account = $this->resolver->resolve([
+            $this->row('@abbikallyn1', 4_000_000, ['creator_name' => 'Abbi Kallyn']),
+        ], 'American Eagle Outfitters');
+
+        $this->assertSame('@americaneagle', $account['handle']);
+        $this->assertSame(0, $account['posts_in_search']);
+        $this->assertNull($account['followers']);
+        $this->assertNull($account['avatar']);
+    }
+
+    public function test_it_hides_the_handle_when_openai_is_not_confident(): void
+    {
+        $this->fakeChoice([
+            'handle' => '@brand',
+            'confidence' => 0.2,
+        ]);
+
+        $this->assertNull($this->resolver->resolve([
+            $this->row('@brand', 100),
+            $this->row('@creator', 9_000),
+        ], 'brand'));
     }
 
     public function test_a_decline_is_cached_so_it_is_not_re_asked(): void
     {
-        $this->fakeChoice(['handle' => null, 'confidence' => 0]);
+        $this->fakeChoice([
+            'handle' => null,
+            'confidence' => 0.0,
+        ]);
 
-        $rows = [$this->row('@creator', 100), $this->row('@creator', 200), $this->row('@other', 50)];
+        $rows = [$this->row('@creator', 100), $this->row('@other', 50)];
 
-        $first = $this->resolver->resolve($rows, 'brand');
-        $second = $this->resolver->resolve($rows, 'brand');
+        $this->assertNull($this->resolver->resolve($rows, 'brand'));
+        $this->assertNull($this->resolver->resolve($rows, 'brand'));
 
-        $this->assertSame('detected', $first['source']);
-        $this->assertSame('detected', $second['source']);
         Http::assertSentCount(1);
     }
 
@@ -260,11 +149,9 @@ class BrandAccountResolverTest extends TestCase
 
         $rows = [$this->row('@brand', 100)];
 
-        $this->assertSame('detected', $this->resolver->resolve($rows, 'brand')['source']);
-        $this->assertSame('detected', $this->resolver->resolve($rows, 'brand')['source']);
+        $this->assertNull($this->resolver->resolve($rows, 'brand'));
+        $this->assertNull($this->resolver->resolve($rows, 'brand'));
 
-        // The call completed; the body was just unusable. Re-asking on every
-        // render would bill for the same bad answer forever.
         Http::assertSentCount(1);
     }
 
@@ -284,20 +171,49 @@ class BrandAccountResolverTest extends TestCase
         $this->resolver->resolve($rows, 'brand');
         $this->resolver->resolve($rows, 'brand');
 
-        // One network blip must not suppress detection until the TTL expires.
+        Http::assertSentCount(2);
+    }
+
+    public function test_the_account_decision_is_only_requested_once_per_phrase(): void
+    {
+        $this->fakeChoice([
+            'handle' => '@brand',
+            'confidence' => 0.9,
+        ]);
+
+        $rows = [$this->row('@brand', 100), $this->row('@creator', 200)];
+
+        $this->resolver->resolve($rows, 'brand');
+        $this->resolver->resolve($rows, 'brand');
+        $this->resolver->resolve([$this->row('@newcreator', 500)], 'brand');
+
+        Http::assertSentCount(1);
+    }
+
+    public function test_a_new_phrase_re_asks_the_model(): void
+    {
+        $this->fakeChoice([
+            'handle' => '@brand',
+            'confidence' => 0.9,
+        ]);
+
+        $this->resolver->resolve([$this->row('@brand', 100)], 'brand');
+        $this->resolver->resolve([$this->row('@brand', 100)], 'other brand');
+
         Http::assertSentCount(2);
     }
 
     public function test_a_cached_decision_is_rehydrated_from_the_current_rows(): void
     {
-        $this->fakeChoice(['handle' => '@brand', 'confidence' => 0.9]);
+        $this->fakeChoice([
+            'handle' => '@brand',
+            'confidence' => 0.9,
+        ]);
 
         $this->resolver->resolve([
             $this->row('@brand', 100, ['followers' => 12_000, 'avatar' => 'https://cdn/old.jpg']),
         ], 'brand');
 
-        // Same candidate set, fresher stats. The cache holds the choice, not
-        // the account, so the second call must not serve the stale avatar.
         $account = $this->resolver->resolve([
             $this->row('@brand', 100, ['followers' => 367_000, 'avatar' => 'https://cdn/new.jpg']),
         ], 'brand');

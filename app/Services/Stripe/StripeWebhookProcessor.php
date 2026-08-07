@@ -108,6 +108,7 @@ class StripeWebhookProcessor
         }
 
         $status = (string) ($payload->status ?? $subscription->status);
+        $previousStatus = (string) ($subscription->status ?? '');
         $periodStart = $this->timestampToCarbon(data_get($payload, 'current_period_start'));
         $periodEnd = $this->timestampToCarbon(data_get($payload, 'current_period_end'));
 
@@ -117,6 +118,12 @@ class StripeWebhookProcessor
             'status' => $status,
             'current_period_starts_at' => $periodStart,
             'current_period_ends_at' => $periodEnd,
+            'trial_started_at' => $status === 'trialing'
+                ? ($subscription->trial_started_at ?? $periodStart ?? now())
+                : $subscription->trial_started_at,
+            'trial_completed_at' => $previousStatus === 'trialing' && $status !== 'trialing' && $subscription->trial_completed_at === null
+                ? now()
+                : $subscription->trial_completed_at,
             'canceled_at' => $status === 'canceled' ? now() : null,
             'metadata' => [
                 'plan_slug' => $plan->slug,

@@ -11,7 +11,6 @@ import {
   SoundPanel,
 } from './InsightPanels.jsx';
 import { AiSummary, PerformanceChart, TrackerHead } from './TrendPanels.jsx';
-import { SampleBadge } from './Badges.jsx';
 
 const PAGE_STEP = 4;
 
@@ -32,23 +31,10 @@ function formatDate(iso) {
     : date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 }
 
-/**
- * Detail view for brand and competitor searches — a direct port of the
- * `tracker-brand-detail` mockup, minus the reach and engagement channel table
- * which was omitted by request (it needs Reels and Meta Ads integrations that
- * do not exist).
- *
- * Everything on this page is one of three things, and the UI says which:
- *
- *  - Measured. Scraped videos and recorded snapshots.
- *  - Rebuilt (violet badge). Derived by bucketing videos on upload date, so a
- *    new search has a chart before 12 weeks of runs exist.
- *  - Sample (amber badge). Invented by PlaceholderProfileData because it needs
- *    a TikTok profile scrape that has not been built.
- */
 export default function DetailScreen({
   search,
   isAuthenticated = false,
+  billing = null,
   onToggleWatchlist,
   onRefresh,
   onTogglePause,
@@ -61,6 +47,7 @@ export default function DetailScreen({
   const [bookmarkingId, setBookmarkingId] = useState(null);
   const [items, setItems] = useState(search?.results ?? []);
   const [view, setView] = useState('outliers');
+  const [activePlayerId, setActivePlayerId] = useState(null);
 
   const insights = search?.insights ?? {};
   const medianViews = insights.baseline?.median_views ?? 0;
@@ -69,8 +56,6 @@ export default function DetailScreen({
   const trend = insights.trend ?? null;
   const profile = account?.profile ?? {};
 
-  // "their content" narrows the feed to the detected brand account's own
-  // posts. Everything else on the page still describes the full search.
   const brandHandle = account?.handle ? account.handle.toLowerCase() : null;
   const feedItems =
     view === 'their' && brandHandle
@@ -81,9 +66,6 @@ export default function DetailScreen({
   const shown = rest.slice(0, visible);
   const maxMultiple = Math.max(...feedItems.map((v) => Number(v.outlier_multiple) || 0), 1);
 
-  // The mockup's tile row: followers, outliers this week, top outlier score,
-  // avg score, avg eng rate. Assembled here because it mixes sources — the
-  // account (followers), the trend (this week), and the whole result set.
   const serverTile = (key) => (insights.tiles ?? []).find((t) => t.key === key) ?? {};
   const multiples = items.map((v) => Number(v.outlier_multiple) || 0).filter((m) => m > 0);
   const avgScore = multiples.length ? multiples.reduce((a, b) => a + b, 0) / multiples.length : null;
@@ -96,12 +78,10 @@ export default function DetailScreen({
           label: 'followers',
           value: account.followers,
           format: 'compact',
-          // Growth needs profile history that is not scraped — sample data.
           deltaNode:
             profile.follower_growth_pct != null ? (
               <div className={`d ${profile.follower_growth_pct >= 0 ? 'up' : 'down'}`}>
-                {profile.follower_growth_pct >= 0 ? '↑' : '↓'} {Math.abs(profile.follower_growth_pct)}% mo{' '}
-                <SampleBadge />
+                {profile.follower_growth_pct >= 0 ? '↑' : '↓'} {Math.abs(profile.follower_growth_pct)}% mo
               </div>
             ) : (
               <div className="d" />
@@ -125,7 +105,7 @@ export default function DetailScreen({
       setCopied(true);
       window.setTimeout(() => setCopied(false), 2000);
     } catch {
-      /* clipboard unavailable — the URL is in the address bar anyway */
+      /* clipboard unavailable - the URL is in the address bar anyway */
     }
   };
 
@@ -165,11 +145,7 @@ export default function DetailScreen({
             className={view === 'their' ? 'on' : ''}
             onClick={() => setView('their')}
             disabled={!brandHandle}
-            title={
-              brandHandle
-                ? `Only posts by ${account.handle}`
-                : 'No brand account detected in the results yet'
-            }
+            title={brandHandle ? `Only posts by ${account.handle}` : 'No brand handle available yet'}
           >
             their content
           </button>
@@ -186,6 +162,16 @@ export default function DetailScreen({
         watchlistUpdating={watchlistUpdating}
       />
 
+      <div className="sect-head" style={{ marginTop: '14px' }}>
+        <span className="note">
+          {search?.status === 'paused'
+            ? 'paused - no refreshes will run.'
+            : search?.next_run_at
+              ? `next refresh at ${new Date(search.next_run_at).toLocaleDateString()}`
+              : 'no refresh scheduled.'}
+        </span>
+      </div>
+
       <AiSummary summary={search?.ai_summary} generatedAt={search?.ai_summary_generated_at} />
 
       <SignalTiles tiles={tiles} deltas={insights.tile_deltas ?? {}} />
@@ -195,11 +181,11 @@ export default function DetailScreen({
           <h2>No videos cleared the bar</h2>
           <p>
             We scanned TikTok for <b>{search?.phrase}</b> but nothing matched the phrase with a real creator behind
-            it. Narrower phrases and brand names often do this — try a broader one, or run it again.
+            it. Narrower phrases and brand names often do this - try a broader one, or run it again.
           </p>
           <div className="acts">
             <button className="tbtn primary" onClick={onRefresh} disabled={refreshing}>
-              {refreshing ? 'refreshing…' : 'run it again'}
+              {refreshing ? 'refreshing...' : 'run it again'}
             </button>
           </div>
         </div>
@@ -214,9 +200,15 @@ export default function DetailScreen({
             <a href="/auth/google" className="tbtn primary">
               continue with Google
             </a>
-            <a href="/trial" className="tbtn">
-              start free trial
-            </a>
+            {billing?.trialEligible ?? true ? (
+              <a href="/trial" className="tbtn">
+                start free trial
+              </a>
+            ) : (
+              <button className="tbtn" disabled>
+                trial unavailable
+              </button>
+            )}
           </div>
         </div>
       ) : (
@@ -245,6 +237,9 @@ export default function DetailScreen({
             max={maxMultiple}
             onToggleBookmark={toggleBookmark}
             bookmarking={bookmarkingId === winner?.id}
+            activePlayerId={activePlayerId}
+            onPlay={setActivePlayerId}
+            onClose={() => setActivePlayerId(null)}
           />
 
           {rest.length > 0 && (
@@ -264,6 +259,9 @@ export default function DetailScreen({
                     max={maxMultiple}
                     onToggleBookmark={toggleBookmark}
                     bookmarking={bookmarkingId === video.id}
+                    activePlayerId={activePlayerId}
+                    onPlay={setActivePlayerId}
+                    onClose={() => setActivePlayerId(null)}
                   />
                 ))}
               </div>
@@ -304,54 +302,8 @@ export default function DetailScreen({
             />
             <ScoreDistribution distribution={insights.distribution ?? []} />
           </div>
-
-          <div className="provbox">
-            <p className="provnote">
-              Outlier scores compare each video against the median of this search, not the creator's own account
-              history — that needs a profile scrape.
-            </p>
-            {(insights.placeholders ?? []).length > 0 && (
-              <p className="provnote">
-                <SampleBadge />
-                <span>
-                  Anything carrying this badge is invented and safe to ignore. It all comes from{' '}
-                  <code>PlaceholderProfileData</code> — delete that class once the TikTok profile actor exists and
-                  the badges disappear on their own.
-                </span>
-              </p>
-            )}
-          </div>
         </>
       )}
-
-      <div className="sect-head" style={{ marginBottom: '0' }}>
-        <span className="note">
-          {search?.status === 'paused'
-            ? 'paused — no refreshes will run.'
-            : search?.next_run_at
-              ? `next refresh ${new Date(search.next_run_at).toLocaleDateString()}`
-              : 'no refresh scheduled.'}
-        </span>
-        <div className="head-actions">
-          {onTogglePause && (
-            <button className="tbtn" onClick={onTogglePause}>
-              {search?.status === 'paused' ? 'resume' : 'pause'}
-            </button>
-          )}
-          <button className="tbtn" onClick={onRefresh} disabled={refreshing || search?.status === 'scraping'}>
-            {refreshing ? 'refreshing…' : 'refresh now'}
-          </button>
-          {onDelete && (
-            <button className="tbtn danger" onClick={onDelete}>
-              delete
-            </button>
-          )}
-        </div>
-      </div>
-
-      <div className="footnote">
-        {search?.name} · {items.length} matched {items.length === 1 ? 'video' : 'videos'}
-      </div>
     </div>
   );
 }

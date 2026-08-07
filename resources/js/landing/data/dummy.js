@@ -159,7 +159,7 @@ export const PRICING = {
       name: 'Basic',
       price: 79,
       tagline: 'For a single brand.',
-      cta: 'Start 10 day trial',
+      cta: 'Choose Basic',
       popular: true,
       features: [
         '150 searches',

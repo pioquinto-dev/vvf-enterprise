@@ -36,6 +36,7 @@ const NAV = [
     { label: 'Brand searches', href: '/saved-searches?type=brand', icon: Store, match: '/saved-searches', exact: '/saved-searches?type=brand' },
     { label: 'Competitor searches', href: '/saved-searches?type=competitor', icon: Target, match: '/saved-searches', exact: '/saved-searches?type=competitor' },
     { label: 'Product searches', href: '/saved-searches?type=product', icon: Search, match: '/saved-searches', exact: '/saved-searches?type=product', locked: true },
+    { label: 'Plans', href: '/plans', icon: Spark, match: '/plans', exact: '/plans' },
 ];
 
 /* Mobile bottom bar — three destinations, mirroring the wireframe. */

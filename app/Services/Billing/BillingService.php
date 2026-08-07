@@ -17,7 +17,7 @@ class BillingService
         private readonly BillingEntitlementService $entitlements,
     ) {}
 
-    public function checkout(User $user, PricingPlan $plan): string
+    public function checkout(User $user, PricingPlan $plan, bool $withTrial = false): string
     {
         if (! $plan->is_active || blank($plan->stripe_price_id)) {
             throw ValidationException::withMessages([
@@ -35,19 +35,13 @@ class BillingService
                 'quantity' => 1,
             ]],
             'success_url' => route('billing.success').'?session_id={CHECKOUT_SESSION_ID}',
-            'cancel_url' => route('trial'),
+            'cancel_url' => route('plans'),
             'metadata' => [
                 'plan_slug' => $plan->slug,
                 'user_id' => (string) $user->id,
+                'trial_days' => $withTrial ? '7' : '0',
             ],
-        ]);
-
-        $this->upsertUserSubscription($user, [
-            'plan_id' => $plan->id,
-            'stripe_checkout_session_id' => $session->id,
-            'stripe_customer_id' => $customerId,
-            'status' => 'pending',
-            'metadata' => $this->subscriptionMetadata($plan, 0, $this->bookmarkCount($user)),
+            ...($withTrial ? ['subscription_data' => ['trial_period_days' => 7]] : []),
         ]);
 
         return $session->url;

@@ -80,6 +80,9 @@ export const billing = {
   checkout: (slug) => {
     window.location.assign(`/billing/checkout/${encodeURIComponent(slug)}`);
   },
+  trialCheckout: (slug) => {
+    window.location.assign(`/billing/checkout/${encodeURIComponent(slug)}?trial=1`);
+  },
 };
 
 export const bookmarks = {

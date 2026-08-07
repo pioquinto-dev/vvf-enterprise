@@ -63,7 +63,7 @@ class PricingPlanTable
                     '2 user seats',
                 ],
                 'metadata' => [
-                    'cta' => 'Start 10 day trial',
+                    'cta' => 'Choose Basic',
                     'popular' => true,
                     'trialEnabled' => true,
                     'searchCreditsLimit' => 150,

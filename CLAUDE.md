@@ -77,6 +77,13 @@ The product's core loop. One phrase becomes a saved, self-refreshing list of vir
 
 ### `app/Services/Media`
 - Media durability layer for copying Apify-hosted assets into object storage.
+- **Two stages, never one.** The import writes the source CDN URLs exactly as it always has; a queued pass then downloads each asset, uploads it, verifies it, and rewrites the column. Nothing uploads inline during a scrape — a slow bucket must never slow a run or fail it.
+- `MediaArchiver` handles `cover`, `thumbnail_url` and `avatar` as independent attempts, so a dead avatar cannot cost a video its cover. Object keys are `{prefix}/{triggerId}_{videoId}_{createdAt}_{kind}.{ext}` — deterministic, so a repair overwrites instead of accumulating duplicates.
+- **The failure policy is asymmetric on purpose.** Our failure (upload rejected, verification failed) keeps the source URL for a later pass. Their failure (403/404/410, or an `x-expires` signature already lapsed) clears the field — a dead link guarantees a broken image and never recovers, so retrying it only burns the queue.
+- `put()` returning true is not proof the bytes are readable; every upload is followed by an `exists()` check before the column is rewritten.
+- `ArchiveViralVideoMedia` (single, fresh imports) fails the job so the queue retries. `ArchiveViralVideoMediaBatch` (catch-up) never fails on a bad row and logs failed IDs instead. Both are no-ops unless `viral_videos.media.enabled`.
+- Archiving is **off by default** (`VIRAL_VIDEOS_MEDIA_ARCHIVE_ENABLED`). Turn it on only after `viral-videos:debug-media-storage-flow` passes every stage, including the public GET — a bucket that accepts writes but is not publicly readable looks perfectly healthy server-side and breaks every image in the browser.
+- Troubleshoot in this order: `viral-videos:debug-media-config` (what config resolved to) → `viral-videos:debug-media-s3-sdk` (does the provider accept a write at all) → `viral-videos:debug-media-storage-flow` (the framework path end to end) → `viral-videos:test-media-storage` (one-line smoke test).
 
 ### `app/Http/Middleware`
 - `CaptureUtmParameters.php` reads UTM query params from every web request and stores them in the session under `utm_params`. Runs on the web middleware group. Only overwrites the session when new UTM params are present on the current request.
@@ -112,6 +119,7 @@ The product's core loop. One phrase becomes a saved, self-refreshing list of vir
 ### `resources/js/landing`
 - Marketing landing page components, rendered by `resources/js/Pages/Landing.jsx` at route `/` (named `landing`).
 - `data/dummy.js` holds every piece of copy, pricing tier, testimonial, FAQ, and fake video on the page. It is all placeholder data — replace these exports with real sources and the components need no changes.
+- `VideoCard.jsx`'s `Thumb` plays in place: clicking the play button swaps the cover for the TikTok embed in the same box. It uses `embed_url`, never `video_url` — the latter is a signed CDN address that expires within days and 403s from a browser origin. When no embed can be built the play glyph stays inert rather than advertising a control that does nothing.
 - `flow/` is the custom search flow. Each step is a real page, not a modal: `screens/` holds the four step components, `searchQuery.js` builds and parses the query string that carries state between steps, `VideoCard.jsx` renders results. Step one lives inline in `sections/Hero.jsx`. Page chrome comes from `Pages/components/AppLayout.jsx` — the old `SearchShell.jsx` is gone.
 - Flow routes are `/search` (keywords), `/search/running`, `/search/results`, and `/trial`, all defined in `routes/web.php`. State travels in the query string — `type`, `q` (subject), and `kw` (pipe-separated keywords) — so results are shareable and the browser back button works. Nothing is stored server-side.
 - The legacy Laravel/React starter page is still available at `/starter` (named `home`); `GoogleAuthController` redirects there after sign-in.
@@ -149,9 +157,11 @@ The product's core loop. One phrase becomes a saved, self-refreshing list of vir
 - `APIFY_RUN_TIMEOUT_SECONDS`
 - `VIRAL_VIDEO_SCHEDULE_TIME`
 - `VIRAL_VIDEO_SCHEDULE_TIMEZONE`
+- `VIRAL_VIDEOS_MEDIA_ARCHIVE_ENABLED`
 - `VIRAL_VIDEOS_MEDIA_DISK`
 - `VIRAL_VIDEOS_ANALYSIS_DISK`
 - `VIRAL_VIDEOS_MEDIA_PREFIX`
+- `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_DEFAULT_REGION`, `AWS_BUCKET`, `AWS_URL`, `AWS_ENDPOINT`, `AWS_USE_PATH_STYLE_ENDPOINT`
 - `VIRAL_VIDEOS_PREPARATION_QUEUE`
 - `VIRAL_VIDEOS_ANALYSIS_REFRESH_MAX_AGE_SECONDS`
 - `BYPASS_PAID_FEATURES`

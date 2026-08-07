@@ -2,56 +2,114 @@ import { useState } from 'react';
 import { Play, Heart, Comment, Trend, Arrow, Bookmark } from '../components/Icons.jsx';
 import { compactNumber, duration, gradientFor, multiplier, relativeTime } from './format.js';
 
+/*
+ * The player source.
+ *
+ * `video_url` is not used on purpose: Apify returns TikTok's signed CDN address,
+ * which expires within days and 403s from a browser origin. The embed is the
+ * only URL that keeps working, so playback goes through it.
+ */
+function embedFor(video) {
+  if (video.embed_url) return video.embed_url;
+  const id = video.video_id;
+  return id ? `https://www.tiktok.com/embed/v2/${id}` : null;
+}
+
 export function Thumb({ video, rank, className = '' }) {
   const [broken, setBroken] = useState(false);
+  const [playing, setPlaying] = useState(false);
   const gradient = gradientFor(video.video_id ?? video.id);
   const src = video.thumbnail_url;
   const mult = multiplier(video.score ?? video.virality_score);
+  const embed = embedFor(video);
 
   return (
     <div
       className={`group relative flex items-center justify-center overflow-hidden rounded-2xl
         bg-linear-to-br ${gradient} shadow-[0_20px_44px_-24px_rgba(0,0,0,.85)] ${className}`}
     >
-      {src && !broken && (
-        <img
-          src={src}
-          alt=""
-          loading="lazy"
-          referrerPolicy="no-referrer"
-          onError={() => setBroken(true)}
-          className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.04]"
-        />
-      )}
+      {playing && embed ? (
+        <>
+          <iframe
+            src={embed}
+            title={video.title || 'TikTok video'}
+            loading="lazy"
+            allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
+            allowFullScreen
+            className="absolute inset-0 h-full w-full border-0"
+          />
+          <button
+            type="button"
+            onClick={() => setPlaying(false)}
+            aria-label="Close player"
+            className="absolute top-2.5 right-2.5 z-10 flex h-7 w-7 items-center justify-center rounded-full bg-black/60 text-white backdrop-blur-md transition hover:bg-black/80"
+          >
+            <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+              <path d="M6 6l12 12M18 6L6 18" />
+            </svg>
+          </button>
+        </>
+      ) : (
+        <>
+          {src && !broken && (
+            <img
+              src={src}
+              alt=""
+              loading="lazy"
+              referrerPolicy="no-referrer"
+              onError={() => setBroken(true)}
+              className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.04]"
+            />
+          )}
 
-      <span
-        aria-hidden
-        className="absolute inset-0 bg-linear-to-t from-black/55 via-transparent to-black/20"
-      />
+          <span
+            aria-hidden
+            className="absolute inset-0 bg-linear-to-t from-black/55 via-transparent to-black/20"
+          />
 
-      {rank != null && (
-        <span className="absolute top-2.5 left-2.5 flex h-6 min-w-[24px] items-center justify-center rounded-lg bg-white/95 px-1.5 font-display text-xs font-bold text-ink">
-          {rank}
-        </span>
-      )}
+          {rank != null && (
+            <span className="absolute top-2.5 left-2.5 flex h-6 min-w-[24px] items-center justify-center rounded-lg bg-white/95 px-1.5 font-display text-xs font-bold text-ink">
+              {rank}
+            </span>
+          )}
 
-      <span className="relative flex h-11 w-11 items-center justify-center rounded-full bg-white/20 backdrop-blur-md transition-transform duration-300 group-hover:scale-110">
-        <Play className="h-4 w-4 translate-x-px text-white" />
-      </span>
+          {/*
+            The play affordance used to be a decorative span, so the only way to
+            watch anything was to leave for TikTok. It plays in place now; when
+            there is no usable embed it stays inert rather than lying about it.
+          */}
+          {embed ? (
+            <button
+              type="button"
+              onClick={() => setPlaying(true)}
+              aria-label={video.title ? `Play: ${video.title}` : 'Play video'}
+              className="absolute inset-0 z-10 flex cursor-pointer items-center justify-center"
+            >
+              <span className="flex h-11 w-11 items-center justify-center rounded-full bg-white/20 backdrop-blur-md transition-transform duration-300 group-hover:scale-110">
+                <Play className="h-4 w-4 translate-x-px text-white" />
+              </span>
+            </button>
+          ) : (
+            <span aria-hidden className="relative flex h-11 w-11 items-center justify-center rounded-full bg-white/10 backdrop-blur-md">
+              <Play className="h-4 w-4 translate-x-px text-white/50" />
+            </span>
+          )}
 
-      {video.duration > 0 && (
-        <span className="absolute right-2.5 bottom-2.5 rounded-md bg-black/50 px-1.5 py-0.5 text-[10px] font-semibold text-white backdrop-blur-sm">
-          {duration(video.duration)}
-        </span>
-      )}
+          {video.duration > 0 && (
+            <span className="absolute right-2.5 bottom-2.5 rounded-md bg-black/50 px-1.5 py-0.5 text-[10px] font-semibold text-white backdrop-blur-sm">
+              {duration(video.duration)}
+            </span>
+          )}
 
-      {mult && (
-        <span
-          className="absolute bottom-2.5 left-2.5 rounded-md bg-hot px-1.5 py-0.5 text-[10px] font-bold text-white shadow-[0_6px_16px_-6px_rgba(255,61,113,1)]"
-          title="Engagement relative to the creator's own following"
-        >
-          {mult}
-        </span>
+          {mult && (
+            <span
+              className="absolute bottom-2.5 left-2.5 rounded-md bg-hot px-1.5 py-0.5 text-[10px] font-bold text-white shadow-[0_6px_16px_-6px_rgba(255,61,113,1)]"
+              title="Engagement relative to the creator's own following"
+            >
+              {mult}
+            </span>
+          )}
+        </>
       )}
     </div>
   );

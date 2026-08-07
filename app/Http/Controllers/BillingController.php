@@ -15,11 +15,13 @@ class BillingController extends Controller
     public function checkout(Request $request, string $slug): RedirectResponse
     {
         $user = $request->user();
+        $withTrial = $request->boolean('trial');
 
         if ($user === null) {
             return redirect()->route('trial', [
                 'redirect' => 'trial_checkout',
                 'plan' => $slug,
+                'trial' => $withTrial ? '1' : null,
             ]);
         }
 
@@ -28,7 +30,7 @@ class BillingController extends Controller
             ->whereIn('slug', ['basic', 'premium'])
             ->firstOrFail();
 
-        return redirect()->away($this->billing->checkout($user, $plan));
+        return redirect()->away($this->billing->checkout($user, $plan, $withTrial));
     }
 
     public function success(Request $request): RedirectResponse

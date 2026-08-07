@@ -153,6 +153,15 @@ class BillingEntitlementService
             return 0;
         }
 
+        if ($this->hasPaidPlan($user)) {
+            $subscription = $this->activeSubscriptionFor($user);
+            $used = data_get($subscription?->metadata, 'searchCreditsUsed');
+
+            if ($used !== null) {
+                return max(0, (int) $used);
+            }
+        }
+
         $limits = $this->limitsForUser($user);
 
         return max(0, ((int) ($limits['searchCreditsLimit'] ?? 0)) - $this->searchCreditsRemaining($user));
@@ -162,6 +171,15 @@ class BillingEntitlementService
     {
         if ($user === null) {
             return 0;
+        }
+
+        if ($this->hasPaidPlan($user)) {
+            $subscription = $this->activeSubscriptionFor($user);
+            $used = data_get($subscription?->metadata, 'bookmarksUsed');
+
+            if ($used !== null) {
+                return max(0, (int) $used);
+            }
         }
 
         return $this->bookmarkCount($user);
@@ -274,5 +292,12 @@ class BillingEntitlementService
             'bookmarkLimit' => (int) $limits['bookmarkLimit'],
             'bookmarksUsed' => max(0, $bookmarksUsed),
         ];
+    }
+
+    private function activeSubscriptionFor(User $user): ?Subscription
+    {
+        return Subscription::query()
+            ->where('user_id', $user->id)
+            ->first();
     }
 }

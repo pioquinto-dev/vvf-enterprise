@@ -11,7 +11,6 @@ const GRADIENTS = [
   'linear-gradient(150deg,#ffb0d8,#d1409a 55%,#5a2060)',
 ];
 
-/** Stable per-video gradient behind a thumbnail that fails to load. */
 function gradientStyle(video) {
   const key = String(video?.video_id ?? video?.id ?? '');
   let hash = 0;
@@ -24,6 +23,12 @@ const PlayIcon = ({ w = 14, h = 16 }) => (
     <path d="M0 0l14 8-14 8z" />
   </svg>
 );
+
+function embedFor(video) {
+  if (video?.embed_url) return video.embed_url;
+  const id = video?.video_id;
+  return id ? `https://www.tiktok.com/player/v1/${id}?autoplay=1&description=0&rel=0` : null;
+}
 
 function Cover({ video }) {
   const [broken, setBroken] = useState(false);
@@ -46,10 +51,6 @@ function Cover({ video }) {
   );
 }
 
-/**
- * Where a video sits on the rail, as a percentage. Inset on both ends so the
- * dot and the median tick never clip.
- */
 function position(multiple, max) {
   const n = Number(multiple);
   if (!Number.isFinite(n) || n <= 0 || !max || max <= 0) return null;
@@ -74,10 +75,74 @@ function Avatar({ video, className }) {
   );
 }
 
-/**
- * The winner block: big score, deviation rail, creative detail, actions.
- */
-export function WinnerVideo({ video, medianViews, max, onToggleBookmark, bookmarking = false }) {
+function InlinePlayer({
+  video,
+  className,
+  buttonClassName = 'play',
+  iconProps = {},
+  activePlayerId = null,
+  onPlay = null,
+  onClose = null,
+}) {
+  const embed = embedFor(video);
+  const playerId = String(video?.id ?? video?.video_id ?? '');
+  const playing = playerId !== '' && activePlayerId === playerId;
+
+  if (playing && embed) {
+    return (
+      <>
+        <iframe
+          src={embed}
+          title={video?.title || 'TikTok video'}
+          loading="lazy"
+          allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
+          allowFullScreen
+          className={`${className} tracker-embed-frame`}
+        />
+        <button
+          type="button"
+          onClick={() => onClose?.()}
+          aria-label="Close player"
+          className="absolute top-2.5 right-2.5 z-20 flex h-8 w-8 items-center justify-center rounded-full bg-black/60 text-white backdrop-blur-md transition hover:bg-black/80"
+        >
+          <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+            <path d="M6 6l12 12M18 6L6 18" />
+          </svg>
+        </button>
+      </>
+    );
+  }
+
+  if (!embed) {
+    return (
+      <div className={buttonClassName} aria-hidden>
+        <PlayIcon {...iconProps} />
+      </div>
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={() => onPlay?.(playerId)}
+      aria-label={video?.title ? `Play: ${video.title}` : 'Play video'}
+      className={buttonClassName}
+    >
+      <PlayIcon {...iconProps} />
+    </button>
+  );
+}
+
+export function WinnerVideo({
+  video,
+  medianViews,
+  max,
+  onToggleBookmark,
+  bookmarking = false,
+  activePlayerId = null,
+  onPlay = null,
+  onClose = null,
+}) {
   if (!video) return null;
 
   const dot = position(video.outlier_multiple, max);
@@ -91,9 +156,14 @@ export function WinnerVideo({ video, medianViews, max, onToggleBookmark, bookmar
       <div className="vid">
         <Cover video={video} />
         <span className="flag">★ winner</span>
-        <div className="play">
-          <PlayIcon w={16} h={18} />
-        </div>
+        <InlinePlayer
+          video={video}
+          className="absolute inset-0 h-full w-full border-0"
+          iconProps={{ w: 16, h: 18 }}
+          activePlayerId={activePlayerId}
+          onPlay={onPlay}
+          onClose={onClose}
+        />
         <span className="views-ov">▶ {compactNumber(video.views)}</span>
       </div>
 
@@ -188,10 +258,17 @@ export function WinnerVideo({ video, medianViews, max, onToggleBookmark, bookmar
   );
 }
 
-/**
- * One card in the ranked feed beneath the winner.
- */
-export function OutlierCard({ video, rank, medianViews, max, onToggleBookmark, bookmarking = false }) {
+export function OutlierCard({
+  video,
+  rank,
+  medianViews,
+  max,
+  onToggleBookmark,
+  bookmarking = false,
+  activePlayerId = null,
+  onPlay = null,
+  onClose = null,
+}) {
   const dot = position(video.outlier_multiple, max);
   const median = position(1, max);
   const packEnd = position(Math.min(2, max), max);
@@ -209,9 +286,13 @@ export function OutlierCard({ video, rank, medianViews, max, onToggleBookmark, b
             <span className="lbl">outlier</span>
           </span>
         )}
-        <div className="play">
-          <PlayIcon />
-        </div>
+        <InlinePlayer
+          video={video}
+          className="absolute inset-0 z-10 h-full w-full border-0"
+          activePlayerId={activePlayerId}
+          onPlay={onPlay}
+          onClose={onClose}
+        />
         <span className="views-ov">▶ {compactNumber(video.views)}</span>
       </div>
 

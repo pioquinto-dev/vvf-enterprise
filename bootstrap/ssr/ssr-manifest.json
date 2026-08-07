@@ -5,6 +5,7 @@
   "resources/js/Pages/Dashboard.jsx": [],
   "resources/js/Pages/Home.jsx": [],
   "resources/js/Pages/Landing.jsx": [],
+  "resources/js/Pages/Plans.jsx": [],
   "resources/js/Pages/SavedSearches/Index.jsx": [],
   "resources/js/Pages/SavedSearches/Show.jsx": [],
   "resources/js/Pages/SavedSearches/detail/Badges.jsx": [],
