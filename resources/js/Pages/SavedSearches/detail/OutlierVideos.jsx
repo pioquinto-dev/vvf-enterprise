@@ -203,6 +203,7 @@ export function WinnerVideo({
             <div className="cs">
               {video.uploaded_at ? relativeTime(video.uploaded_at) : 'date unknown'} · TikTok
             </div>
+            {video.sound_label && <div className="cs">{video.sound_label}</div>}
           </div>
         </div>
 
@@ -321,6 +322,7 @@ export function OutlierCard({
           <div style={{ minWidth: 0 }}>
             <div className="h2n">{video.handle ?? video.creator_name}</div>
             <div className="sub">{video.uploaded_at ? relativeTime(video.uploaded_at) : 'date unknown'}</div>
+            {video.sound_label && <div className="sub">{video.sound_label}</div>}
           </div>
         </div>
 

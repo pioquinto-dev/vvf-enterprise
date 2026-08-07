@@ -99,8 +99,10 @@ class LocalCorpusRecall
             'video_url' => $video->video_url,
             'post_url' => $video->post_url,
             'embed_url' => $video->embed_url,
+            'song_id' => $video->song_id,
             'song' => $video->song,
             'artist' => $video->artist,
+            'song_cover_url' => $video->song_cover_url,
             'uploaded_at' => $video->uploaded_at !== null
                 ? CarbonImmutable::instance($video->uploaded_at)
                 : null,

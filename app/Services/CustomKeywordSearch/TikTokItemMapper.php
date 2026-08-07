@@ -29,8 +29,10 @@ class TikTokItemMapper
         'thumbnail_url' => ['video.thumbnail', 'video.cover', 'videoMeta.originalCoverUrl', 'videoMeta.coverUrl', 'thumbnailUrl', 'thumbnail', 'covers.origin', 'cover'],
         'video_url' => ['video.url', 'videoUrl', 'mediaUrls.0', 'videoMeta.downloadAddr', 'video.playAddr', 'downloadAddr'],
         'post_url' => ['webVideoUrl', 'postPage', 'shareUrl', 'url', 'postUrl'],
-        'song' => ['musicMeta.musicName', 'music.title', 'songTitle'],
-        'artist' => ['musicMeta.musicAuthor', 'music.authorName', 'songAuthor'],
+        'song_id' => ['musicMeta.musicId', 'music.id', 'song.id', 'songId'],
+        'song' => ['musicMeta.musicName', 'music.title', 'song.title', 'songTitle'],
+        'artist' => ['musicMeta.musicAuthor', 'music.authorName', 'song.artist', 'songAuthor'],
+        'song_cover_url' => ['musicMeta.coverUrl', 'music.cover', 'song.cover', 'song.coverUrl'],
         'uploaded_at' => ['createTimeISO', 'createTime', 'create_time', 'uploadedAt', 'createdAt', 'uploaded'],
     ];
 
@@ -75,8 +77,10 @@ class TikTokItemMapper
             'video_url' => $this->firstString($item, self::PATHS['video_url']),
             'post_url' => $postUrl ?? ($username !== '' ? "https://www.tiktok.com/@{$username}/video/{$videoId}" : null),
             'embed_url' => "https://www.tiktok.com/embed/v2/{$videoId}",
+            'song_id' => $this->firstString($item, self::PATHS['song_id']),
             'song' => $this->firstString($item, self::PATHS['song']),
             'artist' => $this->firstString($item, self::PATHS['artist']),
+            'song_cover_url' => $this->firstString($item, self::PATHS['song_cover_url']),
             'uploaded_at' => $this->uploadedAt($item),
             'raw_payload' => $item,
         ];

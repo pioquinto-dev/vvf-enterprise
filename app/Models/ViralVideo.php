@@ -98,6 +98,8 @@ class ViralVideo extends Model
             'video_url' => $this->video_url,
             'post_url' => $this->post_url,
             'embed_url' => $this->embed_url,
+            'song_id' => $this->song_id,
+            'song_cover_url' => $this->song_cover_url,
             'uploaded_at' => $this->uploaded_at?->toIso8601String(),
             'virality_score' => (float) $this->virality_score,
         ];
