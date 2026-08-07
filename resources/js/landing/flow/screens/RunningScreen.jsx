@@ -157,8 +157,14 @@ export default function RunningScreen({ searchId, onBack, onDone }) {
                   Or have them emailed when they're done
                 </p>
 
-                <a href="/auth/google" className="btn-ghost h-[52px] w-full text-[15px]">
-                  <Google /> Continue with Google
+                <a
+                  href="/auth/google"
+                  className="flex h-[52px] w-full items-center justify-center gap-3 rounded-full bg-[#2f2a2a] px-5 text-[15px] font-semibold text-white shadow-[0_18px_40px_-26px_rgba(0,0,0,.55)] transition hover:opacity-95"
+                >
+                  <span className="flex h-8 w-8 items-center justify-center rounded-full bg-white">
+                    <Google />
+                  </span>
+                  Continue with Google
                 </a>
 
                 <div className="my-4 flex items-center gap-3 text-xs faint">
