@@ -5099,16 +5099,63 @@ function PostingHeatmap({ heatmap }) {
 					peak.count === 1 ? "post" : "posts",
 					". Hours are ",
 					timezone,
-					""
+					" — no creator timezone is captured on a scrape."
 				]
 			})
 		]
 	});
 }
-/** Six-week outlier bars. */
-function OutliersPerWeek({ bars = [], threshold = 3 }) {
+/** Faint placeholder bars that keep the panel's shape while it has no story. */
+var GHOST_HEIGHTS = [
+	34,
+	58,
+	42,
+	66,
+	50,
+	82
+];
+/**
+* Six-week outlier bars. An all-zero week set renders as ghost bars with an
+* explanation instead of six zeros — on a first run that chart looks broken,
+* and the two reasons it can be empty deserve different sentences: either no
+* post has cleared the threshold at all, or the outliers exist but were
+* posted before the 12-week window this chart covers.
+*/
+function OutliersPerWeek({ bars = [], threshold = 3, totalOutliers = 0, nextRunLabel = null }) {
 	const max = Math.max(...bars.map((b) => b.value), 1);
 	const anyRebuilt = bars.some((b) => b.reconstructed);
+	if (bars.length === 0 || bars.every((b) => !b.value)) return /* @__PURE__ */ jsxs("div", {
+		className: "panel",
+		children: [
+			/* @__PURE__ */ jsx("h3", { children: "outliers per week" }),
+			/* @__PURE__ */ jsxs("div", {
+				className: "psub",
+				children: [
+					"their posts scoring ",
+					outlierLabel(threshold) ?? "3x",
+					" or higher"
+				]
+			}),
+			/* @__PURE__ */ jsx("div", {
+				className: "spark ghost",
+				"aria-hidden": true,
+				children: GHOST_HEIGHTS.map((height, index) => /* @__PURE__ */ jsxs("div", {
+					className: "col",
+					children: [/* @__PURE__ */ jsx("div", {
+						className: "bar2",
+						style: { height: `${height}%` }
+					}), /* @__PURE__ */ jsx("span", {
+						className: "wl",
+						children: index === GHOST_HEIGHTS.length - 1 ? "now" : `wk ${index + 1}`
+					})]
+				}, index))
+			}),
+			/* @__PURE__ */ jsx("p", {
+				className: "ghostnote",
+				children: totalOutliers > 0 ? `All ${totalOutliers} of their outliers were posted more than 12 weeks ago — this chart covers recent weeks only. It fills in as refreshes land.` : `Nothing has beaten ${outlierLabel(threshold) ?? "3x"} the search median yet. A bar appears the week a post breaks out${nextRunLabel ? ` — next check ${nextRunLabel}` : ""}.`
+			})
+		]
+	});
 	return /* @__PURE__ */ jsxs("div", {
 		className: "panel",
 		children: [
@@ -5334,16 +5381,6 @@ function PerformanceChart({ trend }) {
 					/* @__PURE__ */ jsx("span", { children: "8 wk" }),
 					/* @__PURE__ */ jsx("span", { children: "4 wk" }),
 					/* @__PURE__ */ jsx("span", { children: "now" })
-				]
-			}),
-			trend.has_reconstructed && /* @__PURE__ */ jsxs("div", {
-				className: "heat-note",
-				children: [
-					/* @__PURE__ */ jsx("b", { children: "Dashed is rebuilt." }),
-					" Those weeks group videos by the date they were posted and show what those posts are worth today, not what the number read that week. Solid is measured:",
-					" ",
-					trend.recorded_count > 0 ? `${trend.recorded_count} of ${trend.weeks} weeks` : "no weeks",
-					" so far."
 				]
 			})
 		]
@@ -5765,7 +5802,9 @@ function DetailScreen({ search, isAuthenticated = false, onToggleWatchlist, onRe
 					className: "datagrid",
 					children: [/* @__PURE__ */ jsx(OutliersPerWeek, {
 						bars: trend?.outliers_per_week ?? [],
-						threshold
+						threshold,
+						totalOutliers: (insights.distribution ?? []).reduce((sum, row) => sum + row.count, 0),
+						nextRunLabel: formatDate$1(search?.next_run_at)
 					}), /* @__PURE__ */ jsx(ScoreDistribution, { distribution: insights.distribution ?? [] })]
 				}),
 				/* @__PURE__ */ jsxs("div", {
