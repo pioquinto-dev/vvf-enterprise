@@ -12,9 +12,8 @@ use Illuminate\Support\Facades\Queue;
 use Tests\TestCase;
 
 /**
- * The free search is one forever. These cover the routes that used to hand out
- * extras: the signed-out session, the login/logout cycle, deleting searches,
- * and refreshing an existing one.
+ * Free users get one search per monthly cycle. These cover the routes that
+ * must not mint extras inside the same cycle, plus the free-plan renewal path.
  */
 class FreeSearchQuotaTest extends TestCase
 {
@@ -145,7 +144,7 @@ class FreeSearchQuotaTest extends TestCase
             ->assertJsonValidationErrors('billing');
     }
 
-    public function test_a_lapsed_plan_falling_back_to_free_does_not_regrant(): void
+    public function test_a_lapsed_plan_falling_back_to_free_starts_a_new_free_cycle(): void
     {
         $user = $this->freeUser();
 
@@ -159,11 +158,33 @@ class FreeSearchQuotaTest extends TestCase
 
         $this->actingAs($user)
             ->search(['phrase' => 'korean skincare', 'keywords' => ['korean skincare']])
-            ->assertStatus(422)
-            ->assertJsonValidationErrors('billing');
+            ->assertCreated();
 
         $this->assertSame('free', $user->refresh()->current_plan_slug);
         $this->assertSame(0, (int) $user->monthly_credits_remaining);
+        $this->assertNotNull($user->plan_renews_at);
+    }
+
+    public function test_a_free_user_gets_one_new_search_when_the_month_renews(): void
+    {
+        $user = $this->freeUser();
+
+        $user->forceFill([
+            'monthly_credits_remaining' => 0,
+            'free_search_used_at' => now()->subMonth(),
+            'plan_renews_at' => now()->subDay(),
+        ])->save();
+
+        $this->actingAs($user)
+            ->search(['phrase' => 'korean skincare', 'keywords' => ['korean skincare']])
+            ->assertCreated();
+
+        $user->refresh();
+
+        $this->assertSame('free', $user->current_plan_slug);
+        $this->assertSame(0, (int) $user->monthly_credits_remaining);
+        $this->assertNotNull($user->plan_renews_at);
+        $this->assertTrue($user->plan_renews_at->isFuture());
     }
 
     public function test_a_guest_cannot_re_search_the_same_keywords_for_free(): void

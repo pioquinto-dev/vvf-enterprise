@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 use Laravel\Socialite\Facades\Socialite;
+use Carbon\CarbonImmutable;
 use Throwable;
 
 class GoogleAuthController extends Controller
@@ -55,6 +56,7 @@ class GoogleAuthController extends Controller
                 'password' => Hash::make(Str::random(40)),
                 'current_plan_slug' => 'free',
                 'monthly_credits_remaining' => 1,
+                'plan_renews_at' => CarbonImmutable::now()->addMonth(),
             ]);
 
             event(new Registered($user));

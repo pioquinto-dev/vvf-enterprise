@@ -12,6 +12,8 @@ use Illuminate\Validation\ValidationException;
 
 class BillingEntitlementService
 {
+    private const FREE_PLAN_RENEWAL_MONTHS = 1;
+
     public function ensureCanCreateSearch(User $user): void
     {
         $this->initializeFreeCreditsIfNeeded($user);
@@ -64,11 +66,11 @@ class BillingEntitlementService
     }
 
     /**
-     * Records, permanently, that this account has spent its one free search.
+     * Records that this account has spent a free-plan credit at least once.
      *
-     * Everything else about a free user's balance is derived and resettable;
-     * this is not. It is what stops the allowance being re-earned by deleting
-     * searches or by cycling through a signed-out session.
+     * Free users now renew monthly, so this stamp no longer blocks future
+     * cycles. It remains useful for migration-safe bootstrapping and audit
+     * visibility.
      */
     public function markFreeSearchUsed(User $user): void
     {
@@ -278,12 +280,10 @@ class BillingEntitlementService
         $plan = PricingPlan::query()->where('slug', $user->current_plan_slug)->first();
 
         if ($plan === null) {
-            // Falling back to free must not hand back a free search that was
-            // already spent, or lapsing a plan becomes a way to re-earn one.
             $user->forceFill([
                 'current_plan_slug' => 'free',
-                'monthly_credits_remaining' => $user->free_search_used_at === null ? 1 : 0,
-                'plan_renews_at' => null,
+                'monthly_credits_remaining' => 1,
+                'plan_renews_at' => CarbonImmutable::now()->addMonths(self::FREE_PLAN_RENEWAL_MONTHS),
             ])->save();
 
             return;
@@ -302,7 +302,7 @@ class BillingEntitlementService
 
     private function initializeFreeCreditsIfNeeded(User $user): void
     {
-        if ($user->current_plan_slug !== 'free' || (int) $user->monthly_credits_remaining > 0) {
+        if ($user->current_plan_slug !== 'free') {
             return;
         }
 
@@ -312,11 +312,16 @@ class BillingEntitlementService
          * come back empty and handed the credit straight back — an unlimited
          * refill loop. The stamp below is written once and never cleared.
          */
-        if ($user->free_search_used_at !== null) {
+        if ($user->plan_renews_at !== null) {
             return;
         }
 
-        $user->forceFill(['monthly_credits_remaining' => 1])->save();
+        $user->forceFill([
+            'monthly_credits_remaining' => (int) $user->monthly_credits_remaining > 0
+                ? (int) $user->monthly_credits_remaining
+                : ($user->free_search_used_at === null ? 1 : 0),
+            'plan_renews_at' => CarbonImmutable::now()->addMonths(self::FREE_PLAN_RENEWAL_MONTHS),
+        ])->save();
     }
 
     private function subscriptionMetadata(PricingPlan $plan, int $searchCreditsUsed, int $bookmarksUsed): array

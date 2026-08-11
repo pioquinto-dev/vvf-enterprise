@@ -17,6 +17,7 @@ use Illuminate\Validation\Rules;
 use Inertia\Inertia;
 use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
 use Inertia\Response;
+use Carbon\CarbonImmutable;
 
 class RegisteredUserController extends Controller
 {
@@ -46,6 +47,7 @@ class RegisteredUserController extends Controller
             'password' => Hash::make($validated['password']),
             'current_plan_slug' => 'free',
             'monthly_credits_remaining' => 1,
+            'plan_renews_at' => CarbonImmutable::now()->addMonth(),
         ]);
 
         event(new Registered($user));

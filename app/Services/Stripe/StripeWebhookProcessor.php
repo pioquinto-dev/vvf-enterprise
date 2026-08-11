@@ -146,8 +146,8 @@ class StripeWebhookProcessor
         if (in_array($status, ['canceled', 'unpaid', 'incomplete_expired'], true)) {
             $user->forceFill([
                 'current_plan_slug' => 'free',
-                'monthly_credits_remaining' => max(0, $user->monthly_credits_remaining),
-                'plan_renews_at' => null,
+                'monthly_credits_remaining' => 1,
+                'plan_renews_at' => CarbonImmutable::now()->addMonth(),
             ])->save();
         }
     }
