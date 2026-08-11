@@ -144,6 +144,24 @@ class SearchInsightsTest extends TestCase
         $this->assertSame(1.0, $hashtags['gopure']['share']);
     }
 
+    public function test_hashtags_are_not_truncated_to_the_first_five_rows(): void
+    {
+        $rows = [
+            $this->row(100, ['hashtags' => ['tag01']]),
+            $this->row(100, ['hashtags' => ['tag02']]),
+            $this->row(100, ['hashtags' => ['tag03']]),
+            $this->row(100, ['hashtags' => ['tag04']]),
+            $this->row(100, ['hashtags' => ['tag05']]),
+            $this->row(100, ['hashtags' => ['tag06']]),
+            $this->row(100, ['hashtags' => ['tag07']]),
+        ];
+
+        $hashtags = $this->insights->build($rows)['hashtags'];
+
+        $this->assertCount(7, $hashtags);
+        $this->assertSame('tag07', $hashtags[6]['tag']);
+    }
+
     public function test_sounds_group_case_insensitively_and_flag_the_top_video(): void
     {
         $rows = [

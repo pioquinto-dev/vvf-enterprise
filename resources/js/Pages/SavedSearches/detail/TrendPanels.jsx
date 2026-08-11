@@ -8,9 +8,9 @@ const H = 180;
 const PAD = 10;
 
 function formatValue(value, format) {
-  if (value === null || value === undefined) return 'â€”';
+  if (value === null || value === undefined) return '—';
   if (format === 'compact') return compactNumber(value);
-  if (format === 'percent') return percent(value) ?? 'â€”';
+  if (format === 'percent') return percent(value) ?? '—';
   return String(value);
 }
 
@@ -83,7 +83,7 @@ export function PerformanceChart({ trend }) {
         <span className="ts-val">{formatValue(series.current, series.format)}</span>
         {delta && (
           <span className={`ts-delta ${deltaTone}`}>
-            {delta.direction === 'up' ? 'â†‘' : delta.direction === 'down' ? 'â†“' : 'â†’'} {Math.abs(delta.value)}
+            {delta.direction === 'up' ? '↑' : delta.direction === 'down' ? '↓' : '→'} {Math.abs(delta.value)}
             {deltaSuffix} vs 12 wk ago
           </span>
         )}
@@ -178,7 +178,7 @@ export function TrackerHead({
             <span className="sep" />
             <span>
               checked {search?.frequency ?? 'weekly'}
-              {lastRun ? ` Â· last run ${lastRun}` : ''}
+              {lastRun ? ` · last run ${lastRun}` : ''}
             </span>
           </div>
         </div>
@@ -200,7 +200,7 @@ export function TrackerHead({
 
 /**
  * The one-line read. Absent until the enrichment job has run, which is correct
- * on a brand new search â€” it never renders a placeholder sentence.
+ * on a brand new search — it never renders a placeholder sentence.
  */
 export function AiSummary({ summary, generatedAt }) {
   if (!summary) return null;

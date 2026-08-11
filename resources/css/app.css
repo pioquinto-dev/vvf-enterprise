@@ -1419,6 +1419,9 @@
     border-radius: 16px;
     padding: 20px 22px;
     box-shadow: var(--shadow);
+    display: flex;
+    flex-direction: column;
+    height: 356px;
 }
 
 .tracker .hspanel h3 {
@@ -1428,6 +1431,35 @@
     display: flex;
     align-items: center;
     gap: 8px;
+}
+
+.tracker .hlist {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    padding-right: 6px;
+    scrollbar-width: thin;
+    scrollbar-color: color-mix(in srgb, var(--violet) 40%, transparent) transparent;
+}
+
+.tracker .hlist::-webkit-scrollbar {
+    width: 8px;
+}
+
+.tracker .hlist::-webkit-scrollbar-thumb {
+    background: color-mix(in srgb, var(--violet) 28%, transparent);
+    border-radius: 999px;
+}
+
+.tracker .hmore {
+    margin-top: 14px;
+    padding-top: 14px;
+    border-top: 1px solid var(--line);
+}
+
+.tracker .hmore .tbtn {
+    width: 100%;
+    justify-content: center;
 }
 
 .tracker .hrow {

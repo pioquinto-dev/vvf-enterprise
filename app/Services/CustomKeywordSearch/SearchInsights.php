@@ -23,12 +23,11 @@ class SearchInsights
     /** A video at or above this multiple counts as an outlier. */
     public const OUTLIER_THRESHOLD = 3.0;
 
-    /** The panels show a top-5, like the mockup. Snapshots still tally the
-     *  full list (see SearchMetrics::tallies), so growth for a tag that drops
-     *  out of the top 5 and returns is not lost. */
-    private const TOP_HASHTAGS = 5;
+    /** The UI reveals these in batches, so ship a deeper ranked list instead
+     *  of truncating the payload to the first visible rows. */
+    private const TOP_HASHTAGS = 40;
 
-    private const TOP_SOUNDS = 5;
+    private const TOP_SOUNDS = 40;
 
     private const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 

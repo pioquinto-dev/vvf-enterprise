@@ -31,6 +31,14 @@ function formatDate(iso) {
     : date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 }
 
+function formatInsightDate(iso) {
+  if (!iso) return null;
+  const date = new Date(iso);
+  return Number.isNaN(date.getTime())
+    ? null
+    : date.toLocaleDateString(undefined, { month: 'long', day: 'numeric' });
+}
+
 export default function DetailScreen({
   search,
   isAuthenticated = false,
@@ -55,6 +63,7 @@ export default function DetailScreen({
   const account = insights.account ?? null;
   const trend = insights.trend ?? null;
   const profile = account?.profile ?? {};
+  const lastPulledLabel = formatInsightDate(search?.last_run_at);
 
   const brandHandle = account?.handle ? account.handle.toLowerCase() : null;
   const feedItems =
@@ -286,7 +295,14 @@ export default function DetailScreen({
             <SoundPanel sounds={insights.sounds} />
           </div>
 
-          <SectionHead title="performance over time" note="this tracker, past 12 weeks." />
+          <SectionHead
+            title={
+              lastPulledLabel
+                ? `based on the data from videos pulled last ${lastPulledLabel}`
+                : 'based on the latest pulled videos'
+            }
+            note="this tracker, past 12 weeks."
+          />
           <PerformanceChart trend={trend} />
 
           <SectionHead title="when they post" note="posting schedule by day and hour." />

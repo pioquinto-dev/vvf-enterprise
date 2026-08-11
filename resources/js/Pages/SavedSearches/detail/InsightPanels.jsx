@@ -1,7 +1,9 @@
+import { useState } from 'react';
 import { compactNumber, outlierLabel, percent } from '../../../landing/flow/format.js';
 import { DeltaLine, RebuiltBadge } from './Badges.jsx';
 
 const HOUR_LABELS = { 0: '12a', 6: '6a', 12: '12p', 18: '6p' };
+const PANEL_STEP = 5;
 
 /**
  * Splits a formatted figure into the big number and its trailing unit, so the
@@ -13,13 +15,13 @@ function splitUnit(text) {
 }
 
 function tileValue(tile) {
-  if (tile.value === null || tile.value === undefined) return ['—', ''];
+  if (tile.value === null || tile.value === undefined) return ['-', ''];
 
   switch (tile.format) {
     case 'multiple':
-      return splitUnit(outlierLabel(tile.value) ?? '—');
+      return splitUnit(outlierLabel(tile.value) ?? '-');
     case 'percent':
-      return splitUnit(percent(tile.value) ?? '—');
+      return splitUnit(percent(tile.value) ?? '-');
     case 'compact':
       return splitUnit(compactNumber(tile.value));
     default:
@@ -58,7 +60,7 @@ export function SignalTiles({ tiles = [], deltas = {} }) {
 
 /** Run-over-run movement for a hashtag or sound. */
 function Growth({ growth }) {
-  if (!growth) return <span className="gro flat">—</span>;
+  if (!growth) return <span className="gro flat">-</span>;
   if (growth.is_new) return <span className="gro">new</span>;
   if (growth.change_pct === null || growth.change_pct === 0) return <span className="gro flat">flat</span>;
 
@@ -66,61 +68,91 @@ function Growth({ growth }) {
 
   return (
     <span className={`gro ${up ? '' : 'down'}`}>
-      {up ? '↑' : '↓'} {Math.abs(growth.change_pct)}%
+      {up ? '+' : '-'} {Math.abs(growth.change_pct)}%
     </span>
   );
 }
 
 export function HashtagPanel({ hashtags = [] }) {
+  const [visible, setVisible] = useState(PANEL_STEP);
+  const shown = hashtags.slice(0, visible);
+  const remaining = Math.max(0, hashtags.length - shown.length);
+
   return (
     <div className="hspanel">
       <h3># hashtags</h3>
       {hashtags.length === 0 ? (
         <p className="empty">No hashtags on the matched videos.</p>
       ) : (
-        hashtags.map((row, index) => (
-          <div className="hrow" key={row.tag}>
-            <span className="idx">{index + 1}</span>
-            <span className="nm">#{row.tag}</span>
-            <span className="cnt">on {row.posts} posts</span>
-            <Growth growth={row.growth} />
+        <>
+          <div className="hlist" role="list" aria-label="Top hashtags">
+            {shown.map((row, index) => (
+              <div className="hrow" key={row.tag} role="listitem">
+                <span className="idx">{index + 1}</span>
+                <span className="nm">#{row.tag}</span>
+                <span className="cnt">on {row.posts} posts</span>
+                <Growth growth={row.growth} />
+              </div>
+            ))}
           </div>
-        ))
+          {remaining > 0 && (
+            <div className="hmore">
+              <button className="tbtn" type="button" onClick={() => setVisible((count) => count + PANEL_STEP)}>
+                show {Math.min(PANEL_STEP, remaining)} more
+              </button>
+            </div>
+          )}
+        </>
       )}
     </div>
   );
 }
 
 export function SoundPanel({ sounds = [] }) {
+  const [visible, setVisible] = useState(PANEL_STEP);
+  const shown = sounds.slice(0, visible);
+  const remaining = Math.max(0, sounds.length - shown.length);
+
   return (
     <div className="hspanel">
-      <h3>♪ sounds</h3>
+      <h3>sounds</h3>
       {sounds.length === 0 ? (
         <p className="empty">No sound credited on the matched videos.</p>
       ) : (
-        sounds.map((row, index) => (
-          <div className="hrow" key={row.label}>
-            <span className="idx">{index + 1}</span>
-            <span className="splay">
-              <svg width="11" height="12" viewBox="0 0 14 16" fill="var(--violet)" aria-hidden>
-                <path d="M0 0l14 8-14 8z" />
-              </svg>
-            </span>
-            <span className="nm">
-              {row.label}
-              {row.on_top_video && <span className="u">used on the winner</span>}
-            </span>
-            <span className="cnt">{row.posts} posts</span>
-            <Growth growth={row.growth} />
+        <>
+          <div className="hlist" role="list" aria-label="Top sounds">
+            {shown.map((row, index) => (
+              <div className="hrow" key={row.label} role="listitem">
+                <span className="idx">{index + 1}</span>
+                <span className="splay">
+                  <svg width="11" height="12" viewBox="0 0 14 16" fill="var(--violet)" aria-hidden>
+                    <path d="M0 0l14 8-14 8z" />
+                  </svg>
+                </span>
+                <span className="nm">
+                  {row.label}
+                  {row.on_top_video && <span className="u">used on the winner</span>}
+                </span>
+                <span className="cnt">{row.posts} posts</span>
+                <Growth growth={row.growth} />
+              </div>
+            ))}
           </div>
-        ))
+          {remaining > 0 && (
+            <div className="hmore">
+              <button className="tbtn" type="button" onClick={() => setVisible((count) => count + PANEL_STEP)}>
+                show {Math.min(PANEL_STEP, remaining)} more
+              </button>
+            </div>
+          )}
+        </>
       )}
     </div>
   );
 }
 
 /**
- * Posting rhythm by weekday and hour. Hours are UTC — `uploaded_at` is stored
+ * Posting rhythm by weekday and hour. Hours are UTC; `uploaded_at` is stored
  * in UTC and no creator timezone is captured, so the label says so plainly
  * rather than implying local time.
  */
@@ -157,7 +189,7 @@ export function PostingHeatmap({ heatmap }) {
                   <div
                     className="cell"
                     key={hour}
-                    title={`${day} ${String(hour).padStart(2, '0')}:00 ${timezone} — ${count} ${count === 1 ? 'post' : 'posts'}`}
+                    title={`${day} ${String(hour).padStart(2, '0')}:00 ${timezone} - ${count} ${count === 1 ? 'post' : 'posts'}`}
                     style={
                       count > 0
                         ? {
@@ -189,7 +221,7 @@ export function PostingHeatmap({ heatmap }) {
       {peak && (
         <div className="heat-note">
           <b>Their rhythm:</b> busiest slot is {peak.day} around {String(peak.hour).padStart(2, '0')}:00 {timezone},
-          with {peak.count} {peak.count === 1 ? 'post' : 'posts'}. Hours are {timezone} — no creator timezone is
+          with {peak.count} {peak.count === 1 ? 'post' : 'posts'}. Hours are {timezone}; no creator timezone is
           captured on a scrape.
         </div>
       )}
@@ -202,7 +234,7 @@ const GHOST_HEIGHTS = [34, 58, 42, 66, 50, 82];
 
 /**
  * Six-week outlier bars. An all-zero week set renders as ghost bars with an
- * explanation instead of six zeros — on a first run that chart looks broken,
+ * explanation instead of six zeros; on a first run that chart looks broken,
  * and the two reasons it can be empty deserve different sentences: either no
  * post has cleared the threshold at all, or the outliers exist but were
  * posted before the 12-week window this chart covers.
@@ -229,8 +261,8 @@ export function OutliersPerWeek({ bars = [], threshold = 3, totalOutliers = 0, n
 
         <p className="ghostnote">
           {totalOutliers > 0
-            ? `All ${totalOutliers} of their outliers were posted more than 12 weeks ago — this chart covers recent weeks only. It fills in as refreshes land.`
-            : `Nothing has beaten ${outlierLabel(threshold) ?? '3x'} the search median yet. A bar appears the week a post breaks out${nextRunLabel ? ` — next check ${nextRunLabel}` : ''}.`}
+            ? `All ${totalOutliers} of their outliers were posted more than 12 weeks ago; this chart covers recent weeks only. It fills in as refreshes land.`
+            : `Nothing has beaten ${outlierLabel(threshold) ?? '3x'} the search median yet. A bar appears the week a post breaks out${nextRunLabel ? ` - next check ${nextRunLabel}` : ''}.`}
         </p>
       </div>
     );
@@ -252,7 +284,7 @@ export function OutliersPerWeek({ bars = [], threshold = 3, totalOutliers = 0, n
             >
               <em>{bar.value}</em>
             </div>
-            {/* Mockup labels: "wk 1" … "now", oldest first. */}
+            {/* Mockup labels: "wk 1" to "now", oldest first. */}
             <span className="wl">{index === bars.length - 1 ? 'now' : `wk ${index + 1}`}</span>
           </div>
         ))}
