@@ -148,7 +148,7 @@ export default function Pricing({ onStart, onTrial, onTrialStart, compact = fals
               <button onClick={launchTrial} disabled={onBasicTrial} className="btn-accent h-12 w-full px-6 text-sm">
                 {trialButtonLabel} {!onBasicTrial && <Arrow />}
               </button>
-              <p className="text-center text-[12px] faint">Includes 150 searches and 50 watchlist slots.</p>
+              <p className="text-center text-[12px] faint">Includes 150 searches and 50 bookmark slots.</p>
             </div>
           </div>
         </div>

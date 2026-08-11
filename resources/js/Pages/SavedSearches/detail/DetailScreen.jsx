@@ -35,12 +35,12 @@ export default function DetailScreen({
   search,
   isAuthenticated = false,
   billing = null,
-  onToggleWatchlist,
+  onToggleBookmark,
   onRefresh,
   onTogglePause,
   onDelete,
   refreshing = false,
-  watchlistUpdating = false,
+  bookmarkUpdating = false,
 }) {
   const [visible, setVisible] = useState(PAGE_STEP);
   const [copied, setCopied] = useState(false);
@@ -133,7 +133,7 @@ export default function DetailScreen({
   return (
     <div className="tracker">
       <div className="viewbar">
-        <a href="/saved-searches" className="back">
+        <a href="/bookmark" className="back">
           ← all trackers
         </a>
         <span className="spring" />
@@ -156,10 +156,10 @@ export default function DetailScreen({
         search={search}
         account={account}
         lastRun={formatDate(search?.last_run_at)}
-        onToggleWatchlist={onToggleWatchlist}
+        onToggleWatchlist={onToggleBookmark}
         onShare={share}
         copied={copied}
-        watchlistUpdating={watchlistUpdating}
+        watchlistUpdating={bookmarkUpdating}
       />
 
       <div className="sect-head" style={{ marginTop: '14px' }}>

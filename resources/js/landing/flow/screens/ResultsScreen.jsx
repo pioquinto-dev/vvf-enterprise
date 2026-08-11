@@ -85,11 +85,11 @@ export default function ResultsScreen({
   isAuthenticated = false,
   billingState = null,
   onStartTrial,
-  onToggleWatchlist,
+  onToggleBookmark,
   onRefresh,
   refreshing = false,
   freeSearch = true,
-  watchlistUpdating = false,
+  bookmarkUpdating = false,
 }) {
   const [visible, setVisible] = useState(PAGE_STEP + 1);
   const [copied, setCopied] = useState(false);
@@ -145,10 +145,10 @@ export default function ResultsScreen({
         )}
 
         <div className="flex flex-wrap items-center gap-2">
-          {onToggleWatchlist && (
-            <button onClick={onToggleWatchlist} disabled={watchlistUpdating} className="btn-ghost h-10 px-3.5 text-[13px]">
+          {onToggleBookmark && (
+            <button onClick={onToggleBookmark} disabled={bookmarkUpdating} className="btn-ghost h-10 px-3.5 text-[13px]">
               <Bookmark className="h-3.5 w-3.5" filled={Boolean(search?.is_watchlisted)} />
-              {search?.is_watchlisted ? 'Watchlisted' : 'Add to watchlist'}
+              {search?.is_watchlisted ? 'Bookmarked' : 'Add bookmark'}
             </button>
           )}
           <button onClick={share} className="btn-ghost h-10 px-3.5 text-[13px]">
@@ -216,7 +216,7 @@ export default function ResultsScreen({
               <span>·</span>
               <span>
                 {billingState.bookmarkCount}
-                {billingState.bookmarkLimit === -1 ? '' : ` / ${billingState.bookmarkLimit}`} watchlist
+                {billingState.bookmarkLimit === -1 ? '' : ` / ${billingState.bookmarkLimit}`} bookmarks
               </span>
             </div>
           )}
@@ -268,8 +268,8 @@ export default function ResultsScreen({
           <div>
             <p className="font-display text-[17px] font-bold text-white">Want another search, or weekly tracking?</p>
             <p className="mt-1.5 text-[13.5px] text-white/60">
-              Free includes 1 search and 0 watchlist slots. Basic includes 150 searches and 50 watchlist slots.
-              Premium includes 400 searches and unlimited watchlist.
+              Free includes 1 search and 0 bookmark slots. Basic includes 150 searches and 50 bookmark slots.
+              Premium includes 400 searches and unlimited bookmarks.
             </p>
           </div>
           <button onClick={onStartTrial} className="btn-accent h-[52px] shrink-0 px-6 text-[15px]">

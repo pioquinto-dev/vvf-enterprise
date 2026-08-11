@@ -39,7 +39,7 @@ class OwnedSearchResolver
     /**
      * @return Collection<int, CustomKeywordSearch>
      */
-    public function all(Request $request, ?string $type = null, bool $watchlistedOnly = true): Collection
+    public function all(Request $request, string|array|null $type = null, bool $watchlistedOnly = true): Collection
     {
         $query = $this->baseQuery($request);
 
@@ -47,7 +47,9 @@ class OwnedSearchResolver
             $query->where('is_watchlisted', true);
         }
 
-        if ($type !== null) {
+        if (is_array($type) && $type !== []) {
+            $query->whereIn('search_type', $type);
+        } elseif ($type !== null) {
             $query->where('search_type', $type);
         }
 

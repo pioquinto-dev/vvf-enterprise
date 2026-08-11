@@ -11,8 +11,8 @@ export default function Running({ searchId }) {
             <AppLayout pill={{ text: 'Search running', tone: 'ok' }} step="running" width="max-w-4xl">
                 <RunningScreen
                     searchId={searchId}
-                    onBack={() => router.visit('/saved-searches')}
-                    onDone={() => router.visit(`/saved-searches/${searchId}`)}
+                    onBack={() => router.visit('/bookmark')}
+                    onDone={() => router.visit(`/bookmark/${searchId}`)}
                 />
             </AppLayout>
         </>

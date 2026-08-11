@@ -67,8 +67,8 @@ export function fetchNotifications(ids) {
 
 export const savedSearch = {
   get: (id) => request(`${API_V1}/saved-searches/${id}/json`),
-  watchlist: (id, watchlisted) =>
-    request(`${API_V1}/saved-searches/${id}/watchlist`, { method: 'PATCH', body: { watchlisted } }),
+  bookmark: (id, bookmarked) =>
+    request(`${API_V1}/saved-searches/${id}/bookmark`, { method: 'PATCH', body: { bookmarked } }),
   pause: (id) => request(`${API_V1}/saved-searches/${id}/pause`, { method: 'PATCH' }),
   resume: (id) => request(`${API_V1}/saved-searches/${id}/resume`, { method: 'PATCH' }),
   update: (id, body) => request(`${API_V1}/saved-searches/${id}/frequency`, { method: 'PATCH', body }),

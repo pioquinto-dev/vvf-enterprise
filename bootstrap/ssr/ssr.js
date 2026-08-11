@@ -1046,6 +1046,13 @@ var STEP_ORDER = [
 */
 var NAV$1 = [
 	{
+		label: "Dashboard",
+		href: "/dashboard",
+		icon: Spark,
+		match: "/dashboard",
+		exact: "/dashboard"
+	},
+	{
 		label: "Watchlist",
 		href: "/saved-searches",
 		icon: Library,
@@ -1105,27 +1112,6 @@ var TABS = [
 function isActive(currentUrl, match) {
 	const path = (currentUrl || "/").split("?")[0];
 	return match === "/" ? path === "/" : path.startsWith(match);
-}
-function SidebarSearch({ onSubmitted }) {
-	const [phrase, setPhrase] = useState("");
-	const submit = (event) => {
-		event.preventDefault();
-		const q = phrase.trim();
-		if (!q) return;
-		onSubmitted?.();
-		router.visit(`/search?type=brand&q=${encodeURIComponent(q)}`);
-	};
-	return /* @__PURE__ */ jsxs("form", {
-		onSubmit: submit,
-		className: "relative",
-		children: [/* @__PURE__ */ jsx(Search, { className: "pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 faint" }), /* @__PURE__ */ jsx("input", {
-			value: phrase,
-			onChange: (event) => setPhrase(event.target.value),
-			placeholder: "Search a brand or topic",
-			"aria-label": "Search a brand or topic",
-			className: "field h-11 pl-9 text-[13.5px]"
-		})]
-	});
 }
 function AffiliateCard() {
 	return /* @__PURE__ */ jsxs("div", {
@@ -1272,13 +1258,9 @@ function AppLayout({ pill, step, title, subtitle, actions, toolbar, width = "max
 						className: "px-1",
 						children: brand
 					}),
-					/* @__PURE__ */ jsx("div", {
-						className: "mt-6",
-						children: /* @__PURE__ */ jsx(SidebarSearch, {})
-					}),
 					/* @__PURE__ */ jsx(NavList, {
 						currentUrl,
-						className: "mt-5"
+						className: "mt-6"
 					}),
 					/* @__PURE__ */ jsx("div", { className: "flex-1" }),
 					/* @__PURE__ */ jsxs("div", {
@@ -1345,14 +1327,10 @@ function AppLayout({ pill, step, title, subtitle, actions, toolbar, width = "max
 								children: /* @__PURE__ */ jsx(Close, { className: "h-4 w-4" })
 							})]
 						}),
-						/* @__PURE__ */ jsx("div", {
-							className: "mt-5",
-							children: /* @__PURE__ */ jsx(SidebarSearch, { onSubmitted: closeDrawer })
-						}),
 						/* @__PURE__ */ jsx(NavList, {
 							currentUrl,
 							onNavigate: closeDrawer,
-							className: "mt-4"
+							className: "mt-5"
 						}),
 						/* @__PURE__ */ jsx("div", { className: "flex-1" }),
 						/* @__PURE__ */ jsxs("div", {
@@ -1448,137 +1426,1153 @@ function AppLayout({ pill, step, title, subtitle, actions, toolbar, width = "max
 	});
 }
 //#endregion
-//#region resources/js/Pages/Dashboard.jsx
-var Dashboard_exports = /* @__PURE__ */ __exportAll({ default: () => Dashboard });
-function Stat({ label, value, hint }) {
+//#region resources/js/Pages/components/SearchLauncher.jsx
+var SearchLauncher_exports = /* @__PURE__ */ __exportAll({ default: () => SearchLauncher });
+/**
+* The single entry point into the search flow.
+*
+* Step one of the flow is "pick a subject", and that is all this does — a type
+* toggle, one input, and suggestions that fill the input rather than firing a
+* search. Filling instead of submitting is deliberate: a search costs a credit,
+* so a stray click on a chip must never spend one.
+*/
+var TYPES = [
+	{
+		key: "brand",
+		label: "Your brand",
+		hint: "Track how your own brand is showing up on TikTok.",
+		placeholder: "e.g. rhode skin",
+		suggestions: [
+			"rhode skin",
+			"glossier",
+			"drunk elephant",
+			"cerave",
+			"stanley"
+		]
+	},
+	{
+		key: "competitor",
+		label: "A competitor",
+		hint: "Watch what is working for someone else in your category.",
+		placeholder: "e.g. skims",
+		suggestions: [
+			"skims",
+			"fenty beauty",
+			"gymshark",
+			"alo yoga",
+			"summer fridays"
+		]
+	},
+	{
+		key: "product",
+		label: "A product",
+		hint: "Product searches are coming soon.",
+		placeholder: "e.g. lip oil",
+		suggestions: [
+			"lip oil",
+			"hair oil",
+			"sunscreen stick",
+			"liquid blush"
+		],
+		locked: true
+	}
+];
+function SearchLauncher({ initialType = "brand", initialQuery = "", heading = "What do you want to research?", subheading = "Pick a subject and we scan TikTok for the outlier videos around it.", eyebrow = null, showOutline = true, onSubmit }) {
+	const [type, setType] = useState(initialType === "product" ? "brand" : initialType);
+	const [value, setValue] = useState(initialQuery);
+	const inputRef = useRef(null);
+	const config = TYPES.find((t) => t.key === type) ?? TYPES[0];
+	const query = value.trim().replace(/\s+/g, " ");
+	const submit = (event) => {
+		event.preventDefault();
+		if (!query) return;
+		if (onSubmit) {
+			onSubmit({
+				type,
+				phrase: query
+			});
+			return;
+		}
+		router.visit(`/search?type=${type}&q=${encodeURIComponent(query)}`);
+	};
+	const useSuggestion = (suggestion) => {
+		setValue(suggestion);
+		inputRef.current?.focus();
+	};
 	return /* @__PURE__ */ jsxs("div", {
-		className: "surface p-5",
+		className: "surface animate-fade-up p-6 sm:p-8",
 		children: [
-			/* @__PURE__ */ jsx("p", {
-				className: "text-[11.5px] font-semibold tracking-[.14em] faint uppercase",
-				children: label
+			eyebrow && /* @__PURE__ */ jsx("p", {
+				className: "text-[11.5px] font-semibold tracking-[.16em] faint uppercase",
+				children: eyebrow
+			}),
+			/* @__PURE__ */ jsx("h2", {
+				className: `font-display text-[26px] font-bold tracking-[-.03em] sm:text-[32px] ${eyebrow ? "mt-2" : ""}`,
+				children: heading
 			}),
 			/* @__PURE__ */ jsx("p", {
-				className: "mt-3 font-display text-[26px] font-bold tracking-[-.02em]",
-				children: value
+				className: "mt-2.5 max-w-xl text-[14px] leading-relaxed muted",
+				children: subheading
 			}),
-			hint && /* @__PURE__ */ jsx("p", {
-				className: "mt-1.5 text-[12px] faint",
-				children: hint
+			/* @__PURE__ */ jsx("div", {
+				role: "radiogroup",
+				"aria-label": "Search type",
+				className: "mt-6 grid gap-2 sm:grid-cols-3",
+				children: TYPES.map((option) => {
+					const active = option.key === type;
+					return /* @__PURE__ */ jsxs("button", {
+						type: "button",
+						role: "radio",
+						"aria-checked": active,
+						disabled: option.locked,
+						title: option.locked ? "Product searches are coming soon" : option.hint,
+						onClick: () => !option.locked && setType(option.key),
+						className: `rounded-2xl border px-4 py-3.5 text-left transition-all duration-300 ${option.locked ? "cursor-not-allowed border-black/[.06] bg-black/[.02] opacity-60 dark:border-white/[.07] dark:bg-white/[.02]" : active ? "border-accent/45 bg-accent/[.08] shadow-[0_14px_34px_-24px_rgba(109,75,255,.9)] dark:border-accent-glow/40 dark:bg-accent-glow/[.09]" : "border-black/[.08] hover:-translate-y-px hover:border-accent/35 dark:border-white/[.1]"}`,
+						children: [/* @__PURE__ */ jsxs("span", {
+							className: "flex items-center gap-2",
+							children: [/* @__PURE__ */ jsx("span", {
+								className: `text-[14px] font-semibold ${active && !option.locked ? "text-accent dark:text-accent-glow" : ""}`,
+								children: option.label
+							}), option.locked && /* @__PURE__ */ jsxs("span", {
+								className: "inline-flex items-center gap-1 rounded-full bg-black/[.05] px-2 py-0.5 text-[10px] font-bold tracking-[.12em] uppercase faint dark:bg-white/[.08]",
+								children: [/* @__PURE__ */ jsx(Lock, { className: "h-3 w-3" }), " Soon"]
+							})]
+						}), /* @__PURE__ */ jsx("span", {
+							className: "mt-1 block text-[12.5px] leading-snug faint",
+							children: option.hint
+						})]
+					}, option.key);
+				})
+			}),
+			/* @__PURE__ */ jsxs("form", {
+				onSubmit: submit,
+				className: "mt-5 flex flex-col gap-2.5 sm:flex-row",
+				children: [/* @__PURE__ */ jsxs("label", {
+					className: "flex h-[56px] flex-1 items-center gap-3 rounded-2xl border border-black/[.08] bg-white px-4 transition-all duration-300 focus-within:border-accent/40 focus-within:shadow-[0_18px_44px_-30px_rgba(109,75,255,.8)] dark:border-white/[.12] dark:bg-white/[.04] dark:focus-within:border-accent-glow/40",
+					children: [/* @__PURE__ */ jsx(Search, { className: "h-4 w-4 shrink-0 faint" }), /* @__PURE__ */ jsx("input", {
+						ref: inputRef,
+						value,
+						onChange: (event) => setValue(event.target.value),
+						placeholder: config.placeholder,
+						"aria-label": "Search subject",
+						maxLength: 80,
+						className: "w-full border-0 bg-transparent p-0 text-[15px] font-medium text-ink placeholder:text-black/35 focus:ring-0 focus:outline-none dark:text-white dark:placeholder:text-white/35"
+					})]
+				}), /* @__PURE__ */ jsxs("button", {
+					type: "submit",
+					disabled: !query,
+					className: "btn-accent h-[56px] px-6 text-[15px]",
+					children: ["Continue ", /* @__PURE__ */ jsx(Arrow, {})]
+				})]
+			}),
+			/* @__PURE__ */ jsxs("div", {
+				className: "mt-5",
+				children: [
+					/* @__PURE__ */ jsx("p", {
+						className: "text-[12px] font-semibold tracking-[.14em] faint uppercase",
+						children: "Try one of these"
+					}),
+					/* @__PURE__ */ jsx("div", {
+						className: "mt-2.5 flex flex-wrap gap-2",
+						children: config.suggestions.map((suggestion) => /* @__PURE__ */ jsx("button", {
+							type: "button",
+							onClick: () => useSuggestion(suggestion),
+							className: "inline-flex items-center rounded-full border border-accent/16 bg-accent/[.07] px-3.5 py-1.5 text-[12.5px] font-semibold text-accent transition hover:-translate-y-px hover:bg-accent/[.12] dark:border-accent-glow/18 dark:bg-accent-glow/[.08] dark:text-accent-glow dark:hover:bg-accent-glow/[.14]",
+							children: suggestion
+						}, suggestion))
+					}),
+					/* @__PURE__ */ jsx("p", {
+						className: "mt-3 text-[12px] faint",
+						children: "Tapping a suggestion fills the box — nothing runs until you press Continue."
+					})
+				]
+			}),
+			/* @__PURE__ */ jsx("ol", {
+				hidden: !showOutline,
+				className: "mt-7 grid gap-3 border-t border-black/[.06] pt-6 sm:grid-cols-3 dark:border-white/[.07]",
+				children: [
+					["Pick a subject", "One brand, competitor, or product per search."],
+					["Tune the keywords", "We suggest related terms — keep the ones that fit."],
+					["Get outlier videos", "Ranked results that refresh on your schedule."]
+				].map(([title, body], index) => /* @__PURE__ */ jsxs("li", {
+					className: "flex gap-3",
+					children: [/* @__PURE__ */ jsx("span", {
+						className: "flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-accent/[.1] font-display text-[12px] font-bold text-accent dark:bg-accent-glow/[.12] dark:text-accent-glow",
+						children: index + 1
+					}), /* @__PURE__ */ jsxs("span", { children: [/* @__PURE__ */ jsx("span", {
+						className: "block text-[13.5px] font-semibold",
+						children: title
+					}), /* @__PURE__ */ jsx("span", {
+						className: "mt-0.5 block text-[12.5px] leading-snug faint",
+						children: body
+					})] })]
+				}, title))
 			})
 		]
 	});
 }
-function QuickLink({ href, icon: Icon, title, blurb }) {
-	return /* @__PURE__ */ jsxs(Link, {
-		href,
-		className: "surface-hover group flex items-start gap-3.5 p-5",
-		children: [/* @__PURE__ */ jsx("span", {
-			className: "mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-accent/10 text-accent dark:text-accent-glow",
-			children: /* @__PURE__ */ jsx(Icon, { className: "h-4 w-4" })
-		}), /* @__PURE__ */ jsxs("span", {
-			className: "min-w-0",
-			children: [/* @__PURE__ */ jsxs("span", {
-				className: "flex items-center gap-1.5 font-display text-[15px] font-bold",
-				children: [title, /* @__PURE__ */ jsx(Arrow, { className: "h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" })]
-			}), /* @__PURE__ */ jsx("span", {
-				className: "mt-1 block text-[13px] leading-relaxed muted",
-				children: blurb
-			})]
+//#endregion
+//#region resources/js/landing/flow/api.js
+/**
+* Small fetch wrapper for the saved-search endpoints. Inertia handles page
+* navigation; these calls are the in-page ones that should not re-render the
+* whole document.
+*/
+function csrfToken() {
+	return document.querySelector("meta[name=\"csrf-token\"]")?.getAttribute("content") ?? "";
+}
+var API_V1 = "/api/v1";
+async function request(url, { method = "GET", body } = {}) {
+	const response = await fetch(url, {
+		method,
+		credentials: "same-origin",
+		headers: {
+			Accept: "application/json",
+			"X-Requested-With": "XMLHttpRequest",
+			...body ? { "Content-Type": "application/json" } : {},
+			...method === "GET" ? {} : { "X-CSRF-TOKEN": csrfToken() }
+		},
+		...body ? { body: JSON.stringify(body) } : {}
+	});
+	const payload = await response.json().catch(() => null);
+	if (!response.ok) {
+		const error = new Error(payload?.message || `Request failed (${response.status})`);
+		error.status = response.status;
+		error.payload = payload;
+		throw error;
+	}
+	return payload;
+}
+function expandKeywords(phrase, { signal } = {}) {
+	return fetch(`${API_V1}/saved-searches/expand`, {
+		method: "POST",
+		credentials: "same-origin",
+		signal,
+		headers: {
+			Accept: "application/json",
+			"Content-Type": "application/json",
+			"X-Requested-With": "XMLHttpRequest",
+			"X-CSRF-TOKEN": csrfToken()
+		},
+		body: JSON.stringify({ phrase })
+	}).then(async (response) => {
+		const payload = await response.json().catch(() => null);
+		if (!response.ok) throw new Error(payload?.message || "Could not suggest keywords.");
+		return payload;
+	});
+}
+function createSavedSearch({ type, phrase, name, keywords, frequency }) {
+	return request(`${API_V1}/saved-searches`, {
+		method: "POST",
+		body: {
+			type,
+			phrase,
+			name,
+			keywords,
+			frequency
+		}
+	});
+}
+function fetchNotifications(ids) {
+	return request(`${API_V1}/saved-searches/notifications?${ids.map((id) => `ids[]=${encodeURIComponent(id)}`).join("&")}`);
+}
+var savedSearch = {
+	get: (id) => request(`${API_V1}/saved-searches/${id}/json`),
+	watchlist: (id, watchlisted) => request(`${API_V1}/saved-searches/${id}/watchlist`, {
+		method: "PATCH",
+		body: { watchlisted }
+	}),
+	pause: (id) => request(`${API_V1}/saved-searches/${id}/pause`, { method: "PATCH" }),
+	resume: (id) => request(`${API_V1}/saved-searches/${id}/resume`, { method: "PATCH" }),
+	update: (id, body) => request(`${API_V1}/saved-searches/${id}/frequency`, {
+		method: "PATCH",
+		body
+	}),
+	refresh: (id) => request(`${API_V1}/saved-searches/${id}/refresh`, { method: "POST" }),
+	destroy: (id) => request(`${API_V1}/saved-searches/${id}`, { method: "DELETE" })
+};
+var billing = {
+	checkout: (slug) => {
+		window.location.assign(`/billing/checkout/${encodeURIComponent(slug)}`);
+	},
+	trialCheckout: (slug) => {
+		window.location.assign(`/billing/checkout/${encodeURIComponent(slug)}?trial=1`);
+	}
+};
+var bookmarks = {
+	save: (id) => request(`${API_V1}/videos/${id}/bookmark`, { method: "POST" }),
+	remove: (id) => request(`${API_V1}/videos/${id}/bookmark`, { method: "DELETE" })
+};
+var TRACKED_KEY = "vvf-tracked-searches";
+function readTracked() {
+	try {
+		const raw = window.sessionStorage.getItem(TRACKED_KEY);
+		const parsed = raw ? JSON.parse(raw) : [];
+		return Array.isArray(parsed) ? parsed : [];
+	} catch {
+		return [];
+	}
+}
+function writeTracked(entries) {
+	try {
+		window.sessionStorage.setItem(TRACKED_KEY, JSON.stringify(entries.slice(0, 10)));
+	} catch {}
+}
+function trackSearch(entry) {
+	const existing = readTracked().filter((t) => String(t.id) !== String(entry.id));
+	writeTracked([{
+		runningPromptShown: false,
+		completedPromptShown: false,
+		...entry
+	}, ...existing]);
+}
+function updateTracked(id, patch) {
+	writeTracked(readTracked().map((t) => String(t.id) === String(id) ? {
+		...t,
+		...patch
+	} : t));
+}
+function untrackSearch(id) {
+	writeTracked(readTracked().filter((t) => String(t.id) !== String(id)));
+}
+//#endregion
+//#region resources/js/landing/flow/screens/KeywordsScreen.jsx
+var KEYWORD_CAP = 12;
+var FREQUENCIES = [{
+	value: "weekly",
+	label: "Weekly",
+	hint: "Fresh viral videos every week. Best for fast-moving categories."
+}, {
+	value: "monthly",
+	label: "Monthly",
+	hint: "A monthly pull. Lighter cadence for slower niches."
+}];
+var Pencil = ({ className = "h-3.5 w-3.5" }) => /* @__PURE__ */ jsxs("svg", {
+	viewBox: "0 0 24 24",
+	"aria-hidden": true,
+	className,
+	fill: "none",
+	stroke: "currentColor",
+	strokeWidth: "2",
+	strokeLinecap: "round",
+	strokeLinejoin: "round",
+	children: [/* @__PURE__ */ jsx("path", { d: "M12 20h9" }), /* @__PURE__ */ jsx("path", { d: "M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" })]
+});
+var Refresh = ({ className = "h-3.5 w-3.5" }) => /* @__PURE__ */ jsxs("svg", {
+	viewBox: "0 0 24 24",
+	"aria-hidden": true,
+	className,
+	fill: "none",
+	stroke: "currentColor",
+	strokeWidth: "2",
+	strokeLinecap: "round",
+	strokeLinejoin: "round",
+	children: [/* @__PURE__ */ jsx("path", { d: "M21 12a9 9 0 1 1-2.6-6.4" }), /* @__PURE__ */ jsx("path", { d: "M21 3v6h-6" })]
+});
+function KeywordChip({ value, selected, custom, onToggle, onRemove }) {
+	return /* @__PURE__ */ jsxs("span", {
+		className: `group inline-flex items-center rounded-xl border text-[13.5px] transition-all duration-300 ${selected ? "border-accent/50 bg-accent/10 font-semibold text-accent shadow-[0_8px_22px_-14px_rgba(109,75,255,.9)] dark:text-accent-glow" : "border-black/[.09] muted hover:-translate-y-px hover:border-accent/35 dark:border-white/[.12]"}`,
+		children: [/* @__PURE__ */ jsxs("button", {
+			type: "button",
+			onClick: onToggle,
+			"aria-pressed": selected,
+			className: "flex items-center gap-2.5 py-2.5 pr-2 pl-3.5",
+			children: [
+				/* @__PURE__ */ jsx("span", {
+					className: `flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-md border transition-all duration-200 ${selected ? "border-accent bg-accent text-white" : "border-black/25 dark:border-white/30"}`,
+					children: selected && /* @__PURE__ */ jsx(Check, {})
+				}),
+				value,
+				custom && /* @__PURE__ */ jsx("span", {
+					className: "text-[10px] font-bold tracking-wider uppercase opacity-55",
+					children: "yours"
+				})
+			]
+		}), /* @__PURE__ */ jsx("button", {
+			type: "button",
+			onClick: onRemove,
+			"aria-label": `Remove ${value}`,
+			title: "Remove",
+			className: "py-2.5 pr-3 pl-1 opacity-35 transition-opacity duration-200 hover:opacity-100",
+			children: /* @__PURE__ */ jsx(Close, { className: "h-3.5 w-3.5" })
 		})]
 	});
 }
-function Dashboard() {
-	const { auth = {}, billing = {}, flash = {} } = usePage().props;
-	const creditsLimit = typeof billing.searchCreditsLimit === "number" ? billing.searchCreditsLimit : null;
-	const bookmarkLimit = billing.bookmarkLimit === -1 ? null : billing.bookmarkLimit ?? 0;
-	return /* @__PURE__ */ jsxs(Fragment, { children: [/* @__PURE__ */ jsx(Head, { title: "Dashboard - Outlier Vault" }), /* @__PURE__ */ jsxs(AppLayout, {
-		title: `Welcome back${auth.user?.name ? `, ${auth.user.name}` : ""}`,
-		pill: {
-			text: billing.currentPlan ?? "free",
-			tone: billing.hasPaidPlan ? "ok" : "accent"
-		},
-		actions: /* @__PURE__ */ jsxs(Link, {
-			href: "/search?type=brand",
-			className: "btn-accent h-10 px-4 text-[13px]",
-			children: ["New search ", /* @__PURE__ */ jsx(Arrow, {})]
-		}),
+function SkeletonChips() {
+	return /* @__PURE__ */ jsx("div", {
+		className: "flex flex-wrap gap-2",
+		"aria-hidden": true,
 		children: [
-			flash.status && /* @__PURE__ */ jsx("div", {
-				className: "mb-6 rounded-2xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-700 dark:text-emerald-300",
-				children: flash.status
-			}),
+			132,
+			108,
+			156,
+			96,
+			140,
+			118
+		].map((width, i) => /* @__PURE__ */ jsx("span", {
+			className: "h-[42px] animate-pulse rounded-xl bg-black/[.05] dark:bg-white/[.06]",
+			style: { width }
+		}, i))
+	});
+}
+function Card$1({ step, title, description, action, children }) {
+	return /* @__PURE__ */ jsxs("section", {
+		className: "surface p-5 sm:p-6",
+		children: [/* @__PURE__ */ jsxs("div", {
+			className: "flex flex-wrap items-start justify-between gap-3",
+			children: [/* @__PURE__ */ jsxs("div", {
+				className: "flex gap-3",
+				children: [/* @__PURE__ */ jsx("span", {
+					className: "mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-accent/[.1] font-display text-[12px] font-bold text-accent dark:bg-accent-glow/[.12] dark:text-accent-glow",
+					children: step
+				}), /* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsx("h2", {
+					className: "font-display text-[16px] font-bold tracking-[-.01em]",
+					children: title
+				}), description && /* @__PURE__ */ jsx("p", {
+					className: "mt-1 max-w-lg text-[12.5px] leading-relaxed faint",
+					children: description
+				})] })]
+			}), action]
+		}), /* @__PURE__ */ jsx("div", {
+			className: "mt-5",
+			children
+		})]
+	});
+}
+function KeywordsScreen({ phrase: initialPhrase, onBack, onSubmit, submitting = false, error = null }) {
+	const [phrase, setPhrase] = useState(initialPhrase);
+	const [terms, setTerms] = useState([]);
+	const [loading, setLoading] = useState(true);
+	const [regenerating, setRegenerating] = useState(false);
+	const [expansionSource, setExpansionSource] = useState(null);
+	const [draft, setDraft] = useState("");
+	const [frequency, setFrequency] = useState("weekly");
+	const [name, setName] = useState(initialPhrase);
+	const [nameTouched, setNameTouched] = useState(false);
+	const [editingPhrase, setEditingPhrase] = useState(false);
+	const [phraseDraft, setPhraseDraft] = useState(initialPhrase);
+	const [regenPrompt, setRegenPrompt] = useState(false);
+	const requested = useRef(false);
+	/**
+	* Build a term list from an expansion payload, keeping anything the user
+	* typed themselves — regenerating suggestions must never quietly delete work.
+	*/
+	const applyExpansion = (keywords, forPhrase, previous = []) => {
+		const custom = previous.filter((t) => t.custom && t.value.toLowerCase() !== forPhrase.toLowerCase());
+		const seen = /* @__PURE__ */ new Set([forPhrase.toLowerCase()]);
+		const suggested = keywords.filter((value) => {
+			const key = value.toLowerCase();
+			if (key === forPhrase.toLowerCase() || seen.has(key)) return false;
+			seen.add(key);
+			return true;
+		}).map((value, i) => ({
+			value,
+			selected: i <= 1,
+			custom: false
+		}));
+		return [
+			{
+				value: forPhrase,
+				selected: true,
+				locked: true
+			},
+			...suggested,
+			...custom.filter((t) => !seen.has(t.value.toLowerCase()))
+		].slice(0, KEYWORD_CAP);
+	};
+	useEffect(() => {
+		if (requested.current) return void 0;
+		requested.current = true;
+		const controller = new AbortController();
+		expandKeywords(initialPhrase, { signal: controller.signal }).then((payload) => {
+			const keywords = Array.isArray(payload?.keywords) ? payload.keywords : [initialPhrase];
+			setExpansionSource(payload?.source ?? null);
+			setTerms(applyExpansion(keywords, initialPhrase));
+		}).catch(() => {
+			setTerms([{
+				value: initialPhrase,
+				selected: true,
+				locked: true
+			}]);
+		}).finally(() => setLoading(false));
+		return () => controller.abort();
+	}, [initialPhrase]);
+	const regenerate = (forPhrase = phrase) => {
+		setRegenPrompt(false);
+		setRegenerating(true);
+		expandKeywords(forPhrase).then((payload) => {
+			const keywords = Array.isArray(payload?.keywords) ? payload.keywords : [forPhrase];
+			setExpansionSource(payload?.source ?? null);
+			setTerms((prev) => applyExpansion(keywords, forPhrase, prev));
+		}).catch(() => {}).finally(() => setRegenerating(false));
+	};
+	const savePhrase = () => {
+		const next = phraseDraft.trim().replace(/\s+/g, " ");
+		setEditingPhrase(false);
+		if (!next || next.toLowerCase() === phrase.toLowerCase()) {
+			setPhraseDraft(phrase);
+			return;
+		}
+		setPhrase(next);
+		setPhraseDraft(next);
+		if (!nameTouched) setName(next);
+		setTerms((prev) => [{
+			value: next,
+			selected: true,
+			locked: true
+		}, ...prev.filter((t) => !t.locked && t.value.toLowerCase() !== next.toLowerCase())]);
+		setRegenPrompt(true);
+	};
+	const selected = terms.filter((t) => t.selected).map((t) => t.value);
+	const busy = loading || regenerating;
+	const toggle = (value) => setTerms((prev) => prev.map((t) => t.value === value && !t.locked ? {
+		...t,
+		selected: !t.selected
+	} : t));
+	const remove = (value) => setTerms((prev) => prev.filter((t) => t.value !== value || t.locked));
+	const setAll = (on) => setTerms((prev) => prev.map((t) => t.locked ? t : {
+		...t,
+		selected: on
+	}));
+	const add = (e) => {
+		e.preventDefault();
+		const value = draft.trim().replace(/\s+/g, " ");
+		if (!value) return;
+		const match = terms.find((t) => t.value.toLowerCase() === value.toLowerCase());
+		if (match) setTerms((prev) => prev.map((t) => t.value === match.value ? {
+			...t,
+			selected: true
+		} : t));
+		else if (terms.length < KEYWORD_CAP) setTerms((prev) => [...prev, {
+			value,
+			selected: true,
+			custom: true
+		}]);
+		setDraft("");
+	};
+	const atKeywordCap = terms.length >= KEYWORD_CAP;
+	const optional = terms.filter((t) => !t.locked);
+	const optionalSelected = optional.filter((t) => t.selected).length;
+	return /* @__PURE__ */ jsxs("div", {
+		className: "animate-fade-up",
+		children: [
 			/* @__PURE__ */ jsxs("div", {
-				className: "animate-fade-up grid gap-4 sm:grid-cols-2 xl:grid-cols-3",
+				className: "surface p-6 sm:p-8",
 				children: [
-					/* @__PURE__ */ jsx(Stat, {
-						label: "Current plan",
-						value: /* @__PURE__ */ jsx("span", {
-							className: "capitalize",
-							children: billing.currentPlan ?? "free"
-						})
+					/* @__PURE__ */ jsx("button", {
+						onClick: onBack,
+						className: "text-[13px] font-semibold muted transition hover:text-accent",
+						children: "← Change subject"
 					}),
-					/* @__PURE__ */ jsx(Stat, {
-						label: "Search credits",
-						value: `${billing.searchCreditsRemaining ?? 0}${creditsLimit !== null ? ` / ${creditsLimit}` : ""}`,
-						hint: `${billing.searchCreditsUsed ?? 0} used`
+					/* @__PURE__ */ jsx("h1", {
+						className: "mt-4 font-display text-[26px] leading-tight font-bold tracking-[-.03em] sm:text-[32px]",
+						children: "Tune the search before it runs"
 					}),
-					/* @__PURE__ */ jsx(Stat, {
-						label: "Bookmarks",
-						value: `${billing.bookmarkCount ?? 0}${bookmarkLimit !== null ? ` / ${bookmarkLimit}` : ""}`,
-						hint: bookmarkLimit === null ? "Unlimited" : void 0
-					})
-				]
-			}),
-			/* @__PURE__ */ jsx("h2", {
-				className: "mt-10 font-display text-[17px] font-bold",
-				children: "Jump back in"
-			}),
-			/* @__PURE__ */ jsxs("div", {
-				className: "mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-3",
-				children: [
-					/* @__PURE__ */ jsx(QuickLink, {
-						href: "/saved-searches",
-						icon: Library,
-						title: "Watchlist",
-						blurb: "Every saved search, refreshing on its own schedule."
-					}),
-					/* @__PURE__ */ jsx(QuickLink, {
-						href: "/search?type=brand",
-						icon: Search,
-						title: "Run a new search",
-						blurb: "Turn one phrase into a self-refreshing list of viral videos."
-					}),
-					/* @__PURE__ */ jsx(QuickLink, {
-						href: "/plans",
-						icon: Bookmark,
-						title: "Plans & billing",
-						blurb: "Compare plans and unlock unlimited refreshes."
-					})
-				]
-			}),
-			/* @__PURE__ */ jsxs("div", {
-				className: "surface mt-10 p-5",
-				children: [
 					/* @__PURE__ */ jsx("p", {
-						className: "text-[11.5px] font-semibold tracking-[.14em] faint uppercase",
-						children: "Signed in as"
+						className: "mt-2.5 max-w-xl text-[13.5px] leading-relaxed muted",
+						children: "We scrape broadly on the main keyword, then use everything you tick below to filter and rank what comes back. Keywords are fixed once the search is saved."
+					})
+				]
+			}),
+			/* @__PURE__ */ jsxs("div", {
+				className: "mt-4 space-y-4",
+				children: [
+					/* @__PURE__ */ jsxs(Card$1, {
+						step: "1",
+						title: "Main keyword",
+						description: "This is the phrase we send to TikTok. Everything else filters the results it returns.",
+						children: [editingPhrase ? /* @__PURE__ */ jsxs("div", {
+							className: "flex flex-col gap-2 sm:flex-row",
+							children: [/* @__PURE__ */ jsxs("label", {
+								className: "flex h-11 flex-1 items-center gap-2.5 rounded-xl border border-accent/40 bg-white px-3.5 dark:bg-white/[.05]",
+								children: [/* @__PURE__ */ jsx(Search, { className: "h-4 w-4 shrink-0 faint" }), /* @__PURE__ */ jsx("input", {
+									autoFocus: true,
+									value: phraseDraft,
+									maxLength: 80,
+									onChange: (e) => setPhraseDraft(e.target.value),
+									onKeyDown: (e) => {
+										if (e.key === "Enter") savePhrase();
+										if (e.key === "Escape") {
+											setPhraseDraft(phrase);
+											setEditingPhrase(false);
+										}
+									},
+									"aria-label": "Main keyword",
+									className: "w-full border-0 bg-transparent p-0 text-[14px] font-semibold text-ink focus:ring-0 focus:outline-none dark:text-white"
+								})]
+							}), /* @__PURE__ */ jsxs("div", {
+								className: "flex gap-2",
+								children: [/* @__PURE__ */ jsx("button", {
+									type: "button",
+									onClick: savePhrase,
+									className: "btn-accent h-11 px-4 text-[13.5px]",
+									children: "Save"
+								}), /* @__PURE__ */ jsx("button", {
+									type: "button",
+									onClick: () => {
+										setPhraseDraft(phrase);
+										setEditingPhrase(false);
+									},
+									className: "btn-ghost h-11 px-4 text-[13.5px]",
+									children: "Cancel"
+								})]
+							})]
+						}) : /* @__PURE__ */ jsxs("div", {
+							className: "flex flex-wrap items-center gap-3",
+							children: [/* @__PURE__ */ jsxs("span", {
+								className: "inline-flex items-center gap-2 rounded-xl bg-ink px-3.5 py-2.5 text-[14px] font-semibold text-white dark:bg-white dark:text-ink",
+								children: [/* @__PURE__ */ jsx(Search, { className: "h-3.5 w-3.5 opacity-70" }), phrase]
+							}), /* @__PURE__ */ jsxs("button", {
+								type: "button",
+								onClick: () => setEditingPhrase(true),
+								className: "inline-flex items-center gap-1.5 text-[13px] font-semibold text-accent transition hover:gap-2 dark:text-accent-glow",
+								children: [/* @__PURE__ */ jsx(Pencil, {}), " Change"]
+							})]
+						}), regenPrompt && /* @__PURE__ */ jsxs("div", {
+							className: "mt-4 flex flex-col gap-3 rounded-xl border border-accent/25 bg-accent/[.06] px-4 py-3 sm:flex-row sm:items-center sm:justify-between dark:border-accent-glow/25 dark:bg-accent-glow/[.07]",
+							children: [/* @__PURE__ */ jsxs("p", {
+								className: "text-[13px] muted",
+								children: [
+									"Main keyword is now ",
+									/* @__PURE__ */ jsx("b", {
+										className: "text-ink dark:text-white",
+										children: phrase
+									}),
+									". Regenerate the suggested keywords to match?"
+								]
+							}), /* @__PURE__ */ jsxs("div", {
+								className: "flex shrink-0 gap-2",
+								children: [/* @__PURE__ */ jsx("button", {
+									type: "button",
+									onClick: () => regenerate(phrase),
+									className: "btn-accent h-9 px-3.5 text-[13px]",
+									children: "Regenerate"
+								}), /* @__PURE__ */ jsx("button", {
+									type: "button",
+									onClick: () => setRegenPrompt(false),
+									className: "btn-ghost h-9 px-3.5 text-[13px]",
+									children: "Keep mine"
+								})]
+							})]
+						})]
 					}),
-					/* @__PURE__ */ jsx("p", {
-						className: "mt-2.5 text-[14px] font-semibold",
-						children: auth.user?.email ?? "Unknown account"
+					/* @__PURE__ */ jsx(Card$1, {
+						step: "2",
+						title: "Keywords",
+						description: "Tick the terms that describe the videos you want. Untick anything off-topic, or add your own.",
+						action: /* @__PURE__ */ jsxs("button", {
+							type: "button",
+							onClick: () => regenerate(),
+							disabled: busy,
+							className: "btn-ghost h-9 shrink-0 px-3.5 text-[13px]",
+							children: [/* @__PURE__ */ jsx(Refresh, { className: regenerating ? "h-3.5 w-3.5 animate-spin" : "h-3.5 w-3.5" }), regenerating ? "Regenerating…" : "Regenerate"]
+						}),
+						children: busy ? /* @__PURE__ */ jsxs(Fragment, { children: [/* @__PURE__ */ jsxs("p", {
+							className: "mb-4 inline-flex items-center gap-2 text-[12.5px] font-semibold text-accent dark:text-accent-glow",
+							children: [
+								/* @__PURE__ */ jsx("span", { className: "h-3 w-3 animate-spin rounded-full border-2 border-accent border-t-transparent" }),
+								"Suggesting keywords for “",
+								phrase,
+								"”…"
+							]
+						}), /* @__PURE__ */ jsx(SkeletonChips, {})] }) : /* @__PURE__ */ jsxs(Fragment, { children: [
+							/* @__PURE__ */ jsxs("div", {
+								className: "mb-3 flex flex-wrap items-center justify-between gap-2",
+								children: [/* @__PURE__ */ jsxs("p", {
+									className: "text-[12.5px] faint",
+									children: [
+										/* @__PURE__ */ jsx("b", {
+											className: "text-ink dark:text-white",
+											children: selected.length
+										}),
+										" of ",
+										terms.length,
+										" selected"
+									]
+								}), optional.length > 0 && /* @__PURE__ */ jsxs("div", {
+									className: "flex gap-3 text-[12.5px] font-semibold",
+									children: [/* @__PURE__ */ jsx("button", {
+										type: "button",
+										onClick: () => setAll(true),
+										disabled: optionalSelected === optional.length,
+										className: "text-accent transition disabled:opacity-35 dark:text-accent-glow",
+										children: "Select all"
+									}), /* @__PURE__ */ jsx("button", {
+										type: "button",
+										onClick: () => setAll(false),
+										disabled: optionalSelected === 0,
+										className: "muted transition hover:text-accent disabled:opacity-35",
+										children: "Clear"
+									})]
+								})]
+							}),
+							/* @__PURE__ */ jsx("div", {
+								className: "flex flex-wrap gap-2",
+								children: terms.map(({ value, selected: on, locked, custom }) => locked ? /* @__PURE__ */ jsxs("span", {
+									title: "The main keyword is always included",
+									className: "inline-flex items-center gap-2.5 rounded-xl border border-accent/50 bg-accent/10 px-3.5 py-2.5 text-[13.5px] font-semibold text-accent dark:text-accent-glow",
+									children: [
+										/* @__PURE__ */ jsx("span", {
+											className: "flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-md border border-accent bg-accent text-white",
+											children: /* @__PURE__ */ jsx(Check, {})
+										}),
+										value,
+										/* @__PURE__ */ jsx("span", {
+											className: "text-[10px] font-bold tracking-wider uppercase opacity-60",
+											children: "main"
+										})
+									]
+								}, value) : /* @__PURE__ */ jsx(KeywordChip, {
+									value,
+									selected: on,
+									custom,
+									onToggle: () => toggle(value),
+									onRemove: () => remove(value)
+								}, value))
+							}),
+							/* @__PURE__ */ jsxs("form", {
+								onSubmit: add,
+								className: "mt-4 flex max-w-md gap-2",
+								children: [/* @__PURE__ */ jsx("input", {
+									value: draft,
+									onChange: (e) => setDraft(e.target.value),
+									placeholder: atKeywordCap ? `Limit of ${KEYWORD_CAP} keywords reached` : "Add your own keyword",
+									"aria-label": "Add your own keyword",
+									disabled: atKeywordCap,
+									className: "field h-11 flex-1 text-sm"
+								}), /* @__PURE__ */ jsxs("button", {
+									type: "submit",
+									disabled: !draft.trim() || atKeywordCap,
+									className: "btn-ghost h-11 px-4 text-sm",
+									children: [/* @__PURE__ */ jsx(Plus, { className: "h-3.5 w-3.5" }), " Add"]
+								})]
+							}),
+							expansionSource === "fallback" && /* @__PURE__ */ jsx("p", {
+								className: "mt-3 text-[12px] faint",
+								children: "Suggestions came from templates this time — edit them freely."
+							})
+						] })
 					}),
-					/* @__PURE__ */ jsx("div", {
-						className: "mt-4",
-						children: /* @__PURE__ */ jsxs(Link, {
-							href: "/settings/account",
-							className: "inline-flex items-center gap-1.5 text-[13px] font-semibold text-accent transition hover:gap-2 dark:text-accent-glow",
-							children: ["Manage account ", /* @__PURE__ */ jsx(Arrow, { className: "h-3.5 w-3.5" })]
+					/* @__PURE__ */ jsx(Card$1, {
+						step: "3",
+						title: "Name and refresh",
+						description: "How this search shows up in your watchlist, and how often we re-run it.",
+						children: /* @__PURE__ */ jsxs("div", {
+							className: "grid gap-5 sm:grid-cols-2",
+							children: [/* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsx("label", {
+								htmlFor: "search-name",
+								className: "block text-[12.5px] font-semibold",
+								children: "Search name"
+							}), /* @__PURE__ */ jsx("input", {
+								id: "search-name",
+								value: name,
+								maxLength: 80,
+								onChange: (e) => {
+									setName(e.target.value);
+									setNameTouched(true);
+								},
+								className: "field mt-2 h-11 text-sm"
+							})] }), /* @__PURE__ */ jsxs("div", { children: [
+								/* @__PURE__ */ jsx("span", {
+									className: "block text-[12.5px] font-semibold",
+									children: "Refresh"
+								}),
+								/* @__PURE__ */ jsx("div", {
+									className: "mt-2 grid gap-2 sm:grid-cols-2",
+									children: FREQUENCIES.map((f) => /* @__PURE__ */ jsx("button", {
+										type: "button",
+										onClick: () => setFrequency(f.value),
+										"aria-pressed": frequency === f.value,
+										className: `h-11 rounded-xl border text-[13.5px] font-semibold transition-all duration-300 ${frequency === f.value ? "border-accent/50 bg-accent/10 text-accent dark:text-accent-glow" : "border-black/[.09] muted hover:border-accent/35 dark:border-white/[.12]"}`,
+										children: f.label
+									}, f.value))
+								}),
+								/* @__PURE__ */ jsx("p", {
+									className: "mt-2 text-[12px] faint",
+									children: FREQUENCIES.find((f) => f.value === frequency)?.hint
+								})
+							] })]
 						})
 					})
 				]
+			}),
+			error && /* @__PURE__ */ jsx("p", {
+				className: "mt-4 rounded-xl border border-hot/30 bg-hot/10 px-4 py-3 text-[13px] text-hot",
+				children: error
+			}),
+			/* @__PURE__ */ jsxs("div", {
+				className: "surface mt-4 flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6",
+				children: [/* @__PURE__ */ jsxs("p", {
+					className: "text-[13px] muted",
+					children: [
+						/* @__PURE__ */ jsx("b", {
+							className: "font-display text-[15px] text-ink dark:text-white",
+							children: selected.length
+						}),
+						" keyword",
+						selected.length === 1 ? "" : "s",
+						" · 1 search covers everything you select"
+					]
+				}), /* @__PURE__ */ jsxs("button", {
+					onClick: () => onSubmit({
+						phrase,
+						keywords: selected,
+						frequency,
+						name: name.trim() || phrase
+					}),
+					disabled: busy || submitting || selected.length === 0,
+					className: "btn-accent h-[52px] px-7 text-[15px]",
+					children: [
+						submitting ? "Starting…" : "Run search",
+						" ",
+						/* @__PURE__ */ jsx(Arrow, {})
+					]
+				})]
 			})
 		]
+	});
+}
+//#endregion
+//#region resources/js/landing/flow/screens/RunningScreen.jsx
+var POLL_MS = 1e4;
+var STAGES = [
+	"Starting the scrape",
+	"Pulling videos from TikTok",
+	"Filtering against your keywords",
+	"Ranking by outlier score"
+];
+function RunningScreen({ searchId, onBack, onDone }) {
+	const { auth = {} } = usePage().props;
+	const signedIn = auth.signedIn ?? Boolean(auth.user);
+	const [search, setSearch] = useState(null);
+	const [failed, setFailed] = useState(null);
+	const [email, setEmail] = useState("");
+	const [emailSaved, setEmailSaved] = useState(false);
+	const [stage, setStage] = useState(0);
+	const finished = useRef(false);
+	useEffect(() => {
+		if (!searchId) return void 0;
+		let timer;
+		let cancelled = false;
+		const poll = async () => {
+			if (cancelled || finished.current) return;
+			try {
+				const found = (await fetchNotifications([searchId]))?.searches?.[0];
+				if (found) {
+					setSearch(found);
+					if (found.status === "done") {
+						finished.current = true;
+						updateTracked(searchId, {
+							completedPromptShown: true,
+							name: found.name
+						});
+						onDone?.(found);
+						return;
+					}
+					if (found.status === "failed") {
+						finished.current = true;
+						setFailed(found.latest_run_error || "The scrape did not finish. Try running the search again.");
+						return;
+					}
+				}
+			} catch {}
+			timer = window.setTimeout(poll, POLL_MS);
+		};
+		const onVisibility = () => {
+			if (document.visibilityState === "visible" && !finished.current) {
+				window.clearTimeout(timer);
+				poll();
+			}
+		};
+		poll();
+		document.addEventListener("visibilitychange", onVisibility);
+		return () => {
+			cancelled = true;
+			window.clearTimeout(timer);
+			document.removeEventListener("visibilitychange", onVisibility);
+		};
+	}, [searchId, onDone]);
+	useEffect(() => {
+		if (failed) return void 0;
+		const timer = window.setInterval(() => setStage((s) => Math.min(s + 1, STAGES.length - 1)), 12e3);
+		return () => window.clearInterval(timer);
+	}, [failed]);
+	return /* @__PURE__ */ jsxs("div", {
+		className: "animate-fade-up",
+		children: [/* @__PURE__ */ jsx("button", {
+			onClick: onBack,
+			className: "text-[13px] font-semibold muted transition hover:text-accent",
+			children: "← Back to keywords"
+		}), /* @__PURE__ */ jsx("div", {
+			className: "mx-auto mt-8 max-w-md text-center",
+			children: failed ? /* @__PURE__ */ jsxs(Fragment, { children: [
+				/* @__PURE__ */ jsx("span", {
+					className: "inline-flex items-center gap-2.5 rounded-full border border-hot/25 bg-hot/10 px-4 py-2 text-[12.5px] font-semibold text-hot",
+					children: "Search failed"
+				}),
+				/* @__PURE__ */ jsx("h1", {
+					className: "mt-7 font-display text-[26px] leading-tight font-bold tracking-[-.02em] sm:text-[32px]",
+					children: "That run didn't finish"
+				}),
+				/* @__PURE__ */ jsx("p", {
+					className: "mt-3 text-[14.5px] muted",
+					children: failed
+				}),
+				/* @__PURE__ */ jsx("button", {
+					onClick: onBack,
+					className: "btn-ghost mx-auto mt-7 h-[52px] px-6 text-[15px]",
+					children: "Edit keywords and retry"
+				})
+			] }) : /* @__PURE__ */ jsxs(Fragment, { children: [
+				/* @__PURE__ */ jsxs("span", {
+					className: "inline-flex items-center gap-2.5 rounded-full border border-accent/25 bg-accent/10 px-4 py-2 text-[12.5px] font-semibold text-accent dark:text-accent-glow",
+					children: [/* @__PURE__ */ jsx("span", { className: "h-3.5 w-3.5 animate-spin rounded-full border-2 border-accent border-t-transparent" }), "Search running · 1 to 20 min"]
+				}),
+				/* @__PURE__ */ jsx("h1", {
+					className: "mt-7 font-display text-[26px] leading-tight font-bold tracking-[-.02em] sm:text-[32px]",
+					children: search?.name ? `Scouting “${search.name}”` : "Scouting your niche"
+				}),
+				/* @__PURE__ */ jsx("p", {
+					className: "mt-3 text-[14.5px] muted",
+					children: "We'll show the results right here the moment they're ready."
+				}),
+				/* @__PURE__ */ jsx("ol", {
+					className: "mx-auto mt-8 max-w-sm space-y-2.5 text-left",
+					children: STAGES.map((label, i) => {
+						const state = i < stage ? "done" : i === stage ? "active" : "pending";
+						return /* @__PURE__ */ jsxs("li", {
+							className: `flex items-center gap-3 rounded-xl border px-4 py-3 text-[13.5px] transition-all duration-500 ${state === "pending" ? "border-black/[.06] faint dark:border-white/[.07]" : "border-accent/25 bg-accent/[.06]"}`,
+							children: [/* @__PURE__ */ jsx("span", {
+								className: `flex h-5 w-5 shrink-0 items-center justify-center rounded-full ${state === "done" ? "bg-accent text-white" : state === "active" ? "border-2 border-accent border-t-transparent animate-spin" : "border border-black/15 dark:border-white/20"}`,
+								children: state === "done" && /* @__PURE__ */ jsx(Check, { className: "h-2.5 w-2.5" })
+							}), label]
+						}, label);
+					})
+				}),
+				!signedIn && /* @__PURE__ */ jsxs("div", {
+					className: "ring-gradient mt-8 rounded-3xl bg-white/70 p-6 text-left backdrop-blur-2xl dark:bg-white/[.04]",
+					children: [
+						/* @__PURE__ */ jsx("p", {
+							className: "mb-4 text-center font-display text-sm font-semibold",
+							children: "Or have them emailed when they're done"
+						}),
+						/* @__PURE__ */ jsxs("a", {
+							href: "/auth/google",
+							className: "flex h-[52px] w-full items-center justify-center gap-3 rounded-full bg-[#2f2a2a] px-5 text-[15px] font-semibold text-white shadow-[0_18px_40px_-26px_rgba(0,0,0,.55)] transition hover:opacity-95",
+							children: [/* @__PURE__ */ jsx("span", {
+								className: "flex h-8 w-8 items-center justify-center rounded-full bg-white",
+								children: /* @__PURE__ */ jsx(Google$1, {})
+							}), "Continue with Google"]
+						}),
+						/* @__PURE__ */ jsxs("div", {
+							className: "my-4 flex items-center gap-3 text-xs faint",
+							children: [
+								/* @__PURE__ */ jsx("span", { className: "h-px flex-1 bg-black/[.08] dark:bg-white/10" }),
+								"or",
+								/* @__PURE__ */ jsx("span", { className: "h-px flex-1 bg-black/[.08] dark:bg-white/10" })
+							]
+						}),
+						/* @__PURE__ */ jsxs("form", {
+							onSubmit: (e) => {
+								e.preventDefault();
+								setEmailSaved(true);
+							},
+							className: "flex flex-col gap-2 sm:flex-row",
+							children: [/* @__PURE__ */ jsx("input", {
+								type: "email",
+								required: true,
+								value: email,
+								onChange: (e) => setEmail(e.target.value),
+								placeholder: "you@brand.com",
+								className: "field h-[52px] flex-1"
+							}), /* @__PURE__ */ jsxs("button", {
+								type: "submit",
+								className: "btn-accent h-[52px] px-5 text-[15px]",
+								children: [
+									emailSaved ? "Saved" : "Email me",
+									" ",
+									!emailSaved && /* @__PURE__ */ jsx(Arrow, {})
+								]
+							})]
+						})
+					]
+				}),
+				/* @__PURE__ */ jsx("p", {
+					className: `text-[12.5px] leading-relaxed faint ${signedIn ? "mt-8" : "mt-5"}`,
+					children: "Safe to close this tab — the search keeps running and stays on your watchlist."
+				})
+			] })
+		})]
+	});
+}
+//#endregion
+//#region resources/js/Pages/components/SearchWizard.jsx
+var SearchWizard_exports = /* @__PURE__ */ __exportAll({ default: () => SearchWizard });
+var STEPS$1 = [
+	{
+		key: "subject",
+		label: "Subject",
+		hint: "Brand, competitor or product"
+	},
+	{
+		key: "keywords",
+		label: "Keywords",
+		hint: "Widen and filter the pull"
+	},
+	{
+		key: "running",
+		label: "Results",
+		hint: "We scrape and rank"
+	}
+];
+/**
+* The whole search flow on one page.
+*
+* Steps advance in local state rather than by navigation, so the keyword work
+* survives a step back — and a failed run can drop the user straight back onto
+* the keywords they already tuned instead of an empty form.
+*
+* The only thing written to the URL is `?run=<id>` once a run exists, via
+* replaceState. That is a resume handle, not a navigation: a reload should not
+* lose sight of a scrape that is already costing money server-side.
+*/
+function readRunParam() {
+	if (typeof window === "undefined") return null;
+	const id = new URLSearchParams(window.location.search).get("run");
+	return id && /^\d+$/.test(id) ? Number(id) : null;
+}
+function Stepper({ current, onJump, reachable }) {
+	const index = STEPS$1.findIndex((s) => s.key === current);
+	return /* @__PURE__ */ jsx("ol", {
+		className: "mb-5 flex items-stretch gap-2 sm:gap-3",
+		children: STEPS$1.map((step, i) => {
+			const state = i < index ? "done" : i === index ? "active" : "todo";
+			const clickable = state === "done" && reachable.includes(step.key);
+			return /* @__PURE__ */ jsx("li", {
+				className: "min-w-0 flex-1",
+				children: /* @__PURE__ */ jsx("button", {
+					type: "button",
+					disabled: !clickable,
+					onClick: () => clickable && onJump(step.key),
+					"aria-current": state === "active" ? "step" : void 0,
+					className: `w-full rounded-2xl border px-3 py-3 text-left transition-all duration-300 sm:px-4 ${state === "active" ? "border-accent/45 bg-accent/[.08] dark:border-accent-glow/40 dark:bg-accent-glow/[.09]" : state === "done" ? "border-accent/25 bg-accent/[.04] dark:border-accent-glow/25" : "border-black/[.07] dark:border-white/[.08]"} ${clickable ? "cursor-pointer hover:-translate-y-px hover:border-accent/45" : "cursor-default"}`,
+					children: /* @__PURE__ */ jsxs("span", {
+						className: "flex items-center gap-2.5",
+						children: [/* @__PURE__ */ jsx("span", {
+							className: `flex h-6 w-6 shrink-0 items-center justify-center rounded-full font-display text-[12px] font-bold ${state === "todo" ? "bg-black/[.05] faint dark:bg-white/[.08]" : "bg-accent text-white"}`,
+							children: state === "done" ? /* @__PURE__ */ jsx(Check, { className: "h-2.5 w-2.5" }) : i + 1
+						}), /* @__PURE__ */ jsxs("span", {
+							className: "min-w-0",
+							children: [/* @__PURE__ */ jsx("span", {
+								className: `block truncate text-[13.5px] font-semibold ${state === "active" ? "text-accent dark:text-accent-glow" : state === "todo" ? "faint" : ""}`,
+								children: step.label
+							}), /* @__PURE__ */ jsx("span", {
+								className: "hidden truncate text-[11.5px] faint sm:block",
+								children: step.hint
+							})]
+						})]
+					})
+				})
+			}, step.key);
+		})
+	});
+}
+function SearchWizard({ initialType = "brand", initialQuery = "", heading, subheading }) {
+	const resumeId = readRunParam();
+	const [step, setStep] = useState(resumeId ? "running" : initialQuery ? "keywords" : "subject");
+	const [type, setType] = useState(initialType);
+	const [phrase, setPhrase] = useState(initialQuery);
+	const [searchId, setSearchId] = useState(resumeId);
+	const [submitting, setSubmitting] = useState(false);
+	const [error, setError] = useState(null);
+	const stampUrl = (id) => {
+		if (typeof window === "undefined") return;
+		const url = new URL(window.location.href);
+		if (id) url.searchParams.set("run", String(id));
+		else url.searchParams.delete("run");
+		window.history.replaceState(window.history.state, "", url.toString());
+	};
+	const pickSubject = ({ type: nextType, phrase: nextPhrase }) => {
+		setType(nextType);
+		setPhrase(nextPhrase);
+		setStep("keywords");
+	};
+	const submit = async ({ phrase: finalPhrase, keywords, frequency, name }) => {
+		setSubmitting(true);
+		setError(null);
+		try {
+			const created = await createSavedSearch({
+				type,
+				phrase: finalPhrase || phrase,
+				name,
+				keywords,
+				frequency
+			});
+			trackSearch({
+				id: created.id,
+				name: created.name,
+				url: created.url
+			});
+			setSearchId(created.id);
+			stampUrl(created.id);
+			setStep("running");
+		} catch (e) {
+			setError(e.message || "Could not start the search. Try again.");
+		} finally {
+			setSubmitting(false);
+		}
+	};
+	const backToKeywords = () => {
+		stampUrl(null);
+		setSearchId(null);
+		setStep(phrase ? "keywords" : "subject");
+	};
+	const onDone = useCallback((found) => router.visit(`/saved-searches/${found?.id ?? searchId}`), [searchId]);
+	return /* @__PURE__ */ jsxs("div", { children: [
+		/* @__PURE__ */ jsx(Stepper, {
+			current: step,
+			reachable: searchId ? [] : ["subject", "keywords"],
+			onJump: (key) => setStep(key)
+		}),
+		step === "subject" && /* @__PURE__ */ jsx(SearchLauncher, {
+			initialType: type,
+			initialQuery: phrase,
+			heading,
+			subheading,
+			showOutline: false,
+			onSubmit: pickSubject
+		}),
+		phrase && /* @__PURE__ */ jsx("div", {
+			hidden: step !== "keywords",
+			children: /* @__PURE__ */ jsx(KeywordsScreen, {
+				phrase,
+				submitting,
+				error,
+				onBack: () => setStep("subject"),
+				onSubmit: submit
+			}, `${type}:${phrase}`)
+		}),
+		step === "running" && searchId && /* @__PURE__ */ jsx(RunningScreen, {
+			searchId,
+			onBack: backToKeywords,
+			onDone
+		})
+	] });
+}
+//#endregion
+//#region resources/js/Pages/Dashboard.jsx
+var Dashboard_exports = /* @__PURE__ */ __exportAll({ default: () => Dashboard });
+function Dashboard() {
+	const { flash = {} } = usePage().props;
+	return /* @__PURE__ */ jsxs(Fragment, { children: [/* @__PURE__ */ jsx(Head, { title: "Dashboard - Outlier Vault" }), /* @__PURE__ */ jsxs(AppLayout, {
+		width: "max-w-4xl",
+		children: [flash.status && /* @__PURE__ */ jsx("div", {
+			className: "mb-6 rounded-2xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-700 dark:text-emerald-300",
+			children: flash.status
+		}), /* @__PURE__ */ jsx(SearchWizard, {
+			heading: "Start a search",
+			subheading: "Pick one brand, competitor, or product — we widen it with smarter keywords on the next step."
+		})]
 	})] });
 }
 //#endregion
@@ -2207,7 +3201,7 @@ var SEARCH_TYPES = {
 		label: "Brand",
 		placeholder: "Enter brand name",
 		sectionHeading: "Add terms to expand on your brand",
-		sample: "GoPure",
+		sample: "rhode skin",
 		keywords: [
 			"beauty",
 			"skincare",
@@ -2222,7 +3216,7 @@ var SEARCH_TYPES = {
 		label: "Competitor",
 		placeholder: "Enter one competitor",
 		sectionHeading: "Add terms to expand on this competitor",
-		sample: "Glossier",
+		sample: "skims",
 		keywords: [
 			"review",
 			"dupe",
@@ -2399,9 +3393,9 @@ function Hero({ onStart }) {
 					delay: 200,
 					className: "mx-auto mt-11 max-w-2xl",
 					children: [/* @__PURE__ */ jsx("div", {
-						className: "ring-gradient rounded-[26px] bg-white/70 p-1.5 shadow-[0_40px_100px_-50px_rgba(20,20,50,.5)] backdrop-blur-2xl dark:bg-white/[.045] dark:shadow-[0_50px_120px_-60px_rgba(0,0,0,1)]",
+						className: "ring-gradient rounded-[26px] bg-white/70 p-1.5 shadow-[0_40px_100px_-50px_rgba(20,20,50,.5)] backdrop-blur-2xl dark:bg-[rgba(110,88,200,.14)] dark:shadow-[0_50px_120px_-60px_rgba(0,0,0,1)]",
 						children: /* @__PURE__ */ jsxs("div", {
-							className: "rounded-[20px] bg-white/85 p-4 sm:p-5 dark:bg-black/25",
+							className: "rounded-[20px] bg-white/85 p-4 sm:p-5 dark:bg-[linear-gradient(180deg,rgba(22,20,36,.92),rgba(12,11,20,.96))]",
 							children: [
 								/* @__PURE__ */ jsxs("div", {
 									className: "mb-5 flex items-start gap-3.5 text-left",
@@ -2409,10 +3403,10 @@ function Hero({ onStart }) {
 										className: "pt-1",
 										children: /* @__PURE__ */ jsx(Mascot, { className: "animate-float h-12 w-12 shrink-0 sm:h-14 sm:w-14" })
 									}), /* @__PURE__ */ jsxs("div", {
-										className: "relative rounded-[24px] border border-[#e8e3f6] bg-[linear-gradient(180deg,rgba(255,255,255,.96),rgba(245,242,252,.94))] px-4 py-3 text-[13.5px] leading-relaxed text-[#2e3148] shadow-[0_18px_40px_-28px_rgba(104,93,151,.38)] dark:border-white/10 dark:bg-white/[.08] dark:text-white",
+										className: "relative rounded-[24px] border border-[#e8e3f6] bg-[linear-gradient(180deg,rgba(255,255,255,.96),rgba(245,242,252,.94))] px-4 py-3 text-[13.5px] leading-relaxed text-[#2e3148] shadow-[0_18px_40px_-28px_rgba(104,93,151,.38)] dark:border-[#5d4f86] dark:bg-[linear-gradient(180deg,rgba(244,240,255,.94),rgba(221,214,244,.9))] dark:text-[#2d2740] dark:shadow-[0_18px_40px_-26px_rgba(0,0,0,.5)]",
 										children: [/* @__PURE__ */ jsx("span", {
 											"aria-hidden": true,
-											className: "absolute top-4 -left-1.5 h-3 w-3 rotate-45 border-l border-b border-[#e8e3f6] bg-[#f7f4fc] dark:border-white/10 dark:bg-white/[.08]"
+											className: "absolute top-4 -left-1.5 h-3 w-3 rotate-45 border-l border-b border-[#e8e3f6] bg-[#f7f4fc] dark:border-[#5d4f86] dark:bg-[#ece5fb]"
 										}), "I scan TikTok for your brand, products, and competitors, and pull the recent viral videos."]
 									})]
 								}),
@@ -2427,10 +3421,11 @@ function Hero({ onStart }) {
 									})]
 								}),
 								/* @__PURE__ */ jsx("div", {
-									className: "flex gap-1.5 rounded-2xl bg-black/[.045] p-1.5 dark:bg-white/[.05]",
+									className: "flex gap-2 rounded-[18px] border border-[#d9d1ef] bg-[linear-gradient(180deg,#f4f0fb,#ece7f7)] p-1.5 shadow-[inset_0_1px_0_rgba(255,255,255,.9),0_10px_24px_-20px_rgba(106,84,173,.35)] dark:border-[#4b4269] dark:bg-[linear-gradient(180deg,rgba(31,29,43,.98),rgba(24,22,35,.98))] dark:shadow-[inset_0_1px_0_rgba(255,255,255,.06),0_10px_24px_-20px_rgba(0,0,0,.55)]",
 									children: TYPE_KEYS.map((k) => /* @__PURE__ */ jsx("button", {
 										onClick: () => setType(k),
-										className: `flex-1 rounded-xl px-2 py-2.5 text-[13px] font-semibold transition-all duration-300 sm:text-[13.5px] ${type === k ? "bg-white text-ink shadow-[0_2px_10px_-2px_rgba(16,18,32,.18)] dark:bg-ink-700 dark:text-white" : "muted hover:text-ink dark:hover:text-white"}`,
+										className: `flex-1 rounded-[14px] border px-3 py-2.5 text-[13px] font-semibold transition-all duration-300 sm:text-[13.5px] ${type === k ? "border-[#cfc2f2] bg-[linear-gradient(180deg,#ffffff,#f7f2ff)] text-[#221b39] shadow-[0_12px_28px_-18px_rgba(94,74,163,.42),inset_0_1px_0_rgba(255,255,255,.95)] dark:border-[#8b7bd0] dark:bg-[linear-gradient(180deg,rgba(91,79,146,.98),rgba(74,64,121,.98))] dark:text-white dark:shadow-[0_12px_26px_-18px_rgba(0,0,0,.55),inset_0_1px_0_rgba(255,255,255,.08)]" : "border-transparent bg-white/18 text-[#5d6177] hover:border-[#ddd4f6] hover:bg-white/55 hover:text-[#2e3148] dark:bg-transparent dark:text-white/68 dark:hover:border-[#4f456f] dark:hover:bg-white/[.04] dark:hover:text-white"}`,
+										"aria-pressed": type === k,
 										children: SEARCH_TYPES[k].label
 									}, k))
 								}),
@@ -2438,9 +3433,9 @@ function Hero({ onStart }) {
 									onSubmit: submit,
 									className: "mt-3 flex flex-col gap-2 sm:flex-row",
 									children: [/* @__PURE__ */ jsxs("label", {
-										className: "group flex h-[54px] flex-1 items-center gap-3 rounded-[18px] border border-black/8 bg-white px-4 shadow-[0_16px_40px_-28px_rgba(76,56,255,.55)] transition-all duration-300 focus-within:-translate-y-0.5 focus-within:border-accent/35 focus-within:shadow-[0_22px_50px_-28px_rgba(76,56,255,.6)] dark:border-white/10 dark:bg-white/[.04] dark:focus-within:border-accent-glow/35",
+										className: "group flex h-[54px] flex-1 items-center gap-3 rounded-[18px] border border-black/8 bg-white px-4 shadow-[0_16px_40px_-28px_rgba(76,56,255,.55)] transition-all duration-300 focus-within:-translate-y-0.5 focus-within:border-accent/35 focus-within:shadow-[0_22px_50px_-28px_rgba(76,56,255,.6)] dark:border-[#3a3550] dark:bg-[#1f1d2b] dark:focus-within:border-accent-glow/35",
 										children: [/* @__PURE__ */ jsx("div", {
-											className: "flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,rgba(123,92,255,.16),rgba(255,83,143,.12))] text-accent dark:text-accent-glow",
+											className: "flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,rgba(123,92,255,.16),rgba(255,83,143,.12))] text-accent dark:bg-[linear-gradient(135deg,rgba(123,92,255,.18),rgba(255,83,143,.1))] dark:text-accent-glow",
 											children: /* @__PURE__ */ jsxs("svg", {
 												viewBox: "0 0 24 24",
 												"aria-hidden": true,
@@ -2463,7 +3458,7 @@ function Hero({ onStart }) {
 												value,
 												onChange: (e) => setValue(e.target.value),
 												placeholder: config.placeholder,
-												className: "w-full border-0 bg-transparent p-0 text-[14px] font-medium text-ink placeholder:text-black/35 focus:outline-none focus:ring-0 dark:text-white dark:placeholder:text-white/28"
+												className: "w-full border-0 bg-transparent p-0 text-[14px] font-medium text-ink placeholder:text-black/35 focus:outline-none focus:ring-0 dark:text-white dark:placeholder:text-white/38"
 											})
 										})]
 									}), /* @__PURE__ */ jsxs("button", {
@@ -3303,130 +4298,6 @@ function Footer() {
 			})]
 		})]
 	});
-}
-//#endregion
-//#region resources/js/landing/flow/api.js
-/**
-* Small fetch wrapper for the saved-search endpoints. Inertia handles page
-* navigation; these calls are the in-page ones that should not re-render the
-* whole document.
-*/
-function csrfToken() {
-	return document.querySelector("meta[name=\"csrf-token\"]")?.getAttribute("content") ?? "";
-}
-var API_V1 = "/api/v1";
-async function request(url, { method = "GET", body } = {}) {
-	const response = await fetch(url, {
-		method,
-		credentials: "same-origin",
-		headers: {
-			Accept: "application/json",
-			"X-Requested-With": "XMLHttpRequest",
-			...body ? { "Content-Type": "application/json" } : {},
-			...method === "GET" ? {} : { "X-CSRF-TOKEN": csrfToken() }
-		},
-		...body ? { body: JSON.stringify(body) } : {}
-	});
-	const payload = await response.json().catch(() => null);
-	if (!response.ok) {
-		const error = new Error(payload?.message || `Request failed (${response.status})`);
-		error.status = response.status;
-		error.payload = payload;
-		throw error;
-	}
-	return payload;
-}
-function expandKeywords(phrase, { signal } = {}) {
-	return fetch(`${API_V1}/saved-searches/expand`, {
-		method: "POST",
-		credentials: "same-origin",
-		signal,
-		headers: {
-			Accept: "application/json",
-			"Content-Type": "application/json",
-			"X-Requested-With": "XMLHttpRequest",
-			"X-CSRF-TOKEN": csrfToken()
-		},
-		body: JSON.stringify({ phrase })
-	}).then(async (response) => {
-		const payload = await response.json().catch(() => null);
-		if (!response.ok) throw new Error(payload?.message || "Could not suggest keywords.");
-		return payload;
-	});
-}
-function createSavedSearch({ type, phrase, name, keywords, frequency }) {
-	return request(`${API_V1}/saved-searches`, {
-		method: "POST",
-		body: {
-			type,
-			phrase,
-			name,
-			keywords,
-			frequency
-		}
-	});
-}
-function fetchNotifications(ids) {
-	return request(`${API_V1}/saved-searches/notifications?${ids.map((id) => `ids[]=${encodeURIComponent(id)}`).join("&")}`);
-}
-var savedSearch = {
-	get: (id) => request(`${API_V1}/saved-searches/${id}/json`),
-	watchlist: (id, watchlisted) => request(`${API_V1}/saved-searches/${id}/watchlist`, {
-		method: "PATCH",
-		body: { watchlisted }
-	}),
-	pause: (id) => request(`${API_V1}/saved-searches/${id}/pause`, { method: "PATCH" }),
-	resume: (id) => request(`${API_V1}/saved-searches/${id}/resume`, { method: "PATCH" }),
-	update: (id, body) => request(`${API_V1}/saved-searches/${id}/frequency`, {
-		method: "PATCH",
-		body
-	}),
-	refresh: (id) => request(`${API_V1}/saved-searches/${id}/refresh`, { method: "POST" }),
-	destroy: (id) => request(`${API_V1}/saved-searches/${id}`, { method: "DELETE" })
-};
-var billing = {
-	checkout: (slug) => {
-		window.location.assign(`/billing/checkout/${encodeURIComponent(slug)}`);
-	},
-	trialCheckout: (slug) => {
-		window.location.assign(`/billing/checkout/${encodeURIComponent(slug)}?trial=1`);
-	}
-};
-var bookmarks = {
-	save: (id) => request(`${API_V1}/videos/${id}/bookmark`, { method: "POST" }),
-	remove: (id) => request(`${API_V1}/videos/${id}/bookmark`, { method: "DELETE" })
-};
-var TRACKED_KEY = "vvf-tracked-searches";
-function readTracked() {
-	try {
-		const raw = window.sessionStorage.getItem(TRACKED_KEY);
-		const parsed = raw ? JSON.parse(raw) : [];
-		return Array.isArray(parsed) ? parsed : [];
-	} catch {
-		return [];
-	}
-}
-function writeTracked(entries) {
-	try {
-		window.sessionStorage.setItem(TRACKED_KEY, JSON.stringify(entries.slice(0, 10)));
-	} catch {}
-}
-function trackSearch(entry) {
-	const existing = readTracked().filter((t) => String(t.id) !== String(entry.id));
-	writeTracked([{
-		runningPromptShown: false,
-		completedPromptShown: false,
-		...entry
-	}, ...existing]);
-}
-function updateTracked(id, patch) {
-	writeTracked(readTracked().map((t) => String(t.id) === String(id) ? {
-		...t,
-		...patch
-	} : t));
-}
-function untrackSearch(id) {
-	writeTracked(readTracked().filter((t) => String(t.id) !== String(id)));
 }
 //#endregion
 //#region resources/js/Pages/Landing.jsx
@@ -6257,472 +7128,21 @@ function Show({ search: initial, isAuthenticated = false, billing }) {
 	})] });
 }
 //#endregion
-//#region resources/js/landing/flow/screens/KeywordsScreen.jsx
-var FREQUENCIES = [{
-	value: "weekly",
-	label: "Weekly",
-	hint: "Fresh viral videos every week. Best for fast-moving categories."
-}, {
-	value: "monthly",
-	label: "Monthly",
-	hint: "A monthly pull. Lighter cadence for slower niches."
-}];
-function KeywordChip({ value, selected, onToggle, onRemove }) {
-	return /* @__PURE__ */ jsxs("span", {
-		className: `group inline-flex items-center rounded-xl border text-[13.5px] transition-all duration-300 ${selected ? "border-accent/50 bg-accent/10 font-semibold text-accent shadow-[0_8px_22px_-14px_rgba(109,75,255,.9)] dark:text-accent-glow" : "border-black/[.09] hover:-translate-y-px hover:border-accent/35 dark:border-white/[.12]"}`,
-		children: [/* @__PURE__ */ jsxs("button", {
-			type: "button",
-			onClick: onToggle,
-			"aria-pressed": selected,
-			className: "flex items-center gap-2.5 py-2.5 pr-2 pl-3.5",
-			children: [/* @__PURE__ */ jsx("span", {
-				className: `flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-md border transition-all duration-200 ${selected ? "border-accent bg-accent text-white" : "border-black/25 dark:border-white/30"}`,
-				children: selected && /* @__PURE__ */ jsx(Check, {})
-			}), value]
-		}), /* @__PURE__ */ jsx("button", {
-			type: "button",
-			onClick: onRemove,
-			"aria-label": `Remove ${value}`,
-			title: "Remove",
-			className: "py-2.5 pr-3 pl-1 opacity-35 transition-opacity duration-200 hover:opacity-100",
-			children: /* @__PURE__ */ jsx(Close, { className: "h-3.5 w-3.5" })
-		})]
-	});
-}
-function SkeletonChips() {
-	return /* @__PURE__ */ jsx("div", {
-		className: "flex flex-wrap gap-2",
-		"aria-hidden": true,
-		children: [
-			132,
-			108,
-			156,
-			96,
-			140,
-			118
-		].map((width, i) => /* @__PURE__ */ jsx("span", {
-			className: "h-[42px] animate-pulse rounded-xl bg-black/[.05] dark:bg-white/[.06]",
-			style: { width }
-		}, i))
-	});
-}
-function KeywordsScreen({ phrase, onBack, onSubmit, submitting = false, error = null }) {
-	const [terms, setTerms] = useState([]);
-	const [loading, setLoading] = useState(true);
-	const [expansionSource, setExpansionSource] = useState(null);
-	const [draft, setDraft] = useState("");
-	const [frequency, setFrequency] = useState("weekly");
-	const [name, setName] = useState(phrase);
-	const requested = useRef(false);
-	useEffect(() => {
-		if (requested.current) return void 0;
-		requested.current = true;
-		const controller = new AbortController();
-		expandKeywords(phrase, { signal: controller.signal }).then((payload) => {
-			const keywords = Array.isArray(payload?.keywords) ? payload.keywords : [phrase];
-			setExpansionSource(payload?.source ?? null);
-			setTerms(keywords.map((value, i) => ({
-				value,
-				selected: i <= 2,
-				locked: i === 0
-			})));
-		}).catch(() => {
-			setTerms([{
-				value: phrase,
-				selected: true,
-				locked: true
-			}]);
-		}).finally(() => setLoading(false));
-		return () => controller.abort();
-	}, [phrase]);
-	const selected = terms.filter((t) => t.selected).map((t) => t.value);
-	const toggle = (value) => setTerms((prev) => prev.map((t) => t.value === value && !t.locked ? {
-		...t,
-		selected: !t.selected
-	} : t));
-	const remove = (value) => setTerms((prev) => prev.filter((t) => t.value !== value || t.locked));
-	const add = (e) => {
-		e.preventDefault();
-		const value = draft.trim().replace(/\s+/g, " ");
-		if (!value) return;
-		const match = terms.find((t) => t.value.toLowerCase() === value.toLowerCase());
-		if (match) setTerms((prev) => prev.map((t) => t.value === match.value ? {
-			...t,
-			selected: true
-		} : t));
-		else if (terms.length < 12) setTerms((prev) => [...prev, {
-			value,
-			selected: true
-		}]);
-		setDraft("");
-	};
-	const atKeywordCap = terms.length >= 12;
-	return /* @__PURE__ */ jsxs("div", {
-		className: "animate-fade-up mx-auto max-w-3xl",
-		children: [
-			/* @__PURE__ */ jsx("button", {
-				onClick: onBack,
-				className: "text-[13px] font-semibold muted transition hover:text-accent",
-				children: "← Back"
-			}),
-			/* @__PURE__ */ jsxs("div", {
-				className: "mt-5 flex flex-wrap items-center gap-2.5",
-				children: [/* @__PURE__ */ jsx("span", {
-					className: "text-[13px] muted",
-					children: "Researching"
-				}), /* @__PURE__ */ jsx("span", {
-					className: "inline-flex items-center gap-2 rounded-xl bg-ink px-3.5 py-2 text-[13.5px] font-semibold text-white shadow-[0_10px_26px_-14px_rgba(0,0,0,.8)] dark:bg-white dark:text-ink",
-					children: phrase
-				})]
-			}),
-			/* @__PURE__ */ jsx("h1", {
-				className: "mt-7 font-display text-[26px] leading-tight font-bold tracking-[-.02em] sm:text-[32px]",
-				children: "Add terms to widen the pull"
-			}),
-			/* @__PURE__ */ jsxs("p", {
-				className: "mt-2.5 text-[13.5px] muted",
-				children: [
-					"We scrape broadly on ",
-					/* @__PURE__ */ jsx("b", {
-						className: "text-ink dark:text-white",
-						children: phrase
-					}),
-					", then use everything you tick here to filter and rank what comes back. Keywords are fixed once the search is saved."
-				]
-			}),
-			/* @__PURE__ */ jsx("div", {
-				className: "ring-gradient mt-7 rounded-3xl bg-white/70 p-5 backdrop-blur-2xl sm:p-6 dark:bg-white/[.04]",
-				children: loading ? /* @__PURE__ */ jsxs(Fragment, { children: [/* @__PURE__ */ jsxs("p", {
-					className: "mb-4 inline-flex items-center gap-2 text-[12.5px] font-semibold text-accent dark:text-accent-glow",
-					children: [/* @__PURE__ */ jsx("span", { className: "h-3 w-3 animate-spin rounded-full border-2 border-accent border-t-transparent" }), "Suggesting keywords…"]
-				}), /* @__PURE__ */ jsx(SkeletonChips, {})] }) : /* @__PURE__ */ jsxs(Fragment, { children: [
-					/* @__PURE__ */ jsx("div", {
-						className: "flex flex-wrap gap-2",
-						children: terms.map(({ value, selected: on, locked }) => locked ? /* @__PURE__ */ jsxs("span", {
-							title: "The primary phrase is always included",
-							className: "inline-flex items-center gap-2.5 rounded-xl border border-accent/50 bg-accent/10 py-2.5 pr-3.5 pl-3.5 text-[13.5px] font-semibold text-accent dark:text-accent-glow",
-							children: [
-								/* @__PURE__ */ jsx("span", {
-									className: "flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-md border border-accent bg-accent text-white",
-									children: /* @__PURE__ */ jsx(Check, {})
-								}),
-								value,
-								/* @__PURE__ */ jsx("span", {
-									className: "text-[10.5px] font-bold tracking-wider uppercase opacity-60",
-									children: "primary"
-								})
-							]
-						}, value) : /* @__PURE__ */ jsx(KeywordChip, {
-							value,
-							selected: on,
-							onToggle: () => toggle(value),
-							onRemove: () => remove(value)
-						}, value))
-					}),
-					/* @__PURE__ */ jsxs("form", {
-						onSubmit: add,
-						className: "mt-5 flex max-w-md gap-2",
-						children: [/* @__PURE__ */ jsx("input", {
-							value: draft,
-							onChange: (e) => setDraft(e.target.value),
-							placeholder: atKeywordCap ? "Keyword limit reached" : "Add your own keyword",
-							"aria-label": "Add your own keyword",
-							disabled: atKeywordCap,
-							className: "field h-11 flex-1 text-sm"
-						}), /* @__PURE__ */ jsxs("button", {
-							type: "submit",
-							disabled: !draft.trim() || atKeywordCap,
-							className: "btn-ghost h-11 px-4 text-sm",
-							children: [/* @__PURE__ */ jsx(Plus, { className: "h-3.5 w-3.5" }), " Add"]
-						})]
-					}),
-					expansionSource === "fallback" && /* @__PURE__ */ jsx("p", {
-						className: "mt-3 text-[12px] faint",
-						children: "Suggestions came from templates this time — edit them freely."
-					})
-				] })
-			}),
-			/* @__PURE__ */ jsxs("div", {
-				className: "mt-6 grid gap-4 sm:grid-cols-2",
-				children: [/* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsx("label", {
-					htmlFor: "search-name",
-					className: "block text-[12.5px] font-semibold",
-					children: "Search name"
-				}), /* @__PURE__ */ jsx("input", {
-					id: "search-name",
-					value: name,
-					maxLength: 80,
-					onChange: (e) => setName(e.target.value),
-					className: "field mt-2 h-11 text-sm"
-				})] }), /* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsx("span", {
-					className: "block text-[12.5px] font-semibold",
-					children: "Refresh"
-				}), /* @__PURE__ */ jsx("div", {
-					className: "mt-2 flex gap-2",
-					children: FREQUENCIES.map((f) => /* @__PURE__ */ jsx("button", {
-						type: "button",
-						onClick: () => setFrequency(f.value),
-						title: f.hint,
-						className: `h-11 flex-1 rounded-xl border text-[13.5px] font-semibold transition-all duration-300 ${frequency === f.value ? "border-accent/50 bg-accent/10 text-accent dark:text-accent-glow" : "border-black/[.09] muted hover:border-accent/35 dark:border-white/[.12]"}`,
-						children: f.label
-					}, f.value))
-				})] })]
-			}),
-			/* @__PURE__ */ jsx("p", {
-				className: "mt-2.5 text-[12px] faint",
-				children: FREQUENCIES.find((f) => f.value === frequency)?.hint
-			}),
-			error && /* @__PURE__ */ jsx("p", {
-				className: "mt-4 rounded-xl border border-hot/30 bg-hot/10 px-4 py-3 text-[13px] text-hot",
-				children: error
-			}),
-			/* @__PURE__ */ jsxs("div", {
-				className: "mt-8 flex flex-col gap-4 border-t border-black/[.06] pt-6 sm:flex-row sm:items-center sm:justify-between dark:border-white/[.07]",
-				children: [/* @__PURE__ */ jsxs("p", {
-					className: "text-[13px] muted",
-					children: [
-						/* @__PURE__ */ jsx("b", {
-							className: "font-display text-[15px] text-ink dark:text-white",
-							children: selected.length
-						}),
-						" keyword",
-						selected.length === 1 ? "" : "s",
-						" · 1 search covers everything you select"
-					]
-				}), /* @__PURE__ */ jsxs("button", {
-					onClick: () => onSubmit({
-						keywords: selected,
-						frequency,
-						name: name.trim() || phrase
-					}),
-					disabled: loading || submitting || selected.length === 0,
-					className: "btn-accent h-[52px] px-7 text-[15px]",
-					children: [
-						submitting ? "Starting…" : "Run search",
-						" ",
-						/* @__PURE__ */ jsx(Arrow, {})
-					]
-				})]
-			})
-		]
-	});
-}
-//#endregion
 //#region resources/js/Pages/Search/Keywords.jsx
 var Keywords_exports = /* @__PURE__ */ __exportAll({ default: () => Keywords });
-function Keywords({ phrase, type = "brand" }) {
-	const [submitting, setSubmitting] = useState(false);
-	const [error, setError] = useState(null);
-	const submit = async ({ keywords, frequency, name }) => {
-		setSubmitting(true);
-		setError(null);
-		try {
-			const created = await createSavedSearch({
-				type,
-				phrase,
-				name,
-				keywords,
-				frequency
-			});
-			trackSearch({
-				id: created.id,
-				name: created.name,
-				url: created.url
-			});
-			router.visit(`/search/running?id=${created.id}`);
-		} catch (e) {
-			setError(e.message || "Could not start the search. Try again.");
-			setSubmitting(false);
-		}
-	};
-	return /* @__PURE__ */ jsxs(Fragment, { children: [/* @__PURE__ */ jsx(Head, { title: "Add keywords - Outlier Vault" }), /* @__PURE__ */ jsx(AppLayout, {
-		pill: {
-			text: "1 free search",
-			tone: "ok"
-		},
-		step: "keywords",
+/**
+* /search is the same wizard the dashboard hosts — it exists so a link with
+* `?q=` can drop someone straight onto the keyword step, and so the sidebar
+* search box has somewhere to point. Steps themselves never change the URL.
+*/
+function Keywords({ phrase = "", type = "brand" }) {
+	return /* @__PURE__ */ jsxs(Fragment, { children: [/* @__PURE__ */ jsx(Head, { title: phrase ? "Add keywords - Outlier Vault" : "Search - Outlier Vault" }), /* @__PURE__ */ jsx(AppLayout, {
 		width: "max-w-4xl",
-		children: /* @__PURE__ */ jsx(KeywordsScreen, {
-			phrase,
-			submitting,
-			error,
-			onBack: () => router.visit("/"),
-			onSubmit: submit
+		children: /* @__PURE__ */ jsx(SearchWizard, {
+			initialType: type,
+			initialQuery: phrase
 		})
 	})] });
-}
-//#endregion
-//#region resources/js/landing/flow/screens/RunningScreen.jsx
-var POLL_MS = 1e4;
-var STAGES = [
-	"Starting the scrape",
-	"Pulling videos from TikTok",
-	"Filtering against your keywords",
-	"Ranking by outlier score"
-];
-function RunningScreen({ searchId, onBack, onDone }) {
-	const { auth = {} } = usePage().props;
-	const signedIn = auth.signedIn ?? Boolean(auth.user);
-	const [search, setSearch] = useState(null);
-	const [failed, setFailed] = useState(null);
-	const [email, setEmail] = useState("");
-	const [emailSaved, setEmailSaved] = useState(false);
-	const [stage, setStage] = useState(0);
-	const finished = useRef(false);
-	useEffect(() => {
-		if (!searchId) return void 0;
-		let timer;
-		let cancelled = false;
-		const poll = async () => {
-			if (cancelled || finished.current) return;
-			try {
-				const found = (await fetchNotifications([searchId]))?.searches?.[0];
-				if (found) {
-					setSearch(found);
-					if (found.status === "done") {
-						finished.current = true;
-						updateTracked(searchId, {
-							completedPromptShown: true,
-							name: found.name
-						});
-						onDone?.(found);
-						return;
-					}
-					if (found.status === "failed") {
-						finished.current = true;
-						setFailed(found.latest_run_error || "The scrape did not finish. Try running the search again.");
-						return;
-					}
-				}
-			} catch {}
-			timer = window.setTimeout(poll, POLL_MS);
-		};
-		const onVisibility = () => {
-			if (document.visibilityState === "visible" && !finished.current) {
-				window.clearTimeout(timer);
-				poll();
-			}
-		};
-		poll();
-		document.addEventListener("visibilitychange", onVisibility);
-		return () => {
-			cancelled = true;
-			window.clearTimeout(timer);
-			document.removeEventListener("visibilitychange", onVisibility);
-		};
-	}, [searchId, onDone]);
-	useEffect(() => {
-		if (failed) return void 0;
-		const timer = window.setInterval(() => setStage((s) => Math.min(s + 1, STAGES.length - 1)), 12e3);
-		return () => window.clearInterval(timer);
-	}, [failed]);
-	return /* @__PURE__ */ jsxs("div", {
-		className: "animate-fade-up",
-		children: [/* @__PURE__ */ jsx("button", {
-			onClick: onBack,
-			className: "text-[13px] font-semibold muted transition hover:text-accent",
-			children: "← Back to keywords"
-		}), /* @__PURE__ */ jsx("div", {
-			className: "mx-auto mt-8 max-w-md text-center",
-			children: failed ? /* @__PURE__ */ jsxs(Fragment, { children: [
-				/* @__PURE__ */ jsx("span", {
-					className: "inline-flex items-center gap-2.5 rounded-full border border-hot/25 bg-hot/10 px-4 py-2 text-[12.5px] font-semibold text-hot",
-					children: "Search failed"
-				}),
-				/* @__PURE__ */ jsx("h1", {
-					className: "mt-7 font-display text-[26px] leading-tight font-bold tracking-[-.02em] sm:text-[32px]",
-					children: "That run didn't finish"
-				}),
-				/* @__PURE__ */ jsx("p", {
-					className: "mt-3 text-[14.5px] muted",
-					children: failed
-				}),
-				/* @__PURE__ */ jsx("button", {
-					onClick: onBack,
-					className: "btn-ghost mx-auto mt-7 h-[52px] px-6 text-[15px]",
-					children: "Edit keywords and retry"
-				})
-			] }) : /* @__PURE__ */ jsxs(Fragment, { children: [
-				/* @__PURE__ */ jsxs("span", {
-					className: "inline-flex items-center gap-2.5 rounded-full border border-accent/25 bg-accent/10 px-4 py-2 text-[12.5px] font-semibold text-accent dark:text-accent-glow",
-					children: [/* @__PURE__ */ jsx("span", { className: "h-3.5 w-3.5 animate-spin rounded-full border-2 border-accent border-t-transparent" }), "Search running · 1 to 20 min"]
-				}),
-				/* @__PURE__ */ jsx("h1", {
-					className: "mt-7 font-display text-[26px] leading-tight font-bold tracking-[-.02em] sm:text-[32px]",
-					children: search?.name ? `Scouting “${search.name}”` : "Scouting your niche"
-				}),
-				/* @__PURE__ */ jsx("p", {
-					className: "mt-3 text-[14.5px] muted",
-					children: "We'll show the results right here the moment they're ready."
-				}),
-				/* @__PURE__ */ jsx("ol", {
-					className: "mx-auto mt-8 max-w-sm space-y-2.5 text-left",
-					children: STAGES.map((label, i) => {
-						const state = i < stage ? "done" : i === stage ? "active" : "pending";
-						return /* @__PURE__ */ jsxs("li", {
-							className: `flex items-center gap-3 rounded-xl border px-4 py-3 text-[13.5px] transition-all duration-500 ${state === "pending" ? "border-black/[.06] faint dark:border-white/[.07]" : "border-accent/25 bg-accent/[.06]"}`,
-							children: [/* @__PURE__ */ jsx("span", {
-								className: `flex h-5 w-5 shrink-0 items-center justify-center rounded-full ${state === "done" ? "bg-accent text-white" : state === "active" ? "border-2 border-accent border-t-transparent animate-spin" : "border border-black/15 dark:border-white/20"}`,
-								children: state === "done" && /* @__PURE__ */ jsx(Check, { className: "h-2.5 w-2.5" })
-							}), label]
-						}, label);
-					})
-				}),
-				!signedIn && /* @__PURE__ */ jsxs("div", {
-					className: "ring-gradient mt-8 rounded-3xl bg-white/70 p-6 text-left backdrop-blur-2xl dark:bg-white/[.04]",
-					children: [
-						/* @__PURE__ */ jsx("p", {
-							className: "mb-4 text-center font-display text-sm font-semibold",
-							children: "Or have them emailed when they're done"
-						}),
-						/* @__PURE__ */ jsxs("a", {
-							href: "/auth/google",
-							className: "flex h-[52px] w-full items-center justify-center gap-3 rounded-full bg-[#2f2a2a] px-5 text-[15px] font-semibold text-white shadow-[0_18px_40px_-26px_rgba(0,0,0,.55)] transition hover:opacity-95",
-							children: [/* @__PURE__ */ jsx("span", {
-								className: "flex h-8 w-8 items-center justify-center rounded-full bg-white",
-								children: /* @__PURE__ */ jsx(Google$1, {})
-							}), "Continue with Google"]
-						}),
-						/* @__PURE__ */ jsxs("div", {
-							className: "my-4 flex items-center gap-3 text-xs faint",
-							children: [
-								/* @__PURE__ */ jsx("span", { className: "h-px flex-1 bg-black/[.08] dark:bg-white/10" }),
-								"or",
-								/* @__PURE__ */ jsx("span", { className: "h-px flex-1 bg-black/[.08] dark:bg-white/10" })
-							]
-						}),
-						/* @__PURE__ */ jsxs("form", {
-							onSubmit: (e) => {
-								e.preventDefault();
-								setEmailSaved(true);
-							},
-							className: "flex flex-col gap-2 sm:flex-row",
-							children: [/* @__PURE__ */ jsx("input", {
-								type: "email",
-								required: true,
-								value: email,
-								onChange: (e) => setEmail(e.target.value),
-								placeholder: "you@brand.com",
-								className: "field h-[52px] flex-1"
-							}), /* @__PURE__ */ jsxs("button", {
-								type: "submit",
-								className: "btn-accent h-[52px] px-5 text-[15px]",
-								children: [
-									emailSaved ? "Saved" : "Email me",
-									" ",
-									!emailSaved && /* @__PURE__ */ jsx(Arrow, {})
-								]
-							})]
-						})
-					]
-				}),
-				/* @__PURE__ */ jsx("p", {
-					className: `text-[12.5px] leading-relaxed faint ${signedIn ? "mt-8" : "mt-5"}`,
-					children: "Safe to close this tab — the search keeps running and stays on your watchlist."
-				})
-			] })
-		})]
-	});
 }
 //#endregion
 //#region resources/js/Pages/Search/Running.jsx
@@ -7332,7 +7752,9 @@ createServer((page) => createInertiaApp({
 			"./Pages/Settings/Subscription.jsx": Subscription_exports,
 			"./Pages/Trial.jsx": Trial_exports,
 			"./Pages/components/AppFooter.jsx": AppFooter_exports,
-			"./Pages/components/AppLayout.jsx": AppLayout_exports
+			"./Pages/components/AppLayout.jsx": AppLayout_exports,
+			"./Pages/components/SearchLauncher.jsx": SearchLauncher_exports,
+			"./Pages/components/SearchWizard.jsx": SearchWizard_exports
 		}))[`./Pages/${name}.jsx`];
 	},
 	setup: ({ App, props }) => /* @__PURE__ */ jsx(App, { ...props })

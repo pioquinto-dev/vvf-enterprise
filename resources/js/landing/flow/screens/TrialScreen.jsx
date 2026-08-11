@@ -40,8 +40,8 @@ export default function TrialScreen({ onBack, backLabel = 'Back to results' }) {
           Unlock paid tracking
         </h1>
         <p className="mt-3 text-[14.5px] muted">
-          Start on a 7-day trial. Basic includes 150 searches and 50 watchlist slots. Premium includes 400 searches and
-          unlimited watchlist.
+          Start on a 7-day trial. Basic includes 150 searches and 50 bookmark slots. Premium includes 400 searches and
+          unlimited bookmarks.
         </p>
 
         <div className="mx-auto mt-9 grid max-w-2xl gap-5 text-left sm:grid-cols-2">
@@ -67,7 +67,7 @@ export default function TrialScreen({ onBack, backLabel = 'Back to results' }) {
               <p className="mt-2 min-h-[32px] text-[11.5px] leading-[1.35] faint">then ${t.price} after 7 days</p>
 
               <p className="mt-4 text-[12px] faint">
-                {t.searchCreditsLimit} searches · {t.bookmarkLimit === -1 ? 'Unlimited' : t.bookmarkLimit} watchlist
+                {t.searchCreditsLimit} searches · {t.bookmarkLimit === -1 ? 'Unlimited' : t.bookmarkLimit} bookmarks
               </p>
 
               <ul className="mt-5 space-y-2.5 border-t border-black/[.05] pt-5 text-[13.5px] muted dark:border-white/[.07]">

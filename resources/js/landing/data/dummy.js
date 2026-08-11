@@ -38,7 +38,7 @@ export const FEATURES = [
     tag: 'Monitoring',
     title: 'Competitor Tracking',
     body: 'Point Outlier Vault at a competitor and get a running feed of every video mentioning them - organic creator posts, affiliate content, and paid spark ads alike.',
-    bullets: ['Unlimited competitor watchlists', 'Weekly change digest', 'Share-of-voice trendline'],
+    bullets: ['Unlimited competitor bookmarks', 'Weekly change digest', 'Share-of-voice trendline'],
     accent: 'from-[#0f3d5c] to-[#2aa7c4]',
   },
   {
@@ -148,7 +148,7 @@ export const PRICING = {
       price: 0,
       tagline: 'One search, no card.',
       cta: 'Run a free search',
-      features: ['1 free search', '0 watchlist slots', 'Last 90 days', 'Top 100 viral videos'],
+      features: ['1 free search', '0 bookmark slots', 'Last 90 days', 'Top 100 viral videos'],
       searchCreditsLimit: 1,
       searchCreditsUsed: 0,
       bookmarkLimit: 0,
@@ -163,7 +163,7 @@ export const PRICING = {
       popular: true,
       features: [
         '150 searches',
-        '50 watchlist slots',
+        '50 bookmark slots',
         'Weekly + monthly scheduling',
         'CSV export for reports',
         'Virality alerts',
@@ -182,7 +182,7 @@ export const PRICING = {
       cta: 'Choose Premium',
       features: [
         '400 searches',
-        'Unlimited watchlist',
+        'Unlimited bookmarks',
         'Weekly + monthly scheduling',
         'Virality alerts',
         'CSV export for reports',
@@ -217,7 +217,7 @@ export const FAQS = [
   },
   {
     q: 'Can I track competitors I do not name upfront?',
-    a: 'On Basic and above, each tracked search can watch a competitor continuously. Add them to a watchlist and Outlier Vault re-runs on your schedule, sending only what changed since last time.',
+    a: 'On Basic and above, each tracked search can watch a competitor continuously. Add it to Bookmark and Outlier Vault re-runs on your schedule, sending only what changed since last time.',
   },
   {
     q: 'What happens after the 10 day trial?',

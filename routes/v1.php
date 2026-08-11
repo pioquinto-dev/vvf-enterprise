@@ -9,7 +9,7 @@ Route::prefix('saved-searches')->group(function (): void {
     Route::get('/notifications', [SavedSearchController::class, 'notifications'])->name('api.v1.saved-searches.notifications');
     Route::post('/', [SavedSearchController::class, 'store'])->name('api.v1.saved-searches.store');
     Route::get('/{id}/json', [SavedSearchController::class, 'showJson'])->whereNumber('id')->name('api.v1.saved-searches.json');
-    Route::patch('/{id}/watchlist', [SavedSearchController::class, 'watchlist'])->whereNumber('id')->name('api.v1.saved-searches.watchlist');
+    Route::patch('/{id}/bookmark', [SavedSearchController::class, 'bookmark'])->whereNumber('id')->name('api.v1.saved-searches.bookmark');
     Route::patch('/{id}/pause', [SavedSearchController::class, 'pause'])->whereNumber('id')->middleware('paid')->name('api.v1.saved-searches.pause');
     Route::patch('/{id}/resume', [SavedSearchController::class, 'resume'])->whereNumber('id')->middleware('paid')->name('api.v1.saved-searches.resume');
     Route::patch('/{id}/frequency', [SavedSearchController::class, 'updateFrequency'])->whereNumber('id')->middleware('paid')->name('api.v1.saved-searches.frequency');

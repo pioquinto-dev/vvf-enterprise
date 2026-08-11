@@ -186,7 +186,7 @@ export function TrackerHead({
         <div className="head-actions">
           {onToggleWatchlist && (
             <button className="tbtn" onClick={onToggleWatchlist} disabled={watchlistUpdating}>
-              {search?.is_watchlisted ? 'watchlisted' : 'add to watchlist'}
+              {search?.is_watchlisted ? 'bookmarked' : 'add bookmark'}
             </button>
           )}
           <button className="tbtn primary" onClick={onShare}>

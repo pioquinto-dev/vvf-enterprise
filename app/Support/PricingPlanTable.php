@@ -24,7 +24,7 @@ class PricingPlanTable
                 'interval' => 'month',
                 'interval_count' => 1,
                 'is_active' => true,
-                'features' => ['1 free search', '0 watchlist slots', 'Last 90 days', 'Top 100 viral videos'],
+                'features' => ['1 free search', '0 bookmark slots', 'Last 90 days', 'Top 100 viral videos'],
                 'metadata' => [
                     'cta' => 'Run a free search',
                     'popular' => false,
@@ -56,7 +56,7 @@ class PricingPlanTable
                 'is_active' => true,
                 'features' => [
                     '150 searches',
-                    '50 watchlist slots',
+                    '50 bookmark slots',
                     'Weekly + monthly scheduling',
                     'CSV export for reports',
                     'Virality alerts',
@@ -93,7 +93,7 @@ class PricingPlanTable
                 'is_active' => true,
                 'features' => [
                     '400 searches',
-                    'Unlimited watchlist',
+                    'Unlimited bookmarks',
                     'Weekly + monthly scheduling',
                     'Virality alerts',
                     'CSV export for reports',

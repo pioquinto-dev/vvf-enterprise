@@ -1,9 +1,7 @@
 import { useEffect, useState } from 'react';
-import { Link, router, useForm, usePage } from '@inertiajs/react';
+import { Link, useForm, usePage } from '@inertiajs/react';
 
 import AppFooter from './AppFooter.jsx';
-import ThemeToggle from '../../landing/components/ThemeToggle.jsx';
-import { useTheme } from '../../landing/components/useTheme.js';
 import {
     Logo,
     Menu,
@@ -32,16 +30,16 @@ const STEP_ORDER = ['keywords', 'running', 'results'];
  * matching `type`, which `routes/public.php` already accepts.
  */
 const NAV = [
-    { label: 'Watchlist', href: '/saved-searches', icon: Library, match: '/saved-searches', exact: '/saved-searches' },
-    { label: 'Brand searches', href: '/saved-searches?type=brand', icon: Store, match: '/saved-searches', exact: '/saved-searches?type=brand' },
-    { label: 'Competitor searches', href: '/saved-searches?type=competitor', icon: Target, match: '/saved-searches', exact: '/saved-searches?type=competitor' },
-    { label: 'Product searches', href: '/saved-searches?type=product', icon: Search, match: '/saved-searches', exact: '/saved-searches?type=product', locked: true },
+    { label: 'Dashboard', href: '/dashboard', icon: Spark, match: '/dashboard', exact: '/dashboard' },
+    { label: 'Bookmark', href: '/bookmark', icon: Library, match: '/bookmark', exact: '/bookmark' },
+    { label: 'Brand searches', href: '/bookmark?type=brand-group', icon: Store, match: '/bookmark', exact: '/bookmark?type=brand-group' },
+    { label: 'Product searches', href: '/bookmark?type=product', icon: Search, match: '/bookmark', exact: '/bookmark?type=product', locked: true },
     { label: 'Plans', href: '/plans', icon: Spark, match: '/plans', exact: '/plans' },
 ];
 
 /* Mobile bottom bar — three destinations, mirroring the wireframe. */
 const TABS = [
-    { label: 'Watchlist', href: '/saved-searches', icon: Library, match: '/saved-searches' },
+    { label: 'Bookmark', href: '/bookmark', icon: Library, match: '/bookmark' },
     { label: 'Search', href: '/search', icon: Search, match: '/search' },
     { label: 'Account', href: '/settings/account', icon: User, match: '/settings' },
 ];
@@ -52,32 +50,6 @@ function isActive(currentUrl, match) {
 }
 
 /* ------------------------------------------------------------------ */
-
-function SidebarSearch({ onSubmitted }) {
-    const [phrase, setPhrase] = useState('');
-
-    const submit = (event) => {
-        event.preventDefault();
-        const q = phrase.trim();
-        if (!q) return;
-
-        onSubmitted?.();
-        router.visit(`/search?type=brand&q=${encodeURIComponent(q)}`);
-    };
-
-    return (
-        <form onSubmit={submit} className="relative">
-            <Search className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 faint" />
-            <input
-                value={phrase}
-                onChange={(event) => setPhrase(event.target.value)}
-                placeholder="Search a brand or topic"
-                aria-label="Search a brand or topic"
-                className="field h-11 pl-9 text-[13.5px]"
-            />
-        </form>
-    );
-}
 
 function AffiliateCard() {
     return (
@@ -212,7 +184,6 @@ export default function AppLayout({
 }) {
     const { props, url: currentUrl } = usePage();
     const { auth = {} } = props;
-    const { theme, toggle } = useTheme();
     const logout = useForm({});
     const [drawerOpen, setDrawerOpen] = useState(false);
 
@@ -258,11 +229,7 @@ export default function AppLayout({
             <aside className="fixed inset-y-0 left-0 z-40 hidden w-[268px] flex-col border-r border-black/[.06] bg-canvas/80 px-4 py-5 backdrop-blur-xl lg:flex dark:border-white/[.08] dark:bg-canvas-dark/80">
                 <div className="px-1">{brand}</div>
 
-                <div className="mt-6">
-                    <SidebarSearch />
-                </div>
-
-                <NavList currentUrl={currentUrl} className="mt-5" />
+                <NavList currentUrl={currentUrl} className="mt-6" />
 
                 <div className="flex-1" />
 
@@ -274,10 +241,6 @@ export default function AppLayout({
                         onSignOut={signOut}
                         signingOut={logout.processing}
                     />
-                    <div className="flex items-center justify-between px-1">
-                        <span className="text-[11.5px] faint">Appearance</span>
-                        <ThemeToggle theme={theme} onToggle={toggle} />
-                    </div>
                 </div>
             </aside>
 
@@ -326,20 +289,12 @@ export default function AppLayout({
                             </button>
                         </div>
 
-                        <div className="mt-5">
-                            <SidebarSearch onSubmitted={closeDrawer} />
-                        </div>
-
-                        <NavList currentUrl={currentUrl} onNavigate={closeDrawer} className="mt-4" />
+                        <NavList currentUrl={currentUrl} onNavigate={closeDrawer} className="mt-5" />
 
                         <div className="flex-1" />
 
                         <div className="space-y-3 border-t border-black/[.06] pt-4 dark:border-white/[.08]">
                             <AffiliateCard />
-                            <div className="flex items-center justify-between px-1">
-                                <span className="text-[12px] faint">Appearance</span>
-                                <ThemeToggle theme={theme} onToggle={toggle} />
-                            </div>
                             <AccountBlock
                                 signedIn={signedIn}
                                 email={auth.user?.email}

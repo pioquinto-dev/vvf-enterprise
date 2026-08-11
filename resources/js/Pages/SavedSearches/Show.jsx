@@ -19,7 +19,7 @@ const PILL = {
 export default function Show({ search: initial, isAuthenticated = false, billing }) {
     const [search, setSearch] = useState(initial);
     const [refreshing, setRefreshing] = useState(false);
-    const [watchlistUpdating, setWatchlistUpdating] = useState(false);
+    const [bookmarkingSearch, setBookmarkingSearch] = useState(false);
 
     const refresh = async () => {
         setRefreshing(true);
@@ -35,7 +35,7 @@ export default function Show({ search: initial, isAuthenticated = false, billing
     const remove = async () => {
         await api.destroy(search.id);
         untrackSearch(search.id);
-        router.visit('/saved-searches');
+        router.visit('/bookmark');
     };
 
     const togglePause = async () => {
@@ -46,14 +46,14 @@ export default function Show({ search: initial, isAuthenticated = false, billing
         setSearch((prev) => ({ ...prev, ...updated }));
     };
 
-    const toggleWatchlist = async () => {
-        setWatchlistUpdating(true);
+    const toggleBookmark = async () => {
+        setBookmarkingSearch(true);
 
         try {
-            const { search: updated } = await api.watchlist(search.id, !search.is_watchlisted);
+            const { search: updated } = await api.bookmark(search.id, !search.is_watchlisted);
             setSearch((prev) => ({ ...prev, ...updated }));
         } finally {
-            setWatchlistUpdating(false);
+            setBookmarkingSearch(false);
         }
     };
 
@@ -76,9 +76,9 @@ export default function Show({ search: initial, isAuthenticated = false, billing
                         isAuthenticated={isAuthenticated}
                         billing={billing}
                         refreshing={refreshing}
-                        watchlistUpdating={watchlistUpdating}
+                        bookmarkUpdating={bookmarkingSearch}
                         onRefresh={refresh}
-                        onToggleWatchlist={toggleWatchlist}
+                        onToggleBookmark={toggleBookmark}
                         onTogglePause={togglePause}
                         onDelete={remove}
                     />
@@ -89,10 +89,10 @@ export default function Show({ search: initial, isAuthenticated = false, billing
                             isAuthenticated={isAuthenticated}
                             billingState={billing}
                             refreshing={refreshing}
-                            watchlistUpdating={watchlistUpdating}
+                            bookmarkUpdating={bookmarkingSearch}
                             onRefresh={refresh}
                             onStartTrial={() => router.visit('/trial')}
-                            onToggleWatchlist={toggleWatchlist}
+                            onToggleBookmark={toggleBookmark}
                         />
 
                         <div className="mt-8 flex flex-wrap items-center justify-between gap-3 border-t border-black/[.06] pt-6 dark:border-white/[.07]">

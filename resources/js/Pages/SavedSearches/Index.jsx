@@ -7,12 +7,13 @@ import { savedSearch as api } from '../../landing/flow/api.js';
 
 function FilterSelect({ value, onChange, active, label, children }) {
   return (
-    <div className="relative">
+    <label className="relative block min-w-0">
+      <span className="mb-1.5 block text-[11px] font-semibold tracking-[.08em] faint uppercase lg:hidden">{label}</span>
       <select
         aria-label={label}
         value={value}
         onChange={onChange}
-        className={`h-9 cursor-pointer appearance-none rounded-lg border pr-8 pl-3 text-[12.5px] font-semibold outline-none transition duration-200 focus:border-accent/50 focus:ring-4 focus:ring-accent/12 ${
+        className={`h-10 w-full cursor-pointer appearance-none rounded-xl border pr-9 pl-3 text-[12.5px] font-semibold outline-none transition duration-200 focus:border-accent/50 focus:ring-4 focus:ring-accent/12 ${
           active
             ? 'border-accent/30 bg-accent/10 text-accent dark:border-accent/35 dark:text-accent-glow'
             : 'border-black/[.08] bg-white text-ink hover:border-black/[.18] dark:border-white/[.1] dark:bg-white/[.05] dark:text-white dark:hover:border-white/[.2]'
@@ -21,7 +22,7 @@ function FilterSelect({ value, onChange, active, label, children }) {
         {children}
       </select>
       <Chevron className="pointer-events-none absolute top-1/2 right-2.5 h-3.5 w-3.5 -translate-y-1/2 opacity-45" />
-    </div>
+    </label>
   );
 }
 
@@ -62,6 +63,7 @@ const STATUS = {
 };
 
 const FILTER_LABELS = {
+  'brand-group': 'Brand searches',
   brand: 'Brand searches',
   competitor: 'Competitor searches',
   product: 'Product searches',
@@ -84,22 +86,24 @@ function compareDates(a, b) {
   return bTime - aTime;
 }
 
-export default function Index({ searches: initialSearches, filterType = null, watchlistedOnly = true }) {
+export default function Index({ searches: initialSearches, filterType = null, watchlistedOnly: bookmarkedOnly = true }) {
+  const isBrandCategoryView = filterType === 'brand-group';
   const [searches, setSearches] = useState(initialSearches);
   const [animatingId, setAnimatingId] = useState(null);
   const [openMenuId, setOpenMenuId] = useState(null);
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const [query, setQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [frequencyFilter, setFrequencyFilter] = useState('all');
-  const [searchTypeFilter, setSearchTypeFilter] = useState(filterType ?? 'all');
+  const [searchTypeFilter, setSearchTypeFilter] = useState(isBrandCategoryView ? 'all' : (filterType ?? 'all'));
   const [sortBy, setSortBy] = useState('recent_refresh');
   const [modalState, setModalState] = useState({ type: null, search: null });
   const [formState, setFormState] = useState({ name: '', frequency: 'weekly' });
   const [submitting, setSubmitting] = useState(false);
   const menuRef = useRef(null);
 
-  const title = filterType ? FILTER_LABELS[filterType] ?? 'Watchlist' : 'Watchlist';
-  const searchHref = `/search?type=${filterType ?? 'brand'}`;
+  const title = filterType ? FILTER_LABELS[filterType] ?? 'Bookmark' : 'Bookmark';
+  const searchHref = `/search?type=${filterType === 'competitor' ? 'competitor' : 'brand'}`;
 
   useEffect(() => {
     if (openMenuId === null) {
@@ -157,7 +161,7 @@ export default function Index({ searches: initialSearches, filterType = null, wa
       const matchesStatus = statusFilter === 'all' || search.status === statusFilter;
       const matchesFrequency = frequencyFilter === 'all' || search.frequency === frequencyFilter;
       const matchesType =
-        !watchlistedOnly || searchTypeFilter === 'all' || search.search_type === searchTypeFilter;
+        !(bookmarkedOnly || isBrandCategoryView) || searchTypeFilter === 'all' || search.search_type === searchTypeFilter;
 
       return matchesQuery && matchesStatus && matchesFrequency && matchesType;
     });
@@ -177,19 +181,25 @@ export default function Index({ searches: initialSearches, filterType = null, wa
     });
 
     return next;
-  }, [frequencyFilter, query, searches, searchTypeFilter, sortBy, statusFilter, watchlistedOnly]);
+  }, [bookmarkedOnly, frequencyFilter, isBrandCategoryView, query, searches, searchTypeFilter, sortBy, statusFilter]);
 
   const filtersActive =
     query.trim() !== '' ||
     statusFilter !== 'all' ||
     frequencyFilter !== 'all' ||
-    (watchlistedOnly && searchTypeFilter !== 'all');
+    ((bookmarkedOnly || isBrandCategoryView) && searchTypeFilter !== 'all');
+
+  useEffect(() => {
+    if (filtersActive) {
+      setFiltersOpen(true);
+    }
+  }, [filtersActive]);
 
   const resetFilters = () => {
     setQuery('');
     setStatusFilter('all');
     setFrequencyFilter('all');
-    setSearchTypeFilter(filterType ?? 'all');
+    setSearchTypeFilter(isBrandCategoryView ? 'all' : (filterType ?? 'all'));
   };
 
   const openModal = (type, search) => {
@@ -217,19 +227,19 @@ export default function Index({ searches: initialSearches, filterType = null, wa
     setSearches((current) => current.filter((item) => item.id !== searchId));
   };
 
-  const toggleWatchlist = async (event, search) => {
+  const toggleBookmark = async (event, search) => {
     event.preventDefault();
     event.stopPropagation();
 
     setAnimatingId(search.id);
 
     try {
-      const payload = await api.watchlist(search.id, !search.is_watchlisted);
+      const payload = await api.bookmark(search.id, !search.is_watchlisted);
 
       setSearches((current) =>
         current
           .map((item) => (item.id === search.id ? { ...item, ...payload.search } : item))
-          .filter((item) => (watchlistedOnly ? item.is_watchlisted : true))
+          .filter((item) => (bookmarkedOnly ? item.is_watchlisted : true))
       );
     } finally {
       window.setTimeout(() => setAnimatingId((current) => (current === search.id ? null : current)), 280);
@@ -289,9 +299,11 @@ export default function Index({ searches: initialSearches, filterType = null, wa
         title={title}
         pill={{ text: `${filteredSearches.length} saved`, tone: 'accent' }}
         subtitle={
-          watchlistedOnly
+          bookmarkedOnly
             ? 'Each one re-runs on its own schedule and keeps the top matches.'
-            : filterType
+            : isBrandCategoryView
+              ? 'Own and competitor searches live together here, with a category filter to split them.'
+              : filterType
               ? `These ${filterType} searches re-run on their own schedule and keep the top matches.`
               : 'Each one re-runs on its own schedule and keeps the top matches.'
         }
@@ -301,7 +313,7 @@ export default function Index({ searches: initialSearches, filterType = null, wa
           </Link>
         }
         toolbar={
-          <div className="surface flex flex-col gap-2 p-2 lg:flex-row lg:items-center">
+          <div className="surface flex flex-col gap-3 p-3 lg:flex-row lg:items-center lg:gap-2 lg:p-2">
             <label className="relative min-w-0 flex-1">
               <Search className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 faint" />
               <input
@@ -309,24 +321,33 @@ export default function Index({ searches: initialSearches, filterType = null, wa
                 onChange={(event) => setQuery(event.target.value)}
                 placeholder="Search keyword set or label"
                 aria-label="Search keyword set or label"
-                className="h-9 w-full rounded-lg border border-transparent bg-transparent pr-3 pl-9 text-[13px] text-ink outline-none transition duration-200 placeholder:text-ink/35 focus:border-accent/40 focus:ring-4 focus:ring-accent/12 dark:text-white dark:placeholder:text-white/35"
+                className="h-10 w-full rounded-xl border border-black/[.08] bg-white pr-3 pl-9 text-[13px] text-ink outline-none transition duration-200 placeholder:text-ink/35 focus:border-accent/40 focus:ring-4 focus:ring-accent/12 dark:border-white/[.1] dark:bg-white/[.05] dark:text-white dark:placeholder:text-white/35 lg:h-9 lg:border-transparent lg:bg-transparent"
               />
             </label>
 
+            <button
+              type="button"
+              onClick={() => setFiltersOpen((open) => !open)}
+              className="inline-flex h-10 items-center justify-between rounded-xl border border-black/[.08] bg-white px-3 text-[12.5px] font-semibold text-ink transition hover:border-accent/35 dark:border-white/[.1] dark:bg-white/[.05] dark:text-white lg:hidden"
+            >
+              <span>{filtersOpen ? 'Hide filters' : 'Show filters'}</span>
+              <Chevron className={`h-3.5 w-3.5 transition-transform ${filtersOpen ? 'rotate-180' : ''}`} />
+            </button>
+
             <Divider />
 
-            <div className="flex flex-wrap items-center gap-2">
-              {watchlistedOnly && (
+            <div className={`${filtersOpen ? 'grid' : 'hidden'} grid-cols-2 gap-2 lg:flex lg:flex-wrap lg:items-center`}>
+              {(bookmarkedOnly || isBrandCategoryView) && (
                 <FilterSelect
-                  label="Search type"
+                  label={isBrandCategoryView ? 'Brand Category' : 'Search type'}
                   value={searchTypeFilter}
                   active={searchTypeFilter !== 'all'}
                   onChange={(event) => setSearchTypeFilter(event.target.value)}
                 >
-                  <option value="all">All types</option>
-                  <option value="brand">Brand</option>
+                  <option value="all">{isBrandCategoryView ? 'All categories' : 'All types'}</option>
+                  <option value="brand">{isBrandCategoryView ? 'Own' : 'Brand'}</option>
                   <option value="competitor">Competitor</option>
-                  <option value="product">Product</option>
+                  {!isBrandCategoryView && <option value="product">Product</option>}
                 </FilterSelect>
               )}
 
@@ -349,26 +370,11 @@ export default function Index({ searches: initialSearches, filterType = null, wa
                 active={frequencyFilter !== 'all'}
                 onChange={(event) => setFrequencyFilter(event.target.value)}
               >
-                <option value="all">Any cadence</option>
+                <option value="all">Any Frequency</option>
                 <option value="weekly">Weekly</option>
                 <option value="monthly">Monthly</option>
               </FilterSelect>
 
-              {filtersActive && (
-                <button
-                  type="button"
-                  onClick={resetFilters}
-                  className="inline-flex h-9 items-center gap-1.5 rounded-lg px-2.5 text-[12.5px] font-semibold muted transition hover:bg-black/[.04] hover:text-ink dark:hover:bg-white/[.06] dark:hover:text-white"
-                >
-                  <Close className="h-3.5 w-3.5" /> Clear
-                </button>
-              )}
-            </div>
-
-            <Divider />
-
-            <div className="flex items-center gap-2">
-              <span className="hidden shrink-0 text-[12px] faint sm:inline">Sort</span>
               <FilterSelect
                 label="Sort by"
                 value={sortBy}
@@ -380,6 +386,16 @@ export default function Index({ searches: initialSearches, filterType = null, wa
                   </option>
                 ))}
               </FilterSelect>
+
+              {filtersActive && (
+                <button
+                  type="button"
+                  onClick={resetFilters}
+                  className="col-span-2 inline-flex h-10 items-center justify-center gap-1.5 rounded-xl border border-black/[.08] bg-white px-3 text-[12.5px] font-semibold muted transition hover:bg-black/[.04] hover:text-ink dark:border-white/[.1] dark:bg-white/[.05] dark:hover:bg-white/[.06] dark:hover:text-white lg:col-auto lg:h-9 lg:border-transparent lg:bg-transparent lg:px-2.5"
+                >
+                  <Close className="h-3.5 w-3.5" /> Clear
+                </button>
+              )}
             </div>
           </div>
         }
@@ -387,12 +403,12 @@ export default function Index({ searches: initialSearches, filterType = null, wa
         {filteredSearches.length === 0 ? (
           <div className="ring-gradient animate-fade-up rounded-3xl bg-white/70 p-12 text-center backdrop-blur-2xl dark:bg-white/[.04]">
             <h2 className="font-display text-[20px] font-bold">
-              {watchlistedOnly ? 'Nothing matched your watchlist filters' : `No ${filterType ?? 'saved'} searches matched`}
+              {bookmarkedOnly ? 'Nothing matched your bookmark filters' : `No ${filterType ?? 'saved'} searches matched`}
             </h2>
             <p className="mx-auto mt-3 max-w-sm text-[13.5px] leading-relaxed muted">
               {searches.length === 0
-                ? watchlistedOnly
-                  ? 'Run a search, then bookmark it to keep it on your watchlist.'
+                ? bookmarkedOnly
+                  ? 'Run a search, then bookmark it to keep it in Bookmark.'
                   : 'Run a search in this category and it will show up here automatically.'
                 : 'Try a different keyword, status, frequency, or sort combination.'}
             </p>
@@ -430,13 +446,13 @@ export default function Index({ searches: initialSearches, filterType = null, wa
                     <div className="flex items-center gap-2">
                       <button
                         type="button"
-                        onClick={(event) => toggleWatchlist(event, s)}
+                        onClick={(event) => toggleBookmark(event, s)}
                         className={`inline-flex h-8 w-8 items-center justify-center rounded-lg border transition duration-300 hover:border-accent/35 hover:text-accent dark:hover:text-accent-glow ${
                           animatingId === s.id
                             ? 'scale-110 border-accent/45 bg-accent/10 text-accent dark:border-accent/40 dark:text-accent-glow'
                             : 'border-black/[.08] dark:border-white/[.12]'
                         }`}
-                        title={s.is_watchlisted ? 'Remove from watchlist' : 'Add to watchlist'}
+                        title={s.is_watchlisted ? 'Remove bookmark' : 'Add bookmark'}
                       >
                         <Bookmark className="h-3.5 w-3.5" filled={Boolean(s.is_watchlisted)} />
                       </button>

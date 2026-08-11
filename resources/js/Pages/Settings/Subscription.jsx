@@ -63,7 +63,7 @@ export default function Subscription({ subscription }) {
 
   const planFeatures = useMemo(() => {
     return [
-      bookmarkLimit === -1 ? 'Unlimited watchlist' : `${bookmarkLimit} watchlist slots`,
+      bookmarkLimit === -1 ? 'Unlimited bookmarks' : `${bookmarkLimit} bookmark slots`,
       `${searchLimit} searches`,
       subscription?.status === 'active' ? 'Active subscription' : 'Billing available',
     ];
@@ -163,8 +163,8 @@ export default function Subscription({ subscription }) {
                 tone="sky"
               />
               <LimitCard
-                title="Watchlist"
-                blurb="Watchlist capacity available on your current plan."
+                title="Bookmarks"
+                blurb="Bookmark capacity available on your current plan."
                 remainingLabel={bookmarkLimit === -1 ? 'Unlimited' : `${Math.max(0, bookmarkLimit - bookmarksUsed)} remaining`}
                 chip={bookmarkLimit === -1 ? 'Unlimited' : `${bookmarksUsed} / ${bookmarkLimit} used`}
                 ratio={usageRatio(bookmarksUsed, bookmarkLimit)}

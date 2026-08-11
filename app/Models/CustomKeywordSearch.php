@@ -109,6 +109,6 @@ class CustomKeywordSearch extends Model
 
     public function url(): string
     {
-        return '/saved-searches/'.$this->id;
+        return '/bookmark/'.$this->id;
     }
 }

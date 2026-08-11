@@ -194,9 +194,9 @@ class SavedSearchManager
         $search->delete();
     }
 
-    public function setWatchlist(CustomKeywordSearch $search, bool $watchlisted): CustomKeywordSearch
+    public function setBookmarked(CustomKeywordSearch $search, bool $bookmarked): CustomKeywordSearch
     {
-        $search->update(['is_watchlisted' => $watchlisted]);
+        $search->update(['is_watchlisted' => $bookmarked]);
 
         return $search->refresh();
     }

@@ -1,44 +1,22 @@
-import { useState } from 'react';
-import { Head, router } from '@inertiajs/react';
+import { Head } from '@inertiajs/react';
 
 import AppLayout from '../components/AppLayout.jsx';
-import KeywordsScreen from '../../landing/flow/screens/KeywordsScreen.jsx';
-import { createSavedSearch, trackSearch } from '../../landing/flow/api.js';
+import EntitlementsBar from '../components/EntitlementsBar.jsx';
+import SearchWizard from '../components/SearchWizard.jsx';
 
-export default function Keywords({ phrase, type = 'brand' }) {
-    const [submitting, setSubmitting] = useState(false);
-    const [error, setError] = useState(null);
-
-    const submit = async ({ keywords, frequency, name }) => {
-        setSubmitting(true);
-        setError(null);
-
-        try {
-            const created = await createSavedSearch({ type, phrase, name, keywords, frequency });
-
-            // Remember it locally so the running screen can keep polling even
-            // if the visitor navigates away and comes back.
-            trackSearch({ id: created.id, name: created.name, url: created.url });
-
-            router.visit(`/search/running?id=${created.id}`);
-        } catch (e) {
-            setError(e.message || 'Could not start the search. Try again.');
-            setSubmitting(false);
-        }
-    };
-
+/**
+ * /search is the same wizard the dashboard hosts — it exists so a link with
+ * `?q=` can drop someone straight onto the keyword step, and so the sidebar
+ * search box has somewhere to point. Steps themselves never change the URL.
+ */
+export default function Keywords({ phrase = '', type = 'brand' }) {
     return (
         <>
-            <Head title="Add keywords - Outlier Vault" />
+            <Head title={phrase ? 'Add keywords - Outlier Vault' : 'Search - Outlier Vault'} />
 
-            <AppLayout pill={{ text: '1 free search', tone: 'ok' }} step="keywords" width="max-w-4xl">
-                <KeywordsScreen
-                    phrase={phrase}
-                    submitting={submitting}
-                    error={error}
-                    onBack={() => router.visit('/')}
-                    onSubmit={submit}
-                />
+            <AppLayout width="max-w-4xl">
+                <EntitlementsBar />
+                <SearchWizard initialType={type} initialQuery={phrase} />
             </AppLayout>
         </>
     );

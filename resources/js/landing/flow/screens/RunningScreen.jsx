@@ -196,7 +196,7 @@ export default function RunningScreen({ searchId, onBack, onDone }) {
             )}
 
             <p className={`text-[12.5px] leading-relaxed faint ${signedIn ? 'mt-8' : 'mt-5'}`}>
-              Safe to close this tab — the search keeps running and stays on your watchlist.
+              Safe to close this tab — the search keeps running and stays in Bookmark.
             </p>
           </>
         )}

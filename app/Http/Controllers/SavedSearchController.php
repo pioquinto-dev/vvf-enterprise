@@ -104,27 +104,30 @@ class SavedSearchController extends Controller
     }
 
     /**
-     * GET /saved-searches — the saved list.
+     * GET /bookmark — the saved list.
      */
     public function index(Request $request): Response
     {
-        $type = $this->filterType($request);
-        $watchlistedOnly = $type === null;
+        $filterType = $this->filterType($request);
+        $bookmarkedOnly = $filterType === null;
+        $queryType = $filterType === 'brand-group'
+            ? [CustomKeywordSearch::TYPE_BRAND, CustomKeywordSearch::TYPE_COMPETITOR]
+            : $filterType;
 
-        $searches = $this->searches->all($request, $type, $watchlistedOnly)
+        $searches = $this->searches->all($request, $queryType, $bookmarkedOnly)
             ->map(fn (CustomKeywordSearch $search): array => SavedSearchPresenter::summary($search))
             ->all();
 
         return Inertia::render('SavedSearches/Index', [
             'searches' => $searches,
-            'filterType' => $type,
-            'watchlistedOnly' => $watchlistedOnly,
+            'filterType' => $filterType,
+            'watchlistedOnly' => $bookmarkedOnly,
             'isAuthenticated' => $request->user() !== null,
         ]);
     }
 
     /**
-     * GET /saved-searches/{id} — detail with the ranked result list.
+     * GET /bookmark/{id} — detail with the ranked result list.
      */
     public function show(Request $request, int $id): Response
     {
@@ -211,18 +214,18 @@ class SavedSearchController extends Controller
             return response()->json(['deleted' => true]);
         }
 
-        return redirect('/saved-searches');
+        return redirect('/bookmark');
     }
 
-    public function watchlist(Request $request, int $id): JsonResponse
+    public function bookmark(Request $request, int $id): JsonResponse
     {
         $validated = $request->validate([
-            'watchlisted' => ['required', 'boolean'],
+            'bookmarked' => ['required', 'boolean'],
         ]);
 
-        $search = $this->manager->setWatchlist(
+        $search = $this->manager->setBookmarked(
             $this->searches->resolve($request, $id),
-            (bool) $validated['watchlisted'],
+            (bool) $validated['bookmarked'],
         );
 
         return response()->json([
@@ -233,6 +236,10 @@ class SavedSearchController extends Controller
     private function filterType(Request $request): ?string
     {
         $type = (string) $request->query('type', '');
+
+        if ($type === 'brand-group') {
+            return $type;
+        }
 
         return in_array($type, CustomKeywordSearch::allowedTypes(), true) ? $type : null;
     }
