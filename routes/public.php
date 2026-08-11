@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\ComingSoonInterestController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Auth\GoogleAuthController;
 use App\Http\Controllers\Auth\RegisteredUserController;
@@ -10,8 +11,14 @@ use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
 Route::get('/', function (Request $request) {
-    return Inertia::render($request->user() ? 'Dashboard' : 'Landing');
+    if ($request->user()) {
+        return Inertia::render('Dashboard');
+    }
+
+    return Inertia::render(config('features.show_coming_soon') ? 'ComingSoon' : 'Landing');
 })->name('landing');
+
+Route::post('/coming-soon-interest', ComingSoonInterestController::class)->name('coming-soon-interest.store');
 
 Route::prefix('search')->group(function (): void {
     Route::get('/', function (Request $request) {
