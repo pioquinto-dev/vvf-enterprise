@@ -1249,8 +1249,8 @@ function AppLayout({ pill, step, title, subtitle, actions, toolbar, width = "max
 		children: [/* @__PURE__ */ jsx(Logo, { className: "h-8 w-8" }), /* @__PURE__ */ jsxs("span", {
 			className: "leading-none",
 			children: [/* @__PURE__ */ jsx("span", {
-				className: "block font-display text-[19px] font-bold tracking-[-.03em]",
-				children: "vvf"
+				className: "block font-display text-[17px] font-bold tracking-[-.03em]",
+				children: "Outlier Vault"
 			}), /* @__PURE__ */ jsx("span", {
 				className: "mt-1 block text-[9px] font-semibold tracking-[.16em] faint uppercase",
 				children: "Find outlier videos daily"
@@ -2204,8 +2204,8 @@ var FOOTER_LINKS = [
 var SEARCH_TYPES = {
 	brand: {
 		key: "brand",
-		label: "Your brand",
-		placeholder: "Enter your complete brand name",
+		label: "Brand",
+		placeholder: "Enter brand name",
 		sectionHeading: "Add terms to expand on your brand",
 		sample: "GoPure",
 		keywords: [
@@ -2378,40 +2378,22 @@ function Hero({ onStart }) {
 			children: [
 				/* @__PURE__ */ jsxs("div", {
 					className: "mx-auto max-w-3xl text-center",
-					children: [
-						/* @__PURE__ */ jsx(Reveal, { children: /* @__PURE__ */ jsxs("span", {
-							className: "ring-gradient inline-flex items-center gap-2.5 rounded-full bg-white/60 px-4 py-2 text-[12.5px] font-semibold backdrop-blur-xl dark:bg-white/[.05]",
-							children: [/* @__PURE__ */ jsxs("span", {
-								className: "relative flex h-2 w-2",
-								children: [/* @__PURE__ */ jsx("span", { className: "animate-pulse-ring absolute inset-0 rounded-full bg-hot" }), /* @__PURE__ */ jsx("span", { className: "relative h-2 w-2 rounded-full bg-hot" })]
-							}), "TikTok social intelligence for brands"]
-						}) }),
-						/* @__PURE__ */ jsx(Reveal, {
-							delay: 80,
-							children: /* @__PURE__ */ jsxs("h1", {
-								className: "mt-7 font-display text-[38px] leading-[1.04] font-bold tracking-[-.035em] sm:text-[58px] lg:text-[72px]",
-								children: [
-									"Find the TikToks",
-									/* @__PURE__ */ jsx("br", { className: "hidden sm:block" }),
-									" that are",
-									" ",
-									/* @__PURE__ */ jsx("span", {
-										className: "text-gradient",
-										children: "actually moving"
-									}),
-									/* @__PURE__ */ jsx("br", { className: "hidden sm:block" }),
-									" your category"
-								]
-							})
-						}),
-						/* @__PURE__ */ jsx(Reveal, {
-							delay: 140,
-							children: /* @__PURE__ */ jsx("p", {
-								className: "mx-auto mt-6 max-w-xl text-[15.5px] leading-relaxed muted sm:text-[17px]",
-								children: "Point Outlier Vault at your brand, a competitor, or a single product. We scan TikTok and hand back the viral videos, the creators behind them, and what changed since last week."
-							})
+					children: [/* @__PURE__ */ jsx(Reveal, {
+						delay: 80,
+						children: /* @__PURE__ */ jsxs("h1", {
+							className: "mt-7 font-display text-[38px] leading-[1.04] font-bold tracking-[-.035em] sm:text-[58px] lg:text-[72px]",
+							children: ["TikTok Brand and Social Media", /* @__PURE__ */ jsx("span", {
+								className: "text-gradient",
+								children: " Intelligence Tool"
+							})]
 						})
-					]
+					}), /* @__PURE__ */ jsx(Reveal, {
+						delay: 140,
+						children: /* @__PURE__ */ jsx("p", {
+							className: "mx-auto mt-6 max-w-xl text-[15.5px] leading-relaxed muted sm:text-[17px]",
+							children: "Enter your brand, a competitor or single product; then we will scan TikTok and return the most viral outlier videos, the creators behind them and the reason they went viral"
+						})
+					})]
 				}),
 				/* @__PURE__ */ jsxs(Reveal, {
 					delay: 200,
@@ -2422,18 +2404,27 @@ function Hero({ onStart }) {
 							className: "rounded-[20px] bg-white/85 p-4 sm:p-5 dark:bg-black/25",
 							children: [
 								/* @__PURE__ */ jsxs("div", {
-									className: "mb-5 flex items-start gap-3 text-left",
-									children: [/* @__PURE__ */ jsx(Mascot, { className: "animate-float h-12 w-12 shrink-0 sm:h-14 sm:w-14" }), /* @__PURE__ */ jsxs("div", {
-										className: "relative rounded-2xl bg-ink px-4 py-3 text-[13.5px] leading-relaxed text-white shadow-lg dark:bg-white dark:text-ink",
+									className: "mb-5 flex items-start gap-3.5 text-left",
+									children: [/* @__PURE__ */ jsx("div", {
+										className: "pt-1",
+										children: /* @__PURE__ */ jsx(Mascot, { className: "animate-float h-12 w-12 shrink-0 sm:h-14 sm:w-14" })
+									}), /* @__PURE__ */ jsxs("div", {
+										className: "relative rounded-[24px] border border-[#e8e3f6] bg-[linear-gradient(180deg,rgba(255,255,255,.96),rgba(245,242,252,.94))] px-4 py-3 text-[13.5px] leading-relaxed text-[#2e3148] shadow-[0_18px_40px_-28px_rgba(104,93,151,.38)] dark:border-white/10 dark:bg-white/[.08] dark:text-white",
 										children: [/* @__PURE__ */ jsx("span", {
 											"aria-hidden": true,
-											className: "absolute top-4 -left-1.5 h-3 w-3 rotate-45 rounded-sm bg-ink dark:bg-white"
+											className: "absolute top-4 -left-1.5 h-3 w-3 rotate-45 border-l border-b border-[#e8e3f6] bg-[#f7f4fc] dark:border-white/10 dark:bg-white/[.08]"
 										}), "I scan TikTok for your brand, products, and competitors, and pull the recent viral videos."]
 									})]
 								}),
-								/* @__PURE__ */ jsx("p", {
-									className: "mb-2.5 text-left font-display text-[15px] font-semibold",
-									children: "What do you want to research?"
+								/* @__PURE__ */ jsxs("div", {
+									className: "mb-2.5 flex items-center justify-between gap-3",
+									children: [/* @__PURE__ */ jsx("p", {
+										className: "text-left font-display text-[15px] font-semibold",
+										children: "What do you want to research?"
+									}), /* @__PURE__ */ jsx("span", {
+										className: "rounded-full border border-accent/15 bg-accent/8 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.24em] text-accent dark:border-accent-glow/20 dark:bg-accent-glow/10 dark:text-accent-glow",
+										children: "Search"
+									})]
 								}),
 								/* @__PURE__ */ jsx("div", {
 									className: "flex gap-1.5 rounded-2xl bg-black/[.045] p-1.5 dark:bg-white/[.05]",
@@ -2446,12 +2437,35 @@ function Hero({ onStart }) {
 								/* @__PURE__ */ jsxs("form", {
 									onSubmit: submit,
 									className: "mt-3 flex flex-col gap-2 sm:flex-row",
-									children: [/* @__PURE__ */ jsx("input", {
-										id: "search-subject",
-										value,
-										onChange: (e) => setValue(e.target.value),
-										placeholder: config.placeholder,
-										className: "field h-[54px] flex-1"
+									children: [/* @__PURE__ */ jsxs("label", {
+										className: "group flex h-[54px] flex-1 items-center gap-3 rounded-[18px] border border-black/8 bg-white px-4 shadow-[0_16px_40px_-28px_rgba(76,56,255,.55)] transition-all duration-300 focus-within:-translate-y-0.5 focus-within:border-accent/35 focus-within:shadow-[0_22px_50px_-28px_rgba(76,56,255,.6)] dark:border-white/10 dark:bg-white/[.04] dark:focus-within:border-accent-glow/35",
+										children: [/* @__PURE__ */ jsx("div", {
+											className: "flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,rgba(123,92,255,.16),rgba(255,83,143,.12))] text-accent dark:text-accent-glow",
+											children: /* @__PURE__ */ jsxs("svg", {
+												viewBox: "0 0 24 24",
+												"aria-hidden": true,
+												className: "h-4.5 w-4.5",
+												fill: "none",
+												stroke: "currentColor",
+												strokeWidth: "2",
+												strokeLinecap: "round",
+												strokeLinejoin: "round",
+												children: [/* @__PURE__ */ jsx("circle", {
+													cx: "11",
+													cy: "11",
+													r: "7"
+												}), /* @__PURE__ */ jsx("path", { d: "m20 20-3.5-3.5" })]
+											})
+										}), /* @__PURE__ */ jsx("div", {
+											className: "min-w-0 flex-1 text-left",
+											children: /* @__PURE__ */ jsx("input", {
+												id: "search-subject",
+												value,
+												onChange: (e) => setValue(e.target.value),
+												placeholder: config.placeholder,
+												className: "w-full border-0 bg-transparent p-0 text-[14px] font-medium text-ink placeholder:text-black/35 focus:outline-none focus:ring-0 dark:text-white dark:placeholder:text-white/28"
+											})
+										})]
 									}), /* @__PURE__ */ jsxs("button", {
 										type: "submit",
 										className: "btn-accent h-[54px] px-6 text-[15px]",
@@ -2864,10 +2878,22 @@ function Pricing({ onStart, onTrial, onTrialStart, compact = false }) {
 	const trialEligible = billing.trialEligible ?? true;
 	const launchTrial = () => {
 		if (typeof onTrialStart === "function") {
-			onTrialStart();
+			onTrialStart({ slug: "basic" });
 			return;
 		}
 		onTrial?.({ slug: "basic" });
+	};
+	const priceBlock = (plan) => {
+		if (plan.slug === "basic" || plan.slug === "premium") return {
+			primary: "$0",
+			suffix: "",
+			secondary: `then $${plan.price} after 7 days`
+		};
+		return {
+			primary: `$${plan.price}`,
+			suffix: "/mo",
+			secondary: plan.price > 0 ? "Billed monthly" : ""
+		};
 	};
 	const trialHeading = onBasicTrial ? "Your 7-day Basic trial is active" : "Start a 7-day Basic trial";
 	const trialBody = onBasicTrial ? "You already have trial access to Basic. Upgrade to Premium any time, or keep using your current trial until it ends." : "Try the full Basic plan for 7 days. Card details are collected up front, and billing starts only after the trial ends unless you cancel.";
@@ -3013,23 +3039,21 @@ function Pricing({ onStart, onTrial, onTrialStart, compact = false }) {
 									className: "mt-1 text-[12.5px] faint",
 									children: t.tagline
 								}),
-								/* @__PURE__ */ jsxs("p", {
-									className: "mt-5 font-display text-[40px] leading-none font-bold tracking-[-.03em]",
-									children: [
-										"$",
-										t.price,
-										/* @__PURE__ */ jsx("span", {
+								(() => {
+									const pricing = priceBlock(t);
+									return /* @__PURE__ */ jsxs(Fragment, { children: [/* @__PURE__ */ jsxs("p", {
+										className: "mt-5 font-display text-[40px] leading-none font-bold tracking-[-.03em]",
+										children: [pricing.primary, pricing.suffix && /* @__PURE__ */ jsx("span", {
 											className: "text-[13px] font-medium muted",
-											children: "/mo"
-										})
-									]
-								}),
-								/* @__PURE__ */ jsx("p", {
-									className: "mt-2 h-4 text-[11.5px] faint",
-									children: t.price > 0 ? "Billed monthly" : ""
-								}),
+											children: pricing.suffix
+										})]
+									}), /* @__PURE__ */ jsx("p", {
+										className: "mt-2 min-h-[32px] text-[11.5px] leading-[1.35] faint",
+										children: pricing.secondary
+									})] });
+								})(),
 								/* @__PURE__ */ jsxs("button", {
-									onClick: () => t.price === 0 ? onStart() : onTrial(t),
+									onClick: () => t.slug === "free" ? onStart() : onTrial?.(t),
 									disabled: state.disabled,
 									className: `mt-6 h-12 w-full text-sm ${state.disabled ? "cursor-not-allowed rounded-xl border border-black/[.08] bg-black/[.03] text-ink/40 dark:border-white/[.12] dark:bg-white/[.04] dark:text-white/40" : t.popular || current ? "btn-accent" : "btn-ghost"}`,
 									children: [
@@ -3082,9 +3106,9 @@ function Faq() {
 							"Still stuck? Email",
 							" ",
 							/* @__PURE__ */ jsx("a", {
-								href: "mailto:hello@vvf.app",
+								href: "mailto:hello@outliervault.com",
 								className: "font-semibold text-accent underline-offset-4 hover:underline dark:text-accent-glow",
-								children: "hello@vvf.app"
+								children: "hello@outliervault.com"
 							}),
 							" ",
 							"and a human replies same day."
@@ -3281,53 +3305,6 @@ function Footer() {
 	});
 }
 //#endregion
-//#region resources/js/Pages/Landing.jsx
-var Landing_exports = /* @__PURE__ */ __exportAll({ default: () => Landing });
-function Landing() {
-	const { theme, toggle } = useTheme();
-	const revealRoot = useReveal();
-	/**
-	* Called with a type + subject from the hero form, and with nothing from the
-	* secondary CTAs — those just send the visitor back to the hero input.
-	*/
-	const startSearch = (type, subject) => {
-		const phrase = String(subject || "").trim();
-		if (!type || phrase === "") {
-			document.getElementById("search-subject")?.focus();
-			return;
-		}
-		router.get("/search", {
-			type,
-			q: phrase
-		});
-	};
-	return /* @__PURE__ */ jsxs(Fragment, { children: [/* @__PURE__ */ jsx(Head, { title: "Outlier Vault - TikTok viral intelligence for brands" }), /* @__PURE__ */ jsxs("div", {
-		ref: revealRoot,
-		className: "vvf-landing min-h-screen font-body",
-		children: [
-			/* @__PURE__ */ jsx(Nav, {
-				theme,
-				onToggleTheme: toggle,
-				onStart: startSearch
-			}),
-			/* @__PURE__ */ jsxs("main", { children: [
-				/* @__PURE__ */ jsx(Hero, { onStart: startSearch }),
-				/* @__PURE__ */ jsx(BrandMarquee, {}),
-				/* @__PURE__ */ jsx(Features, {}),
-				/* @__PURE__ */ jsx(HowItWorks, { onStart: startSearch }),
-				/* @__PURE__ */ jsx(Testimonials, {}),
-				/* @__PURE__ */ jsx(Pricing, {
-					onStart: startSearch,
-					onTrial: () => router.visit("/trial")
-				}),
-				/* @__PURE__ */ jsx(Faq, {}),
-				/* @__PURE__ */ jsx(FinalCta, { onStart: startSearch })
-			] }),
-			/* @__PURE__ */ jsx(Footer, {})
-		]
-	})] });
-}
-//#endregion
 //#region resources/js/landing/flow/api.js
 /**
 * Small fetch wrapper for the saved-search endpoints. Inertia handles page
@@ -3452,6 +3429,54 @@ function untrackSearch(id) {
 	writeTracked(readTracked().filter((t) => String(t.id) !== String(id)));
 }
 //#endregion
+//#region resources/js/Pages/Landing.jsx
+var Landing_exports = /* @__PURE__ */ __exportAll({ default: () => Landing });
+function Landing() {
+	const { theme, toggle } = useTheme();
+	const revealRoot = useReveal();
+	/**
+	* Called with a type + subject from the hero form, and with nothing from the
+	* secondary CTAs — those just send the visitor back to the hero input.
+	*/
+	const startSearch = (type, subject) => {
+		const phrase = String(subject || "").trim();
+		if (!type || phrase === "") {
+			document.getElementById("search-subject")?.focus();
+			return;
+		}
+		router.get("/search", {
+			type,
+			q: phrase
+		});
+	};
+	return /* @__PURE__ */ jsxs(Fragment, { children: [/* @__PURE__ */ jsx(Head, { title: "Outlier Vault - TikTok viral intelligence for brands" }), /* @__PURE__ */ jsxs("div", {
+		ref: revealRoot,
+		className: "vvf-landing min-h-screen font-body",
+		children: [
+			/* @__PURE__ */ jsx(Nav, {
+				theme,
+				onToggleTheme: toggle,
+				onStart: startSearch
+			}),
+			/* @__PURE__ */ jsxs("main", { children: [
+				/* @__PURE__ */ jsx(Hero, { onStart: startSearch }),
+				/* @__PURE__ */ jsx(BrandMarquee, {}),
+				/* @__PURE__ */ jsx(Features, {}),
+				/* @__PURE__ */ jsx(HowItWorks, { onStart: startSearch }),
+				/* @__PURE__ */ jsx(Testimonials, {}),
+				/* @__PURE__ */ jsx(Pricing, {
+					onStart: startSearch,
+					onTrial: (plan) => window.location.assign(`/login?redirect=trial_checkout&plan=${encodeURIComponent(plan?.slug ?? "basic")}&trial=1`),
+					onTrialStart: (plan) => window.location.assign(`/login?redirect=trial_checkout&plan=${encodeURIComponent(plan?.slug ?? "basic")}&trial=1`)
+				}),
+				/* @__PURE__ */ jsx(Faq, {}),
+				/* @__PURE__ */ jsx(FinalCta, { onStart: startSearch })
+			] }),
+			/* @__PURE__ */ jsx(Footer, {})
+		]
+	})] });
+}
+//#endregion
 //#region resources/js/Pages/Plans.jsx
 var Plans_exports = /* @__PURE__ */ __exportAll({ default: () => Plans });
 function Plans() {
@@ -3460,19 +3485,12 @@ function Plans() {
 	const startFree = () => {
 		window.location.assign("/search?type=brand");
 	};
-	const startPaid = (plan) => {
+	const startTrialCheckout = (plan) => {
 		if (!auth.signedIn) {
-			window.location.assign("/auth/google");
+			window.location.assign(`/login?redirect=trial_checkout&plan=${encodeURIComponent(plan?.slug ?? "basic")}&trial=1`);
 			return;
 		}
-		billing.checkout(plan?.slug ?? "basic");
-	};
-	const startTrial = () => {
-		if (!auth.signedIn) {
-			window.location.assign("/auth/google");
-			return;
-		}
-		billing.trialCheckout("basic");
+		billing.trialCheckout(plan?.slug ?? "basic");
 	};
 	return /* @__PURE__ */ jsxs(Fragment, { children: [/* @__PURE__ */ jsx(Head, { title: "Plans - Outlier Vault" }), /* @__PURE__ */ jsx(AppLayout, {
 		width: "max-w-7xl",
@@ -3480,8 +3498,8 @@ function Plans() {
 			ref: revealRoot,
 			children: /* @__PURE__ */ jsx(Pricing, {
 				onStart: startFree,
-				onTrial: startPaid,
-				onTrialStart: startTrial,
+				onTrial: startTrialCheckout,
+				onTrialStart: startTrialCheckout,
 				compact: true
 			})
 		})
@@ -7143,10 +7161,10 @@ function TrialScreen({ onBack, backLabel = "Back to results" }) {
 	const trialTier = tiers.find((t) => t.popular) || tiers[0];
 	const startCheckout = (slug) => {
 		if (!auth.signedIn) {
-			window.location.assign("/auth/google");
+			window.location.assign(`/login?redirect=trial_checkout&plan=${encodeURIComponent(slug)}&trial=1`);
 			return;
 		}
-		billing.checkout(slug);
+		billing.trialCheckout(slug);
 	};
 	return /* @__PURE__ */ jsxs("div", {
 		className: "animate-fade-up",
@@ -7171,7 +7189,7 @@ function TrialScreen({ onBack, backLabel = "Back to results" }) {
 				}),
 				/* @__PURE__ */ jsx("p", {
 					className: "mt-3 text-[14.5px] muted",
-					children: "Free includes 1 search and 0 watchlist slots. Basic gives you 150 searches and 50 watchlist slots. Premium gives you 400 searches and unlimited watchlist."
+					children: "Start on a 7-day trial. Basic includes 150 searches and 50 watchlist slots. Premium includes 400 searches and unlimited watchlist."
 				}),
 				/* @__PURE__ */ jsx("div", {
 					className: "mx-auto mt-9 grid max-w-2xl gap-5 text-left sm:grid-cols-2",
@@ -7190,15 +7208,16 @@ function TrialScreen({ onBack, backLabel = "Back to results" }) {
 								className: "mt-1 text-[12.5px] faint",
 								children: t.tagline
 							}),
-							/* @__PURE__ */ jsxs("p", {
+							/* @__PURE__ */ jsx("p", {
 								className: "mt-3 font-display text-[32px] leading-none font-bold tracking-[-.03em]",
+								children: "$0"
+							}),
+							/* @__PURE__ */ jsxs("p", {
+								className: "mt-2 min-h-[32px] text-[11.5px] leading-[1.35] faint",
 								children: [
-									"$",
+									"then $",
 									t.price,
-									/* @__PURE__ */ jsx("span", {
-										className: "text-[13px] font-medium muted",
-										children: "/mo"
-									})
+									" after 7 days"
 								]
 							}),
 							/* @__PURE__ */ jsxs("p", {
@@ -7224,8 +7243,9 @@ function TrialScreen({ onBack, backLabel = "Back to results" }) {
 								onClick: () => startCheckout(t.slug),
 								className: `mt-6 h-11 w-full text-sm ${t.popular ? "btn-accent" : "btn-ghost"}`,
 								children: [
-									t.cta,
-									" ",
+									"Start ",
+									t.name,
+									" trial ",
 									/* @__PURE__ */ jsx(Arrow, {})
 								]
 							})
@@ -7238,13 +7258,13 @@ function TrialScreen({ onBack, backLabel = "Back to results" }) {
 					children: [
 						"Start ",
 						trialTier.name,
-						" plan ",
+						" trial ",
 						/* @__PURE__ */ jsx(Arrow, {})
 					]
 				}),
 				/* @__PURE__ */ jsx("p", {
 					className: "mt-4 text-xs faint",
-					children: "Checkout uses Stripe subscriptions. Sign in first if you want the subscription attached to your account."
+					children: "Card details are collected up front, and billing starts after 7 days unless you cancel."
 				})
 			]
 		})]

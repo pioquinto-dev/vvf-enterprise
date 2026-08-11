@@ -27,42 +27,31 @@ export default function Hero({ onStart }) {
 
       <div className="relative mx-auto max-w-page px-4 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-3xl text-center">
-          <Reveal>
-            <span className="ring-gradient inline-flex items-center gap-2.5 rounded-full bg-white/60 px-4 py-2 text-[12.5px] font-semibold backdrop-blur-xl dark:bg-white/[.05]">
-              <span className="relative flex h-2 w-2">
-                <span className="animate-pulse-ring absolute inset-0 rounded-full bg-hot" />
-                <span className="relative h-2 w-2 rounded-full bg-hot" />
-              </span>
-              TikTok social intelligence for brands
-            </span>
-          </Reveal>
-
           <Reveal delay={80}>
             <h1 className="mt-7 font-display text-[38px] leading-[1.04] font-bold tracking-[-.035em] sm:text-[58px] lg:text-[72px]">
-              Find the TikToks
-              <br className="hidden sm:block" /> that are{' '}
-              <span className="text-gradient">actually moving</span>
-              <br className="hidden sm:block" /> your category
+              TikTok Brand and Social Media
+              <span className="text-gradient"> Intelligence Tool</span>
             </h1>
           </Reveal>
 
           <Reveal delay={140}>
             <p className="mx-auto mt-6 max-w-xl text-[15.5px] leading-relaxed muted sm:text-[17px]">
-              Point Outlier Vault at your brand, a competitor, or a single product. We scan TikTok and hand back the viral
-              videos, the creators behind them, and what changed since last week.
+              Enter your brand, a competitor or single product; then we will scan TikTok and return the most viral outlier videos, the creators behind them and the reason they went viral
             </p>
           </Reveal>
         </div>
 
         <Reveal delay={200} className="mx-auto mt-11 max-w-2xl">
-          <div className="ring-gradient rounded-[26px] bg-white/70 p-1.5 shadow-[0_40px_100px_-50px_rgba(20,20,50,.5)] backdrop-blur-2xl dark:bg-white/[.045] dark:shadow-[0_50px_120px_-60px_rgba(0,0,0,1)]">
-            <div className="rounded-[20px] bg-white/85 p-4 sm:p-5 dark:bg-black/25">
-              <div className="mb-5 flex items-start gap-3 text-left">
-                <Mascot className="animate-float h-12 w-12 shrink-0 sm:h-14 sm:w-14" />
-                <div className="relative rounded-2xl bg-ink px-4 py-3 text-[13.5px] leading-relaxed text-white shadow-lg dark:bg-white dark:text-ink">
+          <div className="ring-gradient rounded-[26px] bg-white/70 p-1.5 shadow-[0_40px_100px_-50px_rgba(20,20,50,.5)] backdrop-blur-2xl dark:bg-[rgba(110,88,200,.14)] dark:shadow-[0_50px_120px_-60px_rgba(0,0,0,1)]">
+            <div className="rounded-[20px] bg-white/85 p-4 sm:p-5 dark:bg-[linear-gradient(180deg,rgba(22,20,36,.92),rgba(12,11,20,.96))]">
+              <div className="mb-5 flex items-start gap-3.5 text-left">
+                <div className="pt-1">
+                  <Mascot className="animate-float h-12 w-12 shrink-0 sm:h-14 sm:w-14" />
+                </div>
+                <div className="relative rounded-[24px] border border-[#e8e3f6] bg-[linear-gradient(180deg,rgba(255,255,255,.96),rgba(245,242,252,.94))] px-4 py-3 text-[13.5px] leading-relaxed text-[#2e3148] shadow-[0_18px_40px_-28px_rgba(104,93,151,.38)] dark:border-[#5d4f86] dark:bg-[linear-gradient(180deg,rgba(244,240,255,.94),rgba(221,214,244,.9))] dark:text-[#2d2740] dark:shadow-[0_18px_40px_-26px_rgba(0,0,0,.5)]">
                   <span
                     aria-hidden
-                    className="absolute top-4 -left-1.5 h-3 w-3 rotate-45 rounded-sm bg-ink dark:bg-white"
+                    className="absolute top-4 -left-1.5 h-3 w-3 rotate-45 border-l border-b border-[#e8e3f6] bg-[#f7f4fc] dark:border-[#5d4f86] dark:bg-[#ece5fb]"
                   />
                   I scan TikTok for your brand, products, and competitors, and pull the recent viral videos.
                 </div>
@@ -75,16 +64,17 @@ export default function Hero({ onStart }) {
                 </span>
               </div>
 
-              <div className="flex gap-1.5 rounded-2xl bg-black/[.045] p-1.5 dark:bg-white/[.05]">
+              <div className="flex gap-2 rounded-[18px] border border-[#d9d1ef] bg-[linear-gradient(180deg,#f4f0fb,#ece7f7)] p-1.5 shadow-[inset_0_1px_0_rgba(255,255,255,.9),0_10px_24px_-20px_rgba(106,84,173,.35)] dark:border-[#4b4269] dark:bg-[linear-gradient(180deg,rgba(31,29,43,.98),rgba(24,22,35,.98))] dark:shadow-[inset_0_1px_0_rgba(255,255,255,.06),0_10px_24px_-20px_rgba(0,0,0,.55)]">
                 {TYPE_KEYS.map((k) => (
                   <button
                     key={k}
                     onClick={() => setType(k)}
-                    className={`flex-1 rounded-xl px-2 py-2.5 text-[13px] font-semibold transition-all duration-300 sm:text-[13.5px] ${
+                    className={`flex-1 rounded-[14px] border px-3 py-2.5 text-[13px] font-semibold transition-all duration-300 sm:text-[13.5px] ${
                       type === k
-                        ? 'bg-white text-ink shadow-[0_2px_10px_-2px_rgba(16,18,32,.18)] dark:bg-ink-700 dark:text-white'
-                        : 'muted hover:text-ink dark:hover:text-white'
+                        ? 'border-[#cfc2f2] bg-[linear-gradient(180deg,#ffffff,#f7f2ff)] text-[#221b39] shadow-[0_12px_28px_-18px_rgba(94,74,163,.42),inset_0_1px_0_rgba(255,255,255,.95)] dark:border-[#8b7bd0] dark:bg-[linear-gradient(180deg,rgba(91,79,146,.98),rgba(74,64,121,.98))] dark:text-white dark:shadow-[0_12px_26px_-18px_rgba(0,0,0,.55),inset_0_1px_0_rgba(255,255,255,.08)]'
+                        : 'border-transparent bg-white/18 text-[#5d6177] hover:border-[#ddd4f6] hover:bg-white/55 hover:text-[#2e3148] dark:bg-transparent dark:text-white/68 dark:hover:border-[#4f456f] dark:hover:bg-white/[.04] dark:hover:text-white'
                     }`}
+                    aria-pressed={type === k}
                   >
                     {SEARCH_TYPES[k].label}
                   </button>
@@ -92,8 +82,8 @@ export default function Hero({ onStart }) {
               </div>
 
               <form onSubmit={submit} className="mt-3 flex flex-col gap-2 sm:flex-row">
-                <label className="group flex h-[54px] flex-1 items-center gap-3 rounded-[18px] border border-black/8 bg-white px-4 shadow-[0_16px_40px_-28px_rgba(76,56,255,.55)] transition-all duration-300 focus-within:-translate-y-0.5 focus-within:border-accent/35 focus-within:shadow-[0_22px_50px_-28px_rgba(76,56,255,.6)] dark:border-white/10 dark:bg-white/[.04] dark:focus-within:border-accent-glow/35">
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,rgba(123,92,255,.16),rgba(255,83,143,.12))] text-accent dark:text-accent-glow">
+                <label className="group flex h-[54px] flex-1 items-center gap-3 rounded-[18px] border border-black/8 bg-white px-4 shadow-[0_16px_40px_-28px_rgba(76,56,255,.55)] transition-all duration-300 focus-within:-translate-y-0.5 focus-within:border-accent/35 focus-within:shadow-[0_22px_50px_-28px_rgba(76,56,255,.6)] dark:border-[#3a3550] dark:bg-[#1f1d2b] dark:focus-within:border-accent-glow/35">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,rgba(123,92,255,.16),rgba(255,83,143,.12))] text-accent dark:bg-[linear-gradient(135deg,rgba(123,92,255,.18),rgba(255,83,143,.1))] dark:text-accent-glow">
                     <svg
                       viewBox="0 0 24 24"
                       aria-hidden
@@ -115,7 +105,7 @@ export default function Hero({ onStart }) {
                       value={value}
                       onChange={(e) => setValue(e.target.value)}
                       placeholder={config.placeholder}
-                      className="w-full border-0 bg-transparent p-0 text-[14px] font-medium text-ink placeholder:text-black/35 focus:outline-none focus:ring-0 dark:text-white dark:placeholder:text-white/28"
+                      className="w-full border-0 bg-transparent p-0 text-[14px] font-medium text-ink placeholder:text-black/35 focus:outline-none focus:ring-0 dark:text-white dark:placeholder:text-white/38"
                     />
                   </div>
                 </label>

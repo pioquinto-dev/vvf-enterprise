@@ -260,7 +260,7 @@ export const SEARCH_TYPES = {
     label: 'Brand',
     placeholder: 'Enter brand name',
     sectionHeading: 'Add terms to expand on your brand',
-    sample: 'GoPure',
+    sample: 'rhode skin',
     keywords: ['beauty', 'skincare', 'eye gel', 'serum', 'reviews', 'routine'],
   },
   competitor: {
@@ -268,7 +268,7 @@ export const SEARCH_TYPES = {
     label: 'Competitor',
     placeholder: 'Enter one competitor',
     sectionHeading: 'Add terms to expand on this competitor',
-    sample: 'Glossier',
+    sample: 'skims',
     keywords: ['review', 'dupe', 'haul', 'grwm', 'vs', 'viral'],
   },
   product: {

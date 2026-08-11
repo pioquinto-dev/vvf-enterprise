@@ -3,6 +3,8 @@
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use App\Models\PricingPlan;
+use App\Services\Billing\BillingService;
 use App\Http\Middleware\EnsurePaidFeaturesAccess;
 use Illuminate\Http\Request;
 use App\Http\Middleware\HandleInertiaRequests;
@@ -25,6 +27,13 @@ return Application::configure(basePath: dirname(__DIR__))
                 $plan = (string) $request->query('plan', 'basic');
 
                 if (in_array($plan, ['basic', 'premium'], true)) {
+                    $user = $request->user();
+                    $pricingPlan = PricingPlan::query()->where('slug', $plan)->first();
+
+                    if ($user !== null && $pricingPlan !== null) {
+                        return app(BillingService::class)->checkout($user, $pricingPlan, $request->boolean('trial'));
+                    }
+
                     return route('billing.checkout', [
                         'slug' => $plan,
                         'trial' => $request->boolean('trial') ? '1' : null,
