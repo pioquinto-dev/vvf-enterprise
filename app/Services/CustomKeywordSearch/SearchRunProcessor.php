@@ -10,6 +10,7 @@ use App\Models\CustomKeywordSearchRun;
 use App\Models\CustomKeywordSearchVideo;
 use App\Models\ViralVideo;
 use App\Services\Apify\ApifyClient;
+use App\Services\Billing\BillingService;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -28,6 +29,7 @@ class SearchRunProcessor
         private readonly KeywordMatcher $matcher,
         private readonly SnapshotRecorder $snapshots,
         private readonly LocalCorpusRecall $localCorpus,
+        private readonly BillingService $billing,
     ) {}
 
     public function process(CustomKeywordSearchRun $run): void
@@ -196,7 +198,7 @@ class SearchRunProcessor
         $run->update([
             'status' => CustomKeywordSearchRun::STATUS_DONE,
             'completed_at' => now(),
-            'raw_summary' => $summary + [
+            'raw_summary' => ($run->raw_summary ?? []) + $summary + [
                 'apify_run_id' => $apifyRunId,
                 'dataset_id' => $datasetId,
                 'attached' => $attached,
@@ -208,6 +210,10 @@ class SearchRunProcessor
             'last_run_at' => now(),
             'next_run_at' => $this->nextRunAt($search->frequency),
         ]);
+
+        if ($this->reservedCredit($run) && $search->user !== null) {
+            $this->billing->syncSubscriptionUsage($search->user);
+        }
 
         // Everything past this point is enrichment. The scrape has already
         // succeeded and the user's results are live — a failure here must not
@@ -373,6 +379,17 @@ class SearchRunProcessor
             'completed_at' => now(),
             'error_message' => mb_substr($message, 0, 2000),
         ]);
+
+        $search = $run->search;
+
+        if ($this->reservedCredit($run) && $search?->user !== null) {
+            $this->billing->refundSearchCredit($search->user);
+        }
+    }
+
+    private function reservedCredit(CustomKeywordSearchRun $run): bool
+    {
+        return (bool) data_get($run->raw_summary, 'credit_reserved', false);
     }
 
     /**

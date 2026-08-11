@@ -2,10 +2,11 @@
 
 namespace App\Services\Billing;
 
+use App\Models\CustomKeywordSearch;
+use App\Models\CustomKeywordSearchRun;
 use App\Models\PricingPlan;
 use App\Models\Subscription;
 use App\Models\User;
-use App\Models\VideoBookmark;
 use Carbon\CarbonImmutable;
 use Illuminate\Validation\ValidationException;
 
@@ -43,6 +44,22 @@ class BillingEntitlementService
         ])->save();
 
         $this->markFreeSearchUsed($user);
+    }
+
+    public function refundSearchCredit(User $user): void
+    {
+        $this->initializeFreeCreditsIfNeeded($user);
+        $this->refreshCreditsIfNeeded($user);
+
+        $limit = (int) ($this->limitsForUser($user)['searchCreditsLimit'] ?? 0);
+
+        $user->forceFill([
+            'monthly_credits_remaining' => min(
+                $limit,
+                max(0, (int) $user->monthly_credits_remaining + 1)
+            ),
+        ])->save();
+
         $this->syncSubscriptionUsage($user);
     }
 
@@ -91,6 +108,15 @@ class BillingEntitlementService
                 'billing' => 'Upgrade to Basic or Premium to bookmark videos.',
             ]);
         }
+    }
+
+    public function ensureCanBookmarkSearch(User $user): void
+    {
+        if (! $this->hasPaidPlan($user)) {
+            throw ValidationException::withMessages([
+                'billing' => 'Upgrade to Basic or Premium to bookmark searches.',
+            ]);
+        }
 
         $limit = $this->bookmarkLimit($user);
 
@@ -122,7 +148,10 @@ class BillingEntitlementService
 
     public function bookmarkCount(User $user): int
     {
-        return VideoBookmark::query()->where('user_id', $user->id)->count();
+        return CustomKeywordSearch::query()
+            ->where('user_id', $user->id)
+            ->where('is_watchlisted', true)
+            ->count();
     }
 
     /**
@@ -154,11 +183,17 @@ class BillingEntitlementService
         }
 
         if ($this->hasPaidPlan($user)) {
-            $subscription = $this->activeSubscriptionFor($user);
-            $used = data_get($subscription?->metadata, 'searchCreditsUsed');
+            [$startsAt, $endsAt] = $this->currentBillingWindow($user);
 
-            if ($used !== null) {
-                return max(0, (int) $used);
+            if ($startsAt !== null && $endsAt !== null) {
+                return CustomKeywordSearchRun::query()
+                    ->where('status', CustomKeywordSearchRun::STATUS_DONE)
+                    ->whereNotNull('completed_at')
+                    ->where('completed_at', '>=', $startsAt)
+                    ->where('completed_at', '<', $endsAt)
+                    ->whereJsonContains('raw_summary->credit_reserved', true)
+                    ->whereHas('search', fn ($query) => $query->where('user_id', $user->id))
+                    ->count();
             }
         }
 
@@ -199,8 +234,11 @@ class BillingEntitlementService
             return;
         }
 
+        $searchCreditsUsed = $this->searchCreditsUsed($user);
+        $bookmarksUsed = $this->bookmarkCount($user);
+
         $subscription->forceFill([
-            'metadata' => $this->subscriptionMetadata($plan, $this->searchCreditsUsed($user), $this->bookmarksUsed($user)),
+            'metadata' => $this->subscriptionMetadata($plan, $searchCreditsUsed, $bookmarksUsed),
         ])->save();
     }
 
@@ -299,5 +337,24 @@ class BillingEntitlementService
         return Subscription::query()
             ->where('user_id', $user->id)
             ->first();
+    }
+
+    /**
+     * @return array{0: ?CarbonImmutable, 1: ?CarbonImmutable}
+     */
+    private function currentBillingWindow(User $user): array
+    {
+        $subscription = $this->activeSubscriptionFor($user);
+        $startsAt = $subscription?->current_period_starts_at;
+        $endsAt = $subscription?->current_period_ends_at ?? $user->plan_renews_at;
+
+        if ($startsAt === null || $endsAt === null) {
+            return [null, null];
+        }
+
+        return [
+            CarbonImmutable::instance($startsAt),
+            CarbonImmutable::instance($endsAt),
+        ];
     }
 }

@@ -85,7 +85,7 @@ class SavedSearchManager
                     $chargeGuest();
                 }
 
-                $this->queueRun($existing);
+                $this->queueRun($existing, $user !== null);
             }
 
             return $existing->refresh();
@@ -111,14 +111,17 @@ class SavedSearchManager
             $chargeGuest();
         }
 
-        $this->queueRun($search);
+        $this->queueRun($search, $user !== null);
 
         return $search;
     }
 
-    public function queueRun(CustomKeywordSearch $search): CustomKeywordSearchRun
+    public function queueRun(CustomKeywordSearch $search, bool $reservedCredit = false): CustomKeywordSearchRun
     {
-        $run = $search->runs()->create(['status' => CustomKeywordSearchRun::STATUS_QUEUED]);
+        $run = $search->runs()->create([
+            'status' => CustomKeywordSearchRun::STATUS_QUEUED,
+            'raw_summary' => $reservedCredit ? ['credit_reserved' => true] : null,
+        ]);
 
         $search->update(['status' => CustomKeywordSearch::STATUS_SCRAPING]);
 
@@ -196,7 +199,15 @@ class SavedSearchManager
 
     public function setBookmarked(CustomKeywordSearch $search, bool $bookmarked): CustomKeywordSearch
     {
+        if ($bookmarked && ! $search->is_watchlisted && $search->user !== null) {
+            $this->billing->ensureCanBookmarkSearch($search->user);
+        }
+
         $search->update(['is_watchlisted' => $bookmarked]);
+
+        if ($search->user !== null) {
+            $this->billing->syncSubscriptionUsage($search->user);
+        }
 
         return $search->refresh();
     }

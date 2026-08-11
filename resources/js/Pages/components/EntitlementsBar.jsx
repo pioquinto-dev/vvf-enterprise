@@ -24,6 +24,7 @@ export default function EntitlementsBar() {
 
     const searchLimit = billing.searchCreditsLimit ?? 0;
     const searchLeft = billing.searchCreditsRemaining ?? 0;
+    const searchUsed = billing.searchCreditsUsed ?? 0;
     const bookmarkLimit = billing.bookmarkLimit ?? 0;
     const bookmarksUsed = billing.bookmarksUsed ?? billing.bookmarkCount ?? 0;
 
@@ -38,7 +39,7 @@ export default function EntitlementsBar() {
                 <Dot />
 
                 <span className={searchesLow ? 'text-hot' : undefined}>
-                    <b className="font-semibold text-ink dark:text-white">{searchLeft}</b>
+                    <b className="font-semibold text-ink dark:text-white">{searchUsed}</b>
                     {searchLimit > 0 && <span>/{searchLimit}</span>} searches
                 </span>
 

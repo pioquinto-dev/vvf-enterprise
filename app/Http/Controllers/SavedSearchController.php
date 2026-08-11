@@ -201,7 +201,7 @@ class SavedSearchController extends Controller
             $this->billing->consumeSearchCredit($request->user());
         }
 
-        $this->manager->queueRun($search);
+        $this->manager->queueRun($search, $request->user() !== null);
 
         return response()->json(['search' => SavedSearchPresenter::summary($search->refresh())]);
     }

@@ -102,6 +102,11 @@ class BillingService
         $this->entitlements->absorbClaimedGuestSearches($user, $claimedCount);
     }
 
+    public function refundSearchCredit(User $user): void
+    {
+        $this->entitlements->refundSearchCredit($user);
+    }
+
     public function markFreeSearchUsed(User $user): void
     {
         $this->entitlements->markFreeSearchUsed($user);
@@ -110,6 +115,11 @@ class BillingService
     public function ensureCanBookmark(User $user): void
     {
         $this->entitlements->ensureCanBookmark($user);
+    }
+
+    public function ensureCanBookmarkSearch(User $user): void
+    {
+        $this->entitlements->ensureCanBookmarkSearch($user);
     }
 
     public function hasPaidPlan(?User $user): bool
