@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Notifications\Notifiable;
 
 #[Fillable(['name', 'email', 'password', 'stripe_customer_id', 'current_plan_slug', 'monthly_credits_remaining', 'plan_renews_at', 'free_search_used_at'])]
@@ -16,7 +17,7 @@ use Illuminate\Notifications\Notifiable;
 class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */
-    use HasFactory, Notifiable;
+    use HasFactory, Notifiable, SoftDeletes;
 
     /**
      * Get the attributes that should be cast.
@@ -41,5 +42,10 @@ class User extends Authenticatable
     public function videoBookmarks(): HasMany
     {
         return $this->hasMany(VideoBookmark::class);
+    }
+
+    public function customKeywordSearches(): HasMany
+    {
+        return $this->hasMany(CustomKeywordSearch::class);
     }
 }

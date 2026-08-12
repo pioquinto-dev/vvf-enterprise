@@ -50,7 +50,9 @@ class SavedSearchPresenter
     public static function resultRows(CustomKeywordSearch $search, array $bookmarkedVideoIds = []): array
     {
         return $search->videos()
-            ->with('video')
+            // Archived videos stay attached to the search but must not render;
+            // the `isset($row['id'])` guard below drops the empty rows.
+            ->with(['video' => fn ($query) => $query->visible()])
             ->orderBy('rank')
             ->get()
             ->map(fn ($row): array => array_merge(

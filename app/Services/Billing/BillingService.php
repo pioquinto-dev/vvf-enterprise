@@ -19,7 +19,7 @@ class BillingService
 
     public function checkout(User $user, PricingPlan $plan, bool $withTrial = false): string
     {
-        if (! $plan->is_active || blank($plan->stripe_price_id)) {
+        if (! $plan->is_active || $plan->archived_at !== null || blank($plan->stripe_price_id)) {
             throw ValidationException::withMessages([
                 'plan' => 'This plan is not purchasable yet.',
             ]);

@@ -19,7 +19,7 @@ class PricingPlanViewService
             }
 
             return PricingPlan::query()
-                ->where('is_active', true)
+                ->purchasable()
                 ->get([
                     'id',
                     'slug',

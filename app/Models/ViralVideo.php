@@ -2,13 +2,15 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class ViralVideo extends Model
 {
-    use HasUlids;
+    use HasUlids, SoftDeletes;
 
     protected $guarded = [];
 
@@ -18,6 +20,7 @@ class ViralVideo extends Model
             'hashtags' => 'array',
             'raw_payload' => 'array',
             'uploaded_at' => 'datetime',
+            'archived_at' => 'datetime',
             'analyzed_at' => 'datetime',
             'followers' => 'integer',
             'views' => 'integer',
@@ -28,6 +31,15 @@ class ViralVideo extends Model
             'virality_score' => 'float',
             'duration' => 'float',
         ];
+    }
+
+    /**
+     * Archived videos stay fully queryable for admins but must never reach a
+     * customer-facing surface. Every public read path applies this scope.
+     */
+    public function scopeVisible(Builder $query): Builder
+    {
+        return $query->whereNull('archived_at');
     }
 
     public function apifyTrigger(): BelongsTo

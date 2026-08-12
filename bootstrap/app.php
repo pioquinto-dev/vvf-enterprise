@@ -5,6 +5,8 @@ use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use App\Models\PricingPlan;
 use App\Services\Billing\BillingService;
+use App\Http\Middleware\RedirectIfAdminAuthenticated;
+use App\Http\Middleware\RequireAdminAuthentication;
 use App\Http\Middleware\EnsurePaidFeaturesAccess;
 use Illuminate\Http\Request;
 use App\Http\Middleware\HandleInertiaRequests;
@@ -51,6 +53,8 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'paid' => EnsurePaidFeaturesAccess::class,
             'remember.trial.checkout' => RememberTrialCheckoutIntent::class,
+            'admin.auth' => RequireAdminAuthentication::class,
+            'admin.guest' => RedirectIfAdminAuthenticated::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

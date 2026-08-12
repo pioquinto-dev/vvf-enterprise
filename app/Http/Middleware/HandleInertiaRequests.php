@@ -57,6 +57,10 @@ class HandleInertiaRequests extends Middleware
                     ]
                     : null,
             ],
+            'admin' => [
+                'signedIn' => $request->session()->get(config('admin.session_key')) === true,
+                'user' => $request->session()->get('admin.user'),
+            ],
             'flash' => [
                 'status' => fn () => $request->session()->get('status'),
             ],

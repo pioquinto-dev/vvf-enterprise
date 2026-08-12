@@ -21,3 +21,13 @@ Schedule::command('custom-keyword-search:dispatch-due')
 Schedule::command('custom-keyword-search:fail-stale-runs')
     ->everyFifteenMinutes()
     ->withoutOverlapping();
+
+/*
+ * Admin dashboard daily snapshot. Pinned to UTC so the series is one row per
+ * UTC day regardless of the app timezone; the admin UI reads it back as-is.
+ */
+Schedule::command('admin:capture-dashboard-snapshot')
+    ->dailyAt('06:00')
+    ->timezone('UTC')
+    ->withoutOverlapping()
+    ->runInBackground();
