@@ -73,10 +73,10 @@ function renderCell(column, row, index) {
     return <span className="text-[13px] text-white/65">{text}</span>;
 }
 
-export default function AdminDataTable({ columns = [], rows = [], resource, capabilities = {}, onEdit = () => {} }) {
+export default function AdminDataTable({ columns = [], rows = [], resource, capabilities = {}, onEdit = () => {}, onPreview = () => {} }) {
     // A read-only listing should not reserve a column for actions it will
     // never render.
-    const hasActions = Boolean(capabilities.edit || capabilities.archive || capabilities.delete);
+    const hasActions = Boolean(capabilities.preview || capabilities.edit || capabilities.archive || capabilities.delete);
 
     return (
         <>
@@ -117,6 +117,7 @@ export default function AdminDataTable({ columns = [], rows = [], resource, capa
                                             row={row}
                                             capabilities={capabilities}
                                             onEdit={onEdit}
+                                            onPreview={onPreview}
                                         />
                                     </td>
                                 )}
@@ -132,7 +133,7 @@ export default function AdminDataTable({ columns = [], rows = [], resource, capa
                         <div className="flex items-center justify-between gap-2">
                             <div className="min-w-0">{renderCell(columns[0], row, 0)}</div>
                             {hasActions && (
-                                <AdminRowMenu resource={resource} row={row} capabilities={capabilities} onEdit={onEdit} />
+                                <AdminRowMenu resource={resource} row={row} capabilities={capabilities} onEdit={onEdit} onPreview={onPreview} />
                             )}
                         </div>
                         {columns.slice(1).map((column) => (

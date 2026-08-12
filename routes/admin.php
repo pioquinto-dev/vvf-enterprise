@@ -6,6 +6,7 @@ use App\Http\Controllers\Admin\AdminSessionController;
 use App\Http\Controllers\Admin\Content\PlanController;
 use App\Http\Controllers\Admin\Content\SearchController;
 use App\Http\Controllers\Admin\Content\ViralVideoController;
+use App\Http\Controllers\Admin\Support\InquiryController;
 use App\Http\Controllers\Admin\Subscription\SubscriptionController;
 use App\Http\Controllers\Admin\Users\AdminUserController;
 use App\Http\Controllers\Admin\Users\UserController;
@@ -45,6 +46,10 @@ Route::prefix('x/admin')
 
             Route::prefix('searches')->group(function (): void {
                 Route::get('/', [SearchController::class, 'index'])->name('searches.index');
+            });
+
+            Route::prefix('inquiries')->group(function (): void {
+                Route::get('/', [InquiryController::class, 'index'])->name('inquiries.index');
             });
 
             Route::prefix('plans')->group(function (): void {

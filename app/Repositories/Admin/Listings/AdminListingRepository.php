@@ -3,6 +3,7 @@
 namespace App\Repositories\Admin\Listings;
 
 use App\Models\CustomKeywordSearch;
+use App\Models\Inquiry;
 use App\Models\PricingPlan;
 use App\Models\Subscription;
 use App\Models\User;
@@ -25,6 +26,7 @@ class AdminListingRepository
         return match ($resource) {
             'viral-videos' => 'Viral Videos',
             'searches' => 'Searches',
+            'inquiries' => 'Inquiries',
             'plans' => 'Plans',
             'subscription' => 'Subscription',
             'users' => 'Users',
@@ -41,6 +43,7 @@ class AdminListingRepository
         return match ($resource) {
             'viral-videos' => ['search', 'status', 'date'],
             'searches' => ['search', 'type', 'owner', 'date'],
+            'inquiries' => ['search', 'category', 'date'],
             'plans' => ['search', 'status'],
             'subscription' => ['search', 'status', 'plan'],
             'users' => ['search', 'status', 'plan'],
@@ -62,6 +65,10 @@ class AdminListingRepository
             'searches' => [
                 ['name' => 'type', 'label' => 'Type', 'options' => ['brand', 'competitor', 'product']],
                 ['name' => 'owner', 'label' => 'Owner', 'options' => $this->ownerOptions()],
+                ['name' => 'date', 'label' => 'Range', 'options' => ['today', '7d', '30d']],
+            ],
+            'inquiries' => [
+                ['name' => 'category', 'label' => 'Category', 'options' => ['general', 'account', 'billing', 'feature-request', 'bug-report']],
                 ['name' => 'date', 'label' => 'Range', 'options' => ['today', '7d', '30d']],
             ],
             'plans' => [
@@ -98,6 +105,13 @@ class AdminListingRepository
                 ['key' => 'owner', 'label' => 'Owner'],
                 ['key' => 'status', 'label' => 'Status'],
             ],
+            'inquiries' => [
+                ['key' => 'contact', 'label' => 'Contact'],
+                ['key' => 'category', 'label' => 'Category'],
+                ['key' => 'subject', 'label' => 'Subject'],
+                ['key' => 'message', 'label' => 'Message'],
+                ['key' => 'received_at', 'label' => 'Received'],
+            ],
             'plans' => [
                 ['key' => 'plan', 'label' => 'Plan'],
                 ['key' => 'price', 'label' => 'Price'],
@@ -128,7 +142,7 @@ class AdminListingRepository
     }
 
     /**
-     * The base query for a resource, including trashed rows — the listing has a
+     * The base query for a resource, including trashed rows - the listing has a
      * "deleted" filter, and an admin needs to see what they removed in order to
      * restore it.
      */
@@ -137,6 +151,7 @@ class AdminListingRepository
         return match ($resource) {
             'viral-videos' => ViralVideo::query()->withTrashed(),
             'searches' => CustomKeywordSearch::query()->withTrashed()->with('user'),
+            'inquiries' => Inquiry::query()->with('user'),
             'plans' => PricingPlan::query()->withTrashed(),
             'subscription' => Subscription::query()->withTrashed()->with(['user', 'plan']),
             'users' => User::query()->withTrashed(),
@@ -156,6 +171,12 @@ class AdminListingRepository
             ),
             'searches' => $query->where(
                 fn (Builder $inner) => $inner->where('name', 'like', $like)->orWhere('phrase', 'like', $like),
+            ),
+            'inquiries' => $query->where(
+                fn (Builder $inner) => $inner->where('name', 'like', $like)
+                    ->orWhere('email', 'like', $like)
+                    ->orWhere('subject', 'like', $like)
+                    ->orWhere('message', 'like', $like),
             ),
             'plans' => $query->where(
                 fn (Builder $inner) => $inner->where('name', 'like', $like)->orWhere('slug', 'like', $like),
@@ -196,6 +217,12 @@ class AdminListingRepository
 
         if ($name === 'type' && $resource === 'searches') {
             $query->where('search_type', $value);
+
+            return;
+        }
+
+        if ($name === 'category' && $resource === 'inquiries') {
+            $query->where('category', $value);
 
             return;
         }
@@ -246,31 +273,47 @@ class AdminListingRepository
             'viral-videos' => [
                 'id' => $record->id,
                 'video' => $record->title ?: ($record->video_id ?? 'Untitled'),
-                'source' => trim(Str::title($record->platform ?? '').' / '.($record->username ? '@'.$record->username : '—')),
+                'source' => trim(Str::title($record->platform ?? '').' / '.($record->username ? '@'.$record->username : '-')),
                 'status' => $this->viralVideoStatus($record),
-                'published_at' => $record->uploaded_at?->diffForHumans() ?? '—',
+                'published_at' => $record->uploaded_at?->diffForHumans() ?? '-',
             ],
             'searches' => [
                 'id' => $record->id,
                 'search' => $record->name,
-                'type' => $record->search_type ?? '—',
+                'type' => $record->search_type ?? '-',
                 'owner' => $record->user?->name ?? $record->user?->email ?? 'Guest',
                 'status' => $record->trashed() ? 'deleted' : $record->status,
+            ],
+            'inquiries' => [
+                'id' => $record->id,
+                'contact' => trim($record->name.' / '.$record->email),
+                'category' => Str::headline((string) $record->category),
+                'subject' => $record->subject ?: '-',
+                'message' => Str::limit((string) preg_replace('/\s+/', ' ', (string) $record->message), 96),
+                'received_at' => $record->created_at?->diffForHumans() ?? '-',
+                'preview' => [
+                    'name' => $record->name,
+                    'email' => $record->email,
+                    'category' => Str::headline((string) $record->category),
+                    'subject' => $record->subject ?: '-',
+                    'message' => $record->message,
+                    'received_at' => $record->created_at?->format('M j, Y g:i A') ?? '-',
+                ],
             ],
             'plans' => [
                 'id' => $record->id,
                 'plan' => $record->name,
                 'price' => '$'.number_format((float) $record->amount, 2).' / '.($record->duration ?? 'month'),
                 'status' => $this->planStatus($record),
-                'updated_at' => $record->updated_at?->diffForHumans() ?? '—',
+                'updated_at' => $record->updated_at?->diffForHumans() ?? '-',
             ],
             'subscription' => [
                 'id' => $record->id,
                 'subscriber' => $record->user?->name ?? $record->user?->email ?? 'Unknown',
-                'plan' => $record->plan?->name ?? '—',
+                'plan' => $record->plan?->name ?? '-',
                 'credits' => (string) ($record->user?->monthly_credits_remaining ?? 0),
                 'status' => $record->trashed() ? 'deleted' : $record->status,
-                'renewal' => $record->current_period_ends_at?->format('M j') ?? '—',
+                'renewal' => $record->current_period_ends_at?->format('M j') ?? '-',
             ],
             'users' => [
                 'id' => $record->id,
@@ -278,7 +321,7 @@ class AdminListingRepository
                 'plan' => $record->current_plan_slug ?? 'free',
                 'credits' => (string) ($record->monthly_credits_remaining ?? 0),
                 'status' => $record->trashed() ? 'deleted' : 'active',
-                'joined_at' => $record->created_at?->format('M j, Y') ?? '—',
+                'joined_at' => $record->created_at?->format('M j, Y') ?? '-',
             ],
             default => [],
         };
@@ -387,9 +430,10 @@ class AdminListingRepository
             // Searches are an audit trail of what customers ran. Editing or
             // deleting one here would rewrite their history, so this listing
             // stays read-only.
-            'searches' => ['edit' => false, 'archive' => false, 'delete' => false],
+            'searches' => ['preview' => false, 'edit' => false, 'archive' => false, 'delete' => false],
+            'inquiries' => ['preview' => true, 'edit' => false, 'archive' => false, 'delete' => false],
             'subscription', 'users' => ['edit' => true, 'archive' => false, 'delete' => true],
-            default => ['edit' => false, 'archive' => false, 'delete' => false],
+            default => ['preview' => false, 'edit' => false, 'archive' => false, 'delete' => false],
         };
     }
 
@@ -429,12 +473,12 @@ class AdminListingRepository
                 ['name' => 'is_active', 'label' => 'Active', 'type' => 'toggle'],
                 ['name' => 'archived', 'label' => 'Archived', 'type' => 'toggle', 'help' => 'Hidden from pricing cards. Existing subscriptions keep the plan.'],
             ],
-            'searches' => [],
+            'searches', 'inquiries' => [],
             'subscription' => [
                 ['name' => 'status', 'label' => 'Status', 'type' => 'select', 'options' => ['active', 'trialing', 'past_due', 'canceled', 'pending']],
                 ['name' => 'plan_id', 'label' => 'Plan', 'type' => 'select', 'options' => $this->planOptions()],
                 ['name' => 'credits', 'label' => 'Subscriber credits remaining', 'type' => 'number', 'help' => 'Applies to the subscriber account, not the subscription row.'],
-                ['name' => 'search_credits_limit', 'label' => 'Plan search credits per period', 'type' => 'number', 'help' => 'Edits the plan metadata — this changes the allowance for every subscriber on this plan.'],
+                ['name' => 'search_credits_limit', 'label' => 'Plan search credits per period', 'type' => 'number', 'help' => 'Edits the plan metadata - this changes the allowance for every subscriber on this plan.'],
                 ['name' => 'bookmark_limit', 'label' => 'Plan bookmark limit', 'type' => 'number', 'help' => 'Edits the plan metadata for every subscriber on this plan.'],
                 ['name' => 'stripe_subscription_id', 'label' => 'Stripe subscription ID', 'type' => 'text'],
                 ['name' => 'stripe_customer_id', 'label' => 'Stripe customer ID', 'type' => 'text'],
@@ -488,7 +532,7 @@ class AdminListingRepository
                 'is_active' => (bool) $record->is_active,
                 'archived' => $record->archived_at !== null,
             ],
-            'searches' => [],
+            'searches', 'inquiries' => [],
             'subscription' => [
                 'status' => $record->status,
                 'plan_id' => (string) ($record->plan_id ?? ''),
@@ -506,7 +550,7 @@ class AdminListingRepository
                 'stripe_customer_id' => $record->stripe_customer_id,
                 'email_verified' => $record->email_verified_at !== null,
                 'free_search_used' => $record->free_search_used_at !== null,
-                // Never round-trips the hash — the field is write-only.
+                // Never round-trips the hash - the field is write-only.
                 'password' => '',
             ],
             default => [],
@@ -518,6 +562,7 @@ class AdminListingRepository
         return match ($resource) {
             'viral-videos' => 'No viral videos match the current filters yet.',
             'searches' => 'No searches match the current filters yet.',
+            'inquiries' => 'No inquiries match the current filters yet.',
             'plans' => 'No plans match the current filters yet.',
             'subscription' => 'No subscriptions match the current filters yet.',
             'users' => 'No users match the current filters yet.',

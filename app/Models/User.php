@@ -48,4 +48,9 @@ class User extends Authenticatable
     {
         return $this->hasMany(CustomKeywordSearch::class);
     }
+
+    public function inquiries(): HasMany
+    {
+        return $this->hasMany(Inquiry::class);
+    }
 }

@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 
 import { Dots } from '../../landing/components/Icons.jsx';
 
-export default function AdminRowMenu({ resource, row, capabilities = {}, onEdit }) {
+export default function AdminRowMenu({ resource, row, capabilities = {}, onEdit, onPreview }) {
     const [open, setOpen] = useState(false);
     const container = useRef(null);
 
@@ -33,6 +33,7 @@ export default function AdminRowMenu({ resource, row, capabilities = {}, onEdit 
 
     // Edit is the action people actually reach for, so it stays a visible
     // button. Everything rarer (and everything destructive) lives in the menu.
+    const canPreview = capabilities.preview === true;
     const canEdit = capabilities.edit && !row.trashed;
 
     if (capabilities.archive && !row.trashed) {
@@ -58,12 +59,22 @@ export default function AdminRowMenu({ resource, row, capabilities = {}, onEdit 
         );
     }
 
-    if (items.length === 0 && !canEdit) {
+    if (items.length === 0 && !canEdit && !canPreview) {
         return null;
     }
 
     return (
         <div ref={container} className="relative flex items-center justify-end gap-1">
+            {canPreview && (
+                <button
+                    type="button"
+                    onClick={() => onPreview(row)}
+                    className="inline-flex h-6 items-center rounded-md border border-white/[.12] bg-white/[.05] px-2 text-[11.5px] font-medium text-white/75 transition hover:border-sky-400/45 hover:bg-sky-400/12 hover:text-white"
+                >
+                    View
+                </button>
+            )}
+
             {canEdit && (
                 <button
                     type="button"

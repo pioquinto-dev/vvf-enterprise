@@ -78,7 +78,7 @@ export default function Footer() {
           <p className="text-[12.5px] faint">© {new Date().getFullYear()} Outlier Vault. Prototype - dummy data throughout.</p>
           <div className="flex gap-6 text-[12.5px] faint">
             {['Terms', 'Privacy', 'Contact'].map((l) => (
-              <a key={l} href="#top" className="transition-colors hover:text-accent dark:hover:text-accent-glow">
+              <a key={l} href={l === 'Contact' ? '/contact' : '#top'} className="transition-colors hover:text-accent dark:hover:text-accent-glow">
                 {l}
               </a>
             ))}

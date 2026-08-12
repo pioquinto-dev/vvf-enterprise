@@ -41,6 +41,7 @@ const NAV = [
 const TABS = [
     { label: 'Bookmark', href: '/bookmark', icon: Library, match: '/bookmark' },
     { label: 'Search', href: '/search', icon: Search, match: '/search' },
+    { label: 'Contact', href: '/contact', icon: Target, match: '/contact' },
     { label: 'Account', href: '/settings/account', icon: User, match: '/settings' },
 ];
 
@@ -355,7 +356,7 @@ export default function AppLayout({
 
             {/* ---------- mobile bottom tabs ---------- */}
             <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-black/[.06] bg-canvas/90 backdrop-blur-xl lg:hidden dark:border-white/[.08] dark:bg-canvas-dark/90">
-                <div className="grid grid-cols-3">
+                <div className="grid grid-cols-4">
                     {TABS.map((tab) => {
                         const Icon = tab.icon;
                         const active = isActive(currentUrl, tab.match);

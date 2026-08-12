@@ -5,6 +5,7 @@ import AdminEditDrawer from '../../components/admin/AdminEditDrawer.jsx';
 import AdminEmptyState from '../../components/admin/AdminEmptyState.jsx';
 import AdminFiltersBar from '../../components/admin/AdminFiltersBar.jsx';
 import AdminPagination from '../../components/admin/AdminPagination.jsx';
+import AdminPreviewDrawer from '../../components/admin/AdminPreviewDrawer.jsx';
 import AdminLayout from './components/AdminLayout.jsx';
 
 export default function Listing({
@@ -22,6 +23,7 @@ export default function Listing({
     query,
 }) {
     const [editing, setEditing] = useState(null);
+    const [previewing, setPreviewing] = useState(null);
 
     const toolbar = <AdminFiltersBar title={title} search={search} searchPlaceholder={searchPlaceholder} filters={filters} />;
     const total = pagination?.total ?? rows.length;
@@ -46,6 +48,7 @@ export default function Listing({
                         resource={resource}
                         capabilities={capabilities}
                         onEdit={setEditing}
+                        onPreview={setPreviewing}
                     />
                 ) : (
                     <AdminEmptyState
@@ -64,6 +67,13 @@ export default function Listing({
                 fields={editableFields}
                 row={editing}
                 onClose={() => setEditing(null)}
+            />
+
+            <AdminPreviewDrawer
+                open={previewing !== null}
+                title={previewing ? String(previewing[columns[0]?.key] ?? title) : title}
+                row={previewing}
+                onClose={() => setPreviewing(null)}
             />
         </AdminLayout>
     );

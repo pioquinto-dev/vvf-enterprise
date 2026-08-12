@@ -25,8 +25,8 @@ Route::middleware('auth')->group(function (): void {
         return Inertia::render('Dashboard');
     })->name('dashboard');
 
-Route::redirect('/saved-searches', '/bookmark', 301);
-Route::get('/bookmark', [SavedSearchController::class, 'index'])->name('bookmark.index');
+    Route::redirect('/saved-searches', '/bookmark', 301);
+    Route::get('/bookmark', [SavedSearchController::class, 'index'])->name('bookmark.index');
     Route::get('/settings/account', [SettingsController::class, 'account'])->name('settings.account');
     Route::patch('/settings/account', [SettingsController::class, 'updateAccount'])->name('settings.account.update');
     Route::get('/settings/appearance', [SettingsController::class, 'appearance'])->name('settings.appearance');

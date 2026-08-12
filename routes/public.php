@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\ComingSoonInterestController;
+use App\Http\Controllers\ContactInquiryController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Auth\GoogleAuthController;
 use App\Http\Controllers\Auth\RegisteredUserController;
@@ -19,6 +20,8 @@ Route::get('/', function (Request $request) {
 })->name('landing');
 
 Route::post('/coming-soon-interest', ComingSoonInterestController::class)->name('coming-soon-interest.store');
+Route::get('/contact', [ContactInquiryController::class, 'create'])->name('contact.create');
+Route::post('/contact', [ContactInquiryController::class, 'store'])->name('contact.store');
 
 Route::prefix('search')->group(function (): void {
     Route::get('/', function (Request $request) {

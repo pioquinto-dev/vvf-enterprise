@@ -22,6 +22,7 @@ class AdminListingsTest extends TestCase
         $pages = [
             '/x/admin/viral-videos' => 'Viral Videos',
             '/x/admin/searches' => 'Searches',
+            '/x/admin/inquiries' => 'Inquiries',
             '/x/admin/plans' => 'Plans',
             '/x/admin/subscription' => 'Subscription',
             '/x/admin/users' => 'Users',

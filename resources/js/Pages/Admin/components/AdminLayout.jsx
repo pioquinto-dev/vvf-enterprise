@@ -41,6 +41,13 @@ const NAV_GROUPS = [
                 icon: 'SE',
             },
             {
+                key: 'inquiries',
+                label: 'Inquiries',
+                href: '/x/admin/inquiries',
+                description: 'Contact inbox',
+                icon: 'IN',
+            },
+            {
                 key: 'plans',
                 label: 'Plans',
                 href: '/x/admin/plans',
