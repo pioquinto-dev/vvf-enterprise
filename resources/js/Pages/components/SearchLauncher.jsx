@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react';
 import { router } from '@inertiajs/react';
 
-import { Arrow, Lock, Search, Store, Target, Refresh } from '../../landing/components/Icons.jsx';
+import { Arrow, Search, Store, Target, Refresh } from '../../landing/components/Icons.jsx';
 
 /**
  * Step one of the search flow — pick a subject. A mode toggle, one input, and
@@ -36,12 +36,11 @@ const TYPES = [
         placeholder: 'Which product do you want to track?',
         sample: 'lip oil',
         suggestions: ['lip oil', 'hair oil', 'sunscreen stick', 'liquid blush'],
-        locked: true,
     },
 ];
 
 export default function SearchLauncher({ initialType = 'brand', initialQuery = '', onSubmit }) {
-    const [type, setType] = useState(initialType === 'product' ? 'brand' : initialType);
+    const [type, setType] = useState(initialType);
     const [value, setValue] = useState(initialQuery);
     const inputRef = useRef(null);
 
@@ -76,18 +75,11 @@ export default function SearchLauncher({ initialType = 'brand', initialQuery = '
                             type="button"
                             role="radio"
                             aria-checked={active}
-                            disabled={option.locked}
-                            title={option.locked ? 'Product searches are coming soon' : undefined}
-                            onClick={() => !option.locked && setType(option.key)}
+                            onClick={() => setType(option.key)}
                             className={`mode${active ? ' is-on' : ''}`}
                         >
                             <Icon className="h-[15px] w-[15px]" />
                             {option.label}
-                            {option.locked && (
-                                <span className="lk">
-                                    <Lock className="h-3 w-3" />
-                                </span>
-                            )}
                         </button>
                     );
                 })}

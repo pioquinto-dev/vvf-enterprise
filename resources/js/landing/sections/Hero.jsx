@@ -1,12 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
 
-import { Arrow, Google, Lock, Search, Store, Target, Trend } from '../components/Icons.jsx';
+import { Arrow, Google, Search, Store, Target, Trend } from '../components/Icons.jsx';
 import { STATS } from '../data/dummy.js';
 
 const MODES = [
   { key: 'brand', label: 'Your brand', icon: Store, prompt: 'Which brand do you want to research?', sample: 'rhode skin' },
   { key: 'competitor', label: 'A competitor', icon: Target, prompt: 'Which competitor should we watch?', sample: 'skims' },
-  { key: 'product', label: 'A product', icon: Search, prompt: 'Which product do you want to track?', sample: 'lip oil', locked: true },
+  { key: 'product', label: 'A product', icon: Search, prompt: 'Which product do you want to track?', sample: 'lip oil' },
 ];
 
 export default function Hero({ onStart }) {
@@ -69,19 +69,16 @@ export default function Hero({ onStart }) {
         </p>
 
         <div className="modes" role="tablist" aria-label="What to research">
-          {MODES.map(({ key, label, icon: Icon, locked }) => (
+          {MODES.map(({ key, label, icon: Icon }) => (
             <button
               key={key}
               className={`mode${key === type ? ' is-on' : ''}`}
               role="tab"
               aria-selected={key === type}
-              disabled={locked}
-              title={locked ? 'Product searches are coming soon' : undefined}
-              onClick={() => !locked && setType(key)}
+              onClick={() => setType(key)}
             >
               <Icon className="h-[15px] w-[15px]" />
               {label}
-              {locked && <Lock className="h-3 w-3" />}
             </button>
           ))}
         </div>
