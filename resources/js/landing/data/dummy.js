@@ -37,7 +37,7 @@ export const FEATURES = [
     id: 'competitors',
     tag: 'Monitoring',
     title: 'Competitor Tracking',
-    body: 'Point Outlier Vault at a competitor and get a running feed of every video mentioning them - organic creator posts, affiliate content, and paid spark ads alike.',
+    body: 'Point Brand Beacon at a competitor and get a running feed of every video mentioning them - organic creator posts, affiliate content, and paid spark ads alike.',
     bullets: ['Unlimited competitor bookmarks', 'Weekly change digest', 'Share-of-voice trendline'],
     accent: 'from-[#0f3d5c] to-[#2aa7c4]',
   },
@@ -78,7 +78,7 @@ export const STEPS = [
   {
     n: '04',
     title: 'Track it weekly',
-    body: 'Save the search and Outlier Vault re-runs it on a schedule, emailing you only what is new.',
+    body: 'Save the search and Brand Beacon re-runs it on a schedule, emailing you only what is new.',
   },
 ];
 
@@ -108,7 +108,7 @@ export const TESTIMONIALS = [
   },
   {
     quote:
-      'The outlier scoring is the part that matters. Big accounts posting mediocre videos are noise. Outlier Vault filters those out by default.',
+      'The outlier scoring is the part that matters. Big accounts posting mediocre videos are noise. Brand Beacon filters those out by default.',
     name: 'Priya Raman',
     role: 'Social Director',
     company: 'Olipop',
@@ -217,7 +217,7 @@ export const FAQS = [
   },
   {
     q: 'Can I track competitors I do not name upfront?',
-    a: 'On Basic and above, each tracked search can watch a competitor continuously. Add it to Bookmark and Outlier Vault re-runs on your schedule, sending only what changed since last time.',
+    a: 'On Basic and above, each tracked search can watch a competitor continuously. Add it to Library and Brand Beacon re-runs on your schedule, sending only what changed since last time.',
   },
   {
     q: 'What happens after the 10 day trial?',

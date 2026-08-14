@@ -1,8 +1,5 @@
 import { Head, router } from '@inertiajs/react';
 
-import { useTheme } from '../landing/components/useTheme.js';
-import { useReveal } from '../landing/components/Reveal.jsx';
-
 import Nav from '../landing/sections/Nav.jsx';
 import Hero from '../landing/sections/Hero.jsx';
 import BrandMarquee from '../landing/sections/BrandMarquee.jsx';
@@ -13,53 +10,44 @@ import Pricing from '../landing/sections/Pricing.jsx';
 import Faq from '../landing/sections/Faq.jsx';
 import FinalCta from '../landing/sections/FinalCta.jsx';
 import Footer from '../landing/sections/Footer.jsx';
-import { billing } from '../landing/flow/api.js';
 
 export default function Landing() {
-    const { theme, toggle } = useTheme();
-    const revealRoot = useReveal();
+  /**
+   * Called with a type + subject from the hero form. The secondary CTAs call it
+   * with nothing, which just sends the visitor back to the hero input.
+   */
+  const startSearch = (type, subject) => {
+    const phrase = String(subject || '').trim();
+    if (!type || phrase === '') {
+      document.getElementById('search-subject')?.focus();
+      return;
+    }
+    router.get('/search', { type, q: phrase });
+  };
 
-    /**
-     * Called with a type + subject from the hero form, and with nothing from the
-     * secondary CTAs — those just send the visitor back to the hero input.
-     */
-    const startSearch = (type, subject) => {
-        const phrase = String(subject || '').trim();
+  const startTrial = (plan) =>
+    window.location.assign(`/login?redirect=trial_checkout&plan=${encodeURIComponent(plan?.slug ?? 'basic')}&trial=1`);
 
-        // Called with nothing from the secondary CTAs — send those back to the
-        // hero input rather than guessing a phrase.
-        if (!type || phrase === '') {
-            document.getElementById('search-subject')?.focus();
-            return;
-        }
+  return (
+    <>
+      <Head title="Brand Beacon — TikTok viral intelligence for brands" />
 
-        router.get('/search', { type, q: phrase });
-    };
+      <div className="bbh">
+        <Nav />
 
-    return (
-        <>
-            <Head title="Outlier Vault - TikTok viral intelligence for brands" />
+        <main>
+          <Hero onStart={startSearch} />
+          <BrandMarquee />
+          <Features />
+          <HowItWorks onStart={startSearch} />
+          <Testimonials />
+          <Pricing onStart={startSearch} onTrial={startTrial} />
+          <Faq />
+          <FinalCta onStart={startSearch} />
+        </main>
 
-            <div ref={revealRoot} className="vvf-landing min-h-screen font-body">
-                <Nav theme={theme} onToggleTheme={toggle} onStart={startSearch} />
-
-                <main>
-                    <Hero onStart={startSearch} />
-                    <BrandMarquee />
-                    <Features />
-                    <HowItWorks onStart={startSearch} />
-                    <Testimonials />
-                    <Pricing
-                        onStart={startSearch}
-                        onTrial={(plan) => window.location.assign(`/login?redirect=trial_checkout&plan=${encodeURIComponent(plan?.slug ?? 'basic')}&trial=1`)}
-                        onTrialStart={(plan) => window.location.assign(`/login?redirect=trial_checkout&plan=${encodeURIComponent(plan?.slug ?? 'basic')}&trial=1`)}
-                    />
-                    <Faq />
-                    <FinalCta onStart={startSearch} />
-                </main>
-
-                <Footer />
-            </div>
-        </>
-    );
+        <Footer />
+      </div>
+    </>
+  );
 }
