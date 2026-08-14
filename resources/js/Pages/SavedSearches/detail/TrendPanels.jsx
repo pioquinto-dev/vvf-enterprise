@@ -3,7 +3,6 @@ import { createPortal } from 'react-dom';
 
 import { compactNumber, percent } from '../../../landing/flow/format.js';
 import { Bookmark, Share, Check, Dots } from '../../../landing/components/Icons.jsx';
-import { RebuiltBadge } from './Badges.jsx';
 
 const W = 560;
 const H = 180;
@@ -89,7 +88,6 @@ export function PerformanceChart({ trend }) {
             {deltaSuffix} vs 12 wk ago
           </span>
         )}
-        {trend.has_reconstructed && <RebuiltBadge />}
       </div>
 
       <svg className="ts-svg" viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none">

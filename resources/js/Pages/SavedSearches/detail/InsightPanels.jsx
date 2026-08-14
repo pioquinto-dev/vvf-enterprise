@@ -1,9 +1,21 @@
 import { useState } from 'react';
 import { compactNumber, outlierLabel, percent } from '../../../landing/flow/format.js';
-import { DeltaLine, RebuiltBadge } from './Badges.jsx';
+import { DeltaLine } from './Badges.jsx';
 
-const HOUR_LABELS = { 0: '12a', 6: '6a', 12: '12p', 18: '6p' };
+const PST_OFFSET_HOURS = -8;
+const HOUR_LABELS = { 0: '4 PM', 6: '10 PM', 12: '4 AM', 18: '10 AM' };
 const PANEL_STEP = 5;
+
+function pstHourFromUtc(hour) {
+  return (hour + PST_OFFSET_HOURS + 24) % 24;
+}
+
+function formatPstHour(hour) {
+  const normalized = pstHourFromUtc(hour);
+  const suffix = normalized >= 12 ? 'PM' : 'AM';
+  const displayHour = normalized % 12 === 0 ? 12 : normalized % 12;
+  return `${displayHour}:00 ${suffix} PST`;
+}
 
 /**
  * Splits a formatted figure into the big number and its trailing unit, so the
@@ -151,11 +163,6 @@ export function SoundPanel({ sounds = [] }) {
   );
 }
 
-/**
- * Posting rhythm by weekday and hour. Hours are UTC; `uploaded_at` is stored
- * in UTC and no creator timezone is captured, so the label says so plainly
- * rather than implying local time.
- */
 export function PostingHeatmap({ heatmap }) {
   const [tip, setTip] = useState(null);
 
@@ -167,7 +174,7 @@ export function PostingHeatmap({ heatmap }) {
     );
   }
 
-  const { days = [], cells = [], max = 0, peak, timezone } = heatmap;
+  const { days = [], cells = [], max = 0, peak } = heatmap;
 
   return (
     <div className="panel">
@@ -186,7 +193,7 @@ export function PostingHeatmap({ heatmap }) {
               {(cells[dayIndex] ?? []).map((count, hour) => {
                 const t = max > 0 ? count / max : 0;
                 const isPeak = peak && peak.day === day && peak.hour === hour && count > 0;
-                const label = `${day} ${String(hour).padStart(2, '0')}:00 ${timezone} · ${count} ${count === 1 ? 'post' : 'posts'}`;
+                const label = `${day} ${formatPstHour(hour)} · ${count} ${count === 1 ? 'post' : 'posts'}`;
 
                 return (
                   <div
@@ -230,9 +237,7 @@ export function PostingHeatmap({ heatmap }) {
 
       {peak && (
         <div className="heat-note">
-          <b>Their rhythm:</b> busiest slot is {peak.day} around {String(peak.hour).padStart(2, '0')}:00 {timezone},
-          with {peak.count} {peak.count === 1 ? 'post' : 'posts'}. Hours are {timezone}; no creator timezone is
-          captured on a scrape.
+          <b>Their rhythm:</b> busiest slot is {peak.day} around {formatPstHour(peak.hour)}, with {peak.count} {peak.count === 1 ? 'post' : 'posts'}. Times are shown in PST using the UTC scrape timestamps.
         </div>
       )}
     </div>
@@ -251,7 +256,6 @@ const GHOST_HEIGHTS = [34, 58, 42, 66, 50, 82];
  */
 export function OutliersPerWeek({ bars = [], threshold = 3, totalOutliers = 0, nextRunLabel = null }) {
   const max = Math.max(...bars.map((b) => b.value), 1);
-  const anyRebuilt = bars.some((b) => b.reconstructed);
   const isEmpty = bars.length === 0 || bars.every((b) => !b.value);
 
   if (isEmpty) {
@@ -280,9 +284,7 @@ export function OutliersPerWeek({ bars = [], threshold = 3, totalOutliers = 0, n
 
   return (
     <div className="panel">
-      <h3>
-        outliers per week {anyRebuilt && <RebuiltBadge className="ml-2" />}
-      </h3>
+      <h3>outliers per week</h3>
       <div className="psub">their posts scoring {outlierLabel(threshold) ?? '3x'} or higher</div>
 
       <div className="spark">
@@ -294,7 +296,6 @@ export function OutliersPerWeek({ bars = [], threshold = 3, totalOutliers = 0, n
             >
               <em>{bar.value}</em>
             </div>
-            {/* Mockup labels: "wk 1" to "now", oldest first. */}
             <span className="wl">{index === bars.length - 1 ? 'now' : `wk ${index + 1}`}</span>
           </div>
         ))}

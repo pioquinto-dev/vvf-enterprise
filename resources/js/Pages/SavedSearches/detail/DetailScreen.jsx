@@ -267,10 +267,10 @@ export default function DetailScreen({
           />
           <PerformanceChart trend={trend} />
 
-          <SectionHead title="when they post" note="posting schedule by day and hour." />
+          <SectionHead title="When they post" note="posting schedule by day and hour." />
           <PostingHeatmap heatmap={insights.heatmap} />
 
-          <SectionHead title="more data" note="how the tracker is moving." />
+          <SectionHead title="More data" note="how the tracker is moving." />
           <div className="datagrid">
             <OutliersPerWeek
               bars={trend?.outliers_per_week ?? []}
