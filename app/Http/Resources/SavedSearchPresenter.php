@@ -40,6 +40,21 @@ class SavedSearchPresenter
     }
 
     /**
+     * Summary plus the headline stats the Brand/Product list cards show.
+     * `top_score` and `outlier_count` come from aggregates loaded on the
+     * collection (loadMax/loadCount), so this stays query-free per row.
+     *
+     * @return array<string, mixed>
+     */
+    public static function card(CustomKeywordSearch $search): array
+    {
+        return self::summary($search) + [
+            'top_score' => $search->videos_max_viral_score !== null ? (float) $search->videos_max_viral_score : null,
+            'outlier_count' => (int) ($search->outlier_count ?? 0),
+        ];
+    }
+
+    /**
      * The ranked card rows for a search. Public because the snapshot recorder
      * and the AI enrichment job must measure exactly what the page renders —
      * a second definition of "the results" is how a chart ends up disagreeing

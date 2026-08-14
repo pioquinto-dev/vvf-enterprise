@@ -22,9 +22,9 @@ const PILL_CLASS = {
  */
 const NAV = [
     { label: 'Dashboard', href: '/dashboard', icon: Spark, match: '/dashboard' },
-    { label: 'Library', href: '/bookmark', icon: Library, match: '/bookmark', exact: '/bookmark' },
-    { label: 'Brand searches', href: '/bookmark?type=brand-group', icon: Store, match: '/bookmark', exact: '/bookmark?type=brand-group' },
-    { label: 'Product searches', href: '/bookmark?type=product', icon: Search, match: '/bookmark', exact: '/bookmark?type=product', locked: true },
+    { label: 'Library', href: '/bookmark', icon: Library, match: '/bookmark' },
+    { label: 'Brand searches', href: '/brands', icon: Store, match: '/brands' },
+    { label: 'Product searches', href: '/products', icon: Search, match: '/products' },
 ];
 
 function isActive(currentUrl, item) {

@@ -104,6 +104,36 @@ class SavedSearchController extends Controller
     }
 
     /**
+     * GET /dashboard — the search launcher plus the few most recent searches
+     * for the "Pick up where you left off" card.
+     */
+    public function dashboard(Request $request): Response|RedirectResponse
+    {
+        $runId = $request->integer('run');
+
+        if ($runId > 0) {
+            $ownedRun = \App\Models\CustomKeywordSearchRun::query()
+                ->whereKey($runId)
+                ->whereHas('search', fn ($query) => $query->where('user_id', $request->user()->id))
+                ->exists();
+
+            if (! $ownedRun) {
+                return redirect('/dashboard');
+            }
+        }
+
+        $recent = $this->searches->all($request, null, false)
+            ->take(3)
+            ->map(fn (CustomKeywordSearch $search): array => SavedSearchPresenter::summary($search))
+            ->values()
+            ->all();
+
+        return Inertia::render('Dashboard', [
+            'recent' => $recent,
+        ]);
+    }
+
+    /**
      * GET /bookmark — the saved list.
      */
     public function index(Request $request): Response
@@ -118,12 +148,109 @@ class SavedSearchController extends Controller
             ->map(fn (CustomKeywordSearch $search): array => SavedSearchPresenter::summary($search))
             ->all();
 
+        // The Library's "Bookmarked videos" tab lives in the same default view.
+        $videoIds = $bookmarkedOnly ? $this->bookmarks->idsForUser($request->user()) : [];
+        $bookmarkedVideos = $videoIds === []
+            ? []
+            : \App\Models\ViralVideo::query()
+                ->visible()
+                ->whereIn('id', $videoIds)
+                ->get()
+                ->map(fn (\App\Models\ViralVideo $video): array => $video->toCardArray())
+                ->all();
+
         return Inertia::render('SavedSearches/Index', [
             'searches' => $searches,
+            'bookmarkedVideos' => $bookmarkedVideos,
             'filterType' => $filterType,
             'watchlistedOnly' => $bookmarkedOnly,
             'isAuthenticated' => $request->user() !== null,
         ]);
+    }
+
+    /**
+     * GET /brands — the dedicated brand + competitor search hub.
+     */
+    public function brands(Request $request): Response
+    {
+        return $this->searchHub(
+            $request,
+            [CustomKeywordSearch::TYPE_BRAND, CustomKeywordSearch::TYPE_COMPETITOR],
+            'Brands'
+        );
+    }
+
+    /**
+     * GET /products — the dedicated product search hub.
+     */
+    public function products(Request $request): Response
+    {
+        return $this->searchHub($request, [CustomKeywordSearch::TYPE_PRODUCT], 'Products');
+    }
+
+    /**
+     * Shared body for the brand/product hubs: the tracked searches with their
+     * headline stats, plus the single best outlier across them ("Moving this
+     * week"). Stats are loaded as collection aggregates to avoid N+1.
+     *
+     * @param  array<int, string>  $types
+     */
+    private function searchHub(Request $request, array $types, string $page): Response
+    {
+        $searches = $this->searches->all($request, $types, false);
+        $searches->loadCount([
+            'videos',
+            'videos as outlier_count' => fn ($query) => $query->where('is_new_breakout', true),
+        ]);
+        $searches->loadMax('videos', 'viral_score');
+
+        $cards = $searches
+            ->map(fn (CustomKeywordSearch $search): array => SavedSearchPresenter::card($search))
+            ->values()
+            ->all();
+
+        return Inertia::render($page, [
+            'searches' => $cards,
+            'moving' => $this->movingThisWeek($searches),
+        ]);
+    }
+
+    /**
+     * Top outlier videos across a set of searches, newest-scored first.
+     *
+     * @param  \Illuminate\Support\Collection<int, CustomKeywordSearch>  $searches
+     * @return array<int, array<string, mixed>>
+     */
+    private function movingThisWeek($searches): array
+    {
+        if ($searches->isEmpty()) {
+            return [];
+        }
+
+        $names = $searches->pluck('name', 'id');
+        $urls = $searches->mapWithKeys(fn (CustomKeywordSearch $s): array => [$s->id => $s->url()]);
+
+        return \App\Models\CustomKeywordSearchVideo::query()
+            ->whereIn('custom_keyword_search_id', $searches->pluck('id'))
+            ->whereHas('video', fn ($query) => $query->visible())
+            ->with('video')
+            ->orderByDesc('viral_score')
+            ->limit(3)
+            ->get()
+            ->map(function (\App\Models\CustomKeywordSearchVideo $row) use ($names, $urls): array {
+                $card = $row->video?->toCardArray() ?? [];
+
+                return [
+                    'subject' => $names[$row->custom_keyword_search_id] ?? null,
+                    'url' => $urls[$row->custom_keyword_search_id] ?? null,
+                    'multiplier' => $row->viral_score > 0 ? round($row->viral_score).'x' : null,
+                    'caption' => $card['title'] ?? null,
+                    'handle' => $card['handle'] ?? null,
+                    'views' => $card['views'] ?? null,
+                    'thumbnail_url' => $card['thumbnail_url'] ?? null,
+                ];
+            })
+            ->all();
     }
 
     /**

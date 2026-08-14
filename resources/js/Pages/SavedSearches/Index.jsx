@@ -2,65 +2,11 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Head, Link, router } from '@inertiajs/react';
 
 import AppLayout from '../components/AppLayout.jsx';
-import { Arrow, Trend, Bookmark, Search, Chevron, Close, Plus, Dots } from '../../landing/components/Icons.jsx';
+import EntitlementsBar from '../components/EntitlementsBar.jsx';
+import SavedSearchRow from '../components/SavedSearchRow.jsx';
+import VideoCard from '../components/VideoCard.jsx';
+import { Arrow, Bookmark, Search, Chevron, Plus, Dots, Play } from '../../landing/components/Icons.jsx';
 import { savedSearch as api } from '../../landing/flow/api.js';
-
-function FilterSelect({ value, onChange, active, label, children }) {
-  return (
-    <label className="relative block min-w-0">
-      <span className="mb-1.5 block text-[11px] font-semibold tracking-[.08em] faint uppercase lg:hidden">{label}</span>
-      <select
-        aria-label={label}
-        value={value}
-        onChange={onChange}
-        className={`h-10 w-full cursor-pointer appearance-none rounded-xl border pr-9 pl-3 text-[12.5px] font-semibold outline-none transition duration-200 focus:border-accent/50 focus:ring-4 focus:ring-accent/12 ${
-          active
-            ? 'border-accent/30 bg-accent/10 text-accent dark:border-accent/35 dark:text-accent-glow'
-            : 'border-black/[.08] bg-white text-ink hover:border-black/[.18] dark:border-white/[.1] dark:bg-white/[.05] dark:text-white dark:hover:border-white/[.2]'
-        }`}
-      >
-        {children}
-      </select>
-      <Chevron className="pointer-events-none absolute top-1/2 right-2.5 h-3.5 w-3.5 -translate-y-1/2 opacity-45" />
-    </label>
-  );
-}
-
-function Divider() {
-  return <div className="hidden h-6 w-px shrink-0 bg-black/[.08] lg:block dark:bg-white/[.1]" />;
-}
-
-function ModalShell({ title, body, children, onClose }) {
-  return (
-    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/45 px-4 backdrop-blur-sm">
-      <button aria-label="Close modal" onClick={onClose} className="absolute inset-0" />
-      <div className="relative z-10 w-full max-w-lg rounded-[28px] border border-black/[.06] bg-white p-6 shadow-[0_30px_90px_-45px_rgba(16,18,32,.55)] dark:border-white/[.08] dark:bg-canvas-dark">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <h2 className="font-display text-[24px] font-bold">{title}</h2>
-            {body && <p className="mt-2 text-[13.5px] leading-relaxed muted">{body}</p>}
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-black/[.08] transition hover:border-accent/35 dark:border-white/[.12]"
-          >
-            <Close className="h-4 w-4" />
-          </button>
-        </div>
-
-        {children}
-      </div>
-    </div>
-  );
-}
-
-const STATUS = {
-  scraping: { label: 'Refreshing', className: 'border-accent/25 bg-accent/10 text-accent dark:text-accent-glow' },
-  done: { label: 'Ready', className: 'border-emerald-500/25 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' },
-  paused: { label: 'Paused', className: 'border-black/[.1] muted dark:border-white/[.15]' },
-  failed: { label: 'Failed', className: 'border-hot/25 bg-hot/10 text-hot' },
-};
 
 const FILTER_LABELS = {
   'brand-group': 'Brand searches',
@@ -76,181 +22,151 @@ const SORT_OPTIONS = {
   za: 'Name Z-A',
 };
 
-function formatDate(iso) {
-  return iso ? new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : '-';
-}
+const VIDEO_SORT = {
+  score: 'Outlier score',
+  views: 'Views',
+  recent: 'Most recent',
+};
 
 function compareDates(a, b) {
-  const aTime = a ? new Date(a).getTime() : 0;
-  const bTime = b ? new Date(b).getTime() : 0;
-  return bTime - aTime;
+  return (b ? new Date(b).getTime() : 0) - (a ? new Date(a).getTime() : 0);
 }
 
-export default function Index({ searches: initialSearches, filterType = null, watchlistedOnly: bookmarkedOnly = true }) {
+/* A native select dressed as the mockup's `.sel`. */
+function Sel({ value, onChange, ariaLabel, children }) {
+  return (
+    <span className="sel">
+      <select aria-label={ariaLabel} value={value} onChange={onChange}>
+        {children}
+      </select>
+      <Chevron />
+    </span>
+  );
+}
+
+export default function Index({
+  searches: initialSearches,
+  bookmarkedVideos = [],
+  filterType = null,
+  watchlistedOnly: bookmarkedOnly = true,
+}) {
   const isBrandCategoryView = filterType === 'brand-group';
+  const showTabs = bookmarkedOnly && !filterType;
+
   const [searches, setSearches] = useState(initialSearches);
-  const [animatingId, setAnimatingId] = useState(null);
+  const [tab, setTab] = useState('searches');
   const [openMenuId, setOpenMenuId] = useState(null);
-  const [filtersOpen, setFiltersOpen] = useState(false);
   const [query, setQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
-  const [frequencyFilter, setFrequencyFilter] = useState('all');
-  const [searchTypeFilter, setSearchTypeFilter] = useState(isBrandCategoryView ? 'all' : (filterType ?? 'all'));
+  const [searchTypeFilter, setSearchTypeFilter] = useState(isBrandCategoryView ? 'all' : filterType ?? 'all');
   const [sortBy, setSortBy] = useState('recent_refresh');
+  const [videoQuery, setVideoQuery] = useState('');
+  const [videoSort, setVideoSort] = useState('score');
   const [modalState, setModalState] = useState({ type: null, search: null });
   const [formState, setFormState] = useState({ name: '', frequency: 'weekly' });
   const [submitting, setSubmitting] = useState(false);
   const menuRef = useRef(null);
 
-  const title = filterType ? FILTER_LABELS[filterType] ?? 'Bookmark' : 'Bookmark';
+  const title = filterType ? FILTER_LABELS[filterType] ?? 'Library' : 'Library';
   const searchHref = `/search?type=${filterType === 'competitor' ? 'competitor' : 'brand'}`;
 
+  /* close the row menu on outside click / escape */
   useEffect(() => {
-    if (openMenuId === null) {
-      return undefined;
-    }
-
-    const handlePointerDown = (event) => {
-      if (menuRef.current && !menuRef.current.contains(event.target)) {
-        setOpenMenuId(null);
-      }
-    };
-
-    const handleEscape = (event) => {
-      if (event.key === 'Escape') {
-        setOpenMenuId(null);
-      }
-    };
-
-    document.addEventListener('mousedown', handlePointerDown);
-    document.addEventListener('keydown', handleEscape);
-
+    if (openMenuId === null) return undefined;
+    const onDown = (e) => menuRef.current && !menuRef.current.contains(e.target) && setOpenMenuId(null);
+    const onEsc = (e) => e.key === 'Escape' && setOpenMenuId(null);
+    document.addEventListener('mousedown', onDown);
+    document.addEventListener('keydown', onEsc);
     return () => {
-      document.removeEventListener('mousedown', handlePointerDown);
-      document.removeEventListener('keydown', handleEscape);
+      document.removeEventListener('mousedown', onDown);
+      document.removeEventListener('keydown', onEsc);
     };
   }, [openMenuId]);
 
   useEffect(() => {
-    if (modalState.type === null) {
-      return undefined;
-    }
-
-    const handleEscape = (event) => {
-      if (event.key === 'Escape') {
-        closeModal();
-      }
-    };
-
-    document.addEventListener('keydown', handleEscape);
-
-    return () => {
-      document.removeEventListener('keydown', handleEscape);
-    };
+    if (modalState.type === null) return undefined;
+    const onEsc = (e) => e.key === 'Escape' && closeModal();
+    document.addEventListener('keydown', onEsc);
+    return () => document.removeEventListener('keydown', onEsc);
   }, [modalState.type, submitting]);
 
   const filteredSearches = useMemo(() => {
-    const normalizedQuery = query.trim().toLowerCase();
-
-    const next = searches.filter((search) => {
+    const q = query.trim().toLowerCase();
+    const next = searches.filter((s) => {
       const matchesQuery =
-        normalizedQuery === '' ||
-        search.name?.toLowerCase().includes(normalizedQuery) ||
-        search.keywords?.some((keyword) => keyword.toLowerCase().includes(normalizedQuery));
-
-      const matchesStatus = statusFilter === 'all' || search.status === statusFilter;
-      const matchesFrequency = frequencyFilter === 'all' || search.frequency === frequencyFilter;
+        q === '' ||
+        s.name?.toLowerCase().includes(q) ||
+        s.keywords?.some((k) => k.toLowerCase().includes(q));
+      const matchesStatus = statusFilter === 'all' || s.status === statusFilter;
       const matchesType =
-        !(bookmarkedOnly || isBrandCategoryView) || searchTypeFilter === 'all' || search.search_type === searchTypeFilter;
-
-      return matchesQuery && matchesStatus && matchesFrequency && matchesType;
+        !(bookmarkedOnly || isBrandCategoryView) || searchTypeFilter === 'all' || s.search_type === searchTypeFilter;
+      return matchesQuery && matchesStatus && matchesType;
     });
 
-    next.sort((left, right) => {
+    next.sort((l, r) => {
       switch (sortBy) {
         case 'video_count':
-          return (right.result_count ?? 0) - (left.result_count ?? 0);
+          return (r.result_count ?? 0) - (l.result_count ?? 0);
         case 'az':
-          return (left.name ?? '').localeCompare(right.name ?? '');
+          return (l.name ?? '').localeCompare(r.name ?? '');
         case 'za':
-          return (right.name ?? '').localeCompare(left.name ?? '');
-        case 'recent_refresh':
+          return (r.name ?? '').localeCompare(l.name ?? '');
         default:
-          return compareDates(left.last_run_at, right.last_run_at);
+          return compareDates(l.last_run_at, r.last_run_at);
       }
     });
-
     return next;
-  }, [bookmarkedOnly, frequencyFilter, isBrandCategoryView, query, searches, searchTypeFilter, sortBy, statusFilter]);
+  }, [bookmarkedOnly, isBrandCategoryView, query, searches, searchTypeFilter, sortBy, statusFilter]);
 
-  const filtersActive =
-    query.trim() !== '' ||
-    statusFilter !== 'all' ||
-    frequencyFilter !== 'all' ||
-    ((bookmarkedOnly || isBrandCategoryView) && searchTypeFilter !== 'all');
-
-  useEffect(() => {
-    if (filtersActive) {
-      setFiltersOpen(true);
-    }
-  }, [filtersActive]);
-
-  const resetFilters = () => {
-    setQuery('');
-    setStatusFilter('all');
-    setFrequencyFilter('all');
-    setSearchTypeFilter(isBrandCategoryView ? 'all' : (filterType ?? 'all'));
-  };
+  const filteredVideos = useMemo(() => {
+    const q = videoQuery.trim().toLowerCase();
+    const next = bookmarkedVideos.filter(
+      (v) => q === '' || v.handle?.toLowerCase().includes(q) || v.title?.toLowerCase().includes(q)
+    );
+    next.sort((l, r) => {
+      switch (videoSort) {
+        case 'views':
+          return (r.views ?? 0) - (l.views ?? 0);
+        case 'recent':
+          return compareDates(l.uploaded_at, r.uploaded_at);
+        default:
+          return (r.virality_score ?? 0) - (l.virality_score ?? 0);
+      }
+    });
+    return next;
+  }, [bookmarkedVideos, videoQuery, videoSort]);
 
   const openModal = (type, search) => {
     setOpenMenuId(null);
     setModalState({ type, search });
-
-    if (type === 'edit') {
-      setFormState({
-        name: search.name ?? '',
-        frequency: search.frequency ?? 'weekly',
-      });
-    }
+    if (type === 'edit') setFormState({ name: search.name ?? '', frequency: search.frequency ?? 'weekly' });
   };
-
   const closeModal = () => {
     if (submitting) return;
     setModalState({ type: null, search: null });
   };
 
-  const patchSearch = (searchId, patch) => {
-    setSearches((current) => current.map((item) => (item.id === searchId ? { ...item, ...patch } : item)));
-  };
-
-  const removeSearch = (searchId) => {
-    setSearches((current) => current.filter((item) => item.id !== searchId));
-  };
+  const patchSearch = (id, patch) => setSearches((c) => c.map((s) => (s.id === id ? { ...s, ...patch } : s)));
+  const removeSearch = (id) => setSearches((c) => c.filter((s) => s.id !== id));
 
   const toggleBookmark = async (event, search) => {
     event.preventDefault();
     event.stopPropagation();
-
-    setAnimatingId(search.id);
-
     try {
       const payload = await api.bookmark(search.id, !search.is_watchlisted);
-
-      setSearches((current) =>
-        current
-          .map((item) => (item.id === search.id ? { ...item, ...payload.search } : item))
-          .filter((item) => (bookmarkedOnly ? item.is_watchlisted : true))
+      setSearches((c) =>
+        c
+          .map((s) => (s.id === search.id ? { ...s, ...payload.search } : s))
+          .filter((s) => (bookmarkedOnly ? s.is_watchlisted : true))
       );
-    } finally {
-      window.setTimeout(() => setAnimatingId((current) => (current === search.id ? null : current)), 280);
+    } catch {
+      /* leave as-is on failure */
     }
   };
 
   const submitEdit = async () => {
     if (!modalState.search) return;
-
     setSubmitting(true);
-
     try {
       const { search: updated } = await api.update(modalState.search.id, {
         name: formState.name.trim(),
@@ -265,9 +181,7 @@ export default function Index({ searches: initialSearches, filterType = null, wa
 
   const confirmPause = async () => {
     if (!modalState.search) return;
-
     setSubmitting(true);
-
     try {
       const { search: updated } = await api.pause(modalState.search.id);
       patchSearch(modalState.search.id, updated);
@@ -279,9 +193,7 @@ export default function Index({ searches: initialSearches, filterType = null, wa
 
   const confirmDelete = async () => {
     if (!modalState.search) return;
-
     setSubmitting(true);
-
     try {
       await api.destroy(modalState.search.id);
       removeSearch(modalState.search.id);
@@ -291,370 +203,276 @@ export default function Index({ searches: initialSearches, filterType = null, wa
     }
   };
 
+  const rowActions = (s) => (
+    <>
+      <button
+        type="button"
+        className={`row__x${s.is_watchlisted ? ' is-on' : ''}`}
+        onClick={(e) => toggleBookmark(e, s)}
+        title={s.is_watchlisted ? 'Remove bookmark' : 'Add bookmark'}
+      >
+        <Bookmark className="h-4 w-4" filled={Boolean(s.is_watchlisted)} />
+      </button>
+      <span className="row__menu" ref={openMenuId === s.id ? menuRef : null}>
+        <button
+          type="button"
+          className="row__x"
+          title="More"
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            setOpenMenuId((c) => (c === s.id ? null : s.id));
+          }}
+        >
+          <Dots className="h-4 w-4" />
+        </button>
+        {openMenuId === s.id && (
+          <div className="menu" onClick={(e) => e.stopPropagation()}>
+            <button type="button" onClick={() => openModal('edit', s)}>
+              Edit keyword details
+            </button>
+            <button type="button" onClick={() => openModal('pause', s)} disabled={s.status === 'paused'}>
+              Pause search
+            </button>
+            <button type="button" className="danger" onClick={() => openModal('delete', s)}>
+              Delete search
+            </button>
+          </div>
+        )}
+      </span>
+    </>
+  );
+
   return (
     <>
-      <Head title={`${title} - Outlier Vault`} />
+      <Head title={`${title} · Brand Beacon`} />
 
-      <AppLayout
-        title={title}
-        pill={{ text: `${filteredSearches.length} saved`, tone: 'accent' }}
-        subtitle={
-          bookmarkedOnly
-            ? 'Each one re-runs on its own schedule and keeps the top matches.'
-            : isBrandCategoryView
-              ? 'Own and competitor searches live together here, with a category filter to split them.'
-              : filterType
-              ? `These ${filterType} searches re-run on their own schedule and keep the top matches.`
-              : 'Each one re-runs on its own schedule and keeps the top matches.'
-        }
-        actions={
-          <Link href={searchHref} className="btn-accent h-10 px-4 text-[13px]">
-            <Plus className="h-3.5 w-3.5" /> New search
-          </Link>
-        }
-        toolbar={
-          <div className="surface flex flex-col gap-3 p-3 lg:flex-row lg:items-center lg:gap-2 lg:p-2">
-            <label className="relative min-w-0 flex-1">
-              <Search className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 faint" />
-              <input
-                value={query}
-                onChange={(event) => setQuery(event.target.value)}
-                placeholder="Search keyword set or label"
-                aria-label="Search keyword set or label"
-                className="h-10 w-full rounded-xl border border-black/[.08] bg-white pr-3 pl-9 text-[13px] text-ink outline-none transition duration-200 placeholder:text-ink/35 focus:border-accent/40 focus:ring-4 focus:ring-accent/12 dark:border-white/[.1] dark:bg-white/[.05] dark:text-white dark:placeholder:text-white/35 lg:h-9 lg:border-transparent lg:bg-transparent"
-              />
-            </label>
-
-            <button
-              type="button"
-              onClick={() => setFiltersOpen((open) => !open)}
-              className="inline-flex h-10 items-center justify-between rounded-xl border border-black/[.08] bg-white px-3 text-[12.5px] font-semibold text-ink transition hover:border-accent/35 dark:border-white/[.1] dark:bg-white/[.05] dark:text-white lg:hidden"
-            >
-              <span>{filtersOpen ? 'Hide filters' : 'Show filters'}</span>
-              <Chevron className={`h-3.5 w-3.5 transition-transform ${filtersOpen ? 'rotate-180' : ''}`} />
+      <AppLayout width="max-w-[1240px]" title={title} subtitle="Everything you have saved — tracked searches and the individual videos you kept." actions={<EntitlementsBar />}>
+        {showTabs && (
+          <div className="tabs">
+            <button type="button" className={`tab${tab === 'searches' ? ' is-on' : ''}`} onClick={() => setTab('searches')}>
+              <Bookmark className="h-[15px] w-[15px]" /> Bookmarked searches <span className="tab__c">{searches.length}</span>
             </button>
+            <button type="button" className={`tab${tab === 'videos' ? ' is-on' : ''}`} onClick={() => setTab('videos')}>
+              <Play className="h-[15px] w-[15px]" /> Bookmarked videos <span className="tab__c">{bookmarkedVideos.length}</span>
+            </button>
+          </div>
+        )}
 
-            <Divider />
+        {tab === 'searches' || !showTabs ? (
+          <>
+            <div className="tools">
+              <label className="srch">
+                <Search className="h-4 w-4" />
+                <input
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder="Search your saved searches"
+                  aria-label="Search your saved searches"
+                />
+              </label>
 
-            <div className={`${filtersOpen ? 'grid' : 'hidden'} grid-cols-2 gap-2 lg:flex lg:flex-wrap lg:items-center`}>
-              {(bookmarkedOnly || isBrandCategoryView) && (
-                <FilterSelect
-                  label={isBrandCategoryView ? 'Brand Category' : 'Search type'}
-                  value={searchTypeFilter}
-                  active={searchTypeFilter !== 'all'}
-                  onChange={(event) => setSearchTypeFilter(event.target.value)}
-                >
-                  <option value="all">{isBrandCategoryView ? 'All categories' : 'All types'}</option>
-                  <option value="brand">{isBrandCategoryView ? 'Own' : 'Brand'}</option>
-                  <option value="competitor">Competitor</option>
-                  {!isBrandCategoryView && <option value="product">Product</option>}
-                </FilterSelect>
-              )}
-
-              <FilterSelect
-                label="Status"
-                value={statusFilter}
-                active={statusFilter !== 'all'}
-                onChange={(event) => setStatusFilter(event.target.value)}
-              >
-                <option value="all">Any status</option>
+              <Sel value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} ariaLabel="Status">
+                <option value="all">All statuses</option>
                 <option value="done">Ready</option>
                 <option value="scraping">Refreshing</option>
                 <option value="paused">Paused</option>
                 <option value="failed">Failed</option>
-              </FilterSelect>
+              </Sel>
 
-              <FilterSelect
-                label="Frequency"
-                value={frequencyFilter}
-                active={frequencyFilter !== 'all'}
-                onChange={(event) => setFrequencyFilter(event.target.value)}
-              >
-                <option value="all">Any Frequency</option>
-                <option value="weekly">Weekly</option>
-                <option value="monthly">Monthly</option>
-              </FilterSelect>
+              {(bookmarkedOnly || isBrandCategoryView) && (
+                <Sel
+                  value={searchTypeFilter}
+                  onChange={(e) => setSearchTypeFilter(e.target.value)}
+                  ariaLabel={isBrandCategoryView ? 'Brand category' : 'Search type'}
+                >
+                  <option value="all">{isBrandCategoryView ? 'All categories' : 'All types'}</option>
+                  <option value="brand">{isBrandCategoryView ? 'Own' : 'Brand searches'}</option>
+                  <option value="competitor">Competitor searches</option>
+                  {!isBrandCategoryView && <option value="product">Product searches</option>}
+                </Sel>
+              )}
 
-              <FilterSelect
-                label="Sort by"
-                value={sortBy}
-                onChange={(event) => setSortBy(event.target.value)}
-              >
+              <Sel value={sortBy} onChange={(e) => setSortBy(e.target.value)} ariaLabel="Sort by">
                 {Object.entries(SORT_OPTIONS).map(([value, label]) => (
                   <option key={value} value={value}>
                     {label}
                   </option>
                 ))}
-              </FilterSelect>
+              </Sel>
 
-              {filtersActive && (
-                <button
-                  type="button"
-                  onClick={resetFilters}
-                  className="col-span-2 inline-flex h-10 items-center justify-center gap-1.5 rounded-xl border border-black/[.08] bg-white px-3 text-[12.5px] font-semibold muted transition hover:bg-black/[.04] hover:text-ink dark:border-white/[.1] dark:bg-white/[.05] dark:hover:bg-white/[.06] dark:hover:text-white lg:col-auto lg:h-9 lg:border-transparent lg:bg-transparent lg:px-2.5"
-                >
-                  <Close className="h-3.5 w-3.5" /> Clear
-                </button>
-              )}
+              <Link href={searchHref} className="btn btn--y btn--sm">
+                <Plus className="h-[15px] w-[15px]" /> New search
+              </Link>
             </div>
-          </div>
-        }
-      >
-        {filteredSearches.length === 0 ? (
-          <div className="ring-gradient animate-fade-up rounded-3xl bg-white/70 p-12 text-center backdrop-blur-2xl dark:bg-white/[.04]">
-            <h2 className="font-display text-[20px] font-bold">
-              {bookmarkedOnly ? 'Nothing matched your bookmark filters' : `No ${filterType ?? 'saved'} searches matched`}
-            </h2>
-            <p className="mx-auto mt-3 max-w-sm text-[13.5px] leading-relaxed muted">
-              {searches.length === 0
-                ? bookmarkedOnly
-                  ? 'Run a search, then bookmark it to keep it in Bookmark.'
-                  : 'Run a search in this category and it will show up here automatically.'
-                : 'Try a different keyword, status, frequency, or sort combination.'}
-            </p>
-            <Link href={searchHref} className="btn-accent mx-auto mt-6 h-11 px-5 text-sm">
-              Run your first search <Arrow />
-            </Link>
-          </div>
-        ) : (
-          <div className="animate-fade-up grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-            {filteredSearches.map((s) => {
-              const status = STATUS[s.status] ?? STATUS.done;
 
-              return (
-                <div
-                  key={s.id}
-                  role="button"
-                  tabIndex={0}
-                  onClick={() => router.visit(s.url)}
-                  onKeyDown={(event) => {
-                    if (event.key === 'Enter' || event.key === ' ') {
-                      event.preventDefault();
-                      router.visit(s.url);
-                    }
-                  }}
-                  className={`surface-hover cursor-pointer p-5 text-left transition duration-300 ${
-                    animatingId === s.id ? 'scale-[1.02] shadow-[0_20px_44px_-24px_rgba(91,52,245,.55)] ring-1 ring-accent/30' : ''
-                  }`}
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <h2 className="font-display text-[16px] font-bold">{s.name}</h2>
-                      <p className="mt-1 text-[11px] font-semibold uppercase tracking-[.12em] faint">{s.search_type}</p>
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={(event) => toggleBookmark(event, s)}
-                        className={`inline-flex h-8 w-8 items-center justify-center rounded-lg border transition duration-300 hover:border-accent/35 hover:text-accent dark:hover:text-accent-glow ${
-                          animatingId === s.id
-                            ? 'scale-110 border-accent/45 bg-accent/10 text-accent dark:border-accent/40 dark:text-accent-glow'
-                            : 'border-black/[.08] dark:border-white/[.12]'
-                        }`}
-                        title={s.is_watchlisted ? 'Remove bookmark' : 'Add bookmark'}
-                      >
-                        <Bookmark className="h-3.5 w-3.5" filled={Boolean(s.is_watchlisted)} />
-                      </button>
-
-                      <div ref={openMenuId === s.id ? menuRef : null} className="relative">
-                        <button
-                          type="button"
-                          onClick={(event) => {
-                            event.preventDefault();
-                            event.stopPropagation();
-                            setOpenMenuId((current) => (current === s.id ? null : s.id));
-                          }}
-                          className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-black/[.08] transition hover:border-accent/35 hover:text-accent dark:border-white/[.12] dark:hover:text-accent-glow"
-                          title="Search actions"
-                        >
-                          <Dots className="h-4 w-4" />
-                        </button>
-
-                        {openMenuId === s.id && (
-                          <div
-                            className="absolute top-10 right-0 z-20 w-44 rounded-2xl border border-black/[.08] bg-white p-1.5 shadow-[0_20px_44px_-24px_rgba(16,18,32,.45)] dark:border-white/[.12] dark:bg-canvas-dark"
-                            onClick={(event) => {
-                              event.preventDefault();
-                              event.stopPropagation();
-                            }}
-                          >
-                            <button
-                              type="button"
-                              onClick={() => openModal('edit', s)}
-                              className="flex w-full rounded-xl px-3 py-2 text-left text-[13px] font-semibold transition hover:bg-black/[.04] dark:hover:bg-white/[.06]"
-                            >
-                              Edit keyword details
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => openModal('pause', s)}
-                              disabled={s.status === 'paused'}
-                              className="flex w-full rounded-xl px-3 py-2 text-left text-[13px] font-semibold transition hover:bg-black/[.04] disabled:cursor-not-allowed disabled:opacity-40 dark:hover:bg-white/[.06]"
-                            >
-                              Pause search
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => openModal('delete', s)}
-                              className="flex w-full rounded-xl px-3 py-2 text-left text-[13px] font-semibold text-hot transition hover:bg-hot/10"
-                            >
-                              Delete search
-                            </button>
-                          </div>
-                        )}
-                      </div>
-
-                      <span
-                        className={`shrink-0 rounded-full border px-2.5 py-1 text-[11px] font-semibold ${status.className}`}
-                      >
-                        {status.label}
-                      </span>
-                    </div>
-                  </div>
-
-                  <p className="mt-1.5 truncate text-[12.5px] faint">{s.phrase}</p>
-
-                  <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[12px] muted">
-                    <span className="flex items-center gap-1.5 font-semibold">
-                      <Trend className="h-3 w-3 text-hot" />
-                      {s.result_count} videos
-                    </span>
-                    <span className="capitalize">{s.frequency}</span>
-                    <span>Last run {formatDate(s.last_run_at)}</span>
-                  </div>
-
-                  <div className="mt-4 flex flex-wrap gap-1.5">
-                    {s.keywords.slice(0, 3).map((k) => (
-                      <span
-                        key={k}
-                        className="rounded-lg border border-black/[.06] bg-black/[.03] px-2 py-1 text-[11.5px] faint dark:border-white/[.08] dark:bg-white/[.05]"
-                      >
-                        {k}
-                      </span>
-                    ))}
-                    {s.keywords.length > 3 && (
-                      <span className="px-1 py-1 text-[11.5px] faint">+{s.keywords.length - 3}</span>
-                    )}
-                  </div>
+            {filteredSearches.length === 0 ? (
+              <div className="empty">
+                <div className="empty__i">
+                  <Search className="h-6 w-6" />
                 </div>
-              );
-            })}
-          </div>
+                <h2>{searches.length === 0 ? 'Nothing saved yet' : 'No searches matched'}</h2>
+                <p className="muted" style={{ maxWidth: 360, margin: '10px auto 0' }}>
+                  {searches.length === 0
+                    ? 'Run a search, then bookmark it to keep it here.'
+                    : 'Try a different keyword, status, type, or sort combination.'}
+                </p>
+                <Link href={searchHref} className="btn btn--y" style={{ margin: '22px auto 0' }}>
+                  Run a search <Arrow />
+                </Link>
+              </div>
+            ) : (
+              <div className="rows">
+                {filteredSearches.map((s) => (
+                  <SavedSearchRow key={s.id} search={s} onNavigate={() => router.visit(s.url)} actions={rowActions(s)} />
+                ))}
+              </div>
+            )}
+          </>
+        ) : (
+          <>
+            <div className="tools">
+              <label className="srch">
+                <Search className="h-4 w-4" />
+                <input
+                  value={videoQuery}
+                  onChange={(e) => setVideoQuery(e.target.value)}
+                  placeholder="Search your bookmarked videos"
+                  aria-label="Search your bookmarked videos"
+                />
+              </label>
+              <Sel value={videoSort} onChange={(e) => setVideoSort(e.target.value)} ariaLabel="Sort videos">
+                {Object.entries(VIDEO_SORT).map(([value, label]) => (
+                  <option key={value} value={value}>
+                    {label}
+                  </option>
+                ))}
+              </Sel>
+            </div>
+
+            {filteredVideos.length === 0 ? (
+              <div className="empty">
+                <div className="empty__i">
+                  <Play className="h-6 w-6" />
+                </div>
+                <h2>No bookmarked videos yet</h2>
+                <p className="muted" style={{ maxWidth: 360, margin: '10px auto 0' }}>
+                  Open a search and bookmark the videos worth keeping — they collect here.
+                </p>
+              </div>
+            ) : (
+              <div className="vgrid">
+                {filteredVideos.map((v) => (
+                  <VideoCard key={v.id} video={v} />
+                ))}
+              </div>
+            )}
+          </>
         )}
       </AppLayout>
 
-      {modalState.type === 'edit' && modalState.search && (
-        <ModalShell
-          title="Edit keyword details"
-          body="Update the saved label and refresh schedule. The keyword set stays fixed for this search."
-          onClose={closeModal}
-        >
-          <div className="mt-6 space-y-4">
-            <div>
-              <p className="mb-2 text-[12px] font-semibold uppercase tracking-[.14em] faint">Keyword set</p>
-              <div className="rounded-2xl border border-black/[.08] bg-black/[.03] p-3 dark:border-white/[.12] dark:bg-white/[.04]">
-                <div className="flex flex-wrap gap-1.5">
-                  {modalState.search.keywords.map((keyword) => (
-                    <span
-                      key={keyword}
-                      className="rounded-lg border border-black/[.06] bg-white px-2 py-1 text-[11.5px] faint dark:border-white/[.08] dark:bg-white/[.05]"
+      {/* ---------------- modals ---------------- */}
+      {modalState.type && modalState.search && (
+        <div className="bb">
+          <div className="bb-modal">
+            <button className="bb-modal__bg" aria-label="Close" onClick={closeModal} />
+            <div className="bb-modal__box">
+              {modalState.type === 'edit' && (
+                <>
+                  <h2>Edit keyword details</h2>
+                  <p className="sub">Update the label and refresh schedule. The keyword set is fixed for this search.</p>
+
+                  <div style={{ marginTop: 20 }}>
+                    <p className="sect__n">Keyword set</p>
+                    <div className="chips">
+                      {modalState.search.keywords.map((k) => (
+                        <span key={k} className="chip">
+                          {k}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div style={{ marginTop: 20 }}>
+                    <label className="lbl">Label</label>
+                    <input
+                      className="fld"
+                      value={formState.name}
+                      onChange={(e) => setFormState((c) => ({ ...c, name: e.target.value }))}
+                    />
+                  </div>
+
+                  <div style={{ marginTop: 20 }}>
+                    <label className="lbl">Schedule</label>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      {['weekly', 'monthly'].map((f) => (
+                        <button
+                          key={f}
+                          type="button"
+                          className={`btn ${formState.frequency === f ? 'btn--y' : 'btn--g'} btn--w`}
+                          onClick={() => setFormState((c) => ({ ...c, frequency: f }))}
+                        >
+                          {f === 'weekly' ? 'Weekly' : 'Monthly'}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="actrow__r" style={{ marginTop: 24, justifyContent: 'flex-end' }}>
+                    <button type="button" className="btn btn--g" onClick={closeModal} disabled={submitting}>
+                      Cancel
+                    </button>
+                    <button type="button" className="btn btn--y" onClick={submitEdit} disabled={submitting}>
+                      {submitting ? 'Saving…' : 'Save changes'}
+                    </button>
+                  </div>
+                </>
+              )}
+
+              {modalState.type === 'pause' && (
+                <>
+                  <h2>Pause search</h2>
+                  <p className="sub">
+                    Keeps the record and its results, but stops future refreshes until you resume it.
+                  </p>
+                  <p style={{ marginTop: 16, fontWeight: 700, color: 'var(--ink)' }}>{modalState.search.name}</p>
+                  <div className="actrow__r" style={{ marginTop: 24, justifyContent: 'flex-end' }}>
+                    <button type="button" className="btn btn--g" onClick={closeModal} disabled={submitting}>
+                      Cancel
+                    </button>
+                    <button type="button" className="btn btn--y" onClick={confirmPause} disabled={submitting}>
+                      {submitting ? 'Pausing…' : 'Pause search'}
+                    </button>
+                  </div>
+                </>
+              )}
+
+              {modalState.type === 'delete' && (
+                <>
+                  <h2 style={{ color: 'var(--warn)' }}>Delete search</h2>
+                  <p className="sub">
+                    Removes the saved keyword record and stops future runs. The underlying video records are kept.
+                  </p>
+                  <p style={{ marginTop: 16, fontWeight: 700, color: 'var(--ink)' }}>{modalState.search.name}</p>
+                  <div className="actrow__r" style={{ marginTop: 24, justifyContent: 'flex-end' }}>
+                    <button type="button" className="btn btn--g" onClick={closeModal} disabled={submitting}>
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn--g"
+                      style={{ color: 'var(--warn)', borderColor: '#F0D6C8' }}
+                      onClick={confirmDelete}
+                      disabled={submitting}
                     >
-                      {keyword}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            <div>
-              <label className="mb-2 block text-[12px] font-semibold uppercase tracking-[.14em] faint">Label</label>
-              <input
-                value={formState.name}
-                onChange={(event) => setFormState((current) => ({ ...current, name: event.target.value }))}
-                className="field h-11 text-sm"
-              />
-            </div>
-
-            <div>
-              <label className="mb-2 block text-[12px] font-semibold uppercase tracking-[.14em] faint">Schedule</label>
-              <div className="flex gap-2">
-                {['weekly', 'monthly'].map((frequency) => (
-                  <button
-                    key={frequency}
-                    type="button"
-                    onClick={() => setFormState((current) => ({ ...current, frequency }))}
-                    className={`h-11 flex-1 rounded-xl border text-[13px] font-semibold transition ${
-                      formState.frequency === frequency
-                        ? 'border-accent/45 bg-accent/10 text-accent dark:text-accent-glow'
-                        : 'border-black/[.08] muted hover:border-accent/35 dark:border-white/[.12]'
-                    }`}
-                  >
-                    {frequency === 'weekly' ? 'Weekly' : 'Monthly'}
-                  </button>
-                ))}
-              </div>
+                      {submitting ? 'Deleting…' : 'Delete search'}
+                    </button>
+                  </div>
+                </>
+              )}
             </div>
           </div>
-
-          <div className="mt-6 flex justify-end gap-2">
-            <button type="button" onClick={closeModal} className="btn-ghost h-10 px-4 text-sm" disabled={submitting}>
-              Cancel
-            </button>
-            <button type="button" onClick={submitEdit} className="btn-accent h-10 px-4 text-sm" disabled={submitting}>
-              {submitting ? 'Saving...' : 'Save changes'}
-            </button>
-          </div>
-        </ModalShell>
-      )}
-
-      {modalState.type === 'pause' && modalState.search && (
-        <ModalShell
-          title="Pause search"
-          body="This will keep the search record, but it will not trigger future refreshes until resumed."
-          onClose={closeModal}
-        >
-          <div className="mt-6 rounded-2xl border border-black/[.08] bg-black/[.03] p-4 text-[13.5px] muted dark:border-white/[.12] dark:bg-white/[.04]">
-            <p className="font-semibold text-ink dark:text-white">{modalState.search.name}</p>
-            <p className="mt-1">Keyword set stays intact and results remain available.</p>
-          </div>
-
-          <div className="mt-6 flex justify-end gap-2">
-            <button type="button" onClick={closeModal} className="btn-ghost h-10 px-4 text-sm" disabled={submitting}>
-              Cancel
-            </button>
-            <button type="button" onClick={confirmPause} className="btn-accent h-10 px-4 text-sm" disabled={submitting}>
-              {submitting ? 'Pausing...' : 'Pause search'}
-            </button>
-          </div>
-        </ModalShell>
-      )}
-
-      {modalState.type === 'delete' && modalState.search && (
-        <ModalShell
-          title="Delete search"
-          body="This removes the saved keyword record only. It does not delete the underlying viral video records."
-          onClose={closeModal}
-        >
-          <div className="mt-6 rounded-2xl border border-hot/20 bg-hot/10 p-4 text-[13.5px] text-hot">
-            <p className="font-semibold">{modalState.search.name}</p>
-            <p className="mt-1">This action hides the search from your lists and stops future runs.</p>
-          </div>
-
-          <div className="mt-6 flex justify-end gap-2">
-            <button type="button" onClick={closeModal} className="btn-ghost h-10 px-4 text-sm" disabled={submitting}>
-              Cancel
-            </button>
-            <button
-              type="button"
-              onClick={confirmDelete}
-              className="h-10 rounded-xl border border-hot/30 px-4 text-sm font-semibold text-hot transition hover:bg-hot/10"
-              disabled={submitting}
-            >
-              {submitting ? 'Deleting...' : 'Delete search'}
-            </button>
-          </div>
-        </ModalShell>
+        </div>
       )}
     </>
   );

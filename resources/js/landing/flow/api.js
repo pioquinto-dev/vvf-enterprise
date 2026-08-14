@@ -53,10 +53,12 @@ export function expandKeywords(phrase, { signal } = {}) {
   });
 }
 
-export function createSavedSearch({ type, phrase, name, keywords, frequency }) {
+export function createSavedSearch({ type, phrase, name, keywords, frequency, sources }) {
+  // `sources` (brand/competitor TikTok handle + website) rides along optionally;
+  // the backend uses it to sharpen matching where it can, and ignores it otherwise.
   return request(`${API_V1}/saved-searches`, {
     method: 'POST',
-    body: { type, phrase, name, keywords, frequency },
+    body: { type, phrase, name, keywords, frequency, ...(sources ? { sources } : {}) },
   });
 }
 

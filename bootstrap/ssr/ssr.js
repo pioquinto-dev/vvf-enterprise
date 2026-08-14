@@ -643,6 +643,25 @@ var Lock = ({ className = "h-4 w-4" }) => /* @__PURE__ */ jsxs("svg", {
 		strokeLinecap: "round"
 	})]
 });
+var Refresh = ({ className = "h-4 w-4" }) => /* @__PURE__ */ jsxs("svg", {
+	viewBox: "0 0 24 24",
+	fill: "none",
+	className,
+	"aria-hidden": "true",
+	children: [/* @__PURE__ */ jsx("path", {
+		d: "M21 12a9 9 0 1 1-2.6-6.4",
+		stroke: "currentColor",
+		strokeWidth: "2.2",
+		strokeLinecap: "round",
+		strokeLinejoin: "round"
+	}), /* @__PURE__ */ jsx("path", {
+		d: "M21 3v6h-6",
+		stroke: "currentColor",
+		strokeWidth: "2.2",
+		strokeLinecap: "round",
+		strokeLinejoin: "round"
+	})]
+});
 var Dots = ({ className = "h-4 w-4" }) => /* @__PURE__ */ jsxs("svg", {
 	viewBox: "0 0 16 16",
 	fill: "currentColor",
@@ -2409,6 +2428,926 @@ function Register() {
 	})] });
 }
 //#endregion
+//#region resources/js/Pages/components/AppLayout.jsx
+var AppLayout_exports = /* @__PURE__ */ __exportAll({ default: () => AppLayout });
+var PILL_CLASS = {
+	ok: "pill--ok",
+	accent: "pill--run",
+	run: "pill--run",
+	off: "pill--off",
+	bad: "pill--bad",
+	warn: "pill--bad"
+};
+/**
+* Primary sidebar navigation, mirroring the handoff mockup. Hrefs point at
+* routes that exist today; the dedicated Brand/Product search screens land in
+* a later batch and will repoint the last two entries.
+*/
+var NAV$1 = [
+	{
+		label: "Dashboard",
+		href: "/dashboard",
+		icon: Spark,
+		match: "/dashboard"
+	},
+	{
+		label: "Library",
+		href: "/bookmark",
+		icon: Library,
+		match: "/bookmark"
+	},
+	{
+		label: "Brand searches",
+		href: "/brands",
+		icon: Store,
+		match: "/brands"
+	},
+	{
+		label: "Product searches",
+		href: "/products",
+		icon: Search,
+		match: "/products"
+	}
+];
+function isActive(currentUrl, item) {
+	const path = (currentUrl || "/").split("?")[0];
+	if (item.exact) return currentUrl === item.exact;
+	return path.startsWith(item.match);
+}
+function initials(name, email) {
+	return (name || email || "?").trim().slice(0, 1).toUpperCase();
+}
+function Brand({ onNavigate }) {
+	return /* @__PURE__ */ jsxs(Link, {
+		href: "/",
+		onClick: onNavigate,
+		className: "side__brand",
+		children: [/* @__PURE__ */ jsx(Logo, { className: "h-[30px] w-[30px]" }), /* @__PURE__ */ jsx("span", { children: "Brand Beacon" })]
+	});
+}
+function NavList({ currentUrl, onNavigate }) {
+	return /* @__PURE__ */ jsx("div", {
+		className: "side__nav",
+		children: NAV$1.map((item) => {
+			const Icon = item.icon;
+			if (item.locked) return /* @__PURE__ */ jsxs("div", {
+				className: "nav__i is-lock",
+				title: "Locked for now",
+				children: [
+					/* @__PURE__ */ jsx(Icon, {}),
+					item.label,
+					/* @__PURE__ */ jsx("span", {
+						className: "lk",
+						children: /* @__PURE__ */ jsx(Lock, { className: "h-[13px] w-[13px]" })
+					})
+				]
+			}, item.label);
+			return /* @__PURE__ */ jsxs(Link, {
+				href: item.href,
+				onClick: onNavigate,
+				className: `nav__i${isActive(currentUrl, item) ? " is-on" : ""}`,
+				children: [/* @__PURE__ */ jsx(Icon, {}), item.label]
+			}, item.label);
+		})
+	});
+}
+function AffiliateCard() {
+	return /* @__PURE__ */ jsxs("div", {
+		className: "aff",
+		title: "Affiliate program coming soon",
+		children: [/* @__PURE__ */ jsxs("b", { children: [/* @__PURE__ */ jsx(Spark, { className: "h-3.5 w-3.5" }), "Be an affiliate"] }), /* @__PURE__ */ jsx("span", { children: "Soon" })]
+	});
+}
+function AccountBlock({ signedIn, name, email, onSignOut, signingOut, onNavigate }) {
+	if (!signedIn) return /* @__PURE__ */ jsxs("div", {
+		className: "acct",
+		style: { flexDirection: "column" },
+		children: [/* @__PURE__ */ jsx(Link, {
+			href: "/login",
+			onClick: onNavigate,
+			className: "btn btn--g btn--w",
+			children: "Log in"
+		}), /* @__PURE__ */ jsxs(Link, {
+			href: "/register",
+			onClick: onNavigate,
+			className: "btn btn--y btn--w",
+			children: ["Sign up ", /* @__PURE__ */ jsx(Arrow, {})]
+		})]
+	});
+	return /* @__PURE__ */ jsxs("div", {
+		className: "acct",
+		children: [/* @__PURE__ */ jsxs(Link, {
+			href: "/settings/account",
+			onClick: onNavigate,
+			className: "acct__l",
+			children: [/* @__PURE__ */ jsx("span", {
+				className: "avat",
+				children: initials(name, email)
+			}), /* @__PURE__ */ jsxs("span", {
+				style: {
+					minWidth: 0,
+					display: "block",
+					overflow: "hidden"
+				},
+				children: [/* @__PURE__ */ jsx("span", {
+					className: "acct__n",
+					children: name || "Account"
+				}), email && /* @__PURE__ */ jsx("span", {
+					className: "acct__e",
+					children: email
+				})]
+			})]
+		}), /* @__PURE__ */ jsx("button", {
+			className: "acct__x",
+			title: "Sign out",
+			"aria-label": "Sign out",
+			onClick: onSignOut,
+			disabled: signingOut,
+			children: /* @__PURE__ */ jsx(Exit, { className: "h-4 w-4" })
+		})]
+	});
+}
+/**
+* Brand Beacon app shell: a fixed 252px sidebar on desktop, a top bar + slide
+* drawer on small screens, and a shared footer under the content.
+*
+* Props are unchanged from the previous shell so every screen keeps working:
+*   pill     — { text, tone } status chip shown beside the title
+*   step     — accepted for backwards-compat; the wizard now draws its own
+*              stepper inside its card, so this is a no-op here
+*   title    — page heading
+*   subtitle — one line of context under the title
+*   actions  — right side of the header row (entitlements bar or buttons)
+*   toolbar  — full-width row under the header (search / filters / sort)
+*   width    — Tailwind max-width class for the content column
+*/
+function AppLayout({ pill, step, title, subtitle, actions, toolbar, width = "max-w-6xl", children }) {
+	const { props, url: currentUrl } = usePage();
+	const { auth = {} } = props;
+	const logout = useForm({});
+	const [drawerOpen, setDrawerOpen] = useState(false);
+	const signedIn = auth.signedIn ?? Boolean(auth.user);
+	const signOut = () => {
+		setDrawerOpen(false);
+		logout.post("/logout");
+	};
+	const closeDrawer = () => setDrawerOpen(false);
+	useEffect(() => {
+		if (typeof document === "undefined") return void 0;
+		document.body.style.overflow = drawerOpen ? "hidden" : "";
+		return () => {
+			document.body.style.overflow = "";
+		};
+	}, [drawerOpen]);
+	const account = /* @__PURE__ */ jsx(AccountBlock, {
+		signedIn,
+		name: auth.user?.name,
+		email: auth.user?.email,
+		onSignOut: signOut,
+		signingOut: logout.processing
+	});
+	const header = (title || pill || actions || subtitle) && /* @__PURE__ */ jsxs("div", {
+		className: "top",
+		children: [/* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsxs("h1", { children: [title, pill && /* @__PURE__ */ jsxs("span", {
+			className: `pill ${PILL_CLASS[pill.tone] ?? PILL_CLASS.accent}`,
+			children: [/* @__PURE__ */ jsx("i", {}), pill.text]
+		})] }), subtitle && /* @__PURE__ */ jsx("p", { children: subtitle })] }), actions && /* @__PURE__ */ jsx("div", {
+			className: "top__actions",
+			children: actions
+		})]
+	});
+	return /* @__PURE__ */ jsxs("div", {
+		className: "bb",
+		children: [
+			/* @__PURE__ */ jsxs("header", {
+				className: "bb-top",
+				children: [/* @__PURE__ */ jsx(Brand, {}), /* @__PURE__ */ jsx("button", {
+					className: "bb-burger",
+					"aria-label": "Open menu",
+					"aria-expanded": drawerOpen,
+					onClick: () => setDrawerOpen(true),
+					children: /* @__PURE__ */ jsx(Menu, {})
+				})]
+			}),
+			/* @__PURE__ */ jsxs("div", {
+				className: `bb-drawer${drawerOpen ? " is-open" : ""}`,
+				children: [/* @__PURE__ */ jsx("button", {
+					className: "bb-drawer__bg",
+					"aria-label": "Close menu",
+					onClick: closeDrawer
+				}), /* @__PURE__ */ jsxs("div", {
+					className: "bb-drawer__panel",
+					children: [
+						/* @__PURE__ */ jsxs("div", {
+							style: {
+								display: "flex",
+								alignItems: "center",
+								justifyContent: "space-between"
+							},
+							children: [/* @__PURE__ */ jsx(Brand, { onNavigate: closeDrawer }), /* @__PURE__ */ jsx("button", {
+								className: "bb-burger",
+								"aria-label": "Close menu",
+								onClick: closeDrawer,
+								children: /* @__PURE__ */ jsx(Close, {})
+							})]
+						}),
+						/* @__PURE__ */ jsx(NavList, {
+							currentUrl,
+							onNavigate: closeDrawer
+						}),
+						/* @__PURE__ */ jsx("div", { className: "side__sp" }),
+						/* @__PURE__ */ jsx(AffiliateCard, {}),
+						/* @__PURE__ */ jsx(AccountBlock, {
+							signedIn,
+							name: auth.user?.name,
+							email: auth.user?.email,
+							onSignOut: signOut,
+							signingOut: logout.processing,
+							onNavigate: closeDrawer
+						})
+					]
+				})]
+			}),
+			/* @__PURE__ */ jsxs("div", {
+				className: "app",
+				children: [/* @__PURE__ */ jsxs("aside", {
+					className: "side",
+					children: [
+						/* @__PURE__ */ jsx(Brand, {}),
+						/* @__PURE__ */ jsx(NavList, { currentUrl }),
+						/* @__PURE__ */ jsx("div", { className: "side__sp" }),
+						/* @__PURE__ */ jsx(AffiliateCard, {}),
+						account
+					]
+				}), /* @__PURE__ */ jsxs("main", {
+					className: "main",
+					children: [/* @__PURE__ */ jsx("div", {
+						className: "bb-content",
+						children: /* @__PURE__ */ jsxs("div", {
+							className: `mx-auto w-full ${width}`,
+							children: [
+								header,
+								toolbar && /* @__PURE__ */ jsx("div", { children: toolbar }),
+								children
+							]
+						})
+					}), /* @__PURE__ */ jsx(AppFooter, { width })]
+				})]
+			})
+		]
+	});
+}
+//#endregion
+//#region resources/js/Pages/components/EntitlementsBar.jsx
+var EntitlementsBar_exports = /* @__PURE__ */ __exportAll({ default: () => EntitlementsBar });
+/**
+* Plan and allowance at a glance — the handoff mockup's `.ent` pill, wired to
+* real billing props. One quiet line, not a dashboard.
+*/
+function titleCase$1(slug) {
+	return String(slug || "free").split(/[-_\s]+/).map((word) => word.charAt(0).toUpperCase() + word.slice(1)).join(" ");
+}
+function EntitlementsBar() {
+	const { auth = {}, billing = {} } = usePage().props;
+	if (!(auth.signedIn ?? Boolean(auth.user))) return null;
+	const searchLimit = billing.searchCreditsLimit ?? 0;
+	const searchLeft = billing.searchCreditsRemaining ?? 0;
+	const searchUsed = billing.searchCreditsUsed ?? 0;
+	const bookmarkLimit = billing.bookmarkLimit ?? 0;
+	const bookmarksUsed = billing.bookmarksUsed ?? billing.bookmarkCount ?? 0;
+	const searchesLow = searchLimit > 0 && searchLeft <= Math.max(1, Math.round(searchLimit * .1));
+	return /* @__PURE__ */ jsxs("div", {
+		className: "ent",
+		children: [
+			/* @__PURE__ */ jsx("b", { children: titleCase$1(billing.currentPlan) }),
+			/* @__PURE__ */ jsx("i", {}),
+			/* @__PURE__ */ jsxs("span", {
+				className: searchesLow ? "low" : void 0,
+				children: [
+					/* @__PURE__ */ jsx("b", { children: searchUsed }),
+					searchLimit > 0 && `/${searchLimit}`,
+					" searches"
+				]
+			}),
+			/* @__PURE__ */ jsx("i", {}),
+			/* @__PURE__ */ jsxs("span", { children: [
+				/* @__PURE__ */ jsx("b", { children: bookmarksUsed }),
+				bookmarkLimit > 0 && `/${bookmarkLimit}`,
+				" bookmarks"
+			] }),
+			!billing.hasPaidPlan && /* @__PURE__ */ jsxs(Fragment, { children: [/* @__PURE__ */ jsx("i", {}), /* @__PURE__ */ jsx(Link, {
+				href: "/plans",
+				children: "Upgrade"
+			})] })
+		]
+	});
+}
+//#endregion
+//#region resources/js/Pages/components/VideoCard.jsx
+var VideoCard_exports = /* @__PURE__ */ __exportAll({
+	compact: () => compact,
+	default: () => VideoCard
+});
+function compact(n) {
+	const value = Number(n) || 0;
+	if (value >= 1e6) return `${(value / 1e6).toFixed(value >= 1e7 ? 0 : 1)}M`;
+	if (value >= 1e3) return `${(value / 1e3).toFixed(value >= 1e4 ? 0 : 1)}K`;
+	return String(value);
+}
+function formatDuration(duration) {
+	if (duration == null || duration === "") return null;
+	if (typeof duration === "string") return duration;
+	const total = Number(duration);
+	if (!Number.isFinite(total)) return null;
+	const mins = Math.floor(total / 60);
+	const secs = Math.round(total % 60);
+	return `${mins}:${String(secs).padStart(2, "0")}`;
+}
+/**
+* One video card (the mockup's `.vc`), wired to a `ViralVideo::toCardArray`
+* payload. The play glyph opens the TikTok post rather than advertising a
+* control that does nothing — the signed CDN `video_url` 403s from a browser.
+*/
+function VideoCard({ video, rank }) {
+	const multiplier = Number(video.virality_score) > 0 ? `${Math.round(video.virality_score)}x` : null;
+	const duration = formatDuration(video.duration);
+	const cover = video.thumbnail_url;
+	const link = video.post_url || video.embed_url;
+	return /* @__PURE__ */ jsxs("article", {
+		className: "vc",
+		children: [/* @__PURE__ */ jsxs("div", {
+			className: "vt",
+			children: [
+				cover && /* @__PURE__ */ jsx("img", {
+					src: cover,
+					alt: "",
+					loading: "lazy"
+				}),
+				rank != null && /* @__PURE__ */ jsx("span", {
+					className: "vt__r",
+					children: rank
+				}),
+				multiplier && /* @__PURE__ */ jsx("span", {
+					className: "vt__m",
+					children: multiplier
+				}),
+				duration && /* @__PURE__ */ jsx("span", {
+					className: "vt__d",
+					children: duration
+				}),
+				link ? /* @__PURE__ */ jsx("a", {
+					className: "vt__p",
+					href: link,
+					target: "_blank",
+					rel: "noreferrer",
+					"aria-label": "Open on TikTok",
+					children: /* @__PURE__ */ jsx(Play, {})
+				}) : /* @__PURE__ */ jsx("span", {
+					className: "vt__p",
+					children: /* @__PURE__ */ jsx(Play, {})
+				})
+			]
+		}), /* @__PURE__ */ jsxs("div", {
+			className: "vb",
+			children: [
+				/* @__PURE__ */ jsx("p", {
+					className: "vb__h",
+					children: video.handle
+				}),
+				/* @__PURE__ */ jsx("p", {
+					className: "vb__c",
+					children: video.title || video.content_hook
+				}),
+				/* @__PURE__ */ jsxs("div", {
+					className: "vb__s",
+					children: [
+						/* @__PURE__ */ jsxs("span", { children: [/* @__PURE__ */ jsx(Trend, {}), compact(video.views)] }),
+						/* @__PURE__ */ jsxs("span", { children: [/* @__PURE__ */ jsx(Heart, {}), compact(video.likes)] }),
+						/* @__PURE__ */ jsxs("span", { children: [/* @__PURE__ */ jsx(Comment, {}), compact(video.comments)] })
+					]
+				})
+			]
+		})]
+	});
+}
+//#endregion
+//#region resources/js/Pages/components/SavedSearchRow.jsx
+var SavedSearchRow_exports = /* @__PURE__ */ __exportAll({
+	STATUS: () => STATUS,
+	TYPE_LABEL: () => TYPE_LABEL,
+	default: () => SavedSearchRow,
+	formatDate: () => formatDate$2,
+	titleCase: () => titleCase
+});
+var STATUS = {
+	done: {
+		label: "Ready",
+		cls: "pill--ok"
+	},
+	complete: {
+		label: "Ready",
+		cls: "pill--ok"
+	},
+	running: {
+		label: "Refreshing",
+		cls: "pill--run"
+	},
+	scraping: {
+		label: "Refreshing",
+		cls: "pill--run"
+	},
+	queued: {
+		label: "Refreshing",
+		cls: "pill--run"
+	},
+	pending: {
+		label: "Refreshing",
+		cls: "pill--run"
+	},
+	paused: {
+		label: "Paused",
+		cls: "pill--off"
+	},
+	failed: {
+		label: "Failed",
+		cls: "pill--bad"
+	}
+};
+var TYPE_LABEL = {
+	brand: "Brand",
+	competitor: "Competitor",
+	product: "Product"
+};
+function titleCase(value) {
+	return String(value || "").split(/[-_\s]+/).filter(Boolean).map((word) => word.charAt(0).toUpperCase() + word.slice(1)).join(" ");
+}
+function formatDate$2(iso) {
+	if (!iso) return "not yet";
+	const date = new Date(iso);
+	if (Number.isNaN(date.getTime())) return "not yet";
+	return date.toLocaleDateString("en-US", {
+		month: "short",
+		day: "numeric"
+	});
+}
+/**
+* One saved-search row (the mockup's `.row`), wired to a presenter summary.
+*
+* - Dashboard "Recent" uses it as a plain Link with static bookmark/dots.
+* - Library passes `onNavigate` (making the row a div button so buttons can
+*   nest cleanly) and an `actions` node with the live bookmark toggle + menu.
+*/
+function SavedSearchRow({ search, onNavigate, actions }) {
+	const status = STATUS[search.status] ?? {
+		label: titleCase(search.status) || "Ready",
+		cls: "pill--off"
+	};
+	const type = TYPE_LABEL[search.search_type] ?? titleCase(search.search_type);
+	const freq = titleCase(search.frequency) || "Weekly";
+	const initials = (search.name || search.phrase || "?").slice(0, 2).toUpperCase();
+	const inner = /* @__PURE__ */ jsxs(Fragment, { children: [
+		/* @__PURE__ */ jsx("span", {
+			className: "row__i",
+			children: initials
+		}),
+		/* @__PURE__ */ jsxs("span", {
+			style: { minWidth: 0 },
+			children: [/* @__PURE__ */ jsx("span", {
+				className: "row__n",
+				children: search.name
+			}), /* @__PURE__ */ jsxs("span", {
+				className: "row__m",
+				children: [
+					type,
+					" · ",
+					freq,
+					" · updated ",
+					formatDate$2(search.last_run_at)
+				]
+			})]
+		}),
+		/* @__PURE__ */ jsxs("span", {
+			className: `pill ${status.cls}`,
+			children: [/* @__PURE__ */ jsx("i", {}), status.label]
+		}),
+		/* @__PURE__ */ jsxs("span", {
+			className: "row__k",
+			children: [/* @__PURE__ */ jsx("span", {
+				className: "row__kv",
+				children: search.result_count ?? 0
+			}), /* @__PURE__ */ jsx("span", {
+				className: "row__kl",
+				children: "videos"
+			})]
+		}),
+		actions ?? /* @__PURE__ */ jsxs(Fragment, { children: [/* @__PURE__ */ jsx("span", {
+			className: "row__x",
+			title: search.is_watchlisted ? "Bookmarked" : "Bookmark",
+			"aria-hidden": true,
+			children: /* @__PURE__ */ jsx(Bookmark, {
+				className: "h-4 w-4",
+				filled: Boolean(search.is_watchlisted)
+			})
+		}), /* @__PURE__ */ jsx("span", {
+			className: "row__x",
+			title: "More",
+			"aria-hidden": true,
+			children: /* @__PURE__ */ jsx(Dots, { className: "h-4 w-4" })
+		})] })
+	] });
+	if (onNavigate) return /* @__PURE__ */ jsx("div", {
+		className: "row",
+		role: "button",
+		tabIndex: 0,
+		onClick: onNavigate,
+		onKeyDown: (e) => {
+			if (e.key === "Enter" || e.key === " ") {
+				e.preventDefault();
+				onNavigate();
+			}
+		},
+		style: { cursor: "pointer" },
+		children: inner
+	});
+	return /* @__PURE__ */ jsx(Link, {
+		className: "row",
+		href: search.url ?? `/bookmark/${search.id}`,
+		children: inner
+	});
+}
+//#endregion
+//#region resources/js/Pages/components/SearchListScreen.jsx
+var SearchListScreen_exports = /* @__PURE__ */ __exportAll({ default: () => SearchListScreen });
+var COPY = {
+	brand: {
+		title: "Brand searches",
+		subtitle: "Research any brand on TikTok, then keep the good ones on a schedule.",
+		heroEyebrow: "Start a brand search",
+		placeholder: "Which brand do you want to research?",
+		sample: "rhode skin",
+		heroHint: "One brand per search — we widen it with keywords next.",
+		moversNote: "Best outlier across every brand you track.",
+		allHeading: "All brand searches",
+		filterPlaceholder: "Filter brands"
+	},
+	product: {
+		title: "Product searches",
+		subtitle: "Track a product category across every brand selling it, not just one label.",
+		heroEyebrow: "Start a product search",
+		placeholder: "Which product do you want to track?",
+		sample: "lip oil",
+		heroHint: "One product per search — we widen it with keywords next.",
+		moversNote: "Best outlier across every product you track.",
+		allHeading: "All product searches",
+		filterPlaceholder: "Filter products"
+	}
+};
+var SORT = {
+	outliers: "Most outliers",
+	top_score: "Top score",
+	recent: "Recently updated",
+	az: "Name A-Z"
+};
+function Sel$1({ value, onChange, ariaLabel, children }) {
+	return /* @__PURE__ */ jsxs("span", {
+		className: "sel",
+		children: [/* @__PURE__ */ jsx("select", {
+			"aria-label": ariaLabel,
+			value,
+			onChange,
+			children
+		}), /* @__PURE__ */ jsx(Chevron, {})]
+	});
+}
+function BrandCard({ search }) {
+	const status = STATUS[search.status] ?? {
+		label: "Ready",
+		cls: "pill--off"
+	};
+	const initials = (search.name || search.phrase || "?").slice(0, 2).toUpperCase();
+	const topScore = Number(search.top_score) > 0 ? `${Math.round(search.top_score)}x` : "—";
+	return /* @__PURE__ */ jsxs(Link, {
+		className: "bcard",
+		href: search.url ?? `/bookmark/${search.id}`,
+		children: [
+			/* @__PURE__ */ jsxs("div", {
+				className: "bcard__top",
+				children: [
+					/* @__PURE__ */ jsx("span", {
+						className: "bcard__av",
+						children: initials
+					}),
+					/* @__PURE__ */ jsxs("span", {
+						style: { minWidth: 0 },
+						children: [/* @__PURE__ */ jsx("span", {
+							className: "bcard__n",
+							children: search.name
+						}), /* @__PURE__ */ jsx("span", {
+							className: "bcard__h",
+							children: search.phrase
+						})]
+					}),
+					/* @__PURE__ */ jsxs("span", {
+						className: `pill ${status.cls}`,
+						children: [/* @__PURE__ */ jsx("i", {}), status.label]
+					})
+				]
+			}),
+			/* @__PURE__ */ jsxs("div", {
+				className: "bcard__mid",
+				children: [
+					/* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsx("span", {
+						className: "bcard__v",
+						children: search.outlier_count ?? 0
+					}), /* @__PURE__ */ jsx("span", {
+						className: "bcard__l",
+						children: "outliers/wk"
+					})] }),
+					/* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsx("span", {
+						className: "bcard__v",
+						children: topScore
+					}), /* @__PURE__ */ jsx("span", {
+						className: "bcard__l",
+						children: "top score"
+					})] }),
+					/* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsx("span", {
+						className: "bcard__v",
+						children: search.result_count ?? 0
+					}), /* @__PURE__ */ jsx("span", {
+						className: "bcard__l",
+						children: "videos"
+					})] }),
+					/* @__PURE__ */ jsx("div", {
+						className: "bcard__sp",
+						children: (search.result_count ?? 0) === 0 && /* @__PURE__ */ jsx("span", {
+							className: "bcard__flat",
+							children: "no runs yet"
+						})
+					})
+				]
+			}),
+			/* @__PURE__ */ jsxs("div", {
+				className: "bcard__foot",
+				children: [/* @__PURE__ */ jsxs("span", { children: ["Updated ", formatDate$2(search.last_run_at)] }), /* @__PURE__ */ jsxs("span", {
+					className: "bcard__go",
+					children: ["Open ", /* @__PURE__ */ jsx(Arrow, {})]
+				})]
+			})
+		]
+	});
+}
+function SearchListScreen({ kind = "brand", searches = [], moving = [] }) {
+	const copy = COPY[kind] ?? COPY.brand;
+	const { billing = {} } = usePage().props;
+	const [subject, setSubject] = useState("");
+	const [query, setQuery] = useState("");
+	const [statusFilter, setStatusFilter] = useState("all");
+	const [sortBy, setSortBy] = useState("outliers");
+	const searchLeft = billing.searchCreditsRemaining;
+	const searchLimit = billing.searchCreditsLimit;
+	const recent = useMemo(() => searches.slice(0, 4), [searches]);
+	const runSearch = (e) => {
+		e.preventDefault();
+		const q = subject.trim().replace(/\s+/g, " ");
+		router.visit(`/search?type=${kind}${q ? `&q=${encodeURIComponent(q)}` : ""}`);
+	};
+	const filtered = useMemo(() => {
+		const q = query.trim().toLowerCase();
+		const next = searches.filter((s) => {
+			const matchesQuery = q === "" || s.name?.toLowerCase().includes(q) || s.phrase?.toLowerCase().includes(q);
+			const matchesStatus = statusFilter === "all" || s.status === statusFilter;
+			return matchesQuery && matchesStatus;
+		});
+		next.sort((l, r) => {
+			switch (sortBy) {
+				case "top_score": return (r.top_score ?? 0) - (l.top_score ?? 0);
+				case "recent": return (r.last_run_at ? new Date(r.last_run_at).getTime() : 0) - (l.last_run_at ? new Date(l.last_run_at).getTime() : 0);
+				case "az": return (l.name ?? "").localeCompare(r.name ?? "");
+				default: return (r.outlier_count ?? 0) - (l.outlier_count ?? 0);
+			}
+		});
+		return next;
+	}, [
+		searches,
+		query,
+		statusFilter,
+		sortBy
+	]);
+	return /* @__PURE__ */ jsxs(AppLayout, {
+		width: "max-w-[1240px]",
+		title: copy.title,
+		subtitle: copy.subtitle,
+		actions: /* @__PURE__ */ jsx(EntitlementsBar, {}),
+		children: [
+			/* @__PURE__ */ jsxs("section", {
+				className: "bhero",
+				children: [
+					/* @__PURE__ */ jsx("p", {
+						className: "bhero__k",
+						children: copy.heroEyebrow
+					}),
+					/* @__PURE__ */ jsxs("form", {
+						className: "sbox",
+						onSubmit: runSearch,
+						children: [/* @__PURE__ */ jsx("textarea", {
+							rows: 2,
+							maxLength: 80,
+							value: subject,
+							onChange: (e) => setSubject(e.target.value),
+							placeholder: copy.placeholder,
+							"aria-label": copy.heroEyebrow
+						}), /* @__PURE__ */ jsxs("div", {
+							className: "sbox__f",
+							children: [/* @__PURE__ */ jsxs("p", {
+								className: "sbox__t",
+								children: [
+									"Try ",
+									/* @__PURE__ */ jsxs("b", { children: [
+										"“",
+										copy.sample,
+										"”"
+									] }),
+									/* @__PURE__ */ jsx("br", {}),
+									copy.heroHint
+								]
+							}), /* @__PURE__ */ jsxs("button", {
+								type: "submit",
+								className: "btn btn--y btn--lg",
+								children: [/* @__PURE__ */ jsx(Search, { className: "h-[15px] w-[15px]" }), " Find outliers"]
+							})]
+						})]
+					}),
+					/* @__PURE__ */ jsxs("div", {
+						className: "bhero__r",
+						children: [
+							recent.length > 0 && /* @__PURE__ */ jsx("span", {
+								className: "bhero__rl",
+								children: "Recent"
+							}),
+							recent.map((s) => /* @__PURE__ */ jsxs("button", {
+								type: "button",
+								className: "rchip",
+								onClick: () => setSubject(s.phrase || s.name),
+								children: [
+									/* @__PURE__ */ jsx(Refresh, { className: "h-[13px] w-[13px]" }),
+									" ",
+									s.name
+								]
+							}, s.id)),
+							searchLimit > 0 && /* @__PURE__ */ jsxs("span", {
+								className: "bhero__q",
+								children: [
+									searchLeft,
+									" of ",
+									searchLimit,
+									" searches left this cycle"
+								]
+							})
+						]
+					})
+				]
+			}),
+			moving.length > 0 && /* @__PURE__ */ jsxs("section", {
+				className: "movers",
+				children: [/* @__PURE__ */ jsxs("div", {
+					className: "movers__h",
+					children: [/* @__PURE__ */ jsx("h2", { children: "Moving this week" }), /* @__PURE__ */ jsx("span", {
+						className: "note",
+						children: copy.moversNote
+					})]
+				}), /* @__PURE__ */ jsx("div", {
+					className: "movers__g",
+					children: moving.map((v, i) => /* @__PURE__ */ jsxs(Link, {
+						className: "mv",
+						href: v.url ?? "#",
+						children: [/* @__PURE__ */ jsxs("span", {
+							className: "mv__t",
+							children: [v.thumbnail_url && /* @__PURE__ */ jsx("img", {
+								src: v.thumbnail_url,
+								alt: "",
+								loading: "lazy"
+							}), v.multiplier && /* @__PURE__ */ jsx("span", {
+								className: "mv__x",
+								children: v.multiplier
+							})]
+						}), /* @__PURE__ */ jsxs("span", {
+							style: { minWidth: 0 },
+							children: [
+								/* @__PURE__ */ jsx("span", {
+									className: "mv__b",
+									children: v.subject
+								}),
+								/* @__PURE__ */ jsx("span", {
+									className: "mv__c",
+									children: v.caption
+								}),
+								/* @__PURE__ */ jsxs("span", {
+									className: "mv__m",
+									children: [v.views != null ? `${compact(v.views)} views` : "", v.handle ? ` · ${v.handle}` : ""]
+								})
+							]
+						})]
+					}, i))
+				})]
+			}),
+			/* @__PURE__ */ jsxs("section", {
+				className: "section-gap",
+				children: [
+					/* @__PURE__ */ jsxs("div", {
+						className: "movers__h",
+						children: [/* @__PURE__ */ jsx("h2", { children: copy.allHeading }), /* @__PURE__ */ jsxs("span", {
+							className: "note",
+							children: [searches.length, " tracked"]
+						})]
+					}),
+					/* @__PURE__ */ jsxs("div", {
+						className: "tools",
+						style: { marginTop: 14 },
+						children: [
+							/* @__PURE__ */ jsxs("label", {
+								className: "srch",
+								children: [/* @__PURE__ */ jsx(Search, { className: "h-4 w-4" }), /* @__PURE__ */ jsx("input", {
+									value: query,
+									onChange: (e) => setQuery(e.target.value),
+									placeholder: copy.filterPlaceholder,
+									"aria-label": copy.filterPlaceholder
+								})]
+							}),
+							/* @__PURE__ */ jsxs(Sel$1, {
+								value: statusFilter,
+								onChange: (e) => setStatusFilter(e.target.value),
+								ariaLabel: "Status",
+								children: [
+									/* @__PURE__ */ jsx("option", {
+										value: "all",
+										children: "All statuses"
+									}),
+									/* @__PURE__ */ jsx("option", {
+										value: "done",
+										children: "Ready"
+									}),
+									/* @__PURE__ */ jsx("option", {
+										value: "scraping",
+										children: "Refreshing"
+									}),
+									/* @__PURE__ */ jsx("option", {
+										value: "paused",
+										children: "Paused"
+									}),
+									/* @__PURE__ */ jsx("option", {
+										value: "failed",
+										children: "Failed"
+									})
+								]
+							}),
+							/* @__PURE__ */ jsx(Sel$1, {
+								value: sortBy,
+								onChange: (e) => setSortBy(e.target.value),
+								ariaLabel: "Sort by",
+								children: Object.entries(SORT).map(([value, label]) => /* @__PURE__ */ jsx("option", {
+									value,
+									children: label
+								}, value))
+							})
+						]
+					}),
+					filtered.length === 0 ? /* @__PURE__ */ jsxs("div", {
+						className: "empty",
+						children: [
+							/* @__PURE__ */ jsx("div", {
+								className: "empty__i",
+								children: /* @__PURE__ */ jsx(Search, { className: "h-6 w-6" })
+							}),
+							/* @__PURE__ */ jsx("h2", { children: searches.length === 0 ? `No ${kind} searches yet` : "Nothing matched" }),
+							/* @__PURE__ */ jsx("p", {
+								className: "muted",
+								style: {
+									maxWidth: 360,
+									margin: "10px auto 0"
+								},
+								children: searches.length === 0 ? `Start one above and it will track on its own schedule.` : "Try a different filter or sort."
+							})
+						]
+					}) : /* @__PURE__ */ jsx("div", {
+						className: "bgrid",
+						children: filtered.map((s) => /* @__PURE__ */ jsx(BrandCard, { search: s }, s.id))
+					})
+				]
+			})
+		]
+	});
+}
+//#endregion
+//#region resources/js/Pages/Brands.jsx
+var Brands_exports = /* @__PURE__ */ __exportAll({ default: () => Brands });
+function Brands({ searches = [], moving = [] }) {
+	return /* @__PURE__ */ jsxs(Fragment, { children: [/* @__PURE__ */ jsx(Head, { title: "Brand searches · Brand Beacon" }), /* @__PURE__ */ jsx(SearchListScreen, {
+		kind: "brand",
+		searches,
+		moving
+	})] });
+}
+//#endregion
 //#region resources/js/Pages/ComingSoon.jsx
 var ComingSoon_exports = /* @__PURE__ */ __exportAll({ default: () => ComingSoon });
 function ComingSoon() {
@@ -2668,280 +3607,6 @@ function ContactFormCard({ categories = [], defaults = {}, className = "" }) {
 	});
 }
 //#endregion
-//#region resources/js/Pages/components/AppLayout.jsx
-var AppLayout_exports = /* @__PURE__ */ __exportAll({ default: () => AppLayout });
-var PILL_CLASS = {
-	ok: "pill--ok",
-	accent: "pill--run",
-	run: "pill--run",
-	off: "pill--off",
-	bad: "pill--bad",
-	warn: "pill--bad"
-};
-/**
-* Primary sidebar navigation, mirroring the handoff mockup. Hrefs point at
-* routes that exist today; the dedicated Brand/Product search screens land in
-* a later batch and will repoint the last two entries.
-*/
-var NAV$1 = [
-	{
-		label: "Dashboard",
-		href: "/dashboard",
-		icon: Spark,
-		match: "/dashboard"
-	},
-	{
-		label: "Library",
-		href: "/bookmark",
-		icon: Library,
-		match: "/bookmark",
-		exact: "/bookmark"
-	},
-	{
-		label: "Brand searches",
-		href: "/bookmark?type=brand-group",
-		icon: Store,
-		match: "/bookmark",
-		exact: "/bookmark?type=brand-group"
-	},
-	{
-		label: "Product searches",
-		href: "/bookmark?type=product",
-		icon: Search,
-		match: "/bookmark",
-		exact: "/bookmark?type=product",
-		locked: true
-	}
-];
-function isActive(currentUrl, item) {
-	const path = (currentUrl || "/").split("?")[0];
-	if (item.exact) return currentUrl === item.exact;
-	return path.startsWith(item.match);
-}
-function initials(name, email) {
-	return (name || email || "?").trim().slice(0, 1).toUpperCase();
-}
-function Brand({ onNavigate }) {
-	return /* @__PURE__ */ jsxs(Link, {
-		href: "/",
-		onClick: onNavigate,
-		className: "side__brand",
-		children: [/* @__PURE__ */ jsx(Logo, { className: "h-[30px] w-[30px]" }), /* @__PURE__ */ jsx("span", { children: "Brand Beacon" })]
-	});
-}
-function NavList({ currentUrl, onNavigate }) {
-	return /* @__PURE__ */ jsx("div", {
-		className: "side__nav",
-		children: NAV$1.map((item) => {
-			const Icon = item.icon;
-			if (item.locked) return /* @__PURE__ */ jsxs("div", {
-				className: "nav__i is-lock",
-				title: "Locked for now",
-				children: [
-					/* @__PURE__ */ jsx(Icon, {}),
-					item.label,
-					/* @__PURE__ */ jsx("span", {
-						className: "lk",
-						children: /* @__PURE__ */ jsx(Lock, { className: "h-[13px] w-[13px]" })
-					})
-				]
-			}, item.label);
-			return /* @__PURE__ */ jsxs(Link, {
-				href: item.href,
-				onClick: onNavigate,
-				className: `nav__i${isActive(currentUrl, item) ? " is-on" : ""}`,
-				children: [/* @__PURE__ */ jsx(Icon, {}), item.label]
-			}, item.label);
-		})
-	});
-}
-function AffiliateCard() {
-	return /* @__PURE__ */ jsxs("div", {
-		className: "aff",
-		title: "Affiliate program coming soon",
-		children: [/* @__PURE__ */ jsxs("b", { children: [/* @__PURE__ */ jsx(Spark, { className: "h-3.5 w-3.5" }), "Be an affiliate"] }), /* @__PURE__ */ jsx("span", { children: "Soon" })]
-	});
-}
-function AccountBlock({ signedIn, name, email, onSignOut, signingOut, onNavigate }) {
-	if (!signedIn) return /* @__PURE__ */ jsxs("div", {
-		className: "acct",
-		style: { flexDirection: "column" },
-		children: [/* @__PURE__ */ jsx(Link, {
-			href: "/login",
-			onClick: onNavigate,
-			className: "btn btn--g btn--w",
-			children: "Log in"
-		}), /* @__PURE__ */ jsxs(Link, {
-			href: "/register",
-			onClick: onNavigate,
-			className: "btn btn--y btn--w",
-			children: ["Sign up ", /* @__PURE__ */ jsx(Arrow, {})]
-		})]
-	});
-	return /* @__PURE__ */ jsxs("div", {
-		className: "acct",
-		children: [/* @__PURE__ */ jsxs(Link, {
-			href: "/settings/account",
-			onClick: onNavigate,
-			className: "acct__l",
-			children: [/* @__PURE__ */ jsx("span", {
-				className: "avat",
-				children: initials(name, email)
-			}), /* @__PURE__ */ jsxs("span", {
-				style: {
-					minWidth: 0,
-					display: "block",
-					overflow: "hidden"
-				},
-				children: [/* @__PURE__ */ jsx("span", {
-					className: "acct__n",
-					children: name || "Account"
-				}), email && /* @__PURE__ */ jsx("span", {
-					className: "acct__e",
-					children: email
-				})]
-			})]
-		}), /* @__PURE__ */ jsx("button", {
-			className: "acct__x",
-			title: "Sign out",
-			"aria-label": "Sign out",
-			onClick: onSignOut,
-			disabled: signingOut,
-			children: /* @__PURE__ */ jsx(Exit, { className: "h-4 w-4" })
-		})]
-	});
-}
-/**
-* Brand Beacon app shell: a fixed 252px sidebar on desktop, a top bar + slide
-* drawer on small screens, and a shared footer under the content.
-*
-* Props are unchanged from the previous shell so every screen keeps working:
-*   pill     — { text, tone } status chip shown beside the title
-*   step     — accepted for backwards-compat; the wizard now draws its own
-*              stepper inside its card, so this is a no-op here
-*   title    — page heading
-*   subtitle — one line of context under the title
-*   actions  — right side of the header row (entitlements bar or buttons)
-*   toolbar  — full-width row under the header (search / filters / sort)
-*   width    — Tailwind max-width class for the content column
-*/
-function AppLayout({ pill, step, title, subtitle, actions, toolbar, width = "max-w-6xl", children }) {
-	const { props, url: currentUrl } = usePage();
-	const { auth = {} } = props;
-	const logout = useForm({});
-	const [drawerOpen, setDrawerOpen] = useState(false);
-	const signedIn = auth.signedIn ?? Boolean(auth.user);
-	const signOut = () => {
-		setDrawerOpen(false);
-		logout.post("/logout");
-	};
-	const closeDrawer = () => setDrawerOpen(false);
-	useEffect(() => {
-		if (typeof document === "undefined") return void 0;
-		document.body.style.overflow = drawerOpen ? "hidden" : "";
-		return () => {
-			document.body.style.overflow = "";
-		};
-	}, [drawerOpen]);
-	const account = /* @__PURE__ */ jsx(AccountBlock, {
-		signedIn,
-		name: auth.user?.name,
-		email: auth.user?.email,
-		onSignOut: signOut,
-		signingOut: logout.processing
-	});
-	const header = (title || pill || actions || subtitle) && /* @__PURE__ */ jsxs("div", {
-		className: "top",
-		children: [/* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsxs("h1", { children: [title, pill && /* @__PURE__ */ jsxs("span", {
-			className: `pill ${PILL_CLASS[pill.tone] ?? PILL_CLASS.accent}`,
-			children: [/* @__PURE__ */ jsx("i", {}), pill.text]
-		})] }), subtitle && /* @__PURE__ */ jsx("p", { children: subtitle })] }), actions && /* @__PURE__ */ jsx("div", {
-			className: "top__actions",
-			children: actions
-		})]
-	});
-	return /* @__PURE__ */ jsxs("div", {
-		className: "bb",
-		children: [
-			/* @__PURE__ */ jsxs("header", {
-				className: "bb-top",
-				children: [/* @__PURE__ */ jsx(Brand, {}), /* @__PURE__ */ jsx("button", {
-					className: "bb-burger",
-					"aria-label": "Open menu",
-					"aria-expanded": drawerOpen,
-					onClick: () => setDrawerOpen(true),
-					children: /* @__PURE__ */ jsx(Menu, {})
-				})]
-			}),
-			/* @__PURE__ */ jsxs("div", {
-				className: `bb-drawer${drawerOpen ? " is-open" : ""}`,
-				children: [/* @__PURE__ */ jsx("button", {
-					className: "bb-drawer__bg",
-					"aria-label": "Close menu",
-					onClick: closeDrawer
-				}), /* @__PURE__ */ jsxs("div", {
-					className: "bb-drawer__panel",
-					children: [
-						/* @__PURE__ */ jsxs("div", {
-							style: {
-								display: "flex",
-								alignItems: "center",
-								justifyContent: "space-between"
-							},
-							children: [/* @__PURE__ */ jsx(Brand, { onNavigate: closeDrawer }), /* @__PURE__ */ jsx("button", {
-								className: "bb-burger",
-								"aria-label": "Close menu",
-								onClick: closeDrawer,
-								children: /* @__PURE__ */ jsx(Close, {})
-							})]
-						}),
-						/* @__PURE__ */ jsx(NavList, {
-							currentUrl,
-							onNavigate: closeDrawer
-						}),
-						/* @__PURE__ */ jsx("div", { className: "side__sp" }),
-						/* @__PURE__ */ jsx(AffiliateCard, {}),
-						/* @__PURE__ */ jsx(AccountBlock, {
-							signedIn,
-							name: auth.user?.name,
-							email: auth.user?.email,
-							onSignOut: signOut,
-							signingOut: logout.processing,
-							onNavigate: closeDrawer
-						})
-					]
-				})]
-			}),
-			/* @__PURE__ */ jsxs("div", {
-				className: "app",
-				children: [/* @__PURE__ */ jsxs("aside", {
-					className: "side",
-					children: [
-						/* @__PURE__ */ jsx(Brand, {}),
-						/* @__PURE__ */ jsx(NavList, { currentUrl }),
-						/* @__PURE__ */ jsx("div", { className: "side__sp" }),
-						/* @__PURE__ */ jsx(AffiliateCard, {}),
-						account
-					]
-				}), /* @__PURE__ */ jsxs("main", {
-					className: "main",
-					children: [/* @__PURE__ */ jsx("div", {
-						className: "bb-content",
-						children: /* @__PURE__ */ jsxs("div", {
-							className: `mx-auto w-full ${width}`,
-							children: [
-								header,
-								toolbar && /* @__PURE__ */ jsx("div", { children: toolbar }),
-								children
-							]
-						})
-					}), /* @__PURE__ */ jsx(AppFooter, { width })]
-				})]
-			})
-		]
-	});
-}
-//#endregion
 //#region resources/js/Pages/Contact.jsx
 var Contact_exports = /* @__PURE__ */ __exportAll({ default: () => Contact });
 function Contact({ categories = [], defaults = {} }) {
@@ -2954,67 +3619,23 @@ function Contact({ categories = [], defaults = {} }) {
 	})] });
 }
 //#endregion
-//#region resources/js/Pages/components/EntitlementsBar.jsx
-var EntitlementsBar_exports = /* @__PURE__ */ __exportAll({ default: () => EntitlementsBar });
-/**
-* Plan and allowance at a glance — the handoff mockup's `.ent` pill, wired to
-* real billing props. One quiet line, not a dashboard.
-*/
-function titleCase(slug) {
-	return String(slug || "free").split(/[-_\s]+/).map((word) => word.charAt(0).toUpperCase() + word.slice(1)).join(" ");
-}
-function EntitlementsBar() {
-	const { auth = {}, billing = {} } = usePage().props;
-	if (!(auth.signedIn ?? Boolean(auth.user))) return null;
-	const searchLimit = billing.searchCreditsLimit ?? 0;
-	const searchLeft = billing.searchCreditsRemaining ?? 0;
-	const searchUsed = billing.searchCreditsUsed ?? 0;
-	const bookmarkLimit = billing.bookmarkLimit ?? 0;
-	const bookmarksUsed = billing.bookmarksUsed ?? billing.bookmarkCount ?? 0;
-	const searchesLow = searchLimit > 0 && searchLeft <= Math.max(1, Math.round(searchLimit * .1));
-	return /* @__PURE__ */ jsxs("div", {
-		className: "ent",
-		children: [
-			/* @__PURE__ */ jsx("b", { children: titleCase(billing.currentPlan) }),
-			/* @__PURE__ */ jsx("i", {}),
-			/* @__PURE__ */ jsxs("span", {
-				className: searchesLow ? "low" : void 0,
-				children: [
-					/* @__PURE__ */ jsx("b", { children: searchUsed }),
-					searchLimit > 0 && `/${searchLimit}`,
-					" searches"
-				]
-			}),
-			/* @__PURE__ */ jsx("i", {}),
-			/* @__PURE__ */ jsxs("span", { children: [
-				/* @__PURE__ */ jsx("b", { children: bookmarksUsed }),
-				bookmarkLimit > 0 && `/${bookmarkLimit}`,
-				" bookmarks"
-			] }),
-			!billing.hasPaidPlan && /* @__PURE__ */ jsxs(Fragment, { children: [/* @__PURE__ */ jsx("i", {}), /* @__PURE__ */ jsx(Link, {
-				href: "/plans",
-				children: "Upgrade"
-			})] })
-		]
-	});
-}
-//#endregion
 //#region resources/js/Pages/components/SearchLauncher.jsx
 var SearchLauncher_exports = /* @__PURE__ */ __exportAll({ default: () => SearchLauncher });
 /**
-* The single entry point into the search flow.
+* Step one of the search flow — pick a subject. A mode toggle, one input, and
+* suggestions that *fill* the box rather than firing a search: a search costs a
+* credit, so a stray tap on a suggestion must never spend one.
 *
-* Step one of the flow is "pick a subject", and that is all this does — a type
-* toggle, one input, and suggestions that fill the input rather than firing a
-* search. Filling instead of submitting is deliberate: a search costs a credit,
-* so a stray click on a chip must never spend one.
+* Product searches are gated until the backend supports them, so that mode is
+* shown but locked — the wizard's Sources branching still keys off it.
 */
 var TYPES = [
 	{
 		key: "brand",
 		label: "Your brand",
-		hint: "Track how your own brand is showing up on TikTok.",
-		placeholder: "e.g. rhode skin",
+		icon: Store,
+		placeholder: "Which brand do you want to research?",
+		sample: "rhode skin",
 		suggestions: [
 			"rhode skin",
 			"glossier",
@@ -3026,8 +3647,9 @@ var TYPES = [
 	{
 		key: "competitor",
 		label: "A competitor",
-		hint: "Watch what is working for someone else in your category.",
-		placeholder: "e.g. skims",
+		icon: Target,
+		placeholder: "Which competitor do you want to watch?",
+		sample: "skims",
 		suggestions: [
 			"skims",
 			"fenty beauty",
@@ -3039,8 +3661,9 @@ var TYPES = [
 	{
 		key: "product",
 		label: "A product",
-		hint: "Product searches are coming soon.",
-		placeholder: "e.g. lip oil",
+		icon: Search,
+		placeholder: "Which product do you want to track?",
+		sample: "lip oil",
 		suggestions: [
 			"lip oil",
 			"hair oil",
@@ -3050,7 +3673,7 @@ var TYPES = [
 		locked: true
 	}
 ];
-function SearchLauncher({ initialType = "brand", initialQuery = "", heading = "What do you want to research?", subheading = "Pick a subject and we scan TikTok for the outlier videos around it.", eyebrow = null, showOutline = true, bare = false, onSubmit }) {
+function SearchLauncher({ initialType = "brand", initialQuery = "", onSubmit }) {
 	const [type, setType] = useState(initialType === "product" ? "brand" : initialType);
 	const [value, setValue] = useState(initialQuery);
 	const inputRef = useRef(null);
@@ -3068,118 +3691,86 @@ function SearchLauncher({ initialType = "brand", initialQuery = "", heading = "W
 		}
 		router.visit(`/search?type=${type}&q=${encodeURIComponent(query)}`);
 	};
-	const useSuggestion = (suggestion) => {
-		setValue(suggestion);
+	const useSample = () => {
+		setValue(config.sample);
 		inputRef.current?.focus();
 	};
 	return /* @__PURE__ */ jsxs("div", {
-		className: bare ? "" : "surface animate-fade-up p-6 sm:p-8",
+		className: "card__p",
 		children: [
-			eyebrow && /* @__PURE__ */ jsx("p", {
-				className: "text-[11.5px] font-semibold tracking-[.16em] faint uppercase",
-				children: eyebrow
-			}),
-			/* @__PURE__ */ jsx("h2", {
-				className: `font-display text-[26px] font-bold tracking-[-.03em] sm:text-[32px] ${eyebrow ? "mt-2" : ""}`,
-				children: heading
-			}),
-			/* @__PURE__ */ jsx("p", {
-				className: "mt-2.5 max-w-xl text-[14px] leading-relaxed muted",
-				children: subheading
-			}),
 			/* @__PURE__ */ jsx("div", {
+				className: "modes",
 				role: "radiogroup",
-				"aria-label": "Search type",
-				className: "mt-6 grid gap-2 sm:grid-cols-3",
+				"aria-label": "What to research",
 				children: TYPES.map((option) => {
+					const Icon = option.icon;
 					const active = option.key === type;
 					return /* @__PURE__ */ jsxs("button", {
 						type: "button",
 						role: "radio",
 						"aria-checked": active,
 						disabled: option.locked,
-						title: option.locked ? "Product searches are coming soon" : option.hint,
+						title: option.locked ? "Product searches are coming soon" : void 0,
 						onClick: () => !option.locked && setType(option.key),
-						className: `rounded-2xl border px-4 py-3.5 text-left transition-all duration-300 ${option.locked ? "cursor-not-allowed border-black/[.06] bg-black/[.02] opacity-60 dark:border-white/[.07] dark:bg-white/[.02]" : active ? "border-accent/45 bg-accent/[.08] shadow-[0_14px_34px_-24px_rgba(109,75,255,.9)] dark:border-accent-glow/40 dark:bg-accent-glow/[.09]" : "border-black/[.08] hover:-translate-y-px hover:border-accent/35 dark:border-white/[.1]"}`,
-						children: [/* @__PURE__ */ jsxs("span", {
-							className: "flex items-center gap-2",
-							children: [/* @__PURE__ */ jsx("span", {
-								className: `text-[14px] font-semibold ${active && !option.locked ? "text-accent dark:text-accent-glow" : ""}`,
-								children: option.label
-							}), option.locked && /* @__PURE__ */ jsxs("span", {
-								className: "inline-flex items-center gap-1 rounded-full bg-black/[.05] px-2 py-0.5 text-[10px] font-bold tracking-[.12em] uppercase faint dark:bg-white/[.08]",
-								children: [/* @__PURE__ */ jsx(Lock, { className: "h-3 w-3" }), " Soon"]
-							})]
-						}), /* @__PURE__ */ jsx("span", {
-							className: "mt-1 block text-[12.5px] leading-snug faint",
-							children: option.hint
-						})]
+						className: `mode${active ? " is-on" : ""}`,
+						children: [
+							/* @__PURE__ */ jsx(Icon, { className: "h-[15px] w-[15px]" }),
+							option.label,
+							option.locked && /* @__PURE__ */ jsx("span", {
+								className: "lk",
+								children: /* @__PURE__ */ jsx(Lock, { className: "h-3 w-3" })
+							})
+						]
 					}, option.key);
 				})
 			}),
 			/* @__PURE__ */ jsxs("form", {
+				className: "sbox",
 				onSubmit: submit,
-				className: "mt-5 flex flex-col gap-2.5 sm:flex-row",
-				children: [/* @__PURE__ */ jsxs("label", {
-					className: "flex h-[56px] flex-1 items-center gap-3 rounded-2xl border border-black/[.08] bg-white px-4 transition-all duration-300 focus-within:border-accent/40 focus-within:shadow-[0_18px_44px_-30px_rgba(109,75,255,.8)] dark:border-white/[.12] dark:bg-white/[.04] dark:focus-within:border-accent-glow/40",
-					children: [/* @__PURE__ */ jsx(Search, { className: "h-4 w-4 shrink-0 faint" }), /* @__PURE__ */ jsx("input", {
-						ref: inputRef,
-						value,
-						onChange: (event) => setValue(event.target.value),
-						placeholder: config.placeholder,
-						"aria-label": "Search subject",
-						maxLength: 80,
-						className: "w-full border-0 bg-transparent p-0 text-[15px] font-medium text-ink placeholder:text-black/35 focus:ring-0 focus:outline-none dark:text-white dark:placeholder:text-white/35"
+				children: [/* @__PURE__ */ jsx("textarea", {
+					ref: inputRef,
+					rows: 2,
+					maxLength: 80,
+					value,
+					onChange: (e) => setValue(e.target.value),
+					placeholder: config.placeholder,
+					"aria-label": "Search subject"
+				}), /* @__PURE__ */ jsxs("div", {
+					className: "sbox__f",
+					children: [/* @__PURE__ */ jsxs("p", {
+						className: "sbox__t",
+						children: [
+							"Try",
+							" ",
+							/* @__PURE__ */ jsxs("button", {
+								type: "button",
+								className: "sbox__try",
+								onClick: useSample,
+								children: [
+									"“",
+									config.sample,
+									"”"
+								]
+							}),
+							/* @__PURE__ */ jsx("br", {}),
+							"One subject per search keeps each result tight."
+						]
+					}), /* @__PURE__ */ jsxs("button", {
+						type: "submit",
+						disabled: !query,
+						className: "btn btn--y",
+						children: ["Continue ", /* @__PURE__ */ jsx(Arrow, {})]
 					})]
-				}), /* @__PURE__ */ jsxs("button", {
-					type: "submit",
-					disabled: !query,
-					className: "btn-accent h-[56px] px-6 text-[15px]",
-					children: ["Continue ", /* @__PURE__ */ jsx(Arrow, {})]
 				})]
 			}),
-			/* @__PURE__ */ jsxs("div", {
-				className: "mt-5",
-				children: [
-					/* @__PURE__ */ jsx("p", {
-						className: "text-[12px] font-semibold tracking-[.14em] faint uppercase",
-						children: "Try one of these"
-					}),
-					/* @__PURE__ */ jsx("div", {
-						className: "mt-2.5 flex flex-wrap gap-2",
-						children: config.suggestions.map((suggestion) => /* @__PURE__ */ jsx("button", {
-							type: "button",
-							onClick: () => useSuggestion(suggestion),
-							className: "inline-flex items-center rounded-full border border-accent/16 bg-accent/[.07] px-3.5 py-1.5 text-[12.5px] font-semibold text-accent transition hover:-translate-y-px hover:bg-accent/[.12] dark:border-accent-glow/18 dark:bg-accent-glow/[.08] dark:text-accent-glow dark:hover:bg-accent-glow/[.14]",
-							children: suggestion
-						}, suggestion))
-					}),
-					/* @__PURE__ */ jsx("p", {
-						className: "mt-3 text-[12px] faint",
-						children: "Tapping a suggestion fills the box — nothing runs until you press Continue."
-					})
-				]
-			}),
-			/* @__PURE__ */ jsx("ol", {
-				hidden: !showOutline,
-				className: "mt-7 grid gap-3 border-t border-black/[.06] pt-6 sm:grid-cols-3 dark:border-white/[.07]",
-				children: [
-					["Pick a subject", "One brand, competitor, or product per search."],
-					["Tune the keywords", "We suggest related terms — keep the ones that fit."],
-					["Get outlier videos", "Ranked results that refresh on your schedule."]
-				].map(([title, body], index) => /* @__PURE__ */ jsxs("li", {
-					className: "flex gap-3",
-					children: [/* @__PURE__ */ jsx("span", {
-						className: "flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-accent/[.1] font-display text-[12px] font-bold text-accent dark:bg-accent-glow/[.12] dark:text-accent-glow",
-						children: index + 1
-					}), /* @__PURE__ */ jsxs("span", { children: [/* @__PURE__ */ jsx("span", {
-						className: "block text-[13.5px] font-semibold",
-						children: title
-					}), /* @__PURE__ */ jsx("span", {
-						className: "mt-0.5 block text-[12.5px] leading-snug faint",
-						children: body
-					})] })]
-				}, title))
+			config.suggestions.length > 0 && /* @__PURE__ */ jsx("div", {
+				className: "subj-sugg",
+				children: config.suggestions.map((s) => /* @__PURE__ */ jsxs("button", {
+					type: "button",
+					className: "rchip",
+					onClick: () => setValue(s),
+					children: [/* @__PURE__ */ jsx(Refresh, { className: "h-[13px] w-[13px]" }), s]
+				}, s))
 			})
 		]
 	});
@@ -3234,7 +3825,7 @@ function expandKeywords(phrase, { signal } = {}) {
 		return payload;
 	});
 }
-function createSavedSearch({ type, phrase, name, keywords, frequency }) {
+function createSavedSearch({ type, phrase, name, keywords, frequency, sources }) {
 	return request(`${API_V1}/saved-searches`, {
 		method: "POST",
 		body: {
@@ -3242,7 +3833,8 @@ function createSavedSearch({ type, phrase, name, keywords, frequency }) {
 			phrase,
 			name,
 			keywords,
-			frequency
+			frequency,
+			...sources ? { sources } : {}
 		}
 	});
 }
@@ -3320,60 +3912,9 @@ var FREQUENCIES = [{
 	label: "Monthly",
 	hint: "A monthly pull. Lighter cadence for slower niches."
 }];
-var Pencil = ({ className = "h-3.5 w-3.5" }) => /* @__PURE__ */ jsxs("svg", {
-	viewBox: "0 0 24 24",
-	"aria-hidden": true,
-	className,
-	fill: "none",
-	stroke: "currentColor",
-	strokeWidth: "2",
-	strokeLinecap: "round",
-	strokeLinejoin: "round",
-	children: [/* @__PURE__ */ jsx("path", { d: "M12 20h9" }), /* @__PURE__ */ jsx("path", { d: "M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" })]
-});
-var Refresh = ({ className = "h-3.5 w-3.5" }) => /* @__PURE__ */ jsxs("svg", {
-	viewBox: "0 0 24 24",
-	"aria-hidden": true,
-	className,
-	fill: "none",
-	stroke: "currentColor",
-	strokeWidth: "2",
-	strokeLinecap: "round",
-	strokeLinejoin: "round",
-	children: [/* @__PURE__ */ jsx("path", { d: "M21 12a9 9 0 1 1-2.6-6.4" }), /* @__PURE__ */ jsx("path", { d: "M21 3v6h-6" })]
-});
-function KeywordChip({ value, selected, custom, onToggle, onRemove }) {
-	return /* @__PURE__ */ jsxs("span", {
-		className: `group inline-flex items-center rounded-xl border text-[13.5px] transition-all duration-300 ${selected ? "border-accent/50 bg-accent/10 font-semibold text-accent shadow-[0_8px_22px_-14px_rgba(109,75,255,.9)] dark:text-accent-glow" : "border-black/[.09] muted hover:-translate-y-px hover:border-accent/35 dark:border-white/[.12]"}`,
-		children: [/* @__PURE__ */ jsxs("button", {
-			type: "button",
-			onClick: onToggle,
-			"aria-pressed": selected,
-			className: "flex items-center gap-2.5 py-2.5 pr-2 pl-3.5",
-			children: [
-				/* @__PURE__ */ jsx("span", {
-					className: `flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-md border transition-all duration-200 ${selected ? "border-accent bg-accent text-white" : "border-black/25 dark:border-white/30"}`,
-					children: selected && /* @__PURE__ */ jsx(Check, {})
-				}),
-				value,
-				custom && /* @__PURE__ */ jsx("span", {
-					className: "text-[10px] font-bold tracking-wider uppercase opacity-55",
-					children: "yours"
-				})
-			]
-		}), /* @__PURE__ */ jsx("button", {
-			type: "button",
-			onClick: onRemove,
-			"aria-label": `Remove ${value}`,
-			title: "Remove",
-			className: "py-2.5 pr-3 pl-1 opacity-35 transition-opacity duration-200 hover:opacity-100",
-			children: /* @__PURE__ */ jsx(Close, { className: "h-3.5 w-3.5" })
-		})]
-	});
-}
 function SkeletonChips() {
 	return /* @__PURE__ */ jsx("div", {
-		className: "flex flex-wrap gap-2",
+		className: "chips",
 		"aria-hidden": true,
 		children: [
 			132,
@@ -3383,48 +3924,32 @@ function SkeletonChips() {
 			140,
 			118
 		].map((width, i) => /* @__PURE__ */ jsx("span", {
-			className: "h-[42px] animate-pulse rounded-xl bg-black/[.05] dark:bg-white/[.06]",
-			style: { width }
+			className: "chip",
+			style: {
+				width,
+				height: 40,
+				background: "var(--paper)",
+				borderStyle: "dashed",
+				opacity: .7
+			}
 		}, i))
 	});
 }
-function Card$1({ step, title, description, action, children }) {
-	return /* @__PURE__ */ jsxs("section", {
-		className: "rounded-2xl border border-black/[.07] p-5 sm:p-6 dark:border-white/[.09]",
-		children: [/* @__PURE__ */ jsxs("div", {
-			className: "flex flex-wrap items-start justify-between gap-3",
-			children: [/* @__PURE__ */ jsxs("div", {
-				className: "flex gap-3",
-				children: [/* @__PURE__ */ jsx("span", {
-					className: "mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-accent/[.1] font-display text-[12px] font-bold text-accent dark:bg-accent-glow/[.12] dark:text-accent-glow",
-					children: step
-				}), /* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsx("h2", {
-					className: "font-display text-[16px] font-bold tracking-[-.01em]",
-					children: title
-				}), description && /* @__PURE__ */ jsx("p", {
-					className: "mt-1 max-w-lg text-[12.5px] leading-relaxed faint",
-					children: description
-				})] })]
-			}), action]
-		}), /* @__PURE__ */ jsx("div", {
-			className: "mt-5",
-			children
-		})]
-	});
-}
-function KeywordsScreen({ phrase: initialPhrase, onBack, onSubmit, submitting = false, error = null }) {
-	const [phrase, setPhrase] = useState(initialPhrase);
+/**
+* Step two — widen the single scrape with keywords and set the cadence.
+*
+* The scrape is sent only the primary phrase; every ticked keyword filters the
+* results locally, so "1 search covers everything you select" is literally true.
+* The subject itself is changed by stepping Back, so there is no edit control here.
+*/
+function KeywordsScreen({ phrase, noun = "brand", nextLabel = "Run search", onBack, onSubmit, submitting = false, error = null }) {
 	const [terms, setTerms] = useState([]);
 	const [loading, setLoading] = useState(true);
 	const [regenerating, setRegenerating] = useState(false);
 	const [expansionSource, setExpansionSource] = useState(null);
+	const [adding, setAdding] = useState(false);
 	const [draft, setDraft] = useState("");
 	const [frequency, setFrequency] = useState("weekly");
-	const [name, setName] = useState(initialPhrase);
-	const [nameTouched, setNameTouched] = useState(false);
-	const [editingPhrase, setEditingPhrase] = useState(false);
-	const [phraseDraft, setPhraseDraft] = useState(initialPhrase);
-	const [regenPrompt, setRegenPrompt] = useState(false);
 	const requested = useRef(false);
 	/**
 	* Build a term list from an expansion payload, keeping anything the user
@@ -3440,7 +3965,7 @@ function KeywordsScreen({ phrase: initialPhrase, onBack, onSubmit, submitting = 
 			return true;
 		}).map((value, i) => ({
 			value,
-			selected: i <= 1,
+			selected: i <= 3,
 			custom: false
 		}));
 		return [
@@ -3457,59 +3982,39 @@ function KeywordsScreen({ phrase: initialPhrase, onBack, onSubmit, submitting = 
 		if (requested.current) return void 0;
 		requested.current = true;
 		const controller = new AbortController();
-		expandKeywords(initialPhrase, { signal: controller.signal }).then((payload) => {
-			const keywords = Array.isArray(payload?.keywords) ? payload.keywords : [initialPhrase];
+		expandKeywords(phrase, { signal: controller.signal }).then((payload) => {
+			const keywords = Array.isArray(payload?.keywords) ? payload.keywords : [phrase];
 			setExpansionSource(payload?.source ?? null);
-			setTerms(applyExpansion(keywords, initialPhrase));
+			setTerms(applyExpansion(keywords, phrase));
 		}).catch(() => {
 			setTerms([{
-				value: initialPhrase,
+				value: phrase,
 				selected: true,
 				locked: true
 			}]);
 		}).finally(() => setLoading(false));
 		return () => controller.abort();
-	}, [initialPhrase]);
-	const regenerate = (forPhrase = phrase) => {
-		setRegenPrompt(false);
+	}, [phrase]);
+	const regenerate = () => {
 		setRegenerating(true);
-		expandKeywords(forPhrase).then((payload) => {
-			const keywords = Array.isArray(payload?.keywords) ? payload.keywords : [forPhrase];
+		expandKeywords(phrase).then((payload) => {
+			const keywords = Array.isArray(payload?.keywords) ? payload.keywords : [phrase];
 			setExpansionSource(payload?.source ?? null);
-			setTerms((prev) => applyExpansion(keywords, forPhrase, prev));
+			setTerms((prev) => applyExpansion(keywords, phrase, prev));
 		}).catch(() => {}).finally(() => setRegenerating(false));
-	};
-	const savePhrase = () => {
-		const next = phraseDraft.trim().replace(/\s+/g, " ");
-		setEditingPhrase(false);
-		if (!next || next.toLowerCase() === phrase.toLowerCase()) {
-			setPhraseDraft(phrase);
-			return;
-		}
-		setPhrase(next);
-		setPhraseDraft(next);
-		if (!nameTouched) setName(next);
-		setTerms((prev) => [{
-			value: next,
-			selected: true,
-			locked: true
-		}, ...prev.filter((t) => !t.locked && t.value.toLowerCase() !== next.toLowerCase())]);
-		setRegenPrompt(true);
 	};
 	const selected = terms.filter((t) => t.selected).map((t) => t.value);
 	const busy = loading || regenerating;
+	const atKeywordCap = terms.length >= KEYWORD_CAP;
 	const toggle = (value) => setTerms((prev) => prev.map((t) => t.value === value && !t.locked ? {
 		...t,
 		selected: !t.selected
 	} : t));
 	const remove = (value) => setTerms((prev) => prev.filter((t) => t.value !== value || t.locked));
-	const setAll = (on) => setTerms((prev) => prev.map((t) => t.locked ? t : {
-		...t,
-		selected: on
-	}));
-	const add = (e) => {
-		e.preventDefault();
+	const commitAdd = () => {
 		const value = draft.trim().replace(/\s+/g, " ");
+		setDraft("");
+		setAdding(false);
 		if (!value) return;
 		const match = terms.find((t) => t.value.toLowerCase() === value.toLowerCase());
 		if (match) setTerms((prev) => prev.map((t) => t.value === match.value ? {
@@ -3521,280 +4026,328 @@ function KeywordsScreen({ phrase: initialPhrase, onBack, onSubmit, submitting = 
 			selected: true,
 			custom: true
 		}]);
-		setDraft("");
 	};
-	const atKeywordCap = terms.length >= KEYWORD_CAP;
-	const optional = terms.filter((t) => !t.locked);
-	const optionalSelected = optional.filter((t) => t.selected).length;
-	return /* @__PURE__ */ jsxs("div", {
-		className: "animate-fade-up",
-		children: [
-			/* @__PURE__ */ jsx("button", {
-				onClick: onBack,
-				className: "text-[13px] font-semibold muted transition hover:text-accent",
-				children: "← Change subject"
-			}),
-			/* @__PURE__ */ jsx("h1", {
-				className: "mt-4 font-display text-[26px] leading-tight font-bold tracking-[-.03em] sm:text-[32px]",
-				children: "Tune the search before it runs"
-			}),
-			/* @__PURE__ */ jsx("p", {
-				className: "mt-2.5 max-w-xl text-[13.5px] leading-relaxed muted",
-				children: "Keywords are fixed once the search is saved."
-			}),
-			/* @__PURE__ */ jsxs("div", {
-				className: "mt-6 space-y-4",
-				children: [
-					/* @__PURE__ */ jsxs(Card$1, {
-						step: "1",
-						title: "Main keyword",
-						description: "This is the phrase we send to TikTok. Everything else filters the results it returns.",
-						children: [editingPhrase ? /* @__PURE__ */ jsxs("div", {
-							className: "flex flex-col gap-2 sm:flex-row",
-							children: [/* @__PURE__ */ jsxs("label", {
-								className: "flex h-11 flex-1 items-center gap-2.5 rounded-xl border border-accent/40 bg-white px-3.5 dark:bg-white/[.05]",
-								children: [/* @__PURE__ */ jsx(Search, { className: "h-4 w-4 shrink-0 faint" }), /* @__PURE__ */ jsx("input", {
-									autoFocus: true,
-									value: phraseDraft,
-									maxLength: 80,
-									onChange: (e) => setPhraseDraft(e.target.value),
-									onKeyDown: (e) => {
-										if (e.key === "Enter") savePhrase();
-										if (e.key === "Escape") {
-											setPhraseDraft(phrase);
-											setEditingPhrase(false);
-										}
-									},
-									"aria-label": "Main keyword",
-									className: "w-full border-0 bg-transparent p-0 text-[14px] font-semibold text-ink focus:ring-0 focus:outline-none dark:text-white"
-								})]
-							}), /* @__PURE__ */ jsxs("div", {
-								className: "flex gap-2",
-								children: [/* @__PURE__ */ jsx("button", {
-									type: "button",
-									onClick: savePhrase,
-									className: "btn-accent h-11 px-4 text-[13.5px]",
-									children: "Save"
-								}), /* @__PURE__ */ jsx("button", {
-									type: "button",
-									onClick: () => {
-										setPhraseDraft(phrase);
-										setEditingPhrase(false);
-									},
-									className: "btn-ghost h-11 px-4 text-[13.5px]",
-									children: "Cancel"
-								})]
-							})]
-						}) : /* @__PURE__ */ jsxs("div", {
-							className: "flex flex-wrap items-center gap-3",
-							children: [/* @__PURE__ */ jsxs("span", {
-								className: "inline-flex items-center gap-2 rounded-xl bg-ink px-3.5 py-2.5 text-[14px] font-semibold text-white dark:bg-white dark:text-ink",
-								children: [/* @__PURE__ */ jsx(Search, { className: "h-3.5 w-3.5 opacity-70" }), phrase]
-							}), /* @__PURE__ */ jsxs("button", {
-								type: "button",
-								onClick: () => setEditingPhrase(true),
-								className: "inline-flex items-center gap-1.5 text-[13px] font-semibold text-accent transition hover:gap-2 dark:text-accent-glow",
-								children: [/* @__PURE__ */ jsx(Pencil, {}), " Change"]
-							})]
-						}), regenPrompt && /* @__PURE__ */ jsxs("div", {
-							className: "mt-4 flex flex-col gap-3 rounded-xl border border-accent/25 bg-accent/[.06] px-4 py-3 sm:flex-row sm:items-center sm:justify-between dark:border-accent-glow/25 dark:bg-accent-glow/[.07]",
-							children: [/* @__PURE__ */ jsxs("p", {
-								className: "text-[13px] muted",
-								children: [
-									"Main keyword is now ",
-									/* @__PURE__ */ jsx("b", {
-										className: "text-ink dark:text-white",
-										children: phrase
-									}),
-									". Regenerate the suggested keywords to match?"
-								]
-							}), /* @__PURE__ */ jsxs("div", {
-								className: "flex shrink-0 gap-2",
-								children: [/* @__PURE__ */ jsx("button", {
-									type: "button",
-									onClick: () => regenerate(phrase),
-									className: "btn-accent h-9 px-3.5 text-[13px]",
-									children: "Regenerate"
-								}), /* @__PURE__ */ jsx("button", {
-									type: "button",
-									onClick: () => setRegenPrompt(false),
-									className: "btn-ghost h-9 px-3.5 text-[13px]",
-									children: "Keep mine"
-								})]
-							})]
-						})]
+	return /* @__PURE__ */ jsxs(Fragment, { children: [
+		/* @__PURE__ */ jsxs("div", {
+			className: "sect",
+			children: [/* @__PURE__ */ jsxs("div", {
+				className: "sect__h",
+				children: [/* @__PURE__ */ jsxs("div", { children: [
+					/* @__PURE__ */ jsx("p", {
+						className: "sect__n",
+						children: "Expand"
 					}),
-					/* @__PURE__ */ jsx(Card$1, {
-						step: "2",
-						title: "Keywords",
-						description: "Tick the terms that describe the videos you want. Untick anything off-topic, or add your own.",
-						action: /* @__PURE__ */ jsxs("button", {
-							type: "button",
-							onClick: () => regenerate(),
-							disabled: busy,
-							className: "btn-ghost h-9 shrink-0 px-3.5 text-[13px]",
-							children: [/* @__PURE__ */ jsx(Refresh, { className: regenerating ? "h-3.5 w-3.5 animate-spin" : "h-3.5 w-3.5" }), regenerating ? "Regenerating…" : "Regenerate"]
-						}),
-						children: busy ? /* @__PURE__ */ jsxs(Fragment, { children: [/* @__PURE__ */ jsxs("p", {
-							className: "mb-4 inline-flex items-center gap-2 text-[12.5px] font-semibold text-accent dark:text-accent-glow",
-							children: [
-								/* @__PURE__ */ jsx("span", { className: "h-3 w-3 animate-spin rounded-full border-2 border-accent border-t-transparent" }),
-								"Suggesting keywords for “",
-								phrase,
-								"”…"
-							]
-						}), /* @__PURE__ */ jsx(SkeletonChips, {})] }) : /* @__PURE__ */ jsxs(Fragment, { children: [
-							/* @__PURE__ */ jsxs("div", {
-								className: "mb-3 flex flex-wrap items-center justify-between gap-2",
-								children: [/* @__PURE__ */ jsxs("p", {
-									className: "text-[12.5px] faint",
-									children: [
-										/* @__PURE__ */ jsx("b", {
-											className: "text-ink dark:text-white",
-											children: selected.length
-										}),
-										" of ",
-										terms.length,
-										" selected"
-									]
-								}), optional.length > 0 && /* @__PURE__ */ jsxs("div", {
-									className: "flex gap-3 text-[12.5px] font-semibold",
-									children: [/* @__PURE__ */ jsx("button", {
-										type: "button",
-										onClick: () => setAll(true),
-										disabled: optionalSelected === optional.length,
-										className: "text-accent transition disabled:opacity-35 dark:text-accent-glow",
-										children: "Select all"
-									}), /* @__PURE__ */ jsx("button", {
-										type: "button",
-										onClick: () => setAll(false),
-										disabled: optionalSelected === 0,
-										className: "muted transition hover:text-accent disabled:opacity-35",
-										children: "Clear"
-									})]
-								})]
-							}),
-							/* @__PURE__ */ jsx("div", {
-								className: "flex flex-wrap gap-2",
-								children: terms.map(({ value, selected: on, locked, custom }) => locked ? /* @__PURE__ */ jsxs("span", {
-									title: "The main keyword is always included",
-									className: "inline-flex items-center gap-2.5 rounded-xl border border-accent/50 bg-accent/10 px-3.5 py-2.5 text-[13.5px] font-semibold text-accent dark:text-accent-glow",
-									children: [
-										/* @__PURE__ */ jsx("span", {
-											className: "flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-md border border-accent bg-accent text-white",
-											children: /* @__PURE__ */ jsx(Check, {})
-										}),
-										value,
-										/* @__PURE__ */ jsx("span", {
-											className: "text-[10px] font-bold tracking-wider uppercase opacity-60",
-											children: "main"
-										})
-									]
-								}, value) : /* @__PURE__ */ jsx(KeywordChip, {
-									value,
-									selected: on,
-									custom,
-									onToggle: () => toggle(value),
-									onRemove: () => remove(value)
-								}, value))
-							}),
-							/* @__PURE__ */ jsxs("form", {
-								onSubmit: add,
-								className: "mt-4 flex max-w-md gap-2",
-								children: [/* @__PURE__ */ jsx("input", {
-									value: draft,
-									onChange: (e) => setDraft(e.target.value),
-									placeholder: atKeywordCap ? `Limit of ${KEYWORD_CAP} keywords reached` : "Add your own keyword",
-									"aria-label": "Add your own keyword",
-									disabled: atKeywordCap,
-									className: "field h-11 flex-1 text-sm"
-								}), /* @__PURE__ */ jsxs("button", {
-									type: "submit",
-									disabled: !draft.trim() || atKeywordCap,
-									className: "btn-ghost h-11 px-4 text-sm",
-									children: [/* @__PURE__ */ jsx(Plus, { className: "h-3.5 w-3.5" }), " Add"]
-								})]
-							}),
-							expansionSource === "fallback" && /* @__PURE__ */ jsx("p", {
-								className: "mt-3 text-[12px] faint",
-								children: "Suggestions came from templates this time — edit them freely."
-							})
-						] })
-					}),
-					/* @__PURE__ */ jsx(Card$1, {
-						step: "3",
-						title: "Name and refresh",
-						description: "How this search shows up in Bookmark, and how often we re-run it.",
-						children: /* @__PURE__ */ jsxs("div", {
-							className: "grid gap-5 sm:grid-cols-2",
-							children: [/* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsx("label", {
-								htmlFor: "search-name",
-								className: "block text-[12.5px] font-semibold",
-								children: "Search name"
-							}), /* @__PURE__ */ jsx("input", {
-								id: "search-name",
-								value: name,
-								maxLength: 80,
-								onChange: (e) => {
-									setName(e.target.value);
-									setNameTouched(true);
-								},
-								className: "field mt-2 h-11 text-sm"
-							})] }), /* @__PURE__ */ jsxs("div", { children: [
-								/* @__PURE__ */ jsx("span", {
-									className: "block text-[12.5px] font-semibold",
-									children: "Refresh"
-								}),
-								/* @__PURE__ */ jsx("div", {
-									className: "mt-2 grid gap-2 sm:grid-cols-2",
-									children: FREQUENCIES.map((f) => /* @__PURE__ */ jsx("button", {
-										type: "button",
-										onClick: () => setFrequency(f.value),
-										"aria-pressed": frequency === f.value,
-										className: `h-11 rounded-xl border text-[13.5px] font-semibold transition-all duration-300 ${frequency === f.value ? "border-accent/50 bg-accent/10 text-accent dark:text-accent-glow" : "border-black/[.09] muted hover:border-accent/35 dark:border-white/[.12]"}`,
-										children: f.label
-									}, f.value))
-								}),
-								/* @__PURE__ */ jsx("p", {
-									className: "mt-2 text-[12px] faint",
-									children: FREQUENCIES.find((f) => f.value === frequency)?.hint
-								})
-							] })]
-						})
+					/* @__PURE__ */ jsx("h2", { children: "Widen the pull" }),
+					/* @__PURE__ */ jsxs("p", {
+						className: "faint",
+						style: {
+							fontSize: ".85rem",
+							marginTop: 6
+						},
+						children: [
+							"We suggest the terms people actually pair with your ",
+							noun,
+							" on TikTok."
+						]
 					})
-				]
-			}),
-			error && /* @__PURE__ */ jsx("p", {
-				className: "mt-4 rounded-xl border border-hot/30 bg-hot/10 px-4 py-3 text-[13px] text-hot",
+				] }), /* @__PURE__ */ jsxs("button", {
+					type: "button",
+					className: "btn btn--g btn--sm",
+					onClick: regenerate,
+					disabled: busy,
+					children: [/* @__PURE__ */ jsx(Refresh, { className: regenerating ? "h-[15px] w-[15px] animate-spin" : "h-[15px] w-[15px]" }), regenerating ? "Regenerating…" : "Regenerate"]
+				})]
+			}), busy ? /* @__PURE__ */ jsx(SkeletonChips, {}) : /* @__PURE__ */ jsxs(Fragment, { children: [
+				/* @__PURE__ */ jsxs("div", {
+					className: "chips",
+					children: [terms.map(({ value, selected: on, locked, custom }) => locked ? /* @__PURE__ */ jsxs("span", {
+						className: "chip on",
+						title: "The main keyword is always included",
+						children: [
+							/* @__PURE__ */ jsx("span", {
+								className: "chip__b",
+								children: /* @__PURE__ */ jsx(Check, {})
+							}),
+							value,
+							/* @__PURE__ */ jsx("span", {
+								className: "chip__y",
+								children: "main"
+							})
+						]
+					}, value) : /* @__PURE__ */ jsxs("span", {
+						role: "button",
+						tabIndex: 0,
+						"aria-pressed": on,
+						onClick: () => toggle(value),
+						onKeyDown: (e) => {
+							if (e.key === "Enter" || e.key === " ") {
+								e.preventDefault();
+								toggle(value);
+							}
+						},
+						className: `chip${on ? " on" : ""}`,
+						style: { cursor: "pointer" },
+						children: [
+							/* @__PURE__ */ jsx("span", {
+								className: "chip__b",
+								children: /* @__PURE__ */ jsx(Check, {})
+							}),
+							value,
+							custom && /* @__PURE__ */ jsx("span", {
+								className: "chip__y",
+								children: "yours"
+							}),
+							/* @__PURE__ */ jsx("button", {
+								type: "button",
+								className: "chip__x",
+								"aria-label": `Remove ${value}`,
+								onClick: (e) => {
+									e.stopPropagation();
+									remove(value);
+								},
+								children: /* @__PURE__ */ jsx(Close, { className: "h-[13px] w-[13px]" })
+							})
+						]
+					}, value)), adding ? /* @__PURE__ */ jsx("input", {
+						autoFocus: true,
+						className: "chip__add",
+						value: draft,
+						maxLength: 40,
+						placeholder: "Add a keyword…",
+						onChange: (e) => setDraft(e.target.value),
+						onBlur: commitAdd,
+						onKeyDown: (e) => {
+							if (e.key === "Enter") commitAdd();
+							if (e.key === "Escape") {
+								setDraft("");
+								setAdding(false);
+							}
+						}
+					}) : /* @__PURE__ */ jsxs("button", {
+						type: "button",
+						className: "chip",
+						style: {
+							color: "var(--amber-ink)",
+							borderStyle: "dashed",
+							cursor: atKeywordCap ? "not-allowed" : "pointer"
+						},
+						disabled: atKeywordCap,
+						onClick: () => setAdding(true),
+						children: [/* @__PURE__ */ jsx(Plus, { className: "h-[13px] w-[13px]" }), " Add your own"]
+					})]
+				}),
+				/* @__PURE__ */ jsxs("p", {
+					className: "hint",
+					children: [
+						selected.length,
+						" of ",
+						terms.length,
+						" selected · each keyword widens the same single search."
+					]
+				}),
+				expansionSource === "fallback" && /* @__PURE__ */ jsx("p", {
+					className: "hint",
+					children: "Suggestions came from templates this time — edit them freely."
+				})
+			] })]
+		}),
+		/* @__PURE__ */ jsxs("div", {
+			className: "sect",
+			children: [/* @__PURE__ */ jsx("div", {
+				className: "sect__h",
+				children: /* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsx("p", {
+					className: "sect__n",
+					children: "Schedule"
+				}), /* @__PURE__ */ jsx("h2", { children: "How often should we re-run it?" })] })
+			}), /* @__PURE__ */ jsx("div", {
+				className: "freq",
+				children: FREQUENCIES.map((f) => /* @__PURE__ */ jsxs("button", {
+					type: "button",
+					className: `fq${frequency === f.value ? " on" : ""}`,
+					"aria-pressed": frequency === f.value,
+					onClick: () => setFrequency(f.value),
+					children: [/* @__PURE__ */ jsxs("span", {
+						className: "fq__t",
+						children: [/* @__PURE__ */ jsx("span", { className: "fq__r" }), f.label]
+					}), /* @__PURE__ */ jsx("p", { children: f.hint })]
+				}, f.value))
+			})]
+		}),
+		error && /* @__PURE__ */ jsx("div", {
+			className: "sect",
+			children: /* @__PURE__ */ jsx("p", {
+				className: "pill pill--bad",
+				style: {
+					height: "auto",
+					padding: "8px 12px"
+				},
 				children: error
+			})
+		}),
+		/* @__PURE__ */ jsxs("div", {
+			className: "sect actrow",
+			children: [/* @__PURE__ */ jsx("button", {
+				type: "button",
+				className: "btn btn--g",
+				onClick: onBack,
+				children: "Back"
+			}), /* @__PURE__ */ jsxs("button", {
+				type: "button",
+				className: "btn btn--y",
+				disabled: busy || submitting || selected.length === 0,
+				onClick: () => onSubmit({
+					phrase,
+					keywords: selected,
+					frequency,
+					name: phrase
+				}),
+				children: [
+					submitting ? "Starting…" : nextLabel,
+					" ",
+					/* @__PURE__ */ jsx(Arrow, {})
+				]
+			})]
+		})
+	] });
+}
+//#endregion
+//#region resources/js/landing/flow/screens/SourcesScreen.jsx
+/**
+* Step three of the brand/competitor flow — optional. Connect the subject's
+* TikTok handle and/or website so results match more tightly. There is nothing
+* to connect for a product search, so the wizard skips this step entirely for
+* products (see SearchWizard's FLOW.kind branching).
+*
+* Both are skippable: "Skip" and "Run the search" both start the scrape; the
+* handle/website ride along in the payload for the backend to use when it can.
+*/
+function SourcesScreen({ onBack, onSkip, onRun, submitting = false }) {
+	const [handle, setHandle] = useState("");
+	const [website, setWebsite] = useState("");
+	const sources = () => ({
+		tiktokHandle: handle.trim().replace(/^@/, ""),
+		website: website.trim()
+	});
+	return /* @__PURE__ */ jsxs("div", {
+		className: "sect",
+		children: [
+			/* @__PURE__ */ jsx("div", {
+				className: "sect__h",
+				children: /* @__PURE__ */ jsxs("div", { children: [
+					/* @__PURE__ */ jsx("p", {
+						className: "sect__n",
+						children: "Optional"
+					}),
+					/* @__PURE__ */ jsx("h2", { children: "Add the brand’s handle or website" }),
+					/* @__PURE__ */ jsx("p", {
+						className: "faint",
+						style: {
+							fontSize: ".88rem",
+							marginTop: 8,
+							maxWidth: "60ch"
+						},
+						children: "Helps us match videos more accurately and unlock better insights."
+					})
+				] })
 			}),
 			/* @__PURE__ */ jsxs("div", {
-				className: "mt-6 flex flex-col gap-4 border-t border-black/[.06] pt-6 sm:flex-row sm:items-center sm:justify-between dark:border-white/[.07]",
-				children: [/* @__PURE__ */ jsxs("p", {
-					className: "text-[13px] muted",
+				className: "srcs",
+				children: [/* @__PURE__ */ jsxs("div", {
+					className: `src${handle.trim() ? " is-on" : ""}`,
 					children: [
-						/* @__PURE__ */ jsx("b", {
-							className: "font-display text-[15px] text-ink dark:text-white",
-							children: selected.length
+						/* @__PURE__ */ jsxs("div", {
+							className: "src__h",
+							children: [/* @__PURE__ */ jsx("span", {
+								className: "src__i",
+								children: /* @__PURE__ */ jsx(Play, { className: "h-[15px] w-[15px]" })
+							}), /* @__PURE__ */ jsx("div", {
+								style: { minWidth: 0 },
+								children: /* @__PURE__ */ jsx("p", {
+									className: "src__t",
+									children: "TikTok handle"
+								})
+							})]
 						}),
-						" keyword",
-						selected.length === 1 ? "" : "s",
-						" · 1 search covers everything you select"
+						/* @__PURE__ */ jsxs("div", {
+							className: "src__f",
+							children: [/* @__PURE__ */ jsx("span", {
+								className: "src__pre",
+								children: "@"
+							}), /* @__PURE__ */ jsx("input", {
+								value: handle.replace(/^@/, ""),
+								onChange: (e) => setHandle(e.target.value),
+								placeholder: "rhode",
+								"aria-label": "TikTok handle"
+							})]
+						}),
+						/* @__PURE__ */ jsx("p", {
+							className: "src__m faint",
+							children: "Optional, but it sharpens every number on the report."
+						})
 					]
-				}), /* @__PURE__ */ jsxs("button", {
-					onClick: () => onSubmit({
-						phrase,
-						keywords: selected,
-						frequency,
-						name: name.trim() || phrase
-					}),
-					disabled: busy || submitting || selected.length === 0,
-					className: "btn-accent h-[52px] px-7 text-[15px]",
+				}), /* @__PURE__ */ jsxs("div", {
+					className: `src${website.trim() ? " is-on" : ""}`,
 					children: [
-						submitting ? "Starting…" : "Run search",
-						" ",
-						/* @__PURE__ */ jsx(Arrow, {})
+						/* @__PURE__ */ jsxs("div", {
+							className: "src__h",
+							children: [/* @__PURE__ */ jsx("span", {
+								className: "src__i",
+								children: /* @__PURE__ */ jsx(Store, { className: "h-[15px] w-[15px]" })
+							}), /* @__PURE__ */ jsx("div", {
+								style: { minWidth: 0 },
+								children: /* @__PURE__ */ jsx("p", {
+									className: "src__t",
+									children: "Website"
+								})
+							})]
+						}),
+						/* @__PURE__ */ jsxs("div", {
+							className: "src__f",
+							children: [/* @__PURE__ */ jsx("span", {
+								className: "src__pre",
+								children: "https://"
+							}), /* @__PURE__ */ jsx("input", {
+								value: website,
+								onChange: (e) => setWebsite(e.target.value),
+								placeholder: "rhodeskin.com",
+								"aria-label": "Website"
+							})]
+						}),
+						/* @__PURE__ */ jsx("p", {
+							className: "src__m faint",
+							children: "Optional"
+						})
 					]
+				})]
+			}),
+			/* @__PURE__ */ jsxs("div", {
+				className: "actrow",
+				style: { marginTop: 24 },
+				children: [/* @__PURE__ */ jsx("button", {
+					type: "button",
+					className: "btn btn--g",
+					onClick: onBack,
+					disabled: submitting,
+					children: "Back"
+				}), /* @__PURE__ */ jsxs("span", {
+					className: "actrow__r",
+					children: [/* @__PURE__ */ jsx("button", {
+						type: "button",
+						className: "btn btn--g",
+						onClick: onSkip,
+						disabled: submitting,
+						children: "Skip"
+					}), /* @__PURE__ */ jsxs("button", {
+						type: "button",
+						className: "btn btn--y",
+						onClick: () => onRun(sources()),
+						disabled: submitting,
+						children: [
+							submitting ? "Starting…" : "Run the search",
+							" ",
+							/* @__PURE__ */ jsx(Arrow, {})
+						]
+					})]
 				})]
 			})
 		]
@@ -3809,6 +4362,10 @@ var STAGES = [
 	"Filtering against your keywords",
 	"Ranking by outlier score"
 ];
+/**
+* The transitional loading state after a run is dispatched. Not a wizard step —
+* it has no stepper — just a live view of a scrape already running server-side.
+*/
 function RunningScreen({ searchId, onBack, onDone }) {
 	const { auth = {} } = usePage().props;
 	const signedIn = auth.signedIn ?? Boolean(auth.user);
@@ -3865,97 +4422,133 @@ function RunningScreen({ searchId, onBack, onDone }) {
 		const timer = window.setInterval(() => setStage((s) => Math.min(s + 1, STAGES.length - 1)), 12e3);
 		return () => window.clearInterval(timer);
 	}, [failed]);
-	return /* @__PURE__ */ jsxs("div", {
-		className: "animate-fade-up",
-		children: [/* @__PURE__ */ jsx("button", {
-			onClick: onBack,
-			className: "text-[13px] font-semibold muted transition hover:text-accent",
-			children: "← Back to keywords"
-		}), /* @__PURE__ */ jsx("div", {
-			className: "mx-auto mt-8 max-w-md text-center",
-			children: failed ? /* @__PURE__ */ jsxs(Fragment, { children: [
-				/* @__PURE__ */ jsx("span", {
-					className: "inline-flex items-center gap-2.5 rounded-full border border-hot/25 bg-hot/10 px-4 py-2 text-[12.5px] font-semibold text-hot",
-					children: "Search failed"
+	if (failed) return /* @__PURE__ */ jsx("div", {
+		className: "card",
+		children: /* @__PURE__ */ jsxs("div", {
+			className: "run",
+			children: [
+				/* @__PURE__ */ jsxs("span", {
+					className: "pill pill--bad",
+					style: { margin: "0 auto" },
+					children: [/* @__PURE__ */ jsx("i", {}), "Search failed"]
 				}),
 				/* @__PURE__ */ jsx("h1", {
-					className: "mt-7 font-display text-[26px] leading-tight font-bold tracking-[-.02em] sm:text-[32px]",
-					children: "That run didn't finish"
+					style: { marginTop: 20 },
+					children: "That run didn’t finish"
 				}),
 				/* @__PURE__ */ jsx("p", {
-					className: "mt-3 text-[14.5px] muted",
+					className: "muted",
+					style: {
+						maxWidth: 420,
+						margin: "12px auto 0"
+					},
 					children: failed
 				}),
 				/* @__PURE__ */ jsx("button", {
 					onClick: onBack,
-					className: "btn-ghost mx-auto mt-7 h-[52px] px-6 text-[15px]",
+					className: "btn btn--g",
+					style: { margin: "24px auto 0" },
 					children: "Edit keywords and retry"
 				})
-			] }) : /* @__PURE__ */ jsxs(Fragment, { children: [
+			]
+		})
+	});
+	const progress = (stage + 1) / STAGES.length * 100;
+	return /* @__PURE__ */ jsx("div", {
+		className: "card",
+		children: /* @__PURE__ */ jsxs("div", {
+			className: "run",
+			children: [
+				/* @__PURE__ */ jsx("div", {
+					className: "run__d",
+					children: /* @__PURE__ */ jsx(Search, { className: "h-[26px] w-[26px]" })
+				}),
 				/* @__PURE__ */ jsxs("span", {
-					className: "inline-flex items-center gap-2.5 rounded-full border border-accent/25 bg-accent/10 px-4 py-2 text-[12.5px] font-semibold text-accent dark:text-accent-glow",
-					children: [/* @__PURE__ */ jsx("span", { className: "h-3.5 w-3.5 animate-spin rounded-full border-2 border-accent border-t-transparent" }), "Search running · 1 to 20 min"]
+					className: "pill pill--run",
+					style: { margin: "0 auto" },
+					children: [/* @__PURE__ */ jsx("i", {}), "Search running · 1 to 20 min"]
 				}),
 				/* @__PURE__ */ jsx("h1", {
-					className: "mt-7 font-display text-[26px] leading-tight font-bold tracking-[-.02em] sm:text-[32px]",
+					style: { marginTop: 18 },
 					children: search?.name ? `Scouting “${search.name}”` : "Scouting your niche"
 				}),
 				/* @__PURE__ */ jsx("p", {
-					className: "mt-3 text-[14.5px] muted",
-					children: "We'll show the results right here the moment they're ready."
+					className: "muted",
+					style: {
+						maxWidth: 420,
+						margin: "12px auto 0"
+					},
+					children: "We’ll show the results right here the moment they’re ready."
 				}),
-				/* @__PURE__ */ jsx("ol", {
-					className: "mx-auto mt-8 max-w-sm space-y-2.5 text-left",
+				/* @__PURE__ */ jsx("div", {
+					className: "run__s",
 					children: STAGES.map((label, i) => {
-						const state = i < stage ? "done" : i === stage ? "active" : "pending";
-						return /* @__PURE__ */ jsxs("li", {
-							className: `flex items-center gap-3 rounded-xl border px-4 py-3 text-[13.5px] transition-all duration-500 ${state === "pending" ? "border-black/[.06] faint dark:border-white/[.07]" : "border-accent/25 bg-accent/[.06]"}`,
+						const state = i < stage ? "done" : i === stage ? "now" : "";
+						return /* @__PURE__ */ jsxs("div", {
+							className: `stg ${state}`.trim(),
 							children: [/* @__PURE__ */ jsx("span", {
-								className: `flex h-5 w-5 shrink-0 items-center justify-center rounded-full ${state === "done" ? "bg-accent text-white" : state === "active" ? "border-2 border-accent border-t-transparent animate-spin" : "border border-black/15 dark:border-white/20"}`,
-								children: state === "done" && /* @__PURE__ */ jsx(Check, { className: "h-2.5 w-2.5" })
+								className: "stg__d",
+								children: state === "done" && /* @__PURE__ */ jsx(Check, {})
 							}), label]
 						}, label);
 					})
 				}),
+				/* @__PURE__ */ jsx("div", {
+					className: "runbar",
+					children: /* @__PURE__ */ jsx("span", { style: { width: `${progress}%` } })
+				}),
 				!signedIn && /* @__PURE__ */ jsxs("div", {
-					className: "ring-gradient mt-8 rounded-3xl bg-white/70 p-6 text-left backdrop-blur-2xl dark:bg-white/[.04]",
+					className: "capture",
 					children: [
 						/* @__PURE__ */ jsx("p", {
-							className: "mb-4 text-center font-display text-sm font-semibold",
-							children: "Or have them emailed when they're done"
+							style: {
+								textAlign: "center",
+								fontWeight: 700,
+								fontSize: ".9rem",
+								color: "var(--ink)"
+							},
+							children: "Or have them emailed when they’re done"
 						}),
 						/* @__PURE__ */ jsxs("a", {
 							href: "/auth/google",
-							className: "flex h-[52px] w-full items-center justify-center gap-3 rounded-full bg-[#2f2a2a] px-5 text-[15px] font-semibold text-white shadow-[0_18px_40px_-26px_rgba(0,0,0,.55)] transition hover:opacity-95",
+							className: "btn btn--k btn--w",
+							style: {
+								marginTop: 14,
+								height: 48
+							},
 							children: [/* @__PURE__ */ jsx("span", {
-								className: "flex h-8 w-8 items-center justify-center rounded-full bg-white",
+								className: "gic",
 								children: /* @__PURE__ */ jsx(Google$1, {})
 							}), "Continue with Google"]
 						}),
-						/* @__PURE__ */ jsxs("div", {
-							className: "my-4 flex items-center gap-3 text-xs faint",
-							children: [
-								/* @__PURE__ */ jsx("span", { className: "h-px flex-1 bg-black/[.08] dark:bg-white/10" }),
-								"or",
-								/* @__PURE__ */ jsx("span", { className: "h-px flex-1 bg-black/[.08] dark:bg-white/10" })
-							]
+						/* @__PURE__ */ jsx("div", {
+							className: "divid",
+							children: "or"
 						}),
 						/* @__PURE__ */ jsxs("form", {
 							onSubmit: (e) => {
 								e.preventDefault();
 								setEmailSaved(true);
 							},
-							className: "flex flex-col gap-2 sm:flex-row",
+							style: {
+								display: "flex",
+								gap: 8,
+								flexWrap: "wrap"
+							},
 							children: [/* @__PURE__ */ jsx("input", {
 								type: "email",
 								required: true,
 								value: email,
 								onChange: (e) => setEmail(e.target.value),
 								placeholder: "you@brand.com",
-								className: "field h-[52px] flex-1"
+								className: "fld",
+								style: {
+									flex: 1,
+									minWidth: 180
+								}
 							}), /* @__PURE__ */ jsxs("button", {
 								type: "submit",
-								className: "btn-accent h-[52px] px-5 text-[15px]",
+								className: "btn btn--y",
 								children: [
 									emailSaved ? "Saved" : "Email me",
 									" ",
@@ -3966,92 +4559,97 @@ function RunningScreen({ searchId, onBack, onDone }) {
 					]
 				}),
 				/* @__PURE__ */ jsx("p", {
-					className: `text-[12.5px] leading-relaxed faint ${signedIn ? "mt-8" : "mt-5"}`,
-					children: "Safe to close this tab — the search keeps running and stays in Bookmark."
+					className: "faint",
+					style: {
+						fontSize: ".8rem",
+						marginTop: signedIn ? 24 : 18
+					},
+					children: "Safe to close this tab — the search keeps running and stays in Library."
 				})
-			] })
-		})]
+			]
+		})
 	});
 }
 //#endregion
 //#region resources/js/Pages/components/SearchWizard.jsx
 var SearchWizard_exports = /* @__PURE__ */ __exportAll({ default: () => SearchWizard });
-var STEPS$1 = [
-	{
-		key: "subject",
-		label: "Subject",
-		hint: "Brand, competitor or product"
-	},
-	{
-		key: "keywords",
-		label: "Keywords",
-		hint: "Widen and filter the pull"
-	},
-	{
-		key: "running",
-		label: "Results",
-		hint: "We scrape and rank"
-	}
-];
 /**
-* The whole search flow on one page.
+* The whole in-app search flow on one page (Dashboard and /search share it).
 *
-* Steps advance in local state rather than by navigation, so the keyword work
-* survives a step back — and a failed run can drop the user straight back onto
-* the keywords they already tuned instead of an empty form.
+* The wizard branches by search kind, exactly as the handoff spec requires:
+*   - product  → Subject → Keywords → run          (2 steps, no Sources)
+*   - brand /  → Subject → Keywords → Sources → run (3 steps; Sources is last,
+*     competitor    optional, and asks for the account's handle/website)
+* The run/loading screen is *not* a wizard step and has no stepper.
 *
-* The only thing written to the URL is `?run=<id>` once a run exists, via
-* replaceState. That is a resume handle, not a navigation: a reload should not
-* lose sight of a scrape that is already costing money server-side.
+* Steps advance in local state so keyword work survives a step back, and a
+* failed run drops straight back onto the tuned keywords. The only thing
+* written to the URL is `?run=<id>` once a run exists, as a resume handle.
 */
+var kindOf = (type) => type === "product" ? "product" : "brand";
+var nounOf = (type) => type === "product" ? "product" : "brand";
 function readRunParam() {
 	if (typeof window === "undefined") return null;
 	const id = new URLSearchParams(window.location.search).get("run");
 	return id && /^\d+$/.test(id) ? Number(id) : null;
 }
 /**
-* A header strip on the card, not three cards of its own — the stepper is
-* orientation, so it should read as part of the search panel rather than
-* three more things competing for a click.
+* The card-header stepper. Sources is brand-only and last; there is no
+* "Results" step — the visitor is already signed in by the time they run.
 */
-function Stepper({ current, onJump, reachable }) {
-	const index = STEPS$1.findIndex((s) => s.key === current);
-	return /* @__PURE__ */ jsx("ol", {
-		className: "flex items-center gap-2 border-b border-black/[.06] bg-black/[.015] px-4 py-3 sm:gap-3 sm:px-6 dark:border-white/[.07] dark:bg-white/[.02]",
-		children: STEPS$1.map((step, i) => {
-			const state = i < index ? "done" : i === index ? "active" : "todo";
-			const clickable = state === "done" && reachable.includes(step.key);
-			return /* @__PURE__ */ jsxs("li", {
-				className: "flex min-w-0 items-center gap-2 sm:gap-3",
-				children: [i > 0 && /* @__PURE__ */ jsx("span", {
-					"aria-hidden": true,
-					className: `h-px w-4 shrink-0 sm:w-8 ${state === "todo" ? "bg-black/[.1] dark:bg-white/[.12]" : "bg-accent/40"}`
-				}), /* @__PURE__ */ jsxs("button", {
-					type: "button",
-					disabled: !clickable,
-					onClick: () => clickable && onJump(step.key),
-					"aria-current": state === "active" ? "step" : void 0,
-					className: `flex min-w-0 items-center gap-2 rounded-full py-1 pr-2 pl-1 text-left transition ${clickable ? "cursor-pointer hover:bg-black/[.04] dark:hover:bg-white/[.06]" : "cursor-default"}`,
-					children: [/* @__PURE__ */ jsx("span", {
-						className: `flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-full font-display text-[11.5px] font-bold ${state === "todo" ? "bg-black/[.06] faint dark:bg-white/[.09]" : "bg-accent text-white"}`,
-						children: state === "done" ? /* @__PURE__ */ jsx(Check, { className: "h-2.5 w-2.5" }) : i + 1
-					}), /* @__PURE__ */ jsx("span", {
-						className: `truncate text-[12.5px] font-semibold ${state === "active" ? "text-accent dark:text-accent-glow" : state === "todo" ? "faint" : "muted"}`,
-						children: step.label
-					})]
-				})]
-			}, step.key);
+function Stepper({ kind, current }) {
+	const steps = kind === "product" ? [{
+		k: "subject",
+		l: "Subject"
+	}, {
+		k: "keywords",
+		l: "Keywords"
+	}] : [
+		{
+			k: "subject",
+			l: "Subject"
+		},
+		{
+			k: "keywords",
+			l: "Keywords"
+		},
+		{
+			k: "sources",
+			l: "Sources"
+		}
+	];
+	const idx = steps.findIndex((s) => s.k === current);
+	return /* @__PURE__ */ jsx("div", {
+		className: "step",
+		children: steps.map((s, i) => {
+			const state = i < idx ? "done" : i === idx ? "now" : "todo";
+			return /* @__PURE__ */ jsxs("span", {
+				className: "step__i",
+				children: [
+					i > 0 && /* @__PURE__ */ jsx("span", { className: "step__r" }),
+					/* @__PURE__ */ jsx("span", {
+						className: `step__n ${state}`,
+						children: state === "done" ? /* @__PURE__ */ jsx(Check, {}) : i + 1
+					}),
+					/* @__PURE__ */ jsx("span", {
+						className: `step__l ${state}`,
+						children: s.l
+					})
+				]
+			}, s.k);
 		})
 	});
 }
-function SearchWizard({ initialType = "brand", initialQuery = "", heading, subheading }) {
+function SearchWizard({ initialType = "brand", initialQuery = "", heading = "Start a search", subheading = "Pick one brand, competitor, or product — we widen it with smarter keywords on the next step.", subjectExtra = null }) {
 	const resumeId = readRunParam();
 	const [step, setStep] = useState(resumeId ? "running" : initialQuery ? "keywords" : "subject");
 	const [type, setType] = useState(initialType);
 	const [phrase, setPhrase] = useState(initialQuery);
+	const [pending, setPending] = useState(null);
 	const [searchId, setSearchId] = useState(resumeId);
 	const [submitting, setSubmitting] = useState(false);
 	const [error, setError] = useState(null);
+	const kind = kindOf(type);
 	const stampUrl = (id) => {
 		if (typeof window === "undefined") return;
 		const url = new URL(window.location.href);
@@ -4064,16 +4662,17 @@ function SearchWizard({ initialType = "brand", initialQuery = "", heading, subhe
 		setPhrase(nextPhrase);
 		setStep("keywords");
 	};
-	const submit = async ({ phrase: finalPhrase, keywords, frequency, name }) => {
+	const doCreate = async (payload, sources) => {
 		setSubmitting(true);
 		setError(null);
 		try {
 			const created = await createSavedSearch({
 				type,
-				phrase: finalPhrase || phrase,
-				name,
-				keywords,
-				frequency
+				phrase: payload.phrase || phrase,
+				name: payload.name,
+				keywords: payload.keywords,
+				frequency: payload.frequency,
+				sources
 			});
 			trackSearch({
 				id: created.id,
@@ -4085,9 +4684,15 @@ function SearchWizard({ initialType = "brand", initialQuery = "", heading, subhe
 			setStep("running");
 		} catch (e) {
 			setError(e.message || "Could not start the search. Try again.");
+			setStep("keywords");
 		} finally {
 			setSubmitting(false);
 		}
+	};
+	const afterKeywords = (payload) => {
+		setPending(payload);
+		if (kind === "brand") setStep("sources");
+		else doCreate(payload);
 	};
 	const backToKeywords = () => {
 		stampUrl(null);
@@ -4095,61 +4700,93 @@ function SearchWizard({ initialType = "brand", initialQuery = "", heading, subhe
 		setStep(phrase ? "keywords" : "subject");
 	};
 	const onDone = useCallback((found) => router.visit(`/bookmark/${found?.id ?? searchId}`), [searchId]);
-	return /* @__PURE__ */ jsxs("div", {
-		className: "surface animate-fade-up overflow-hidden",
-		children: [/* @__PURE__ */ jsx(Stepper, {
-			current: step,
-			reachable: searchId ? [] : ["subject", "keywords"],
-			onJump: (key) => setStep(key)
-		}), /* @__PURE__ */ jsxs("div", {
-			className: "p-6 sm:p-8",
+	const topTitle = step === "subject" ? heading : phrase;
+	const topSub = step === "subject" ? subheading : step === "sources" ? "Step 3 of 3 — optional." : `Step 2 of ${kind === "product" ? 2 : 3} — add terms to expand on your ${nounOf(type)}. Ticking six terms still spends one search.`;
+	return /* @__PURE__ */ jsxs(Fragment, { children: [
+		step !== "running" && /* @__PURE__ */ jsxs("div", {
+			className: "top",
+			children: [/* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsx("h1", { children: topTitle }), /* @__PURE__ */ jsx("p", { children: topSub })] }), /* @__PURE__ */ jsx(EntitlementsBar, {})]
+		}),
+		step === "running" && searchId ? /* @__PURE__ */ jsx(RunningScreen, {
+			searchId,
+			onBack: backToKeywords,
+			onDone
+		}) : /* @__PURE__ */ jsxs("div", {
+			className: "card",
 			children: [
+				/* @__PURE__ */ jsx(Stepper, {
+					kind,
+					current: step
+				}),
 				step === "subject" && /* @__PURE__ */ jsx(SearchLauncher, {
 					initialType: type,
 					initialQuery: phrase,
-					heading,
-					subheading,
-					showOutline: false,
-					bare: true,
 					onSubmit: pickSubject
 				}),
-				phrase && /* @__PURE__ */ jsx("div", {
-					hidden: step !== "keywords",
-					children: /* @__PURE__ */ jsx(KeywordsScreen, {
-						phrase,
-						submitting,
-						error,
-						onBack: () => setStep("subject"),
-						onSubmit: submit
-					}, `${type}:${phrase}`)
-				}),
-				step === "running" && searchId && /* @__PURE__ */ jsx(RunningScreen, {
-					searchId,
-					onBack: backToKeywords,
-					onDone
+				step === "keywords" && phrase && /* @__PURE__ */ jsx(KeywordsScreen, {
+					phrase,
+					noun: nounOf(type),
+					nextLabel: kind === "brand" ? "Continue" : "Run the search",
+					submitting,
+					error,
+					onBack: () => setStep("subject"),
+					onSubmit: afterKeywords
+				}, `${type}:${phrase}`),
+				step === "sources" && /* @__PURE__ */ jsx(SourcesScreen, {
+					submitting,
+					onBack: () => setStep("keywords"),
+					onSkip: () => doCreate(pending),
+					onRun: (sources) => doCreate(pending, sources)
 				})
 			]
-		})]
-	});
+		}),
+		step === "subject" && subjectExtra
+	] });
 }
 //#endregion
 //#region resources/js/Pages/Dashboard.jsx
 var Dashboard_exports = /* @__PURE__ */ __exportAll({ default: () => Dashboard });
+/** "Pick up where you left off" — the three most recent saved searches. */
+function RecentCard({ searches }) {
+	if (!searches?.length) return null;
+	return /* @__PURE__ */ jsx("div", {
+		className: "card",
+		style: { marginTop: 22 },
+		children: /* @__PURE__ */ jsxs("div", {
+			className: "sect",
+			children: [/* @__PURE__ */ jsxs("div", {
+				className: "sect__h",
+				children: [/* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsx("p", {
+					className: "sect__n",
+					children: "Recent"
+				}), /* @__PURE__ */ jsx("h2", { children: "Pick up where you left off" })] }), /* @__PURE__ */ jsxs(Link, {
+					href: "/bookmark",
+					className: "btn btn--g btn--sm",
+					children: ["View all ", /* @__PURE__ */ jsx(Arrow, {})]
+				})]
+			}), /* @__PURE__ */ jsx("div", {
+				className: "rows",
+				children: searches.map((search) => /* @__PURE__ */ jsx(SavedSearchRow, { search }, search.id))
+			})]
+		})
+	});
+}
 function Dashboard() {
-	const { flash = {} } = usePage().props;
-	return /* @__PURE__ */ jsxs(Fragment, { children: [/* @__PURE__ */ jsx(Head, { title: "Dashboard - Outlier Vault" }), /* @__PURE__ */ jsxs(AppLayout, {
+	const { flash = {}, recent = [] } = usePage().props;
+	return /* @__PURE__ */ jsxs(Fragment, { children: [/* @__PURE__ */ jsx(Head, { title: "Dashboard · Brand Beacon" }), /* @__PURE__ */ jsxs(AppLayout, {
 		width: "max-w-4xl",
-		children: [
-			flash.status && /* @__PURE__ */ jsx("div", {
-				className: "mb-6 rounded-2xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-700 dark:text-emerald-300",
-				children: flash.status
-			}),
-			/* @__PURE__ */ jsx(EntitlementsBar, {}),
-			/* @__PURE__ */ jsx(SearchWizard, {
-				heading: "Start a search",
-				subheading: "Pick one brand, competitor, or product — we widen it with smarter keywords on the next step."
-			})
-		]
+		children: [flash.status && /* @__PURE__ */ jsx("div", {
+			style: {
+				marginBottom: 18,
+				padding: "12px 16px",
+				borderRadius: "var(--r)",
+				background: "var(--ok-bg)",
+				color: "var(--ok)",
+				fontWeight: 600,
+				fontSize: ".85rem"
+			},
+			children: flash.status
+		}), /* @__PURE__ */ jsx(SearchWizard, { subjectExtra: /* @__PURE__ */ jsx(RecentCard, { searches: recent }) })]
 	})] });
 }
 //#endregion
@@ -6020,75 +6657,18 @@ function Plans() {
 	})] });
 }
 //#endregion
+//#region resources/js/Pages/Products.jsx
+var Products_exports = /* @__PURE__ */ __exportAll({ default: () => Products });
+function Products({ searches = [], moving = [] }) {
+	return /* @__PURE__ */ jsxs(Fragment, { children: [/* @__PURE__ */ jsx(Head, { title: "Product searches · Brand Beacon" }), /* @__PURE__ */ jsx(SearchListScreen, {
+		kind: "product",
+		searches,
+		moving
+	})] });
+}
+//#endregion
 //#region resources/js/Pages/SavedSearches/Index.jsx
 var Index_exports = /* @__PURE__ */ __exportAll({ default: () => Index });
-function FilterSelect({ value, onChange, active, label, children }) {
-	return /* @__PURE__ */ jsxs("label", {
-		className: "relative block min-w-0",
-		children: [
-			/* @__PURE__ */ jsx("span", {
-				className: "mb-1.5 block text-[11px] font-semibold tracking-[.08em] faint uppercase lg:hidden",
-				children: label
-			}),
-			/* @__PURE__ */ jsx("select", {
-				"aria-label": label,
-				value,
-				onChange,
-				className: `h-10 w-full cursor-pointer appearance-none rounded-xl border pr-9 pl-3 text-[12.5px] font-semibold outline-none transition duration-200 focus:border-accent/50 focus:ring-4 focus:ring-accent/12 ${active ? "border-accent/30 bg-accent/10 text-accent dark:border-accent/35 dark:text-accent-glow" : "border-black/[.08] bg-white text-ink hover:border-black/[.18] dark:border-white/[.1] dark:bg-white/[.05] dark:text-white dark:hover:border-white/[.2]"}`,
-				children
-			}),
-			/* @__PURE__ */ jsx(Chevron, { className: "pointer-events-none absolute top-1/2 right-2.5 h-3.5 w-3.5 -translate-y-1/2 opacity-45" })
-		]
-	});
-}
-function Divider() {
-	return /* @__PURE__ */ jsx("div", { className: "hidden h-6 w-px shrink-0 bg-black/[.08] lg:block dark:bg-white/[.1]" });
-}
-function ModalShell({ title, body, children, onClose }) {
-	return /* @__PURE__ */ jsxs("div", {
-		className: "fixed inset-0 z-[70] flex items-center justify-center bg-black/45 px-4 backdrop-blur-sm",
-		children: [/* @__PURE__ */ jsx("button", {
-			"aria-label": "Close modal",
-			onClick: onClose,
-			className: "absolute inset-0"
-		}), /* @__PURE__ */ jsxs("div", {
-			className: "relative z-10 w-full max-w-lg rounded-[28px] border border-black/[.06] bg-white p-6 shadow-[0_30px_90px_-45px_rgba(16,18,32,.55)] dark:border-white/[.08] dark:bg-canvas-dark",
-			children: [/* @__PURE__ */ jsxs("div", {
-				className: "flex items-start justify-between gap-4",
-				children: [/* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsx("h2", {
-					className: "font-display text-[24px] font-bold",
-					children: title
-				}), body && /* @__PURE__ */ jsx("p", {
-					className: "mt-2 text-[13.5px] leading-relaxed muted",
-					children: body
-				})] }), /* @__PURE__ */ jsx("button", {
-					type: "button",
-					onClick: onClose,
-					className: "inline-flex h-9 w-9 items-center justify-center rounded-xl border border-black/[.08] transition hover:border-accent/35 dark:border-white/[.12]",
-					children: /* @__PURE__ */ jsx(Close, { className: "h-4 w-4" })
-				})]
-			}), children]
-		})]
-	});
-}
-var STATUS = {
-	scraping: {
-		label: "Refreshing",
-		className: "border-accent/25 bg-accent/10 text-accent dark:text-accent-glow"
-	},
-	done: {
-		label: "Ready",
-		className: "border-emerald-500/25 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
-	},
-	paused: {
-		label: "Paused",
-		className: "border-black/[.1] muted dark:border-white/[.15]"
-	},
-	failed: {
-		label: "Failed",
-		className: "border-hot/25 bg-hot/10 text-hot"
-	}
-};
 var FILTER_LABELS = {
 	"brand-group": "Brand searches",
 	brand: "Brand searches",
@@ -6101,27 +6681,37 @@ var SORT_OPTIONS = {
 	az: "Name A-Z",
 	za: "Name Z-A"
 };
-function formatDate$2(iso) {
-	return iso ? new Date(iso).toLocaleDateString(void 0, {
-		month: "short",
-		day: "numeric"
-	}) : "-";
-}
+var VIDEO_SORT = {
+	score: "Outlier score",
+	views: "Views",
+	recent: "Most recent"
+};
 function compareDates(a, b) {
-	const aTime = a ? new Date(a).getTime() : 0;
-	return (b ? new Date(b).getTime() : 0) - aTime;
+	return (b ? new Date(b).getTime() : 0) - (a ? new Date(a).getTime() : 0);
 }
-function Index({ searches: initialSearches, filterType = null, watchlistedOnly: bookmarkedOnly = true }) {
+function Sel({ value, onChange, ariaLabel, children }) {
+	return /* @__PURE__ */ jsxs("span", {
+		className: "sel",
+		children: [/* @__PURE__ */ jsx("select", {
+			"aria-label": ariaLabel,
+			value,
+			onChange,
+			children
+		}), /* @__PURE__ */ jsx(Chevron, {})]
+	});
+}
+function Index({ searches: initialSearches, bookmarkedVideos = [], filterType = null, watchlistedOnly: bookmarkedOnly = true }) {
 	const isBrandCategoryView = filterType === "brand-group";
+	const showTabs = bookmarkedOnly && !filterType;
 	const [searches, setSearches] = useState(initialSearches);
-	const [animatingId, setAnimatingId] = useState(null);
+	const [tab, setTab] = useState("searches");
 	const [openMenuId, setOpenMenuId] = useState(null);
-	const [filtersOpen, setFiltersOpen] = useState(false);
 	const [query, setQuery] = useState("");
 	const [statusFilter, setStatusFilter] = useState("all");
-	const [frequencyFilter, setFrequencyFilter] = useState("all");
 	const [searchTypeFilter, setSearchTypeFilter] = useState(isBrandCategoryView ? "all" : filterType ?? "all");
 	const [sortBy, setSortBy] = useState("recent_refresh");
+	const [videoQuery, setVideoQuery] = useState("");
+	const [videoSort, setVideoSort] = useState("score");
 	const [modalState, setModalState] = useState({
 		type: null,
 		search: null
@@ -6132,54 +6722,44 @@ function Index({ searches: initialSearches, filterType = null, watchlistedOnly: 
 	});
 	const [submitting, setSubmitting] = useState(false);
 	const menuRef = useRef(null);
-	const title = filterType ? FILTER_LABELS[filterType] ?? "Bookmark" : "Bookmark";
+	const title = filterType ? FILTER_LABELS[filterType] ?? "Library" : "Library";
 	const searchHref = `/search?type=${filterType === "competitor" ? "competitor" : "brand"}`;
 	useEffect(() => {
-		if (openMenuId === null) return;
-		const handlePointerDown = (event) => {
-			if (menuRef.current && !menuRef.current.contains(event.target)) setOpenMenuId(null);
-		};
-		const handleEscape = (event) => {
-			if (event.key === "Escape") setOpenMenuId(null);
-		};
-		document.addEventListener("mousedown", handlePointerDown);
-		document.addEventListener("keydown", handleEscape);
+		if (openMenuId === null) return void 0;
+		const onDown = (e) => menuRef.current && !menuRef.current.contains(e.target) && setOpenMenuId(null);
+		const onEsc = (e) => e.key === "Escape" && setOpenMenuId(null);
+		document.addEventListener("mousedown", onDown);
+		document.addEventListener("keydown", onEsc);
 		return () => {
-			document.removeEventListener("mousedown", handlePointerDown);
-			document.removeEventListener("keydown", handleEscape);
+			document.removeEventListener("mousedown", onDown);
+			document.removeEventListener("keydown", onEsc);
 		};
 	}, [openMenuId]);
 	useEffect(() => {
-		if (modalState.type === null) return;
-		const handleEscape = (event) => {
-			if (event.key === "Escape") closeModal();
-		};
-		document.addEventListener("keydown", handleEscape);
-		return () => {
-			document.removeEventListener("keydown", handleEscape);
-		};
+		if (modalState.type === null) return void 0;
+		const onEsc = (e) => e.key === "Escape" && closeModal();
+		document.addEventListener("keydown", onEsc);
+		return () => document.removeEventListener("keydown", onEsc);
 	}, [modalState.type, submitting]);
 	const filteredSearches = useMemo(() => {
-		const normalizedQuery = query.trim().toLowerCase();
-		const next = searches.filter((search) => {
-			const matchesQuery = normalizedQuery === "" || search.name?.toLowerCase().includes(normalizedQuery) || search.keywords?.some((keyword) => keyword.toLowerCase().includes(normalizedQuery));
-			const matchesStatus = statusFilter === "all" || search.status === statusFilter;
-			const matchesFrequency = frequencyFilter === "all" || search.frequency === frequencyFilter;
-			const matchesType = !(bookmarkedOnly || isBrandCategoryView) || searchTypeFilter === "all" || search.search_type === searchTypeFilter;
-			return matchesQuery && matchesStatus && matchesFrequency && matchesType;
+		const q = query.trim().toLowerCase();
+		const next = searches.filter((s) => {
+			const matchesQuery = q === "" || s.name?.toLowerCase().includes(q) || s.keywords?.some((k) => k.toLowerCase().includes(q));
+			const matchesStatus = statusFilter === "all" || s.status === statusFilter;
+			const matchesType = !(bookmarkedOnly || isBrandCategoryView) || searchTypeFilter === "all" || s.search_type === searchTypeFilter;
+			return matchesQuery && matchesStatus && matchesType;
 		});
-		next.sort((left, right) => {
+		next.sort((l, r) => {
 			switch (sortBy) {
-				case "video_count": return (right.result_count ?? 0) - (left.result_count ?? 0);
-				case "az": return (left.name ?? "").localeCompare(right.name ?? "");
-				case "za": return (right.name ?? "").localeCompare(left.name ?? "");
-				default: return compareDates(left.last_run_at, right.last_run_at);
+				case "video_count": return (r.result_count ?? 0) - (l.result_count ?? 0);
+				case "az": return (l.name ?? "").localeCompare(r.name ?? "");
+				case "za": return (r.name ?? "").localeCompare(l.name ?? "");
+				default: return compareDates(l.last_run_at, r.last_run_at);
 			}
 		});
 		return next;
 	}, [
 		bookmarkedOnly,
-		frequencyFilter,
 		isBrandCategoryView,
 		query,
 		searches,
@@ -6187,16 +6767,22 @@ function Index({ searches: initialSearches, filterType = null, watchlistedOnly: 
 		sortBy,
 		statusFilter
 	]);
-	const filtersActive = query.trim() !== "" || statusFilter !== "all" || frequencyFilter !== "all" || (bookmarkedOnly || isBrandCategoryView) && searchTypeFilter !== "all";
-	useEffect(() => {
-		if (filtersActive) setFiltersOpen(true);
-	}, [filtersActive]);
-	const resetFilters = () => {
-		setQuery("");
-		setStatusFilter("all");
-		setFrequencyFilter("all");
-		setSearchTypeFilter(isBrandCategoryView ? "all" : filterType ?? "all");
-	};
+	const filteredVideos = useMemo(() => {
+		const q = videoQuery.trim().toLowerCase();
+		const next = bookmarkedVideos.filter((v) => q === "" || v.handle?.toLowerCase().includes(q) || v.title?.toLowerCase().includes(q));
+		next.sort((l, r) => {
+			switch (videoSort) {
+				case "views": return (r.views ?? 0) - (l.views ?? 0);
+				case "recent": return compareDates(l.uploaded_at, r.uploaded_at);
+				default: return (r.virality_score ?? 0) - (l.virality_score ?? 0);
+			}
+		});
+		return next;
+	}, [
+		bookmarkedVideos,
+		videoQuery,
+		videoSort
+	]);
 	const openModal = (type, search) => {
 		setOpenMenuId(null);
 		setModalState({
@@ -6215,28 +6801,21 @@ function Index({ searches: initialSearches, filterType = null, watchlistedOnly: 
 			search: null
 		});
 	};
-	const patchSearch = (searchId, patch) => {
-		setSearches((current) => current.map((item) => item.id === searchId ? {
-			...item,
-			...patch
-		} : item));
-	};
-	const removeSearch = (searchId) => {
-		setSearches((current) => current.filter((item) => item.id !== searchId));
-	};
+	const patchSearch = (id, patch) => setSearches((c) => c.map((s) => s.id === id ? {
+		...s,
+		...patch
+	} : s));
+	const removeSearch = (id) => setSearches((c) => c.filter((s) => s.id !== id));
 	const toggleBookmark = async (event, search) => {
 		event.preventDefault();
 		event.stopPropagation();
-		setAnimatingId(search.id);
 		try {
 			const payload = await savedSearch.bookmark(search.id, !search.is_watchlisted);
-			setSearches((current) => current.map((item) => item.id === search.id ? {
-				...item,
+			setSearches((c) => c.map((s) => s.id === search.id ? {
+				...s,
 				...payload.search
-			} : item).filter((item) => bookmarkedOnly ? item.is_watchlisted : true));
-		} finally {
-			window.setTimeout(() => setAnimatingId((current) => current === search.id ? null : current), 280);
-		}
+			} : s).filter((s) => bookmarkedOnly ? s.is_watchlisted : true));
+		} catch {}
 	};
 	const submitEdit = async () => {
 		if (!modalState.search) return;
@@ -6274,400 +6853,400 @@ function Index({ searches: initialSearches, filterType = null, watchlistedOnly: 
 			setSubmitting(false);
 		}
 	};
-	return /* @__PURE__ */ jsxs(Fragment, { children: [
-		/* @__PURE__ */ jsx(Head, { title: `${title} - Outlier Vault` }),
-		/* @__PURE__ */ jsx(AppLayout, {
-			title,
-			pill: {
-				text: `${filteredSearches.length} saved`,
-				tone: "accent"
+	const rowActions = (s) => /* @__PURE__ */ jsxs(Fragment, { children: [/* @__PURE__ */ jsx("button", {
+		type: "button",
+		className: `row__x${s.is_watchlisted ? " is-on" : ""}`,
+		onClick: (e) => toggleBookmark(e, s),
+		title: s.is_watchlisted ? "Remove bookmark" : "Add bookmark",
+		children: /* @__PURE__ */ jsx(Bookmark, {
+			className: "h-4 w-4",
+			filled: Boolean(s.is_watchlisted)
+		})
+	}), /* @__PURE__ */ jsxs("span", {
+		className: "row__menu",
+		ref: openMenuId === s.id ? menuRef : null,
+		children: [/* @__PURE__ */ jsx("button", {
+			type: "button",
+			className: "row__x",
+			title: "More",
+			onClick: (e) => {
+				e.preventDefault();
+				e.stopPropagation();
+				setOpenMenuId((c) => c === s.id ? null : s.id);
 			},
-			subtitle: bookmarkedOnly ? "Each one re-runs on its own schedule and keeps the top matches." : isBrandCategoryView ? "Own and competitor searches live together here, with a category filter to split them." : filterType ? `These ${filterType} searches re-run on their own schedule and keep the top matches.` : "Each one re-runs on its own schedule and keeps the top matches.",
-			actions: /* @__PURE__ */ jsxs(Link, {
-				href: searchHref,
-				className: "btn-accent h-10 px-4 text-[13px]",
-				children: [/* @__PURE__ */ jsx(Plus, { className: "h-3.5 w-3.5" }), " New search"]
-			}),
-			toolbar: /* @__PURE__ */ jsxs("div", {
-				className: "surface flex flex-col gap-3 p-3 lg:flex-row lg:items-center lg:gap-2 lg:p-2",
+			children: /* @__PURE__ */ jsx(Dots, { className: "h-4 w-4" })
+		}), openMenuId === s.id && /* @__PURE__ */ jsxs("div", {
+			className: "menu",
+			onClick: (e) => e.stopPropagation(),
+			children: [
+				/* @__PURE__ */ jsx("button", {
+					type: "button",
+					onClick: () => openModal("edit", s),
+					children: "Edit keyword details"
+				}),
+				/* @__PURE__ */ jsx("button", {
+					type: "button",
+					onClick: () => openModal("pause", s),
+					disabled: s.status === "paused",
+					children: "Pause search"
+				}),
+				/* @__PURE__ */ jsx("button", {
+					type: "button",
+					className: "danger",
+					onClick: () => openModal("delete", s),
+					children: "Delete search"
+				})
+			]
+		})]
+	})] });
+	return /* @__PURE__ */ jsxs(Fragment, { children: [
+		/* @__PURE__ */ jsx(Head, { title: `${title} · Brand Beacon` }),
+		/* @__PURE__ */ jsxs(AppLayout, {
+			width: "max-w-[1240px]",
+			title,
+			subtitle: "Everything you have saved — tracked searches and the individual videos you kept.",
+			actions: /* @__PURE__ */ jsx(EntitlementsBar, {}),
+			children: [showTabs && /* @__PURE__ */ jsxs("div", {
+				className: "tabs",
+				children: [/* @__PURE__ */ jsxs("button", {
+					type: "button",
+					className: `tab${tab === "searches" ? " is-on" : ""}`,
+					onClick: () => setTab("searches"),
+					children: [
+						/* @__PURE__ */ jsx(Bookmark, { className: "h-[15px] w-[15px]" }),
+						" Bookmarked searches ",
+						/* @__PURE__ */ jsx("span", {
+							className: "tab__c",
+							children: searches.length
+						})
+					]
+				}), /* @__PURE__ */ jsxs("button", {
+					type: "button",
+					className: `tab${tab === "videos" ? " is-on" : ""}`,
+					onClick: () => setTab("videos"),
+					children: [
+						/* @__PURE__ */ jsx(Play, { className: "h-[15px] w-[15px]" }),
+						" Bookmarked videos ",
+						/* @__PURE__ */ jsx("span", {
+							className: "tab__c",
+							children: bookmarkedVideos.length
+						})
+					]
+				})]
+			}), tab === "searches" || !showTabs ? /* @__PURE__ */ jsxs(Fragment, { children: [/* @__PURE__ */ jsxs("div", {
+				className: "tools",
 				children: [
 					/* @__PURE__ */ jsxs("label", {
-						className: "relative min-w-0 flex-1",
-						children: [/* @__PURE__ */ jsx(Search, { className: "pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 faint" }), /* @__PURE__ */ jsx("input", {
+						className: "srch",
+						children: [/* @__PURE__ */ jsx(Search, { className: "h-4 w-4" }), /* @__PURE__ */ jsx("input", {
 							value: query,
-							onChange: (event) => setQuery(event.target.value),
-							placeholder: "Search keyword set or label",
-							"aria-label": "Search keyword set or label",
-							className: "h-10 w-full rounded-xl border border-black/[.08] bg-white pr-3 pl-9 text-[13px] text-ink outline-none transition duration-200 placeholder:text-ink/35 focus:border-accent/40 focus:ring-4 focus:ring-accent/12 dark:border-white/[.1] dark:bg-white/[.05] dark:text-white dark:placeholder:text-white/35 lg:h-9 lg:border-transparent lg:bg-transparent"
+							onChange: (e) => setQuery(e.target.value),
+							placeholder: "Search your saved searches",
+							"aria-label": "Search your saved searches"
 						})]
 					}),
-					/* @__PURE__ */ jsxs("button", {
-						type: "button",
-						onClick: () => setFiltersOpen((open) => !open),
-						className: "inline-flex h-10 items-center justify-between rounded-xl border border-black/[.08] bg-white px-3 text-[12.5px] font-semibold text-ink transition hover:border-accent/35 dark:border-white/[.1] dark:bg-white/[.05] dark:text-white lg:hidden",
-						children: [/* @__PURE__ */ jsx("span", { children: filtersOpen ? "Hide filters" : "Show filters" }), /* @__PURE__ */ jsx(Chevron, { className: `h-3.5 w-3.5 transition-transform ${filtersOpen ? "rotate-180" : ""}` })]
-					}),
-					/* @__PURE__ */ jsx(Divider, {}),
-					/* @__PURE__ */ jsxs("div", {
-						className: `${filtersOpen ? "grid" : "hidden"} grid-cols-2 gap-2 lg:flex lg:flex-wrap lg:items-center`,
+					/* @__PURE__ */ jsxs(Sel, {
+						value: statusFilter,
+						onChange: (e) => setStatusFilter(e.target.value),
+						ariaLabel: "Status",
 						children: [
-							(bookmarkedOnly || isBrandCategoryView) && /* @__PURE__ */ jsxs(FilterSelect, {
-								label: isBrandCategoryView ? "Brand Category" : "Search type",
-								value: searchTypeFilter,
-								active: searchTypeFilter !== "all",
-								onChange: (event) => setSearchTypeFilter(event.target.value),
-								children: [
-									/* @__PURE__ */ jsx("option", {
-										value: "all",
-										children: isBrandCategoryView ? "All categories" : "All types"
-									}),
-									/* @__PURE__ */ jsx("option", {
-										value: "brand",
-										children: isBrandCategoryView ? "Own" : "Brand"
-									}),
-									/* @__PURE__ */ jsx("option", {
-										value: "competitor",
-										children: "Competitor"
-									}),
-									!isBrandCategoryView && /* @__PURE__ */ jsx("option", {
-										value: "product",
-										children: "Product"
-									})
-								]
+							/* @__PURE__ */ jsx("option", {
+								value: "all",
+								children: "All statuses"
 							}),
-							/* @__PURE__ */ jsxs(FilterSelect, {
-								label: "Status",
-								value: statusFilter,
-								active: statusFilter !== "all",
-								onChange: (event) => setStatusFilter(event.target.value),
-								children: [
-									/* @__PURE__ */ jsx("option", {
-										value: "all",
-										children: "Any status"
-									}),
-									/* @__PURE__ */ jsx("option", {
-										value: "done",
-										children: "Ready"
-									}),
-									/* @__PURE__ */ jsx("option", {
-										value: "scraping",
-										children: "Refreshing"
-									}),
-									/* @__PURE__ */ jsx("option", {
-										value: "paused",
-										children: "Paused"
-									}),
-									/* @__PURE__ */ jsx("option", {
-										value: "failed",
-										children: "Failed"
-									})
-								]
+							/* @__PURE__ */ jsx("option", {
+								value: "done",
+								children: "Ready"
 							}),
-							/* @__PURE__ */ jsxs(FilterSelect, {
-								label: "Frequency",
-								value: frequencyFilter,
-								active: frequencyFilter !== "all",
-								onChange: (event) => setFrequencyFilter(event.target.value),
-								children: [
-									/* @__PURE__ */ jsx("option", {
-										value: "all",
-										children: "Any Frequency"
-									}),
-									/* @__PURE__ */ jsx("option", {
-										value: "weekly",
-										children: "Weekly"
-									}),
-									/* @__PURE__ */ jsx("option", {
-										value: "monthly",
-										children: "Monthly"
-									})
-								]
+							/* @__PURE__ */ jsx("option", {
+								value: "scraping",
+								children: "Refreshing"
 							}),
-							/* @__PURE__ */ jsx(FilterSelect, {
-								label: "Sort by",
-								value: sortBy,
-								onChange: (event) => setSortBy(event.target.value),
-								children: Object.entries(SORT_OPTIONS).map(([value, label]) => /* @__PURE__ */ jsx("option", {
-									value,
-									children: label
-								}, value))
+							/* @__PURE__ */ jsx("option", {
+								value: "paused",
+								children: "Paused"
 							}),
-							filtersActive && /* @__PURE__ */ jsxs("button", {
-								type: "button",
-								onClick: resetFilters,
-								className: "col-span-2 inline-flex h-10 items-center justify-center gap-1.5 rounded-xl border border-black/[.08] bg-white px-3 text-[12.5px] font-semibold muted transition hover:bg-black/[.04] hover:text-ink dark:border-white/[.1] dark:bg-white/[.05] dark:hover:bg-white/[.06] dark:hover:text-white lg:col-auto lg:h-9 lg:border-transparent lg:bg-transparent lg:px-2.5",
-								children: [/* @__PURE__ */ jsx(Close, { className: "h-3.5 w-3.5" }), " Clear"]
+							/* @__PURE__ */ jsx("option", {
+								value: "failed",
+								children: "Failed"
 							})
 						]
-					})
-				]
-			}),
-			children: filteredSearches.length === 0 ? /* @__PURE__ */ jsxs("div", {
-				className: "ring-gradient animate-fade-up rounded-3xl bg-white/70 p-12 text-center backdrop-blur-2xl dark:bg-white/[.04]",
-				children: [
-					/* @__PURE__ */ jsx("h2", {
-						className: "font-display text-[20px] font-bold",
-						children: bookmarkedOnly ? "Nothing matched your bookmark filters" : `No ${filterType ?? "saved"} searches matched`
 					}),
-					/* @__PURE__ */ jsx("p", {
-						className: "mx-auto mt-3 max-w-sm text-[13.5px] leading-relaxed muted",
-						children: searches.length === 0 ? bookmarkedOnly ? "Run a search, then bookmark it to keep it in Bookmark." : "Run a search in this category and it will show up here automatically." : "Try a different keyword, status, frequency, or sort combination."
+					(bookmarkedOnly || isBrandCategoryView) && /* @__PURE__ */ jsxs(Sel, {
+						value: searchTypeFilter,
+						onChange: (e) => setSearchTypeFilter(e.target.value),
+						ariaLabel: isBrandCategoryView ? "Brand category" : "Search type",
+						children: [
+							/* @__PURE__ */ jsx("option", {
+								value: "all",
+								children: isBrandCategoryView ? "All categories" : "All types"
+							}),
+							/* @__PURE__ */ jsx("option", {
+								value: "brand",
+								children: isBrandCategoryView ? "Own" : "Brand searches"
+							}),
+							/* @__PURE__ */ jsx("option", {
+								value: "competitor",
+								children: "Competitor searches"
+							}),
+							!isBrandCategoryView && /* @__PURE__ */ jsx("option", {
+								value: "product",
+								children: "Product searches"
+							})
+						]
+					}),
+					/* @__PURE__ */ jsx(Sel, {
+						value: sortBy,
+						onChange: (e) => setSortBy(e.target.value),
+						ariaLabel: "Sort by",
+						children: Object.entries(SORT_OPTIONS).map(([value, label]) => /* @__PURE__ */ jsx("option", {
+							value,
+							children: label
+						}, value))
 					}),
 					/* @__PURE__ */ jsxs(Link, {
 						href: searchHref,
-						className: "btn-accent mx-auto mt-6 h-11 px-5 text-sm",
-						children: ["Run your first search ", /* @__PURE__ */ jsx(Arrow, {})]
+						className: "btn btn--y btn--sm",
+						children: [/* @__PURE__ */ jsx(Plus, { className: "h-[15px] w-[15px]" }), " New search"]
+					})
+				]
+			}), filteredSearches.length === 0 ? /* @__PURE__ */ jsxs("div", {
+				className: "empty",
+				children: [
+					/* @__PURE__ */ jsx("div", {
+						className: "empty__i",
+						children: /* @__PURE__ */ jsx(Search, { className: "h-6 w-6" })
+					}),
+					/* @__PURE__ */ jsx("h2", { children: searches.length === 0 ? "Nothing saved yet" : "No searches matched" }),
+					/* @__PURE__ */ jsx("p", {
+						className: "muted",
+						style: {
+							maxWidth: 360,
+							margin: "10px auto 0"
+						},
+						children: searches.length === 0 ? "Run a search, then bookmark it to keep it here." : "Try a different keyword, status, type, or sort combination."
+					}),
+					/* @__PURE__ */ jsxs(Link, {
+						href: searchHref,
+						className: "btn btn--y",
+						style: { margin: "22px auto 0" },
+						children: ["Run a search ", /* @__PURE__ */ jsx(Arrow, {})]
 					})
 				]
 			}) : /* @__PURE__ */ jsx("div", {
-				className: "animate-fade-up grid gap-4 sm:grid-cols-2 xl:grid-cols-3",
-				children: filteredSearches.map((s) => {
-					const status = STATUS[s.status] ?? STATUS.done;
-					return /* @__PURE__ */ jsxs("div", {
-						role: "button",
-						tabIndex: 0,
-						onClick: () => router.visit(s.url),
-						onKeyDown: (event) => {
-							if (event.key === "Enter" || event.key === " ") {
-								event.preventDefault();
-								router.visit(s.url);
-							}
+				className: "rows",
+				children: filteredSearches.map((s) => /* @__PURE__ */ jsx(SavedSearchRow, {
+					search: s,
+					onNavigate: () => router.visit(s.url),
+					actions: rowActions(s)
+				}, s.id))
+			})] }) : /* @__PURE__ */ jsxs(Fragment, { children: [/* @__PURE__ */ jsxs("div", {
+				className: "tools",
+				children: [/* @__PURE__ */ jsxs("label", {
+					className: "srch",
+					children: [/* @__PURE__ */ jsx(Search, { className: "h-4 w-4" }), /* @__PURE__ */ jsx("input", {
+						value: videoQuery,
+						onChange: (e) => setVideoQuery(e.target.value),
+						placeholder: "Search your bookmarked videos",
+						"aria-label": "Search your bookmarked videos"
+					})]
+				}), /* @__PURE__ */ jsx(Sel, {
+					value: videoSort,
+					onChange: (e) => setVideoSort(e.target.value),
+					ariaLabel: "Sort videos",
+					children: Object.entries(VIDEO_SORT).map(([value, label]) => /* @__PURE__ */ jsx("option", {
+						value,
+						children: label
+					}, value))
+				})]
+			}), filteredVideos.length === 0 ? /* @__PURE__ */ jsxs("div", {
+				className: "empty",
+				children: [
+					/* @__PURE__ */ jsx("div", {
+						className: "empty__i",
+						children: /* @__PURE__ */ jsx(Play, { className: "h-6 w-6" })
+					}),
+					/* @__PURE__ */ jsx("h2", { children: "No bookmarked videos yet" }),
+					/* @__PURE__ */ jsx("p", {
+						className: "muted",
+						style: {
+							maxWidth: 360,
+							margin: "10px auto 0"
 						},
-						className: `surface-hover cursor-pointer p-5 text-left transition duration-300 ${animatingId === s.id ? "scale-[1.02] shadow-[0_20px_44px_-24px_rgba(91,52,245,.55)] ring-1 ring-accent/30" : ""}`,
-						children: [
+						children: "Open a search and bookmark the videos worth keeping — they collect here."
+					})
+				]
+			}) : /* @__PURE__ */ jsx("div", {
+				className: "vgrid",
+				children: filteredVideos.map((v) => /* @__PURE__ */ jsx(VideoCard, { video: v }, v.id))
+			})] })]
+		}),
+		modalState.type && modalState.search && /* @__PURE__ */ jsx("div", {
+			className: "bb",
+			children: /* @__PURE__ */ jsxs("div", {
+				className: "bb-modal",
+				children: [/* @__PURE__ */ jsx("button", {
+					className: "bb-modal__bg",
+					"aria-label": "Close",
+					onClick: closeModal
+				}), /* @__PURE__ */ jsxs("div", {
+					className: "bb-modal__box",
+					children: [
+						modalState.type === "edit" && /* @__PURE__ */ jsxs(Fragment, { children: [
+							/* @__PURE__ */ jsx("h2", { children: "Edit keyword details" }),
+							/* @__PURE__ */ jsx("p", {
+								className: "sub",
+								children: "Update the label and refresh schedule. The keyword set is fixed for this search."
+							}),
 							/* @__PURE__ */ jsxs("div", {
-								className: "flex items-start justify-between gap-3",
-								children: [/* @__PURE__ */ jsxs("div", {
-									className: "min-w-0",
-									children: [/* @__PURE__ */ jsx("h2", {
-										className: "font-display text-[16px] font-bold",
-										children: s.name
-									}), /* @__PURE__ */ jsx("p", {
-										className: "mt-1 text-[11px] font-semibold uppercase tracking-[.12em] faint",
-										children: s.search_type
-									})]
-								}), /* @__PURE__ */ jsxs("div", {
-									className: "flex items-center gap-2",
-									children: [
-										/* @__PURE__ */ jsx("button", {
-											type: "button",
-											onClick: (event) => toggleBookmark(event, s),
-											className: `inline-flex h-8 w-8 items-center justify-center rounded-lg border transition duration-300 hover:border-accent/35 hover:text-accent dark:hover:text-accent-glow ${animatingId === s.id ? "scale-110 border-accent/45 bg-accent/10 text-accent dark:border-accent/40 dark:text-accent-glow" : "border-black/[.08] dark:border-white/[.12]"}`,
-											title: s.is_watchlisted ? "Remove bookmark" : "Add bookmark",
-											children: /* @__PURE__ */ jsx(Bookmark, {
-												className: "h-3.5 w-3.5",
-												filled: Boolean(s.is_watchlisted)
-											})
-										}),
-										/* @__PURE__ */ jsxs("div", {
-											ref: openMenuId === s.id ? menuRef : null,
-											className: "relative",
-											children: [/* @__PURE__ */ jsx("button", {
-												type: "button",
-												onClick: (event) => {
-													event.preventDefault();
-													event.stopPropagation();
-													setOpenMenuId((current) => current === s.id ? null : s.id);
-												},
-												className: "inline-flex h-8 w-8 items-center justify-center rounded-lg border border-black/[.08] transition hover:border-accent/35 hover:text-accent dark:border-white/[.12] dark:hover:text-accent-glow",
-												title: "Search actions",
-												children: /* @__PURE__ */ jsx(Dots, { className: "h-4 w-4" })
-											}), openMenuId === s.id && /* @__PURE__ */ jsxs("div", {
-												className: "absolute top-10 right-0 z-20 w-44 rounded-2xl border border-black/[.08] bg-white p-1.5 shadow-[0_20px_44px_-24px_rgba(16,18,32,.45)] dark:border-white/[.12] dark:bg-canvas-dark",
-												onClick: (event) => {
-													event.preventDefault();
-													event.stopPropagation();
-												},
-												children: [
-													/* @__PURE__ */ jsx("button", {
-														type: "button",
-														onClick: () => openModal("edit", s),
-														className: "flex w-full rounded-xl px-3 py-2 text-left text-[13px] font-semibold transition hover:bg-black/[.04] dark:hover:bg-white/[.06]",
-														children: "Edit keyword details"
-													}),
-													/* @__PURE__ */ jsx("button", {
-														type: "button",
-														onClick: () => openModal("pause", s),
-														disabled: s.status === "paused",
-														className: "flex w-full rounded-xl px-3 py-2 text-left text-[13px] font-semibold transition hover:bg-black/[.04] disabled:cursor-not-allowed disabled:opacity-40 dark:hover:bg-white/[.06]",
-														children: "Pause search"
-													}),
-													/* @__PURE__ */ jsx("button", {
-														type: "button",
-														onClick: () => openModal("delete", s),
-														className: "flex w-full rounded-xl px-3 py-2 text-left text-[13px] font-semibold text-hot transition hover:bg-hot/10",
-														children: "Delete search"
-													})
-												]
-											})]
-										}),
-										/* @__PURE__ */ jsx("span", {
-											className: `shrink-0 rounded-full border px-2.5 py-1 text-[11px] font-semibold ${status.className}`,
-											children: status.label
-										})
-									]
+								style: { marginTop: 20 },
+								children: [/* @__PURE__ */ jsx("p", {
+									className: "sect__n",
+									children: "Keyword set"
+								}), /* @__PURE__ */ jsx("div", {
+									className: "chips",
+									children: modalState.search.keywords.map((k) => /* @__PURE__ */ jsx("span", {
+										className: "chip",
+										children: k
+									}, k))
 								})]
 							}),
-							/* @__PURE__ */ jsx("p", {
-								className: "mt-1.5 truncate text-[12.5px] faint",
-								children: s.phrase
+							/* @__PURE__ */ jsxs("div", {
+								style: { marginTop: 20 },
+								children: [/* @__PURE__ */ jsx("label", {
+									className: "lbl",
+									children: "Label"
+								}), /* @__PURE__ */ jsx("input", {
+									className: "fld",
+									value: formState.name,
+									onChange: (e) => setFormState((c) => ({
+										...c,
+										name: e.target.value
+									}))
+								})]
 							}),
 							/* @__PURE__ */ jsxs("div", {
-								className: "mt-4 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[12px] muted",
-								children: [
-									/* @__PURE__ */ jsxs("span", {
-										className: "flex items-center gap-1.5 font-semibold",
-										children: [
-											/* @__PURE__ */ jsx(Trend, { className: "h-3 w-3 text-hot" }),
-											s.result_count,
-											" videos"
-										]
-									}),
-									/* @__PURE__ */ jsx("span", {
-										className: "capitalize",
-										children: s.frequency
-									}),
-									/* @__PURE__ */ jsxs("span", { children: ["Last run ", formatDate$2(s.last_run_at)] })
-								]
+								style: { marginTop: 20 },
+								children: [/* @__PURE__ */ jsx("label", {
+									className: "lbl",
+									children: "Schedule"
+								}), /* @__PURE__ */ jsx("div", {
+									style: {
+										display: "flex",
+										gap: 8
+									},
+									children: ["weekly", "monthly"].map((f) => /* @__PURE__ */ jsx("button", {
+										type: "button",
+										className: `btn ${formState.frequency === f ? "btn--y" : "btn--g"} btn--w`,
+										onClick: () => setFormState((c) => ({
+											...c,
+											frequency: f
+										})),
+										children: f === "weekly" ? "Weekly" : "Monthly"
+									}, f))
+								})]
 							}),
 							/* @__PURE__ */ jsxs("div", {
-								className: "mt-4 flex flex-wrap gap-1.5",
-								children: [s.keywords.slice(0, 3).map((k) => /* @__PURE__ */ jsx("span", {
-									className: "rounded-lg border border-black/[.06] bg-black/[.03] px-2 py-1 text-[11.5px] faint dark:border-white/[.08] dark:bg-white/[.05]",
-									children: k
-								}, k)), s.keywords.length > 3 && /* @__PURE__ */ jsxs("span", {
-									className: "px-1 py-1 text-[11.5px] faint",
-									children: ["+", s.keywords.length - 3]
+								className: "actrow__r",
+								style: {
+									marginTop: 24,
+									justifyContent: "flex-end"
+								},
+								children: [/* @__PURE__ */ jsx("button", {
+									type: "button",
+									className: "btn btn--g",
+									onClick: closeModal,
+									disabled: submitting,
+									children: "Cancel"
+								}), /* @__PURE__ */ jsx("button", {
+									type: "button",
+									className: "btn btn--y",
+									onClick: submitEdit,
+									disabled: submitting,
+									children: submitting ? "Saving…" : "Save changes"
 								})]
 							})
-						]
-					}, s.id);
-				})
+						] }),
+						modalState.type === "pause" && /* @__PURE__ */ jsxs(Fragment, { children: [
+							/* @__PURE__ */ jsx("h2", { children: "Pause search" }),
+							/* @__PURE__ */ jsx("p", {
+								className: "sub",
+								children: "Keeps the record and its results, but stops future refreshes until you resume it."
+							}),
+							/* @__PURE__ */ jsx("p", {
+								style: {
+									marginTop: 16,
+									fontWeight: 700,
+									color: "var(--ink)"
+								},
+								children: modalState.search.name
+							}),
+							/* @__PURE__ */ jsxs("div", {
+								className: "actrow__r",
+								style: {
+									marginTop: 24,
+									justifyContent: "flex-end"
+								},
+								children: [/* @__PURE__ */ jsx("button", {
+									type: "button",
+									className: "btn btn--g",
+									onClick: closeModal,
+									disabled: submitting,
+									children: "Cancel"
+								}), /* @__PURE__ */ jsx("button", {
+									type: "button",
+									className: "btn btn--y",
+									onClick: confirmPause,
+									disabled: submitting,
+									children: submitting ? "Pausing…" : "Pause search"
+								})]
+							})
+						] }),
+						modalState.type === "delete" && /* @__PURE__ */ jsxs(Fragment, { children: [
+							/* @__PURE__ */ jsx("h2", {
+								style: { color: "var(--warn)" },
+								children: "Delete search"
+							}),
+							/* @__PURE__ */ jsx("p", {
+								className: "sub",
+								children: "Removes the saved keyword record and stops future runs. The underlying video records are kept."
+							}),
+							/* @__PURE__ */ jsx("p", {
+								style: {
+									marginTop: 16,
+									fontWeight: 700,
+									color: "var(--ink)"
+								},
+								children: modalState.search.name
+							}),
+							/* @__PURE__ */ jsxs("div", {
+								className: "actrow__r",
+								style: {
+									marginTop: 24,
+									justifyContent: "flex-end"
+								},
+								children: [/* @__PURE__ */ jsx("button", {
+									type: "button",
+									className: "btn btn--g",
+									onClick: closeModal,
+									disabled: submitting,
+									children: "Cancel"
+								}), /* @__PURE__ */ jsx("button", {
+									type: "button",
+									className: "btn btn--g",
+									style: {
+										color: "var(--warn)",
+										borderColor: "#F0D6C8"
+									},
+									onClick: confirmDelete,
+									disabled: submitting,
+									children: submitting ? "Deleting…" : "Delete search"
+								})]
+							})
+						] })
+					]
+				})]
 			})
-		}),
-		modalState.type === "edit" && modalState.search && /* @__PURE__ */ jsxs(ModalShell, {
-			title: "Edit keyword details",
-			body: "Update the saved label and refresh schedule. The keyword set stays fixed for this search.",
-			onClose: closeModal,
-			children: [/* @__PURE__ */ jsxs("div", {
-				className: "mt-6 space-y-4",
-				children: [
-					/* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsx("p", {
-						className: "mb-2 text-[12px] font-semibold uppercase tracking-[.14em] faint",
-						children: "Keyword set"
-					}), /* @__PURE__ */ jsx("div", {
-						className: "rounded-2xl border border-black/[.08] bg-black/[.03] p-3 dark:border-white/[.12] dark:bg-white/[.04]",
-						children: /* @__PURE__ */ jsx("div", {
-							className: "flex flex-wrap gap-1.5",
-							children: modalState.search.keywords.map((keyword) => /* @__PURE__ */ jsx("span", {
-								className: "rounded-lg border border-black/[.06] bg-white px-2 py-1 text-[11.5px] faint dark:border-white/[.08] dark:bg-white/[.05]",
-								children: keyword
-							}, keyword))
-						})
-					})] }),
-					/* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsx("label", {
-						className: "mb-2 block text-[12px] font-semibold uppercase tracking-[.14em] faint",
-						children: "Label"
-					}), /* @__PURE__ */ jsx("input", {
-						value: formState.name,
-						onChange: (event) => setFormState((current) => ({
-							...current,
-							name: event.target.value
-						})),
-						className: "field h-11 text-sm"
-					})] }),
-					/* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsx("label", {
-						className: "mb-2 block text-[12px] font-semibold uppercase tracking-[.14em] faint",
-						children: "Schedule"
-					}), /* @__PURE__ */ jsx("div", {
-						className: "flex gap-2",
-						children: ["weekly", "monthly"].map((frequency) => /* @__PURE__ */ jsx("button", {
-							type: "button",
-							onClick: () => setFormState((current) => ({
-								...current,
-								frequency
-							})),
-							className: `h-11 flex-1 rounded-xl border text-[13px] font-semibold transition ${formState.frequency === frequency ? "border-accent/45 bg-accent/10 text-accent dark:text-accent-glow" : "border-black/[.08] muted hover:border-accent/35 dark:border-white/[.12]"}`,
-							children: frequency === "weekly" ? "Weekly" : "Monthly"
-						}, frequency))
-					})] })
-				]
-			}), /* @__PURE__ */ jsxs("div", {
-				className: "mt-6 flex justify-end gap-2",
-				children: [/* @__PURE__ */ jsx("button", {
-					type: "button",
-					onClick: closeModal,
-					className: "btn-ghost h-10 px-4 text-sm",
-					disabled: submitting,
-					children: "Cancel"
-				}), /* @__PURE__ */ jsx("button", {
-					type: "button",
-					onClick: submitEdit,
-					className: "btn-accent h-10 px-4 text-sm",
-					disabled: submitting,
-					children: submitting ? "Saving..." : "Save changes"
-				})]
-			})]
-		}),
-		modalState.type === "pause" && modalState.search && /* @__PURE__ */ jsxs(ModalShell, {
-			title: "Pause search",
-			body: "This will keep the search record, but it will not trigger future refreshes until resumed.",
-			onClose: closeModal,
-			children: [/* @__PURE__ */ jsxs("div", {
-				className: "mt-6 rounded-2xl border border-black/[.08] bg-black/[.03] p-4 text-[13.5px] muted dark:border-white/[.12] dark:bg-white/[.04]",
-				children: [/* @__PURE__ */ jsx("p", {
-					className: "font-semibold text-ink dark:text-white",
-					children: modalState.search.name
-				}), /* @__PURE__ */ jsx("p", {
-					className: "mt-1",
-					children: "Keyword set stays intact and results remain available."
-				})]
-			}), /* @__PURE__ */ jsxs("div", {
-				className: "mt-6 flex justify-end gap-2",
-				children: [/* @__PURE__ */ jsx("button", {
-					type: "button",
-					onClick: closeModal,
-					className: "btn-ghost h-10 px-4 text-sm",
-					disabled: submitting,
-					children: "Cancel"
-				}), /* @__PURE__ */ jsx("button", {
-					type: "button",
-					onClick: confirmPause,
-					className: "btn-accent h-10 px-4 text-sm",
-					disabled: submitting,
-					children: submitting ? "Pausing..." : "Pause search"
-				})]
-			})]
-		}),
-		modalState.type === "delete" && modalState.search && /* @__PURE__ */ jsxs(ModalShell, {
-			title: "Delete search",
-			body: "This removes the saved keyword record only. It does not delete the underlying viral video records.",
-			onClose: closeModal,
-			children: [/* @__PURE__ */ jsxs("div", {
-				className: "mt-6 rounded-2xl border border-hot/20 bg-hot/10 p-4 text-[13.5px] text-hot",
-				children: [/* @__PURE__ */ jsx("p", {
-					className: "font-semibold",
-					children: modalState.search.name
-				}), /* @__PURE__ */ jsx("p", {
-					className: "mt-1",
-					children: "This action hides the search from your lists and stops future runs."
-				})]
-			}), /* @__PURE__ */ jsxs("div", {
-				className: "mt-6 flex justify-end gap-2",
-				children: [/* @__PURE__ */ jsx("button", {
-					type: "button",
-					onClick: closeModal,
-					className: "btn-ghost h-10 px-4 text-sm",
-					disabled: submitting,
-					children: "Cancel"
-				}), /* @__PURE__ */ jsx("button", {
-					type: "button",
-					onClick: confirmDelete,
-					className: "h-10 rounded-xl border border-hot/30 px-4 text-sm font-semibold text-hot transition hover:bg-hot/10",
-					disabled: submitting,
-					children: submitting ? "Deleting..." : "Delete search"
-				})]
-			})]
 		})
 	] });
 }
@@ -8844,24 +9423,19 @@ var Keywords_exports = /* @__PURE__ */ __exportAll({ default: () => Keywords });
 * search box has somewhere to point. Steps themselves never change the URL.
 */
 function Keywords({ phrase = "", type = "brand" }) {
-	return /* @__PURE__ */ jsxs(Fragment, { children: [/* @__PURE__ */ jsx(Head, { title: phrase ? "Add keywords - Outlier Vault" : "Search - Outlier Vault" }), /* @__PURE__ */ jsxs(AppLayout, {
+	return /* @__PURE__ */ jsxs(Fragment, { children: [/* @__PURE__ */ jsx(Head, { title: phrase ? "Add keywords · Brand Beacon" : "Search · Brand Beacon" }), /* @__PURE__ */ jsx(AppLayout, {
 		width: "max-w-4xl",
-		children: [/* @__PURE__ */ jsx(EntitlementsBar, {}), /* @__PURE__ */ jsx(SearchWizard, {
+		children: /* @__PURE__ */ jsx(SearchWizard, {
 			initialType: type,
 			initialQuery: phrase
-		})]
+		})
 	})] });
 }
 //#endregion
 //#region resources/js/Pages/Search/Running.jsx
 var Running_exports = /* @__PURE__ */ __exportAll({ default: () => Running });
 function Running({ searchId }) {
-	return /* @__PURE__ */ jsxs(Fragment, { children: [/* @__PURE__ */ jsx(Head, { title: "Search running - Outlier Vault" }), /* @__PURE__ */ jsx(AppLayout, {
-		pill: {
-			text: "Search running",
-			tone: "ok"
-		},
-		step: "running",
+	return /* @__PURE__ */ jsxs(Fragment, { children: [/* @__PURE__ */ jsx(Head, { title: "Search running · Brand Beacon" }), /* @__PURE__ */ jsx(AppLayout, {
 		width: "max-w-4xl",
 		children: /* @__PURE__ */ jsx(RunningScreen, {
 			searchId,
@@ -9445,6 +10019,7 @@ createServer((page) => createInertiaApp({
 			"./Pages/Admin/components/AdminLayout.jsx": AdminLayout_exports,
 			"./Pages/Auth/Login.jsx": Login_exports,
 			"./Pages/Auth/Register.jsx": Register_exports,
+			"./Pages/Brands.jsx": Brands_exports,
 			"./Pages/ComingSoon.jsx": ComingSoon_exports,
 			"./Pages/Contact.jsx": Contact_exports,
 			"./Pages/Dashboard.jsx": Dashboard_exports,
@@ -9452,6 +10027,7 @@ createServer((page) => createInertiaApp({
 			"./Pages/Landing.jsx": Landing_exports,
 			"./Pages/LandingContact.jsx": LandingContact_exports,
 			"./Pages/Plans.jsx": Plans_exports,
+			"./Pages/Products.jsx": Products_exports,
 			"./Pages/SavedSearches/Index.jsx": Index_exports,
 			"./Pages/SavedSearches/Show.jsx": Show_exports,
 			"./Pages/SavedSearches/detail/Badges.jsx": Badges_exports,
@@ -9469,8 +10045,11 @@ createServer((page) => createInertiaApp({
 			"./Pages/components/AppFooter.jsx": AppFooter_exports,
 			"./Pages/components/AppLayout.jsx": AppLayout_exports,
 			"./Pages/components/EntitlementsBar.jsx": EntitlementsBar_exports,
+			"./Pages/components/SavedSearchRow.jsx": SavedSearchRow_exports,
 			"./Pages/components/SearchLauncher.jsx": SearchLauncher_exports,
-			"./Pages/components/SearchWizard.jsx": SearchWizard_exports
+			"./Pages/components/SearchListScreen.jsx": SearchListScreen_exports,
+			"./Pages/components/SearchWizard.jsx": SearchWizard_exports,
+			"./Pages/components/VideoCard.jsx": VideoCard_exports
 		}))[`./Pages/${name}.jsx`];
 	},
 	setup: ({ App, props }) => /* @__PURE__ */ jsx(App, { ...props })

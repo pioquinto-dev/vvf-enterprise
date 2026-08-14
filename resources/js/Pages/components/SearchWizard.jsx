@@ -2,28 +2,30 @@ import { useCallback, useState } from 'react';
 import { router } from '@inertiajs/react';
 
 import SearchLauncher from './SearchLauncher.jsx';
+import EntitlementsBar from './EntitlementsBar.jsx';
 import KeywordsScreen from '../../landing/flow/screens/KeywordsScreen.jsx';
+import SourcesScreen from '../../landing/flow/screens/SourcesScreen.jsx';
 import RunningScreen from '../../landing/flow/screens/RunningScreen.jsx';
 import { createSavedSearch, trackSearch } from '../../landing/flow/api.js';
 import { Check } from '../../landing/components/Icons.jsx';
 
-const STEPS = [
-    { key: 'subject', label: 'Subject', hint: 'Brand, competitor or product' },
-    { key: 'keywords', label: 'Keywords', hint: 'Widen and filter the pull' },
-    { key: 'running', label: 'Results', hint: 'We scrape and rank' },
-];
-
 /**
- * The whole search flow on one page.
+ * The whole in-app search flow on one page (Dashboard and /search share it).
  *
- * Steps advance in local state rather than by navigation, so the keyword work
- * survives a step back — and a failed run can drop the user straight back onto
- * the keywords they already tuned instead of an empty form.
+ * The wizard branches by search kind, exactly as the handoff spec requires:
+ *   - product  → Subject → Keywords → run          (2 steps, no Sources)
+ *   - brand /  → Subject → Keywords → Sources → run (3 steps; Sources is last,
+ *     competitor    optional, and asks for the account's handle/website)
+ * The run/loading screen is *not* a wizard step and has no stepper.
  *
- * The only thing written to the URL is `?run=<id>` once a run exists, via
- * replaceState. That is a resume handle, not a navigation: a reload should not
- * lose sight of a scrape that is already costing money server-side.
+ * Steps advance in local state so keyword work survives a step back, and a
+ * failed run drops straight back onto the tuned keywords. The only thing
+ * written to the URL is `?run=<id>` once a run exists, as a resume handle.
  */
+
+/* brand + competitor are both "brand kind" — they have an account to connect. */
+const kindOf = (type) => (type === 'product' ? 'product' : 'brand');
+const nounOf = (type) => (type === 'product' ? 'product' : 'brand');
 
 function readRunParam() {
     if (typeof window === 'undefined') return null;
@@ -32,84 +34,57 @@ function readRunParam() {
 }
 
 /**
- * A header strip on the card, not three cards of its own — the stepper is
- * orientation, so it should read as part of the search panel rather than
- * three more things competing for a click.
+ * The card-header stepper. Sources is brand-only and last; there is no
+ * "Results" step — the visitor is already signed in by the time they run.
  */
-function Stepper({ current, onJump, reachable }) {
-    const index = STEPS.findIndex((s) => s.key === current);
+function Stepper({ kind, current }) {
+    const steps =
+        kind === 'product'
+            ? [
+                  { k: 'subject', l: 'Subject' },
+                  { k: 'keywords', l: 'Keywords' },
+              ]
+            : [
+                  { k: 'subject', l: 'Subject' },
+                  { k: 'keywords', l: 'Keywords' },
+                  { k: 'sources', l: 'Sources' },
+              ];
+    const idx = steps.findIndex((s) => s.k === current);
 
     return (
-        <ol className="flex items-center gap-2 border-b border-black/[.06] bg-black/[.015] px-4 py-3 sm:gap-3 sm:px-6 dark:border-white/[.07] dark:bg-white/[.02]">
-            {STEPS.map((step, i) => {
-                const state = i < index ? 'done' : i === index ? 'active' : 'todo';
-                const clickable = state === 'done' && reachable.includes(step.key);
-
+        <div className="step">
+            {steps.map((s, i) => {
+                const state = i < idx ? 'done' : i === idx ? 'now' : 'todo';
                 return (
-                    <li key={step.key} className="flex min-w-0 items-center gap-2 sm:gap-3">
-                        {i > 0 && (
-                            <span
-                                aria-hidden
-                                className={`h-px w-4 shrink-0 sm:w-8 ${
-                                    state === 'todo' ? 'bg-black/[.1] dark:bg-white/[.12]' : 'bg-accent/40'
-                                }`}
-                            />
-                        )}
-
-                        <button
-                            type="button"
-                            disabled={!clickable}
-                            onClick={() => clickable && onJump(step.key)}
-                            aria-current={state === 'active' ? 'step' : undefined}
-                            className={`flex min-w-0 items-center gap-2 rounded-full py-1 pr-2 pl-1 text-left transition ${
-                                clickable ? 'cursor-pointer hover:bg-black/[.04] dark:hover:bg-white/[.06]' : 'cursor-default'
-                            }`}
-                        >
-                            <span
-                                className={`flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-full font-display text-[11.5px] font-bold ${
-                                    state === 'todo'
-                                        ? 'bg-black/[.06] faint dark:bg-white/[.09]'
-                                        : 'bg-accent text-white'
-                                }`}
-                            >
-                                {state === 'done' ? <Check className="h-2.5 w-2.5" /> : i + 1}
-                            </span>
-
-                            <span
-                                className={`truncate text-[12.5px] font-semibold ${
-                                    state === 'active'
-                                        ? 'text-accent dark:text-accent-glow'
-                                        : state === 'todo'
-                                          ? 'faint'
-                                          : 'muted'
-                                }`}
-                            >
-                                {step.label}
-                            </span>
-                        </button>
-                    </li>
+                    <span key={s.k} className="step__i">
+                        {i > 0 && <span className="step__r" />}
+                        <span className={`step__n ${state}`}>{state === 'done' ? <Check /> : i + 1}</span>
+                        <span className={`step__l ${state}`}>{s.l}</span>
+                    </span>
                 );
             })}
-        </ol>
+        </div>
     );
 }
 
-export default function SearchWizard({ initialType = 'brand', initialQuery = '', heading, subheading }) {
+export default function SearchWizard({ initialType = 'brand', initialQuery = '', heading = 'Start a search', subheading = 'Pick one brand, competitor, or product — we widen it with smarter keywords on the next step.', subjectExtra = null }) {
     const resumeId = readRunParam();
 
     const [step, setStep] = useState(resumeId ? 'running' : initialQuery ? 'keywords' : 'subject');
     const [type, setType] = useState(initialType);
     const [phrase, setPhrase] = useState(initialQuery);
+    const [pending, setPending] = useState(null); // keyword payload awaiting sources/create
     const [searchId, setSearchId] = useState(resumeId);
     const [submitting, setSubmitting] = useState(false);
     const [error, setError] = useState(null);
+
+    const kind = kindOf(type);
 
     const stampUrl = (id) => {
         if (typeof window === 'undefined') return;
         const url = new URL(window.location.href);
         if (id) url.searchParams.set('run', String(id));
         else url.searchParams.delete('run');
-        // Preserve Inertia's own history state — replacing it with {} breaks back/forward.
         window.history.replaceState(window.history.state, '', url.toString());
     };
 
@@ -119,30 +94,37 @@ export default function SearchWizard({ initialType = 'brand', initialQuery = '',
         setStep('keywords');
     };
 
-    const submit = async ({ phrase: finalPhrase, keywords, frequency, name }) => {
+    const doCreate = async (payload, sources) => {
         setSubmitting(true);
         setError(null);
 
         try {
             const created = await createSavedSearch({
                 type,
-                phrase: finalPhrase || phrase,
-                name,
-                keywords,
-                frequency,
+                phrase: payload.phrase || phrase,
+                name: payload.name,
+                keywords: payload.keywords,
+                frequency: payload.frequency,
+                sources,
             });
 
-            // Tracked locally so a reload can pick the run back up.
             trackSearch({ id: created.id, name: created.name, url: created.url });
-
             setSearchId(created.id);
             stampUrl(created.id);
             setStep('running');
         } catch (e) {
             setError(e.message || 'Could not start the search. Try again.');
+            setStep('keywords');
         } finally {
             setSubmitting(false);
         }
+    };
+
+    // Keywords done: brand/competitor go connect sources first; product runs now.
+    const afterKeywords = (payload) => {
+        setPending(payload);
+        if (kind === 'brand') setStep('sources');
+        else doCreate(payload);
     };
 
     const backToKeywords = () => {
@@ -151,50 +133,64 @@ export default function SearchWizard({ initialType = 'brand', initialQuery = '',
         setStep(phrase ? 'keywords' : 'subject');
     };
 
-    const onDone = useCallback(
-        (found) => router.visit(`/bookmark/${found?.id ?? searchId}`),
-        [searchId]
-    );
+    const onDone = useCallback((found) => router.visit(`/bookmark/${found?.id ?? searchId}`), [searchId]);
 
-    // A run in flight cannot be re-tuned, so those steps stop being clickable.
-    const reachable = searchId ? [] : ['subject', 'keywords'];
+    const topTitle =
+        step === 'subject' ? heading : phrase;
+    const topSub =
+        step === 'subject'
+            ? subheading
+            : step === 'sources'
+              ? 'Step 3 of 3 — optional.'
+              : `Step 2 of ${kind === 'product' ? 2 : 3} — add terms to expand on your ${nounOf(type)}. Ticking six terms still spends one search.`;
 
     return (
-        <div className="surface animate-fade-up overflow-hidden">
-            <Stepper current={step} reachable={reachable} onJump={(key) => setStep(key)} />
+        <>
+            {step !== 'running' && (
+                <div className="top">
+                    <div>
+                        <h1>{topTitle}</h1>
+                        <p>{topSub}</p>
+                    </div>
+                    <EntitlementsBar />
+                </div>
+            )}
 
-            <div className="p-6 sm:p-8">
-                {step === 'subject' && (
-                    <SearchLauncher
-                        initialType={type}
-                        initialQuery={phrase}
-                        heading={heading}
-                        subheading={subheading}
-                        showOutline={false}
-                        bare
-                        onSubmit={pickSubject}
-                    />
-                )}
+            {step === 'running' && searchId ? (
+                <RunningScreen searchId={searchId} onBack={backToKeywords} onDone={onDone} />
+            ) : (
+                <div className="card">
+                    <Stepper kind={kind} current={step} />
 
-                {/* Kept mounted so stepping back — or retrying a failed run — returns
-                    the user to the keywords they already tuned, not a fresh expansion. */}
-                {phrase && (
-                    <div hidden={step !== 'keywords'}>
+                    {step === 'subject' && (
+                        <SearchLauncher initialType={type} initialQuery={phrase} onSubmit={pickSubject} />
+                    )}
+
+                    {step === 'keywords' && phrase && (
                         <KeywordsScreen
                             key={`${type}:${phrase}`}
                             phrase={phrase}
+                            noun={nounOf(type)}
+                            nextLabel={kind === 'brand' ? 'Continue' : 'Run the search'}
                             submitting={submitting}
                             error={error}
                             onBack={() => setStep('subject')}
-                            onSubmit={submit}
+                            onSubmit={afterKeywords}
                         />
-                    </div>
-                )}
+                    )}
 
-                {step === 'running' && searchId && (
-                    <RunningScreen searchId={searchId} onBack={backToKeywords} onDone={onDone} />
-                )}
-            </div>
-        </div>
+                    {step === 'sources' && (
+                        <SourcesScreen
+                            submitting={submitting}
+                            onBack={() => setStep('keywords')}
+                            onSkip={() => doCreate(pending)}
+                            onRun={(sources) => doCreate(pending, sources)}
+                        />
+                    )}
+                </div>
+            )}
+
+            {step === 'subject' && subjectExtra}
+        </>
     );
 }

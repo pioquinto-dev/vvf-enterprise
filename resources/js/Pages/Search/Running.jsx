@@ -6,9 +6,9 @@ import RunningScreen from '../../landing/flow/screens/RunningScreen.jsx';
 export default function Running({ searchId }) {
     return (
         <>
-            <Head title="Search running - Outlier Vault" />
+            <Head title="Search running · Brand Beacon" />
 
-            <AppLayout pill={{ text: 'Search running', tone: 'ok' }} step="running" width="max-w-4xl">
+            <AppLayout width="max-w-4xl">
                 <RunningScreen
                     searchId={searchId}
                     onBack={() => router.visit('/bookmark')}
