@@ -136,7 +136,7 @@ return [
     'queue' => env('CUSTOM_KEYWORD_SEARCH_QUEUE', 'default'),
 
     'skip_media_archive' => filter_var(
-        env('CUSTOM_KEYWORD_SEARCH_SKIP_MEDIA_ARCHIVE', true),
+        env('CUSTOM_KEYWORD_SEARCH_SKIP_MEDIA_ARCHIVE', false),
         FILTER_VALIDATE_BOOL
     ),
 

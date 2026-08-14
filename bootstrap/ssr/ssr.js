@@ -5312,9 +5312,9 @@ function Hero({ onStart }) {
 					className: "box",
 					onSubmit: submit,
 					children: [/* @__PURE__ */ jsxs("div", {
-						className: "field",
+						className: "box__field",
 						children: [/* @__PURE__ */ jsxs("div", {
-							className: `field__ghost${showGhost ? "" : " is-off"}`,
+							className: `box__ghost${showGhost ? "" : " is-off"}`,
 							"aria-hidden": true,
 							children: [/* @__PURE__ */ jsx("span", { children: ghost }), /* @__PURE__ */ jsx("span", { className: "caret" })]
 						}), /* @__PURE__ */ jsx("textarea", {

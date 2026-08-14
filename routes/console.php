@@ -4,10 +4,6 @@ use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schedule;
 
-Artisan::command('inspire', function () {
-    $this->comment(Inspiring::quote());
-})->purpose('Display an inspiring quote');
-
 /*
  * Saved search refreshes. The dispatcher runs hourly rather than once a day so
  * a search created at any hour refreshes near its own anniversary time; the

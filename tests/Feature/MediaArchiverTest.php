@@ -73,7 +73,8 @@ class MediaArchiverTest extends TestCase
 
         $result = app(MediaArchiver::class)->archiveWithReport($this->attributes());
 
-        $expected = 'viral_videos/42_7412345678901234567_'.strtotime('2026-08-01T00:00:00Z').'_video_cover.jpg';
+        $folder = '42_7412345678901234567_'.strtotime('2026-08-01T00:00:00Z');
+        $expected = "viral_videos/tiktok/{$folder}/{$folder}_video_cover.jpg";
 
         Storage::disk('s3')->assertExists($expected);
         $this->assertSame(Storage::disk('s3')->url($expected), $result['attributes']['cover']);
@@ -94,10 +95,10 @@ class MediaArchiverTest extends TestCase
 
         // The dead avatar must not take the cover down with it.
         $this->assertStringContainsString('video_cover.png', $result['attributes']['cover']);
-        $this->assertStringContainsString('video_thumbnail.png', $result['attributes']['thumbnail_url']);
+        $this->assertStringContainsString('thumbnail.png', $result['attributes']['thumbnail_url']);
         $this->assertSame('', $result['attributes']['avatar']);
         $this->assertCount(1, $result['failures']);
-        $this->assertSame('channel_avatar', $result['failures'][0]['kind']);
+        $this->assertSame('avatar', $result['failures'][0]['kind']);
     }
 
     public function test_an_expired_signed_url_is_cleared_without_a_request(): void
@@ -181,7 +182,7 @@ class MediaArchiverTest extends TestCase
         Http::preventStrayRequests();
 
         $archiver = app(MediaArchiver::class);
-        $stored = $archiver->storageBaseUrl().'/viral_videos/42_abc_1_video_cover.jpg';
+        $stored = $archiver->storageBaseUrl().'/viral_videos/tiktok/42_abc_1/42_abc_1_video_cover.jpg';
 
         $result = $archiver->archiveWithReport($this->attributes(['cover' => $stored]));
 
@@ -198,7 +199,7 @@ class MediaArchiverTest extends TestCase
         Http::fake(['*' => Http::response('bytes', 200, ['Content-Type' => 'image/jpeg'])]);
 
         $archiver = app(MediaArchiver::class);
-        $stored = $archiver->storageBaseUrl().'/viral_videos/42_abc_1_video_cover.heic';
+        $stored = $archiver->storageBaseUrl().'/viral_videos/tiktok/42_abc_1/42_abc_1_video_cover.heic';
 
         $this->assertFalse($archiver->isAlreadyStored($stored));
 
@@ -222,7 +223,8 @@ class MediaArchiverTest extends TestCase
 
         $path = $archiver->pathPrefix($this->attributes(['video_id' => 'a b/c#d']));
 
-        $this->assertSame('viral_videos/42_a_b_c_d_'.strtotime('2026-08-01T00:00:00Z'), $path);
+        $folder = '42_a_b_c_d_'.strtotime('2026-08-01T00:00:00Z');
+        $this->assertSame("viral_videos/tiktok/{$folder}/{$folder}", $path);
 
         // Same input, same key — that is what makes a repair overwrite rather
         // than accumulate duplicates.
@@ -233,6 +235,6 @@ class MediaArchiverTest extends TestCase
     {
         $path = app(MediaArchiver::class)->pathPrefix($this->attributes(['apify_trigger_id' => null]));
 
-        $this->assertStringStartsWith('viral_videos/na_', $path);
+        $this->assertStringStartsWith('viral_videos/tiktok/na_', $path);
     }
 }

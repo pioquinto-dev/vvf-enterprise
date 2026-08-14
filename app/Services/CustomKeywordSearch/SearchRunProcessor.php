@@ -2,7 +2,7 @@
 
 namespace App\Services\CustomKeywordSearch;
 
-use App\Jobs\ArchiveViralVideoMediaBatch;
+use App\Jobs\ArchiveViralVideoMedia;
 use App\Jobs\EnrichSearchResults;
 use App\Models\ApifyTrigger;
 use App\Models\CustomKeywordSearch;
@@ -353,6 +353,9 @@ class SearchRunProcessor
      * transaction commits so the worker cannot race ahead of the rows it is
      * meant to read.
      *
+     * Fresh imports use the strict single-row job so archiving starts
+     * immediately after the Apify results land in `viral_videos`.
+     *
      * @param  array<int, string>  $viralVideoIds
      */
     private function queueMediaArchive(array $viralVideoIds): void
@@ -367,8 +370,8 @@ class SearchRunProcessor
 
         $queue = (string) config('viral_videos.media.queue', 'default');
 
-        foreach (array_chunk(array_unique($viralVideoIds), (int) config('viral_videos.media.batch_size', 50)) as $chunk) {
-            ArchiveViralVideoMediaBatch::dispatch($chunk)->onQueue($queue);
+        foreach (array_unique($viralVideoIds) as $viralVideoId) {
+            ArchiveViralVideoMedia::dispatch($viralVideoId)->onQueue($queue);
         }
     }
 

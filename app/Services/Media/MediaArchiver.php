@@ -33,8 +33,8 @@ use Symfony\Component\Process\Process;
 class MediaArchiver
 {
     public const KIND_COVER = 'video_cover';
-    public const KIND_THUMBNAIL = 'video_thumbnail';
-    public const KIND_AVATAR = 'channel_avatar';
+    public const KIND_THUMBNAIL = 'thumbnail';
+    public const KIND_AVATAR = 'avatar';
 
     /** Statuses that mean the source is gone for good. */
     private const DEAD_STATUSES = [403, 404, 410];
@@ -384,8 +384,8 @@ class MediaArchiver
     }
 
     /**
-     * Deterministic key so the same asset always lands in the same place and a
-     * repair run overwrites rather than duplicates.
+     * Deterministic directory so every video's assets stay isolated together
+     * and a repair run overwrites rather than duplicates.
      *
      * @param  array<string, mixed>  $attributes
      */
@@ -393,14 +393,17 @@ class MediaArchiver
     {
         $trigger = $attributes['apify_trigger_id'] ?? null;
         $triggerPart = $trigger === null || $trigger === '' ? 'na' : $this->sanitize((string) $trigger);
+        $folder = implode('_', [
+            $triggerPart,
+            $this->sanitize((string) $attributes['video_id']),
+            (string) $this->timestamp($attributes),
+        ]);
 
         return implode('/', [
             $this->prefix(),
-            implode('_', [
-                $triggerPart,
-                $this->sanitize((string) $attributes['video_id']),
-                (string) $this->timestamp($attributes),
-            ]),
+            'tiktok',
+            $folder,
+            $folder,
         ]);
     }
 
