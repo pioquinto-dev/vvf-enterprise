@@ -142,6 +142,18 @@ class AdminListingMutator
             $metadata['subscription']['search_limits']['limit'] = max(0, (int) $input['search_credits_limit']);
         }
 
+        if (array_key_exists('cta', $input) && $input['cta'] !== null) {
+            $metadata['settings']['cta'] = (string) $input['cta'];
+        }
+
+        if (array_key_exists('popular', $input)) {
+            $metadata['settings']['popular'] = (bool) $input['popular'];
+        }
+
+        if (array_key_exists('trial_enabled', $input)) {
+            $metadata['subscription']['trialEnabled'] = (bool) $input['trial_enabled'];
+        }
+
         if (array_key_exists('video_bookmark_limit', $input) && $input['video_bookmark_limit'] !== null) {
             $metadata['subscription']['viral_video_bookmarks']['limit'] = (int) $input['video_bookmark_limit'];
         }

@@ -3,10 +3,6 @@ import { useEffect } from 'react';
 
 import { Close } from '../../landing/components/Icons.jsx';
 
-/**
- * Slide-over editor. Fields are described by the server (`editableFields`), so
- * adding a field to a resource never requires touching this component.
- */
 export default function AdminEditDrawer({ open, resource, title, fields = [], row, onClose }) {
     const form = useForm({});
 
@@ -35,7 +31,6 @@ export default function AdminEditDrawer({ open, resource, title, fields = [], ro
 
         form.transform((data) => ({
             ...data,
-            // Inertia sends booleans as-is; the API expects them for toggles.
             ...Object.fromEntries(
                 fields.filter((field) => field.type === 'toggle').map((field) => [field.name, Boolean(data[field.name])]),
             ),
@@ -47,18 +42,18 @@ export default function AdminEditDrawer({ open, resource, title, fields = [], ro
 
     return (
         <div className="fixed inset-0 z-50 flex justify-end">
-            <button type="button" aria-label="Close" onClick={onClose} className="absolute inset-0 bg-black/55 backdrop-blur-[2px]" />
+            <button type="button" aria-label="Close" onClick={onClose} className="absolute inset-0 bg-[rgba(11,11,11,.38)] backdrop-blur-[2px]" />
 
-            <aside className="relative flex h-full w-[min(420px,92vw)] flex-col border-l border-white/[.08] bg-[#0d1020] shadow-[0_0_60px_-10px_rgba(0,0,0,.9)]">
-                <header className="flex items-center justify-between border-b border-white/[.07] px-4 py-3">
+            <aside className="relative flex h-full w-[min(420px,92vw)] flex-col border-l border-[var(--line)] bg-[var(--paper)] shadow-[0_0_60px_-10px_rgba(20,15,0,.24)]">
+                <header className="flex items-center justify-between border-b border-[var(--line)] px-4 py-3">
                     <div>
-                        <p className="text-[10px] font-semibold tracking-[.18em] text-white/35 uppercase">Edit</p>
-                        <h2 className="mt-0.5 truncate text-[14px] font-semibold text-white">{title}</h2>
+                        <p className="text-[10px] font-semibold tracking-[.18em] text-[var(--faint)] uppercase">Edit</p>
+                        <h2 className="mt-0.5 truncate text-[14px] font-semibold text-[var(--ink)]">{title}</h2>
                     </div>
                     <button
                         type="button"
                         onClick={onClose}
-                        className="flex h-7 w-7 items-center justify-center rounded-md text-white/40 transition hover:bg-white/[.06] hover:text-white"
+                        className="flex h-7 w-7 items-center justify-center rounded-md text-[var(--faint)] transition hover:bg-white hover:text-[var(--ink)]"
                     >
                         <Close className="h-4 w-4" />
                     </button>
@@ -74,75 +69,66 @@ export default function AdminEditDrawer({ open, resource, title, fields = [], ro
                                             type="checkbox"
                                             checked={Boolean(form.data[field.name])}
                                             onChange={(event) => form.setData(field.name, event.target.checked)}
-                                            className="mt-0.5 h-4 w-4 rounded border-white/20 bg-white/[.06] accent-[#6d4bff]"
+                                            className="mt-0.5 h-4 w-4 rounded border-[var(--line)] bg-white accent-[#ffc629]"
                                         />
                                         <span>
-                                            <span className="block text-[13px] text-white">{field.label}</span>
-                                            {field.help && <span className="mt-0.5 block text-[11.5px] text-white/40">{field.help}</span>}
+                                            <span className="block text-[13px] text-[var(--ink)]">{field.label}</span>
+                                            {field.help && <span className="mt-0.5 block text-[11.5px] text-[var(--faint)]">{field.help}</span>}
                                         </span>
                                     </label>
                                 ) : (
                                     <>
-                                        <label className="mb-1.5 block text-[11.5px] font-medium text-white/50">{field.label}</label>
+                                        <label className="mb-1.5 block text-[11.5px] font-medium text-[var(--muted)]">{field.label}</label>
                                         {field.type === 'select' ? (
                                             <select
                                                 value={form.data[field.name] ?? ''}
                                                 onChange={(event) => form.setData(field.name, event.target.value)}
-                                                className="h-9 w-full rounded-lg border border-white/[.09] bg-[#0f1220] px-2.5 text-[13px] text-white outline-none focus:border-accent/45"
+                                                className="h-9 w-full rounded-lg border border-[var(--line)] bg-white px-2.5 text-[13px] text-[var(--ink)] outline-none focus:border-[var(--yellow)]"
                                             >
                                                 {(field.options ?? [])
-                                                    // Options are plain strings or {value,label} pairs.
-                                                    .map((option) =>
-                                                        typeof option === 'string' ? { value: option, label: option } : option,
-                                                    )
+                                                    .map((option) => (typeof option === 'string' ? { value: option, label: option } : option))
                                                     .map((option) => (
-                                                        <option key={option.value} value={option.value} className="bg-[#0f1220]">
+                                                        <option key={option.value} value={option.value} className="bg-white">
                                                             {option.label}
                                                         </option>
                                                     ))}
                                             </select>
                                         ) : (
                                             <input
-                                                type={
-                                                    field.type === 'number'
-                                                        ? 'number'
-                                                        : field.type === 'password'
-                                                          ? 'password'
-                                                          : 'text'
-                                                }
+                                                type={field.type === 'number' ? 'number' : field.type === 'password' ? 'password' : 'text'}
                                                 autoComplete={field.type === 'password' ? 'new-password' : undefined}
                                                 step={field.step}
                                                 min={field.type === 'number' ? 0 : undefined}
                                                 value={form.data[field.name] ?? ''}
                                                 onChange={(event) => form.setData(field.name, event.target.value)}
-                                                className="h-9 w-full rounded-lg border border-white/[.09] bg-[#0f1220] px-2.5 text-[13px] text-white outline-none focus:border-accent/45"
+                                                className="h-9 w-full rounded-lg border border-[var(--line)] bg-white px-2.5 text-[13px] text-[var(--ink)] outline-none focus:border-[var(--yellow)]"
                                             />
                                         )}
-                                        {field.help && <p className="mt-1 text-[11.5px] text-white/40">{field.help}</p>}
+                                        {field.help && <p className="mt-1 text-[11.5px] text-[var(--faint)]">{field.help}</p>}
                                     </>
                                 )}
 
                                 {form.errors[field.name] && (
-                                    <p className="mt-1 text-[11.5px] text-rose-300">{form.errors[field.name]}</p>
+                                    <p className="mt-1 text-[11.5px] text-[var(--warn)]">{form.errors[field.name]}</p>
                                 )}
                             </div>
                         ))}
                     </div>
 
-                    <footer className="flex items-center justify-end gap-2 border-t border-white/[.07] px-4 py-3">
+                    <footer className="flex items-center justify-end gap-2 border-t border-[var(--line)] px-4 py-3">
                         <button
                             type="button"
                             onClick={onClose}
-                            className="h-8 rounded-md px-3 text-[12.5px] text-white/55 transition hover:text-white"
+                            className="h-8 rounded-md px-3 text-[12.5px] text-[var(--muted)] transition hover:text-[var(--ink)]"
                         >
                             Cancel
                         </button>
                         <button
                             type="submit"
                             disabled={form.processing}
-                            className="h-8 rounded-md bg-accent px-3.5 text-[12.5px] font-semibold text-white transition hover:brightness-110 disabled:opacity-50"
+                            className="h-8 rounded-md bg-[var(--yellow)] px-3.5 text-[12.5px] font-semibold text-[#1a1400] transition hover:brightness-105 disabled:opacity-50"
                         >
-                            {form.processing ? 'Saving…' : 'Save changes'}
+                            {form.processing ? 'Saving...' : 'Save changes'}
                         </button>
                     </footer>
                 </form>

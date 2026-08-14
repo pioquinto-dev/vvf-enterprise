@@ -5,21 +5,21 @@ function statusTone(value) {
         case 'active':
         case 'published':
         case 'complete':
-            return { dot: 'bg-emerald-400', text: 'text-emerald-300/90' };
+            return { dot: 'bg-[var(--ok)]', text: 'text-[var(--ok)]' };
         case 'running':
         case 'trial':
         case 'trialing':
         case 'queued':
         case 'scheduled':
         case 'invited':
-            return { dot: 'bg-sky-400', text: 'text-sky-300/90' };
+            return { dot: 'bg-[var(--yellow)]', text: 'text-[var(--amber-ink)]' };
         case 'past_due':
         case 'inactive':
         case 'archived':
         case 'suspended':
-            return { dot: 'bg-rose-400', text: 'text-rose-300/90' };
+            return { dot: 'bg-[var(--warn)]', text: 'text-[var(--warn)]' };
         default:
-            return { dot: 'bg-white/35', text: 'text-white/60' };
+            return { dot: 'bg-[var(--line-2)]', text: 'text-[var(--muted)]' };
     }
 }
 
@@ -33,11 +33,9 @@ function initials(value) {
 }
 
 function renderCell(column, row, index) {
-    const value = row[column.key] ?? '—';
+    const value = row[column.key] ?? '-';
     const text = String(value);
 
-    // Status reads as a state, not a label — a coloured dot carries that faster
-    // than a filled pill, and keeps a dense table from looking like confetti.
     if (column.key === 'status') {
         const tone = statusTone(text);
 
@@ -51,31 +49,27 @@ function renderCell(column, row, index) {
 
     if (['role', 'type', 'plan'].includes(column.key)) {
         return (
-            <span className="inline-flex rounded border border-white/[.09] bg-white/[.03] px-1.5 py-0.5 text-[11.5px] font-medium text-white/65 capitalize">
+            <span className="inline-flex rounded border border-[var(--line)] bg-[var(--wash)] px-1.5 py-0.5 text-[11.5px] font-medium text-[var(--amber-ink)] capitalize">
                 {text.replaceAll('_', ' ')}
             </span>
         );
     }
 
-    // The first column is the row's identity — give it an avatar and weight so
-    // the eye has an anchor when scanning.
     if (index === 0) {
         return (
             <span className="flex items-center gap-2.5">
-                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded bg-white/[.06] text-[10px] font-semibold text-white/55">
+                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded bg-[var(--wash)] text-[10px] font-semibold text-[var(--amber-ink)]">
                     {initials(text)}
                 </span>
-                <span className="truncate text-[13px] font-medium text-white">{text}</span>
+                <span className="truncate text-[13px] font-medium text-[var(--ink)]">{text}</span>
             </span>
         );
     }
 
-    return <span className="text-[13px] text-white/65">{text}</span>;
+    return <span className="text-[13px] text-[var(--muted)]">{text}</span>;
 }
 
 export default function AdminDataTable({ columns = [], rows = [], resource, capabilities = {}, onEdit = () => {}, onPreview = () => {} }) {
-    // A read-only listing should not reserve a column for actions it will
-    // never render.
     const hasActions = Boolean(capabilities.preview || capabilities.edit || capabilities.archive || capabilities.delete);
 
     return (
@@ -87,13 +81,13 @@ export default function AdminDataTable({ columns = [], rows = [], resource, capa
                             {columns.map((column) => (
                                 <th
                                     key={column.key}
-                                    className="sticky top-0 z-10 border-b border-white/[.07] bg-[#13162a] px-4 py-2 text-left text-[11px] font-semibold tracking-[.06em] whitespace-nowrap text-white/40 uppercase"
+                                    className="sticky top-0 z-10 border-b border-[var(--line)] bg-[var(--paper)] px-4 py-2 text-left text-[11px] font-semibold tracking-[.06em] whitespace-nowrap text-[var(--faint)] uppercase"
                                 >
                                     {column.label}
                                 </th>
                             ))}
                             {hasActions && (
-                                <th className="sticky top-0 z-10 w-[104px] border-b border-white/[.07] bg-[#13162a] px-4 py-2 text-right text-[11px] font-semibold tracking-[.06em] whitespace-nowrap text-white/40 uppercase">
+                                <th className="sticky top-0 z-10 w-[104px] border-b border-[var(--line)] bg-[var(--paper)] px-4 py-2 text-right text-[11px] font-semibold tracking-[.06em] whitespace-nowrap text-[var(--faint)] uppercase">
                                     Actions
                                 </th>
                             )}
@@ -101,17 +95,17 @@ export default function AdminDataTable({ columns = [], rows = [], resource, capa
                     </thead>
                     <tbody>
                         {rows.map((row, rowIndex) => (
-                            <tr key={row.id ?? rowIndex} className="group transition-colors hover:bg-white/[.025]">
+                            <tr key={row.id ?? rowIndex} className="group transition-colors hover:bg-[rgba(255,248,230,.65)]">
                                 {columns.map((column, columnIndex) => (
                                     <td
                                         key={column.key}
-                                        className="max-w-[280px] truncate border-b border-white/[.05] px-4 py-2.5 align-middle whitespace-nowrap"
+                                        className="max-w-[280px] truncate border-b border-[var(--line)] px-4 py-2.5 align-middle whitespace-nowrap"
                                     >
                                         {renderCell(column, row, columnIndex)}
                                     </td>
                                 ))}
                                 {hasActions && (
-                                    <td className="border-b border-white/[.05] px-4 py-2.5 text-right">
+                                    <td className="border-b border-[var(--line)] px-4 py-2.5 text-right">
                                         <AdminRowMenu
                                             resource={resource}
                                             row={row}
@@ -127,7 +121,7 @@ export default function AdminDataTable({ columns = [], rows = [], resource, capa
                 </table>
             </div>
 
-            <div className="divide-y divide-white/[.05] md:hidden">
+            <div className="divide-y divide-[var(--line)] md:hidden">
                 {rows.map((row, rowIndex) => (
                     <article key={row.id ?? rowIndex} className="group grid gap-2 px-4 py-3">
                         <div className="flex items-center justify-between gap-2">
@@ -138,7 +132,7 @@ export default function AdminDataTable({ columns = [], rows = [], resource, capa
                         </div>
                         {columns.slice(1).map((column) => (
                             <div key={column.key} className="flex items-center justify-between gap-4">
-                                <span className="text-[11px] text-white/35">{column.label}</span>
+                                <span className="text-[11px] text-[var(--faint)]">{column.label}</span>
                                 <span className="min-w-0 text-right">{renderCell(column, row, 1)}</span>
                             </div>
                         ))}

@@ -34,13 +34,13 @@ export default function Listing({
             section={resource}
             toolbar={toolbar}
             actions={
-                <span className="inline-flex items-center gap-1.5 rounded-md border border-white/[.09] bg-white/[.03] px-2 py-1 text-[11.5px] text-white/55">
-                    <span className="font-semibold text-white">{total.toLocaleString()}</span>
+                <span className="inline-flex items-center gap-1.5 rounded-md border border-[var(--line)] bg-white px-2 py-1 text-[11.5px] text-[var(--muted)]">
+                    <span className="font-semibold text-[var(--ink)]">{total.toLocaleString()}</span>
                     {total === 1 ? 'record' : 'records'}
                 </span>
             }
         >
-            <section className="overflow-hidden rounded-xl border border-white/[.07] bg-[#0f1220] shadow-[0_1px_0_rgba(255,255,255,.03)_inset,0_10px_30px_-24px_rgba(0,0,0,.9)]">
+            <section className="overflow-hidden rounded-xl border border-[var(--line)] bg-white shadow-[0_1px_2px_rgba(20,15,0,.04),0_16px_36px_-28px_rgba(20,15,0,.18)]">
                 {rows.length > 0 ? (
                     <AdminDataTable
                         columns={columns}

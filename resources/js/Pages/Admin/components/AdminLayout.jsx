@@ -1,14 +1,7 @@
 import { Head, Link, useForm, usePage } from '@inertiajs/react';
 import { useEffect, useMemo, useState } from 'react';
 
-import {
-    Logo,
-    Menu,
-    Close,
-    Chevron,
-    User,
-    Exit,
-} from '../../../landing/components/Icons.jsx';
+import { Logo, Menu, Close, Chevron, Exit } from '../../../landing/components/Icons.jsx';
 
 const NAV_GROUPS = [
     {
@@ -26,65 +19,21 @@ const NAV_GROUPS = [
     {
         label: 'Content',
         items: [
-            {
-                key: 'viral-videos',
-                label: 'Viral Videos',
-                href: '/x/admin/viral-videos',
-                description: 'Video library',
-                icon: 'VI',
-            },
-            {
-                key: 'searches',
-                label: 'Searches',
-                href: '/x/admin/searches',
-                description: 'Search runs',
-                icon: 'SE',
-            },
-            {
-                key: 'inquiries',
-                label: 'Inquiries',
-                href: '/x/admin/inquiries',
-                description: 'Contact inbox',
-                icon: 'IN',
-            },
-            {
-                key: 'plans',
-                label: 'Plans',
-                href: '/x/admin/plans',
-                description: 'Pricing setup',
-                icon: 'PL',
-            },
+            { key: 'viral-videos', label: 'Viral Videos', href: '/x/admin/viral-videos', description: 'Video library', icon: 'VI' },
+            { key: 'searches', label: 'Searches', href: '/x/admin/searches', description: 'Search runs', icon: 'SE' },
+            { key: 'inquiries', label: 'Inquiries', href: '/x/admin/inquiries', description: 'Contact inbox', icon: 'IN' },
+            { key: 'plans', label: 'Plans', href: '/x/admin/plans', description: 'Pricing setup', icon: 'PL' },
         ],
     },
     {
         label: 'Subscription Management',
-        items: [
-            {
-                key: 'subscription',
-                label: 'Subscription',
-                href: '/x/admin/subscription',
-                description: 'Billing control',
-                icon: 'SU',
-            },
-        ],
+        items: [{ key: 'subscription', label: 'Subscription', href: '/x/admin/subscription', description: 'Billing control', icon: 'SU' }],
     },
     {
         label: 'User Management',
         items: [
-            {
-                key: 'users',
-                label: 'Users',
-                href: '/x/admin/users',
-                description: 'Customer accounts',
-                icon: 'US',
-            },
-            {
-                key: 'admin-users',
-                label: 'Admin Users',
-                href: '/x/admin/users/admin-users',
-                description: 'Staff access',
-                icon: 'AD',
-            },
+            { key: 'users', label: 'Users', href: '/x/admin/users', description: 'Customer accounts', icon: 'US' },
+            { key: 'admin-users', label: 'Admin Users', href: '/x/admin/users/admin-users', description: 'Staff access', icon: 'AD' },
         ],
     },
 ];
@@ -107,12 +56,12 @@ function NavItem({ item, active, onNavigate }) {
             href={item.href}
             onClick={onNavigate}
             className={`group flex items-center gap-2.5 rounded-lg px-2.5 py-2 transition ${
-                active ? 'bg-white/[.07] text-white' : 'text-white/65 hover:bg-white/[.04] hover:text-white'
+                active ? 'bg-[var(--wash)] text-[var(--ink)]' : 'text-[var(--muted)] hover:bg-white hover:text-[var(--ink)]'
             }`}
         >
             <span
                 className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-[10px] font-semibold tracking-[.06em] ${
-                    active ? 'bg-hot text-white' : 'bg-white/[.06] text-white/55'
+                    active ? 'bg-[var(--yellow)] text-[#1a1400]' : 'bg-[var(--canvas)] text-[var(--faint)]'
                 }`}
             >
                 {item.icon}
@@ -124,18 +73,18 @@ function NavItem({ item, active, onNavigate }) {
 
 function SidebarAccount({ adminUser, onSignOut }) {
     return (
-        <div className="mt-4 shrink-0 border-t border-white/[.08] pt-3">
+        <div className="mt-4 shrink-0 border-t border-[var(--line)] pt-3">
             <button
                 type="button"
                 onClick={onSignOut}
-                className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-white/70 transition hover:bg-white/[.04] hover:text-white"
+                className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-[var(--muted)] transition hover:bg-white hover:text-[var(--ink)]"
             >
-                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-white/[.06]">
-                    <Exit className="h-3.5 w-3.5 text-[#f28aa7]" />
+                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-[var(--canvas)]">
+                    <Exit className="h-3.5 w-3.5 text-[var(--warn)]" />
                 </span>
                 <span className="min-w-0">
                     <span className="block text-[13px] font-medium">Log out</span>
-                    <span className="block truncate text-[11px] text-white/35">{adminUser?.email ?? 'Admin session'}</span>
+                    <span className="block truncate text-[11px] text-[var(--faint)]">{adminUser?.email ?? 'Admin session'}</span>
                 </span>
             </button>
         </div>
@@ -180,8 +129,8 @@ function Sidebar({ currentPath, section, onNavigate, closable = false, adminUser
                 <Link href="/x/admin" onClick={onNavigate} className="flex items-center gap-2.5">
                     <Logo className="h-8 w-8" />
                     <span className="leading-none">
-                        <span className="block text-[13px] font-bold tracking-[.22em] text-white uppercase">Admin</span>
-                        <span className="mt-0.5 block text-[10px] text-white/35">Operations cockpit</span>
+                        <span className="block text-[13px] font-bold tracking-[.22em] text-[var(--ink)] uppercase">Admin</span>
+                        <span className="mt-0.5 block text-[10px] text-[var(--faint)]">Operations cockpit</span>
                     </span>
                 </Link>
                 {closable ? (
@@ -189,7 +138,7 @@ function Sidebar({ currentPath, section, onNavigate, closable = false, adminUser
                         type="button"
                         aria-label="Close menu"
                         onClick={onNavigate}
-                        className="flex h-9 w-9 items-center justify-center rounded-xl border border-white/[.08] text-white/45 transition hover:bg-white/[.05] hover:text-white"
+                        className="flex h-9 w-9 items-center justify-center rounded-xl border border-[var(--line)] text-[var(--faint)] transition hover:bg-white hover:text-[var(--ink)]"
                     >
                         <Close className="h-4 w-4" />
                     </button>
@@ -205,12 +154,12 @@ function Sidebar({ currentPath, section, onNavigate, closable = false, adminUser
                                     <button
                                         type="button"
                                         onClick={() => toggleGroup(group.label)}
-                                        className="flex w-full items-center justify-between gap-3 px-2 text-left px-2.5 py-1 text-[10px] font-semibold tracking-[.14em] text-white/30 uppercase transition hover:text-white/58"
+                                        className="flex w-full items-center justify-between gap-3 px-2 text-left px-2.5 py-1 text-[10px] font-semibold tracking-[.14em] text-[var(--faint)] uppercase transition hover:text-[var(--ink)]"
                                         aria-expanded={expandedGroups[group.label] === true}
                                     >
                                         <span>{group.label}</span>
                                         <Chevron
-                                            className={`h-3.5 w-3.5 transition ${expandedGroups[group.label] ? 'rotate-180 text-white/45' : 'text-white/25'}`}
+                                            className={`h-3.5 w-3.5 transition ${expandedGroups[group.label] ? 'rotate-180 text-[var(--muted)]' : 'text-[var(--faint)]'}`}
                                         />
                                     </button>
 
@@ -260,11 +209,9 @@ export default function AdminLayout({ title, section, children, toolbar = null, 
             return undefined;
         }
 
-        document.documentElement.classList.add('dark');
+        document.documentElement.classList.remove('dark');
 
-        return () => {
-            document.documentElement.classList.remove('dark');
-        };
+        return undefined;
     }, []);
 
     useEffect(() => {
@@ -294,30 +241,30 @@ export default function AdminLayout({ title, section, children, toolbar = null, 
     );
 
     return (
-        <div className="admin-shell min-h-screen bg-[#0a0c18] text-white">
+        <div className="admin-shell min-h-screen bg-[var(--canvas)] text-[var(--ink)]">
             <Head title={`${title} - Admin - Outlier Vault`} />
 
             <div aria-hidden className="pointer-events-none fixed inset-0 overflow-hidden">
-                <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(109,75,255,.07),_transparent_42%)]" />
+                <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(255,198,41,.22),_transparent_42%)]" />
             </div>
 
-            <aside className="fixed inset-y-0 left-0 z-40 hidden w-[248px] bg-[#0d1020] px-3 py-4 backdrop-blur-xl lg:block">
+            <aside className="fixed inset-y-0 left-0 z-40 hidden w-[248px] border-r border-[var(--line)] bg-[var(--paper)] px-3 py-4 backdrop-blur-xl lg:block">
                 <Sidebar currentPath={currentPath} section={section} adminUser={adminUser} onSignOut={signOut} />
             </aside>
 
-            <header className="sticky top-0 z-40 border-b border-white/[.06] bg-[#0d1020]/92 backdrop-blur-xl lg:hidden">
+            <header className="sticky top-0 z-40 border-b border-[var(--line)] bg-[rgba(250,249,246,.92)] backdrop-blur-xl lg:hidden">
                 <div className="flex items-center justify-between px-4 py-4">
                     <Link href="/x/admin" className="flex items-center gap-3">
                         <Logo className="h-9 w-9" />
                         <span>
                             <span className="block text-[14px] font-bold tracking-[.2em] uppercase">Admin</span>
-                            <span className="block text-[10px] text-white/45">Operations cockpit</span>
+                            <span className="block text-[10px] text-[var(--faint)]">Operations cockpit</span>
                         </span>
                     </Link>
                     <button
                         type="button"
                         onClick={() => setDrawerOpen((open) => !open)}
-                        className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/[.08] bg-white/[.03]"
+                        className="flex h-10 w-10 items-center justify-center rounded-xl border border-[var(--line)] bg-white text-[var(--ink)]"
                     >
                         <Menu className="h-5 w-5" />
                     </button>
@@ -330,9 +277,9 @@ export default function AdminLayout({ title, section, children, toolbar = null, 
                         type="button"
                         aria-label="Close menu"
                         onClick={() => setDrawerOpen(false)}
-                        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+                        className="absolute inset-0 bg-[rgba(11,11,11,.38)] backdrop-blur-sm"
                     />
-                    <div className="absolute top-0 left-0 h-full w-[min(290px,88vw)] border-r border-white/[.06] bg-[#0d1020] px-4 py-5">
+                    <div className="absolute top-0 left-0 h-full w-[min(290px,88vw)] border-r border-[var(--line)] bg-[var(--paper)] px-4 py-5">
                         <Sidebar
                             currentPath={currentPath}
                             section={section}
@@ -346,24 +293,22 @@ export default function AdminLayout({ title, section, children, toolbar = null, 
             )}
 
             <div className="relative lg:pl-[248px]">
-                {/* Slim top rail. Breadcrumb on the left, session identity on the
-                    right — the two things an operator checks before acting. */}
-                <div className="sticky top-0 z-30 hidden h-11 items-center justify-between border-b border-white/[.06] bg-[#0a0c18]/85 px-7 backdrop-blur-xl lg:flex">
-                    <nav aria-label="Breadcrumb" className="flex items-center gap-1.5 text-[12px] text-white/35">
-                        <Link href="/x/admin" className="transition hover:text-white/70">
+                <div className="sticky top-0 z-30 hidden h-11 items-center justify-between border-b border-[var(--line)] bg-[rgba(245,244,240,.88)] px-7 backdrop-blur-xl lg:flex">
+                    <nav aria-label="Breadcrumb" className="flex items-center gap-1.5 text-[12px] text-[var(--faint)]">
+                        <Link href="/x/admin" className="transition hover:text-[var(--ink)]">
                             Admin
                         </Link>
                         {breadcrumbGroup && (
                             <>
-                                <span className="text-white/20">/</span>
+                                <span className="text-[var(--line-2)]">/</span>
                                 <span>{breadcrumbGroup}</span>
                             </>
                         )}
-                        <span className="text-white/20">/</span>
-                        <span className="font-medium text-white/75">{title}</span>
+                        <span className="text-[var(--line-2)]">/</span>
+                        <span className="font-medium text-[var(--ink)]">{title}</span>
                     </nav>
-                    <span className="flex items-center gap-2 text-[11.5px] text-white/35">
-                        <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                    <span className="flex items-center gap-2 text-[11.5px] text-[var(--faint)]">
+                        <span className="h-1.5 w-1.5 rounded-full bg-[var(--yellow)]" />
                         {adminUser?.email ?? 'Admin session'}
                     </span>
                 </div>
@@ -372,7 +317,7 @@ export default function AdminLayout({ title, section, children, toolbar = null, 
                     <div className="mx-auto max-w-7xl">
                         {showHeader && (
                             <div className="mb-4 flex flex-wrap items-center justify-between gap-3 px-1 sm:px-0">
-                                <h1 className="text-[20px] font-semibold tracking-[-.02em] text-white sm:text-[22px]">
+                                <h1 className="text-[20px] font-semibold tracking-[-.02em] text-[var(--ink)] sm:text-[22px]">
                                     {title}
                                 </h1>
                                 {actions}
