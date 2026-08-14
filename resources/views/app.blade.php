@@ -20,12 +20,12 @@
         </script>
 
         {{-- Figtree is the whole brand typeface, self-hosted via the Vite
-             fonts plugin (@fonts). Bricolage + Space Mono still drive the
-             analytics/tracker detail until that screen is ported. --}}
+             fonts plugin (@fonts). Space Mono drives the numeric figures in the
+             analytics/tracker detail. --}}
         @fonts
         <link rel="preconnect" href="https://fonts.googleapis.com">
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-        <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+        <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
 
         @viteReactRefresh
         @vite(['resources/css/app.css', 'resources/js/app.jsx'])

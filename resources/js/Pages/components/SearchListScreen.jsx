@@ -5,7 +5,7 @@ import AppLayout from './AppLayout.jsx';
 import EntitlementsBar from './EntitlementsBar.jsx';
 import { compact } from './VideoCard.jsx';
 import { STATUS, formatDate } from './SavedSearchRow.jsx';
-import { Search, Chevron, Arrow, Refresh } from '../../landing/components/Icons.jsx';
+import { Search, Chevron, Arrow, Refresh, Plus } from '../../landing/components/Icons.jsx';
 
 const COPY = {
   brand: {
@@ -95,7 +95,7 @@ function BrandCard({ search }) {
   );
 }
 
-export default function SearchListScreen({ kind = 'brand', searches = [], moving = [] }) {
+export default function SearchListScreen({ kind = 'brand', searches = [], moving = [], suggestions = [] }) {
   const copy = COPY[kind] ?? COPY.brand;
   const { billing = {} } = usePage().props;
 
@@ -200,6 +200,38 @@ export default function SearchListScreen({ kind = 'brand', searches = [], moving
                   </span>
                 </span>
               </Link>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* ---------------- suggested to track ---------------- */}
+      {suggestions.length > 0 && (
+        <section className="sugg">
+          <div className="movers__h">
+            <h2>Suggested to track</h2>
+            <span className="note">
+              {kind === 'product'
+                ? 'Products rising in the categories you already watch.'
+                : 'Based on creator overlap with brands you already watch.'}
+            </span>
+          </div>
+          <div className="sugg__g">
+            {suggestions.map((s) => (
+              <div className="sg" key={s.name}>
+                <span className="sg__av">{s.name.slice(0, 2).toUpperCase()}</span>
+                <span style={{ minWidth: 0 }}>
+                  <span className="sg__n">{s.name}</span>
+                  <span className="sg__w">{s.why}</span>
+                </span>
+                <button
+                  type="button"
+                  className="btn btn--g btn--sm"
+                  onClick={() => router.visit(`/search?type=${kind}&q=${encodeURIComponent(s.name)}`)}
+                >
+                  <Plus className="h-[15px] w-[15px]" /> Track
+                </button>
+              </div>
             ))}
           </div>
         </section>

@@ -133,7 +133,7 @@ export default function SearchWizard({ initialType = 'brand', initialQuery = '',
         setStep(phrase ? 'keywords' : 'subject');
     };
 
-    const onDone = useCallback((found) => router.visit(`/bookmark/${found?.id ?? searchId}`), [searchId]);
+    const onDone = useCallback((found) => router.visit(found?.url ?? `/bookmark/${found?.id ?? searchId}`), [searchId]);
 
     const topTitle =
         step === 'subject' ? heading : phrase;

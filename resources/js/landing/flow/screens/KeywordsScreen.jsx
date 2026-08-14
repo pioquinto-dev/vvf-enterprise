@@ -11,15 +11,17 @@ const FREQUENCIES = [
 
 function SkeletonChips() {
   return (
-    <div className="chips" aria-hidden>
-      {[132, 108, 156, 96, 140, 118].map((width, i) => (
-        <span
-          key={i}
-          className="chip"
-          style={{ width, height: 40, background: 'var(--paper)', borderStyle: 'dashed', opacity: 0.7 }}
-        />
-      ))}
-    </div>
+    <>
+      <p className="hint" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, marginBottom: 12, color: 'var(--amber-ink)', fontWeight: 600 }}>
+        <span className="chip-spin" aria-hidden />
+        Suggesting keywords…
+      </p>
+      <div className="chips" aria-hidden>
+        {[132, 108, 156, 96, 140, 118].map((width, i) => (
+          <span key={i} className="chip-skel" style={{ width }} />
+        ))}
+      </div>
+    </>
   );
 }
 

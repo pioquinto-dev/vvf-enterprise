@@ -24,6 +24,28 @@ class OwnedSearchResolver
     }
 
     /**
+     * Resolve by the public id used in /results/{key}, falling back to the
+     * numeric primary key so old /bookmark/{id} links still work.
+     */
+    public function resolveByKey(Request $request, string $key): CustomKeywordSearch
+    {
+        $search = $this->baseQuery($request)
+            ->with('latestRun')
+            ->where('public_id', $key)
+            ->first();
+
+        if ($search === null && ctype_digit($key)) {
+            $search = $this->baseQuery($request)->with('latestRun')->find((int) $key);
+        }
+
+        if ($search === null) {
+            throw new NotFoundHttpException('Saved search not found.');
+        }
+
+        return $search;
+    }
+
+    /**
      * @param  array<int, int>  $ids
      * @return Collection<int, CustomKeywordSearch>
      */

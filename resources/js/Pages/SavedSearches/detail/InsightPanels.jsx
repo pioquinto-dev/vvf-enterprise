@@ -157,6 +157,8 @@ export function SoundPanel({ sounds = [] }) {
  * rather than implying local time.
  */
 export function PostingHeatmap({ heatmap }) {
+  const [tip, setTip] = useState(null);
+
   if (!heatmap || heatmap.counted === 0) {
     return (
       <div className="panel">
@@ -184,12 +186,14 @@ export function PostingHeatmap({ heatmap }) {
               {(cells[dayIndex] ?? []).map((count, hour) => {
                 const t = max > 0 ? count / max : 0;
                 const isPeak = peak && peak.day === day && peak.hour === hour && count > 0;
+                const label = `${day} ${String(hour).padStart(2, '0')}:00 ${timezone} · ${count} ${count === 1 ? 'post' : 'posts'}`;
 
                 return (
                   <div
                     className="cell"
                     key={hour}
-                    title={`${day} ${String(hour).padStart(2, '0')}:00 ${timezone} - ${count} ${count === 1 ? 'post' : 'posts'}`}
+                    onMouseMove={(event) => setTip({ x: event.clientX, y: event.clientY, label })}
+                    onMouseLeave={() => setTip(null)}
                     style={
                       count > 0
                         ? {
@@ -206,6 +210,12 @@ export function PostingHeatmap({ heatmap }) {
           ))}
         </div>
       </div>
+
+      {tip && (
+        <div className="heat-tip" style={{ left: tip.x, top: tip.y }}>
+          {tip.label}
+        </div>
+      )}
 
       <div className="heatlegend">
         less

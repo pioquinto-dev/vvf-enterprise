@@ -15,6 +15,7 @@ use App\Support\GuestIdentity;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\RateLimiter;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -212,7 +213,104 @@ class SavedSearchController extends Controller
         return Inertia::render($page, [
             'searches' => $cards,
             'moving' => $this->movingThisWeek($searches),
+            'suggestions' => $this->suggestions($searches, $types),
         ]);
+    }
+
+    /**
+     * "Suggested to track" — a tiered, mostly real signal:
+     *   1. other users' searches (of this kind) that share the most creators
+     *      with the ones this user already tracks;
+     *   2. otherwise the most-tracked searches across other users;
+     *   3. otherwise a small curated set of subjects trending in the US.
+     * Tiers 1–2 come from real data; tier 3 is an explicit sample fallback for
+     * a fresh install with nothing to learn from yet.
+     *
+     * @param  \Illuminate\Support\Collection<int, CustomKeywordSearch>  $searches
+     * @param  array<int, string>  $types
+     * @return array<int, array<string, mixed>>
+     */
+    private function suggestions($searches, array $types): array
+    {
+        $userId = $searches->first()?->user_id;
+        $trackedPhrases = $searches->map(fn (CustomKeywordSearch $s): string => mb_strtolower((string) $s->phrase))->all();
+
+        $out = [];
+        $seen = [];
+
+        $add = function (?string $name, string $why) use (&$out, &$seen, $trackedPhrases): void {
+            $name = trim((string) $name);
+            $key = mb_strtolower($name);
+            if ($name === '' || count($out) >= 3 || isset($seen[$key]) || in_array($key, $trackedPhrases, true)) {
+                return;
+            }
+            $seen[$key] = true;
+            $out[] = ['name' => $name, 'why' => $why];
+        };
+
+        // Tier 1 — other users' searches that share creators with this user's.
+        if ($userId !== null && ! $searches->isEmpty()) {
+            $creators = DB::table('custom_keyword_search_videos as csv')
+                ->join('viral_videos as v', 'v.id', '=', 'csv.viral_video_id')
+                ->whereIn('csv.custom_keyword_search_id', $searches->pluck('id'))
+                ->whereNull('v.archived_at')
+                ->whereNotNull('v.username')
+                ->pluck('v.username')
+                ->map(fn ($u) => mb_strtolower((string) $u))
+                ->unique()
+                ->values()
+                ->all();
+
+            if ($creators !== []) {
+                $shared = DB::table('custom_keyword_search_videos as csv')
+                    ->join('viral_videos as v', 'v.id', '=', 'csv.viral_video_id')
+                    ->join('custom_keyword_searches as s', 's.id', '=', 'csv.custom_keyword_search_id')
+                    ->whereIn('s.search_type', $types)
+                    ->where('s.user_id', '!=', $userId)
+                    ->whereNull('s.deleted_at')
+                    ->whereNull('v.archived_at')
+                    ->whereIn(DB::raw('LOWER(v.username)'), $creators)
+                    ->groupBy('s.phrase')
+                    ->select('s.phrase', DB::raw('COUNT(DISTINCT LOWER(v.username)) as overlap'))
+                    ->orderByDesc('overlap')
+                    ->limit(8)
+                    ->get();
+
+                foreach ($shared as $row) {
+                    $add($row->phrase, 'Shares '.$row->overlap.' creator'.($row->overlap == 1 ? '' : 's').' with your searches');
+                }
+            }
+        }
+
+        // Tier 2 — the most-tracked searches across other users.
+        if (count($out) < 3 && $userId !== null) {
+            $popular = DB::table('custom_keyword_searches')
+                ->whereIn('search_type', $types)
+                ->where('user_id', '!=', $userId)
+                ->whereNull('deleted_at')
+                ->groupBy('phrase')
+                ->select('phrase', DB::raw('COUNT(*) as c'))
+                ->orderByDesc('c')
+                ->limit(12)
+                ->get();
+
+            foreach ($popular as $row) {
+                $add($row->phrase, $row->c > 1 ? 'Tracked by '.$row->c.' others' : 'Popular right now');
+            }
+        }
+
+        // Tier 3 — curated fallback when there is nothing to learn from yet.
+        if (count($out) < 3) {
+            $samples = $types === [CustomKeywordSearch::TYPE_PRODUCT]
+                ? ['sol de janeiro', 'laneige lip mask', 'stanley cup']
+                : ['rhode', 'olipop', 'gymshark'];
+
+            foreach ($samples as $name) {
+                $add($name, 'Trending in the US');
+            }
+        }
+
+        return $out;
     }
 
     /**
@@ -254,17 +352,24 @@ class SavedSearchController extends Controller
     }
 
     /**
-     * GET /bookmark/{id} — detail with the ranked result list.
+     * GET /results/{search} — detail with the ranked result list. `{search}` is
+     * the search's public id (numeric ids still resolve for old links).
      */
-    public function show(Request $request, int $id): Response
+    public function show(Request $request, string $search): Response
     {
-        $search = $this->searches->resolve($request, $id);
+        $model = $this->searches->resolveByKey($request, $search);
         $bookmarkedVideoIds = $this->bookmarks->idsForUser($request->user());
 
         return Inertia::render('SavedSearches/Show', [
-            'search' => SavedSearchPresenter::detail($search, $bookmarkedVideoIds),
+            'search' => SavedSearchPresenter::detail($model, $bookmarkedVideoIds),
             'isAuthenticated' => $request->user() !== null,
         ]);
+    }
+
+    /** Old /bookmark/{id} links redirect to the canonical /results/{public_id}. */
+    public function showLegacyRedirect(Request $request, int $id): RedirectResponse
+    {
+        return redirect($this->searches->resolve($request, $id)->url());
     }
 
     /** JSON twin of show(), used to refresh the results page in place. */

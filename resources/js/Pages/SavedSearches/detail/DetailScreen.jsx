@@ -54,7 +54,6 @@ export default function DetailScreen({
   const [copied, setCopied] = useState(false);
   const [bookmarkingId, setBookmarkingId] = useState(null);
   const [items, setItems] = useState(search?.results ?? []);
-  const [view, setView] = useState('outliers');
   const [activePlayerId, setActivePlayerId] = useState(null);
 
   const insights = search?.insights ?? {};
@@ -65,11 +64,7 @@ export default function DetailScreen({
   const profile = account?.profile ?? {};
   const lastPulledLabel = formatInsightDate(search?.last_run_at);
 
-  const brandHandle = account?.handle ? account.handle.toLowerCase() : null;
-  const feedItems =
-    view === 'their' && brandHandle
-      ? items.filter((v) => (v.handle ?? '').toLowerCase() === brandHandle)
-      : items;
+  const feedItems = items;
 
   const [winner, ...rest] = feedItems;
   const shown = rest.slice(0, visible);
@@ -139,47 +134,29 @@ export default function DetailScreen({
     }
   };
 
+  // Placeholder until the per-video analysis feature is built.
+  const analyze = () => window.alert('Video analysis is coming soon.');
+
   return (
     <div className="tracker">
       <div className="viewbar">
-        <a href="/bookmark" className="back">
-          ← all trackers
+        <a href="/bookmark" className="tbtn">
+          ← Back to library
         </a>
-        <span className="spring" />
-        <div className="viewswitch">
-          <button className={view === 'outliers' ? 'on' : ''} onClick={() => setView('outliers')}>
-            outliers
-          </button>
-          <button
-            className={view === 'their' ? 'on' : ''}
-            onClick={() => setView('their')}
-            disabled={!brandHandle}
-            title={brandHandle ? `Only posts by ${account.handle}` : 'No brand handle available yet'}
-          >
-            their content
-          </button>
-        </div>
       </div>
 
       <TrackerHead
         search={search}
         account={account}
         lastRun={formatDate(search?.last_run_at)}
+        nextRun={formatDate(search?.next_run_at)}
         onToggleWatchlist={onToggleBookmark}
         onShare={share}
+        onTogglePause={onTogglePause}
+        onDelete={onDelete}
         copied={copied}
         watchlistUpdating={bookmarkUpdating}
       />
-
-      <div className="sect-head" style={{ marginTop: '14px' }}>
-        <span className="note">
-          {search?.status === 'paused'
-            ? 'paused - no refreshes will run.'
-            : search?.next_run_at
-              ? `next refresh at ${new Date(search.next_run_at).toLocaleDateString()}`
-              : 'no refresh scheduled.'}
-        </span>
-      </div>
 
       <AiSummary summary={search?.ai_summary} generatedAt={search?.ai_summary_generated_at} />
 
@@ -223,28 +200,14 @@ export default function DetailScreen({
       ) : (
         <>
           <SectionHead
-            title={view === 'their' ? 'their content' : 'outlier videos'}
-            note={
-              view === 'their'
-                ? `${account?.handle}'s own posts in this search. ranked by outlier score.`
-                : 'their posts that beat the search median. ranked by outlier score.'
-            }
+            title="outlier videos"
+            note="their posts that beat the search median. ranked by outlier score."
           />
-
-          {feedItems.length === 0 ? (
-            <div className="panel">
-              <p className="empty">
-                None of the matched videos were posted by {account?.handle}. The outliers view still has all{' '}
-                {items.length}.
-              </p>
-            </div>
-          ) : null}
 
           <WinnerVideo
             video={winner}
-            medianViews={medianViews}
-            max={maxMultiple}
             onToggleBookmark={toggleBookmark}
+            onAnalyze={analyze}
             bookmarking={bookmarkingId === winner?.id}
             activePlayerId={activePlayerId}
             onPlay={setActivePlayerId}
@@ -254,7 +217,7 @@ export default function DetailScreen({
           {rest.length > 0 && (
             <>
               <div className="sect-head" style={{ marginTop: '34px' }}>
-                <h2 style={{ fontSize: '19px' }}>{view === 'their' ? 'more of their posts' : 'more outliers'}</h2>
+                <h2 style={{ fontSize: '19px' }}>more outliers</h2>
                 <span className="note">{rest.length} more.</span>
               </div>
 
@@ -264,9 +227,8 @@ export default function DetailScreen({
                     key={video.id}
                     video={video}
                     rank={index + 2}
-                    medianViews={medianViews}
-                    max={maxMultiple}
                     onToggleBookmark={toggleBookmark}
+                    onAnalyze={analyze}
                     bookmarking={bookmarkingId === video.id}
                     activePlayerId={activePlayerId}
                     onPlay={setActivePlayerId}

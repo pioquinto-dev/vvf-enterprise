@@ -1,14 +1,15 @@
 import { useState } from 'react';
 
 import { compactNumber, outlierLabel, percent, relativeTime } from '../../../landing/flow/format.js';
+import { Heart, Comment, Share, Trend, Bookmark, Search, Arrow } from '../../../landing/components/Icons.jsx';
 
 const GRADIENTS = [
-  'linear-gradient(150deg,#a7e0c4,#4aa886 50%,#2f6a7a)',
   'linear-gradient(150deg,#ffd27a,#ff9a5a 55%,#c0607a)',
-  'linear-gradient(150deg,#c5b8ff,#7a5ae0 55%,#3a2f6a)',
-  'linear-gradient(150deg,#8fd0ff,#5a7ce0 55%,#3a2f8a)',
-  'linear-gradient(150deg,#7affc4,#3ac0a0 55%,#2a6a7a)',
-  'linear-gradient(150deg,#ffb0d8,#d1409a 55%,#5a2060)',
+  'linear-gradient(150deg,#ffe08a,#f0a24a 55%,#b5654a)',
+  'linear-gradient(150deg,#ffcf7a,#e88f5a 55%,#a8607a)',
+  'linear-gradient(150deg,#ffdd9a,#f5a05a 55%,#c07a5a)',
+  'linear-gradient(150deg,#ffd06a,#ee954a 55%,#b06a5a)',
+  'linear-gradient(150deg,#ffe4a6,#f2ab63 55%,#bd7059)',
 ];
 
 function gradientStyle(video) {
@@ -16,6 +17,24 @@ function gradientStyle(video) {
   let hash = 0;
   for (let i = 0; i < key.length; i++) hash = (hash * 31 + key.charCodeAt(i)) >>> 0;
   return GRADIENTS[hash % GRADIENTS.length];
+}
+
+function formatDuration(duration) {
+  if (duration == null || duration === '') return null;
+  if (typeof duration === 'string') return duration;
+  const total = Number(duration);
+  if (!Number.isFinite(total)) return null;
+  return `${Math.floor(total / 60)}:${String(Math.round(total % 60)).padStart(2, '0')}`;
+}
+
+/** Tags shown under the winner — the inferred creative signals, as chips. */
+function creativeTags(video) {
+  return [
+    video.content_format,
+    video.sound_label,
+    video.content_hook ? `hook: ${video.content_hook}` : null,
+    video.content_angle,
+  ].filter(Boolean);
 }
 
 const PlayIcon = ({ w = 14, h = 16 }) => (
@@ -28,6 +47,10 @@ function embedFor(video) {
   if (video?.embed_url) return video.embed_url;
   const id = video?.video_id;
   return id ? `https://www.tiktok.com/player/v1/${id}?autoplay=1&description=0&rel=0` : null;
+}
+
+function playerIdOf(video) {
+  return String(video?.id ?? video?.video_id ?? '');
 }
 
 function Cover({ video }) {
@@ -51,12 +74,6 @@ function Cover({ video }) {
   );
 }
 
-function position(multiple, max) {
-  const n = Number(multiple);
-  if (!Number.isFinite(n) || n <= 0 || !max || max <= 0) return null;
-  return 2 + Math.min(n / max, 1) * 93;
-}
-
 function Avatar({ video, className }) {
   const [broken, setBroken] = useState(false);
 
@@ -65,27 +82,18 @@ function Avatar({ video, className }) {
   }
 
   return (
-    <img
-      className={className}
-      src={video.avatar}
-      alt=""
-      referrerPolicy="no-referrer"
-      onError={() => setBroken(true)}
-    />
+    <img className={className} src={video.avatar} alt="" referrerPolicy="no-referrer" onError={() => setBroken(true)} />
   );
 }
 
-function InlinePlayer({
-  video,
-  className,
-  buttonClassName = 'play',
-  iconProps = {},
-  activePlayerId = null,
-  onPlay = null,
-  onClose = null,
-}) {
+/**
+ * The play button that swaps the cover for the TikTok embed in place. Uses the
+ * signed `embed_url` (or a player URL built from the id); the raw `video_url`
+ * 403s from a browser origin, so it is never used here.
+ */
+function InlinePlayer({ video, className, buttonClassName = 'play', iconProps = {}, activePlayerId, onPlay, onClose }) {
   const embed = embedFor(video);
-  const playerId = String(video?.id ?? video?.video_id ?? '');
+  const playerId = playerIdOf(video);
   const playing = playerId !== '' && activePlayerId === playerId;
 
   if (playing && embed) {
@@ -122,40 +130,43 @@ function InlinePlayer({
   }
 
   return (
-    <button
-      type="button"
-      onClick={() => onPlay?.(playerId)}
-      aria-label={video?.title ? `Play: ${video.title}` : 'Play video'}
-      className={buttonClassName}
-    >
+    <button type="button" onClick={() => onPlay?.(playerId)} aria-label={video?.title ? `Play: ${video.title}` : 'Play video'} className={buttonClassName}>
       <PlayIcon {...iconProps} />
     </button>
   );
 }
 
-export function WinnerVideo({
-  video,
-  medianViews,
-  max,
-  onToggleBookmark,
-  bookmarking = false,
-  activePlayerId = null,
-  onPlay = null,
-  onClose = null,
-}) {
+export function WinnerVideo({ video, onToggleBookmark, onAnalyze, bookmarking = false, activePlayerId = null, onPlay = null, onClose = null }) {
   if (!video) return null;
 
-  const dot = position(video.outlier_multiple, max);
-  const median = position(1, max);
-  const packEnd = position(Math.min(2, max), max);
+  const playing = activePlayerId === playerIdOf(video);
   const rate = percent(video.engagement_rate);
+  const duration = formatDuration(video.duration);
+  const tags = creativeTags(video);
   const hasCreative = video.content_format || video.content_hook || video.content_angle;
 
   return (
     <div className="winner">
-      <div className="vid">
+      <div className={`vid${playing ? ' playing' : ''}`}>
         <Cover video={video} />
         <span className="flag">★ winner</span>
+        <span className="ovscrim" aria-hidden />
+        <div className="ovstats">
+          <div className="ovchip ovchip--score">
+            <span className="lab">
+              <i />
+              Outlier score
+            </span>
+            <span className="num">{outlierLabel(video.outlier_multiple) ?? '—'}</span>
+          </div>
+          <div className="ovchip ovchip--views">
+            <span className="lab">
+              <i />
+              Views
+            </span>
+            <span className="num">{compactNumber(video.views)}</span>
+          </div>
+        </div>
         <InlinePlayer
           video={video}
           className="absolute inset-0 h-full w-full border-0"
@@ -164,93 +175,72 @@ export function WinnerVideo({
           onPlay={onPlay}
           onClose={onClose}
         />
-        <span className="views-ov">▶ {compactNumber(video.views)}</span>
       </div>
 
       <div className="detail">
-        <div className="dtop">
-          <div className="bigscore">
-            <div className="n">{outlierLabel(video.outlier_multiple) ?? '—'}</div>
-            <div className="l">outlier score</div>
+        <div className="creator">
+          <Avatar video={video} className="av" />
+          <div style={{ minWidth: 0 }}>
+            <div className="cn">{video.handle ?? video.creator_name}</div>
+            <div className="cs">{video.uploaded_at ? relativeTime(video.uploaded_at) : 'date unknown'} · TikTok</div>
           </div>
+          {duration && <span className="durbadge">{duration}</span>}
+        </div>
 
-          {dot !== null && (
-            <div className="devbig">
-              <div className="track">
-                <div className="ln" />
-                <div className="pack" style={{ left: '2%', width: `${Math.max(packEnd - 2, 2)}%` }} />
-                <div className="med" style={{ left: `${median}%` }} />
-                <div className="pt" style={{ left: `${dot}%` }} />
-              </div>
-              <div className="cap">
-                <span>
-                  search median <b>{compactNumber(medianViews)}</b>
-                </span>
-                <span>
-                  this video <b>{compactNumber(video.views)}</b>
-                </span>
-              </div>
-            </div>
+        {video.title && <h3 style={{ marginTop: '12px' }}>{video.title}</h3>}
+
+        <div className="engrow">
+          <span>
+            <Heart /> {compactNumber(video.likes)}
+          </span>
+          <span>
+            <Comment /> {compactNumber(video.comments)}
+          </span>
+          <span>
+            <Share /> {compactNumber(video.shares)}
+          </span>
+          {rate && (
+            <span>
+              <Trend /> {rate} eng
+            </span>
           )}
         </div>
 
-        {video.title && <h3>{video.title}</h3>}
-
-        <div className="creator">
-          <Avatar video={video} className="av" />
-          <div>
-            <div className="cn">{video.handle ?? video.creator_name}</div>
-            <div className="cs">
-              {video.uploaded_at ? relativeTime(video.uploaded_at) : 'date unknown'} · TikTok
-            </div>
-            {video.sound_label && <div className="cs">{video.sound_label}</div>}
+        {tags.length > 0 && (
+          <div className="tagrow">
+            {tags.map((tag) => (
+              <span className="tag" key={tag}>
+                {tag}
+              </span>
+            ))}
           </div>
-        </div>
-
-        <div className="kv">
-          <div className="row">
-            <span className="k">views</span>
-            <span className="val mono">{compactNumber(video.views)}</span>
-          </div>
-          <div className="row">
-            <span className="k">engagement rate</span>
-            <span className={`val ${rate ? 'mono' : 'empty'}`}>{rate ?? '—'}</span>
-          </div>
-          <div className="row">
-            <span className="k">format</span>
-            <span className={`val ${video.content_format ? '' : 'empty'}`}>
-              {video.content_format ? <span className="tag">{video.content_format}</span> : '—'}
-            </span>
-          </div>
-          <div className="row">
-            <span className="k">sound</span>
-            <span className={`val ${video.sound_label ? '' : 'empty'}`}>
-              {video.sound_label ? <span className="tag">{video.sound_label}</span> : '—'}
-            </span>
-          </div>
-          <div className="row">
-            <span className="k">hook</span>
-            <span className={`val ${video.content_hook ? '' : 'empty'}`}>{video.content_hook ?? '—'}</span>
-          </div>
-          <div className="row">
-            <span className="k">angle</span>
-            <span className={`val ${video.content_angle ? '' : 'empty'}`}>{video.content_angle ?? '—'}</span>
-          </div>
-        </div>
+        )}
 
         {hasCreative && (
-          <p className="provnote" style={{ marginTop: '12px' }}>
+          <p className="provnote" style={{ marginTop: '10px' }}>
             Format, hook and angle are inferred from the caption, not the footage.
           </p>
         )}
 
         <div className="cta">
-          <a href={video.post_url} target="_blank" rel="noreferrer noopener" className="tbtn primary">
-            open in TikTok ↗
-          </a>
+          <button type="button" className="bb-analyze" onClick={() => onAnalyze?.(video)}>
+            <Search className="h-[15px] w-[15px]" /> Analyze video
+          </button>
+          {video.post_url && (
+            <a href={video.post_url} target="_blank" rel="noreferrer noopener" className="tbtn">
+              open in TikTok ↗
+            </a>
+          )}
           {onToggleBookmark && (
-            <button type="button" className="tbtn" onClick={() => onToggleBookmark(video)} disabled={bookmarking}>
-              {video.bookmarked ? 'saved to board' : 'save to board'}
+            <button
+              type="button"
+              className={`tbtn tbtn-ic${video.bookmarked ? ' is-saved' : ''}`}
+              onClick={() => onToggleBookmark(video)}
+              disabled={bookmarking}
+              title={video.bookmarked ? 'Saved to board' : 'Save to board'}
+              aria-label={video.bookmarked ? 'Saved to board' : 'Save to board'}
+            >
+              <Bookmark className="h-4 w-4" filled={Boolean(video.bookmarked)} />
             </button>
           )}
         </div>
@@ -259,34 +249,15 @@ export function WinnerVideo({
   );
 }
 
-export function OutlierCard({
-  video,
-  rank,
-  medianViews,
-  max,
-  onToggleBookmark,
-  bookmarking = false,
-  activePlayerId = null,
-  onPlay = null,
-  onClose = null,
-}) {
-  const dot = position(video.outlier_multiple, max);
-  const median = position(1, max);
-  const packEnd = position(Math.min(2, max), max);
-  const label = outlierLabel(video.outlier_multiple);
-  const hot = video.outlier_multiple >= 3;
+export function OutlierCard({ video, rank, onToggleBookmark, onAnalyze, bookmarking = false, activePlayerId = null, onPlay = null, onClose = null }) {
+  const rate = percent(video.engagement_rate);
+  const duration = formatDuration(video.duration);
 
   return (
-    <article className="card">
-      <div className="thumb">
+    <article className="bbcard">
+      <div className="bbthumb">
         <Cover video={video} />
-        <span className="rank">{String(rank).padStart(2, '0')}</span>
-        {label && (
-          <span className={`score-tag ${hot ? '' : 'mid'}`}>
-            <span className="num">{label}</span>
-            <span className="lbl">outlier</span>
-          </span>
-        )}
+        {rank != null && <span className="bbrank">{String(rank).padStart(2, '0')}</span>}
         <InlinePlayer
           video={video}
           className="absolute inset-0 z-10 h-full w-full border-0"
@@ -294,56 +265,77 @@ export function OutlierCard({
           onPlay={onPlay}
           onClose={onClose}
         />
-        <span className="views-ov">▶ {compactNumber(video.views)}</span>
       </div>
 
-      <div className="card-body">
-        {dot !== null && (
-          <div className="dev">
-            <div className="dev-track">
-              <div className="dev-line" />
-              <div className="dev-pack" style={{ left: '2%', width: `${Math.max(packEnd - 2, 2)}%` }} />
-              <div className="dev-median" style={{ left: `${median}%` }} />
-              <div className={`dev-pt ${hot ? '' : 'mid'}`} style={{ left: `${dot}%` }} />
-            </div>
-            <div className="dev-cap">
-              <span>
-                median <b>{compactNumber(medianViews)}</b>
-              </span>
-              <span>
-                <b>{label}</b> out
-              </span>
-            </div>
+      <div className="bbbody">
+        <div className="bbstats">
+          <div className="bbchip bbchip--score">
+            <span className="lab">
+              <i />
+              Outlier score
+            </span>
+            <span className="num">{outlierLabel(video.outlier_multiple) ?? '—'}</span>
           </div>
-        )}
+          <div className="bbchip bbchip--views">
+            <span className="lab">
+              <i />
+              Views
+            </span>
+            <span className="num">{compactNumber(video.views)}</span>
+          </div>
+        </div>
 
-        <div className="creator">
+        <div className="bbwho">
           <Avatar video={video} className="av" />
           <div style={{ minWidth: 0 }}>
             <div className="h2n">{video.handle ?? video.creator_name}</div>
             <div className="sub">{video.uploaded_at ? relativeTime(video.uploaded_at) : 'date unknown'}</div>
-            {video.sound_label && <div className="sub">{video.sound_label}</div>}
           </div>
+          {video.post_url && (
+            <a href={video.post_url} target="_blank" rel="noreferrer noopener" className="bbopen" title="Open in TikTok" aria-label="Open in TikTok">
+              <Arrow />
+            </a>
+          )}
         </div>
 
-        <div className="card-foot">
-          <span className="metric">
-            <b>{compactNumber(video.views)}</b> views
+        <div className="bbcap">
+          <p>{video.title || video.content_hook}</p>
+          {duration && <span className="bbdur">{duration}</span>}
+        </div>
+
+        <div className="bbeng">
+          <span>
+            <Heart /> {compactNumber(video.likes)}
           </span>
-          <span style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+          <span>
+            <Comment /> {compactNumber(video.comments)}
+          </span>
+          <span>
+            <Share /> {compactNumber(video.shares)}
+          </span>
+          {rate && (
+            <span>
+              <Trend /> {rate}
+            </span>
+          )}
+        </div>
+
+        <div className="bbact">
+          <button type="button" className="bb-analyze bb-analyze--sm" onClick={() => onAnalyze?.(video)}>
+            <Search className="h-[13px] w-[13px]" /> Analyze video
+          </button>
+          {onToggleBookmark && (
             <button
               type="button"
-              className="open"
-              onClick={() => onToggleBookmark?.(video)}
-              disabled={!onToggleBookmark || bookmarking}
-              title={video.bookmarked ? 'Remove from board' : 'Save to board'}
+              className={`tbtn tbtn-ic${video.bookmarked ? ' is-saved' : ''}`}
+              onClick={() => onToggleBookmark(video)}
+              disabled={bookmarking}
+              title={video.bookmarked ? 'Saved to board' : 'Save to board'}
+              aria-label={video.bookmarked ? 'Saved to board' : 'Save to board'}
             >
-              {video.bookmarked ? 'saved' : 'save'}
+              <Bookmark className="h-3.5 w-3.5" filled={Boolean(video.bookmarked)} />
             </button>
-            <a href={video.post_url} target="_blank" rel="noreferrer noopener" className="open">
-              open ↗
-            </a>
-          </span>
+          )}
         </div>
       </div>
     </article>

@@ -44,15 +44,20 @@ export function DeltaLine({ delta }) {
 
   const { value, unit, direction, reconstructed } = delta;
   const arrow = direction === 'up' ? '↑' : direction === 'down' ? '↓' : '→';
-  const suffix = unit === 'percent' ? '%' : unit === 'points' ? ' pts' : unit === 'multiple' ? 'x' : '';
+  const suffix = unit === 'percent' ? '%' : unit === 'points' ? 'pt' : unit === 'multiple' ? 'x' : '';
+
+  // Round to keep the line tidy (the mockup shows e.g. "↑ 4x", "↓ 0.6x"): whole
+  // numbers for anything ≥ 10, one decimal below that.
+  const magnitude = Math.abs(value);
+  const rounded = magnitude >= 10 ? Math.round(magnitude) : Math.round(magnitude * 10) / 10;
 
   return (
     <div
       className={`d ${direction === 'up' ? 'up' : direction === 'down' ? 'down' : 'flat'}`}
-      title={reconstructed ? 'Compared against a week rebuilt from upload dates' : 'Versus the previous week'}
+      title={reconstructed ? 'vs a week rebuilt from upload dates' : 'vs the previous week'}
     >
-      {arrow} {Math.abs(value)}
-      {suffix} wk{reconstructed ? ' ~' : ''}
+      {arrow} {rounded}
+      {suffix}
     </div>
   );
 }

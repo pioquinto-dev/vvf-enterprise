@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Str;
 
 class CustomKeywordSearch extends Model
 {
@@ -25,6 +26,31 @@ class CustomKeywordSearch extends Model
     public const TYPE_PRODUCT = 'product';
 
     protected $guarded = [];
+
+    protected static function booted(): void
+    {
+        // Every new search gets a random, non-guessable public id for its URL.
+        static::creating(function (self $search): void {
+            if (empty($search->public_id)) {
+                $search->public_id = self::generatePublicId();
+            }
+        });
+    }
+
+    public static function generatePublicId(): string
+    {
+        do {
+            $candidate = Str::lower(Str::random(12));
+        } while (self::withTrashed()->where('public_id', $candidate)->exists());
+
+        return $candidate;
+    }
+
+    /** Route-model binding and url() key on the public id, not the numeric PK. */
+    public function getRouteKeyName(): string
+    {
+        return 'public_id';
+    }
 
     protected function casts(): array
     {
@@ -109,6 +135,6 @@ class CustomKeywordSearch extends Model
 
     public function url(): string
     {
-        return '/bookmark/'.$this->id;
+        return '/results/'.($this->public_id ?? $this->id);
     }
 }

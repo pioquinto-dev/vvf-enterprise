@@ -1,6 +1,8 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 
 import { compactNumber, percent } from '../../../landing/flow/format.js';
+import { Bookmark, Share, Check, Dots } from '../../../landing/components/Icons.jsx';
 import { RebuiltBadge } from './Badges.jsx';
 
 const W = 560;
@@ -144,17 +146,80 @@ export function TrackerHead({
   search,
   account,
   lastRun,
+  nextRun,
   onToggleWatchlist,
   onShare,
+  onTogglePause,
+  onDelete,
   copied,
   watchlistUpdating,
 }) {
   const initial = (search?.name ?? '?').slice(0, 1).toUpperCase();
+  const paused = search?.status === 'paused';
+
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef(null);
+
+  useEffect(() => {
+    if (!menuOpen) return undefined;
+    const onDown = (e) => menuRef.current && !menuRef.current.contains(e.target) && setMenuOpen(false);
+    const onEsc = (e) => e.key === 'Escape' && setMenuOpen(false);
+    document.addEventListener('mousedown', onDown);
+    document.addEventListener('keydown', onEsc);
+    return () => {
+      document.removeEventListener('mousedown', onDown);
+      document.removeEventListener('keydown', onEsc);
+    };
+  }, [menuOpen]);
+
+  // null | 'pause' | 'delete' — the pending action awaiting confirmation.
+  const [confirm, setConfirm] = useState(null);
+
+  const openPause = () => {
+    setMenuOpen(false);
+    // Resuming is harmless, so it acts immediately; pausing asks first.
+    if (paused) onTogglePause?.();
+    else setConfirm('pause');
+  };
+
+  const openDelete = () => {
+    setMenuOpen(false);
+    setConfirm('delete');
+  };
+
+  const runConfirm = () => {
+    const action = confirm;
+    setConfirm(null);
+    if (action === 'pause') onTogglePause?.();
+    else if (action === 'delete') onDelete?.();
+  };
+
+  const meta = [
+    `checked ${search?.frequency ?? 'weekly'}`,
+    lastRun && `last run ${lastRun}`,
+    search?.status === 'paused' ? 'paused' : nextRun && `next refresh ${nextRun}`,
+  ]
+    .filter(Boolean)
+    .join(' · ');
+
+  const confirmCopy =
+    confirm === 'pause'
+      ? {
+          title: 'Pause Tracking?',
+          body: `We’ll stop refreshing “${search?.name}” until you resume it. The results you’ve already collected stay available.`,
+          cta: 'Pause Tracking',
+          danger: false,
+        }
+      : {
+          title: 'Delete Tracking?',
+          body: `This removes “${search?.name}” and stops all future runs. This can’t be undone.`,
+          cta: 'Delete Tracking',
+          danger: true,
+        };
 
   return (
-    <header>
-      <div className="crumb">trackers / {search?.search_type ?? 'brand'}</div>
-
+    <>
+      <header>
       <div className="brandrow">
         <span className="logo" title="brand logo">
           {account?.avatar ? <img src={account.avatar} alt="" referrerPolicy="no-referrer" /> : initial}
@@ -176,25 +241,92 @@ export function TrackerHead({
             )}
 
             <span className="sep" />
-            <span>
-              checked {search?.frequency ?? 'weekly'}
-              {lastRun ? ` · last run ${lastRun}` : ''}
-            </span>
+            <span>{meta}</span>
           </div>
         </div>
 
         <div className="head-actions">
           {onToggleWatchlist && (
-            <button className="tbtn" onClick={onToggleWatchlist} disabled={watchlistUpdating}>
-              {search?.is_watchlisted ? 'bookmarked' : 'add bookmark'}
+            <button
+              className={`tbtn tbtn-ic${search?.is_watchlisted ? ' is-saved' : ''}`}
+              onClick={onToggleWatchlist}
+              disabled={watchlistUpdating}
+              aria-pressed={Boolean(search?.is_watchlisted)}
+              title={search?.is_watchlisted ? 'Bookmarked' : 'Add bookmark'}
+              aria-label={search?.is_watchlisted ? 'Bookmarked' : 'Add bookmark'}
+            >
+              <Bookmark className="h-4 w-4" filled={Boolean(search?.is_watchlisted)} />
             </button>
           )}
-          <button className="tbtn primary" onClick={onShare}>
-            {copied ? 'link copied' : 'share'}
+          <button
+            className="tbtn tbtn-ic"
+            onClick={onShare}
+            title={copied ? 'Link copied' : 'Share'}
+            aria-label={copied ? 'Link copied' : 'Share'}
+          >
+            {copied ? <Check className="h-4 w-4" /> : <Share className="h-4 w-4" />}
           </button>
+
+          {(onTogglePause || onDelete) && (
+            <span className="tk-menu" ref={menuRef}>
+              <button
+                className="tbtn tbtn-ic"
+                onClick={() => setMenuOpen((open) => !open)}
+                aria-haspopup="menu"
+                aria-expanded={menuOpen}
+                title="More actions"
+                aria-label="More actions"
+              >
+                <Dots className="h-4 w-4" />
+              </button>
+              {menuOpen && (
+                <div className="menu" role="menu">
+                  {onTogglePause && (
+                    <button type="button" role="menuitem" onClick={openPause}>
+                      {paused ? 'Resume Tracking' : 'Pause Tracking'}
+                    </button>
+                  )}
+                  {onDelete && (
+                    <button type="button" role="menuitem" className="danger" onClick={openDelete}>
+                      Delete Tracking
+                    </button>
+                  )}
+                </div>
+              )}
+            </span>
+          )}
         </div>
       </div>
-    </header>
+      </header>
+
+      {confirm &&
+        typeof document !== 'undefined' &&
+        createPortal(
+          <div className="bb">
+            <div className="bb-modal">
+              <button className="bb-modal__bg" aria-label="Cancel" onClick={() => setConfirm(null)} />
+              <div className="bb-modal__box">
+                <h2 style={confirmCopy.danger ? { color: 'var(--warn)' } : undefined}>{confirmCopy.title}</h2>
+                <p className="sub">{confirmCopy.body}</p>
+                <div className="actrow__r" style={{ marginTop: 24, justifyContent: 'flex-end' }}>
+                  <button type="button" className="btn btn--g" onClick={() => setConfirm(null)}>
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn--y"
+                    style={confirmCopy.danger ? { color: 'var(--warn)', borderColor: '#F0D6C8', background: 'var(--warn-bg)', boxShadow: 'none' } : undefined}
+                    onClick={runConfirm}
+                  >
+                    {confirmCopy.cta}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>,
+          document.body
+        )}
+    </>
   );
 }
 

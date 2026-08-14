@@ -18,6 +18,9 @@ Route::middleware('auth')->group(function (): void {
     Route::get('/plans', [SettingsController::class, 'plans'])->name('plans');
 });
 
-Route::get('/bookmark/{id}', [SavedSearchController::class, 'show'])
+Route::get('/results/{search}', [SavedSearchController::class, 'show'])->name('results.show');
+
+// Legacy numeric detail links redirect to the canonical /results/{public_id}.
+Route::get('/bookmark/{id}', [SavedSearchController::class, 'showLegacyRedirect'])
     ->whereNumber('id')
     ->name('bookmark.show');
