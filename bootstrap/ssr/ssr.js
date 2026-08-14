@@ -15,24 +15,246 @@ var __exportAll = (all, no_symbols) => {
 	return target;
 };
 //#endregion
+//#region resources/js/components/admin/AdminTrendChart.jsx
+/**
+* Hand-rolled SVG line chart. The admin bundle has no charting dependency and
+* a handful of series over a year of points does not justify adding one.
+*/
+var SERIES = [
+	{
+		key: "signups",
+		label: "Sign ups",
+		color: "#ff2d78"
+	},
+	{
+		key: "trialing",
+		label: "Trialing",
+		color: "#f5c518"
+	},
+	{
+		key: "paid",
+		label: "Active paid",
+		color: "#6d8bff"
+	}
+];
+var WIDTH = 960;
+var HEIGHT = 300;
+var PAD = {
+	top: 16,
+	right: 12,
+	bottom: 26,
+	left: 30
+};
+function niceMax(value) {
+	if (value <= 4) return 4;
+	const magnitude = 10 ** Math.floor(Math.log10(value));
+	return Math.ceil(value / magnitude) * magnitude;
+}
+/**
+* Catmull-Rom through the points, converted to cubic beziers. This is what
+* gives the reference look its soft peaks instead of hard polyline corners.
+*/
+function smoothPath(coords) {
+	if (coords.length === 0) return "";
+	if (coords.length < 3) return coords.map(([x, y], index) => `${index === 0 ? "M" : "L"}${x},${y}`).join(" ");
+	let path = `M${coords[0][0]},${coords[0][1]}`;
+	for (let i = 0; i < coords.length - 1; i += 1) {
+		const p0 = coords[i - 1] ?? coords[i];
+		const p1 = coords[i];
+		const p2 = coords[i + 1];
+		const p3 = coords[i + 2] ?? p2;
+		const c1x = p1[0] + (p2[0] - p0[0]) / 6;
+		const c1y = p1[1] + (p2[1] - p0[1]) / 6;
+		const c2x = p2[0] - (p3[0] - p1[0]) / 6;
+		const c2y = p2[1] - (p3[1] - p1[1]) / 6;
+		path += ` C${c1x},${c1y} ${c2x},${c2y} ${p2[0]},${p2[1]}`;
+	}
+	return path;
+}
+function AdminTrendChart({ points = [] }) {
+	const [hidden, setHidden] = useState({});
+	const [hoverIndex, setHoverIndex] = useState(null);
+	const visible = SERIES.filter((series) => !hidden[series.key]);
+	const { max, xFor, yFor, plotWidth, baseline } = useMemo(() => {
+		const ceiling = niceMax(points.reduce((peak, point) => visible.reduce((inner, series) => Math.max(inner, point[series.key] ?? 0), peak), 0));
+		const innerWidth = WIDTH - PAD.left - PAD.right;
+		const innerHeight = HEIGHT - PAD.top - PAD.bottom;
+		const step = points.length > 1 ? innerWidth / (points.length - 1) : 0;
+		return {
+			max: ceiling,
+			plotWidth: innerWidth,
+			baseline: PAD.top + innerHeight,
+			xFor: (index) => PAD.left + index * step,
+			yFor: (value) => PAD.top + innerHeight - (ceiling === 0 ? 0 : value / ceiling * innerHeight)
+		};
+	}, [points, visible]);
+	if (points.length === 0) return /* @__PURE__ */ jsx("p", {
+		className: "px-4 py-16 text-center text-[13px] text-white/45",
+		children: "No snapshots captured yet."
+	});
+	const gridLines = [
+		0,
+		.25,
+		.5,
+		.75,
+		1
+	];
+	const active = hoverIndex === null ? null : points[hoverIndex];
+	const labelEvery = Math.max(1, Math.ceil(points.length / 14));
+	return /* @__PURE__ */ jsxs("div", { children: [
+		/* @__PURE__ */ jsx("div", {
+			className: "mb-4 flex flex-wrap items-center gap-2",
+			children: SERIES.map((series) => {
+				const off = hidden[series.key];
+				return /* @__PURE__ */ jsx("button", {
+					type: "button",
+					onClick: () => setHidden((current) => ({
+						...current,
+						[series.key]: !current[series.key]
+					})),
+					className: "rounded-full border px-2.5 py-1 text-[10.5px] font-semibold tracking-[.1em] uppercase transition",
+					style: {
+						borderColor: off ? "rgba(255,255,255,.1)" : `${series.color}66`,
+						color: off ? "rgba(255,255,255,.28)" : series.color,
+						backgroundColor: off ? "transparent" : `${series.color}14`
+					},
+					children: series.label
+				}, series.key);
+			})
+		}),
+		/* @__PURE__ */ jsxs("svg", {
+			viewBox: `0 0 ${WIDTH} ${HEIGHT}`,
+			className: "h-[300px] w-full",
+			onMouseLeave: () => setHoverIndex(null),
+			onMouseMove: (event) => {
+				const bounds = event.currentTarget.getBoundingClientRect();
+				const ratio = (event.clientX - bounds.left) / bounds.width * WIDTH;
+				const index = Math.round((ratio - PAD.left) / plotWidth * (points.length - 1));
+				setHoverIndex(Math.min(points.length - 1, Math.max(0, index)));
+			},
+			children: [
+				/* @__PURE__ */ jsx("defs", { children: SERIES.map((series) => /* @__PURE__ */ jsxs("linearGradient", {
+					id: `fill-${series.key}`,
+					x1: "0",
+					y1: "0",
+					x2: "0",
+					y2: "1",
+					children: [/* @__PURE__ */ jsx("stop", {
+						offset: "0%",
+						stopColor: series.color,
+						stopOpacity: "0.22"
+					}), /* @__PURE__ */ jsx("stop", {
+						offset: "100%",
+						stopColor: series.color,
+						stopOpacity: "0"
+					})]
+				}, series.key)) }),
+				gridLines.map((ratio) => {
+					const y = PAD.top + (HEIGHT - PAD.top - PAD.bottom) * ratio;
+					return /* @__PURE__ */ jsxs("g", { children: [/* @__PURE__ */ jsx("line", {
+						x1: PAD.left,
+						x2: WIDTH - PAD.right,
+						y1: y,
+						y2: y,
+						stroke: "rgba(255,255,255,.05)"
+					}), /* @__PURE__ */ jsx("text", {
+						x: 0,
+						y: y + 3,
+						fill: "rgba(255,255,255,.3)",
+						fontSize: "10",
+						children: Math.round(max * (1 - ratio))
+					})] }, ratio);
+				}),
+				visible.map((series) => {
+					const coords = points.map((point, index) => [xFor(index), yFor(point[series.key] ?? 0)]);
+					const line = smoothPath(coords);
+					return /* @__PURE__ */ jsxs("g", { children: [/* @__PURE__ */ jsx("path", {
+						d: `${line} L${coords[coords.length - 1][0]},${baseline} L${coords[0][0]},${baseline} Z`,
+						fill: `url(#fill-${series.key})`
+					}), /* @__PURE__ */ jsx("path", {
+						d: line,
+						fill: "none",
+						stroke: series.color,
+						strokeWidth: "2.25",
+						strokeLinecap: "round"
+					})] }, series.key);
+				}),
+				hoverIndex !== null && /* @__PURE__ */ jsxs("g", { children: [/* @__PURE__ */ jsx("line", {
+					x1: xFor(hoverIndex),
+					x2: xFor(hoverIndex),
+					y1: PAD.top,
+					y2: baseline,
+					stroke: "rgba(255,255,255,.2)"
+				}), visible.map((series) => /* @__PURE__ */ jsx("circle", {
+					cx: xFor(hoverIndex),
+					cy: yFor(points[hoverIndex][series.key] ?? 0),
+					r: "3.5",
+					fill: "#0b0e1c",
+					stroke: series.color,
+					strokeWidth: "2"
+				}, series.key))] }),
+				points.map((point, index) => index % labelEvery === 0 ? /* @__PURE__ */ jsx("text", {
+					x: xFor(index),
+					y: 292,
+					fill: "rgba(255,255,255,.3)",
+					fontSize: "9.5",
+					textAnchor: "middle",
+					children: point.label
+				}, point.date) : null)
+			]
+		}),
+		/* @__PURE__ */ jsx("div", {
+			className: "mt-2 flex min-h-[18px] flex-wrap items-center gap-4 text-[12px] text-white/55",
+			children: active && /* @__PURE__ */ jsxs(Fragment, { children: [/* @__PURE__ */ jsx("span", {
+				className: "font-medium text-white/80",
+				children: active.label
+			}), visible.map((series) => /* @__PURE__ */ jsxs("span", { children: [
+				/* @__PURE__ */ jsx("span", {
+					style: { color: series.color },
+					children: series.label
+				}),
+				" ",
+				/* @__PURE__ */ jsx("span", {
+					className: "text-white",
+					children: active[series.key]
+				})
+			] }, series.key))] })
+		})
+	] });
+}
+//#endregion
 //#region resources/js/landing/components/Icons.jsx
 var Logo = ({ className = "h-7 w-7" }) => /* @__PURE__ */ jsxs("svg", {
-	viewBox: "0 0 24 24",
+	viewBox: "0 0 32 32",
 	fill: "none",
 	className,
 	"aria-hidden": "true",
-	children: [/* @__PURE__ */ jsx("rect", {
-		width: "24",
-		height: "24",
-		rx: "7",
-		fill: "#5b34f5"
-	}), /* @__PURE__ */ jsx("path", {
-		d: "M5 15.5 L9 10.5 L12 13 L16 6.5 L19 9.5",
-		stroke: "#fff",
-		strokeWidth: "2.1",
-		strokeLinecap: "round",
-		strokeLinejoin: "round"
-	})]
+	children: [
+		/* @__PURE__ */ jsx("rect", {
+			width: "32",
+			height: "32",
+			rx: "10",
+			fill: "#FFC629"
+		}),
+		/* @__PURE__ */ jsx("circle", {
+			cx: "16",
+			cy: "16",
+			r: "3.1",
+			fill: "#1A1400"
+		}),
+		/* @__PURE__ */ jsx("path", {
+			d: "M21 11.6a6.2 6.2 0 0 1 0 8.8M11 11.6a6.2 6.2 0 0 0 0 8.8",
+			stroke: "#1A1400",
+			strokeWidth: "2.5",
+			strokeLinecap: "round"
+		}),
+		/* @__PURE__ */ jsx("path", {
+			d: "M25.2 7.6a11.9 11.9 0 0 1 0 16.8M6.8 7.6a11.9 11.9 0 0 0 0 16.8",
+			stroke: "#1A1400",
+			strokeWidth: "2.5",
+			strokeLinecap: "round"
+		})
+	]
 });
 var Sun = ({ className = "h-4 w-4" }) => /* @__PURE__ */ jsxs("svg", {
 	viewBox: "0 0 24 24",
@@ -476,6 +698,13 @@ var NAV_GROUPS = [
 				icon: "SE"
 			},
 			{
+				key: "inquiries",
+				label: "Inquiries",
+				href: "/x/admin/inquiries",
+				description: "Contact inbox",
+				icon: "IN"
+			},
+			{
 				key: "plans",
 				label: "Plans",
 				href: "/x/admin/plans",
@@ -511,27 +740,69 @@ var NAV_GROUPS = [
 		}]
 	}
 ];
+function defaultExpandedState(currentPath, section) {
+	return NAV_GROUPS.reduce((state, group) => {
+		if (!group.label) return state;
+		state[group.label] = group.items.some((item) => section === item.key || currentPath === item.href);
+		return state;
+	}, {});
+}
 function NavItem({ item, active, onNavigate }) {
 	return /* @__PURE__ */ jsxs(Link, {
 		href: item.href,
 		onClick: onNavigate,
-		className: `group flex items-center gap-3 rounded-2xl border px-3 py-3 transition ${active ? "border-accent/45 bg-linear-to-r from-[#26194b] to-[#15172e] text-white shadow-[0_18px_46px_-28px_rgba(109,75,255,.95)]" : "border-transparent text-white/82 hover:border-white/8 hover:bg-white/[.04]"}`,
+		className: `group flex items-center gap-2.5 rounded-lg px-2.5 py-2 transition ${active ? "bg-white/[.07] text-white" : "text-white/65 hover:bg-white/[.04] hover:text-white"}`,
 		children: [/* @__PURE__ */ jsx("span", {
-			className: `flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-[11px] font-bold tracking-[.14em] ${active ? "bg-hot text-white" : "bg-white/[.06] text-white/65"}`,
+			className: `flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-[10px] font-semibold tracking-[.06em] ${active ? "bg-hot text-white" : "bg-white/[.06] text-white/55"}`,
 			children: item.icon
-		}), /* @__PURE__ */ jsxs("span", {
-			className: "min-w-0",
-			children: [/* @__PURE__ */ jsx("span", {
-				className: "block text-[14px] font-semibold",
-				children: item.label
-			}), /* @__PURE__ */ jsx("span", {
-				className: "mt-0.5 block text-[11px] text-white/48",
-				children: item.description
-			})]
+		}), /* @__PURE__ */ jsx("span", {
+			className: "min-w-0 truncate text-[13px] font-medium",
+			children: item.label
 		})]
 	});
 }
-function Sidebar({ currentPath, section, onNavigate }) {
+function SidebarAccount({ adminUser, onSignOut }) {
+	return /* @__PURE__ */ jsx("div", {
+		className: "mt-4 shrink-0 border-t border-white/[.08] pt-3",
+		children: /* @__PURE__ */ jsxs("button", {
+			type: "button",
+			onClick: onSignOut,
+			className: "flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-white/70 transition hover:bg-white/[.04] hover:text-white",
+			children: [/* @__PURE__ */ jsx("span", {
+				className: "flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-white/[.06]",
+				children: /* @__PURE__ */ jsx(Exit, { className: "h-3.5 w-3.5 text-[#f28aa7]" })
+			}), /* @__PURE__ */ jsxs("span", {
+				className: "min-w-0",
+				children: [/* @__PURE__ */ jsx("span", {
+					className: "block text-[13px] font-medium",
+					children: "Log out"
+				}), /* @__PURE__ */ jsx("span", {
+					className: "block truncate text-[11px] text-white/35",
+					children: adminUser?.email ?? "Admin session"
+				})]
+			})]
+		})
+	});
+}
+function Sidebar({ currentPath, section, onNavigate, closable = false, adminUser, onSignOut }) {
+	const [expandedGroups, setExpandedGroups] = useState(() => defaultExpandedState(currentPath, section));
+	useEffect(() => {
+		setExpandedGroups((current) => {
+			const next = { ...current };
+			NAV_GROUPS.forEach((group) => {
+				if (!group.label) return;
+				if (group.items.some((item) => section === item.key || currentPath === item.href)) next[group.label] = true;
+				else if (!(group.label in next)) next[group.label] = false;
+			});
+			return next;
+		});
+	}, [currentPath, section]);
+	const toggleGroup = (label) => {
+		setExpandedGroups((current) => ({
+			...current,
+			[label]: !current[label]
+		}));
+	};
 	return /* @__PURE__ */ jsxs("div", {
 		className: "flex h-full flex-col",
 		children: [/* @__PURE__ */ jsxs("div", {
@@ -539,41 +810,60 @@ function Sidebar({ currentPath, section, onNavigate }) {
 			children: [/* @__PURE__ */ jsxs(Link, {
 				href: "/x/admin",
 				onClick: onNavigate,
-				className: "flex items-center gap-3",
-				children: [/* @__PURE__ */ jsx(Logo, { className: "h-10 w-10" }), /* @__PURE__ */ jsxs("span", {
+				className: "flex items-center gap-2.5",
+				children: [/* @__PURE__ */ jsx(Logo, { className: "h-8 w-8" }), /* @__PURE__ */ jsxs("span", {
 					className: "leading-none",
 					children: [/* @__PURE__ */ jsx("span", {
-						className: "block text-[16px] font-bold tracking-[.28em] text-white uppercase",
+						className: "block text-[13px] font-bold tracking-[.22em] text-white uppercase",
 						children: "Admin"
 					}), /* @__PURE__ */ jsx("span", {
-						className: "mt-1 block text-[11px] text-white/45",
+						className: "mt-0.5 block text-[10px] text-white/35",
 						children: "Operations cockpit"
 					})]
 				})]
-			}), /* @__PURE__ */ jsx("span", {
-				className: "flex h-9 w-9 items-center justify-center rounded-xl border border-white/[.08] text-white/45",
+			}), closable ? /* @__PURE__ */ jsx("button", {
+				type: "button",
+				"aria-label": "Close menu",
+				onClick: onNavigate,
+				className: "flex h-9 w-9 items-center justify-center rounded-xl border border-white/[.08] text-white/45 transition hover:bg-white/[.05] hover:text-white",
 				children: /* @__PURE__ */ jsx(Close, { className: "h-4 w-4" })
+			}) : null]
+		}), /* @__PURE__ */ jsxs("div", {
+			className: "mt-6 flex min-h-0 flex-1 flex-col",
+			children: [/* @__PURE__ */ jsx("div", {
+				className: "min-h-0 flex-1 space-y-4 overflow-y-auto pr-1",
+				children: NAV_GROUPS.map((group) => /* @__PURE__ */ jsx("section", {
+					className: "space-y-1",
+					children: group.label ? /* @__PURE__ */ jsxs(Fragment, { children: [/* @__PURE__ */ jsxs("button", {
+						type: "button",
+						onClick: () => toggleGroup(group.label),
+						className: "flex w-full items-center justify-between gap-3 px-2 text-left px-2.5 py-1 text-[10px] font-semibold tracking-[.14em] text-white/30 uppercase transition hover:text-white/58",
+						"aria-expanded": expandedGroups[group.label] === true,
+						children: [/* @__PURE__ */ jsx("span", { children: group.label }), /* @__PURE__ */ jsx(Chevron, { className: `h-3.5 w-3.5 transition ${expandedGroups[group.label] ? "rotate-180 text-white/45" : "text-white/25"}` })]
+					}), expandedGroups[group.label] && /* @__PURE__ */ jsx("div", {
+						className: "space-y-0.5",
+						children: group.items.map((item) => /* @__PURE__ */ jsx(NavItem, {
+							item,
+							active: section === item.key || currentPath === item.href,
+							onNavigate
+						}, item.key))
+					})] }) : /* @__PURE__ */ jsx("div", {
+						className: "space-y-0.5",
+						children: group.items.map((item) => /* @__PURE__ */ jsx(NavItem, {
+							item,
+							active: section === item.key || currentPath === item.href,
+							onNavigate
+						}, item.key))
+					})
+				}, group.label ?? "top"))
+			}), /* @__PURE__ */ jsx(SidebarAccount, {
+				adminUser,
+				onSignOut
 			})]
-		}), /* @__PURE__ */ jsx("div", {
-			className: "mt-6 space-y-6",
-			children: NAV_GROUPS.map((group) => /* @__PURE__ */ jsxs("section", {
-				className: "space-y-3",
-				children: [group.label && /* @__PURE__ */ jsx("div", {
-					className: "px-2 text-[10px] font-semibold tracking-[.26em] text-white/32 uppercase",
-					children: group.label
-				}), /* @__PURE__ */ jsx("div", {
-					className: "space-y-2",
-					children: group.items.map((item) => /* @__PURE__ */ jsx(NavItem, {
-						item,
-						active: section === item.key || currentPath === item.href,
-						onNavigate
-					}, item.key))
-				})]
-			}, group.label ?? "top"))
 		})]
 	});
 }
-function AdminLayout({ title, section, children, toolbar = null }) {
+function AdminLayout({ title, section, children, toolbar = null, actions = null, showHeader = true }) {
 	const { props, url } = usePage();
 	const logout = useForm({});
 	const [drawerOpen, setDrawerOpen] = useState(false);
@@ -597,20 +887,23 @@ function AdminLayout({ title, section, children, toolbar = null }) {
 		setDrawerOpen(false);
 		logout.post("/x/admin/logout");
 	};
+	const breadcrumbGroup = useMemo(() => NAV_GROUPS.find((group) => group.items.some((item) => section === item.key || currentPath === item.href))?.label ?? null, [currentPath, section]);
 	return /* @__PURE__ */ jsxs("div", {
 		className: "admin-shell min-h-screen bg-[#0a0c18] text-white",
 		children: [
 			/* @__PURE__ */ jsx(Head, { title: `${title} - Admin - Outlier Vault` }),
-			/* @__PURE__ */ jsxs("div", {
+			/* @__PURE__ */ jsx("div", {
 				"aria-hidden": true,
 				className: "pointer-events-none fixed inset-0 overflow-hidden",
-				children: [/* @__PURE__ */ jsx("div", { className: "absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(109,75,255,.14),_transparent_34%),linear-gradient(180deg,_rgba(255,255,255,.02),_rgba(255,255,255,0))]" }), /* @__PURE__ */ jsx("div", { className: "absolute inset-y-0 left-0 w-[320px] border-r border-white/[.05] bg-[linear-gradient(180deg,_rgba(255,255,255,.03),_rgba(255,255,255,0))]" })]
+				children: /* @__PURE__ */ jsx("div", { className: "absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(109,75,255,.07),_transparent_42%)]" })
 			}),
 			/* @__PURE__ */ jsx("aside", {
-				className: "fixed inset-y-0 left-0 z-40 hidden w-[300px] border-r border-white/[.06] bg-[#0d1020]/96 px-4 py-5 backdrop-blur-xl lg:block",
+				className: "fixed inset-y-0 left-0 z-40 hidden w-[248px] bg-[#0d1020] px-3 py-4 backdrop-blur-xl lg:block",
 				children: /* @__PURE__ */ jsx(Sidebar, {
 					currentPath,
-					section
+					section,
+					adminUser,
+					onSignOut: signOut
 				})
 			}),
 			/* @__PURE__ */ jsx("header", {
@@ -643,66 +936,67 @@ function AdminLayout({ title, section, children, toolbar = null }) {
 					onClick: () => setDrawerOpen(false),
 					className: "absolute inset-0 bg-black/60 backdrop-blur-sm"
 				}), /* @__PURE__ */ jsx("div", {
-					className: "absolute top-0 left-0 h-full w-[290px] border-r border-white/[.06] bg-[#0d1020] px-4 py-5",
+					className: "absolute top-0 left-0 h-full w-[min(290px,88vw)] border-r border-white/[.06] bg-[#0d1020] px-4 py-5",
 					children: /* @__PURE__ */ jsx(Sidebar, {
 						currentPath,
 						section,
-						onNavigate: () => setDrawerOpen(false)
+						onNavigate: () => setDrawerOpen(false),
+						closable: true,
+						adminUser,
+						onSignOut: signOut
 					})
 				})]
 			}),
-			/* @__PURE__ */ jsx("div", {
-				className: "relative lg:pl-[300px]",
-				children: /* @__PURE__ */ jsx("main", {
-					className: "px-4 py-6 sm:px-6 lg:px-8 lg:py-8",
+			/* @__PURE__ */ jsxs("div", {
+				className: "relative lg:pl-[248px]",
+				children: [/* @__PURE__ */ jsxs("div", {
+					className: "sticky top-0 z-30 hidden h-11 items-center justify-between border-b border-white/[.06] bg-[#0a0c18]/85 px-7 backdrop-blur-xl lg:flex",
+					children: [/* @__PURE__ */ jsxs("nav", {
+						"aria-label": "Breadcrumb",
+						className: "flex items-center gap-1.5 text-[12px] text-white/35",
+						children: [
+							/* @__PURE__ */ jsx(Link, {
+								href: "/x/admin",
+								className: "transition hover:text-white/70",
+								children: "Admin"
+							}),
+							breadcrumbGroup && /* @__PURE__ */ jsxs(Fragment, { children: [/* @__PURE__ */ jsx("span", {
+								className: "text-white/20",
+								children: "/"
+							}), /* @__PURE__ */ jsx("span", { children: breadcrumbGroup })] }),
+							/* @__PURE__ */ jsx("span", {
+								className: "text-white/20",
+								children: "/"
+							}),
+							/* @__PURE__ */ jsx("span", {
+								className: "font-medium text-white/75",
+								children: title
+							})
+						]
+					}), /* @__PURE__ */ jsxs("span", {
+						className: "flex items-center gap-2 text-[11.5px] text-white/35",
+						children: [/* @__PURE__ */ jsx("span", { className: "h-1.5 w-1.5 rounded-full bg-emerald-400" }), adminUser?.email ?? "Admin session"]
+					})]
+				}), /* @__PURE__ */ jsx("main", {
+					className: "px-4 py-5 sm:px-6 lg:px-7 lg:py-6",
 					children: /* @__PURE__ */ jsxs("div", {
 						className: "mx-auto max-w-7xl",
 						children: [
-							/* @__PURE__ */ jsxs("div", {
-								className: "mb-6 flex flex-col gap-4 rounded-[28px] border border-white/[.06] bg-white/[.03] px-5 py-5 shadow-[0_24px_80px_-42px_rgba(0,0,0,.9)] sm:px-6 lg:flex-row lg:items-center lg:justify-between",
-								children: [/* @__PURE__ */ jsxs("div", { children: [
-									/* @__PURE__ */ jsxs("div", {
-										className: "mb-2 inline-flex items-center gap-2 rounded-full border border-white/[.08] bg-white/[.03] px-3 py-1 text-[11px] font-semibold tracking-[.18em] text-white/55 uppercase",
-										children: [/* @__PURE__ */ jsx(Spark, { className: "h-3.5 w-3.5" }), "Admin Workspace"]
-									}),
-									/* @__PURE__ */ jsx("h1", {
-										className: "text-[28px] font-bold tracking-[-.04em] text-white sm:text-[34px]",
-										children: title
-									}),
-									/* @__PURE__ */ jsx("p", {
-										className: "mt-1 text-[13px] text-white/48",
-										children: "Dark-mode control surface for internal operations."
-									})
-								] }), /* @__PURE__ */ jsxs("div", {
-									className: "flex flex-wrap items-center gap-3",
-									children: [/* @__PURE__ */ jsxs("div", {
-										className: "flex items-center gap-3 rounded-2xl border border-white/[.08] bg-black/20 px-3 py-2.5",
-										children: [/* @__PURE__ */ jsx("span", {
-											className: "flex h-10 w-10 items-center justify-center rounded-xl bg-white/[.05]",
-											children: /* @__PURE__ */ jsx(User, { className: "h-4 w-4 text-white/70" })
-										}), /* @__PURE__ */ jsxs("span", { children: [/* @__PURE__ */ jsx("span", {
-											className: "block text-[13px] font-semibold text-white",
-											children: adminUser?.name ?? "Admin"
-										}), /* @__PURE__ */ jsx("span", {
-											className: "block text-[11px] text-white/42",
-											children: adminUser?.email ?? "Signed in"
-										})] })]
-									}), /* @__PURE__ */ jsxs("button", {
-										type: "button",
-										onClick: signOut,
-										className: "inline-flex h-11 items-center gap-2 rounded-2xl border border-white/[.08] bg-white/[.03] px-4 text-[13px] font-semibold text-white transition hover:bg-white/[.07]",
-										children: [/* @__PURE__ */ jsx(Exit, { className: "h-4 w-4" }), "Logout"]
-									})]
-								})]
+							showHeader && /* @__PURE__ */ jsxs("div", {
+								className: "mb-4 flex flex-wrap items-center justify-between gap-3 px-1 sm:px-0",
+								children: [/* @__PURE__ */ jsx("h1", {
+									className: "text-[20px] font-semibold tracking-[-.02em] text-white sm:text-[22px]",
+									children: title
+								}), actions]
 							}),
 							toolbar && /* @__PURE__ */ jsx("div", {
-								className: "mb-5",
+								className: "mb-3",
 								children: toolbar
 							}),
 							children
 						]
 					})
-				})
+				})]
 			})
 		]
 	});
@@ -710,30 +1004,199 @@ function AdminLayout({ title, section, children, toolbar = null }) {
 //#endregion
 //#region resources/js/Pages/Admin/Dashboard.jsx
 var Dashboard_exports$1 = /* @__PURE__ */ __exportAll({ default: () => Dashboard$1 });
-function Dashboard$1() {
-	return /* @__PURE__ */ jsx(AdminLayout, {
+function formatDay(value) {
+	if (!value) return "—";
+	return (/* @__PURE__ */ new Date(`${value}T00:00:00Z`)).toLocaleDateString(void 0, {
+		month: "short",
+		day: "numeric",
+		year: "numeric",
+		timeZone: "UTC"
+	});
+}
+function StatCard({ card }) {
+	const delta = card.delta;
+	return /* @__PURE__ */ jsxs("div", {
+		className: "rounded-xl border border-white/[.07] bg-[#0f1220] px-3.5 py-3",
+		children: [
+			/* @__PURE__ */ jsx("p", {
+				className: "text-[10px] font-semibold tracking-[.16em] text-white/38 uppercase",
+				children: card.label
+			}),
+			/* @__PURE__ */ jsx("p", {
+				className: "mt-2 text-[26px] leading-none font-bold tracking-[-.02em] text-white",
+				children: card.value.toLocaleString()
+			}),
+			/* @__PURE__ */ jsx("p", {
+				className: "mt-2 text-[11px] text-white/38",
+				children: typeof delta === "number" && delta !== 0 ? /* @__PURE__ */ jsxs("span", {
+					className: delta > 0 ? "text-emerald-300" : "text-rose-300",
+					children: [
+						delta > 0 ? "↑" : "↓",
+						" ",
+						Math.abs(delta).toLocaleString(),
+						" vs prev"
+					]
+				}) : card.caption
+			})
+		]
+	});
+}
+function Dashboard$1({ trend = [], stats = [], snapshot = {}, range = "30D", ranges = [] }) {
+	const refresh = useForm({});
+	const selectRange = (next) => {
+		router.get("/x/admin", { range: next }, {
+			preserveScroll: true,
+			preserveState: true,
+			replace: true
+		});
+	};
+	return /* @__PURE__ */ jsxs(AdminLayout, {
 		title: "Dashboard",
 		section: "dashboard",
-		children: /* @__PURE__ */ jsx("section", {
-			className: "rounded-[30px] border border-dashed border-white/[.12] bg-white/[.025] px-6 py-20 text-center shadow-[inset_0_1px_0_rgba(255,255,255,.02)]",
-			children: /* @__PURE__ */ jsxs("div", {
-				className: "mx-auto max-w-xl",
+		showHeader: false,
+		children: [
+			/* @__PURE__ */ jsxs("section", {
+				className: "rounded-2xl border border-white/[.07] bg-[linear-gradient(115deg,_#141033_0%,_#0f1326_45%,_#0b1020_100%)] px-5 py-5",
 				children: [
 					/* @__PURE__ */ jsx("p", {
-						className: "text-[11px] font-semibold tracking-[.22em] text-white/38 uppercase",
-						children: "Placeholder"
+						className: "text-[10px] font-semibold tracking-[.22em] text-hot uppercase",
+						children: "Admin dashboard"
 					}),
 					/* @__PURE__ */ jsx("h2", {
-						className: "mt-3 text-[30px] font-bold tracking-[-.04em] text-white",
-						children: "Dashboard is intentionally empty for now"
+						className: "mt-1.5 text-[26px] font-bold tracking-[-.03em] text-white",
+						children: "Admin Dashboard"
 					}),
-					/* @__PURE__ */ jsx("p", {
-						className: "mt-3 text-[14px] leading-6 text-white/52",
-						children: "The shell is ready. We can now plug in stats, cards, and actions without changing the admin navigation structure."
+					/* @__PURE__ */ jsxs("div", {
+						className: "mt-3 flex flex-wrap items-center gap-3",
+						children: [
+							/* @__PURE__ */ jsx("span", {
+								className: "inline-flex items-center rounded-md border border-emerald-400/30 bg-emerald-400/10 px-2 py-1 text-[10px] font-semibold tracking-[.16em] text-emerald-300 uppercase",
+								children: snapshot.capturedAt ? "Snapshot loaded" : "No snapshot"
+							}),
+							/* @__PURE__ */ jsxs("span", {
+								className: "text-[12px] text-white/45",
+								children: [
+									formatDay(snapshot.rangeStart),
+									" – ",
+									formatDay(snapshot.rangeEnd),
+									" · ",
+									snapshot.rangeStart,
+									" to",
+									" ",
+									snapshot.rangeEnd
+								]
+							}),
+							/* @__PURE__ */ jsx("button", {
+								type: "button",
+								disabled: refresh.processing,
+								onClick: () => refresh.post("/x/admin/dashboard/refresh", { preserveScroll: true }),
+								className: "ml-auto h-8 rounded-md border border-white/[.12] bg-white/[.07] px-3 text-[12.5px] font-medium text-white transition hover:bg-white/[.12] disabled:opacity-50",
+								children: refresh.processing ? "Refreshing…" : "Refresh data"
+							})
+						]
 					})
 				]
+			}),
+			/* @__PURE__ */ jsxs("section", {
+				className: "mt-3 rounded-2xl border border-white/[.07] bg-[#0c0f1e] px-5 py-4",
+				children: [/* @__PURE__ */ jsxs("div", {
+					className: "mb-4 flex flex-wrap items-start justify-between gap-3",
+					children: [/* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsx("p", {
+						className: "text-[10px] font-semibold tracking-[.22em] text-hot uppercase",
+						children: "Growth"
+					}), /* @__PURE__ */ jsx("h3", {
+						className: "mt-1 text-[17px] font-semibold text-white",
+						children: "Daily momentum"
+					})] }), /* @__PURE__ */ jsx("div", {
+						className: "flex items-center gap-1",
+						children: ranges.map((option) => /* @__PURE__ */ jsx("button", {
+							type: "button",
+							onClick: () => selectRange(option),
+							className: `h-7 rounded-md px-2.5 text-[11.5px] font-semibold transition ${option === range ? "bg-hot text-white" : "text-white/45 hover:bg-white/[.06] hover:text-white"}`,
+							children: option
+						}, option))
+					})]
+				}), /* @__PURE__ */ jsx(AdminTrendChart, { points: trend })]
+			}),
+			/* @__PURE__ */ jsx("div", {
+				className: "mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-5",
+				children: stats.map((card) => /* @__PURE__ */ jsx(StatCard, { card }, card.key))
 			})
-		})
+		]
+	});
+}
+//#endregion
+//#region resources/js/components/admin/AdminRowMenu.jsx
+function AdminRowMenu({ resource, row, capabilities = {}, onEdit, onPreview }) {
+	const [open, setOpen] = useState(false);
+	const container = useRef(null);
+	useEffect(() => {
+		if (!open) return;
+		const close = (event) => {
+			if (!container.current?.contains(event.target)) setOpen(false);
+		};
+		document.addEventListener("mousedown", close);
+		return () => document.removeEventListener("mousedown", close);
+	}, [open]);
+	const act = (method, url, data = {}) => {
+		setOpen(false);
+		router[method](url, data, {
+			preserveScroll: true,
+			preserveState: false
+		});
+	};
+	const base = `/x/admin/records/${resource}/${row.id}`;
+	const items = [];
+	const canPreview = capabilities.preview === true;
+	const canEdit = capabilities.edit && !row.trashed;
+	if (capabilities.archive && !row.trashed) items.push({
+		label: row.archived ? "Unarchive" : "Archive",
+		onClick: () => act("patch", `${base}/archive`, { archived: !row.archived })
+	});
+	if (capabilities.delete) items.push(row.trashed ? {
+		label: "Restore",
+		onClick: () => act("patch", `${base}/restore`)
+	} : {
+		label: "Delete",
+		danger: true,
+		onClick: () => {
+			if (window.confirm("Delete this record? It is soft deleted and can be restored.")) act("delete", base);
+		}
+	});
+	if (items.length === 0 && !canEdit && !canPreview) return null;
+	return /* @__PURE__ */ jsxs("div", {
+		ref: container,
+		className: "relative flex items-center justify-end gap-1",
+		children: [
+			canPreview && /* @__PURE__ */ jsx("button", {
+				type: "button",
+				onClick: () => onPreview(row),
+				className: "inline-flex h-6 items-center rounded-md border border-white/[.12] bg-white/[.05] px-2 text-[11.5px] font-medium text-white/75 transition hover:border-sky-400/45 hover:bg-sky-400/12 hover:text-white",
+				children: "View"
+			}),
+			canEdit && /* @__PURE__ */ jsx("button", {
+				type: "button",
+				onClick: () => onEdit(row),
+				className: "inline-flex h-6 items-center rounded-md border border-white/[.12] bg-white/[.05] px-2 text-[11.5px] font-medium text-white/75 transition hover:border-accent/45 hover:bg-accent/15 hover:text-white",
+				children: "Edit"
+			}),
+			items.length > 0 && /* @__PURE__ */ jsx("button", {
+				type: "button",
+				"aria-label": "More actions",
+				onClick: () => setOpen((current) => !current),
+				className: `inline-flex h-6 w-6 items-center justify-center rounded-md border transition ${open ? "border-white/[.2] bg-white/[.1] text-white" : "border-white/[.12] bg-white/[.05] text-white/55 hover:border-white/25 hover:text-white"}`,
+				children: /* @__PURE__ */ jsx(Dots, { className: "h-3.5 w-3.5" })
+			}),
+			open && /* @__PURE__ */ jsx("div", {
+				className: "absolute top-7 right-0 z-30 w-40 overflow-hidden rounded-lg border border-white/[.09] bg-[#12152a] py-1 shadow-[0_18px_40px_-18px_rgba(0,0,0,.95)]",
+				children: items.map((item) => /* @__PURE__ */ jsx("button", {
+					type: "button",
+					onClick: item.onClick,
+					className: `block w-full px-3 py-1.5 text-left text-[12.5px] transition hover:bg-white/[.06] ${item.danger ? "text-rose-300" : "text-white/75"}`,
+					children: item.label
+				}, item.label))
+			})
+		]
 	});
 }
 //#endregion
@@ -742,76 +1205,261 @@ function statusTone(value) {
 	switch ((value || "").toLowerCase()) {
 		case "active":
 		case "published":
-		case "complete": return "border-emerald-500/20 bg-emerald-500/10 text-emerald-300";
+		case "complete": return {
+			dot: "bg-emerald-400",
+			text: "text-emerald-300/90"
+		};
 		case "running":
 		case "trial":
 		case "trialing":
 		case "queued":
 		case "scheduled":
-		case "invited": return "border-sky-500/20 bg-sky-500/10 text-sky-300";
+		case "invited": return {
+			dot: "bg-sky-400",
+			text: "text-sky-300/90"
+		};
 		case "past_due":
 		case "inactive":
 		case "archived":
-		case "suspended": return "border-rose-500/20 bg-rose-500/10 text-rose-300";
-		default: return "border-white/[.08] bg-white/[.04] text-white/70";
+		case "suspended": return {
+			dot: "bg-rose-400",
+			text: "text-rose-300/90"
+		};
+		default: return {
+			dot: "bg-white/35",
+			text: "text-white/60"
+		};
 	}
 }
-function renderCell(column, row) {
+function initials$1(value) {
+	return String(value).split(/\s+/).slice(0, 2).map((word) => word.charAt(0)).join("").toUpperCase();
+}
+function renderCell(column, row, index) {
 	const value = row[column.key] ?? "—";
+	const text = String(value);
+	if (column.key === "status") {
+		const tone = statusTone(text);
+		return /* @__PURE__ */ jsxs("span", {
+			className: `inline-flex items-center gap-1.5 text-[12.5px] font-medium capitalize ${tone.text}`,
+			children: [/* @__PURE__ */ jsx("span", { className: `h-1.5 w-1.5 rounded-full ${tone.dot}` }), text.replaceAll("_", " ")]
+		});
+	}
 	if ([
-		"status",
 		"role",
 		"type",
 		"plan"
 	].includes(column.key)) return /* @__PURE__ */ jsx("span", {
-		className: `inline-flex rounded-full border px-2.5 py-1 text-[11px] font-semibold tracking-[.08em] uppercase ${statusTone(String(value))}`,
-		children: String(value).replaceAll("_", " ")
+		className: "inline-flex rounded border border-white/[.09] bg-white/[.03] px-1.5 py-0.5 text-[11.5px] font-medium text-white/65 capitalize",
+		children: text.replaceAll("_", " ")
+	});
+	if (index === 0) return /* @__PURE__ */ jsxs("span", {
+		className: "flex items-center gap-2.5",
+		children: [/* @__PURE__ */ jsx("span", {
+			className: "flex h-6 w-6 shrink-0 items-center justify-center rounded bg-white/[.06] text-[10px] font-semibold text-white/55",
+			children: initials$1(text)
+		}), /* @__PURE__ */ jsx("span", {
+			className: "truncate text-[13px] font-medium text-white",
+			children: text
+		})]
 	});
 	return /* @__PURE__ */ jsx("span", {
-		className: "text-[13px] text-white/82",
-		children: value
+		className: "text-[13px] text-white/65",
+		children: text
 	});
 }
-function AdminDataTable({ columns = [], rows = [] }) {
-	return /* @__PURE__ */ jsx("div", {
-		className: "overflow-x-auto",
+function AdminDataTable({ columns = [], rows = [], resource, capabilities = {}, onEdit = () => {}, onPreview = () => {} }) {
+	const hasActions = Boolean(capabilities.preview || capabilities.edit || capabilities.archive || capabilities.delete);
+	return /* @__PURE__ */ jsxs(Fragment, { children: [/* @__PURE__ */ jsx("div", {
+		className: "hidden overflow-x-auto md:block",
 		children: /* @__PURE__ */ jsxs("table", {
-			className: "min-w-full",
-			children: [/* @__PURE__ */ jsx("thead", { children: /* @__PURE__ */ jsx("tr", {
-				className: "border-b border-white/[.06]",
-				children: columns.map((column) => /* @__PURE__ */ jsx("th", {
-					className: "px-5 py-3 text-left text-[11px] font-semibold tracking-[.16em] text-white/34 uppercase",
-					children: column.label
-				}, column.key))
-			}) }), /* @__PURE__ */ jsx("tbody", { children: rows.map((row, index) => /* @__PURE__ */ jsx("tr", {
-				className: "border-b border-white/[.04] last:border-b-0",
-				children: columns.map((column) => /* @__PURE__ */ jsx("td", {
-					className: "px-5 py-4 align-middle",
-					children: renderCell(column, row)
-				}, column.key))
-			}, `${index}-${Object.values(row).join("-")}`)) })]
+			className: "min-w-full border-separate border-spacing-0",
+			children: [/* @__PURE__ */ jsx("thead", { children: /* @__PURE__ */ jsxs("tr", { children: [columns.map((column) => /* @__PURE__ */ jsx("th", {
+				className: "sticky top-0 z-10 border-b border-white/[.07] bg-[#13162a] px-4 py-2 text-left text-[11px] font-semibold tracking-[.06em] whitespace-nowrap text-white/40 uppercase",
+				children: column.label
+			}, column.key)), hasActions && /* @__PURE__ */ jsx("th", {
+				className: "sticky top-0 z-10 w-[104px] border-b border-white/[.07] bg-[#13162a] px-4 py-2 text-right text-[11px] font-semibold tracking-[.06em] whitespace-nowrap text-white/40 uppercase",
+				children: "Actions"
+			})] }) }), /* @__PURE__ */ jsx("tbody", { children: rows.map((row, rowIndex) => /* @__PURE__ */ jsxs("tr", {
+				className: "group transition-colors hover:bg-white/[.025]",
+				children: [columns.map((column, columnIndex) => /* @__PURE__ */ jsx("td", {
+					className: "max-w-[280px] truncate border-b border-white/[.05] px-4 py-2.5 align-middle whitespace-nowrap",
+					children: renderCell(column, row, columnIndex)
+				}, column.key)), hasActions && /* @__PURE__ */ jsx("td", {
+					className: "border-b border-white/[.05] px-4 py-2.5 text-right",
+					children: /* @__PURE__ */ jsx(AdminRowMenu, {
+						resource,
+						row,
+						capabilities,
+						onEdit,
+						onPreview
+					})
+				})]
+			}, row.id ?? rowIndex)) })]
 		})
+	}), /* @__PURE__ */ jsx("div", {
+		className: "divide-y divide-white/[.05] md:hidden",
+		children: rows.map((row, rowIndex) => /* @__PURE__ */ jsxs("article", {
+			className: "group grid gap-2 px-4 py-3",
+			children: [/* @__PURE__ */ jsxs("div", {
+				className: "flex items-center justify-between gap-2",
+				children: [/* @__PURE__ */ jsx("div", {
+					className: "min-w-0",
+					children: renderCell(columns[0], row, 0)
+				}), hasActions && /* @__PURE__ */ jsx(AdminRowMenu, {
+					resource,
+					row,
+					capabilities,
+					onEdit,
+					onPreview
+				})]
+			}), columns.slice(1).map((column) => /* @__PURE__ */ jsxs("div", {
+				className: "flex items-center justify-between gap-4",
+				children: [/* @__PURE__ */ jsx("span", {
+					className: "text-[11px] text-white/35",
+					children: column.label
+				}), /* @__PURE__ */ jsx("span", {
+					className: "min-w-0 text-right",
+					children: renderCell(column, row, 1)
+				})]
+			}, column.key))]
+		}, row.id ?? rowIndex))
+	})] });
+}
+//#endregion
+//#region resources/js/components/admin/AdminEditDrawer.jsx
+/**
+* Slide-over editor. Fields are described by the server (`editableFields`), so
+* adding a field to a resource never requires touching this component.
+*/
+function AdminEditDrawer({ open, resource, title, fields = [], row, onClose }) {
+	const form = useForm({});
+	useEffect(() => {
+		if (!open || !row) return;
+		const initial = {};
+		fields.forEach((field) => {
+			const value = row.values?.[field.name];
+			initial[field.name] = field.type === "toggle" ? Boolean(value) : value ?? "";
+		});
+		form.setDefaults(initial);
+		form.setData(initial);
+	}, [open, row?.id]);
+	if (!open) return null;
+	const submit = (event) => {
+		event.preventDefault();
+		form.transform((data) => ({
+			...data,
+			...Object.fromEntries(fields.filter((field) => field.type === "toggle").map((field) => [field.name, Boolean(data[field.name])]))
+		})).patch(`/x/admin/records/${resource}/${row.id}`, {
+			preserveScroll: true,
+			onSuccess: onClose
+		});
+	};
+	return /* @__PURE__ */ jsxs("div", {
+		className: "fixed inset-0 z-50 flex justify-end",
+		children: [/* @__PURE__ */ jsx("button", {
+			type: "button",
+			"aria-label": "Close",
+			onClick: onClose,
+			className: "absolute inset-0 bg-black/55 backdrop-blur-[2px]"
+		}), /* @__PURE__ */ jsxs("aside", {
+			className: "relative flex h-full w-[min(420px,92vw)] flex-col border-l border-white/[.08] bg-[#0d1020] shadow-[0_0_60px_-10px_rgba(0,0,0,.9)]",
+			children: [/* @__PURE__ */ jsxs("header", {
+				className: "flex items-center justify-between border-b border-white/[.07] px-4 py-3",
+				children: [/* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsx("p", {
+					className: "text-[10px] font-semibold tracking-[.18em] text-white/35 uppercase",
+					children: "Edit"
+				}), /* @__PURE__ */ jsx("h2", {
+					className: "mt-0.5 truncate text-[14px] font-semibold text-white",
+					children: title
+				})] }), /* @__PURE__ */ jsx("button", {
+					type: "button",
+					onClick: onClose,
+					className: "flex h-7 w-7 items-center justify-center rounded-md text-white/40 transition hover:bg-white/[.06] hover:text-white",
+					children: /* @__PURE__ */ jsx(Close, { className: "h-4 w-4" })
+				})]
+			}), /* @__PURE__ */ jsxs("form", {
+				onSubmit: submit,
+				className: "flex min-h-0 flex-1 flex-col",
+				children: [/* @__PURE__ */ jsx("div", {
+					className: "min-h-0 flex-1 space-y-4 overflow-y-auto px-4 py-4",
+					children: fields.map((field) => /* @__PURE__ */ jsxs("div", { children: [field.type === "toggle" ? /* @__PURE__ */ jsxs("label", {
+						className: "flex cursor-pointer items-start gap-2.5",
+						children: [/* @__PURE__ */ jsx("input", {
+							type: "checkbox",
+							checked: Boolean(form.data[field.name]),
+							onChange: (event) => form.setData(field.name, event.target.checked),
+							className: "mt-0.5 h-4 w-4 rounded border-white/20 bg-white/[.06] accent-[#6d4bff]"
+						}), /* @__PURE__ */ jsxs("span", { children: [/* @__PURE__ */ jsx("span", {
+							className: "block text-[13px] text-white",
+							children: field.label
+						}), field.help && /* @__PURE__ */ jsx("span", {
+							className: "mt-0.5 block text-[11.5px] text-white/40",
+							children: field.help
+						})] })]
+					}) : /* @__PURE__ */ jsxs(Fragment, { children: [
+						/* @__PURE__ */ jsx("label", {
+							className: "mb-1.5 block text-[11.5px] font-medium text-white/50",
+							children: field.label
+						}),
+						field.type === "select" ? /* @__PURE__ */ jsx("select", {
+							value: form.data[field.name] ?? "",
+							onChange: (event) => form.setData(field.name, event.target.value),
+							className: "h-9 w-full rounded-lg border border-white/[.09] bg-[#0f1220] px-2.5 text-[13px] text-white outline-none focus:border-accent/45",
+							children: (field.options ?? []).map((option) => typeof option === "string" ? {
+								value: option,
+								label: option
+							} : option).map((option) => /* @__PURE__ */ jsx("option", {
+								value: option.value,
+								className: "bg-[#0f1220]",
+								children: option.label
+							}, option.value))
+						}) : /* @__PURE__ */ jsx("input", {
+							type: field.type === "number" ? "number" : field.type === "password" ? "password" : "text",
+							autoComplete: field.type === "password" ? "new-password" : void 0,
+							step: field.step,
+							min: field.type === "number" ? 0 : void 0,
+							value: form.data[field.name] ?? "",
+							onChange: (event) => form.setData(field.name, event.target.value),
+							className: "h-9 w-full rounded-lg border border-white/[.09] bg-[#0f1220] px-2.5 text-[13px] text-white outline-none focus:border-accent/45"
+						}),
+						field.help && /* @__PURE__ */ jsx("p", {
+							className: "mt-1 text-[11.5px] text-white/40",
+							children: field.help
+						})
+					] }), form.errors[field.name] && /* @__PURE__ */ jsx("p", {
+						className: "mt-1 text-[11.5px] text-rose-300",
+						children: form.errors[field.name]
+					})] }, field.name))
+				}), /* @__PURE__ */ jsxs("footer", {
+					className: "flex items-center justify-end gap-2 border-t border-white/[.07] px-4 py-3",
+					children: [/* @__PURE__ */ jsx("button", {
+						type: "button",
+						onClick: onClose,
+						className: "h-8 rounded-md px-3 text-[12.5px] text-white/55 transition hover:text-white",
+						children: "Cancel"
+					}), /* @__PURE__ */ jsx("button", {
+						type: "submit",
+						disabled: form.processing,
+						className: "h-8 rounded-md bg-accent px-3.5 text-[12.5px] font-semibold text-white transition hover:brightness-110 disabled:opacity-50",
+						children: form.processing ? "Saving…" : "Save changes"
+					})]
+				})]
+			})]
+		})]
 	});
 }
 //#endregion
 //#region resources/js/components/admin/AdminEmptyState.jsx
 function AdminEmptyState({ title, message }) {
 	return /* @__PURE__ */ jsxs("div", {
-		className: "px-5 py-16 text-center",
-		children: [
-			/* @__PURE__ */ jsx("p", {
-				className: "text-[12px] font-semibold tracking-[.2em] text-white/35 uppercase",
-				children: "Empty State"
-			}),
-			/* @__PURE__ */ jsx("h3", {
-				className: "mt-3 text-[24px] font-semibold tracking-[-.03em] text-white",
-				children: title
-			}),
-			/* @__PURE__ */ jsx("p", {
-				className: "mx-auto mt-3 max-w-lg text-[14px] leading-6 text-white/50",
-				children: message
-			})
-		]
+		className: "px-5 py-14 text-center",
+		children: [/* @__PURE__ */ jsx("h3", {
+			className: "text-[15px] font-semibold text-white",
+			children: title
+		}), /* @__PURE__ */ jsx("p", {
+			className: "mx-auto mt-1.5 max-w-md text-[13px] leading-5 text-white/45",
+			children: message
+		})]
 	});
 }
 //#endregion
@@ -820,12 +1468,61 @@ function buildQuery(filters, search) {
 	const query = {};
 	if (search.trim() !== "") query.search = search.trim();
 	filters.forEach((filter) => {
-		if (filter.value !== "") query[filter.name] = filter.value;
+		if ((filter.value ?? "") !== "") query[filter.name] = filter.value;
 	});
 	return query;
 }
+function normalizeOptions(options = []) {
+	return options.map((option) => typeof option === "string" ? {
+		value: option,
+		label: option.replace(/_/g, " ").replace(/^./, (char) => char.toUpperCase())
+	} : option);
+}
+/**
+* A filter chip. A native <select> is stretched invisibly over the button so
+* the control keeps real keyboard and screen-reader behaviour without a
+* hand-built popover.
+*/
+function FilterChip({ filter, onChange }) {
+	const options = normalizeOptions(filter.options);
+	const value = filter.value ?? "";
+	const active = value !== "";
+	const selected = options.find((option) => option.value === value);
+	return /* @__PURE__ */ jsxs("div", {
+		className: "relative",
+		children: [/* @__PURE__ */ jsxs("span", {
+			className: `inline-flex h-7 items-center gap-1.5 rounded-full border px-2.5 text-[12px] transition ${active ? "border-accent/50 bg-accent/15 font-medium text-white" : "border-white/[.1] bg-white/[.02] text-white/65 hover:border-white/20 hover:text-white"}`,
+			children: [
+				/* @__PURE__ */ jsx("span", {
+					className: `text-[10px] font-semibold ${active ? "text-accent" : "text-white/35"}`,
+					children: filter.label.charAt(0).toUpperCase()
+				}),
+				/* @__PURE__ */ jsx("span", {
+					className: "whitespace-nowrap",
+					children: active ? `${filter.label}: ${selected?.label ?? value}` : filter.label
+				}),
+				/* @__PURE__ */ jsx(Chevron, { className: `h-2.5 w-2.5 shrink-0 ${active ? "text-accent" : "text-white/30"}` })
+			]
+		}), /* @__PURE__ */ jsxs("select", {
+			"aria-label": filter.label,
+			value,
+			onChange: (event) => onChange(event.target.value),
+			className: "absolute inset-0 h-full w-full cursor-pointer opacity-0",
+			children: [/* @__PURE__ */ jsxs("option", {
+				value: "",
+				className: "bg-[#0f1220] text-white",
+				children: ["All ", filter.label]
+			}), options.map((option) => /* @__PURE__ */ jsx("option", {
+				value: option.value,
+				className: "bg-[#0f1220] text-white",
+				children: option.label
+			}, option.value))]
+		})]
+	});
+}
 function AdminFiltersBar({ title, searchPlaceholder, search = "", filters = [] }) {
 	const [searchValue, setSearchValue] = useState(search);
+	const dirty = useRef(false);
 	const submit = (nextFilters = filters, nextSearch = searchValue) => {
 		router.get(window.location.pathname, buildQuery(nextFilters, nextSearch), {
 			preserveState: true,
@@ -833,44 +1530,49 @@ function AdminFiltersBar({ title, searchPlaceholder, search = "", filters = [] }
 			preserveScroll: true
 		});
 	};
+	useEffect(() => {
+		if (!dirty.current) return;
+		const timer = setTimeout(() => submit(filters, searchValue), 350);
+		return () => clearTimeout(timer);
+	}, [searchValue]);
+	const activeCount = filters.filter((filter) => (filter.value ?? "") !== "").length + (searchValue !== "" ? 1 : 0);
 	return /* @__PURE__ */ jsxs("div", {
-		className: "flex flex-col gap-3 rounded-[24px] border border-white/[.06] bg-white/[.03] p-4 sm:flex-row sm:items-center",
-		children: [/* @__PURE__ */ jsx("div", {
-			className: "flex-1",
-			children: /* @__PURE__ */ jsx("input", {
+		className: "w-full",
+		children: [/* @__PURE__ */ jsxs("label", {
+			className: "group relative flex h-9 items-center",
+			children: [/* @__PURE__ */ jsx(Search, { className: "pointer-events-none absolute left-3 h-4 w-4 text-white/30 transition group-focus-within:text-accent" }), /* @__PURE__ */ jsx("input", {
 				type: "search",
 				value: searchValue,
-				onChange: (event) => setSearchValue(event.target.value),
+				onChange: (event) => {
+					dirty.current = true;
+					setSearchValue(event.target.value);
+				},
 				onKeyDown: (event) => {
 					if (event.key === "Enter") submit();
 				},
-				className: "field h-11 rounded-2xl border-white/[.08] bg-white/[.04] text-[14px] text-white placeholder:text-white/26",
-				placeholder: searchPlaceholder || `Search ${title.toLowerCase()}`
-			})
+				className: "h-full w-full rounded-lg border border-white/[.08] bg-[#0f1220] pr-3 pl-9 text-[13px] text-white outline-none transition placeholder:text-white/28 hover:border-white/[.14] focus:border-accent/45 focus:ring-2 focus:ring-accent/12 [&::-webkit-search-cancel-button]:hidden",
+				placeholder: searchPlaceholder || `Search ${title.toLowerCase()}…`
+			})]
 		}), /* @__PURE__ */ jsxs("div", {
-			className: "flex flex-wrap gap-3",
-			children: [filters.map((filter) => /* @__PURE__ */ jsxs("select", {
-				value: filter.value,
-				onChange: (event) => {
-					const nextFilters = filters.map((item) => item.name === filter.name ? {
-						...item,
-						value: event.target.value
-					} : item);
-					submit(nextFilters, searchValue);
-				},
-				className: "field h-11 min-w-[130px] rounded-2xl border-white/[.08] bg-white/[.04] px-3 text-[14px] text-white",
-				children: [/* @__PURE__ */ jsxs("option", {
-					value: "",
-					children: ["All ", filter.label]
-				}), filter.options.map((option) => /* @__PURE__ */ jsx("option", {
-					value: option.value,
-					children: option.label
-				}, option.value))]
-			}, filter.name)), /* @__PURE__ */ jsx("button", {
+			className: "mt-2 flex flex-wrap items-center gap-1.5",
+			children: [filters.map((filter) => /* @__PURE__ */ jsx(FilterChip, {
+				filter,
+				onChange: (value) => submit(filters.map((item) => item.name === filter.name ? {
+					...item,
+					value
+				} : item), searchValue)
+			}, filter.name)), activeCount > 0 && /* @__PURE__ */ jsxs("button", {
 				type: "button",
-				onClick: () => submit(),
-				className: "inline-flex h-11 items-center justify-center rounded-2xl bg-white/[.06] px-4 text-[13px] font-semibold text-white transition hover:bg-white/[.1]",
-				children: "Search"
+				onClick: () => {
+					dirty.current = false;
+					setSearchValue("");
+					submit(filters.map((filter) => ({
+						...filter,
+						value: ""
+					})), "");
+				},
+				className: "inline-flex h-7 items-center gap-1 rounded-full px-2 text-[12px] text-white/40 transition hover:bg-white/[.05] hover:text-white",
+				children: [/* @__PURE__ */ jsx(Close, { className: "h-3 w-3" }), "Clear all"]
 			})]
 		})]
 	});
@@ -887,14 +1589,24 @@ function pageUrl(page, query) {
 }
 function AdminPagination({ pagination, query = {} }) {
 	if (!pagination || pagination.lastPage <= 1) return /* @__PURE__ */ jsxs("div", {
-		className: "flex items-center justify-between border-t border-white/[.06] px-5 py-4 text-[12px] text-white/42",
+		className: "flex items-center justify-between gap-2 border-t border-white/[.07] bg-white/[.015] px-4 py-2.5 text-[12px] text-white/40",
 		children: [/* @__PURE__ */ jsxs("span", { children: [
 			"Showing ",
-			pagination?.from ?? 0,
-			"-",
-			pagination?.to ?? 0,
-			" of ",
-			pagination?.total ?? 0
+			/* @__PURE__ */ jsx("span", {
+				className: "text-white/70",
+				children: pagination?.from ?? 0
+			}),
+			"–",
+			/* @__PURE__ */ jsx("span", {
+				className: "text-white/70",
+				children: pagination?.to ?? 0
+			}),
+			" of",
+			" ",
+			/* @__PURE__ */ jsx("span", {
+				className: "text-white/70",
+				children: pagination?.total ?? 0
+			})
 		] }), /* @__PURE__ */ jsx("span", { children: "25 per page" })]
 	});
 	const goTo = (page) => {
@@ -905,26 +1617,36 @@ function AdminPagination({ pagination, query = {} }) {
 		});
 	};
 	return /* @__PURE__ */ jsxs("div", {
-		className: "flex flex-col gap-3 border-t border-white/[.06] px-5 py-4 text-[12px] text-white/42 sm:flex-row sm:items-center sm:justify-between",
+		className: "flex flex-col gap-2 border-t border-white/[.07] bg-white/[.015] px-4 py-2.5 text-[12px] text-white/40 sm:flex-row sm:items-center sm:justify-between",
 		children: [/* @__PURE__ */ jsxs("span", { children: [
 			"Showing ",
-			pagination.from,
-			"-",
-			pagination.to,
-			" of ",
-			pagination.total
+			/* @__PURE__ */ jsx("span", {
+				className: "text-white/70",
+				children: pagination.from
+			}),
+			"–",
+			/* @__PURE__ */ jsx("span", {
+				className: "text-white/70",
+				children: pagination.to
+			}),
+			" of",
+			" ",
+			/* @__PURE__ */ jsx("span", {
+				className: "text-white/70",
+				children: pagination.total
+			})
 		] }), /* @__PURE__ */ jsxs("div", {
-			className: "flex items-center gap-2",
+			className: "flex items-center gap-1.5",
 			children: [
 				/* @__PURE__ */ jsx("button", {
 					type: "button",
 					disabled: pagination.page <= 1,
 					onClick: () => goTo(pagination.page - 1),
-					className: "rounded-xl border border-white/[.08] bg-white/[.03] px-3 py-2 text-white transition disabled:opacity-40",
+					className: "h-7 rounded-md border border-white/[.08] px-2.5 text-white/75 transition hover:bg-white/[.05] hover:text-white disabled:opacity-35 disabled:hover:bg-transparent",
 					children: "Previous"
 				}),
 				/* @__PURE__ */ jsxs("span", {
-					className: "rounded-xl border border-white/[.08] bg-white/[.03] px-3 py-2 text-white",
+					className: "px-1 text-white/55",
 					children: [
 						"Page ",
 						pagination.page,
@@ -936,8 +1658,93 @@ function AdminPagination({ pagination, query = {} }) {
 					type: "button",
 					disabled: pagination.page >= pagination.lastPage,
 					onClick: () => goTo(pagination.page + 1),
-					className: "rounded-xl border border-white/[.08] bg-white/[.03] px-3 py-2 text-white transition disabled:opacity-40",
+					className: "h-7 rounded-md border border-white/[.08] px-2.5 text-white/75 transition hover:bg-white/[.05] hover:text-white disabled:opacity-35 disabled:hover:bg-transparent",
 					children: "Next"
+				})
+			]
+		})]
+	});
+}
+//#endregion
+//#region resources/js/components/admin/AdminPreviewDrawer.jsx
+function PreviewField({ label, value, multiline = false }) {
+	return /* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsx("p", {
+		className: "mb-1.5 text-[11.5px] font-medium text-white/45",
+		children: label
+	}), multiline ? /* @__PURE__ */ jsx("div", {
+		className: "min-h-[120px] rounded-lg border border-white/[.09] bg-[#0f1220] px-3 py-2.5 text-[13px] leading-6 whitespace-pre-wrap text-white/80",
+		children: value || "—"
+	}) : /* @__PURE__ */ jsx("div", {
+		className: "rounded-lg border border-white/[.09] bg-[#0f1220] px-3 py-2.5 text-[13px] text-white/80",
+		children: value || "—"
+	})] });
+}
+function AdminPreviewDrawer({ open, title, row, onClose }) {
+	if (!open || !row) return null;
+	const preview = row.preview ?? {};
+	return /* @__PURE__ */ jsxs("div", {
+		className: "fixed inset-0 z-50 flex justify-end",
+		children: [/* @__PURE__ */ jsx("button", {
+			type: "button",
+			"aria-label": "Close",
+			onClick: onClose,
+			className: "absolute inset-0 bg-black/55 backdrop-blur-[2px]"
+		}), /* @__PURE__ */ jsxs("aside", {
+			className: "relative flex h-full w-[min(460px,92vw)] flex-col border-l border-white/[.08] bg-[#0d1020] shadow-[0_0_60px_-10px_rgba(0,0,0,.9)]",
+			children: [
+				/* @__PURE__ */ jsxs("header", {
+					className: "flex items-center justify-between border-b border-white/[.07] px-4 py-3",
+					children: [/* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsx("p", {
+						className: "text-[10px] font-semibold tracking-[.18em] text-white/35 uppercase",
+						children: "Preview"
+					}), /* @__PURE__ */ jsx("h2", {
+						className: "mt-0.5 truncate text-[14px] font-semibold text-white",
+						children: title
+					})] }), /* @__PURE__ */ jsx("button", {
+						type: "button",
+						onClick: onClose,
+						className: "flex h-7 w-7 items-center justify-center rounded-md text-white/40 transition hover:bg-white/[.06] hover:text-white",
+						children: /* @__PURE__ */ jsx(Close, { className: "h-4 w-4" })
+					})]
+				}),
+				/* @__PURE__ */ jsxs("div", {
+					className: "min-h-0 flex-1 space-y-4 overflow-y-auto px-4 py-4",
+					children: [
+						/* @__PURE__ */ jsx(PreviewField, {
+							label: "Name",
+							value: preview.name
+						}),
+						/* @__PURE__ */ jsx(PreviewField, {
+							label: "Email",
+							value: preview.email
+						}),
+						/* @__PURE__ */ jsx(PreviewField, {
+							label: "Category",
+							value: preview.category
+						}),
+						/* @__PURE__ */ jsx(PreviewField, {
+							label: "Subject",
+							value: preview.subject
+						}),
+						/* @__PURE__ */ jsx(PreviewField, {
+							label: "Received",
+							value: preview.received_at
+						}),
+						/* @__PURE__ */ jsx(PreviewField, {
+							label: "Message",
+							value: preview.message,
+							multiline: true
+						})
+					]
+				}),
+				/* @__PURE__ */ jsx("footer", {
+					className: "flex items-center justify-end border-t border-white/[.07] px-4 py-3",
+					children: /* @__PURE__ */ jsx("button", {
+						type: "button",
+						onClick: onClose,
+						className: "h-8 rounded-md px-3 text-[12.5px] text-white/65 transition hover:text-white",
+						children: "Close"
+					})
 				})
 			]
 		})]
@@ -946,45 +1753,60 @@ function AdminPagination({ pagination, query = {} }) {
 //#endregion
 //#region resources/js/Pages/Admin/Listing.jsx
 var Listing_exports = /* @__PURE__ */ __exportAll({ default: () => Listing });
-function Listing({ resource, title, search, searchPlaceholder, filters = [], columns = [], rows = [], emptyMessage, pagination, query }) {
-	return /* @__PURE__ */ jsx(AdminLayout, {
+function Listing({ resource, title, search, searchPlaceholder, filters = [], columns = [], rows = [], capabilities = {}, editableFields = [], emptyMessage, pagination, query }) {
+	const [editing, setEditing] = useState(null);
+	const [previewing, setPreviewing] = useState(null);
+	const toolbar = /* @__PURE__ */ jsx(AdminFiltersBar, {
+		title,
+		search,
+		searchPlaceholder,
+		filters
+	});
+	const total = pagination?.total ?? rows.length;
+	return /* @__PURE__ */ jsxs(AdminLayout, {
 		title,
 		section: resource,
-		toolbar: /* @__PURE__ */ jsx(AdminFiltersBar, {
-			title,
-			search,
-			searchPlaceholder,
-			filters
+		toolbar,
+		actions: /* @__PURE__ */ jsxs("span", {
+			className: "inline-flex items-center gap-1.5 rounded-md border border-white/[.09] bg-white/[.03] px-2 py-1 text-[11.5px] text-white/55",
+			children: [/* @__PURE__ */ jsx("span", {
+				className: "font-semibold text-white",
+				children: total.toLocaleString()
+			}), total === 1 ? "record" : "records"]
 		}),
-		children: /* @__PURE__ */ jsxs("section", {
-			className: "overflow-hidden rounded-[28px] border border-white/[.06] bg-[#101321]/92 shadow-[0_24px_90px_-54px_rgba(0,0,0,.95)]",
-			children: [
-				/* @__PURE__ */ jsxs("div", {
-					className: "flex items-center justify-between border-b border-white/[.06] px-5 py-4",
-					children: [/* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsx("h2", {
-						className: "text-[16px] font-semibold text-white",
-						children: title
-					}), /* @__PURE__ */ jsx("p", {
-						className: "mt-1 text-[12px] text-white/42",
-						children: "Listing shell with search, filters, and pagination-ready spacing."
-					})] }), /* @__PURE__ */ jsx("span", {
-						className: "rounded-full border border-white/[.08] bg-white/[.03] px-3 py-1 text-[11px] font-semibold tracking-[.14em] text-white/50 uppercase",
-						children: "25 per page"
-					})]
-				}),
-				rows.length > 0 ? /* @__PURE__ */ jsx(AdminDataTable, {
+		children: [
+			/* @__PURE__ */ jsxs("section", {
+				className: "overflow-hidden rounded-xl border border-white/[.07] bg-[#0f1220] shadow-[0_1px_0_rgba(255,255,255,.03)_inset,0_10px_30px_-24px_rgba(0,0,0,.9)]",
+				children: [rows.length > 0 ? /* @__PURE__ */ jsx(AdminDataTable, {
 					columns,
-					rows
+					rows,
+					resource,
+					capabilities,
+					onEdit: setEditing,
+					onPreview: setPreviewing
 				}) : /* @__PURE__ */ jsx(AdminEmptyState, {
 					title: `No ${title.toLowerCase()} found`,
-					message: emptyMessage || "This module is ready for real data, search parameters, filters, and pagination."
-				}),
-				/* @__PURE__ */ jsx(AdminPagination, {
+					message: emptyMessage || "Nothing matches the current search and filters."
+				}), /* @__PURE__ */ jsx(AdminPagination, {
 					pagination,
 					query
-				})
-			]
-		})
+				})]
+			}),
+			/* @__PURE__ */ jsx(AdminEditDrawer, {
+				open: editing !== null,
+				resource,
+				title: editing ? String(editing[columns[0]?.key] ?? title) : title,
+				fields: editableFields,
+				row: editing,
+				onClose: () => setEditing(null)
+			}),
+			/* @__PURE__ */ jsx(AdminPreviewDrawer, {
+				open: previewing !== null,
+				title: previewing ? String(previewing[columns[0]?.key] ?? title) : title,
+				row: previewing,
+				onClose: () => setPreviewing(null)
+			})
+		]
 	});
 }
 //#endregion
@@ -1044,48 +1866,13 @@ function Login$1({ adminRootEmail = "" }) {
 			children: [/* @__PURE__ */ jsx("div", { className: "absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(255,61,113,.12),_transparent_26%),radial-gradient(circle_at_30%_20%,_rgba(109,75,255,.18),_transparent_34%),linear-gradient(180deg,_#0b0d18,_#090b16)]" }), /* @__PURE__ */ jsx("div", { className: "absolute inset-0 opacity-40 [background-image:linear-gradient(to_right,rgba(255,255,255,.04)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,.04)_1px,transparent_1px)] [background-size:44px_44px]" })]
 		}), /* @__PURE__ */ jsx("div", {
 			className: "relative mx-auto flex min-h-[calc(100vh-4rem)] max-w-6xl items-center justify-center",
-			children: /* @__PURE__ */ jsxs("div", {
-				className: "grid w-full max-w-5xl gap-8 lg:grid-cols-[1.15fr_.85fr]",
-				children: [/* @__PURE__ */ jsxs("section", {
-					className: "hidden rounded-[32px] border border-white/[.06] bg-white/[.03] p-8 shadow-[0_32px_120px_-52px_rgba(0,0,0,.95)] lg:block",
-					children: [
-						/* @__PURE__ */ jsxs("div", {
-							className: "inline-flex items-center gap-3 rounded-full border border-white/[.08] bg-white/[.04] px-4 py-2 text-[11px] font-semibold tracking-[.18em] text-white/58 uppercase",
-							children: [/* @__PURE__ */ jsx(Logo, { className: "h-7 w-7" }), "VVF Admin"]
-						}),
-						/* @__PURE__ */ jsx("h1", {
-							className: "mt-8 max-w-md text-[46px] leading-[.94] font-bold tracking-[-.05em]",
-							children: "Internal control surface for growth, search, and billing."
-						}),
-						/* @__PURE__ */ jsx("p", {
-							className: "mt-5 max-w-lg text-[15px] leading-7 text-white/55",
-							children: "A dedicated workspace for operators, with admin-only access and a dark-first interface tuned for high-density workflows."
-						}),
-						/* @__PURE__ */ jsxs("div", {
-							className: "mt-10 grid gap-4 sm:grid-cols-2",
-							children: [/* @__PURE__ */ jsxs("div", {
-								className: "rounded-3xl border border-white/[.06] bg-[#12152a] p-5",
-								children: [/* @__PURE__ */ jsx("div", {
-									className: "text-[12px] font-semibold tracking-[.18em] text-white/38 uppercase",
-									children: "Content"
-								}), /* @__PURE__ */ jsx("div", {
-									className: "mt-3 text-[20px] font-semibold",
-									children: "Viral Videos, Searches, Plans"
-								})]
-							}), /* @__PURE__ */ jsxs("div", {
-								className: "rounded-3xl border border-white/[.06] bg-[#12152a] p-5",
-								children: [/* @__PURE__ */ jsx("div", {
-									className: "text-[12px] font-semibold tracking-[.18em] text-white/38 uppercase",
-									children: "Accounts"
-								}), /* @__PURE__ */ jsx("div", {
-									className: "mt-3 text-[20px] font-semibold",
-									children: "Subscriptions, Users, Admin Users"
-								})]
-							})]
-						})
-					]
+			children: /* @__PURE__ */ jsxs("section", {
+				className: "w-full max-w-[560px] rounded-[32px] border border-white/[.06] bg-[#101321]/94 p-7 shadow-[0_32px_120px_-52px_rgba(0,0,0,.95)] backdrop-blur-xl sm:p-8",
+				children: [/* @__PURE__ */ jsxs("div", {
+					className: "mb-6 inline-flex items-center gap-3 rounded-full border border-white/[.08] bg-white/[.04] px-4 py-2 text-[11px] font-semibold tracking-[.18em] text-white/58 uppercase",
+					children: [/* @__PURE__ */ jsx(Logo, { className: "h-7 w-7" }), "VVF Admin"]
 				}), /* @__PURE__ */ jsxs("section", {
-					className: "rounded-[32px] border border-white/[.06] bg-[#101321]/94 p-7 shadow-[0_32px_120px_-52px_rgba(0,0,0,.95)] backdrop-blur-xl sm:p-8",
+					className: "rounded-[28px] border border-white/[.04] bg-[#0d1020]/65 p-6 sm:p-7",
 					children: [
 						/* @__PURE__ */ jsx("div", {
 							className: "inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-linear-to-br from-hot to-accent shadow-[0_16px_40px_-20px_rgba(255,61,113,.8)]",
@@ -1158,8 +1945,12 @@ var FOOT_NAV = [
 		href: "/"
 	},
 	{
-		label: "Bookmark",
+		label: "Library",
 		href: "/bookmark"
+	},
+	{
+		label: "Contact",
+		href: "/contact"
 	},
 	{
 		label: "Pricing",
@@ -1167,27 +1958,20 @@ var FOOT_NAV = [
 	}
 ];
 /**
-* Shared footer that sits under the content column in AppLayout. Hidden on
-* mobile, where the bottom tab bar owns that space instead.
+* Shared footer that sits under the content column in AppLayout. Light only,
+* styled with the Brand Beacon `.bb-foot` rules.
 */
-function AppFooter({ label = "© Outlier Vault - find outlier videos daily", className = "" }) {
+function AppFooter({ width = "max-w-6xl", label = "© 2026 Brand Beacon · TikTok viral intelligence for brands" }) {
 	const { billing = {} } = usePage().props;
 	const navItems = FOOT_NAV.filter((item) => item.href !== "/trial" || (billing.trialEligible ?? true));
-	return /* @__PURE__ */ jsx("footer", {
-		className: `border-t border-black/[.06] dark:border-white/[.08] ${className}`.trim(),
-		children: /* @__PURE__ */ jsxs("div", {
-			className: "flex flex-wrap items-center justify-between gap-4 px-4 py-4 sm:px-6 lg:px-8",
-			children: [/* @__PURE__ */ jsx("nav", {
-				className: "flex flex-wrap items-center gap-1",
-				children: navItems.map((item) => /* @__PURE__ */ jsx(Link, {
-					href: item.href,
-					className: "rounded-lg px-2.5 py-1.5 text-[12.5px] font-semibold muted transition hover:bg-black/[.04] hover:text-ink dark:hover:bg-white/[.06] dark:hover:text-white",
-					children: item.label
-				}, item.href))
-			}), /* @__PURE__ */ jsx("p", {
-				className: "text-[12px] faint",
-				children: label
-			})]
+	return /* @__PURE__ */ jsx("div", {
+		className: `mx-auto w-full ${width}`,
+		children: /* @__PURE__ */ jsxs("footer", {
+			className: "bb-foot",
+			children: [/* @__PURE__ */ jsx("nav", { children: navItems.map((item) => /* @__PURE__ */ jsx(Link, {
+				href: item.href,
+				children: item.label
+			}, item.href)) }), /* @__PURE__ */ jsx("p", { children: label })]
 		})
 	});
 }
@@ -1747,32 +2531,167 @@ function ComingSoon() {
 	})] });
 }
 //#endregion
+//#region resources/js/components/ContactFormCard.jsx
+function FieldLabel({ children, optional = false }) {
+	return /* @__PURE__ */ jsxs("label", {
+		className: "mb-2 block text-[12px] font-semibold text-[#111827] dark:text-white/92",
+		children: [children, optional ? /* @__PURE__ */ jsx("span", {
+			className: "ml-1 text-slate-400 dark:text-white/35",
+			children: "(Optional)"
+		}) : null]
+	});
+}
+function FieldError({ message }) {
+	if (!message) return null;
+	return /* @__PURE__ */ jsx("p", {
+		className: "mt-2 text-[12px] text-rose-500 dark:text-rose-300",
+		children: message
+	});
+}
+function ContactFormCard({ categories = [], defaults = {}, className = "" }) {
+	const { flash = {} } = usePage().props;
+	const form = useForm({
+		name: defaults.name ?? "",
+		email: defaults.email ?? "",
+		category: categories[0]?.value ?? "general",
+		subject: "",
+		message: ""
+	});
+	const submit = (event) => {
+		event.preventDefault();
+		form.post("/contact", {
+			preserveScroll: true,
+			onSuccess: () => form.reset("subject", "message")
+		});
+	};
+	return /* @__PURE__ */ jsxs("section", {
+		className: `rounded-[30px] border border-black/[.06] bg-white px-5 py-6 text-[#111827] shadow-[0_24px_90px_-45px_rgba(15,23,42,.24)] sm:px-7 sm:py-8 lg:px-10 dark:border-white/[.09] dark:bg-[#0d1324] dark:text-white dark:shadow-[0_24px_90px_-45px_rgba(0,0,0,.95)] ${className}`.trim(),
+		children: [
+			/* @__PURE__ */ jsxs("div", {
+				className: "max-w-3xl",
+				children: [
+					/* @__PURE__ */ jsx("p", {
+						className: "text-[11px] font-semibold tracking-[.32em] text-[#ff4d9d] uppercase",
+						children: "Contact"
+					}),
+					/* @__PURE__ */ jsx("h1", {
+						className: "mt-2 font-display text-[36px] font-bold tracking-[-.04em] text-[#111827] sm:text-[44px] dark:text-white",
+						children: "Contact Us"
+					}),
+					/* @__PURE__ */ jsx("p", {
+						className: "mt-4 max-w-2xl text-[14px] leading-7 text-slate-600 dark:text-white/70",
+						children: "Send a quick note and we'll follow up by email. If you're asking about AI analysis, billing, or an account issue, add as much context as you can."
+					})
+				]
+			}),
+			flash.status ? /* @__PURE__ */ jsx("div", {
+				className: "mt-6 rounded-2xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-[13px] text-emerald-700 dark:border-emerald-400/20 dark:bg-emerald-400/10 dark:text-emerald-200",
+				children: flash.status
+			}) : null,
+			/* @__PURE__ */ jsxs("form", {
+				onSubmit: submit,
+				className: "mt-8 space-y-6",
+				children: [
+					/* @__PURE__ */ jsxs("div", {
+						className: "grid gap-5 md:grid-cols-2",
+						children: [/* @__PURE__ */ jsxs("div", { children: [
+							/* @__PURE__ */ jsx(FieldLabel, { children: "Name" }),
+							/* @__PURE__ */ jsx("input", {
+								type: "text",
+								value: form.data.name,
+								onChange: (event) => form.setData("name", event.target.value),
+								className: "h-12 w-full rounded-2xl border border-slate-200 bg-[#f8fafc] px-4 text-[14px] text-[#111827] outline-none transition placeholder:text-slate-400 focus:border-[#ff4d9d]/60 dark:border-white/[.1] dark:bg-[#151b2d] dark:text-white dark:placeholder:text-white/25",
+								placeholder: "Your name"
+							}),
+							/* @__PURE__ */ jsx(FieldError, { message: form.errors.name })
+						] }), /* @__PURE__ */ jsxs("div", { children: [
+							/* @__PURE__ */ jsx(FieldLabel, { children: "Email" }),
+							/* @__PURE__ */ jsx("input", {
+								type: "email",
+								value: form.data.email,
+								onChange: (event) => form.setData("email", event.target.value),
+								className: "h-12 w-full rounded-2xl border border-[#ff4d9d]/35 bg-[#f8fafc] px-4 text-[14px] text-[#111827] outline-none transition placeholder:text-slate-400 focus:border-[#ff4d9d] dark:bg-[#151b2d] dark:text-white dark:placeholder:text-white/25",
+								placeholder: "you@example.com"
+							}),
+							/* @__PURE__ */ jsx(FieldError, { message: form.errors.email })
+						] })]
+					}),
+					/* @__PURE__ */ jsxs("div", { children: [
+						/* @__PURE__ */ jsx(FieldLabel, { children: "Category" }),
+						/* @__PURE__ */ jsx("select", {
+							value: form.data.category,
+							onChange: (event) => form.setData("category", event.target.value),
+							className: "h-12 w-full rounded-2xl border border-slate-200 bg-[#f8fafc] px-4 text-[14px] text-[#111827] outline-none transition focus:border-slate-300 dark:border-white/[.1] dark:bg-[#151b2d] dark:text-white dark:focus:border-white/30",
+							children: categories.map((category) => /* @__PURE__ */ jsx("option", {
+								value: category.value,
+								children: category.label
+							}, category.value))
+						}),
+						/* @__PURE__ */ jsx(FieldError, { message: form.errors.category })
+					] }),
+					/* @__PURE__ */ jsxs("div", { children: [
+						/* @__PURE__ */ jsx(FieldLabel, {
+							optional: true,
+							children: "Subject"
+						}),
+						/* @__PURE__ */ jsx("input", {
+							type: "text",
+							value: form.data.subject,
+							onChange: (event) => form.setData("subject", event.target.value),
+							className: "h-12 w-full rounded-2xl border border-slate-200 bg-[#f8fafc] px-4 text-[14px] text-[#111827] outline-none transition placeholder:text-slate-400 focus:border-slate-300 dark:border-white/[.1] dark:bg-[#151b2d] dark:text-white dark:placeholder:text-white/25 dark:focus:border-white/30",
+							placeholder: "Example: Quick question about my account"
+						}),
+						/* @__PURE__ */ jsx(FieldError, { message: form.errors.subject })
+					] }),
+					/* @__PURE__ */ jsxs("div", { children: [
+						/* @__PURE__ */ jsx(FieldLabel, { children: "Message" }),
+						/* @__PURE__ */ jsx("textarea", {
+							value: form.data.message,
+							onChange: (event) => form.setData("message", event.target.value),
+							className: "min-h-[190px] w-full rounded-3xl border border-slate-200 bg-[#f8fafc] px-4 py-3 text-[14px] text-[#111827] outline-none transition placeholder:text-slate-400 focus:border-slate-300 dark:border-white/[.1] dark:bg-[#151b2d] dark:text-white dark:placeholder:text-white/25 dark:focus:border-white/30",
+							placeholder: "Tell us how we can help..."
+						}),
+						/* @__PURE__ */ jsx(FieldError, { message: form.errors.message })
+					] }),
+					/* @__PURE__ */ jsxs("div", {
+						className: "flex flex-col gap-4 border-t border-slate-200 pt-5 text-[12px] text-slate-500 sm:flex-row sm:items-center sm:justify-between dark:border-white/[.08] dark:text-white/40",
+						children: [/* @__PURE__ */ jsx("p", { children: "We'll use this message to follow up directly by email." }), /* @__PURE__ */ jsx("button", {
+							type: "submit",
+							disabled: form.processing,
+							className: "inline-flex h-12 items-center justify-center rounded-2xl bg-[#ff2f86] px-6 text-[13px] font-semibold text-white transition hover:bg-[#ff4d9d] disabled:cursor-not-allowed disabled:opacity-60",
+							children: form.processing ? "Sending..." : "Send Inquiry"
+						})]
+					})
+				]
+			})
+		]
+	});
+}
+//#endregion
 //#region resources/js/Pages/components/AppLayout.jsx
 var AppLayout_exports = /* @__PURE__ */ __exportAll({ default: () => AppLayout });
-var TONES = {
-	ok: "border-emerald-500/20 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
-	accent: "border-accent/25 bg-accent/10 text-accent dark:text-accent-glow"
+var PILL_CLASS = {
+	ok: "pill--ok",
+	accent: "pill--run",
+	run: "pill--run",
+	off: "pill--off",
+	bad: "pill--bad",
+	warn: "pill--bad"
 };
-var STEP_ORDER = [
-	"keywords",
-	"running",
-	"results"
-];
 /**
-* Primary sidebar navigation. Every entry points at a route that exists —
-* "Brand searches" and "Competitor searches" seed the search flow with the
-* matching `type`, which `routes/public.php` already accepts.
+* Primary sidebar navigation, mirroring the handoff mockup. Hrefs point at
+* routes that exist today; the dedicated Brand/Product search screens land in
+* a later batch and will repoint the last two entries.
 */
 var NAV$1 = [
 	{
 		label: "Dashboard",
 		href: "/dashboard",
 		icon: Spark,
-		match: "/dashboard",
-		exact: "/dashboard"
+		match: "/dashboard"
 	},
 	{
-		label: "Bookmark",
+		label: "Library",
 		href: "/bookmark",
 		icon: Library,
 		match: "/bookmark",
@@ -1792,133 +2711,119 @@ var NAV$1 = [
 		match: "/bookmark",
 		exact: "/bookmark?type=product",
 		locked: true
-	},
-	{
-		label: "Plans",
-		href: "/plans",
-		icon: Spark,
-		match: "/plans",
-		exact: "/plans"
 	}
 ];
-var TABS = [
-	{
-		label: "Bookmark",
-		href: "/bookmark",
-		icon: Library,
-		match: "/bookmark"
-	},
-	{
-		label: "Search",
-		href: "/search",
-		icon: Search,
-		match: "/search"
-	},
-	{
-		label: "Account",
-		href: "/settings/account",
-		icon: User,
-		match: "/settings"
-	}
-];
-function isActive(currentUrl, match) {
+function isActive(currentUrl, item) {
 	const path = (currentUrl || "/").split("?")[0];
-	return match === "/" ? path === "/" : path.startsWith(match);
+	if (item.exact) return currentUrl === item.exact;
+	return path.startsWith(item.match);
 }
-function AffiliateCard() {
-	return /* @__PURE__ */ jsxs("div", {
-		title: "Affiliate program coming soon",
-		className: "flex items-center justify-between gap-2 rounded-xl border border-emerald-500/25 bg-emerald-500/[.08] px-3 py-2.5",
-		children: [/* @__PURE__ */ jsxs("span", {
-			className: "flex items-center gap-2 text-[13px] font-semibold text-emerald-700 dark:text-emerald-400",
-			children: [/* @__PURE__ */ jsx(Spark, { className: "h-3.5 w-3.5" }), "Be an affiliate"]
-		}), /* @__PURE__ */ jsx("span", {
-			className: "rounded-md bg-emerald-500/15 px-1.5 py-0.5 text-[10px] font-bold tracking-[.08em] text-emerald-700 uppercase dark:text-emerald-400",
-			children: "Soon"
-		})]
+function initials(name, email) {
+	return (name || email || "?").trim().slice(0, 1).toUpperCase();
+}
+function Brand({ onNavigate }) {
+	return /* @__PURE__ */ jsxs(Link, {
+		href: "/",
+		onClick: onNavigate,
+		className: "side__brand",
+		children: [/* @__PURE__ */ jsx(Logo, { className: "h-[30px] w-[30px]" }), /* @__PURE__ */ jsx("span", { children: "Brand Beacon" })]
 	});
 }
-function NavList({ currentUrl, onNavigate, className = "" }) {
-	return /* @__PURE__ */ jsx("nav", {
-		className: `space-y-1 ${className}`.trim(),
+function NavList({ currentUrl, onNavigate }) {
+	return /* @__PURE__ */ jsx("div", {
+		className: "side__nav",
 		children: NAV$1.map((item) => {
 			const Icon = item.icon;
-			const active = item.exact ? currentUrl === item.exact : isActive(currentUrl, item.match);
 			if (item.locked) return /* @__PURE__ */ jsxs("div", {
-				"aria-disabled": "true",
+				className: "nav__i is-lock",
 				title: "Locked for now",
-				className: "flex cursor-not-allowed items-center justify-between gap-2.5 rounded-xl px-3 py-2.5 text-[13.5px] font-semibold text-ink/40 dark:text-white/35",
-				children: [/* @__PURE__ */ jsxs("span", {
-					className: "flex items-center gap-2.5",
-					children: [/* @__PURE__ */ jsx(Icon, { className: "h-4 w-4 shrink-0" }), item.label]
-				}), /* @__PURE__ */ jsx(Lock, { className: "h-3.5 w-3.5 shrink-0" })]
+				children: [
+					/* @__PURE__ */ jsx(Icon, {}),
+					item.label,
+					/* @__PURE__ */ jsx("span", {
+						className: "lk",
+						children: /* @__PURE__ */ jsx(Lock, { className: "h-[13px] w-[13px]" })
+					})
+				]
 			}, item.label);
 			return /* @__PURE__ */ jsxs(Link, {
 				href: item.href,
 				onClick: onNavigate,
-				className: `flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-[13.5px] font-semibold transition ${active ? "bg-accent/10 text-accent dark:bg-accent/15 dark:text-accent-glow" : "muted hover:bg-black/[.04] hover:text-ink dark:hover:bg-white/[.06] dark:hover:text-white"}`,
-				children: [/* @__PURE__ */ jsx(Icon, { className: "h-4 w-4 shrink-0" }), item.label]
+				className: `nav__i${isActive(currentUrl, item) ? " is-on" : ""}`,
+				children: [/* @__PURE__ */ jsx(Icon, {}), item.label]
 			}, item.label);
 		})
 	});
 }
-/**
-* Account block pinned to the bottom of the sidebar and the mobile drawer.
-* Signed-out visitors get log in / sign up in the same slot.
-*/
-function AccountBlock({ signedIn, email, onSignOut, signingOut, onNavigate }) {
+function AffiliateCard() {
+	return /* @__PURE__ */ jsxs("div", {
+		className: "aff",
+		title: "Affiliate program coming soon",
+		children: [/* @__PURE__ */ jsxs("b", { children: [/* @__PURE__ */ jsx(Spark, { className: "h-3.5 w-3.5" }), "Be an affiliate"] }), /* @__PURE__ */ jsx("span", { children: "Soon" })]
+	});
+}
+function AccountBlock({ signedIn, name, email, onSignOut, signingOut, onNavigate }) {
 	if (!signedIn) return /* @__PURE__ */ jsxs("div", {
-		className: "space-y-2",
+		className: "acct",
+		style: { flexDirection: "column" },
 		children: [/* @__PURE__ */ jsx(Link, {
 			href: "/login",
 			onClick: onNavigate,
-			className: "btn-ghost h-10 w-full justify-center text-[13px]",
+			className: "btn btn--g btn--w",
 			children: "Log in"
 		}), /* @__PURE__ */ jsxs(Link, {
 			href: "/register",
 			onClick: onNavigate,
-			className: "btn-accent h-10 w-full justify-center text-[13px]",
+			className: "btn btn--y btn--w",
 			children: ["Sign up ", /* @__PURE__ */ jsx(Arrow, {})]
 		})]
 	});
 	return /* @__PURE__ */ jsxs("div", {
-		className: "flex items-stretch gap-2",
+		className: "acct",
 		children: [/* @__PURE__ */ jsxs(Link, {
 			href: "/settings/account",
 			onClick: onNavigate,
-			className: "flex min-w-0 flex-1 items-center gap-2.5 rounded-xl border border-black/[.07] bg-black/[.02] px-3 py-2.5 transition hover:border-accent/30 dark:border-white/[.09] dark:bg-white/[.04]",
-			children: [/* @__PURE__ */ jsx(User, { className: "h-4 w-4 shrink-0 faint" }), /* @__PURE__ */ jsxs("span", {
-				className: "min-w-0",
+			className: "acct__l",
+			children: [/* @__PURE__ */ jsx("span", {
+				className: "avat",
+				children: initials(name, email)
+			}), /* @__PURE__ */ jsxs("span", {
+				style: {
+					minWidth: 0,
+					display: "block",
+					overflow: "hidden"
+				},
 				children: [/* @__PURE__ */ jsx("span", {
-					className: "block text-[13px] font-semibold",
-					children: "Account"
+					className: "acct__n",
+					children: name || "Account"
 				}), email && /* @__PURE__ */ jsx("span", {
-					className: "block truncate text-[11px] faint",
+					className: "acct__e",
 					children: email
 				})]
 			})]
 		}), /* @__PURE__ */ jsx("button", {
+			className: "acct__x",
+			title: "Sign out",
+			"aria-label": "Sign out",
 			onClick: onSignOut,
 			disabled: signingOut,
-			title: "Log out",
-			"aria-label": "Log out",
-			className: "flex w-11 shrink-0 items-center justify-center rounded-xl border border-black/[.07] transition hover:border-hot/40 hover:text-hot disabled:opacity-40 dark:border-white/[.09]",
 			children: /* @__PURE__ */ jsx(Exit, { className: "h-4 w-4" })
 		})]
 	});
 }
 /**
-* The app shell: a persistent sidebar on desktop, a top bar plus slide-in
-* drawer and bottom tab bar on mobile, and a shared footer under the content.
+* Brand Beacon app shell: a fixed 252px sidebar on desktop, a top bar + slide
+* drawer on small screens, and a shared footer under the content.
 *
-* Props mirror the old SearchShell so flow screens drop in unchanged:
-*   pill     — small status chip shown next to the title
-*   step     — 'keywords' | 'running' | 'results', draws the progress rail
-*   width    — optional max-width for the content column
-*   actions  — right side of the title row. Keep this to one or two buttons;
-*              anything denser belongs in `toolbar` or it wraps into a column.
+* Props are unchanged from the previous shell so every screen keeps working:
+*   pill     — { text, tone } status chip shown beside the title
+*   step     — accepted for backwards-compat; the wizard now draws its own
+*              stepper inside its card, so this is a no-op here
+*   title    — page heading
 *   subtitle — one line of context under the title
-*   toolbar  — full-width row under the header for search, filters, and sort
+*   actions  — right side of the header row (entitlements bar or buttons)
+*   toolbar  — full-width row under the header (search / filters / sort)
+*   width    — Tailwind max-width class for the content column
 */
 function AppLayout({ pill, step, title, subtitle, actions, toolbar, width = "max-w-6xl", children }) {
 	const { props, url: currentUrl } = usePage();
@@ -1926,11 +2831,11 @@ function AppLayout({ pill, step, title, subtitle, actions, toolbar, width = "max
 	const logout = useForm({});
 	const [drawerOpen, setDrawerOpen] = useState(false);
 	const signedIn = auth.signedIn ?? Boolean(auth.user);
-	const stepIndex = STEP_ORDER.indexOf(step);
 	const signOut = () => {
 		setDrawerOpen(false);
 		logout.post("/logout");
 	};
+	const closeDrawer = () => setDrawerOpen(false);
 	useEffect(() => {
 		if (typeof document === "undefined") return void 0;
 		document.body.style.overflow = drawerOpen ? "hidden" : "";
@@ -1938,194 +2843,126 @@ function AppLayout({ pill, step, title, subtitle, actions, toolbar, width = "max
 			document.body.style.overflow = "";
 		};
 	}, [drawerOpen]);
-	const closeDrawer = () => setDrawerOpen(false);
-	const brand = /* @__PURE__ */ jsxs(Link, {
-		href: "/",
-		onClick: closeDrawer,
-		className: "flex items-center gap-2.5",
-		children: [/* @__PURE__ */ jsx(Logo, { className: "h-8 w-8" }), /* @__PURE__ */ jsxs("span", {
-			className: "leading-none",
-			children: [/* @__PURE__ */ jsx("span", {
-				className: "block font-display text-[17px] font-bold tracking-[-.03em]",
-				children: "Outlier Vault"
-			}), /* @__PURE__ */ jsx("span", {
-				className: "mt-1 block text-[9px] font-semibold tracking-[.16em] faint uppercase",
-				children: "Find outlier videos daily"
-			})]
+	const account = /* @__PURE__ */ jsx(AccountBlock, {
+		signedIn,
+		name: auth.user?.name,
+		email: auth.user?.email,
+		onSignOut: signOut,
+		signingOut: logout.processing
+	});
+	const header = (title || pill || actions || subtitle) && /* @__PURE__ */ jsxs("div", {
+		className: "top",
+		children: [/* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsxs("h1", { children: [title, pill && /* @__PURE__ */ jsxs("span", {
+			className: `pill ${PILL_CLASS[pill.tone] ?? PILL_CLASS.accent}`,
+			children: [/* @__PURE__ */ jsx("i", {}), pill.text]
+		})] }), subtitle && /* @__PURE__ */ jsx("p", { children: subtitle })] }), actions && /* @__PURE__ */ jsx("div", {
+			className: "top__actions",
+			children: actions
 		})]
 	});
 	return /* @__PURE__ */ jsxs("div", {
-		className: "vvf-landing relative isolate min-h-screen font-body",
+		className: "bb",
 		children: [
-			/* @__PURE__ */ jsxs("div", {
-				"aria-hidden": true,
-				className: "pointer-events-none fixed inset-0 -z-10 overflow-hidden",
-				children: [/* @__PURE__ */ jsx("div", { className: "bg-grid mask-radial-fade absolute inset-0" }), /* @__PURE__ */ jsx("div", { className: "absolute top-[-20%] left-1/2 h-[420px] w-[760px] max-w-[140vw] -translate-x-1/2 rounded-full bg-accent/15 blur-[140px] dark:bg-accent/20" })]
-			}),
-			/* @__PURE__ */ jsxs("aside", {
-				className: "fixed inset-y-0 left-0 z-40 hidden w-[268px] flex-col border-r border-black/[.06] bg-canvas/80 px-4 py-5 backdrop-blur-xl lg:flex dark:border-white/[.08] dark:bg-canvas-dark/80",
-				children: [
-					/* @__PURE__ */ jsx("div", {
-						className: "px-1",
-						children: brand
-					}),
-					/* @__PURE__ */ jsx(NavList, {
-						currentUrl,
-						className: "mt-6"
-					}),
-					/* @__PURE__ */ jsx("div", { className: "flex-1" }),
-					/* @__PURE__ */ jsxs("div", {
-						className: "space-y-3 border-t border-black/[.06] pt-4 dark:border-white/[.08]",
-						children: [/* @__PURE__ */ jsx(AffiliateCard, {}), /* @__PURE__ */ jsx(AccountBlock, {
-							signedIn,
-							email: auth.user?.email,
-							onSignOut: signOut,
-							signingOut: logout.processing
-						})]
-					})
-				]
-			}),
 			/* @__PURE__ */ jsxs("header", {
-				className: "sticky top-0 z-40 border-b border-black/[.06] bg-canvas/80 backdrop-blur-xl lg:hidden dark:border-white/[.08] dark:bg-canvas-dark/80",
-				children: [/* @__PURE__ */ jsxs("div", {
-					className: "flex h-[62px] items-center justify-between px-4",
-					children: [brand, /* @__PURE__ */ jsx("button", {
-						onClick: () => setDrawerOpen((open) => !open),
-						"aria-label": drawerOpen ? "Close menu" : "Open menu",
-						"aria-expanded": drawerOpen,
-						className: "flex h-10 w-10 items-center justify-center rounded-xl border border-black/[.09] transition hover:border-accent/40 dark:border-white/[.12]",
-						children: /* @__PURE__ */ jsx(Menu, { className: "h-5 w-5" })
-					})]
-				}), stepIndex >= 0 && /* @__PURE__ */ jsx("div", {
-					className: "h-[2px] w-full bg-black/[.05] dark:bg-white/[.06]",
-					children: /* @__PURE__ */ jsx("div", {
-						className: "h-full bg-linear-to-r from-accent-glow to-accent transition-all duration-700 ease-out",
-						style: { width: `${(stepIndex + 1) / STEP_ORDER.length * 100}%` }
-					})
+				className: "bb-top",
+				children: [/* @__PURE__ */ jsx(Brand, {}), /* @__PURE__ */ jsx("button", {
+					className: "bb-burger",
+					"aria-label": "Open menu",
+					"aria-expanded": drawerOpen,
+					onClick: () => setDrawerOpen(true),
+					children: /* @__PURE__ */ jsx(Menu, {})
 				})]
 			}),
-			drawerOpen && /* @__PURE__ */ jsxs("div", {
-				className: "fixed inset-0 z-50 lg:hidden",
+			/* @__PURE__ */ jsxs("div", {
+				className: `bb-drawer${drawerOpen ? " is-open" : ""}`,
 				children: [/* @__PURE__ */ jsx("button", {
+					className: "bb-drawer__bg",
 					"aria-label": "Close menu",
-					onClick: closeDrawer,
-					className: "absolute inset-0 bg-black/40 backdrop-blur-sm"
+					onClick: closeDrawer
 				}), /* @__PURE__ */ jsxs("div", {
-					className: "animate-fade-up absolute top-0 right-0 flex h-full w-[85%] max-w-[320px] flex-col border-l border-black/[.06] bg-canvas px-4 py-5 dark:border-white/[.08] dark:bg-canvas-dark",
+					className: "bb-drawer__panel",
 					children: [
 						/* @__PURE__ */ jsxs("div", {
-							className: "flex items-center justify-between",
-							children: [/* @__PURE__ */ jsx("span", {
-								className: "font-display text-[15px] font-bold",
-								children: "Menu"
-							}), /* @__PURE__ */ jsx("button", {
-								onClick: closeDrawer,
+							style: {
+								display: "flex",
+								alignItems: "center",
+								justifyContent: "space-between"
+							},
+							children: [/* @__PURE__ */ jsx(Brand, { onNavigate: closeDrawer }), /* @__PURE__ */ jsx("button", {
+								className: "bb-burger",
 								"aria-label": "Close menu",
-								className: "flex h-9 w-9 items-center justify-center rounded-xl border border-black/[.09] dark:border-white/[.12]",
-								children: /* @__PURE__ */ jsx(Close, { className: "h-4 w-4" })
+								onClick: closeDrawer,
+								children: /* @__PURE__ */ jsx(Close, {})
 							})]
 						}),
 						/* @__PURE__ */ jsx(NavList, {
 							currentUrl,
-							onNavigate: closeDrawer,
-							className: "mt-5"
+							onNavigate: closeDrawer
 						}),
-						/* @__PURE__ */ jsx("div", { className: "flex-1" }),
-						/* @__PURE__ */ jsxs("div", {
-							className: "space-y-3 border-t border-black/[.06] pt-4 dark:border-white/[.08]",
-							children: [/* @__PURE__ */ jsx(AffiliateCard, {}), /* @__PURE__ */ jsx(AccountBlock, {
-								signedIn,
-								email: auth.user?.email,
-								onSignOut: signOut,
-								signingOut: logout.processing,
-								onNavigate: closeDrawer
-							})]
+						/* @__PURE__ */ jsx("div", { className: "side__sp" }),
+						/* @__PURE__ */ jsx(AffiliateCard, {}),
+						/* @__PURE__ */ jsx(AccountBlock, {
+							signedIn,
+							name: auth.user?.name,
+							email: auth.user?.email,
+							onSignOut: signOut,
+							signingOut: logout.processing,
+							onNavigate: closeDrawer
 						})
 					]
 				})]
 			}),
 			/* @__PURE__ */ jsxs("div", {
-				className: "flex min-h-screen flex-col lg:pl-[268px]",
-				children: [
-					stepIndex >= 0 && /* @__PURE__ */ jsx("div", {
-						className: "hidden h-[2px] w-full bg-black/[.05] lg:block dark:bg-white/[.06]",
-						children: /* @__PURE__ */ jsx("div", {
-							className: "h-full bg-linear-to-r from-accent-glow to-accent transition-all duration-700 ease-out",
-							style: { width: `${(stepIndex + 1) / STEP_ORDER.length * 100}%` }
-						})
-					}),
-					/* @__PURE__ */ jsx("main", {
-						className: "flex-1 px-4 pt-6 pb-28 sm:px-6 lg:px-8 lg:pt-8 lg:pb-10",
+				className: "app",
+				children: [/* @__PURE__ */ jsxs("aside", {
+					className: "side",
+					children: [
+						/* @__PURE__ */ jsx(Brand, {}),
+						/* @__PURE__ */ jsx(NavList, { currentUrl }),
+						/* @__PURE__ */ jsx("div", { className: "side__sp" }),
+						/* @__PURE__ */ jsx(AffiliateCard, {}),
+						account
+					]
+				}), /* @__PURE__ */ jsxs("main", {
+					className: "main",
+					children: [/* @__PURE__ */ jsx("div", {
+						className: "bb-content",
 						children: /* @__PURE__ */ jsxs("div", {
 							className: `mx-auto w-full ${width}`,
 							children: [
-								(title || pill || actions || subtitle) && /* @__PURE__ */ jsxs("div", {
-									className: "mb-5",
-									children: [/* @__PURE__ */ jsxs("div", {
-										className: "flex flex-wrap items-center justify-between gap-x-4 gap-y-3",
-										children: [/* @__PURE__ */ jsxs("div", {
-											className: "flex items-center gap-2.5",
-											children: [title && /* @__PURE__ */ jsx("h1", {
-												className: "font-display text-[22px] font-bold tracking-[-.025em] sm:text-[26px]",
-												children: title
-											}), pill && /* @__PURE__ */ jsx("span", {
-												className: `rounded-full border px-2.5 py-1 text-[11.5px] font-semibold ${TONES[pill.tone] ?? TONES.accent}`,
-												children: pill.text
-											})]
-										}), actions && /* @__PURE__ */ jsx("div", {
-											className: "flex flex-wrap items-center gap-2",
-											children: actions
-										})]
-									}), subtitle && /* @__PURE__ */ jsx("p", {
-										className: "mt-2 max-w-2xl text-[13.5px] muted",
-										children: subtitle
-									})]
-								}),
-								toolbar && /* @__PURE__ */ jsx("div", {
-									className: "mb-6",
-									children: toolbar
-								}),
+								header,
+								toolbar && /* @__PURE__ */ jsx("div", { children: toolbar }),
 								children
 							]
 						})
-					}),
-					/* @__PURE__ */ jsx(AppFooter, { className: "hidden lg:block" })
-				]
-			}),
-			/* @__PURE__ */ jsx("nav", {
-				className: "fixed inset-x-0 bottom-0 z-40 border-t border-black/[.06] bg-canvas/90 backdrop-blur-xl lg:hidden dark:border-white/[.08] dark:bg-canvas-dark/90",
-				children: /* @__PURE__ */ jsx("div", {
-					className: "grid grid-cols-3",
-					children: TABS.map((tab) => {
-						const Icon = tab.icon;
-						const active = isActive(currentUrl, tab.match);
-						return /* @__PURE__ */ jsxs(Link, {
-							href: tab.href,
-							className: `flex flex-col items-center gap-1 py-2.5 text-[11px] font-semibold transition ${active ? "text-accent dark:text-accent-glow" : "faint"}`,
-							children: [/* @__PURE__ */ jsx(Icon, { className: "h-[18px] w-[18px]" }), tab.label]
-						}, tab.label);
-					})
-				})
+					}), /* @__PURE__ */ jsx(AppFooter, { width })]
+				})]
 			})
 		]
 	});
 }
 //#endregion
+//#region resources/js/Pages/Contact.jsx
+var Contact_exports = /* @__PURE__ */ __exportAll({ default: () => Contact });
+function Contact({ categories = [], defaults = {} }) {
+	return /* @__PURE__ */ jsxs(Fragment, { children: [/* @__PURE__ */ jsx(Head, { title: "Contact Us - Outlier Vault" }), /* @__PURE__ */ jsx(AppLayout, {
+		width: "max-w-5xl",
+		children: /* @__PURE__ */ jsx(ContactFormCard, {
+			categories,
+			defaults
+		})
+	})] });
+}
+//#endregion
 //#region resources/js/Pages/components/EntitlementsBar.jsx
 var EntitlementsBar_exports = /* @__PURE__ */ __exportAll({ default: () => EntitlementsBar });
 /**
-* Plan and allowance at a glance — one quiet line, not a dashboard.
-*
-* It answers "how much have I got left" in passing. Anything larger competes
-* with the search card, which is the only thing on this page that matters.
+* Plan and allowance at a glance — the handoff mockup's `.ent` pill, wired to
+* real billing props. One quiet line, not a dashboard.
 */
 function titleCase(slug) {
 	return String(slug || "free").split(/[-_\s]+/).map((word) => word.charAt(0).toUpperCase() + word.slice(1)).join(" ");
 }
-var Dot = () => /* @__PURE__ */ jsx("span", {
-	"aria-hidden": true,
-	className: "h-1 w-1 rounded-full bg-current opacity-25"
-});
 function EntitlementsBar() {
 	const { auth = {}, billing = {} } = usePage().props;
 	if (!(auth.signedIn ?? Boolean(auth.user))) return null;
@@ -2135,43 +2972,30 @@ function EntitlementsBar() {
 	const bookmarkLimit = billing.bookmarkLimit ?? 0;
 	const bookmarksUsed = billing.bookmarksUsed ?? billing.bookmarkCount ?? 0;
 	const searchesLow = searchLimit > 0 && searchLeft <= Math.max(1, Math.round(searchLimit * .1));
-	return /* @__PURE__ */ jsx("div", {
-		className: "mb-3 flex justify-end",
-		children: /* @__PURE__ */ jsxs("div", {
-			className: "inline-flex flex-wrap items-center gap-2.5 rounded-full border border-black/[.06] bg-white/55 px-3.5 py-1.5 text-[11.5px] muted backdrop-blur-sm dark:border-white/[.07] dark:bg-white/[.03]",
-			children: [
-				/* @__PURE__ */ jsx("span", {
-					className: "font-semibold text-ink dark:text-white",
-					children: titleCase(billing.currentPlan)
-				}),
-				/* @__PURE__ */ jsx(Dot, {}),
-				/* @__PURE__ */ jsxs("span", {
-					className: searchesLow ? "text-hot" : void 0,
-					children: [
-						/* @__PURE__ */ jsx("b", {
-							className: "font-semibold text-ink dark:text-white",
-							children: searchUsed
-						}),
-						searchLimit > 0 && /* @__PURE__ */ jsxs("span", { children: ["/", searchLimit] }),
-						" searches"
-					]
-				}),
-				/* @__PURE__ */ jsx(Dot, {}),
-				/* @__PURE__ */ jsxs("span", { children: [
-					/* @__PURE__ */ jsx("b", {
-						className: "font-semibold text-ink dark:text-white",
-						children: bookmarksUsed
-					}),
-					bookmarkLimit > 0 && /* @__PURE__ */ jsxs("span", { children: ["/", bookmarkLimit] }),
-					" bookmarks"
-				] }),
-				!billing.hasPaidPlan && /* @__PURE__ */ jsxs(Fragment, { children: [/* @__PURE__ */ jsx(Dot, {}), /* @__PURE__ */ jsx(Link, {
-					href: "/plans",
-					className: "font-semibold text-accent transition hover:underline dark:text-accent-glow",
-					children: "Upgrade"
-				})] })
-			]
-		})
+	return /* @__PURE__ */ jsxs("div", {
+		className: "ent",
+		children: [
+			/* @__PURE__ */ jsx("b", { children: titleCase(billing.currentPlan) }),
+			/* @__PURE__ */ jsx("i", {}),
+			/* @__PURE__ */ jsxs("span", {
+				className: searchesLow ? "low" : void 0,
+				children: [
+					/* @__PURE__ */ jsx("b", { children: searchUsed }),
+					searchLimit > 0 && `/${searchLimit}`,
+					" searches"
+				]
+			}),
+			/* @__PURE__ */ jsx("i", {}),
+			/* @__PURE__ */ jsxs("span", { children: [
+				/* @__PURE__ */ jsx("b", { children: bookmarksUsed }),
+				bookmarkLimit > 0 && `/${bookmarkLimit}`,
+				" bookmarks"
+			] }),
+			!billing.hasPaidPlan && /* @__PURE__ */ jsxs(Fragment, { children: [/* @__PURE__ */ jsx("i", {}), /* @__PURE__ */ jsx(Link, {
+				href: "/plans",
+				children: "Upgrade"
+			})] })
+		]
 	});
 }
 //#endregion
@@ -5065,7 +5889,7 @@ function Footer() {
 						"Privacy",
 						"Contact"
 					].map((l) => /* @__PURE__ */ jsx("a", {
-						href: "#top",
+						href: l === "Contact" ? "/contact" : "#top",
 						className: "transition-colors hover:text-accent dark:hover:text-accent-glow",
 						children: l
 					}, l))
@@ -5118,6 +5942,50 @@ function Landing() {
 				/* @__PURE__ */ jsx(Faq, {}),
 				/* @__PURE__ */ jsx(FinalCta, { onStart: startSearch })
 			] }),
+			/* @__PURE__ */ jsx(Footer, {})
+		]
+	})] });
+}
+//#endregion
+//#region resources/js/Pages/LandingContact.jsx
+var LandingContact_exports = /* @__PURE__ */ __exportAll({ default: () => LandingContact });
+function LandingContact({ categories = [], defaults = {} }) {
+	const { theme, toggle } = useTheme();
+	const revealRoot = useReveal();
+	const startSearch = (type, subject) => {
+		const phrase = String(subject || "").trim();
+		if (!type || phrase === "") {
+			window.location.assign("/#search-subject");
+			return;
+		}
+		router.get("/search", {
+			type,
+			q: phrase
+		});
+	};
+	return /* @__PURE__ */ jsxs(Fragment, { children: [/* @__PURE__ */ jsx(Head, { title: "Contact Us - Outlier Vault" }), /* @__PURE__ */ jsxs("div", {
+		ref: revealRoot,
+		className: "vvf-landing min-h-screen font-body",
+		children: [
+			/* @__PURE__ */ jsx(Nav, {
+				theme,
+				onToggleTheme: toggle,
+				onStart: startSearch
+			}),
+			/* @__PURE__ */ jsxs("main", {
+				className: "relative overflow-hidden px-4 py-10 sm:px-6 lg:px-8 lg:py-16",
+				children: [/* @__PURE__ */ jsxs("div", {
+					"aria-hidden": true,
+					className: "pointer-events-none absolute inset-0 overflow-hidden",
+					children: [/* @__PURE__ */ jsx("div", { className: "bg-grid mask-radial-fade absolute inset-0" }), /* @__PURE__ */ jsx("div", { className: "absolute top-[-8%] left-1/2 h-[340px] w-[760px] max-w-[140vw] -translate-x-1/2 rounded-full bg-accent/12 blur-[140px] dark:bg-accent/18" })]
+				}), /* @__PURE__ */ jsx("div", {
+					className: "relative mx-auto max-w-5xl",
+					children: /* @__PURE__ */ jsx(ContactFormCard, {
+						categories,
+						defaults
+					})
+				})]
+			}),
 			/* @__PURE__ */ jsx(Footer, {})
 		]
 	})] });
@@ -8578,9 +9446,11 @@ createServer((page) => createInertiaApp({
 			"./Pages/Auth/Login.jsx": Login_exports,
 			"./Pages/Auth/Register.jsx": Register_exports,
 			"./Pages/ComingSoon.jsx": ComingSoon_exports,
+			"./Pages/Contact.jsx": Contact_exports,
 			"./Pages/Dashboard.jsx": Dashboard_exports,
 			"./Pages/Home.jsx": Home_exports,
 			"./Pages/Landing.jsx": Landing_exports,
+			"./Pages/LandingContact.jsx": LandingContact_exports,
 			"./Pages/Plans.jsx": Plans_exports,
 			"./Pages/SavedSearches/Index.jsx": Index_exports,
 			"./Pages/SavedSearches/Show.jsx": Show_exports,

@@ -1,12 +1,18 @@
 export const Logo = ({ className = 'h-7 w-7' }) => (
-  <svg viewBox="0 0 24 24" fill="none" className={className} aria-hidden="true">
-    <rect width="24" height="24" rx="7" fill="#5b34f5" />
+  <svg viewBox="0 0 32 32" fill="none" className={className} aria-hidden="true">
+    <rect width="32" height="32" rx="10" fill="#FFC629" />
+    <circle cx="16" cy="16" r="3.1" fill="#1A1400" />
     <path
-      d="M5 15.5 L9 10.5 L12 13 L16 6.5 L19 9.5"
-      stroke="#fff"
-      strokeWidth="2.1"
+      d="M21 11.6a6.2 6.2 0 0 1 0 8.8M11 11.6a6.2 6.2 0 0 0 0 8.8"
+      stroke="#1A1400"
+      strokeWidth="2.5"
       strokeLinecap="round"
-      strokeLinejoin="round"
+    />
+    <path
+      d="M25.2 7.6a11.9 11.9 0 0 1 0 16.8M6.8 7.6a11.9 11.9 0 0 0 0 16.8"
+      stroke="#1A1400"
+      strokeWidth="2.5"
+      strokeLinecap="round"
     />
   </svg>
 );
