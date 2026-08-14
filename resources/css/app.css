@@ -4450,3 +4450,262 @@
         margin-left: 0;
     }
 }
+
+/* ==========================================================================
+   Brand Beacon — Settings, Plans, Auth (Batch 6). Ported from the mockup,
+   scoped under `.bb`.
+   ========================================================================== */
+
+/* ---------------- settings shell ---------------- */
+.bb .st {
+    display: grid;
+    grid-template-columns: 240px minmax(0, 1fr);
+    gap: 20px;
+    align-items: start;
+}
+.bb .st__u {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 16px;
+    background: var(--white);
+    border: 1px solid var(--line);
+    border-radius: var(--r-lg);
+    margin-bottom: 14px;
+}
+.bb .st__u .avat {
+    width: 44px;
+    height: 44px;
+    font-size: 1rem;
+}
+.bb .st__nav {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    padding: 10px;
+    background: var(--white);
+    border: 1px solid var(--line);
+    border-radius: var(--r-lg);
+}
+.bb .st__i {
+    display: flex;
+    align-items: center;
+    gap: 11px;
+    padding: 11px 12px;
+    border-radius: var(--r);
+    font-size: 0.87rem;
+    font-weight: 600;
+    color: var(--muted);
+}
+.bb .st__i svg {
+    width: 16px;
+    height: 16px;
+}
+.bb .st__i:hover {
+    background: var(--paper);
+    color: var(--ink);
+}
+.bb .st__i.is-on {
+    background: var(--wash);
+    color: #5c4200;
+}
+.bb .st__i.is-on svg {
+    color: var(--amber-ink);
+}
+
+.bb .rowf {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+    padding: 18px 0;
+    border-bottom: 1px solid var(--line);
+}
+.bb .rowf:last-child {
+    border-bottom: none;
+}
+.bb .rowf__t {
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: var(--ink);
+}
+.bb .rowf__d {
+    margin-top: 3px;
+    font-size: 0.81rem;
+    color: var(--muted);
+}
+.bb .sw {
+    width: 44px;
+    height: 26px;
+    border-radius: 100px;
+    background: #dddad2;
+    position: relative;
+    flex: none;
+    transition: 0.2s;
+    border: none;
+    cursor: pointer;
+    padding: 0;
+}
+.bb .sw::after {
+    content: '';
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: #fff;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+    transition: 0.2s var(--ease);
+}
+.bb .sw.on {
+    background: var(--yellow);
+}
+.bb .sw.on::after {
+    left: 21px;
+}
+.bb .meter {
+    height: 8px;
+    border-radius: 100px;
+    background: #edebe4;
+    overflow: hidden;
+}
+.bb .meter span {
+    display: block;
+    height: 100%;
+    border-radius: 100px;
+    background: var(--yellow);
+}
+.bb .grid2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+}
+
+/* ---------------- plans ---------------- */
+.bb .plans {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 18px;
+    align-items: start;
+}
+.bb .plan {
+    background: var(--white);
+    border: 1px solid var(--line);
+    border-radius: var(--r-xl);
+    padding: 26px;
+    position: relative;
+}
+.bb .plan--on {
+    border-color: var(--yellow);
+    box-shadow: 0 6px 30px -14px rgba(20, 15, 0, 0.2);
+}
+.bb .plan__tag {
+    position: absolute;
+    top: -11px;
+    left: 24px;
+    background: var(--yellow);
+    color: #1a1400;
+    font-size: 0.64rem;
+    font-weight: 800;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 4px 10px;
+    border-radius: 5px;
+}
+.bb .plan__n {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--ink);
+}
+.bb .plan__t {
+    margin-top: 4px;
+    font-size: 0.83rem;
+    color: var(--muted);
+}
+.bb .plan__p {
+    margin-top: 18px;
+    font-size: 2.2rem;
+    font-weight: 900;
+    letter-spacing: -0.05em;
+    color: var(--ink);
+    line-height: 1;
+}
+.bb .plan__p span {
+    font-size: 0.85rem;
+    font-weight: 600;
+    letter-spacing: normal;
+    color: var(--faint);
+}
+.bb .plan__s {
+    margin-top: 6px;
+    font-size: 0.78rem;
+    color: var(--faint);
+    min-height: 19px;
+}
+.bb .plan ul {
+    list-style: none;
+    margin: 20px 0 22px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+.bb .plan li {
+    display: flex;
+    gap: 9px;
+    align-items: flex-start;
+    font-size: 0.85rem;
+    color: var(--body);
+}
+.bb .plan li svg {
+    width: 14px;
+    height: 14px;
+    flex: none;
+    margin-top: 4px;
+    color: var(--amber-ink);
+}
+
+/* ---------------- auth ---------------- */
+.bb .auth {
+    min-height: 100vh;
+    display: grid;
+    place-items: center;
+    padding: 40px 20px;
+    background: var(--canvas);
+}
+.bb .auth__c {
+    width: 100%;
+    max-width: 432px;
+}
+.bb .auth__k {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    margin-bottom: 26px;
+}
+.bb .auth__k svg {
+    width: 34px;
+    height: 34px;
+}
+.bb .auth__k span {
+    font-weight: 800;
+    font-size: 1.16rem;
+    letter-spacing: -0.028em;
+    color: var(--ink);
+}
+.bb .auth .card__p {
+    padding: 30px;
+}
+
+@media (max-width: 820px) {
+    .bb .st {
+        grid-template-columns: 1fr;
+    }
+    .bb .plans {
+        grid-template-columns: 1fr;
+    }
+    .bb .grid2 {
+        grid-template-columns: 1fr;
+    }
+}

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Models\PricingPlan;
+use App\Models\User;
 use App\Services\Billing\BillingService;
 use App\Support\TrialCheckoutIntent;
 use App\Services\Auth\PostAuthenticationRedirector;
@@ -35,6 +36,14 @@ class AuthenticatedSessionController extends Controller
             'email' => ['required', 'email'],
             'password' => ['required', 'string'],
         ]);
+
+        $trashedUser = User::withTrashed()->firstWhere('email', strtolower(trim($credentials['email'])));
+
+        if ($trashedUser?->trashed()) {
+            throw ValidationException::withMessages([
+                'email' => 'This account has already been deleted.',
+            ]);
+        }
 
         $remember = $request->boolean('remember');
 

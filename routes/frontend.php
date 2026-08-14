@@ -13,7 +13,10 @@ Route::middleware('auth')->group(function (): void {
     Route::get('/products', [SavedSearchController::class, 'products'])->name('products.index');
     Route::get('/settings/account', [SettingsController::class, 'account'])->name('settings.account');
     Route::patch('/settings/account', [SettingsController::class, 'updateAccount'])->name('settings.account.update');
+    Route::post('/settings/account/delete-request', [SettingsController::class, 'requestAccountDeletion'])->name('settings.account.delete-request');
+    Route::delete('/settings/account/delete-request', [SettingsController::class, 'cancelAccountDeletion'])->name('settings.account.delete-request.cancel');
     Route::get('/settings/appearance', [SettingsController::class, 'appearance'])->name('settings.appearance');
+    Route::patch('/settings/appearance', [SettingsController::class, 'updateAppearance'])->name('settings.appearance.update');
     Route::get('/settings/subscription', [SettingsController::class, 'subscription'])->name('settings.subscription');
     Route::get('/plans', [SettingsController::class, 'plans'])->name('plans');
 });

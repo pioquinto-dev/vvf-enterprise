@@ -1832,7 +1832,7 @@ function Listing({ resource, title, search, searchPlaceholder, filters = [], col
 //#endregion
 //#region resources/js/Pages/Admin/Login.jsx
 var Login_exports$1 = /* @__PURE__ */ __exportAll({ default: () => Login$1 });
-function PasswordField$2({ value, onChange }) {
+function PasswordField({ value, onChange }) {
 	const [visible, setVisible] = useState(false);
 	return /* @__PURE__ */ jsxs("div", {
 		className: "relative",
@@ -1933,7 +1933,7 @@ function Login$1({ adminRootEmail = "" }) {
 										className: "mb-2 block text-[13px] font-semibold text-white/76",
 										children: "Password"
 									}),
-									/* @__PURE__ */ jsx(PasswordField$2, {
+									/* @__PURE__ */ jsx(PasswordField, {
 										value: form.data.password,
 										onChange: (event) => form.setData("password", event.target.value)
 									}),
@@ -1954,6 +1954,330 @@ function Login$1({ adminRootEmail = "" }) {
 				})]
 			})
 		})]
+	})] });
+}
+//#endregion
+//#region resources/js/Pages/Auth/Login.jsx
+var Login_exports = /* @__PURE__ */ __exportAll({ default: () => Login });
+function Login() {
+	const { flash = {} } = usePage().props;
+	const form = useForm({
+		email: "",
+		password: "",
+		remember: true
+	});
+	const submit = (event) => {
+		event.preventDefault();
+		form.post("/login");
+	};
+	return /* @__PURE__ */ jsxs(Fragment, { children: [/* @__PURE__ */ jsx(Head, { title: "Sign in · Brand Beacon" }), /* @__PURE__ */ jsx("div", {
+		className: "bb",
+		children: /* @__PURE__ */ jsx("div", {
+			className: "auth",
+			children: /* @__PURE__ */ jsxs("div", {
+				className: "auth__c",
+				children: [
+					/* @__PURE__ */ jsxs(Link, {
+						href: "/",
+						className: "auth__k",
+						children: [/* @__PURE__ */ jsx(Logo, { className: "h-[34px] w-[34px]" }), /* @__PURE__ */ jsx("span", { children: "Brand Beacon" })]
+					}),
+					/* @__PURE__ */ jsx("div", {
+						className: "card",
+						children: /* @__PURE__ */ jsxs("form", {
+							className: "card__p",
+							onSubmit: submit,
+							children: [
+								/* @__PURE__ */ jsx("h2", {
+									style: { textAlign: "center" },
+									children: "Welcome back"
+								}),
+								/* @__PURE__ */ jsx("p", {
+									className: "muted",
+									style: {
+										textAlign: "center",
+										fontSize: ".86rem",
+										marginTop: 6
+									},
+									children: "Sign in to pick up your saved searches."
+								}),
+								flash.status && /* @__PURE__ */ jsx("div", {
+									style: {
+										marginTop: 18,
+										padding: "12px 16px",
+										borderRadius: "var(--r)",
+										background: "var(--ok-bg)",
+										color: "var(--ok)",
+										fontWeight: 600,
+										fontSize: ".85rem"
+									},
+									children: flash.status
+								}),
+								/* @__PURE__ */ jsxs("a", {
+									href: "/auth/google",
+									className: "btn btn--k btn--w",
+									style: {
+										marginTop: 24,
+										height: 48
+									},
+									children: [/* @__PURE__ */ jsx("span", {
+										className: "gic",
+										children: /* @__PURE__ */ jsx(Google, {})
+									}), "Continue with Google"]
+								}),
+								/* @__PURE__ */ jsx("div", {
+									className: "divid",
+									children: "or"
+								}),
+								/* @__PURE__ */ jsxs("div", {
+									style: {
+										display: "flex",
+										flexDirection: "column",
+										gap: 14
+									},
+									children: [/* @__PURE__ */ jsxs("div", { children: [
+										/* @__PURE__ */ jsx("label", {
+											className: "lbl",
+											children: "Email"
+										}),
+										/* @__PURE__ */ jsx("input", {
+											className: "fld",
+											type: "email",
+											autoComplete: "email",
+											placeholder: "you@brand.com",
+											value: form.data.email,
+											onChange: (e) => form.setData("email", e.target.value)
+										}),
+										form.errors.email && /* @__PURE__ */ jsx("p", {
+											className: "hint",
+											style: { color: "var(--warn)" },
+											children: form.errors.email
+										})
+									] }), /* @__PURE__ */ jsxs("div", { children: [
+										/* @__PURE__ */ jsx("label", {
+											className: "lbl",
+											children: "Password"
+										}),
+										/* @__PURE__ */ jsx("input", {
+											className: "fld",
+											type: "password",
+											autoComplete: "current-password",
+											placeholder: "••••••••",
+											value: form.data.password,
+											onChange: (e) => form.setData("password", e.target.value)
+										}),
+										form.errors.password && /* @__PURE__ */ jsx("p", {
+											className: "hint",
+											style: { color: "var(--warn)" },
+											children: form.errors.password
+										})
+									] })]
+								}),
+								/* @__PURE__ */ jsxs("button", {
+									type: "submit",
+									className: "btn btn--y btn--w",
+									style: {
+										marginTop: 20,
+										height: 48
+									},
+									disabled: form.processing,
+									children: [
+										form.processing ? "Signing in…" : "Sign in",
+										" ",
+										/* @__PURE__ */ jsx(Arrow, {})
+									]
+								}),
+								/* @__PURE__ */ jsxs("p", {
+									className: "muted",
+									style: {
+										textAlign: "center",
+										fontSize: ".83rem",
+										marginTop: 18
+									},
+									children: [
+										"No account?",
+										" ",
+										/* @__PURE__ */ jsx(Link, {
+											href: "/register",
+											style: {
+												fontWeight: 700,
+												color: "var(--amber-ink)"
+											},
+											children: "Create one free"
+										})
+									]
+								})
+							]
+						})
+					}),
+					/* @__PURE__ */ jsx("p", {
+						className: "faint",
+						style: {
+							textAlign: "center",
+							fontSize: ".78rem",
+							marginTop: 18
+						},
+						children: "1 free search · no credit card"
+					})
+				]
+			})
+		})
+	})] });
+}
+//#endregion
+//#region resources/js/Pages/Auth/Register.jsx
+var Register_exports = /* @__PURE__ */ __exportAll({ default: () => Register });
+var FIELDS = [
+	{
+		key: "name",
+		label: "Name",
+		type: "text",
+		placeholder: "Your name",
+		autoComplete: "name"
+	},
+	{
+		key: "email",
+		label: "Email",
+		type: "email",
+		placeholder: "you@brand.com",
+		autoComplete: "email"
+	},
+	{
+		key: "password",
+		label: "Password",
+		type: "password",
+		placeholder: "••••••••",
+		autoComplete: "new-password"
+	},
+	{
+		key: "password_confirmation",
+		label: "Confirm password",
+		type: "password",
+		placeholder: "••••••••",
+		autoComplete: "new-password"
+	}
+];
+function Register() {
+	const form = useForm({
+		name: "",
+		email: "",
+		password: "",
+		password_confirmation: ""
+	});
+	const submit = (event) => {
+		event.preventDefault();
+		form.post("/register");
+	};
+	return /* @__PURE__ */ jsxs(Fragment, { children: [/* @__PURE__ */ jsx(Head, { title: "Create your account · Brand Beacon" }), /* @__PURE__ */ jsx("div", {
+		className: "bb",
+		children: /* @__PURE__ */ jsx("div", {
+			className: "auth",
+			children: /* @__PURE__ */ jsxs("div", {
+				className: "auth__c",
+				children: [/* @__PURE__ */ jsxs(Link, {
+					href: "/",
+					className: "auth__k",
+					children: [/* @__PURE__ */ jsx(Logo, { className: "h-[34px] w-[34px]" }), /* @__PURE__ */ jsx("span", { children: "Brand Beacon" })]
+				}), /* @__PURE__ */ jsx("div", {
+					className: "card",
+					children: /* @__PURE__ */ jsxs("form", {
+						className: "card__p",
+						onSubmit: submit,
+						children: [
+							/* @__PURE__ */ jsx("h2", {
+								style: { textAlign: "center" },
+								children: "Create your account"
+							}),
+							/* @__PURE__ */ jsx("p", {
+								className: "muted",
+								style: {
+									textAlign: "center",
+									fontSize: ".86rem",
+									marginTop: 6
+								},
+								children: "Your first search is free — no credit card."
+							}),
+							/* @__PURE__ */ jsxs("a", {
+								href: "/auth/google",
+								className: "btn btn--k btn--w",
+								style: {
+									marginTop: 24,
+									height: 48
+								},
+								children: [/* @__PURE__ */ jsx("span", {
+									className: "gic",
+									children: /* @__PURE__ */ jsx(Google, {})
+								}), "Continue with Google"]
+							}),
+							/* @__PURE__ */ jsx("div", {
+								className: "divid",
+								children: "or"
+							}),
+							/* @__PURE__ */ jsx("div", {
+								style: {
+									display: "flex",
+									flexDirection: "column",
+									gap: 14
+								},
+								children: FIELDS.map((f) => /* @__PURE__ */ jsxs("div", { children: [
+									/* @__PURE__ */ jsx("label", {
+										className: "lbl",
+										children: f.label
+									}),
+									/* @__PURE__ */ jsx("input", {
+										className: "fld",
+										type: f.type,
+										autoComplete: f.autoComplete,
+										placeholder: f.placeholder,
+										value: form.data[f.key],
+										onChange: (e) => form.setData(f.key, e.target.value)
+									}),
+									form.errors[f.key] && /* @__PURE__ */ jsx("p", {
+										className: "hint",
+										style: { color: "var(--warn)" },
+										children: form.errors[f.key]
+									})
+								] }, f.key))
+							}),
+							/* @__PURE__ */ jsxs("button", {
+								type: "submit",
+								className: "btn btn--y btn--w",
+								style: {
+									marginTop: 20,
+									height: 48
+								},
+								disabled: form.processing,
+								children: [
+									form.processing ? "Creating…" : "Create account",
+									" ",
+									/* @__PURE__ */ jsx(Arrow, {})
+								]
+							}),
+							/* @__PURE__ */ jsxs("p", {
+								className: "muted",
+								style: {
+									textAlign: "center",
+									fontSize: ".83rem",
+									marginTop: 18
+								},
+								children: [
+									"Already have an account?",
+									" ",
+									/* @__PURE__ */ jsx(Link, {
+										href: "/login",
+										style: {
+											fontWeight: 700,
+											color: "var(--amber-ink)"
+										},
+										children: "Sign in"
+									})
+								]
+							})
+						]
+					})
+				})]
+			})
+		})
 	})] });
 }
 //#endregion
@@ -1994,439 +2318,6 @@ function AppFooter({ width = "max-w-6xl", label = "© 2026 Brand Beacon · TikTo
 			}, item.href)) }), /* @__PURE__ */ jsx("p", { children: label })]
 		})
 	});
-}
-//#endregion
-//#region resources/js/Pages/Auth/Login.jsx
-var Login_exports = /* @__PURE__ */ __exportAll({ default: () => Login });
-function GoogleMark$1() {
-	return /* @__PURE__ */ jsxs("svg", {
-		viewBox: "0 0 24 24",
-		className: "h-5 w-5",
-		"aria-hidden": true,
-		children: [
-			/* @__PURE__ */ jsx("path", {
-				fill: "#EA4335",
-				d: "M12 10.2v3.9h5.4c-.2 1.2-.9 2.3-1.9 3l3.1 2.4c1.8-1.7 2.9-4.1 2.9-7 0-.7-.1-1.4-.2-2H12z"
-			}),
-			/* @__PURE__ */ jsx("path", {
-				fill: "#34A853",
-				d: "M12 22c2.6 0 4.7-.8 6.3-2.4l-3.1-2.4c-.8.6-1.9 1-3.2 1-2.4 0-4.5-1.7-5.2-3.9l-3.2 2.5C5.2 19.8 8.3 22 12 22z"
-			}),
-			/* @__PURE__ */ jsx("path", {
-				fill: "#4A90E2",
-				d: "M6.8 14.3c-.2-.6-.3-1.2-.3-1.8s.1-1.2.3-1.8L3.6 8.2C2.9 9.6 2.5 11 2.5 12.5s.4 2.9 1.1 4.3l3.2-2.5z"
-			}),
-			/* @__PURE__ */ jsx("path", {
-				fill: "#FBBC05",
-				d: "M12 6.8c1.4 0 2.7.5 3.7 1.4l2.8-2.8C16.7 3.8 14.6 3 12 3 8.3 3 5.2 5.2 3.6 8.2l3.2 2.5c.7-2.2 2.8-3.9 5.2-3.9z"
-			})
-		]
-	});
-}
-function PasswordField$1({ value, onChange, placeholder, autoComplete }) {
-	const [visible, setVisible] = useState(false);
-	return /* @__PURE__ */ jsxs("div", {
-		className: "relative",
-		children: [/* @__PURE__ */ jsx("input", {
-			type: visible ? "text" : "password",
-			value,
-			onChange,
-			className: "field h-12 pr-12 text-[14px]",
-			placeholder,
-			autoComplete
-		}), /* @__PURE__ */ jsx("button", {
-			type: "button",
-			onClick: () => setVisible((current) => !current),
-			"aria-label": visible ? "Hide password" : "Show password",
-			className: "absolute top-1/2 right-3 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full text-ink/40 transition hover:bg-black/[.04] hover:text-ink dark:text-white/40 dark:hover:bg-white/[.06] dark:hover:text-white",
-			children: /* @__PURE__ */ jsxs("svg", {
-				viewBox: "0 0 24 24",
-				className: "h-4 w-4",
-				fill: "none",
-				stroke: "currentColor",
-				strokeWidth: "1.8",
-				children: [/* @__PURE__ */ jsx("path", { d: "M1.5 12s3.8-6 10.5-6 10.5 6 10.5 6-3.8 6-10.5 6S1.5 12 1.5 12Z" }), /* @__PURE__ */ jsx("circle", {
-					cx: "12",
-					cy: "12",
-					r: "3.2"
-				})]
-			})
-		})]
-	});
-}
-function Login() {
-	const { flash = {} } = usePage().props;
-	const form = useForm({
-		email: "",
-		password: "",
-		remember: true
-	});
-	const submit = (event) => {
-		event.preventDefault();
-		form.post("/login");
-	};
-	return /* @__PURE__ */ jsxs(Fragment, { children: [/* @__PURE__ */ jsx(Head, { title: "Sign in - Outlier Vault" }), /* @__PURE__ */ jsxs("div", {
-		className: "vvf-landing relative flex min-h-screen flex-col overflow-hidden px-4 py-10 sm:px-6",
-		children: [
-			/* @__PURE__ */ jsxs("div", {
-				"aria-hidden": true,
-				className: "pointer-events-none absolute inset-0 -z-10",
-				children: [/* @__PURE__ */ jsx("div", { className: "bg-grid mask-radial-fade absolute inset-0" }), /* @__PURE__ */ jsx("div", { className: "absolute top-[-12%] left-1/2 h-[420px] w-[760px] -translate-x-1/2 rounded-full bg-accent/16 blur-[150px]" })]
-			}),
-			/* @__PURE__ */ jsxs("div", {
-				className: "mx-auto flex w-full max-w-5xl items-center justify-between",
-				children: [/* @__PURE__ */ jsx(Link, {
-					href: "/",
-					className: "font-display text-[20px] font-bold tracking-[-.02em]",
-					children: "Outlier Vault"
-				}), /* @__PURE__ */ jsx(Link, {
-					href: "/register",
-					className: "btn-ghost h-10 px-4 text-sm",
-					children: "Sign up"
-				})]
-			}),
-			/* @__PURE__ */ jsx("div", {
-				className: "mx-auto mt-12 flex w-full max-w-5xl flex-1 items-center justify-center",
-				children: /* @__PURE__ */ jsxs("div", {
-					className: "w-full max-w-[430px] rounded-[26px] border border-black/[.06] bg-white/90 p-8 shadow-[0_28px_90px_-50px_rgba(16,18,32,.42)] backdrop-blur-xl dark:border-white/[.08] dark:bg-white/[.05] sm:p-9",
-					children: [
-						/* @__PURE__ */ jsxs("h1", {
-							className: "font-display text-[30px] font-bold tracking-[-.04em] text-ink sm:text-[40px] dark:text-white",
-							children: ["Welcome ", /* @__PURE__ */ jsx("span", {
-								className: "text-[#3568f3] italic",
-								children: "back"
-							})]
-						}),
-						/* @__PURE__ */ jsx("p", {
-							className: "mt-1 text-[15px] muted",
-							children: "Sign in to continue growing your channel."
-						}),
-						flash.status && /* @__PURE__ */ jsx("div", {
-							className: "mt-5 rounded-2xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-700 dark:text-emerald-300",
-							children: flash.status
-						}),
-						/* @__PURE__ */ jsxs("a", {
-							href: "/auth/google",
-							className: "mt-6 flex h-12 w-full items-center justify-center gap-3 rounded-full bg-[#2f2a2a] px-5 text-[15px] font-semibold text-white shadow-[0_18px_40px_-26px_rgba(0,0,0,.55)] transition hover:opacity-95",
-							children: [/* @__PURE__ */ jsx("span", {
-								className: "flex h-8 w-8 items-center justify-center rounded-full bg-white",
-								children: /* @__PURE__ */ jsx(GoogleMark$1, {})
-							}), "Continue with Google"]
-						}),
-						/* @__PURE__ */ jsxs("div", {
-							className: "mt-6 flex items-center gap-4",
-							children: [
-								/* @__PURE__ */ jsx("div", { className: "h-px flex-1 bg-black/[.08] dark:bg-white/[.1]" }),
-								/* @__PURE__ */ jsx("span", {
-									className: "text-[12px] font-semibold tracking-[.14em] faint uppercase",
-									children: "Or"
-								}),
-								/* @__PURE__ */ jsx("div", { className: "h-px flex-1 bg-black/[.08] dark:bg-white/[.1]" })
-							]
-						}),
-						/* @__PURE__ */ jsxs("form", {
-							onSubmit: submit,
-							className: "mt-6 space-y-4",
-							children: [
-								/* @__PURE__ */ jsxs("div", { children: [
-									/* @__PURE__ */ jsx("label", {
-										className: "mb-2 block text-[14px] font-semibold text-ink dark:text-white",
-										children: "Email"
-									}),
-									/* @__PURE__ */ jsx("input", {
-										type: "email",
-										value: form.data.email,
-										onChange: (event) => form.setData("email", event.target.value),
-										className: "field h-12 text-[14px]",
-										placeholder: "you@example.com",
-										autoComplete: "email"
-									}),
-									form.errors.email && /* @__PURE__ */ jsx("p", {
-										className: "mt-2 text-sm text-hot",
-										children: form.errors.email
-									})
-								] }),
-								/* @__PURE__ */ jsxs("div", { children: [
-									/* @__PURE__ */ jsxs("div", {
-										className: "mb-2 flex items-center justify-between gap-3",
-										children: [/* @__PURE__ */ jsx("label", {
-											className: "text-[14px] font-semibold text-ink dark:text-white",
-											children: "Password"
-										}), /* @__PURE__ */ jsx("button", {
-											type: "button",
-											className: "text-[13px] font-medium text-[#8d6b59] transition hover:opacity-80",
-											children: "Forgot password?"
-										})]
-									}),
-									/* @__PURE__ */ jsx(PasswordField$1, {
-										value: form.data.password,
-										onChange: (event) => form.setData("password", event.target.value),
-										placeholder: "Enter your password",
-										autoComplete: "current-password"
-									}),
-									form.errors.password && /* @__PURE__ */ jsx("p", {
-										className: "mt-2 text-sm text-hot",
-										children: form.errors.password
-									})
-								] }),
-								/* @__PURE__ */ jsxs("label", {
-									className: "flex items-center gap-3 pt-1 text-[13px] muted",
-									children: [/* @__PURE__ */ jsx("input", {
-										type: "checkbox",
-										checked: form.data.remember,
-										onChange: (event) => form.setData("remember", event.target.checked),
-										className: "h-4 w-4 rounded border-black/[.15]"
-									}), "Keep me signed in"]
-								}),
-								/* @__PURE__ */ jsx("button", {
-									type: "submit",
-									disabled: form.processing,
-									className: "mt-2 h-12 w-full rounded-full bg-[#3568f3] text-[15px] font-semibold text-white shadow-[0_20px_45px_-26px_rgba(53,104,243,.8)] transition hover:opacity-95 disabled:opacity-50",
-									children: form.processing ? "Signing in..." : "Sign in"
-								})
-							]
-						}),
-						/* @__PURE__ */ jsxs("p", {
-							className: "mt-6 text-center text-[14px] muted",
-							children: [
-								"Don't have an account?",
-								" ",
-								/* @__PURE__ */ jsx(Link, {
-									href: "/register",
-									className: "font-semibold text-[#3568f3] hover:underline",
-									children: "Sign up free"
-								})
-							]
-						})
-					]
-				})
-			}),
-			/* @__PURE__ */ jsx(AppFooter, {
-				label: "Outlier Vault sign in",
-				className: "mt-12"
-			})
-		]
-	})] });
-}
-//#endregion
-//#region resources/js/Pages/Auth/Register.jsx
-var Register_exports = /* @__PURE__ */ __exportAll({ default: () => Register });
-function GoogleMark() {
-	return /* @__PURE__ */ jsxs("svg", {
-		viewBox: "0 0 24 24",
-		className: "h-5 w-5",
-		"aria-hidden": true,
-		children: [
-			/* @__PURE__ */ jsx("path", {
-				fill: "#EA4335",
-				d: "M12 10.2v3.9h5.4c-.2 1.2-.9 2.3-1.9 3l3.1 2.4c1.8-1.7 2.9-4.1 2.9-7 0-.7-.1-1.4-.2-2H12z"
-			}),
-			/* @__PURE__ */ jsx("path", {
-				fill: "#34A853",
-				d: "M12 22c2.6 0 4.7-.8 6.3-2.4l-3.1-2.4c-.8.6-1.9 1-3.2 1-2.4 0-4.5-1.7-5.2-3.9l-3.2 2.5C5.2 19.8 8.3 22 12 22z"
-			}),
-			/* @__PURE__ */ jsx("path", {
-				fill: "#4A90E2",
-				d: "M6.8 14.3c-.2-.6-.3-1.2-.3-1.8s.1-1.2.3-1.8L3.6 8.2C2.9 9.6 2.5 11 2.5 12.5s.4 2.9 1.1 4.3l3.2-2.5z"
-			}),
-			/* @__PURE__ */ jsx("path", {
-				fill: "#FBBC05",
-				d: "M12 6.8c1.4 0 2.7.5 3.7 1.4l2.8-2.8C16.7 3.8 14.6 3 12 3 8.3 3 5.2 5.2 3.6 8.2l3.2 2.5c.7-2.2 2.8-3.9 5.2-3.9z"
-			})
-		]
-	});
-}
-function PasswordField({ value, onChange, placeholder, autoComplete }) {
-	const [visible, setVisible] = useState(false);
-	return /* @__PURE__ */ jsxs("div", {
-		className: "relative",
-		children: [/* @__PURE__ */ jsx("input", {
-			type: visible ? "text" : "password",
-			value,
-			onChange,
-			className: "field h-12 pr-12 text-[14px]",
-			placeholder,
-			autoComplete
-		}), /* @__PURE__ */ jsx("button", {
-			type: "button",
-			onClick: () => setVisible((current) => !current),
-			"aria-label": visible ? "Hide password" : "Show password",
-			className: "absolute top-1/2 right-3 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full text-ink/40 transition hover:bg-black/[.04] hover:text-ink dark:text-white/40 dark:hover:bg-white/[.06] dark:hover:text-white",
-			children: /* @__PURE__ */ jsxs("svg", {
-				viewBox: "0 0 24 24",
-				className: "h-4 w-4",
-				fill: "none",
-				stroke: "currentColor",
-				strokeWidth: "1.8",
-				children: [/* @__PURE__ */ jsx("path", { d: "M1.5 12s3.8-6 10.5-6 10.5 6 10.5 6-3.8 6-10.5 6S1.5 12 1.5 12Z" }), /* @__PURE__ */ jsx("circle", {
-					cx: "12",
-					cy: "12",
-					r: "3.2"
-				})]
-			})
-		})]
-	});
-}
-function Register() {
-	const form = useForm({
-		name: "",
-		email: "",
-		password: "",
-		password_confirmation: ""
-	});
-	const submit = (event) => {
-		event.preventDefault();
-		form.post("/register");
-	};
-	return /* @__PURE__ */ jsxs(Fragment, { children: [/* @__PURE__ */ jsx(Head, { title: "Sign up - Outlier Vault" }), /* @__PURE__ */ jsxs("div", {
-		className: "vvf-landing relative flex min-h-screen flex-col overflow-hidden px-4 py-10 sm:px-6",
-		children: [
-			/* @__PURE__ */ jsxs("div", {
-				"aria-hidden": true,
-				className: "pointer-events-none absolute inset-0 -z-10",
-				children: [/* @__PURE__ */ jsx("div", { className: "bg-grid mask-radial-fade absolute inset-0" }), /* @__PURE__ */ jsx("div", { className: "absolute top-[-12%] left-1/2 h-[420px] w-[760px] -translate-x-1/2 rounded-full bg-hot/10 blur-[150px]" })]
-			}),
-			/* @__PURE__ */ jsxs("div", {
-				className: "mx-auto flex w-full max-w-5xl items-center justify-between",
-				children: [/* @__PURE__ */ jsx(Link, {
-					href: "/",
-					className: "font-display text-[20px] font-bold tracking-[-.02em]",
-					children: "Outlier Vault"
-				}), /* @__PURE__ */ jsx(Link, {
-					href: "/login",
-					className: "btn-ghost h-10 px-4 text-sm",
-					children: "Sign in"
-				})]
-			}),
-			/* @__PURE__ */ jsx("div", {
-				className: "mx-auto mt-12 flex w-full max-w-5xl flex-1 items-center justify-center",
-				children: /* @__PURE__ */ jsxs("div", {
-					className: "w-full max-w-[430px] rounded-[26px] border border-black/[.06] bg-white/90 p-8 shadow-[0_28px_90px_-50px_rgba(16,18,32,.42)] backdrop-blur-xl dark:border-white/[.08] dark:bg-white/[.05] sm:p-9",
-					children: [
-						/* @__PURE__ */ jsxs("h1", {
-							className: "font-display text-[30px] font-bold tracking-[-.04em] text-ink sm:text-[40px] dark:text-white",
-							children: ["Create your ", /* @__PURE__ */ jsx("span", {
-								className: "text-[#3568f3] italic",
-								children: "account"
-							})]
-						}),
-						/* @__PURE__ */ jsx("p", {
-							className: "mt-1 text-[15px] muted",
-							children: "Sign up to start tracking viral videos with your team."
-						}),
-						/* @__PURE__ */ jsxs("a", {
-							href: "/auth/google",
-							className: "mt-6 flex h-12 w-full items-center justify-center gap-3 rounded-full bg-[#2f2a2a] px-5 text-[15px] font-semibold text-white shadow-[0_18px_40px_-26px_rgba(0,0,0,.55)] transition hover:opacity-95",
-							children: [/* @__PURE__ */ jsx("span", {
-								className: "flex h-8 w-8 items-center justify-center rounded-full bg-white",
-								children: /* @__PURE__ */ jsx(GoogleMark, {})
-							}), "Continue with Google"]
-						}),
-						/* @__PURE__ */ jsxs("div", {
-							className: "mt-6 flex items-center gap-4",
-							children: [
-								/* @__PURE__ */ jsx("div", { className: "h-px flex-1 bg-black/[.08] dark:bg-white/[.1]" }),
-								/* @__PURE__ */ jsx("span", {
-									className: "text-[12px] font-semibold tracking-[.14em] faint uppercase",
-									children: "Or"
-								}),
-								/* @__PURE__ */ jsx("div", { className: "h-px flex-1 bg-black/[.08] dark:bg-white/[.1]" })
-							]
-						}),
-						/* @__PURE__ */ jsxs("form", {
-							onSubmit: submit,
-							className: "mt-6 space-y-4",
-							children: [
-								/* @__PURE__ */ jsxs("div", { children: [
-									/* @__PURE__ */ jsx("label", {
-										className: "mb-2 block text-[14px] font-semibold text-ink dark:text-white",
-										children: "Name"
-									}),
-									/* @__PURE__ */ jsx("input", {
-										type: "text",
-										value: form.data.name,
-										onChange: (event) => form.setData("name", event.target.value),
-										className: "field h-12 text-[14px]",
-										placeholder: "Your name",
-										autoComplete: "name"
-									}),
-									form.errors.name && /* @__PURE__ */ jsx("p", {
-										className: "mt-2 text-sm text-hot",
-										children: form.errors.name
-									})
-								] }),
-								/* @__PURE__ */ jsxs("div", { children: [
-									/* @__PURE__ */ jsx("label", {
-										className: "mb-2 block text-[14px] font-semibold text-ink dark:text-white",
-										children: "Email"
-									}),
-									/* @__PURE__ */ jsx("input", {
-										type: "email",
-										value: form.data.email,
-										onChange: (event) => form.setData("email", event.target.value),
-										className: "field h-12 text-[14px]",
-										placeholder: "you@example.com",
-										autoComplete: "email"
-									}),
-									form.errors.email && /* @__PURE__ */ jsx("p", {
-										className: "mt-2 text-sm text-hot",
-										children: form.errors.email
-									})
-								] }),
-								/* @__PURE__ */ jsxs("div", { children: [
-									/* @__PURE__ */ jsx("label", {
-										className: "mb-2 block text-[14px] font-semibold text-ink dark:text-white",
-										children: "Password"
-									}),
-									/* @__PURE__ */ jsx(PasswordField, {
-										value: form.data.password,
-										onChange: (event) => form.setData("password", event.target.value),
-										placeholder: "Create a password",
-										autoComplete: "new-password"
-									}),
-									form.errors.password && /* @__PURE__ */ jsx("p", {
-										className: "mt-2 text-sm text-hot",
-										children: form.errors.password
-									})
-								] }),
-								/* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsx("label", {
-									className: "mb-2 block text-[14px] font-semibold text-ink dark:text-white",
-									children: "Confirm password"
-								}), /* @__PURE__ */ jsx(PasswordField, {
-									value: form.data.password_confirmation,
-									onChange: (event) => form.setData("password_confirmation", event.target.value),
-									placeholder: "Repeat your password",
-									autoComplete: "new-password"
-								})] }),
-								/* @__PURE__ */ jsx("button", {
-									type: "submit",
-									disabled: form.processing,
-									className: "mt-2 h-12 w-full rounded-full bg-[#3568f3] text-[15px] font-semibold text-white shadow-[0_20px_45px_-26px_rgba(53,104,243,.8)] transition hover:opacity-95 disabled:opacity-50",
-									children: form.processing ? "Creating account..." : "Sign up"
-								})
-							]
-						}),
-						/* @__PURE__ */ jsxs("p", {
-							className: "mt-6 text-center text-[14px] muted",
-							children: [
-								"Already have an account?",
-								" ",
-								/* @__PURE__ */ jsx(Link, {
-									href: "/login",
-									className: "font-semibold text-[#3568f3] hover:underline",
-									children: "Sign in"
-								})
-							]
-						})
-					]
-				})
-			}),
-			/* @__PURE__ */ jsx(AppFooter, {
-				label: "Outlier Vault sign up",
-				className: "mt-12"
-			})
-		]
-	})] });
 }
 //#endregion
 //#region resources/js/Pages/components/AppLayout.jsx
@@ -6672,32 +6563,158 @@ function LandingContact({ categories = [], defaults = {} }) {
 	})] });
 }
 //#endregion
+//#region resources/js/Pages/Settings/SettingsShell.jsx
+var SettingsShell_exports = /* @__PURE__ */ __exportAll({ default: () => SettingsShell });
+var NAV = [
+	{
+		key: "account",
+		label: "Account",
+		href: "/settings/account",
+		icon: User
+	},
+	{
+		key: "appearance",
+		label: "Appearance",
+		href: "/settings/appearance",
+		icon: Sun
+	},
+	{
+		key: "subscription",
+		label: "Subscription",
+		href: "/settings/subscription",
+		icon: Store
+	},
+	{
+		key: "plans",
+		label: "Plans",
+		href: "/plans",
+		icon: Spark
+	}
+];
+/**
+* The settings shell — the mockup's `.st` two-column layout (account card +
+* nav on the left, section content on the right) under the app shell.
+*/
+function SettingsShell({ section, children }) {
+	const { auth = {} } = usePage().props;
+	const initial = (auth.user?.name ?? auth.user?.email ?? "A").slice(0, 1).toUpperCase();
+	return /* @__PURE__ */ jsx(AppLayout, {
+		width: "max-w-[1240px]",
+		title: "Settings",
+		subtitle: "Manage your account, preferences and billing.",
+		children: /* @__PURE__ */ jsxs("div", {
+			className: "st",
+			children: [/* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsxs("div", {
+				className: "st__u",
+				children: [/* @__PURE__ */ jsx("span", {
+					className: "avat",
+					children: initial
+				}), /* @__PURE__ */ jsxs("span", {
+					style: {
+						minWidth: 0,
+						display: "block",
+						overflow: "hidden"
+					},
+					children: [/* @__PURE__ */ jsx("span", {
+						className: "acct__n",
+						style: { fontSize: ".88rem" },
+						children: auth.user?.name ?? "Account"
+					}), /* @__PURE__ */ jsx("span", {
+						className: "acct__e",
+						children: auth.user?.email ?? "No email found"
+					})]
+				})]
+			}), /* @__PURE__ */ jsx("nav", {
+				className: "st__nav",
+				children: NAV.map((item) => {
+					const Icon = item.icon;
+					return /* @__PURE__ */ jsxs(Link, {
+						href: item.href,
+						className: `st__i${item.key === section ? " is-on" : ""}`,
+						children: [/* @__PURE__ */ jsx(Icon, { className: "h-4 w-4" }), item.label]
+					}, item.key);
+				})
+			})] }), /* @__PURE__ */ jsx("div", { children })]
+		})
+	});
+}
+//#endregion
 //#region resources/js/Pages/Plans.jsx
 var Plans_exports = /* @__PURE__ */ __exportAll({ default: () => Plans });
 function Plans() {
-	const { auth = {} } = usePage().props;
-	const revealRoot = useReveal();
-	const startFree = () => {
-		window.location.assign("/search?type=brand");
-	};
-	const startTrialCheckout = (plan) => {
-		if (!auth.signedIn) {
-			window.location.assign(`/login?redirect=trial_checkout&plan=${encodeURIComponent(plan?.slug ?? "basic")}&trial=1`);
-			return;
-		}
-		billing.trialCheckout(plan?.slug ?? "basic");
-	};
-	return /* @__PURE__ */ jsxs(Fragment, { children: [/* @__PURE__ */ jsx(Head, { title: "Plans - Outlier Vault" }), /* @__PURE__ */ jsx(AppLayout, {
-		width: "max-w-7xl",
-		children: /* @__PURE__ */ jsx("div", {
-			ref: revealRoot,
-			children: /* @__PURE__ */ jsx(Pricing, {
-				onStart: startFree,
-				onTrial: startTrialCheckout,
-				onTrialStart: startTrialCheckout,
-				compact: true
+	const { billing: billingState = {} } = usePage().props;
+	const current = String(billingState.currentPlan ?? "free").toLowerCase();
+	const upgrade = (slug) => billing.checkout(slug);
+	return /* @__PURE__ */ jsxs(Fragment, { children: [/* @__PURE__ */ jsx(Head, { title: "Plans · Brand Beacon" }), /* @__PURE__ */ jsxs(SettingsShell, {
+		section: "plans",
+		children: [/* @__PURE__ */ jsxs("div", {
+			style: { marginBottom: 18 },
+			children: [/* @__PURE__ */ jsx("h2", { children: "Plans" }), /* @__PURE__ */ jsx("p", {
+				className: "muted",
+				style: {
+					fontSize: ".86rem",
+					marginTop: 6
+				},
+				children: "Start with one free search. Upgrade when you want tracking on a schedule."
+			})]
+		}), /* @__PURE__ */ jsx("div", {
+			className: "plans",
+			children: PRICING.monthly.map((plan) => {
+				const isCurrent = plan.slug === current;
+				const isFree = plan.slug === "free";
+				return /* @__PURE__ */ jsxs("div", {
+					className: `plan${isCurrent ? " plan--on" : ""}`,
+					children: [
+						isCurrent && /* @__PURE__ */ jsx("span", {
+							className: "plan__tag",
+							children: "Current plan"
+						}),
+						/* @__PURE__ */ jsx("div", {
+							className: "plan__n",
+							children: plan.name
+						}),
+						/* @__PURE__ */ jsx("p", {
+							className: "plan__t",
+							children: plan.tagline
+						}),
+						/* @__PURE__ */ jsxs("div", {
+							className: "plan__p",
+							children: [
+								"$",
+								plan.price,
+								/* @__PURE__ */ jsx("span", { children: "/mo" })
+							]
+						}),
+						/* @__PURE__ */ jsx("p", {
+							className: "plan__s",
+							children: isCurrent ? "Your current plan" : plan.price > 0 ? "Billed monthly" : ""
+						}),
+						/* @__PURE__ */ jsx("ul", { children: plan.features.map((feature) => /* @__PURE__ */ jsxs("li", { children: [/* @__PURE__ */ jsx(Check, { className: "h-3.5 w-3.5" }), feature] }, feature)) }),
+						isCurrent ? /* @__PURE__ */ jsx("button", {
+							type: "button",
+							className: "btn btn--g btn--w",
+							disabled: true,
+							children: "Current plan"
+						}) : isFree ? /* @__PURE__ */ jsx("button", {
+							type: "button",
+							className: "btn btn--g btn--w",
+							disabled: true,
+							children: "Free plan unavailable"
+						}) : /* @__PURE__ */ jsxs("button", {
+							type: "button",
+							className: "btn btn--y btn--w",
+							onClick: () => upgrade(plan.slug),
+							children: [
+								"Upgrade to ",
+								plan.name,
+								" ",
+								/* @__PURE__ */ jsx(Arrow, {})
+							]
+						})
+					]
+				}, plan.slug);
 			})
-		})
+		})]
 	})] });
 }
 //#endregion
@@ -8979,224 +8996,324 @@ function Running({ searchId }) {
 	})] });
 }
 //#endregion
-//#region resources/js/Pages/Settings/SettingsShell.jsx
-var SettingsShell_exports = /* @__PURE__ */ __exportAll({ default: () => SettingsShell });
-var NAV = [
-	{
-		key: "account",
-		label: "Account",
-		href: "/settings/account",
-		icon: User
-	},
-	{
-		key: "appearance",
-		label: "Appearance",
-		href: "/settings/appearance",
-		icon: Sun
-	},
-	{
-		key: "subscription",
-		label: "Subscription",
-		href: "/settings/subscription",
-		icon: Store
-	}
-];
-function SettingsShell({ section, heading, eyebrow, children, hideHeader = false, hideSidebar = false }) {
-	const { auth = {} } = usePage().props;
-	const logout = useForm({});
-	const signOut = () => {
-		logout.post("/logout");
-	};
-	return /* @__PURE__ */ jsx(AppLayout, {
-		width: "max-w-7xl",
-		children: /* @__PURE__ */ jsxs("div", {
-			className: hideSidebar ? "" : "grid gap-5 xl:grid-cols-[240px_minmax(0,1fr)]",
-			children: [!hideSidebar && /* @__PURE__ */ jsxs("aside", {
-				className: "space-y-4",
-				children: [/* @__PURE__ */ jsx("div", {
-					className: "surface p-4",
-					children: /* @__PURE__ */ jsxs("div", {
-						className: "flex items-center gap-3",
-						children: [/* @__PURE__ */ jsx("div", {
-							className: "flex h-12 w-12 items-center justify-center rounded-2xl bg-accent/12 font-display text-[18px] font-bold text-accent dark:text-accent-glow",
-							children: (auth.user?.name ?? "V").slice(0, 1).toUpperCase()
-						}), /* @__PURE__ */ jsxs("div", {
-							className: "min-w-0",
-							children: [/* @__PURE__ */ jsx("p", {
-								className: "truncate text-[13px] font-semibold text-ink dark:text-white",
-								children: auth.user?.name ?? "Account"
-							}), /* @__PURE__ */ jsx("p", {
-								className: "truncate text-[11.5px] faint",
-								children: auth.user?.email ?? "No email found"
-							})]
-						})]
-					})
-				}), /* @__PURE__ */ jsxs("div", {
-					className: "surface p-3",
-					children: [/* @__PURE__ */ jsx("nav", {
-						className: "space-y-1",
-						children: NAV.map((item) => {
-							const Icon = item.icon;
-							const active = item.key === section;
-							return /* @__PURE__ */ jsxs(Link, {
-								href: item.href,
-								className: `flex items-center gap-3 rounded-2xl px-3 py-3 text-[13px] font-semibold transition ${active ? "bg-accent/10 text-accent dark:bg-accent/15 dark:text-accent-glow" : "muted hover:bg-black/[.04] hover:text-ink dark:hover:bg-white/[.06] dark:hover:text-white"}`,
-								children: [
-									/* @__PURE__ */ jsx("span", {
-										className: `flex h-8 w-8 items-center justify-center rounded-xl border ${active ? "border-accent/20 bg-white dark:bg-white/[.06]" : "border-black/[.06] bg-black/[.02] dark:border-white/[.08] dark:bg-white/[.03]"}`,
-										children: /* @__PURE__ */ jsx(Icon, { className: "h-4 w-4" })
-									}),
-									item.label,
-									active && /* @__PURE__ */ jsx("span", { className: "ml-auto h-2 w-2 rounded-full bg-[#ff4f87]" })
-								]
-							}, item.key);
-						})
-					}), /* @__PURE__ */ jsx("div", {
-						className: "mt-3 border-t border-black/[.06] pt-3 dark:border-white/[.08]",
-						children: /* @__PURE__ */ jsxs("button", {
-							type: "button",
-							className: "flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-[13px] font-semibold text-ink/45 transition hover:bg-hot/8 hover:text-hot dark:text-white/40",
-							disabled: true,
-							title: "Delete account flow will be added later",
-							children: [/* @__PURE__ */ jsx("span", {
-								className: "flex h-8 w-8 items-center justify-center rounded-xl border border-black/[.06] bg-black/[.02] dark:border-white/[.08] dark:bg-white/[.03]",
-								children: /* @__PURE__ */ jsx(Exit, { className: "h-4 w-4" })
-							}), "Delete account"]
-						})
-					})]
-				})]
-			}), /* @__PURE__ */ jsxs("section", {
-				className: "surface overflow-hidden",
-				children: [!hideHeader && /* @__PURE__ */ jsxs("div", {
-					className: "flex flex-wrap items-center justify-between gap-3 border-b border-black/[.06] px-6 py-5 dark:border-white/[.08]",
-					children: [/* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsx("p", {
-						className: "text-[11px] font-semibold tracking-[.18em] text-accent uppercase dark:text-accent-glow",
-						children: eyebrow
-					}), /* @__PURE__ */ jsx("h1", {
-						className: "mt-1 font-display text-[24px] font-bold tracking-[-.02em]",
-						children: heading
-					})] }), /* @__PURE__ */ jsxs("button", {
-						type: "button",
-						onClick: signOut,
-						disabled: logout.processing,
-						className: "inline-flex h-11 items-center gap-2 rounded-2xl border border-black/[.08] px-4 text-[13px] font-semibold transition hover:border-accent/35 hover:text-accent dark:border-white/[.12] dark:hover:text-accent-glow",
-						children: [/* @__PURE__ */ jsx(Exit, { className: "h-4 w-4" }), logout.processing ? "Logging out..." : "Log out"]
-					})]
-				}), /* @__PURE__ */ jsx("div", {
-					className: "px-6 py-6",
-					children
-				})]
-			})]
-		})
-	});
-}
-//#endregion
 //#region resources/js/Pages/Settings/Account.jsx
 var Account_exports = /* @__PURE__ */ __exportAll({ default: () => Account });
+var NOTIFICATIONS = [
+	{
+		key: "search_finished",
+		title: "Search finished",
+		desc: "Email me the moment a scrape is ready.",
+		on: true
+	},
+	{
+		key: "virality_alerts",
+		title: "Virality alerts",
+		desc: "Ping me when a tracked video crosses my threshold.",
+		on: true
+	},
+	{
+		key: "weekly_viral_digest",
+		title: "Weekly viral digest",
+		desc: "One email a week with what moved in my categories.",
+		on: false
+	}
+];
 function Account() {
-	const { auth = {}, flash = {} } = usePage().props;
+	const { auth = {}, flash = {}, preferences = {}, accountDeletion = {} } = usePage().props;
+	const initialNotifications = {
+		...Object.fromEntries(NOTIFICATIONS.map((n) => [n.key, n.on])),
+		...preferences.notifications ?? {}
+	};
+	const scheduledDeletionDate = accountDeletion.scheduledFor ? new Date(accountDeletion.scheduledFor).toLocaleDateString(void 0, {
+		year: "numeric",
+		month: "long",
+		day: "numeric"
+	}) : null;
+	const [prefs, setPrefs] = useState(() => initialNotifications);
 	const form = useForm({ name: auth.user?.name ?? "" });
+	const [savingPreferences, setSavingPreferences] = useState(false);
+	const deletionForm = useForm({});
 	const submit = (event) => {
 		event.preventDefault();
 		form.patch("/settings/account");
 	};
-	return /* @__PURE__ */ jsxs(Fragment, { children: [/* @__PURE__ */ jsx(Head, { title: "Account settings - Outlier Vault" }), /* @__PURE__ */ jsx(SettingsShell, {
+	const togglePreference = (key) => {
+		const next = !prefs[key];
+		const nextNotifications = {
+			...prefs,
+			[key]: next
+		};
+		setPrefs(nextNotifications);
+		setSavingPreferences(true);
+		router.patch("/settings/account", {
+			preferences: { notifications: nextNotifications },
+			name: form.data.name
+		}, {
+			preserveScroll: true,
+			preserveState: true,
+			only: [
+				"auth",
+				"flash",
+				"preferences",
+				"subscription",
+				"accountDeletion"
+			],
+			onFinish: () => setSavingPreferences(false)
+		});
+	};
+	const requestDeletion = () => {
+		if (!window.confirm("Schedule your account for deletion in 30 days? You can cancel the request any time before then.")) return;
+		deletionForm.post("/settings/account/delete-request", { preserveScroll: true });
+	};
+	const cancelDeletion = () => {
+		deletionForm.delete("/settings/account/delete-request", { preserveScroll: true });
+	};
+	return /* @__PURE__ */ jsxs(Fragment, { children: [/* @__PURE__ */ jsx(Head, { title: "Account · Brand Beacon" }), /* @__PURE__ */ jsxs(SettingsShell, {
 		section: "account",
-		eyebrow: "Profile",
-		heading: "Account",
-		children: /* @__PURE__ */ jsxs("div", {
-			className: "max-w-3xl space-y-6",
-			children: [flash.status && /* @__PURE__ */ jsx("div", {
-				className: "rounded-2xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-700 dark:text-emerald-300",
+		children: [
+			flash.status && /* @__PURE__ */ jsx("div", {
+				style: {
+					marginBottom: 16,
+					padding: "12px 16px",
+					borderRadius: "var(--r)",
+					background: "var(--ok-bg)",
+					color: "var(--ok)",
+					fontWeight: 600,
+					fontSize: ".85rem"
+				},
 				children: flash.status
-			}), /* @__PURE__ */ jsxs("div", {
-				className: "surface p-5",
-				children: [/* @__PURE__ */ jsxs("div", {
-					className: "mb-5",
-					children: [/* @__PURE__ */ jsx("h2", {
-						className: "font-display text-[18px] font-bold",
-						children: "Profile details"
-					}), /* @__PURE__ */ jsx("p", {
-						className: "mt-2 text-[13.5px] muted",
-						children: "Update the name shown across your account."
-					})]
-				}), /* @__PURE__ */ jsxs("form", {
-					onSubmit: submit,
-					className: "space-y-5",
+			}),
+			/* @__PURE__ */ jsx("form", {
+				className: "card",
+				onSubmit: submit,
+				children: /* @__PURE__ */ jsxs("div", {
+					className: "card__p",
 					children: [
-						/* @__PURE__ */ jsxs("div", { children: [
-							/* @__PURE__ */ jsx("label", {
-								htmlFor: "account-name",
-								className: "mb-2 block text-[12px] font-semibold tracking-[.08em] faint uppercase",
-								children: "Name"
-							}),
-							/* @__PURE__ */ jsx("input", {
-								id: "account-name",
-								type: "text",
-								value: form.data.name,
-								onChange: (event) => form.setData("name", event.target.value),
-								className: "field h-12"
-							}),
-							form.errors.name && /* @__PURE__ */ jsx("p", {
-								className: "mt-2 text-sm text-hot",
-								children: form.errors.name
-							})
-						] }),
-						/* @__PURE__ */ jsxs("div", { children: [
-							/* @__PURE__ */ jsx("label", {
-								htmlFor: "account-email",
-								className: "mb-2 block text-[12px] font-semibold tracking-[.08em] faint uppercase",
+						/* @__PURE__ */ jsx("h2", { children: "Account" }),
+						/* @__PURE__ */ jsx("p", {
+							className: "muted",
+							style: {
+								fontSize: ".86rem",
+								marginTop: 6
+							},
+							children: "Your details and how we reach you."
+						}),
+						/* @__PURE__ */ jsxs("div", {
+							style: { marginTop: 22 },
+							className: "grid2",
+							children: [/* @__PURE__ */ jsxs("div", { children: [
+								/* @__PURE__ */ jsx("label", {
+									className: "lbl",
+									children: "Name"
+								}),
+								/* @__PURE__ */ jsx("input", {
+									className: "fld",
+									value: form.data.name,
+									onChange: (e) => form.setData("name", e.target.value)
+								}),
+								form.errors.name && /* @__PURE__ */ jsx("p", {
+									className: "hint",
+									style: { color: "var(--warn)" },
+									children: form.errors.name
+								})
+							] }), /* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsx("label", {
+								className: "lbl",
 								children: "Email"
-							}),
-							/* @__PURE__ */ jsx("input", {
-								id: "account-email",
-								type: "email",
+							}), /* @__PURE__ */ jsx("input", {
+								className: "fld",
 								value: auth.user?.email ?? "",
 								readOnly: true,
-								className: "field h-12 cursor-not-allowed opacity-70"
-							}),
-							/* @__PURE__ */ jsx("p", {
-								className: "mt-2 text-[12.5px] muted",
-								children: "Email changes are not available yet."
+								style: { opacity: .7 }
+							})] })]
+						}),
+						/* @__PURE__ */ jsx("div", {
+							style: { marginTop: 22 },
+							children: /* @__PURE__ */ jsx("button", {
+								type: "submit",
+								className: "btn btn--y",
+								disabled: form.processing,
+								children: form.processing ? "Saving…" : "Save changes"
 							})
-						] }),
-						/* @__PURE__ */ jsx("button", {
-							type: "submit",
-							disabled: form.processing,
-							className: "btn-accent h-11 px-5 text-[13px]",
-							children: form.processing ? "Saving..." : "Save changes"
 						})
 					]
-				})]
-			})]
-		})
+				})
+			}),
+			/* @__PURE__ */ jsx("div", {
+				className: "card",
+				style: { marginTop: 16 },
+				children: /* @__PURE__ */ jsxs("div", {
+					className: "card__p",
+					children: [/* @__PURE__ */ jsx("h2", { children: "Notifications" }), /* @__PURE__ */ jsx("div", {
+						style: { marginTop: 8 },
+						children: NOTIFICATIONS.map((n) => /* @__PURE__ */ jsxs("div", {
+							className: "rowf",
+							children: [/* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsx("p", {
+								className: "rowf__t",
+								children: n.title
+							}), /* @__PURE__ */ jsx("p", {
+								className: "rowf__d",
+								children: n.desc
+							})] }), /* @__PURE__ */ jsx("button", {
+								type: "button",
+								role: "switch",
+								"aria-checked": prefs[n.key],
+								"aria-label": n.title,
+								className: `sw${prefs[n.key] ? " on" : ""}`,
+								onClick: () => togglePreference(n.key),
+								disabled: savingPreferences
+							})]
+						}, n.key))
+					})]
+				})
+			}),
+			/* @__PURE__ */ jsx("div", {
+				className: "card",
+				style: {
+					marginTop: 16,
+					borderColor: "#F0D6C8"
+				},
+				children: /* @__PURE__ */ jsxs("div", {
+					className: "card__p",
+					children: [
+						/* @__PURE__ */ jsx("h2", {
+							style: { color: "var(--warn)" },
+							children: "Delete account"
+						}),
+						/* @__PURE__ */ jsx("p", {
+							className: "muted",
+							style: {
+								fontSize: ".86rem",
+								marginTop: 6
+							},
+							children: accountDeletion.hasActiveSubscription ? "Active subscriptions cannot be deleted yet. Cancel your subscription first, then come back here." : accountDeletion.scheduledFor ? `Your account is scheduled for deletion on ${scheduledDeletionDate}. You can still sign in and access your data until then.` : "This schedules your account for deletion in 30 days. Your searches, results, subscriptions, and account records stay intact during the grace period."
+						}),
+						/* @__PURE__ */ jsx("div", {
+							style: { marginTop: 18 },
+							children: accountDeletion.scheduledFor ? /* @__PURE__ */ jsx("button", {
+								type: "button",
+								className: "btn btn--g",
+								style: {
+									color: "var(--warn)",
+									borderColor: "#F0D6C8"
+								},
+								onClick: cancelDeletion,
+								disabled: deletionForm.processing,
+								children: deletionForm.processing ? "Saving…" : "Cancel account deletion"
+							}) : /* @__PURE__ */ jsx("button", {
+								type: "button",
+								className: "btn btn--g",
+								style: {
+									color: "var(--warn)",
+									borderColor: "#F0D6C8"
+								},
+								onClick: requestDeletion,
+								disabled: deletionForm.processing || accountDeletion.hasActiveSubscription,
+								children: deletionForm.processing ? "Saving…" : "Delete my account"
+							})
+						})
+					]
+				})
+			})
+		]
 	})] });
 }
 //#endregion
 //#region resources/js/Pages/Settings/Appearance.jsx
 var Appearance_exports = /* @__PURE__ */ __exportAll({ default: () => Appearance });
+var TOGGLES = [
+	{
+		key: "disable_animations",
+		title: "Reduce motion",
+		desc: "Stop marquees and looping animations across the app.",
+		on: false
+	},
+	{
+		key: "compact_rows",
+		title: "Compact rows",
+		desc: "Tighter spacing in Library and results lists.",
+		on: false
+	},
+	{
+		key: "autoplay_previews",
+		title: "Autoplay previews",
+		desc: "Play video previews on hover in the results grid.",
+		on: true
+	}
+];
 function Appearance() {
-	const { theme, toggle } = useTheme();
-	return /* @__PURE__ */ jsxs(Fragment, { children: [/* @__PURE__ */ jsx(Head, { title: "Appearance settings - Outlier Vault" }), /* @__PURE__ */ jsx(SettingsShell, {
+	const { flash = {}, preferences = {} } = usePage().props;
+	const initialAppearance = {
+		...Object.fromEntries(TOGGLES.map((toggle) => [toggle.key, toggle.on])),
+		...preferences.appearance ?? {}
+	};
+	const [prefs, setPrefs] = useState(() => initialAppearance);
+	const [saving, setSaving] = useState(false);
+	const togglePreference = (key) => {
+		const next = !prefs[key];
+		const nextAppearance = {
+			...prefs,
+			[key]: next
+		};
+		setPrefs(nextAppearance);
+		setSaving(true);
+		router.patch("/settings/appearance", { preferences: { appearance: nextAppearance } }, {
+			preserveScroll: true,
+			preserveState: true,
+			only: ["flash", "preferences"],
+			onFinish: () => setSaving(false)
+		});
+	};
+	return /* @__PURE__ */ jsxs(Fragment, { children: [/* @__PURE__ */ jsx(Head, { title: "Appearance · Brand Beacon" }), /* @__PURE__ */ jsxs(SettingsShell, {
 		section: "appearance",
-		eyebrow: "Display",
-		heading: "Appearance",
-		children: /* @__PURE__ */ jsx("div", {
-			className: "max-w-4xl",
+		children: [flash.status && /* @__PURE__ */ jsx("div", {
+			style: {
+				marginBottom: 16,
+				padding: "12px 16px",
+				borderRadius: "var(--r)",
+				background: "var(--ok-bg)",
+				color: "var(--ok)",
+				fontWeight: 600,
+				fontSize: ".85rem"
+			},
+			children: flash.status
+		}), /* @__PURE__ */ jsx("div", {
+			className: "card",
 			children: /* @__PURE__ */ jsxs("div", {
-				className: "flex items-center justify-between gap-4 dark:border-white/[.08]",
-				children: [/* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsx("h2", {
-					className: "font-display text-[18px] font-bold",
-					children: "Color theme"
-				}), /* @__PURE__ */ jsx("p", {
-					className: "mt-2 text-[13.5px] muted",
-					children: "Switch between light and dark mode."
-				})] }), /* @__PURE__ */ jsx(ThemeToggle, {
-					theme,
-					onToggle: toggle
-				})]
+				className: "card__p",
+				children: [
+					/* @__PURE__ */ jsx("h2", { children: "Appearance" }),
+					/* @__PURE__ */ jsx("p", {
+						className: "muted",
+						style: {
+							fontSize: ".86rem",
+							marginTop: 6
+						},
+						children: "Brand Beacon is light only — the dark theme was retired with the rebrand."
+					}),
+					/* @__PURE__ */ jsx("div", {
+						style: { marginTop: 8 },
+						children: TOGGLES.map((toggle) => /* @__PURE__ */ jsxs("div", {
+							className: "rowf",
+							children: [/* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsx("p", {
+								className: "rowf__t",
+								children: toggle.title
+							}), /* @__PURE__ */ jsx("p", {
+								className: "rowf__d",
+								children: toggle.desc
+							})] }), /* @__PURE__ */ jsx("button", {
+								type: "button",
+								role: "switch",
+								"aria-checked": prefs[toggle.key],
+								"aria-label": toggle.title,
+								className: `sw${prefs[toggle.key] ? " on" : ""}`,
+								onClick: () => togglePreference(toggle.key),
+								disabled: saving
+							})]
+						}, toggle.key))
+					})
+				]
 			})
-		})
+		})]
 	})] });
 }
 //#endregion
@@ -9204,183 +9321,191 @@ function Appearance() {
 var Subscription_exports = /* @__PURE__ */ __exportAll({ default: () => Subscription });
 function formatDate(iso) {
 	if (!iso) return null;
-	return new Date(iso).toLocaleString(void 0, {
+	const date = new Date(iso);
+	if (Number.isNaN(date.getTime())) return null;
+	return date.toLocaleDateString(void 0, {
 		month: "short",
 		day: "numeric",
-		year: "numeric",
-		hour: "numeric",
-		minute: "2-digit",
-		timeZoneName: "short"
+		year: "numeric"
 	});
 }
-function usageRatio(used, limit) {
-	if (limit === -1 || limit === 0) return 0;
+function ratio(used, limit) {
+	if (!limit || limit < 0) return 0;
 	return Math.min(100, Math.max(0, used / limit * 100));
 }
-function LimitCard({ title, blurb, remainingLabel, chip, ratio, tone = "sky" }) {
-	const tones = {
-		sky: "from-sky-500/10 to-cyan-500/10 border-sky-500/15",
-		mint: "from-emerald-500/10 to-teal-500/10 border-emerald-500/15",
-		rose: "from-pink-500/10 to-rose-500/10 border-pink-500/15",
-		violet: "from-violet-500/10 to-fuchsia-500/10 border-violet-500/15"
-	};
-	return /* @__PURE__ */ jsxs("div", {
-		className: `rounded-[26px] border bg-linear-to-br p-5 ${tones[tone] ?? tones.sky}`,
-		children: [
-			/* @__PURE__ */ jsxs("div", {
-				className: "flex items-start justify-between gap-3",
-				children: [/* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsx("h3", {
-					className: "font-display text-[18px] font-bold",
-					children: title
-				}), /* @__PURE__ */ jsx("p", {
-					className: "mt-1 max-w-[230px] text-[12.5px] muted",
-					children: blurb
-				})] }), /* @__PURE__ */ jsx("div", {
-					className: "flex h-9 items-center rounded-full bg-white/80 px-3 text-[11px] font-semibold tracking-[.12em] text-ink uppercase dark:bg-white/[.08] dark:text-white",
-					children: chip
-				})]
-			}),
-			/* @__PURE__ */ jsx("p", {
-				className: "mt-5 text-[13px] font-semibold text-ink dark:text-white",
-				children: remainingLabel
-			}),
-			/* @__PURE__ */ jsx("div", {
-				className: "mt-3 h-2.5 overflow-hidden rounded-full bg-black/[.06] dark:bg-white/[.08]",
-				children: /* @__PURE__ */ jsx("div", {
-					className: "h-full rounded-full bg-linear-to-r from-accent-glow to-accent",
-					style: { width: `${ratio}%` }
-				})
-			})
-		]
-	});
-}
 function Subscription({ subscription }) {
-	const [tab, setTab] = useState("plan");
 	const limits = subscription?.limits ?? {};
-	const bookmarkLimit = limits.bookmarkLimit ?? 0;
 	const searchLimit = limits.searchCreditsLimit ?? 0;
-	const bookmarksUsed = limits.bookmarksUsed ?? 0;
 	const searchUsed = limits.searchCreditsUsed ?? 0;
-	const planFeatures = useMemo(() => {
-		return [
-			bookmarkLimit === -1 ? "Unlimited bookmarks" : `${bookmarkLimit} bookmark slots`,
-			`${searchLimit} searches`,
-			subscription?.status === "active" ? "Active subscription" : "Billing available"
-		];
-	}, [
-		bookmarkLimit,
-		searchLimit,
-		subscription?.status
-	]);
-	return /* @__PURE__ */ jsxs(Fragment, { children: [/* @__PURE__ */ jsx(Head, { title: "Subscription settings - Outlier Vault" }), /* @__PURE__ */ jsx(SettingsShell, {
+	const bookmarkLimit = limits.bookmarkLimit ?? 0;
+	const bookmarksUsed = limits.bookmarksUsed ?? 0;
+	const planName = subscription?.planName ?? "Free";
+	const status = subscription?.status ?? "free";
+	const active = status === "active";
+	const price = subscription?.price ?? 0;
+	const interval = subscription?.interval ?? "month";
+	const renews = formatDate(subscription?.renewsAt);
+	const invoices = subscription?.invoices ?? [];
+	const searchesLeft = searchLimit > 0 ? Math.max(0, searchLimit - searchUsed) : 0;
+	const bookmarksUnlimited = bookmarkLimit === -1;
+	return /* @__PURE__ */ jsxs(Fragment, { children: [/* @__PURE__ */ jsx(Head, { title: "Subscription · Brand Beacon" }), /* @__PURE__ */ jsxs(SettingsShell, {
 		section: "subscription",
-		eyebrow: "Plan",
-		heading: "Subscription",
-		children: /* @__PURE__ */ jsxs("div", {
-			className: "space-y-4",
-			children: [/* @__PURE__ */ jsx("div", {
-				className: "rounded-[26px] border border-black/[.06] p-1 dark:border-white/[.08]",
-				children: /* @__PURE__ */ jsx("div", {
-					className: "grid grid-cols-2 gap-1",
-					children: [{
-						key: "plan",
-						label: "Plan"
-					}, {
-						key: "limits",
-						label: "Plan limits"
-					}].map((item) => {
-						const active = tab === item.key;
-						return /* @__PURE__ */ jsx("button", {
-							type: "button",
-							onClick: () => setTab(item.key),
-							className: `rounded-[20px] px-4 py-3 text-[13px] font-semibold transition ${active ? "bg-white shadow-[0_12px_30px_-20px_rgba(16,18,32,.35)] dark:bg-white/[.06]" : "muted"}`,
-							children: item.label
-						}, item.key);
-					})
-				})
-			}), tab === "plan" ? /* @__PURE__ */ jsxs("div", {
-				className: "overflow-hidden rounded-[28px] border border-black/[.06] bg-linear-to-br from-accent/5 via-white to-[#ff4f87]/[.04] dark:border-white/[.08] dark:from-accent/10 dark:via-canvas-dark dark:to-[#ff4f87]/[.07]",
+		children: [/* @__PURE__ */ jsx("div", {
+			className: "card",
+			children: /* @__PURE__ */ jsxs("div", {
+				className: "card__p",
 				children: [
 					/* @__PURE__ */ jsxs("div", {
-						className: "px-6 py-6",
-						children: [
-							/* @__PURE__ */ jsx("p", {
-								className: "text-[11px] font-semibold tracking-[.18em] faint uppercase",
-								children: "Summary"
-							}),
-							/* @__PURE__ */ jsx("p", {
-								className: "mt-4 text-[11px] font-semibold tracking-[.18em] faint uppercase",
-								children: "Current plan"
-							}),
-							/* @__PURE__ */ jsxs("div", {
-								className: "mt-2 flex flex-wrap items-end justify-between gap-4",
-								children: [/* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsxs("div", {
-									className: "flex items-center gap-2",
-									children: [/* @__PURE__ */ jsx("h2", {
-										className: "font-display text-[34px] font-bold tracking-[-.03em]",
-										children: subscription?.planName ?? "Free"
-									}), /* @__PURE__ */ jsx("span", {
-										className: "rounded-full bg-emerald-500/12 px-2.5 py-1 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400",
-										children: subscription?.status ?? "free"
-									})]
-								}), /* @__PURE__ */ jsx("div", {
-									className: "mt-4 flex flex-wrap gap-2",
-									children: planFeatures.map((feature) => /* @__PURE__ */ jsx("span", {
-										className: "rounded-full border border-black/[.06] bg-white/85 px-3 py-1.5 text-[12px] font-semibold dark:border-white/[.08] dark:bg-white/[.06]",
-										children: feature
-									}, feature))
-								})] }), /* @__PURE__ */ jsxs("div", {
-									className: "text-right",
-									children: [/* @__PURE__ */ jsx("p", {
-										className: "font-display text-[40px] font-bold tracking-[-.04em]",
-										children: subscription?.price ? `$${subscription.price}` : "$0.00"
-									}), /* @__PURE__ */ jsxs("p", {
-										className: "text-[13px] muted",
-										children: ["/ ", subscription?.interval ?? "month"]
-									})]
-								})]
-							})
-						]
-					}),
-					/* @__PURE__ */ jsx("div", {
-						className: "border-t border-black/[.06] px-6 py-4 dark:border-white/[.08]",
-						children: /* @__PURE__ */ jsxs("div", {
-							className: "flex flex-wrap gap-x-5 gap-y-2 text-[12px] muted",
-							children: [/* @__PURE__ */ jsxs("span", { children: ["Started ", formatDate(subscription?.startedAt) ?? "Not started yet"] }), /* @__PURE__ */ jsxs("span", { children: ["Renews ", formatDate(subscription?.renewsAt) ?? "No renewal date"] })]
-						})
+						style: {
+							display: "flex",
+							alignItems: "flex-start",
+							justifyContent: "space-between",
+							gap: 18,
+							flexWrap: "wrap"
+						},
+						children: [/* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsx("h2", { children: planName }), /* @__PURE__ */ jsxs("p", {
+							className: "muted",
+							style: {
+								fontSize: ".86rem",
+								marginTop: 6
+							},
+							children: [price > 0 ? `$${price}/${interval}` : "Free plan", renews ? ` · renews ${renews}` : ""]
+						})] }), /* @__PURE__ */ jsxs("span", {
+							className: `pill ${active ? "pill--ok" : "pill--off"}`,
+							children: [/* @__PURE__ */ jsx("i", {}), active ? "Active" : status]
+						})]
 					}),
 					/* @__PURE__ */ jsxs("div", {
-						className: "grid gap-3 border-t border-black/[.06] px-6 py-5 sm:grid-cols-2 dark:border-white/[.08]",
+						style: {
+							marginTop: 26,
+							display: "flex",
+							flexDirection: "column",
+							gap: 20
+						},
+						children: [/* @__PURE__ */ jsxs("div", { children: [
+							/* @__PURE__ */ jsxs("div", {
+								style: {
+									display: "flex",
+									justifyContent: "space-between",
+									fontSize: ".84rem",
+									marginBottom: 8
+								},
+								children: [/* @__PURE__ */ jsx("span", {
+									className: "muted",
+									children: "Searches used"
+								}), /* @__PURE__ */ jsxs("span", {
+									style: {
+										fontWeight: 700,
+										color: "var(--ink)"
+									},
+									children: [
+										searchUsed,
+										" / ",
+										searchLimit || 0
+									]
+								})]
+							}),
+							/* @__PURE__ */ jsx("div", {
+								className: "meter",
+								children: /* @__PURE__ */ jsx("span", { style: { width: `${ratio(searchUsed, searchLimit)}%` } })
+							}),
+							searchLimit > 0 && /* @__PURE__ */ jsxs("p", {
+								className: "hint",
+								children: [
+									searchesLeft,
+									" search",
+									searchesLeft === 1 ? "" : "es",
+									" left this cycle",
+									renews ? `. Resets ${renews}.` : "."
+								]
+							})
+						] }), /* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsxs("div", {
+							style: {
+								display: "flex",
+								justifyContent: "space-between",
+								fontSize: ".84rem",
+								marginBottom: 8
+							},
+							children: [/* @__PURE__ */ jsx("span", {
+								className: "muted",
+								children: "Bookmarks used"
+							}), /* @__PURE__ */ jsxs("span", {
+								style: {
+									fontWeight: 700,
+									color: "var(--ink)"
+								},
+								children: [
+									bookmarksUsed,
+									" ",
+									bookmarksUnlimited ? "" : `/ ${bookmarkLimit || 0}`
+								]
+							})]
+						}), /* @__PURE__ */ jsx("div", {
+							className: "meter",
+							children: /* @__PURE__ */ jsx("span", { style: { width: bookmarksUnlimited ? "100%" : `${ratio(bookmarksUsed, bookmarkLimit)}%` } })
+						})] })]
+					}),
+					/* @__PURE__ */ jsxs("div", {
+						style: {
+							marginTop: 26,
+							display: "flex",
+							gap: 9,
+							flexWrap: "wrap"
+						},
 						children: [/* @__PURE__ */ jsx(Link, {
 							href: "/plans",
-							className: "inline-flex h-12 items-center justify-center rounded-2xl bg-[#12172a] px-5 text-[13px] font-semibold text-white transition hover:opacity-95 dark:bg-white dark:text-canvas-dark",
-							children: "View plans"
+							className: "btn btn--y",
+							children: active ? "Change plan" : "Upgrade"
 						}), /* @__PURE__ */ jsx(Link, {
 							href: "/plans",
-							className: "inline-flex h-12 items-center justify-center rounded-2xl border border-black/[.08] px-5 text-[13px] font-semibold transition hover:border-accent/35 hover:text-accent dark:border-white/[.12] dark:hover:text-accent-glow",
+							className: "btn btn--g",
 							children: "Manage billing"
 						})]
 					})
 				]
-			}) : /* @__PURE__ */ jsxs("div", {
-				className: "grid gap-4 xl:grid-cols-2",
-				children: [/* @__PURE__ */ jsx(LimitCard, {
-					title: "Search",
-					blurb: "Saved searches and search credits available on your current plan.",
-					remainingLabel: searchLimit === -1 ? "Unlimited" : `${Math.max(0, searchLimit - searchUsed)} remaining`,
-					chip: searchLimit === -1 ? "Unlimited" : `${searchUsed} / ${searchLimit} used`,
-					ratio: usageRatio(searchUsed, searchLimit),
-					tone: "sky"
-				}), /* @__PURE__ */ jsx(LimitCard, {
-					title: "Bookmarks",
-					blurb: "Bookmark capacity available on your current plan.",
-					remainingLabel: bookmarkLimit === -1 ? "Unlimited" : `${Math.max(0, bookmarkLimit - bookmarksUsed)} remaining`,
-					chip: bookmarkLimit === -1 ? "Unlimited" : `${bookmarksUsed} / ${bookmarkLimit} used`,
-					ratio: usageRatio(bookmarksUsed, bookmarkLimit),
-					tone: "mint"
+			})
+		}), invoices.length > 0 && /* @__PURE__ */ jsx("div", {
+			className: "card",
+			style: { marginTop: 16 },
+			children: /* @__PURE__ */ jsxs("div", {
+				className: "card__p",
+				children: [/* @__PURE__ */ jsx("h2", { children: "Invoices" }), /* @__PURE__ */ jsx("div", {
+					style: { marginTop: 8 },
+					children: invoices.map((inv, i) => /* @__PURE__ */ jsxs("div", {
+						className: "rowf",
+						children: [/* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsx("p", {
+							className: "rowf__t",
+							children: formatDate(inv.date) ?? inv.date
+						}), /* @__PURE__ */ jsxs("p", {
+							className: "rowf__d",
+							children: [
+								planName,
+								" · ",
+								interval,
+								"ly"
+							]
+						})] }), /* @__PURE__ */ jsxs("span", {
+							style: {
+								display: "flex",
+								alignItems: "center",
+								gap: 14
+							},
+							children: [/* @__PURE__ */ jsx("b", {
+								style: {
+									fontSize: ".88rem",
+									color: "var(--ink)"
+								},
+								children: inv.amount
+							}), inv.url && /* @__PURE__ */ jsx("a", {
+								href: inv.url,
+								className: "btn btn--g btn--sm",
+								children: "Receipt"
+							})]
+						})]
+					}, i))
 				})]
-			})]
-		})
+			})
+		})]
 	})] });
 }
 //#endregion

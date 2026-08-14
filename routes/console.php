@@ -31,3 +31,8 @@ Schedule::command('admin:capture-dashboard-snapshot')
     ->timezone('UTC')
     ->withoutOverlapping()
     ->runInBackground();
+
+Schedule::command('users:process-pending-account-deletions')
+    ->hourly()
+    ->withoutOverlapping()
+    ->runInBackground();

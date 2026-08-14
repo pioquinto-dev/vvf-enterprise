@@ -46,7 +46,13 @@ class GoogleAuthController extends Controller
             ]);
         }
 
-        $user = User::query()->firstWhere('email', $email);
+        $user = User::withTrashed()->firstWhere('email', $email);
+
+        if ($user?->trashed()) {
+            return redirect()->route('login')->withErrors([
+                'email' => 'This account has already been deleted.',
+            ]);
+        }
 
         if (! $user) {
             $user = User::create([

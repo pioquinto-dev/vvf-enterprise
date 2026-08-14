@@ -1,36 +1,71 @@
 import { Head, usePage } from '@inertiajs/react';
 
-import AppLayout from './components/AppLayout.jsx';
-import { useReveal } from '../landing/components/Reveal.jsx';
-import Pricing from '../landing/sections/Pricing.jsx';
+import SettingsShell from './Settings/SettingsShell.jsx';
+import { PRICING } from '../landing/data/dummy.js';
 import { billing } from '../landing/flow/api.js';
+import { Check, Arrow } from '../landing/components/Icons.jsx';
 
 export default function Plans() {
-  const { auth = {} } = usePage().props;
-  const revealRoot = useReveal();
+  const { billing: billingState = {} } = usePage().props;
+  const current = String(billingState.currentPlan ?? 'free').toLowerCase();
 
-  const startFree = () => {
-    window.location.assign('/search?type=brand');
-  };
-
-  const startTrialCheckout = (plan) => {
-    if (!auth.signedIn) {
-      window.location.assign(`/login?redirect=trial_checkout&plan=${encodeURIComponent(plan?.slug ?? 'basic')}&trial=1`);
-      return;
-    }
-
-    billing.trialCheckout(plan?.slug ?? 'basic');
-  };
+  const upgrade = (slug) => billing.checkout(slug);
 
   return (
     <>
-      <Head title="Plans - Outlier Vault" />
+      <Head title="Plans · Brand Beacon" />
 
-      <AppLayout width="max-w-7xl">
-        <div ref={revealRoot}>
-          <Pricing onStart={startFree} onTrial={startTrialCheckout} onTrialStart={startTrialCheckout} compact />
+      <SettingsShell section="plans">
+        <div style={{ marginBottom: 18 }}>
+          <h2>Plans</h2>
+          <p className="muted" style={{ fontSize: '.86rem', marginTop: 6 }}>
+            Start with one free search. Upgrade when you want tracking on a schedule.
+          </p>
         </div>
-      </AppLayout>
+
+        <div className="plans">
+          {PRICING.monthly.map((plan) => {
+            const isCurrent = plan.slug === current;
+            const isFree = plan.slug === 'free';
+
+            return (
+              <div key={plan.slug} className={`plan${isCurrent ? ' plan--on' : ''}`}>
+                {isCurrent && <span className="plan__tag">Current plan</span>}
+                <div className="plan__n">{plan.name}</div>
+                <p className="plan__t">{plan.tagline}</p>
+                <div className="plan__p">
+                  ${plan.price}
+                  <span>/mo</span>
+                </div>
+                <p className="plan__s">{isCurrent ? 'Your current plan' : plan.price > 0 ? 'Billed monthly' : ''}</p>
+
+                <ul>
+                  {plan.features.map((feature) => (
+                    <li key={feature}>
+                      <Check className="h-3.5 w-3.5" />
+                      {feature}
+                    </li>
+                  ))}
+                </ul>
+
+                {isCurrent ? (
+                  <button type="button" className="btn btn--g btn--w" disabled>
+                    Current plan
+                  </button>
+                ) : isFree ? (
+                  <button type="button" className="btn btn--g btn--w" disabled>
+                    Free plan unavailable
+                  </button>
+                ) : (
+                  <button type="button" className="btn btn--y btn--w" onClick={() => upgrade(plan.slug)}>
+                    Upgrade to {plan.name} <Arrow />
+                  </button>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </SettingsShell>
     </>
   );
 }
