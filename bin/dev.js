@@ -1,4 +1,4 @@
-import { readFile, writeFile } from 'node:fs/promises';
+import { appendFile, mkdir, readFile, writeFile } from 'node:fs/promises';
 import { spawn } from 'node:child_process';
 import process from 'node:process';
 import { setTimeout as delay } from 'node:timers/promises';
@@ -6,20 +6,28 @@ import { setTimeout as delay } from 'node:timers/promises';
 const root = process.cwd();
 const envPath = `${root}/.env`;
 const ngrokApi = 'http://127.0.0.1:4040/api/tunnels';
-const ngrokArgs = ['http', '--log=stdout', '8000'];
+const ngrokLogPath = `${root}\\storage\\logs\\ngrok-listener.log`;
+const stripeLogPath = `${root}\\storage\\logs\\stripe-listener.log`;
+const serveLogPath = `${root}\\storage\\logs\\serve-listener.log`;
+const queueLogPath = `${root}\\storage\\logs\\queue-listener.log`;
+const helperScriptDir = `${root}\\storage\\app\\dev-scripts`;
 
-let ngrokProcess;
 const appProcesses = [];
+let ngrokProcess;
 
 async function main() {
-    ensureWindowsPowerShellNote();
+    if (process.platform === 'win32') {
+        console.log('Starting dev flow on Windows with helper consoles.');
+    }
 
-    ngrokProcess = spawnCommand('ngrok', ngrokArgs, {
+    ngrokProcess = spawnCommand('ngrok', ['http', '--log=stdout', '8000'], {
         stdio: ['ignore', 'pipe', 'pipe'],
     });
 
     pipeWithPrefix(ngrokProcess.stdout, '[ngrok]');
+    pipeToFile(ngrokProcess.stdout, ngrokLogPath);
     pipeWithPrefix(ngrokProcess.stderr, '[ngrok]');
+    pipeToFile(ngrokProcess.stderr, ngrokLogPath);
 
     const tunnelUrl = await waitForNgrokUrl();
 
@@ -32,22 +40,17 @@ async function main() {
     await runCommand('php', ['artisan', 'queue:restart']);
 
     startAppProcesses();
-
+    await launchHelperConsoles();
     forwardTerminationSignals();
 
     const exitCode = await waitForAnyExit(appProcesses, [
-        'npm run serve',
+        'php artisan serve',
         'php artisan queue:work',
         'npm run dev',
     ]);
-    await shutdown(0);
-    process.exit(exitCode);
-}
 
-function ensureWindowsPowerShellNote() {
-    if (process.platform === 'win32') {
-        console.log('Starting dev flow on Windows using npm.cmd and local processes.');
-    }
+    await shutdown();
+    process.exit(exitCode);
 }
 
 async function waitForNgrokUrl() {
@@ -121,18 +124,22 @@ function spawnNpmCommand(args, options = {}) {
 }
 
 function startAppProcesses() {
-    const server = spawnNpmCommand(['run', 'serve'], {
+    const server = spawnCommand('php', ['-S', '127.0.0.1:8000', '-t', 'public'], {
         stdio: ['ignore', 'pipe', 'pipe'],
     });
     pipeWithPrefix(server.stdout, '[serve]');
+    pipeToFile(server.stdout, serveLogPath);
     pipeWithPrefix(server.stderr, '[serve]');
+    pipeToFile(server.stderr, serveLogPath);
     appProcesses.push(server);
 
     const queueWorker = spawnCommand('php', ['artisan', 'queue:work'], {
         stdio: ['ignore', 'pipe', 'pipe'],
     });
     pipeWithPrefix(queueWorker.stdout, '[queue]');
+    pipeToFile(queueWorker.stdout, queueLogPath);
     pipeWithPrefix(queueWorker.stderr, '[queue]');
+    pipeToFile(queueWorker.stderr, queueLogPath);
     appProcesses.push(queueWorker);
 
     const vite = spawnNpmCommand(['run', 'dev'], {
@@ -141,6 +148,90 @@ function startAppProcesses() {
     pipeWithPrefix(vite.stdout, '[vite]');
     pipeWithPrefix(vite.stderr, '[vite]');
     appProcesses.push(vite);
+}
+
+async function launchHelperConsoles() {
+    if (process.platform !== 'win32') {
+        console.log('Helper consoles are only auto-launched on Windows.');
+        return;
+    }
+
+    await mkdir(helperScriptDir, { recursive: true });
+
+    const helpers = [
+        {
+            title: 'vvf stripe listen',
+            command: [
+                `$Host.UI.RawUI.WindowTitle = 'vvf stripe listen'`,
+                `Write-Host 'Starting Stripe listener...'`,
+                `stripe listen --forward-to 127.0.0.1:8000/stripe/webhook 2>&1 | Tee-Object -FilePath '${stripeLogPath}' -Append`,
+            ].join('\r\n'),
+        },
+        {
+            title: 'vvf ngrok logs',
+            command: tailFileCommand(ngrokLogPath),
+        },
+        {
+            title: 'vvf endpoint trigger logs',
+            command: tailFileCommand(serveLogPath, 'vvf endpoint trigger logs'),
+        },
+        {
+            title: 'vvf jobs trigger logs',
+            command: filteredTailCommand('vvf jobs trigger logs', queueLogPath, [
+                'processing',
+                'processed',
+                'failed',
+                'running',
+                'done',
+                'error',
+                'exception',
+            ]),
+        },
+    ];
+
+    for (const helper of helpers) {
+        const scriptPath = `${helperScriptDir}\\${slugify(helper.title)}.ps1`;
+        await writeFile(scriptPath, helper.command, 'utf8');
+        startPowerShellWindow(helper.title, scriptPath);
+    }
+}
+
+function filteredTailCommand(title, path, patterns) {
+    const joinedPatterns = patterns.map((pattern) => `'${pattern}'`).join(', ');
+
+    return [
+        `$Host.UI.RawUI.WindowTitle = '${title}'`,
+        `$patterns = @(${joinedPatterns})`,
+        `if (-not (Test-Path '${path}')) { New-Item -ItemType File -Path '${path}' -Force | Out-Null }`,
+        `Write-Host 'Watching ${path}'`,
+        `Get-Content -Path '${path}' -Wait | Where-Object { $line = $_.ToLowerInvariant(); ($patterns | Where-Object { $line.Contains($_) }).Count -gt 0 }`,
+    ].join('\r\n');
+}
+
+function tailFileCommand(path, title = 'vvf ngrok logs') {
+    return [
+        `$Host.UI.RawUI.WindowTitle = '${title}'`,
+        `if (-not (Test-Path '${path}')) { New-Item -ItemType File -Path '${path}' -Force | Out-Null }`,
+        `Write-Host 'Watching ${path}'`,
+        `Get-Content -Path '${path}' -Wait`,
+    ].join('\r\n');
+}
+
+function startPowerShellWindow(title, scriptPath) {
+    spawn('powershell.exe', [
+        '-NoProfile',
+        '-Command',
+        `Start-Process powershell.exe -WorkingDirectory '${root}' -ArgumentList '-NoExit','-ExecutionPolicy','Bypass','-File','${scriptPath}'`,
+    ], {
+        cwd: root,
+        env: process.env,
+        stdio: 'ignore',
+        windowsHide: true,
+    }).unref();
+}
+
+function slugify(value) {
+    return value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
 }
 
 function resolveNpmCommand(args) {
@@ -205,18 +296,32 @@ function pipeWithPrefix(stream, prefix) {
     });
 }
 
+function pipeToFile(stream, path) {
+    if (!stream) {
+        return;
+    }
+
+    stream.on('data', async (chunk) => {
+        try {
+            await appendFile(path, chunk.toString(), 'utf8');
+        } catch {
+            // Helper log mirroring is best-effort only.
+        }
+    });
+}
+
 function forwardTerminationSignals() {
     const signals = ['SIGINT', 'SIGTERM'];
 
     for (const signal of signals) {
         process.on(signal, async () => {
-            await shutdown(0);
+            await shutdown();
             process.exit(0);
         });
     }
 }
 
-async function shutdown(exitCode) {
+async function shutdown() {
     for (const processHandle of appProcesses) {
         if (processHandle.exitCode === null) {
             processHandle.kill('SIGTERM');
@@ -228,11 +333,10 @@ async function shutdown(exitCode) {
     }
 
     await delay(250);
-    return exitCode;
 }
 
 main().catch(async (error) => {
     console.error(error.message);
-    await shutdown(1);
+    await shutdown();
     process.exit(1);
 });
