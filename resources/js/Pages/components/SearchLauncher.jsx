@@ -94,6 +94,15 @@ export default function SearchLauncher({ initialType = 'brand', initialQuery = '
                     onChange={(e) => setValue(e.target.value)}
                     placeholder={config.placeholder}
                     aria-label="Search subject"
+                    style={{
+                        border: '0',
+                        outline: 'none',
+                        boxShadow: 'none',
+                        borderRadius: 0,
+                        background: 'transparent',
+                        appearance: 'none',
+                        WebkitAppearance: 'none',
+                    }}
                 />
                 <div className="sbox__f">
                     <p className="sbox__t">

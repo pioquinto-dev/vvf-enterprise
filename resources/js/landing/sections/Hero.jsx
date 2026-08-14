@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 
 import { Arrow, Google, Search, Store, Target, Trend } from '../components/Icons.jsx';
+import CountUp from '../components/CountUp.jsx';
 import { STATS } from '../data/dummy.js';
 
 const MODES = [
@@ -88,8 +89,8 @@ export default function Hero({ onStart }) {
         </label>
 
         <form className="box" onSubmit={submit}>
-          <div className="field">
-            <div className={`field__ghost${showGhost ? '' : ' is-off'}`} aria-hidden>
+          <div className="box__field">
+            <div className={`box__ghost${showGhost ? '' : ' is-off'}`} aria-hidden>
               <span>{ghost}</span>
               <span className="caret" />
             </div>
@@ -145,7 +146,9 @@ export default function Hero({ onStart }) {
         <dl className="stats">
           {STATS.map((s) => (
             <div className="stat" key={s.label}>
-              <dt className="stat__v">{s.value}</dt>
+              <dt className="stat__v">
+                <CountUp value={s.value} />
+              </dt>
               <dd className="stat__l">
                 <Trend className="h-[11px] w-[11px]" />
                 {s.label}

@@ -759,9 +759,9 @@ function NavItem({ item, active, onNavigate }) {
 	return /* @__PURE__ */ jsxs(Link, {
 		href: item.href,
 		onClick: onNavigate,
-		className: `group flex items-center gap-2.5 rounded-lg px-2.5 py-2 transition ${active ? "bg-white/[.07] text-white" : "text-white/65 hover:bg-white/[.04] hover:text-white"}`,
+		className: `group flex items-center gap-2.5 rounded-lg px-2.5 py-2 transition ${active ? "bg-[var(--wash)] text-[var(--ink)]" : "text-[var(--muted)] hover:bg-white hover:text-[var(--ink)]"}`,
 		children: [/* @__PURE__ */ jsx("span", {
-			className: `flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-[10px] font-semibold tracking-[.06em] ${active ? "bg-hot text-white" : "bg-white/[.06] text-white/55"}`,
+			className: `flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-[10px] font-semibold tracking-[.06em] ${active ? "bg-[var(--yellow)] text-[#1a1400]" : "bg-[var(--canvas)] text-[var(--faint)]"}`,
 			children: item.icon
 		}), /* @__PURE__ */ jsx("span", {
 			className: "min-w-0 truncate text-[13px] font-medium",
@@ -771,21 +771,21 @@ function NavItem({ item, active, onNavigate }) {
 }
 function SidebarAccount({ adminUser, onSignOut }) {
 	return /* @__PURE__ */ jsx("div", {
-		className: "mt-4 shrink-0 border-t border-white/[.08] pt-3",
+		className: "mt-4 shrink-0 border-t border-[var(--line)] pt-3",
 		children: /* @__PURE__ */ jsxs("button", {
 			type: "button",
 			onClick: onSignOut,
-			className: "flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-white/70 transition hover:bg-white/[.04] hover:text-white",
+			className: "flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-[var(--muted)] transition hover:bg-white hover:text-[var(--ink)]",
 			children: [/* @__PURE__ */ jsx("span", {
-				className: "flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-white/[.06]",
-				children: /* @__PURE__ */ jsx(Exit, { className: "h-3.5 w-3.5 text-[#f28aa7]" })
+				className: "flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-[var(--canvas)]",
+				children: /* @__PURE__ */ jsx(Exit, { className: "h-3.5 w-3.5 text-[var(--warn)]" })
 			}), /* @__PURE__ */ jsxs("span", {
 				className: "min-w-0",
 				children: [/* @__PURE__ */ jsx("span", {
 					className: "block text-[13px] font-medium",
 					children: "Log out"
 				}), /* @__PURE__ */ jsx("span", {
-					className: "block truncate text-[11px] text-white/35",
+					className: "block truncate text-[11px] text-[var(--faint)]",
 					children: adminUser?.email ?? "Admin session"
 				})]
 			})]
@@ -822,10 +822,10 @@ function Sidebar({ currentPath, section, onNavigate, closable = false, adminUser
 				children: [/* @__PURE__ */ jsx(Logo, { className: "h-8 w-8" }), /* @__PURE__ */ jsxs("span", {
 					className: "leading-none",
 					children: [/* @__PURE__ */ jsx("span", {
-						className: "block text-[13px] font-bold tracking-[.22em] text-white uppercase",
+						className: "block text-[13px] font-bold tracking-[.22em] text-[var(--ink)] uppercase",
 						children: "Admin"
 					}), /* @__PURE__ */ jsx("span", {
-						className: "mt-0.5 block text-[10px] text-white/35",
+						className: "mt-0.5 block text-[10px] text-[var(--faint)]",
 						children: "Operations cockpit"
 					})]
 				})]
@@ -833,7 +833,7 @@ function Sidebar({ currentPath, section, onNavigate, closable = false, adminUser
 				type: "button",
 				"aria-label": "Close menu",
 				onClick: onNavigate,
-				className: "flex h-9 w-9 items-center justify-center rounded-xl border border-white/[.08] text-white/45 transition hover:bg-white/[.05] hover:text-white",
+				className: "flex h-9 w-9 items-center justify-center rounded-xl border border-[var(--line)] text-[var(--faint)] transition hover:bg-white hover:text-[var(--ink)]",
 				children: /* @__PURE__ */ jsx(Close, { className: "h-4 w-4" })
 			}) : null]
 		}), /* @__PURE__ */ jsxs("div", {
@@ -845,9 +845,9 @@ function Sidebar({ currentPath, section, onNavigate, closable = false, adminUser
 					children: group.label ? /* @__PURE__ */ jsxs(Fragment, { children: [/* @__PURE__ */ jsxs("button", {
 						type: "button",
 						onClick: () => toggleGroup(group.label),
-						className: "flex w-full items-center justify-between gap-3 px-2 text-left px-2.5 py-1 text-[10px] font-semibold tracking-[.14em] text-white/30 uppercase transition hover:text-white/58",
+						className: "flex w-full items-center justify-between gap-3 px-2 text-left px-2.5 py-1 text-[10px] font-semibold tracking-[.14em] text-[var(--faint)] uppercase transition hover:text-[var(--ink)]",
 						"aria-expanded": expandedGroups[group.label] === true,
-						children: [/* @__PURE__ */ jsx("span", { children: group.label }), /* @__PURE__ */ jsx(Chevron, { className: `h-3.5 w-3.5 transition ${expandedGroups[group.label] ? "rotate-180 text-white/45" : "text-white/25"}` })]
+						children: [/* @__PURE__ */ jsx("span", { children: group.label }), /* @__PURE__ */ jsx(Chevron, { className: `h-3.5 w-3.5 transition ${expandedGroups[group.label] ? "rotate-180 text-[var(--muted)]" : "text-[var(--faint)]"}` })]
 					}), expandedGroups[group.label] && /* @__PURE__ */ jsx("div", {
 						className: "space-y-0.5",
 						children: group.items.map((item) => /* @__PURE__ */ jsx(NavItem, {
@@ -878,10 +878,7 @@ function AdminLayout({ title, section, children, toolbar = null, actions = null,
 	const adminUser = props.admin?.user ?? props.adminUser ?? null;
 	useEffect(() => {
 		if (typeof document === "undefined") return;
-		document.documentElement.classList.add("dark");
-		return () => {
-			document.documentElement.classList.remove("dark");
-		};
+		document.documentElement.classList.remove("dark");
 	}, []);
 	useEffect(() => {
 		if (typeof document === "undefined") return;
@@ -897,16 +894,16 @@ function AdminLayout({ title, section, children, toolbar = null, actions = null,
 	};
 	const breadcrumbGroup = useMemo(() => NAV_GROUPS.find((group) => group.items.some((item) => section === item.key || currentPath === item.href))?.label ?? null, [currentPath, section]);
 	return /* @__PURE__ */ jsxs("div", {
-		className: "admin-shell min-h-screen bg-[#0a0c18] text-white",
+		className: "admin-shell min-h-screen bg-[var(--canvas)] text-[var(--ink)]",
 		children: [
 			/* @__PURE__ */ jsx(Head, { title: `${title} - Admin - Outlier Vault` }),
 			/* @__PURE__ */ jsx("div", {
 				"aria-hidden": true,
 				className: "pointer-events-none fixed inset-0 overflow-hidden",
-				children: /* @__PURE__ */ jsx("div", { className: "absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(109,75,255,.07),_transparent_42%)]" })
+				children: /* @__PURE__ */ jsx("div", { className: "absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(255,198,41,.22),_transparent_42%)]" })
 			}),
 			/* @__PURE__ */ jsx("aside", {
-				className: "fixed inset-y-0 left-0 z-40 hidden w-[248px] bg-[#0d1020] px-3 py-4 backdrop-blur-xl lg:block",
+				className: "fixed inset-y-0 left-0 z-40 hidden w-[248px] border-r border-[var(--line)] bg-[var(--paper)] px-3 py-4 backdrop-blur-xl lg:block",
 				children: /* @__PURE__ */ jsx(Sidebar, {
 					currentPath,
 					section,
@@ -915,7 +912,7 @@ function AdminLayout({ title, section, children, toolbar = null, actions = null,
 				})
 			}),
 			/* @__PURE__ */ jsx("header", {
-				className: "sticky top-0 z-40 border-b border-white/[.06] bg-[#0d1020]/92 backdrop-blur-xl lg:hidden",
+				className: "sticky top-0 z-40 border-b border-[var(--line)] bg-[rgba(250,249,246,.92)] backdrop-blur-xl lg:hidden",
 				children: /* @__PURE__ */ jsxs("div", {
 					className: "flex items-center justify-between px-4 py-4",
 					children: [/* @__PURE__ */ jsxs(Link, {
@@ -925,13 +922,13 @@ function AdminLayout({ title, section, children, toolbar = null, actions = null,
 							className: "block text-[14px] font-bold tracking-[.2em] uppercase",
 							children: "Admin"
 						}), /* @__PURE__ */ jsx("span", {
-							className: "block text-[10px] text-white/45",
+							className: "block text-[10px] text-[var(--faint)]",
 							children: "Operations cockpit"
 						})] })]
 					}), /* @__PURE__ */ jsx("button", {
 						type: "button",
 						onClick: () => setDrawerOpen((open) => !open),
-						className: "flex h-10 w-10 items-center justify-center rounded-xl border border-white/[.08] bg-white/[.03]",
+						className: "flex h-10 w-10 items-center justify-center rounded-xl border border-[var(--line)] bg-white text-[var(--ink)]",
 						children: /* @__PURE__ */ jsx(Menu, { className: "h-5 w-5" })
 					})]
 				})
@@ -942,9 +939,9 @@ function AdminLayout({ title, section, children, toolbar = null, actions = null,
 					type: "button",
 					"aria-label": "Close menu",
 					onClick: () => setDrawerOpen(false),
-					className: "absolute inset-0 bg-black/60 backdrop-blur-sm"
+					className: "absolute inset-0 bg-[rgba(11,11,11,.38)] backdrop-blur-sm"
 				}), /* @__PURE__ */ jsx("div", {
-					className: "absolute top-0 left-0 h-full w-[min(290px,88vw)] border-r border-white/[.06] bg-[#0d1020] px-4 py-5",
+					className: "absolute top-0 left-0 h-full w-[min(290px,88vw)] border-r border-[var(--line)] bg-[var(--paper)] px-4 py-5",
 					children: /* @__PURE__ */ jsx(Sidebar, {
 						currentPath,
 						section,
@@ -958,32 +955,32 @@ function AdminLayout({ title, section, children, toolbar = null, actions = null,
 			/* @__PURE__ */ jsxs("div", {
 				className: "relative lg:pl-[248px]",
 				children: [/* @__PURE__ */ jsxs("div", {
-					className: "sticky top-0 z-30 hidden h-11 items-center justify-between border-b border-white/[.06] bg-[#0a0c18]/85 px-7 backdrop-blur-xl lg:flex",
+					className: "sticky top-0 z-30 hidden h-11 items-center justify-between border-b border-[var(--line)] bg-[rgba(245,244,240,.88)] px-7 backdrop-blur-xl lg:flex",
 					children: [/* @__PURE__ */ jsxs("nav", {
 						"aria-label": "Breadcrumb",
-						className: "flex items-center gap-1.5 text-[12px] text-white/35",
+						className: "flex items-center gap-1.5 text-[12px] text-[var(--faint)]",
 						children: [
 							/* @__PURE__ */ jsx(Link, {
 								href: "/x/admin",
-								className: "transition hover:text-white/70",
+								className: "transition hover:text-[var(--ink)]",
 								children: "Admin"
 							}),
 							breadcrumbGroup && /* @__PURE__ */ jsxs(Fragment, { children: [/* @__PURE__ */ jsx("span", {
-								className: "text-white/20",
+								className: "text-[var(--line-2)]",
 								children: "/"
 							}), /* @__PURE__ */ jsx("span", { children: breadcrumbGroup })] }),
 							/* @__PURE__ */ jsx("span", {
-								className: "text-white/20",
+								className: "text-[var(--line-2)]",
 								children: "/"
 							}),
 							/* @__PURE__ */ jsx("span", {
-								className: "font-medium text-white/75",
+								className: "font-medium text-[var(--ink)]",
 								children: title
 							})
 						]
 					}), /* @__PURE__ */ jsxs("span", {
-						className: "flex items-center gap-2 text-[11.5px] text-white/35",
-						children: [/* @__PURE__ */ jsx("span", { className: "h-1.5 w-1.5 rounded-full bg-emerald-400" }), adminUser?.email ?? "Admin session"]
+						className: "flex items-center gap-2 text-[11.5px] text-[var(--faint)]",
+						children: [/* @__PURE__ */ jsx("span", { className: "h-1.5 w-1.5 rounded-full bg-[var(--yellow)]" }), adminUser?.email ?? "Admin session"]
 					})]
 				}), /* @__PURE__ */ jsx("main", {
 					className: "px-4 py-5 sm:px-6 lg:px-7 lg:py-6",
@@ -993,7 +990,7 @@ function AdminLayout({ title, section, children, toolbar = null, actions = null,
 							showHeader && /* @__PURE__ */ jsxs("div", {
 								className: "mb-4 flex flex-wrap items-center justify-between gap-3 px-1 sm:px-0",
 								children: [/* @__PURE__ */ jsx("h1", {
-									className: "text-[20px] font-semibold tracking-[-.02em] text-white sm:text-[22px]",
+									className: "text-[20px] font-semibold tracking-[-.02em] text-[var(--ink)] sm:text-[22px]",
 									children: title
 								}), actions]
 							}),
@@ -1013,7 +1010,7 @@ function AdminLayout({ title, section, children, toolbar = null, actions = null,
 //#region resources/js/Pages/Admin/Dashboard.jsx
 var Dashboard_exports$1 = /* @__PURE__ */ __exportAll({ default: () => Dashboard$1 });
 function formatDay(value) {
-	if (!value) return "—";
+	if (!value) return "-";
 	return (/* @__PURE__ */ new Date(`${value}T00:00:00Z`)).toLocaleDateString(void 0, {
 		month: "short",
 		day: "numeric",
@@ -1024,20 +1021,20 @@ function formatDay(value) {
 function StatCard({ card }) {
 	const delta = card.delta;
 	return /* @__PURE__ */ jsxs("div", {
-		className: "rounded-xl border border-white/[.07] bg-[#0f1220] px-3.5 py-3",
+		className: "rounded-xl border border-[var(--line)] bg-white px-3.5 py-3 shadow-[0_1px_2px_rgba(20,15,0,.04),0_12px_28px_-22px_rgba(20,15,0,.18)]",
 		children: [
 			/* @__PURE__ */ jsx("p", {
-				className: "text-[10px] font-semibold tracking-[.16em] text-white/38 uppercase",
+				className: "text-[10px] font-semibold tracking-[.16em] text-[var(--faint)] uppercase",
 				children: card.label
 			}),
 			/* @__PURE__ */ jsx("p", {
-				className: "mt-2 text-[26px] leading-none font-bold tracking-[-.02em] text-white",
+				className: "mt-2 text-[26px] leading-none font-bold tracking-[-.02em] text-[var(--ink)]",
 				children: card.value.toLocaleString()
 			}),
 			/* @__PURE__ */ jsx("p", {
-				className: "mt-2 text-[11px] text-white/38",
+				className: "mt-2 text-[11px] text-[var(--faint)]",
 				children: typeof delta === "number" && delta !== 0 ? /* @__PURE__ */ jsxs("span", {
-					className: delta > 0 ? "text-emerald-300" : "text-rose-300",
+					className: delta > 0 ? "text-[var(--ok)]" : "text-[var(--warn)]",
 					children: [
 						delta > 0 ? "↑" : "↓",
 						" ",
@@ -1064,33 +1061,32 @@ function Dashboard$1({ trend = [], stats = [], snapshot = {}, range = "30D", ran
 		showHeader: false,
 		children: [
 			/* @__PURE__ */ jsxs("section", {
-				className: "rounded-2xl border border-white/[.07] bg-[linear-gradient(115deg,_#141033_0%,_#0f1326_45%,_#0b1020_100%)] px-5 py-5",
+				className: "rounded-2xl border border-[var(--line)] bg-[linear-gradient(135deg,_#fffaf0_0%,_#fff4cf_42%,_#faf9f6_100%)] px-5 py-5 shadow-[0_1px_2px_rgba(20,15,0,.04),0_24px_48px_-34px_rgba(255,198,41,.7)]",
 				children: [
 					/* @__PURE__ */ jsx("p", {
-						className: "text-[10px] font-semibold tracking-[.22em] text-hot uppercase",
+						className: "text-[10px] font-semibold tracking-[.22em] text-[var(--amber-ink)] uppercase",
 						children: "Admin dashboard"
 					}),
 					/* @__PURE__ */ jsx("h2", {
-						className: "mt-1.5 text-[26px] font-bold tracking-[-.03em] text-white",
+						className: "mt-1.5 text-[26px] font-bold tracking-[-.03em] text-[var(--ink)]",
 						children: "Admin Dashboard"
 					}),
 					/* @__PURE__ */ jsxs("div", {
 						className: "mt-3 flex flex-wrap items-center gap-3",
 						children: [
 							/* @__PURE__ */ jsx("span", {
-								className: "inline-flex items-center rounded-md border border-emerald-400/30 bg-emerald-400/10 px-2 py-1 text-[10px] font-semibold tracking-[.16em] text-emerald-300 uppercase",
+								className: "inline-flex items-center rounded-md border border-[var(--yellow)] bg-[var(--wash)] px-2 py-1 text-[10px] font-semibold tracking-[.16em] text-[var(--amber-ink)] uppercase",
 								children: snapshot.capturedAt ? "Snapshot loaded" : "No snapshot"
 							}),
 							/* @__PURE__ */ jsxs("span", {
-								className: "text-[12px] text-white/45",
+								className: "text-[12px] text-[var(--muted)]",
 								children: [
 									formatDay(snapshot.rangeStart),
-									" – ",
+									" - ",
 									formatDay(snapshot.rangeEnd),
 									" · ",
 									snapshot.rangeStart,
-									" to",
-									" ",
+									" to ",
 									snapshot.rangeEnd
 								]
 							}),
@@ -1098,29 +1094,29 @@ function Dashboard$1({ trend = [], stats = [], snapshot = {}, range = "30D", ran
 								type: "button",
 								disabled: refresh.processing,
 								onClick: () => refresh.post("/x/admin/dashboard/refresh", { preserveScroll: true }),
-								className: "ml-auto h-8 rounded-md border border-white/[.12] bg-white/[.07] px-3 text-[12.5px] font-medium text-white transition hover:bg-white/[.12] disabled:opacity-50",
-								children: refresh.processing ? "Refreshing…" : "Refresh data"
+								className: "ml-auto h-8 rounded-md border border-[var(--line)] bg-white px-3 text-[12.5px] font-medium text-[var(--ink)] transition hover:border-[var(--yellow)] hover:bg-[var(--wash)] disabled:opacity-50",
+								children: refresh.processing ? "Refreshing..." : "Refresh data"
 							})
 						]
 					})
 				]
 			}),
 			/* @__PURE__ */ jsxs("section", {
-				className: "mt-3 rounded-2xl border border-white/[.07] bg-[#0c0f1e] px-5 py-4",
+				className: "mt-3 rounded-2xl border border-[var(--line)] bg-white px-5 py-4 shadow-[0_1px_2px_rgba(20,15,0,.04),0_16px_32px_-26px_rgba(20,15,0,.18)]",
 				children: [/* @__PURE__ */ jsxs("div", {
 					className: "mb-4 flex flex-wrap items-start justify-between gap-3",
 					children: [/* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsx("p", {
-						className: "text-[10px] font-semibold tracking-[.22em] text-hot uppercase",
+						className: "text-[10px] font-semibold tracking-[.22em] text-[var(--amber-ink)] uppercase",
 						children: "Growth"
 					}), /* @__PURE__ */ jsx("h3", {
-						className: "mt-1 text-[17px] font-semibold text-white",
+						className: "mt-1 text-[17px] font-semibold text-[var(--ink)]",
 						children: "Daily momentum"
 					})] }), /* @__PURE__ */ jsx("div", {
 						className: "flex items-center gap-1",
 						children: ranges.map((option) => /* @__PURE__ */ jsx("button", {
 							type: "button",
 							onClick: () => selectRange(option),
-							className: `h-7 rounded-md px-2.5 text-[11.5px] font-semibold transition ${option === range ? "bg-hot text-white" : "text-white/45 hover:bg-white/[.06] hover:text-white"}`,
+							className: `h-7 rounded-md px-2.5 text-[11.5px] font-semibold transition ${option === range ? "bg-[var(--yellow)] text-[#1a1400]" : "text-[var(--muted)] hover:bg-[var(--wash)] hover:text-[var(--ink)]"}`,
 							children: option
 						}, option))
 					})]
@@ -1179,28 +1175,28 @@ function AdminRowMenu({ resource, row, capabilities = {}, onEdit, onPreview }) {
 			canPreview && /* @__PURE__ */ jsx("button", {
 				type: "button",
 				onClick: () => onPreview(row),
-				className: "inline-flex h-6 items-center rounded-md border border-white/[.12] bg-white/[.05] px-2 text-[11.5px] font-medium text-white/75 transition hover:border-sky-400/45 hover:bg-sky-400/12 hover:text-white",
+				className: "inline-flex h-6 items-center rounded-md border border-[var(--line)] bg-white px-2 text-[11.5px] font-medium text-[var(--ink)] transition hover:border-[var(--yellow)] hover:bg-[var(--wash)]",
 				children: "View"
 			}),
 			canEdit && /* @__PURE__ */ jsx("button", {
 				type: "button",
 				onClick: () => onEdit(row),
-				className: "inline-flex h-6 items-center rounded-md border border-white/[.12] bg-white/[.05] px-2 text-[11.5px] font-medium text-white/75 transition hover:border-accent/45 hover:bg-accent/15 hover:text-white",
+				className: "inline-flex h-6 items-center rounded-md border border-[var(--yellow)] bg-[var(--wash)] px-2 text-[11.5px] font-medium text-[var(--amber-ink)] transition hover:bg-[var(--yellow)] hover:text-[#1a1400]",
 				children: "Edit"
 			}),
 			items.length > 0 && /* @__PURE__ */ jsx("button", {
 				type: "button",
 				"aria-label": "More actions",
 				onClick: () => setOpen((current) => !current),
-				className: `inline-flex h-6 w-6 items-center justify-center rounded-md border transition ${open ? "border-white/[.2] bg-white/[.1] text-white" : "border-white/[.12] bg-white/[.05] text-white/55 hover:border-white/25 hover:text-white"}`,
+				className: `inline-flex h-6 w-6 items-center justify-center rounded-md border transition ${open ? "border-[var(--yellow)] bg-[var(--wash)] text-[var(--ink)]" : "border-[var(--line)] bg-white text-[var(--muted)] hover:border-[var(--line-2)] hover:text-[var(--ink)]"}`,
 				children: /* @__PURE__ */ jsx(Dots, { className: "h-3.5 w-3.5" })
 			}),
 			open && /* @__PURE__ */ jsx("div", {
-				className: "absolute top-7 right-0 z-30 w-40 overflow-hidden rounded-lg border border-white/[.09] bg-[#12152a] py-1 shadow-[0_18px_40px_-18px_rgba(0,0,0,.95)]",
+				className: "absolute top-7 right-0 z-30 w-40 overflow-hidden rounded-lg border border-[var(--line)] bg-white py-1 shadow-[0_18px_40px_-18px_rgba(20,15,0,.3)]",
 				children: items.map((item) => /* @__PURE__ */ jsx("button", {
 					type: "button",
 					onClick: item.onClick,
-					className: `block w-full px-3 py-1.5 text-left text-[12.5px] transition hover:bg-white/[.06] ${item.danger ? "text-rose-300" : "text-white/75"}`,
+					className: `block w-full px-3 py-1.5 text-left text-[12.5px] transition hover:bg-[var(--wash)] ${item.danger ? "text-[var(--warn)]" : "text-[var(--ink)]"}`,
 					children: item.label
 				}, item.label))
 			})
@@ -1214,8 +1210,8 @@ function statusTone(value) {
 		case "active":
 		case "published":
 		case "complete": return {
-			dot: "bg-emerald-400",
-			text: "text-emerald-300/90"
+			dot: "bg-[var(--ok)]",
+			text: "text-[var(--ok)]"
 		};
 		case "running":
 		case "trial":
@@ -1223,19 +1219,19 @@ function statusTone(value) {
 		case "queued":
 		case "scheduled":
 		case "invited": return {
-			dot: "bg-sky-400",
-			text: "text-sky-300/90"
+			dot: "bg-[var(--yellow)]",
+			text: "text-[var(--amber-ink)]"
 		};
 		case "past_due":
 		case "inactive":
 		case "archived":
 		case "suspended": return {
-			dot: "bg-rose-400",
-			text: "text-rose-300/90"
+			dot: "bg-[var(--warn)]",
+			text: "text-[var(--warn)]"
 		};
 		default: return {
-			dot: "bg-white/35",
-			text: "text-white/60"
+			dot: "bg-[var(--line-2)]",
+			text: "text-[var(--muted)]"
 		};
 	}
 }
@@ -1243,7 +1239,7 @@ function initials$2(value) {
 	return String(value).split(/\s+/).slice(0, 2).map((word) => word.charAt(0)).join("").toUpperCase();
 }
 function renderCell(column, row, index) {
-	const value = row[column.key] ?? "—";
+	const value = row[column.key] ?? "-";
 	const text = String(value);
 	if (column.key === "status") {
 		const tone = statusTone(text);
@@ -1257,21 +1253,21 @@ function renderCell(column, row, index) {
 		"type",
 		"plan"
 	].includes(column.key)) return /* @__PURE__ */ jsx("span", {
-		className: "inline-flex rounded border border-white/[.09] bg-white/[.03] px-1.5 py-0.5 text-[11.5px] font-medium text-white/65 capitalize",
+		className: "inline-flex rounded border border-[var(--line)] bg-[var(--wash)] px-1.5 py-0.5 text-[11.5px] font-medium text-[var(--amber-ink)] capitalize",
 		children: text.replaceAll("_", " ")
 	});
 	if (index === 0) return /* @__PURE__ */ jsxs("span", {
 		className: "flex items-center gap-2.5",
 		children: [/* @__PURE__ */ jsx("span", {
-			className: "flex h-6 w-6 shrink-0 items-center justify-center rounded bg-white/[.06] text-[10px] font-semibold text-white/55",
+			className: "flex h-6 w-6 shrink-0 items-center justify-center rounded bg-[var(--wash)] text-[10px] font-semibold text-[var(--amber-ink)]",
 			children: initials$2(text)
 		}), /* @__PURE__ */ jsx("span", {
-			className: "truncate text-[13px] font-medium text-white",
+			className: "truncate text-[13px] font-medium text-[var(--ink)]",
 			children: text
 		})]
 	});
 	return /* @__PURE__ */ jsx("span", {
-		className: "text-[13px] text-white/65",
+		className: "text-[13px] text-[var(--muted)]",
 		children: text
 	});
 }
@@ -1282,18 +1278,18 @@ function AdminDataTable({ columns = [], rows = [], resource, capabilities = {}, 
 		children: /* @__PURE__ */ jsxs("table", {
 			className: "min-w-full border-separate border-spacing-0",
 			children: [/* @__PURE__ */ jsx("thead", { children: /* @__PURE__ */ jsxs("tr", { children: [columns.map((column) => /* @__PURE__ */ jsx("th", {
-				className: "sticky top-0 z-10 border-b border-white/[.07] bg-[#13162a] px-4 py-2 text-left text-[11px] font-semibold tracking-[.06em] whitespace-nowrap text-white/40 uppercase",
+				className: "sticky top-0 z-10 border-b border-[var(--line)] bg-[var(--paper)] px-4 py-2 text-left text-[11px] font-semibold tracking-[.06em] whitespace-nowrap text-[var(--faint)] uppercase",
 				children: column.label
 			}, column.key)), hasActions && /* @__PURE__ */ jsx("th", {
-				className: "sticky top-0 z-10 w-[104px] border-b border-white/[.07] bg-[#13162a] px-4 py-2 text-right text-[11px] font-semibold tracking-[.06em] whitespace-nowrap text-white/40 uppercase",
+				className: "sticky top-0 z-10 w-[104px] border-b border-[var(--line)] bg-[var(--paper)] px-4 py-2 text-right text-[11px] font-semibold tracking-[.06em] whitespace-nowrap text-[var(--faint)] uppercase",
 				children: "Actions"
 			})] }) }), /* @__PURE__ */ jsx("tbody", { children: rows.map((row, rowIndex) => /* @__PURE__ */ jsxs("tr", {
-				className: "group transition-colors hover:bg-white/[.025]",
+				className: "group transition-colors hover:bg-[rgba(255,248,230,.65)]",
 				children: [columns.map((column, columnIndex) => /* @__PURE__ */ jsx("td", {
-					className: "max-w-[280px] truncate border-b border-white/[.05] px-4 py-2.5 align-middle whitespace-nowrap",
+					className: "max-w-[280px] truncate border-b border-[var(--line)] px-4 py-2.5 align-middle whitespace-nowrap",
 					children: renderCell(column, row, columnIndex)
 				}, column.key)), hasActions && /* @__PURE__ */ jsx("td", {
-					className: "border-b border-white/[.05] px-4 py-2.5 text-right",
+					className: "border-b border-[var(--line)] px-4 py-2.5 text-right",
 					children: /* @__PURE__ */ jsx(AdminRowMenu, {
 						resource,
 						row,
@@ -1305,7 +1301,7 @@ function AdminDataTable({ columns = [], rows = [], resource, capabilities = {}, 
 			}, row.id ?? rowIndex)) })]
 		})
 	}), /* @__PURE__ */ jsx("div", {
-		className: "divide-y divide-white/[.05] md:hidden",
+		className: "divide-y divide-[var(--line)] md:hidden",
 		children: rows.map((row, rowIndex) => /* @__PURE__ */ jsxs("article", {
 			className: "group grid gap-2 px-4 py-3",
 			children: [/* @__PURE__ */ jsxs("div", {
@@ -1323,7 +1319,7 @@ function AdminDataTable({ columns = [], rows = [], resource, capabilities = {}, 
 			}), columns.slice(1).map((column) => /* @__PURE__ */ jsxs("div", {
 				className: "flex items-center justify-between gap-4",
 				children: [/* @__PURE__ */ jsx("span", {
-					className: "text-[11px] text-white/35",
+					className: "text-[11px] text-[var(--faint)]",
 					children: column.label
 				}), /* @__PURE__ */ jsx("span", {
 					className: "min-w-0 text-right",
@@ -1335,10 +1331,6 @@ function AdminDataTable({ columns = [], rows = [], resource, capabilities = {}, 
 }
 //#endregion
 //#region resources/js/components/admin/AdminEditDrawer.jsx
-/**
-* Slide-over editor. Fields are described by the server (`editableFields`), so
-* adding a field to a resource never requires touching this component.
-*/
 function AdminEditDrawer({ open, resource, title, fields = [], row, onClose }) {
 	const form = useForm({});
 	useEffect(() => {
@@ -1368,21 +1360,21 @@ function AdminEditDrawer({ open, resource, title, fields = [], row, onClose }) {
 			type: "button",
 			"aria-label": "Close",
 			onClick: onClose,
-			className: "absolute inset-0 bg-black/55 backdrop-blur-[2px]"
+			className: "absolute inset-0 bg-[rgba(11,11,11,.38)] backdrop-blur-[2px]"
 		}), /* @__PURE__ */ jsxs("aside", {
-			className: "relative flex h-full w-[min(420px,92vw)] flex-col border-l border-white/[.08] bg-[#0d1020] shadow-[0_0_60px_-10px_rgba(0,0,0,.9)]",
+			className: "relative flex h-full w-[min(420px,92vw)] flex-col border-l border-[var(--line)] bg-[var(--paper)] shadow-[0_0_60px_-10px_rgba(20,15,0,.24)]",
 			children: [/* @__PURE__ */ jsxs("header", {
-				className: "flex items-center justify-between border-b border-white/[.07] px-4 py-3",
+				className: "flex items-center justify-between border-b border-[var(--line)] px-4 py-3",
 				children: [/* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsx("p", {
-					className: "text-[10px] font-semibold tracking-[.18em] text-white/35 uppercase",
+					className: "text-[10px] font-semibold tracking-[.18em] text-[var(--faint)] uppercase",
 					children: "Edit"
 				}), /* @__PURE__ */ jsx("h2", {
-					className: "mt-0.5 truncate text-[14px] font-semibold text-white",
+					className: "mt-0.5 truncate text-[14px] font-semibold text-[var(--ink)]",
 					children: title
 				})] }), /* @__PURE__ */ jsx("button", {
 					type: "button",
 					onClick: onClose,
-					className: "flex h-7 w-7 items-center justify-center rounded-md text-white/40 transition hover:bg-white/[.06] hover:text-white",
+					className: "flex h-7 w-7 items-center justify-center rounded-md text-[var(--faint)] transition hover:bg-white hover:text-[var(--ink)]",
 					children: /* @__PURE__ */ jsx(Close, { className: "h-4 w-4" })
 				})]
 			}), /* @__PURE__ */ jsxs("form", {
@@ -1396,29 +1388,29 @@ function AdminEditDrawer({ open, resource, title, fields = [], row, onClose }) {
 							type: "checkbox",
 							checked: Boolean(form.data[field.name]),
 							onChange: (event) => form.setData(field.name, event.target.checked),
-							className: "mt-0.5 h-4 w-4 rounded border-white/20 bg-white/[.06] accent-[#6d4bff]"
+							className: "mt-0.5 h-4 w-4 rounded border-[var(--line)] bg-white accent-[#ffc629]"
 						}), /* @__PURE__ */ jsxs("span", { children: [/* @__PURE__ */ jsx("span", {
-							className: "block text-[13px] text-white",
+							className: "block text-[13px] text-[var(--ink)]",
 							children: field.label
 						}), field.help && /* @__PURE__ */ jsx("span", {
-							className: "mt-0.5 block text-[11.5px] text-white/40",
+							className: "mt-0.5 block text-[11.5px] text-[var(--faint)]",
 							children: field.help
 						})] })]
 					}) : /* @__PURE__ */ jsxs(Fragment, { children: [
 						/* @__PURE__ */ jsx("label", {
-							className: "mb-1.5 block text-[11.5px] font-medium text-white/50",
+							className: "mb-1.5 block text-[11.5px] font-medium text-[var(--muted)]",
 							children: field.label
 						}),
 						field.type === "select" ? /* @__PURE__ */ jsx("select", {
 							value: form.data[field.name] ?? "",
 							onChange: (event) => form.setData(field.name, event.target.value),
-							className: "h-9 w-full rounded-lg border border-white/[.09] bg-[#0f1220] px-2.5 text-[13px] text-white outline-none focus:border-accent/45",
+							className: "h-9 w-full rounded-lg border border-[var(--line)] bg-white px-2.5 text-[13px] text-[var(--ink)] outline-none focus:border-[var(--yellow)]",
 							children: (field.options ?? []).map((option) => typeof option === "string" ? {
 								value: option,
 								label: option
 							} : option).map((option) => /* @__PURE__ */ jsx("option", {
 								value: option.value,
-								className: "bg-[#0f1220]",
+								className: "bg-white",
 								children: option.label
 							}, option.value))
 						}) : /* @__PURE__ */ jsx("input", {
@@ -1428,28 +1420,28 @@ function AdminEditDrawer({ open, resource, title, fields = [], row, onClose }) {
 							min: field.type === "number" ? 0 : void 0,
 							value: form.data[field.name] ?? "",
 							onChange: (event) => form.setData(field.name, event.target.value),
-							className: "h-9 w-full rounded-lg border border-white/[.09] bg-[#0f1220] px-2.5 text-[13px] text-white outline-none focus:border-accent/45"
+							className: "h-9 w-full rounded-lg border border-[var(--line)] bg-white px-2.5 text-[13px] text-[var(--ink)] outline-none focus:border-[var(--yellow)]"
 						}),
 						field.help && /* @__PURE__ */ jsx("p", {
-							className: "mt-1 text-[11.5px] text-white/40",
+							className: "mt-1 text-[11.5px] text-[var(--faint)]",
 							children: field.help
 						})
 					] }), form.errors[field.name] && /* @__PURE__ */ jsx("p", {
-						className: "mt-1 text-[11.5px] text-rose-300",
+						className: "mt-1 text-[11.5px] text-[var(--warn)]",
 						children: form.errors[field.name]
 					})] }, field.name))
 				}), /* @__PURE__ */ jsxs("footer", {
-					className: "flex items-center justify-end gap-2 border-t border-white/[.07] px-4 py-3",
+					className: "flex items-center justify-end gap-2 border-t border-[var(--line)] px-4 py-3",
 					children: [/* @__PURE__ */ jsx("button", {
 						type: "button",
 						onClick: onClose,
-						className: "h-8 rounded-md px-3 text-[12.5px] text-white/55 transition hover:text-white",
+						className: "h-8 rounded-md px-3 text-[12.5px] text-[var(--muted)] transition hover:text-[var(--ink)]",
 						children: "Cancel"
 					}), /* @__PURE__ */ jsx("button", {
 						type: "submit",
 						disabled: form.processing,
-						className: "h-8 rounded-md bg-accent px-3.5 text-[12.5px] font-semibold text-white transition hover:brightness-110 disabled:opacity-50",
-						children: form.processing ? "Saving…" : "Save changes"
+						className: "h-8 rounded-md bg-[var(--yellow)] px-3.5 text-[12.5px] font-semibold text-[#1a1400] transition hover:brightness-105 disabled:opacity-50",
+						children: form.processing ? "Saving..." : "Save changes"
 					})]
 				})]
 			})]
@@ -1462,10 +1454,10 @@ function AdminEmptyState({ title, message }) {
 	return /* @__PURE__ */ jsxs("div", {
 		className: "px-5 py-14 text-center",
 		children: [/* @__PURE__ */ jsx("h3", {
-			className: "text-[15px] font-semibold text-white",
+			className: "text-[15px] font-semibold text-[var(--ink)]",
 			children: title
 		}), /* @__PURE__ */ jsx("p", {
-			className: "mx-auto mt-1.5 max-w-md text-[13px] leading-5 text-white/45",
+			className: "mx-auto mt-1.5 max-w-md text-[13px] leading-5 text-[var(--muted)]",
 			children: message
 		})]
 	});
@@ -1486,11 +1478,6 @@ function normalizeOptions(options = []) {
 		label: option.replace(/_/g, " ").replace(/^./, (char) => char.toUpperCase())
 	} : option);
 }
-/**
-* A filter chip. A native <select> is stretched invisibly over the button so
-* the control keeps real keyboard and screen-reader behaviour without a
-* hand-built popover.
-*/
 function FilterChip({ filter, onChange }) {
 	const options = normalizeOptions(filter.options);
 	const value = filter.value ?? "";
@@ -1499,17 +1486,17 @@ function FilterChip({ filter, onChange }) {
 	return /* @__PURE__ */ jsxs("div", {
 		className: "relative",
 		children: [/* @__PURE__ */ jsxs("span", {
-			className: `inline-flex h-7 items-center gap-1.5 rounded-full border px-2.5 text-[12px] transition ${active ? "border-accent/50 bg-accent/15 font-medium text-white" : "border-white/[.1] bg-white/[.02] text-white/65 hover:border-white/20 hover:text-white"}`,
+			className: `inline-flex h-7 items-center gap-1.5 rounded-full border px-2.5 text-[12px] transition ${active ? "border-[var(--yellow)] bg-[var(--wash)] font-medium text-[var(--ink)]" : "border-[var(--line)] bg-white text-[var(--muted)] hover:border-[var(--line-2)] hover:text-[var(--ink)]"}`,
 			children: [
 				/* @__PURE__ */ jsx("span", {
-					className: `text-[10px] font-semibold ${active ? "text-accent" : "text-white/35"}`,
+					className: `text-[10px] font-semibold ${active ? "text-[var(--amber-ink)]" : "text-[var(--faint)]"}`,
 					children: filter.label.charAt(0).toUpperCase()
 				}),
 				/* @__PURE__ */ jsx("span", {
 					className: "whitespace-nowrap",
 					children: active ? `${filter.label}: ${selected?.label ?? value}` : filter.label
 				}),
-				/* @__PURE__ */ jsx(Chevron, { className: `h-2.5 w-2.5 shrink-0 ${active ? "text-accent" : "text-white/30"}` })
+				/* @__PURE__ */ jsx(Chevron, { className: `h-2.5 w-2.5 shrink-0 ${active ? "text-[var(--amber-ink)]" : "text-[var(--faint)]"}` })
 			]
 		}), /* @__PURE__ */ jsxs("select", {
 			"aria-label": filter.label,
@@ -1518,11 +1505,11 @@ function FilterChip({ filter, onChange }) {
 			className: "absolute inset-0 h-full w-full cursor-pointer opacity-0",
 			children: [/* @__PURE__ */ jsxs("option", {
 				value: "",
-				className: "bg-[#0f1220] text-white",
+				className: "bg-white text-[var(--ink)]",
 				children: ["All ", filter.label]
 			}), options.map((option) => /* @__PURE__ */ jsx("option", {
 				value: option.value,
-				className: "bg-[#0f1220] text-white",
+				className: "bg-white text-[var(--ink)]",
 				children: option.label
 			}, option.value))]
 		})]
@@ -1548,7 +1535,7 @@ function AdminFiltersBar({ title, searchPlaceholder, search = "", filters = [] }
 		className: "w-full",
 		children: [/* @__PURE__ */ jsxs("label", {
 			className: "group relative flex h-9 items-center",
-			children: [/* @__PURE__ */ jsx(Search, { className: "pointer-events-none absolute left-3 h-4 w-4 text-white/30 transition group-focus-within:text-accent" }), /* @__PURE__ */ jsx("input", {
+			children: [/* @__PURE__ */ jsx(Search, { className: "pointer-events-none absolute left-3 h-4 w-4 text-[var(--faint)] transition group-focus-within:text-[var(--amber-ink)]" }), /* @__PURE__ */ jsx("input", {
 				type: "search",
 				value: searchValue,
 				onChange: (event) => {
@@ -1558,8 +1545,8 @@ function AdminFiltersBar({ title, searchPlaceholder, search = "", filters = [] }
 				onKeyDown: (event) => {
 					if (event.key === "Enter") submit();
 				},
-				className: "h-full w-full rounded-lg border border-white/[.08] bg-[#0f1220] pr-3 pl-9 text-[13px] text-white outline-none transition placeholder:text-white/28 hover:border-white/[.14] focus:border-accent/45 focus:ring-2 focus:ring-accent/12 [&::-webkit-search-cancel-button]:hidden",
-				placeholder: searchPlaceholder || `Search ${title.toLowerCase()}…`
+				className: "h-full w-full rounded-lg border border-[var(--line)] bg-white pr-3 pl-9 text-[13px] text-[var(--ink)] outline-none transition placeholder:text-[var(--faint)] hover:border-[var(--line-2)] focus:border-[var(--yellow)] focus:ring-2 focus:ring-[rgba(255,198,41,.18)] [&::-webkit-search-cancel-button]:hidden",
+				placeholder: searchPlaceholder || `Search ${title.toLowerCase()}...`
 			})]
 		}), /* @__PURE__ */ jsxs("div", {
 			className: "mt-2 flex flex-wrap items-center gap-1.5",
@@ -1579,7 +1566,7 @@ function AdminFiltersBar({ title, searchPlaceholder, search = "", filters = [] }
 						value: ""
 					})), "");
 				},
-				className: "inline-flex h-7 items-center gap-1 rounded-full px-2 text-[12px] text-white/40 transition hover:bg-white/[.05] hover:text-white",
+				className: "inline-flex h-7 items-center gap-1 rounded-full px-2 text-[12px] text-[var(--faint)] transition hover:bg-[var(--wash)] hover:text-[var(--ink)]",
 				children: [/* @__PURE__ */ jsx(Close, { className: "h-3 w-3" }), "Clear all"]
 			})]
 		})]
@@ -1597,22 +1584,22 @@ function pageUrl(page, query) {
 }
 function AdminPagination({ pagination, query = {} }) {
 	if (!pagination || pagination.lastPage <= 1) return /* @__PURE__ */ jsxs("div", {
-		className: "flex items-center justify-between gap-2 border-t border-white/[.07] bg-white/[.015] px-4 py-2.5 text-[12px] text-white/40",
+		className: "flex items-center justify-between gap-2 border-t border-[var(--line)] bg-[var(--paper)] px-4 py-2.5 text-[12px] text-[var(--faint)]",
 		children: [/* @__PURE__ */ jsxs("span", { children: [
 			"Showing ",
 			/* @__PURE__ */ jsx("span", {
-				className: "text-white/70",
+				className: "text-[var(--ink)]",
 				children: pagination?.from ?? 0
 			}),
-			"–",
+			"-",
 			/* @__PURE__ */ jsx("span", {
-				className: "text-white/70",
+				className: "text-[var(--ink)]",
 				children: pagination?.to ?? 0
 			}),
 			" of",
 			" ",
 			/* @__PURE__ */ jsx("span", {
-				className: "text-white/70",
+				className: "text-[var(--ink)]",
 				children: pagination?.total ?? 0
 			})
 		] }), /* @__PURE__ */ jsx("span", { children: "25 per page" })]
@@ -1625,22 +1612,22 @@ function AdminPagination({ pagination, query = {} }) {
 		});
 	};
 	return /* @__PURE__ */ jsxs("div", {
-		className: "flex flex-col gap-2 border-t border-white/[.07] bg-white/[.015] px-4 py-2.5 text-[12px] text-white/40 sm:flex-row sm:items-center sm:justify-between",
+		className: "flex flex-col gap-2 border-t border-[var(--line)] bg-[var(--paper)] px-4 py-2.5 text-[12px] text-[var(--faint)] sm:flex-row sm:items-center sm:justify-between",
 		children: [/* @__PURE__ */ jsxs("span", { children: [
 			"Showing ",
 			/* @__PURE__ */ jsx("span", {
-				className: "text-white/70",
+				className: "text-[var(--ink)]",
 				children: pagination.from
 			}),
-			"–",
+			"-",
 			/* @__PURE__ */ jsx("span", {
-				className: "text-white/70",
+				className: "text-[var(--ink)]",
 				children: pagination.to
 			}),
 			" of",
 			" ",
 			/* @__PURE__ */ jsx("span", {
-				className: "text-white/70",
+				className: "text-[var(--ink)]",
 				children: pagination.total
 			})
 		] }), /* @__PURE__ */ jsxs("div", {
@@ -1650,11 +1637,11 @@ function AdminPagination({ pagination, query = {} }) {
 					type: "button",
 					disabled: pagination.page <= 1,
 					onClick: () => goTo(pagination.page - 1),
-					className: "h-7 rounded-md border border-white/[.08] px-2.5 text-white/75 transition hover:bg-white/[.05] hover:text-white disabled:opacity-35 disabled:hover:bg-transparent",
+					className: "h-7 rounded-md border border-[var(--line)] px-2.5 text-[var(--muted)] transition hover:bg-white hover:text-[var(--ink)] disabled:opacity-35 disabled:hover:bg-transparent",
 					children: "Previous"
 				}),
 				/* @__PURE__ */ jsxs("span", {
-					className: "px-1 text-white/55",
+					className: "px-1 text-[var(--muted)]",
 					children: [
 						"Page ",
 						pagination.page,
@@ -1666,7 +1653,7 @@ function AdminPagination({ pagination, query = {} }) {
 					type: "button",
 					disabled: pagination.page >= pagination.lastPage,
 					onClick: () => goTo(pagination.page + 1),
-					className: "h-7 rounded-md border border-white/[.08] px-2.5 text-white/75 transition hover:bg-white/[.05] hover:text-white disabled:opacity-35 disabled:hover:bg-transparent",
+					className: "h-7 rounded-md border border-[var(--line)] px-2.5 text-[var(--muted)] transition hover:bg-white hover:text-[var(--ink)] disabled:opacity-35 disabled:hover:bg-transparent",
 					children: "Next"
 				})
 			]
@@ -1677,14 +1664,14 @@ function AdminPagination({ pagination, query = {} }) {
 //#region resources/js/components/admin/AdminPreviewDrawer.jsx
 function PreviewField({ label, value, multiline = false }) {
 	return /* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsx("p", {
-		className: "mb-1.5 text-[11.5px] font-medium text-white/45",
+		className: "mb-1.5 text-[11.5px] font-medium text-[var(--muted)]",
 		children: label
 	}), multiline ? /* @__PURE__ */ jsx("div", {
-		className: "min-h-[120px] rounded-lg border border-white/[.09] bg-[#0f1220] px-3 py-2.5 text-[13px] leading-6 whitespace-pre-wrap text-white/80",
-		children: value || "—"
+		className: "min-h-[120px] rounded-lg border border-[var(--line)] bg-white px-3 py-2.5 text-[13px] leading-6 whitespace-pre-wrap text-[var(--body)]",
+		children: value || "-"
 	}) : /* @__PURE__ */ jsx("div", {
-		className: "rounded-lg border border-white/[.09] bg-[#0f1220] px-3 py-2.5 text-[13px] text-white/80",
-		children: value || "—"
+		className: "rounded-lg border border-[var(--line)] bg-white px-3 py-2.5 text-[13px] text-[var(--body)]",
+		children: value || "-"
 	})] });
 }
 function AdminPreviewDrawer({ open, title, row, onClose }) {
@@ -1696,22 +1683,22 @@ function AdminPreviewDrawer({ open, title, row, onClose }) {
 			type: "button",
 			"aria-label": "Close",
 			onClick: onClose,
-			className: "absolute inset-0 bg-black/55 backdrop-blur-[2px]"
+			className: "absolute inset-0 bg-[rgba(11,11,11,.38)] backdrop-blur-[2px]"
 		}), /* @__PURE__ */ jsxs("aside", {
-			className: "relative flex h-full w-[min(460px,92vw)] flex-col border-l border-white/[.08] bg-[#0d1020] shadow-[0_0_60px_-10px_rgba(0,0,0,.9)]",
+			className: "relative flex h-full w-[min(460px,92vw)] flex-col border-l border-[var(--line)] bg-[var(--paper)] shadow-[0_0_60px_-10px_rgba(20,15,0,.24)]",
 			children: [
 				/* @__PURE__ */ jsxs("header", {
-					className: "flex items-center justify-between border-b border-white/[.07] px-4 py-3",
+					className: "flex items-center justify-between border-b border-[var(--line)] px-4 py-3",
 					children: [/* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsx("p", {
-						className: "text-[10px] font-semibold tracking-[.18em] text-white/35 uppercase",
+						className: "text-[10px] font-semibold tracking-[.18em] text-[var(--faint)] uppercase",
 						children: "Preview"
 					}), /* @__PURE__ */ jsx("h2", {
-						className: "mt-0.5 truncate text-[14px] font-semibold text-white",
+						className: "mt-0.5 truncate text-[14px] font-semibold text-[var(--ink)]",
 						children: title
 					})] }), /* @__PURE__ */ jsx("button", {
 						type: "button",
 						onClick: onClose,
-						className: "flex h-7 w-7 items-center justify-center rounded-md text-white/40 transition hover:bg-white/[.06] hover:text-white",
+						className: "flex h-7 w-7 items-center justify-center rounded-md text-[var(--faint)] transition hover:bg-white hover:text-[var(--ink)]",
 						children: /* @__PURE__ */ jsx(Close, { className: "h-4 w-4" })
 					})]
 				}),
@@ -1746,11 +1733,11 @@ function AdminPreviewDrawer({ open, title, row, onClose }) {
 					]
 				}),
 				/* @__PURE__ */ jsx("footer", {
-					className: "flex items-center justify-end border-t border-white/[.07] px-4 py-3",
+					className: "flex items-center justify-end border-t border-[var(--line)] px-4 py-3",
 					children: /* @__PURE__ */ jsx("button", {
 						type: "button",
 						onClick: onClose,
-						className: "h-8 rounded-md px-3 text-[12.5px] text-white/65 transition hover:text-white",
+						className: "h-8 rounded-md px-3 text-[12.5px] text-[var(--muted)] transition hover:text-[var(--ink)]",
 						children: "Close"
 					})
 				})
@@ -1776,15 +1763,15 @@ function Listing({ resource, title, search, searchPlaceholder, filters = [], col
 		section: resource,
 		toolbar,
 		actions: /* @__PURE__ */ jsxs("span", {
-			className: "inline-flex items-center gap-1.5 rounded-md border border-white/[.09] bg-white/[.03] px-2 py-1 text-[11.5px] text-white/55",
+			className: "inline-flex items-center gap-1.5 rounded-md border border-[var(--line)] bg-white px-2 py-1 text-[11.5px] text-[var(--muted)]",
 			children: [/* @__PURE__ */ jsx("span", {
-				className: "font-semibold text-white",
+				className: "font-semibold text-[var(--ink)]",
 				children: total.toLocaleString()
 			}), total === 1 ? "record" : "records"]
 		}),
 		children: [
 			/* @__PURE__ */ jsxs("section", {
-				className: "overflow-hidden rounded-xl border border-white/[.07] bg-[#0f1220] shadow-[0_1px_0_rgba(255,255,255,.03)_inset,0_10px_30px_-24px_rgba(0,0,0,.9)]",
+				className: "overflow-hidden rounded-xl border border-[var(--line)] bg-white shadow-[0_1px_2px_rgba(20,15,0,.04),0_16px_36px_-28px_rgba(20,15,0,.18)]",
 				children: [rows.length > 0 ? /* @__PURE__ */ jsx(AdminDataTable, {
 					columns,
 					rows,
@@ -1828,13 +1815,13 @@ function PasswordField({ value, onChange }) {
 			type: visible ? "text" : "password",
 			value,
 			onChange,
-			className: "field h-12 rounded-2xl border-white/[.08] bg-white/[.04] pr-12 text-[14px] text-white placeholder:text-white/28",
+			className: "field h-12 rounded-2xl border-[var(--line)] bg-white pr-12 text-[14px] text-[var(--ink)] placeholder:text-[var(--faint)]",
 			placeholder: "Enter root password",
 			autoComplete: "current-password"
 		}), /* @__PURE__ */ jsx("button", {
 			type: "button",
 			onClick: () => setVisible((current) => !current),
-			className: "absolute top-1/2 right-3 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full text-white/40 transition hover:bg-white/[.06] hover:text-white",
+			className: "absolute top-1/2 right-3 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full text-[var(--faint)] transition hover:bg-[var(--wash)] hover:text-[var(--ink)]",
 			children: /* @__PURE__ */ jsxs("svg", {
 				viewBox: "0 0 24 24",
 				className: "h-4 w-4",
@@ -1857,41 +1844,38 @@ function Login$1({ adminRootEmail = "" }) {
 	});
 	useEffect(() => {
 		if (typeof document === "undefined") return;
-		document.documentElement.classList.add("dark");
-		return () => {
-			document.documentElement.classList.remove("dark");
-		};
+		document.documentElement.classList.remove("dark");
 	}, []);
 	const submit = (event) => {
 		event.preventDefault();
 		form.post("/x/admin/login");
 	};
 	return /* @__PURE__ */ jsxs(Fragment, { children: [/* @__PURE__ */ jsx(Head, { title: "Admin Login - Outlier Vault" }), /* @__PURE__ */ jsxs("div", {
-		className: "min-h-screen bg-[#090b16] px-4 py-8 text-white sm:px-6",
+		className: "min-h-screen bg-[var(--canvas)] px-4 py-8 text-[var(--ink)] sm:px-6",
 		children: [/* @__PURE__ */ jsxs("div", {
 			"aria-hidden": true,
 			className: "pointer-events-none fixed inset-0 overflow-hidden",
-			children: [/* @__PURE__ */ jsx("div", { className: "absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(255,61,113,.12),_transparent_26%),radial-gradient(circle_at_30%_20%,_rgba(109,75,255,.18),_transparent_34%),linear-gradient(180deg,_#0b0d18,_#090b16)]" }), /* @__PURE__ */ jsx("div", { className: "absolute inset-0 opacity-40 [background-image:linear-gradient(to_right,rgba(255,255,255,.04)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,.04)_1px,transparent_1px)] [background-size:44px_44px]" })]
+			children: [/* @__PURE__ */ jsx("div", { className: "absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(255,198,41,.22),_transparent_28%),linear-gradient(180deg,_#faf9f6,_#f5f4f0)]" }), /* @__PURE__ */ jsx("div", { className: "absolute inset-0 opacity-45 [background-image:linear-gradient(to_right,rgba(92,90,84,.06)_1px,transparent_1px),linear-gradient(to_bottom,rgba(92,90,84,.06)_1px,transparent_1px)] [background-size:44px_44px]" })]
 		}), /* @__PURE__ */ jsx("div", {
 			className: "relative mx-auto flex min-h-[calc(100vh-4rem)] max-w-6xl items-center justify-center",
 			children: /* @__PURE__ */ jsxs("section", {
-				className: "w-full max-w-[560px] rounded-[32px] border border-white/[.06] bg-[#101321]/94 p-7 shadow-[0_32px_120px_-52px_rgba(0,0,0,.95)] backdrop-blur-xl sm:p-8",
+				className: "w-full max-w-[560px] rounded-[32px] border border-[var(--line)] bg-[rgba(250,249,246,.94)] p-7 shadow-[0_32px_120px_-52px_rgba(20,15,0,.28)] backdrop-blur-xl sm:p-8",
 				children: [/* @__PURE__ */ jsxs("div", {
-					className: "mb-6 inline-flex items-center gap-3 rounded-full border border-white/[.08] bg-white/[.04] px-4 py-2 text-[11px] font-semibold tracking-[.18em] text-white/58 uppercase",
+					className: "mb-6 inline-flex items-center gap-3 rounded-full border border-[var(--line)] bg-white px-4 py-2 text-[11px] font-semibold tracking-[.18em] text-[var(--amber-ink)] uppercase",
 					children: [/* @__PURE__ */ jsx(Logo, { className: "h-7 w-7" }), "VVF Admin"]
 				}), /* @__PURE__ */ jsxs("section", {
-					className: "rounded-[28px] border border-white/[.04] bg-[#0d1020]/65 p-6 sm:p-7",
+					className: "rounded-[28px] border border-[var(--line)] bg-white p-6 shadow-[0_1px_2px_rgba(20,15,0,.04),0_20px_40px_-28px_rgba(20,15,0,.18)] sm:p-7",
 					children: [
 						/* @__PURE__ */ jsx("div", {
-							className: "inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-linear-to-br from-hot to-accent shadow-[0_16px_40px_-20px_rgba(255,61,113,.8)]",
-							children: /* @__PURE__ */ jsx(Lock, { className: "h-6 w-6 text-white" })
+							className: "inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-[var(--yellow)] shadow-[0_16px_40px_-20px_rgba(255,198,41,.85)]",
+							children: /* @__PURE__ */ jsx(Lock, { className: "h-6 w-6 text-[#1a1400]" })
 						}),
 						/* @__PURE__ */ jsx("h2", {
-							className: "mt-6 text-[34px] font-bold tracking-[-.05em]",
+							className: "mt-6 text-[34px] font-bold tracking-[-.05em] text-[var(--ink)]",
 							children: "Admin login"
 						}),
 						/* @__PURE__ */ jsx("p", {
-							className: "mt-2 text-[14px] leading-6 text-white/52",
+							className: "mt-2 text-[14px] leading-6 text-[var(--muted)]",
 							children: "Sign in with the root credentials from the environment configuration."
 						}),
 						/* @__PURE__ */ jsxs("form", {
@@ -1900,25 +1884,25 @@ function Login$1({ adminRootEmail = "" }) {
 							children: [
 								/* @__PURE__ */ jsxs("div", { children: [
 									/* @__PURE__ */ jsx("label", {
-										className: "mb-2 block text-[13px] font-semibold text-white/76",
+										className: "mb-2 block text-[13px] font-semibold text-[var(--body)]",
 										children: "Email"
 									}),
 									/* @__PURE__ */ jsx("input", {
 										type: "email",
 										value: form.data.email,
 										onChange: (event) => form.setData("email", event.target.value),
-										className: "field h-12 rounded-2xl border-white/[.08] bg-white/[.04] text-[14px] text-white placeholder:text-white/28",
+										className: "field h-12 rounded-2xl border-[var(--line)] bg-white text-[14px] text-[var(--ink)] placeholder:text-[var(--faint)]",
 										placeholder: "admin@example.com",
 										autoComplete: "email"
 									}),
 									form.errors.email && /* @__PURE__ */ jsx("p", {
-										className: "mt-2 text-sm text-hot",
+										className: "mt-2 text-sm text-[var(--warn)]",
 										children: form.errors.email
 									})
 								] }),
 								/* @__PURE__ */ jsxs("div", { children: [
 									/* @__PURE__ */ jsx("label", {
-										className: "mb-2 block text-[13px] font-semibold text-white/76",
+										className: "mb-2 block text-[13px] font-semibold text-[var(--body)]",
 										children: "Password"
 									}),
 									/* @__PURE__ */ jsx(PasswordField, {
@@ -1926,14 +1910,14 @@ function Login$1({ adminRootEmail = "" }) {
 										onChange: (event) => form.setData("password", event.target.value)
 									}),
 									form.errors.password && /* @__PURE__ */ jsx("p", {
-										className: "mt-2 text-sm text-hot",
+										className: "mt-2 text-sm text-[var(--warn)]",
 										children: form.errors.password
 									})
 								] }),
 								/* @__PURE__ */ jsx("button", {
 									type: "submit",
 									disabled: form.processing,
-									className: "inline-flex h-12 w-full items-center justify-center rounded-2xl bg-linear-to-r from-hot to-accent text-[14px] font-semibold text-white shadow-[0_22px_46px_-26px_rgba(109,75,255,.95)] transition hover:opacity-95 disabled:opacity-50",
+									className: "inline-flex h-12 w-full items-center justify-center rounded-2xl bg-[var(--yellow)] text-[14px] font-semibold text-[#1a1400] shadow-[0_22px_46px_-26px_rgba(255,198,41,.9)] transition hover:brightness-105 disabled:opacity-50",
 									children: form.processing ? "Signing in..." : "Sign in to admin"
 								})
 							]
@@ -3587,12 +3571,11 @@ var TYPES = [
 			"hair oil",
 			"sunscreen stick",
 			"liquid blush"
-		],
-		locked: true
+		]
 	}
 ];
 function SearchLauncher({ initialType = "brand", initialQuery = "", onSubmit }) {
-	const [type, setType] = useState(initialType === "product" ? "brand" : initialType);
+	const [type, setType] = useState(initialType);
 	const [value, setValue] = useState(initialQuery);
 	const inputRef = useRef(null);
 	const config = TYPES.find((t) => t.key === type) ?? TYPES[0];
@@ -3627,18 +3610,9 @@ function SearchLauncher({ initialType = "brand", initialQuery = "", onSubmit }) 
 						type: "button",
 						role: "radio",
 						"aria-checked": active,
-						disabled: option.locked,
-						title: option.locked ? "Product searches are coming soon" : void 0,
-						onClick: () => !option.locked && setType(option.key),
+						onClick: () => setType(option.key),
 						className: `mode${active ? " is-on" : ""}`,
-						children: [
-							/* @__PURE__ */ jsx(Icon, { className: "h-[15px] w-[15px]" }),
-							option.label,
-							option.locked && /* @__PURE__ */ jsx("span", {
-								className: "lk",
-								children: /* @__PURE__ */ jsx(Lock, { className: "h-3 w-3" })
-							})
-						]
+						children: [/* @__PURE__ */ jsx(Icon, { className: "h-[15px] w-[15px]" }), option.label]
 					}, option.key);
 				})
 			}),
@@ -3652,7 +3626,16 @@ function SearchLauncher({ initialType = "brand", initialQuery = "", onSubmit }) 
 					value,
 					onChange: (e) => setValue(e.target.value),
 					placeholder: config.placeholder,
-					"aria-label": "Search subject"
+					"aria-label": "Search subject",
+					style: {
+						border: "0",
+						outline: "none",
+						boxShadow: "none",
+						borderRadius: 0,
+						background: "transparent",
+						appearance: "none",
+						WebkitAppearance: "none"
+					}
 				}), /* @__PURE__ */ jsxs("div", {
 					className: "sbox__f",
 					children: [/* @__PURE__ */ jsxs("p", {
@@ -4839,6 +4822,82 @@ function Nav() {
 	});
 }
 //#endregion
+//#region resources/js/landing/components/CountUp.jsx
+/**
+* Animates a numeric stat when it first scrolls into view. Values like "62B+"
+* or "<20min" are split into prefix / number / suffix so the units survive.
+*/
+var PARTS = /^(\D*?)([\d.]+)(.*)$/;
+function CountUp({ value, duration = 1400, className = "" }) {
+	const ref = useRef(null);
+	const hasAnimated = useRef(false);
+	const parts = useMemo(() => {
+		const match = String(value).match(PARTS);
+		if (!match) return {
+			prefix: "",
+			numeric: null,
+			suffix: "",
+			decimals: 0
+		};
+		return {
+			prefix: match[1],
+			numeric: parseFloat(match[2]),
+			suffix: match[3],
+			decimals: match[2].includes(".") ? match[2].split(".")[1].length : 0
+		};
+	}, [value]);
+	const [shown, setShown] = useState(() => parts.numeric === null ? value : null);
+	const [settled, setSettled] = useState(parts.numeric === null);
+	useEffect(() => {
+		if (parts.numeric === null) {
+			setShown(value);
+			return;
+		}
+		const el = ref.current;
+		const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+		const settle = () => {
+			setShown(value);
+			setSettled(true);
+		};
+		if (!el || reduced || typeof IntersectionObserver === "undefined") {
+			hasAnimated.current = true;
+			settle();
+			return;
+		}
+		let frame;
+		const observer = new IntersectionObserver(([entry]) => {
+			if (!entry.isIntersecting || hasAnimated.current) return;
+			hasAnimated.current = true;
+			observer.disconnect();
+			const start = performance.now();
+			const tick = (now) => {
+				const t = Math.min((now - start) / duration, 1);
+				const eased = 1 - Math.pow(1 - t, 3);
+				const current = (parts.numeric * eased).toFixed(parts.decimals);
+				setSettled(false);
+				setShown(`${parts.prefix}${current}${parts.suffix}`);
+				if (t < 1) frame = requestAnimationFrame(tick);
+				else settle();
+			};
+			frame = requestAnimationFrame(tick);
+		}, { threshold: .4 });
+		observer.observe(el);
+		return () => {
+			observer.disconnect();
+			if (frame) cancelAnimationFrame(frame);
+		};
+	}, [
+		value,
+		duration,
+		parts
+	]);
+	return /* @__PURE__ */ jsx("span", {
+		ref,
+		className: `${className} ${settled ? "" : "inline-block min-w-[3ch] animate-pulse rounded-[0.2em] bg-[linear-gradient(90deg,rgba(255,198,41,.15),rgba(255,198,41,.45),rgba(255,198,41,.15))] px-[0.12em] text-transparent bg-[length:220%_100%] animate-shimmer"}`.trim(),
+		children: shown ?? `${parts.prefix}0${parts.suffix}`
+	});
+}
+//#endregion
 //#region resources/js/landing/data/dummy.js
 var BRANDS = [
 	{
@@ -5172,8 +5231,7 @@ var MODES = [
 		label: "A product",
 		icon: Search,
 		prompt: "Which product do you want to track?",
-		sample: "lip oil",
-		locked: true
+		sample: "lip oil"
 	}
 ];
 function Hero({ onStart }) {
@@ -5237,18 +5295,12 @@ function Hero({ onStart }) {
 					className: "modes",
 					role: "tablist",
 					"aria-label": "What to research",
-					children: MODES.map(({ key, label, icon: Icon, locked }) => /* @__PURE__ */ jsxs("button", {
+					children: MODES.map(({ key, label, icon: Icon }) => /* @__PURE__ */ jsxs("button", {
 						className: `mode${key === type ? " is-on" : ""}`,
 						role: "tab",
 						"aria-selected": key === type,
-						disabled: locked,
-						title: locked ? "Product searches are coming soon" : void 0,
-						onClick: () => !locked && setType(key),
-						children: [
-							/* @__PURE__ */ jsx(Icon, { className: "h-[15px] w-[15px]" }),
-							label,
-							locked && /* @__PURE__ */ jsx(Lock, { className: "h-3 w-3" })
-						]
+						onClick: () => setType(key),
+						children: [/* @__PURE__ */ jsx(Icon, { className: "h-[15px] w-[15px]" }), label]
 					}, key))
 				}),
 				/* @__PURE__ */ jsx("label", {
@@ -5334,7 +5386,7 @@ function Hero({ onStart }) {
 						className: "stat",
 						children: [/* @__PURE__ */ jsx("dt", {
 							className: "stat__v",
-							children: s.value
+							children: /* @__PURE__ */ jsx(CountUp, { value: s.value })
 						}), /* @__PURE__ */ jsxs("dd", {
 							className: "stat__l",
 							children: [/* @__PURE__ */ jsx(Trend, { className: "h-[11px] w-[11px]" }), s.label]
@@ -5401,17 +5453,20 @@ var PREVIEW_VIDS = [
 	{
 		handle: "@glossier",
 		mult: "18x",
-		views: "4.2M"
+		views: "4.2M",
+		image: "/images/landing/discovery-coco-shimmy.png"
 	},
 	{
 		handle: "@glowwithtay",
 		mult: "12x",
-		views: "3.1M"
+		views: "3.1M",
+		image: "/images/landing/discovery-buyer-beware.png"
 	},
 	{
 		handle: "@cleangirl.ari",
 		mult: "22x",
-		views: "2.8M"
+		views: "2.8M",
+		image: "/images/landing/discovery-brow-grooming.png"
 	}
 ];
 var PREVIEW_BARS = [
@@ -5496,13 +5551,21 @@ function Features() {
 						children: PREVIEW_VIDS.map((v) => /* @__PURE__ */ jsxs("div", { children: [
 							/* @__PURE__ */ jsxs("div", {
 								className: "vid__t",
-								children: [/* @__PURE__ */ jsx("span", {
-									className: "vid__x",
-									children: v.mult
-								}), /* @__PURE__ */ jsx("span", {
-									className: "vid__p",
-									children: /* @__PURE__ */ jsx(Play, { className: "h-[11px] w-[11px]" })
-								})]
+								children: [
+									/* @__PURE__ */ jsx("img", {
+										className: "vid__img",
+										src: v.image,
+										alt: v.handle
+									}),
+									/* @__PURE__ */ jsx("span", {
+										className: "vid__x",
+										children: v.mult
+									}),
+									/* @__PURE__ */ jsx("span", {
+										className: "vid__p",
+										children: /* @__PURE__ */ jsx(Play, { className: "h-[11px] w-[11px]" })
+									})
+								]
 							}),
 							/* @__PURE__ */ jsx("p", {
 								className: "vid__v",
@@ -7347,13 +7410,22 @@ var InsightPanels_exports = /* @__PURE__ */ __exportAll({
 	SignalTiles: () => SignalTiles,
 	SoundPanel: () => SoundPanel
 });
+var PST_OFFSET_HOURS = -8;
 var HOUR_LABELS = {
-	0: "12a",
-	6: "6a",
-	12: "12p",
-	18: "6p"
+	0: "4 PM",
+	6: "10 PM",
+	12: "4 AM",
+	18: "10 AM"
 };
 var PANEL_STEP = 5;
+function pstHourFromUtc(hour) {
+	return (hour + PST_OFFSET_HOURS + 24) % 24;
+}
+function formatPstHour(hour) {
+	const normalized = pstHourFromUtc(hour);
+	const suffix = normalized >= 12 ? "PM" : "AM";
+	return `${normalized % 12 === 0 ? 12 : normalized % 12}:00 ${suffix} PST`;
+}
 /**
 * Splits a formatted figure into the big number and its trailing unit, so the
 * unit renders in the mockup's smaller muted `small`.
@@ -7538,11 +7610,6 @@ function SoundPanel({ sounds = [] }) {
 		})] })]
 	});
 }
-/**
-* Posting rhythm by weekday and hour. Hours are UTC; `uploaded_at` is stored
-* in UTC and no creator timezone is captured, so the label says so plainly
-* rather than implying local time.
-*/
 function PostingHeatmap({ heatmap }) {
 	const [tip, setTip] = useState(null);
 	if (!heatmap || heatmap.counted === 0) return /* @__PURE__ */ jsx("div", {
@@ -7552,7 +7619,7 @@ function PostingHeatmap({ heatmap }) {
 			children: "No upload timestamps on the matched videos yet."
 		})
 	});
-	const { days = [], cells = [], max = 0, peak, timezone } = heatmap;
+	const { days = [], cells = [], max = 0, peak } = heatmap;
 	return /* @__PURE__ */ jsxs("div", {
 		className: "panel",
 		children: [
@@ -7575,7 +7642,7 @@ function PostingHeatmap({ heatmap }) {
 							}), (cells[dayIndex] ?? []).map((count, hour) => {
 								const t = max > 0 ? count / max : 0;
 								const isPeak = peak && peak.day === day && peak.hour === hour && count > 0;
-								const label = `${day} ${String(hour).padStart(2, "0")}:00 ${timezone} · ${count} ${count === 1 ? "post" : "posts"}`;
+								const label = `${day} ${formatPstHour(hour)} · ${count} ${count === 1 ? "post" : "posts"}`;
 								return /* @__PURE__ */ jsx("div", {
 									className: "cell",
 									onMouseMove: (event) => setTip({
@@ -7623,16 +7690,12 @@ function PostingHeatmap({ heatmap }) {
 					" busiest slot is ",
 					peak.day,
 					" around ",
-					String(peak.hour).padStart(2, "0"),
-					":00 ",
-					timezone,
+					formatPstHour(peak.hour),
 					", with ",
 					peak.count,
 					" ",
 					peak.count === 1 ? "post" : "posts",
-					". Hours are ",
-					timezone,
-					"; no creator timezone is captured on a scrape."
+					". Times are shown in PST using the UTC scrape timestamps."
 				]
 			})
 		]
@@ -7656,7 +7719,6 @@ var GHOST_HEIGHTS = [
 */
 function OutliersPerWeek({ bars = [], threshold = 3, totalOutliers = 0, nextRunLabel = null }) {
 	const max = Math.max(...bars.map((b) => b.value), 1);
-	const anyRebuilt = bars.some((b) => b.reconstructed);
 	if (bars.length === 0 || bars.every((b) => !b.value)) return /* @__PURE__ */ jsxs("div", {
 		className: "panel",
 		children: [
@@ -7692,7 +7754,7 @@ function OutliersPerWeek({ bars = [], threshold = 3, totalOutliers = 0, nextRunL
 	return /* @__PURE__ */ jsxs("div", {
 		className: "panel",
 		children: [
-			/* @__PURE__ */ jsxs("h3", { children: ["outliers per week ", anyRebuilt && /* @__PURE__ */ jsx(RebuiltBadge, { className: "ml-2" })] }),
+			/* @__PURE__ */ jsx("h3", { children: "outliers per week" }),
 			/* @__PURE__ */ jsxs("div", {
 				className: "psub",
 				children: [
@@ -7836,23 +7898,19 @@ function PerformanceChart({ trend }) {
 			}),
 			/* @__PURE__ */ jsxs("div", {
 				className: "ts-head",
-				children: [
-					/* @__PURE__ */ jsx("span", {
-						className: "ts-val",
-						children: formatValue(series.current, series.format)
-					}),
-					delta && /* @__PURE__ */ jsxs("span", {
-						className: `ts-delta ${deltaTone}`,
-						children: [
-							delta.direction === "up" ? "↑" : delta.direction === "down" ? "↓" : "→",
-							" ",
-							Math.abs(delta.value),
-							deltaSuffix,
-							" vs 12 wk ago"
-						]
-					}),
-					trend.has_reconstructed && /* @__PURE__ */ jsx(RebuiltBadge, {})
-				]
+				children: [/* @__PURE__ */ jsx("span", {
+					className: "ts-val",
+					children: formatValue(series.current, series.format)
+				}), delta && /* @__PURE__ */ jsxs("span", {
+					className: `ts-delta ${deltaTone}`,
+					children: [
+						delta.direction === "up" ? "↑" : delta.direction === "down" ? "↓" : "→",
+						" ",
+						Math.abs(delta.value),
+						deltaSuffix,
+						" vs 12 wk ago"
+					]
+				})]
 			}),
 			/* @__PURE__ */ jsxs("svg", {
 				className: "ts-svg",
@@ -8397,12 +8455,12 @@ function DetailScreen({ search, isAuthenticated = false, billing = null, onToggl
 				}),
 				/* @__PURE__ */ jsx(PerformanceChart, { trend }),
 				/* @__PURE__ */ jsx(SectionHead, {
-					title: "when they post",
+					title: "When they post",
 					note: "posting schedule by day and hour."
 				}),
 				/* @__PURE__ */ jsx(PostingHeatmap, { heatmap: insights.heatmap }),
 				/* @__PURE__ */ jsx(SectionHead, {
-					title: "more data",
+					title: "More data",
 					note: "how the tracker is moving."
 				}),
 				/* @__PURE__ */ jsxs("div", {

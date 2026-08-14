@@ -46,6 +46,7 @@
   "resources/js/components/admin/AdminPreviewDrawer.jsx": [],
   "resources/js/components/admin/AdminRowMenu.jsx": [],
   "resources/js/components/admin/AdminTrendChart.jsx": [],
+  "resources/js/landing/components/CountUp.jsx": [],
   "resources/js/landing/components/Icons.jsx": [],
   "resources/js/landing/components/Reveal.jsx": [],
   "resources/js/landing/components/useTheme.js": [],

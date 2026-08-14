@@ -25,6 +25,7 @@ export default function CountUp({ value, duration = 1400, className = '' }) {
   }, [value]);
 
   const [shown, setShown] = useState(() => (parts.numeric === null ? value : null));
+  const [settled, setSettled] = useState(parts.numeric === null);
 
   useEffect(() => {
     if (parts.numeric === null) {
@@ -35,7 +36,10 @@ export default function CountUp({ value, duration = 1400, className = '' }) {
     const el = ref.current;
     const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-    const settle = () => setShown(value);
+    const settle = () => {
+      setShown(value);
+      setSettled(true);
+    };
 
     if (!el || reduced || typeof IntersectionObserver === 'undefined') {
       hasAnimated.current = true;
@@ -55,6 +59,7 @@ export default function CountUp({ value, duration = 1400, className = '' }) {
           const t = Math.min((now - start) / duration, 1);
           const eased = 1 - Math.pow(1 - t, 3);
           const current = (parts.numeric * eased).toFixed(parts.decimals);
+          setSettled(false);
           setShown(`${parts.prefix}${current}${parts.suffix}`);
           if (t < 1) frame = requestAnimationFrame(tick);
           else settle();
@@ -72,7 +77,10 @@ export default function CountUp({ value, duration = 1400, className = '' }) {
   }, [value, duration, parts]);
 
   return (
-    <span ref={ref} className={className}>
+    <span
+      ref={ref}
+      className={`${className} ${settled ? '' : 'inline-block min-w-[3ch] animate-pulse rounded-[0.2em] bg-[linear-gradient(90deg,rgba(255,198,41,.15),rgba(255,198,41,.45),rgba(255,198,41,.15))] px-[0.12em] text-transparent bg-[length:220%_100%] animate-shimmer'}`.trim()}
+    >
       {shown ?? `${parts.prefix}0${parts.suffix}`}
     </span>
   );

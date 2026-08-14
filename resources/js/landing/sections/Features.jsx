@@ -5,9 +5,9 @@ import { FEATURES } from '../data/dummy.js';
 
 /* Static marketing preview content (the whole landing is illustrative). */
 const PREVIEW_VIDS = [
-  { handle: '@glossier', mult: '18x', views: '4.2M' },
-  { handle: '@glowwithtay', mult: '12x', views: '3.1M' },
-  { handle: '@cleangirl.ari', mult: '22x', views: '2.8M' },
+  { handle: '@glossier', mult: '18x', views: '4.2M', image: '/images/landing/discovery-coco-shimmy.png' },
+  { handle: '@glowwithtay', mult: '12x', views: '3.1M', image: '/images/landing/discovery-buyer-beware.png' },
+  { handle: '@cleangirl.ari', mult: '22x', views: '2.8M', image: '/images/landing/discovery-brow-grooming.png' },
 ];
 
 const PREVIEW_BARS = [
@@ -72,6 +72,7 @@ export default function Features() {
               {PREVIEW_VIDS.map((v) => (
                 <div key={v.handle}>
                   <div className="vid__t">
+                    <img className="vid__img" src={v.image} alt={v.handle} />
                     <span className="vid__x">{v.mult}</span>
                     <span className="vid__p">
                       <Play className="h-[11px] w-[11px]" />
