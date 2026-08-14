@@ -2593,8 +2593,8 @@ function EntitlementsBar() {
 	const searchLimit = billing.searchCreditsLimit ?? 0;
 	const searchLeft = billing.searchCreditsRemaining ?? 0;
 	const searchUsed = billing.searchCreditsUsed ?? 0;
-	const bookmarkLimit = billing.bookmarkLimit ?? 0;
-	const bookmarksUsed = billing.bookmarksUsed ?? billing.bookmarkCount ?? 0;
+	const bookmarkLimit = billing.searchBookmarkLimit ?? billing.bookmarkLimit ?? 0;
+	const bookmarksUsed = billing.searchBookmarkCount ?? billing.bookmarksUsed ?? billing.bookmarkCount ?? 0;
 	const searchesLow = searchLimit > 0 && searchLeft <= Math.max(1, Math.round(searchLimit * .1));
 	return /* @__PURE__ */ jsxs("div", {
 		className: "ent",
@@ -2613,7 +2613,7 @@ function EntitlementsBar() {
 			/* @__PURE__ */ jsxs("span", { children: [
 				/* @__PURE__ */ jsx("b", { children: bookmarksUsed }),
 				bookmarkLimit > 0 && `/${bookmarkLimit}`,
-				" bookmarks"
+				" search bookmarks"
 			] }),
 			!billing.hasPaidPlan && /* @__PURE__ */ jsxs(Fragment, { children: [/* @__PURE__ */ jsx("i", {}), /* @__PURE__ */ jsx(Link, {
 				href: "/plans",
@@ -5045,14 +5045,21 @@ var PRICING = { monthly: [
 		cta: "Run a free search",
 		features: [
 			"1 free search",
-			"0 bookmark slots",
-			"Last 90 days",
-			"Top 100 viral videos"
+			"0 video bookmarks",
+			"0 search bookmarks",
+			"0 video analysis"
 		],
 		searchCreditsLimit: 1,
 		searchCreditsUsed: 0,
 		bookmarkLimit: 0,
-		bookmarksUsed: 0
+		bookmarksUsed: 0,
+		videoBookmarkLimit: 0,
+		videoBookmarkUsed: 0,
+		searchBookmarkLimit: 0,
+		searchBookmarkUsed: 0,
+		videoAnalysisLimit: 0,
+		videoAnalysisUsed: 0,
+		trialEnabled: true
 	},
 	{
 		slug: "basic",
@@ -5063,16 +5070,24 @@ var PRICING = { monthly: [
 		popular: true,
 		features: [
 			"150 searches",
-			"50 bookmark slots",
+			"50 video bookmarks",
+			"50 search bookmarks",
+			"50 video analysis",
 			"Weekly + monthly scheduling",
 			"CSV export for reports",
-			"Virality alerts",
-			"2 user seats"
+			"Virality alerts"
 		],
 		searchCreditsLimit: 150,
 		searchCreditsUsed: 0,
 		bookmarkLimit: 50,
-		bookmarksUsed: 0
+		bookmarksUsed: 0,
+		videoBookmarkLimit: 50,
+		videoBookmarkUsed: 0,
+		searchBookmarkLimit: 50,
+		searchBookmarkUsed: 0,
+		videoAnalysisLimit: 50,
+		videoAnalysisUsed: 0,
+		trialEnabled: true
 	},
 	{
 		slug: "premium",
@@ -5085,13 +5100,19 @@ var PRICING = { monthly: [
 			"Unlimited bookmarks",
 			"Weekly + monthly scheduling",
 			"Virality alerts",
-			"CSV export for reports",
-			"10 user seats"
+			"CSV export for reports"
 		],
 		searchCreditsLimit: 400,
 		searchCreditsUsed: 0,
 		bookmarkLimit: -1,
-		bookmarksUsed: 0
+		bookmarksUsed: 0,
+		videoBookmarkLimit: -1,
+		videoBookmarkUsed: 0,
+		searchBookmarkLimit: -1,
+		searchBookmarkUsed: 0,
+		videoAnalysisLimit: -1,
+		videoAnalysisUsed: 0,
+		trialEnabled: true
 	}
 ] };
 var PRICING_PLAN_ORDER = PRICING.monthly.map((plan) => plan.slug ?? plan.name.toLowerCase());
@@ -5625,8 +5646,8 @@ function Testimonials() {
 }
 //#endregion
 //#region resources/js/landing/sections/Pricing.jsx
-function Pricing({ onStart, onTrial }) {
-	const plans = PRICING.monthly;
+function Pricing({ plans = [], onStart, onTrial }) {
+	const visiblePlans = plans.length > 0 ? plans : PRICING.monthly;
 	return /* @__PURE__ */ jsx("section", {
 		className: "sec--pad",
 		id: "pricing",
@@ -5658,7 +5679,7 @@ function Pricing({ onStart, onTrial }) {
 				}),
 				/* @__PURE__ */ jsx("div", {
 					className: "plans",
-					children: plans.map((plan) => {
+					children: visiblePlans.map((plan) => {
 						const free = plan.slug === "free";
 						return /* @__PURE__ */ jsxs("div", {
 							className: `plan${plan.popular ? " plan--pop" : ""}`,
@@ -5705,7 +5726,7 @@ function Pricing({ onStart, onTrial }) {
 						type: "button",
 						className: "btn btn--ink",
 						style: { flex: "none" },
-						onClick: () => onTrial(plans.find((p) => p.slug === "basic")),
+						onClick: () => onTrial(visiblePlans.find((p) => p.slug === "basic")),
 						children: "Start 7-day trial"
 					})]
 				})
@@ -5911,6 +5932,7 @@ function Footer() {
 //#region resources/js/Pages/Landing.jsx
 var Landing_exports = /* @__PURE__ */ __exportAll({ default: () => Landing });
 function Landing() {
+	const { pricingPlans = [] } = usePage().props;
 	/**
 	* Called with a type + subject from the hero form. The secondary CTAs call it
 	* with nothing, which just sends the visitor back to the hero input.
@@ -5938,6 +5960,7 @@ function Landing() {
 				/* @__PURE__ */ jsx(HowItWorks, { onStart: startSearch }),
 				/* @__PURE__ */ jsx(Testimonials, {}),
 				/* @__PURE__ */ jsx(Pricing, {
+					plans: pricingPlans,
 					onStart: startSearch,
 					onTrial: startTrial
 				}),
@@ -6130,7 +6153,7 @@ function SettingsShell({ section, children }) {
 //#region resources/js/Pages/Plans.jsx
 var Plans_exports = /* @__PURE__ */ __exportAll({ default: () => Plans });
 function Plans() {
-	const { billing: billingState = {} } = usePage().props;
+	const { billing: billingState = {}, pricingPlans = [] } = usePage().props;
 	const current = String(billingState.currentPlan ?? "free").toLowerCase();
 	const upgrade = (slug) => billing.checkout(slug);
 	return /* @__PURE__ */ jsxs(Fragment, { children: [/* @__PURE__ */ jsx(Head, { title: "Plans · Brand Beacon" }), /* @__PURE__ */ jsxs(SettingsShell, {
@@ -6147,7 +6170,7 @@ function Plans() {
 			})]
 		}), /* @__PURE__ */ jsx("div", {
 			className: "plans",
-			children: PRICING.monthly.map((plan) => {
+			children: pricingPlans.map((plan) => {
 				const isCurrent = plan.slug === current;
 				const isFree = plan.slug === "free";
 				return /* @__PURE__ */ jsxs("div", {
@@ -8825,8 +8848,12 @@ function Subscription({ subscription }) {
 	const limits = subscription?.limits ?? {};
 	const searchLimit = limits.searchCreditsLimit ?? 0;
 	const searchUsed = limits.searchCreditsUsed ?? 0;
-	const bookmarkLimit = limits.bookmarkLimit ?? 0;
-	const bookmarksUsed = limits.bookmarksUsed ?? 0;
+	const videoBookmarkLimit = limits.videoBookmarkLimit ?? 0;
+	const videoBookmarkUsed = limits.videoBookmarkUsed ?? 0;
+	const searchBookmarkLimit = limits.searchBookmarkLimit ?? 0;
+	const searchBookmarkUsed = limits.searchBookmarkUsed ?? 0;
+	const videoAnalysisLimit = limits.videoAnalysisLimit ?? 0;
+	const videoAnalysisUsed = limits.videoAnalysisUsed ?? 0;
 	const planName = subscription?.planName ?? "Free";
 	const status = subscription?.status ?? "free";
 	const active = status === "active";
@@ -8835,7 +8862,9 @@ function Subscription({ subscription }) {
 	const renews = formatDate(subscription?.renewsAt);
 	const invoices = subscription?.invoices ?? [];
 	const searchesLeft = searchLimit > 0 ? Math.max(0, searchLimit - searchUsed) : 0;
-	const bookmarksUnlimited = bookmarkLimit === -1;
+	const videoBookmarksUnlimited = videoBookmarkLimit === -1;
+	const searchBookmarksUnlimited = searchBookmarkLimit === -1;
+	const analysisUnlimited = videoAnalysisLimit === -1;
 	return /* @__PURE__ */ jsxs(Fragment, { children: [/* @__PURE__ */ jsx(Head, { title: "Subscription · Brand Beacon" }), /* @__PURE__ */ jsxs(SettingsShell, {
 		section: "subscription",
 		children: [/* @__PURE__ */ jsx("div", {
@@ -8870,8 +8899,46 @@ function Subscription({ subscription }) {
 							flexDirection: "column",
 							gap: 20
 						},
-						children: [/* @__PURE__ */ jsxs("div", { children: [
-							/* @__PURE__ */ jsxs("div", {
+						children: [
+							/* @__PURE__ */ jsxs("div", { children: [
+								/* @__PURE__ */ jsxs("div", {
+									style: {
+										display: "flex",
+										justifyContent: "space-between",
+										fontSize: ".84rem",
+										marginBottom: 8
+									},
+									children: [/* @__PURE__ */ jsx("span", {
+										className: "muted",
+										children: "Searches used"
+									}), /* @__PURE__ */ jsxs("span", {
+										style: {
+											fontWeight: 700,
+											color: "var(--ink)"
+										},
+										children: [
+											searchUsed,
+											" / ",
+											searchLimit || 0
+										]
+									})]
+								}),
+								/* @__PURE__ */ jsx("div", {
+									className: "meter",
+									children: /* @__PURE__ */ jsx("span", { style: { width: `${ratio(searchUsed, searchLimit)}%` } })
+								}),
+								searchLimit > 0 && /* @__PURE__ */ jsxs("p", {
+									className: "hint",
+									children: [
+										searchesLeft,
+										" search",
+										searchesLeft === 1 ? "" : "es",
+										" left this cycle",
+										renews ? `. Resets ${renews}.` : "."
+									]
+								})
+							] }),
+							/* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsxs("div", {
 								style: {
 									display: "flex",
 									justifyContent: "space-between",
@@ -8880,58 +8947,73 @@ function Subscription({ subscription }) {
 								},
 								children: [/* @__PURE__ */ jsx("span", {
 									className: "muted",
-									children: "Searches used"
+									children: "Video bookmarks used"
 								}), /* @__PURE__ */ jsxs("span", {
 									style: {
 										fontWeight: 700,
 										color: "var(--ink)"
 									},
 									children: [
-										searchUsed,
-										" / ",
-										searchLimit || 0
+										videoBookmarkUsed,
+										" ",
+										videoBookmarksUnlimited ? "" : `/ ${videoBookmarkLimit || 0}`
 									]
 								})]
-							}),
-							/* @__PURE__ */ jsx("div", {
+							}), /* @__PURE__ */ jsx("div", {
 								className: "meter",
-								children: /* @__PURE__ */ jsx("span", { style: { width: `${ratio(searchUsed, searchLimit)}%` } })
-							}),
-							searchLimit > 0 && /* @__PURE__ */ jsxs("p", {
-								className: "hint",
-								children: [
-									searchesLeft,
-									" search",
-									searchesLeft === 1 ? "" : "es",
-									" left this cycle",
-									renews ? `. Resets ${renews}.` : "."
-								]
-							})
-						] }), /* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsxs("div", {
-							style: {
-								display: "flex",
-								justifyContent: "space-between",
-								fontSize: ".84rem",
-								marginBottom: 8
-							},
-							children: [/* @__PURE__ */ jsx("span", {
-								className: "muted",
-								children: "Bookmarks used"
-							}), /* @__PURE__ */ jsxs("span", {
+								children: /* @__PURE__ */ jsx("span", { style: { width: videoBookmarksUnlimited ? "100%" : `${ratio(videoBookmarkUsed, videoBookmarkLimit)}%` } })
+							})] }),
+							/* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsxs("div", {
 								style: {
-									fontWeight: 700,
-									color: "var(--ink)"
+									display: "flex",
+									justifyContent: "space-between",
+									fontSize: ".84rem",
+									marginBottom: 8
 								},
-								children: [
-									bookmarksUsed,
-									" ",
-									bookmarksUnlimited ? "" : `/ ${bookmarkLimit || 0}`
-								]
-							})]
-						}), /* @__PURE__ */ jsx("div", {
-							className: "meter",
-							children: /* @__PURE__ */ jsx("span", { style: { width: bookmarksUnlimited ? "100%" : `${ratio(bookmarksUsed, bookmarkLimit)}%` } })
-						})] })]
+								children: [/* @__PURE__ */ jsx("span", {
+									className: "muted",
+									children: "Search bookmarks used"
+								}), /* @__PURE__ */ jsxs("span", {
+									style: {
+										fontWeight: 700,
+										color: "var(--ink)"
+									},
+									children: [
+										searchBookmarkUsed,
+										" ",
+										searchBookmarksUnlimited ? "" : `/ ${searchBookmarkLimit || 0}`
+									]
+								})]
+							}), /* @__PURE__ */ jsx("div", {
+								className: "meter",
+								children: /* @__PURE__ */ jsx("span", { style: { width: searchBookmarksUnlimited ? "100%" : `${ratio(searchBookmarkUsed, searchBookmarkLimit)}%` } })
+							})] }),
+							/* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsxs("div", {
+								style: {
+									display: "flex",
+									justifyContent: "space-between",
+									fontSize: ".84rem",
+									marginBottom: 8
+								},
+								children: [/* @__PURE__ */ jsx("span", {
+									className: "muted",
+									children: "Video analysis used"
+								}), /* @__PURE__ */ jsxs("span", {
+									style: {
+										fontWeight: 700,
+										color: "var(--ink)"
+									},
+									children: [
+										videoAnalysisUsed,
+										" ",
+										analysisUnlimited ? "" : `/ ${videoAnalysisLimit || 0}`
+									]
+								})]
+							}), /* @__PURE__ */ jsx("div", {
+								className: "meter",
+								children: /* @__PURE__ */ jsx("span", { style: { width: analysisUnlimited ? "100%" : `${ratio(videoAnalysisUsed, videoAnalysisLimit)}%` } })
+							})] })
+						]
 					}),
 					/* @__PURE__ */ jsxs("div", {
 						style: {
@@ -9038,7 +9120,7 @@ function TrialScreen({ onBack, backLabel = "Back to results" }) {
 				}),
 				/* @__PURE__ */ jsx("p", {
 					className: "mt-3 text-[14.5px] muted",
-					children: "Start on a 7-day trial. Basic includes 150 searches and 50 bookmark slots. Premium includes 400 searches and unlimited bookmarks."
+					children: "Start on a 7-day trial. Basic includes 150 searches, 50 video bookmarks, 50 search bookmarks, and 50 video analysis runs. Premium includes 400 searches and unlimited limits across those extras."
 				}),
 				/* @__PURE__ */ jsx("div", {
 					className: "mx-auto mt-9 grid max-w-2xl gap-5 text-left sm:grid-cols-2",
@@ -9074,8 +9156,8 @@ function TrialScreen({ onBack, backLabel = "Back to results" }) {
 								children: [
 									t.searchCreditsLimit,
 									" searches · ",
-									t.bookmarkLimit === -1 ? "Unlimited" : t.bookmarkLimit,
-									" bookmarks"
+									t.searchBookmarkLimit === -1 ? "Unlimited" : t.searchBookmarkLimit,
+									" search bookmarks"
 								]
 							}),
 							/* @__PURE__ */ jsx("ul", {

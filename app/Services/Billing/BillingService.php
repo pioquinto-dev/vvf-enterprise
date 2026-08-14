@@ -66,7 +66,9 @@ class BillingService
 
         $limits = $this->limitsFor($plan);
         $searchCreditsUsed = 0;
-        $bookmarksUsed = $this->bookmarkCount($user);
+        $videoBookmarksUsed = $this->entitlements->videoBookmarkCount($user);
+        $searchBookmarksUsed = $this->entitlements->searchBookmarkCount($user);
+        $videoAnalysisUsed = 0;
 
         $user->forceFill([
             'stripe_customer_id' => $customerId !== '' ? $customerId : $user->stripe_customer_id,
@@ -83,7 +85,7 @@ class BillingService
             'status' => 'active',
             'current_period_starts_at' => $now,
             'current_period_ends_at' => $endsAt,
-            'metadata' => $this->subscriptionMetadata($plan, $searchCreditsUsed, $bookmarksUsed),
+            'metadata' => $this->subscriptionMetadata($plan, $searchCreditsUsed, $videoBookmarksUsed, $searchBookmarksUsed, $videoAnalysisUsed),
         ]);
     }
 
@@ -135,6 +137,21 @@ class BillingService
     public function bookmarkCount(User $user): int
     {
         return $this->entitlements->bookmarkCount($user);
+    }
+
+    public function videoBookmarkCount(User $user): int
+    {
+        return $this->entitlements->videoBookmarkCount($user);
+    }
+
+    public function videoBookmarkLimit(?User $user): int
+    {
+        return $this->entitlements->videoBookmarkLimit($user);
+    }
+
+    public function searchBookmarkLimit(?User $user): int
+    {
+        return $this->entitlements->searchBookmarkLimit($user);
     }
 
     public function limitsFor(PricingPlan $plan): array
@@ -195,16 +212,35 @@ class BillingService
         return $this->entitlements->limitsForUser($user);
     }
 
-    private function subscriptionMetadata(PricingPlan $plan, int $searchCreditsUsed, int $bookmarksUsed): array
+    private function subscriptionMetadata(PricingPlan $plan, int $searchCreditsUsed, int $videoBookmarksUsed, int $searchBookmarksUsed, int $videoAnalysisUsed): array
     {
         $limits = $this->limitsFor($plan);
 
         return [
             'plan_slug' => $plan->slug,
-            'searchCreditsLimit' => (int) $limits['searchCreditsLimit'],
-            'searchCreditsUsed' => max(0, $searchCreditsUsed),
-            'bookmarkLimit' => (int) $limits['bookmarkLimit'],
-            'bookmarksUsed' => max(0, $bookmarksUsed),
+            'settings' => [
+                'cta' => (string) data_get($plan->metadata, 'settings.cta', 'Choose plan'),
+                'popular' => (bool) data_get($plan->metadata, 'settings.popular', false),
+            ],
+            'subscription' => [
+                'trialEnabled' => (bool) ($limits['trialEnabled'] ?? false),
+                'search_limits' => [
+                    'used' => max(0, $searchCreditsUsed),
+                    'limit' => (int) ($limits['searchLimit'] ?? 0),
+                ],
+                'viral_video_bookmarks' => [
+                    'used' => max(0, $videoBookmarksUsed),
+                    'limit' => (int) ($limits['videoBookmarkLimit'] ?? 0),
+                ],
+                'search_bookmarks' => [
+                    'used' => max(0, $searchBookmarksUsed),
+                    'limit' => (int) ($limits['searchBookmarkLimit'] ?? 0),
+                ],
+                'video_analysis' => [
+                    'used' => max(0, $videoAnalysisUsed),
+                    'limit' => (int) ($limits['videoAnalysisLimit'] ?? 0),
+                ],
+            ],
         ];
     }
 

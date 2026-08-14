@@ -215,8 +215,8 @@ export default function ResultsScreen({
               </span>
               <span>·</span>
               <span>
-                {billingState.bookmarkCount}
-                {billingState.bookmarkLimit === -1 ? '' : ` / ${billingState.bookmarkLimit}`} bookmarks
+                {billingState.videoBookmarkCount ?? billingState.bookmarkCount ?? 0}
+                {(billingState.videoBookmarkLimit ?? billingState.bookmarkLimit) === -1 ? '' : ` / ${billingState.videoBookmarkLimit ?? billingState.bookmarkLimit ?? 0}`} video bookmarks
               </span>
             </div>
           )}
@@ -268,8 +268,9 @@ export default function ResultsScreen({
           <div>
             <p className="font-display text-[17px] font-bold text-white">Want another search, or weekly tracking?</p>
             <p className="mt-1.5 text-[13.5px] text-white/60">
-              Free includes 1 search and 0 bookmark slots. Basic includes 150 searches and 50 bookmark slots.
-              Premium includes 400 searches and unlimited bookmarks.
+              Free includes 1 search and no bookmarks or video analysis. Basic includes 150 searches, 50 video
+              bookmarks, 50 search bookmarks, and 50 video analysis runs. Premium includes 400 searches and unlimited
+              limits across those extras.
             </p>
           </div>
           <button onClick={onStartTrial} className="btn-accent h-[52px] shrink-0 px-6 text-[15px]">

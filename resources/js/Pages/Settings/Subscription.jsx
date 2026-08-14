@@ -18,8 +18,12 @@ export default function Subscription({ subscription }) {
   const limits = subscription?.limits ?? {};
   const searchLimit = limits.searchCreditsLimit ?? 0;
   const searchUsed = limits.searchCreditsUsed ?? 0;
-  const bookmarkLimit = limits.bookmarkLimit ?? 0;
-  const bookmarksUsed = limits.bookmarksUsed ?? 0;
+  const videoBookmarkLimit = limits.videoBookmarkLimit ?? 0;
+  const videoBookmarkUsed = limits.videoBookmarkUsed ?? 0;
+  const searchBookmarkLimit = limits.searchBookmarkLimit ?? 0;
+  const searchBookmarkUsed = limits.searchBookmarkUsed ?? 0;
+  const videoAnalysisLimit = limits.videoAnalysisLimit ?? 0;
+  const videoAnalysisUsed = limits.videoAnalysisUsed ?? 0;
 
   const planName = subscription?.planName ?? 'Free';
   const status = subscription?.status ?? 'free';
@@ -30,7 +34,9 @@ export default function Subscription({ subscription }) {
   const invoices = subscription?.invoices ?? [];
 
   const searchesLeft = searchLimit > 0 ? Math.max(0, searchLimit - searchUsed) : 0;
-  const bookmarksUnlimited = bookmarkLimit === -1;
+  const videoBookmarksUnlimited = videoBookmarkLimit === -1;
+  const searchBookmarksUnlimited = searchBookmarkLimit === -1;
+  const analysisUnlimited = videoAnalysisLimit === -1;
 
   return (
     <>
@@ -74,13 +80,37 @@ export default function Subscription({ subscription }) {
 
               <div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '.84rem', marginBottom: 8 }}>
-                  <span className="muted">Bookmarks used</span>
+                  <span className="muted">Video bookmarks used</span>
                   <span style={{ fontWeight: 700, color: 'var(--ink)' }}>
-                    {bookmarksUsed} {bookmarksUnlimited ? '' : `/ ${bookmarkLimit || 0}`}
+                    {videoBookmarkUsed} {videoBookmarksUnlimited ? '' : `/ ${videoBookmarkLimit || 0}`}
                   </span>
                 </div>
                 <div className="meter">
-                  <span style={{ width: bookmarksUnlimited ? '100%' : `${ratio(bookmarksUsed, bookmarkLimit)}%` }} />
+                  <span style={{ width: videoBookmarksUnlimited ? '100%' : `${ratio(videoBookmarkUsed, videoBookmarkLimit)}%` }} />
+                </div>
+              </div>
+
+              <div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '.84rem', marginBottom: 8 }}>
+                  <span className="muted">Search bookmarks used</span>
+                  <span style={{ fontWeight: 700, color: 'var(--ink)' }}>
+                    {searchBookmarkUsed} {searchBookmarksUnlimited ? '' : `/ ${searchBookmarkLimit || 0}`}
+                  </span>
+                </div>
+                <div className="meter">
+                  <span style={{ width: searchBookmarksUnlimited ? '100%' : `${ratio(searchBookmarkUsed, searchBookmarkLimit)}%` }} />
+                </div>
+              </div>
+
+              <div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '.84rem', marginBottom: 8 }}>
+                  <span className="muted">Video analysis used</span>
+                  <span style={{ fontWeight: 700, color: 'var(--ink)' }}>
+                    {videoAnalysisUsed} {analysisUnlimited ? '' : `/ ${videoAnalysisLimit || 0}`}
+                  </span>
+                </div>
+                <div className="meter">
+                  <span style={{ width: analysisUnlimited ? '100%' : `${ratio(videoAnalysisUsed, videoAnalysisLimit)}%` }} />
                 </div>
               </div>
             </div>

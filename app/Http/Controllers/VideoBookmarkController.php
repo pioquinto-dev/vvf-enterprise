@@ -25,11 +25,12 @@ class VideoBookmarkController extends Controller
             ]);
         }
 
+        $this->billing->ensureCanBookmark($user);
         $this->bookmarks->add($user, $videoId);
 
         return response()->json([
             'bookmarked' => true,
-            'bookmarkCount' => $this->billing->bookmarkCount($user),
+            'bookmarkCount' => $this->billing->videoBookmarkCount($user),
         ]);
     }
 
@@ -47,7 +48,7 @@ class VideoBookmarkController extends Controller
 
         return response()->json([
             'bookmarked' => false,
-            'bookmarkCount' => $this->billing->bookmarkCount($user),
+            'bookmarkCount' => $this->billing->videoBookmarkCount($user),
         ]);
     }
 }

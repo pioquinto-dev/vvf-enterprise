@@ -1,8 +1,8 @@
 import { Check } from '../components/Icons.jsx';
 import { PRICING } from '../data/dummy.js';
 
-export default function Pricing({ onStart, onTrial }) {
-  const plans = PRICING.monthly;
+export default function Pricing({ plans = [], onStart, onTrial }) {
+  const visiblePlans = plans.length > 0 ? plans : PRICING.monthly;
 
   return (
     <section className="sec--pad" id="pricing">
@@ -22,7 +22,7 @@ export default function Pricing({ onStart, onTrial }) {
         </div>
 
         <div className="plans">
-          {plans.map((plan) => {
+          {visiblePlans.map((plan) => {
             const free = plan.slug === 'free';
             return (
               <div className={`plan${plan.popular ? ' plan--pop' : ''}`} key={plan.slug}>
@@ -69,7 +69,7 @@ export default function Pricing({ onStart, onTrial }) {
               trial ends unless you cancel.
             </p>
           </div>
-          <button type="button" className="btn btn--ink" style={{ flex: 'none' }} onClick={() => onTrial(plans.find((p) => p.slug === 'basic'))}>
+          <button type="button" className="btn btn--ink" style={{ flex: 'none' }} onClick={() => onTrial(visiblePlans.find((p) => p.slug === 'basic'))}>
             Start 7-day trial
           </button>
         </div>

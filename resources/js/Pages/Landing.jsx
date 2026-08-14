@@ -1,4 +1,4 @@
-import { Head, router } from '@inertiajs/react';
+import { Head, router, usePage } from '@inertiajs/react';
 
 import Nav from '../landing/sections/Nav.jsx';
 import Hero from '../landing/sections/Hero.jsx';
@@ -12,6 +12,7 @@ import FinalCta from '../landing/sections/FinalCta.jsx';
 import Footer from '../landing/sections/Footer.jsx';
 
 export default function Landing() {
+  const { pricingPlans = [] } = usePage().props;
   /**
    * Called with a type + subject from the hero form. The secondary CTAs call it
    * with nothing, which just sends the visitor back to the hero input.
@@ -41,7 +42,7 @@ export default function Landing() {
           <Features />
           <HowItWorks onStart={startSearch} />
           <Testimonials />
-          <Pricing onStart={startSearch} onTrial={startTrial} />
+          <Pricing plans={pricingPlans} onStart={startSearch} onTrial={startTrial} />
           <Faq />
           <FinalCta onStart={startSearch} />
         </main>

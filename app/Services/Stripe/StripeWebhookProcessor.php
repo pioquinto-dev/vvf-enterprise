@@ -109,8 +109,20 @@ class StripeWebhookProcessor
 
         $status = (string) ($payload->status ?? $subscription->status);
         $previousStatus = (string) ($subscription->status ?? '');
+        $previousPeriodEnd = $subscription->current_period_ends_at;
         $periodStart = $this->timestampToCarbon(data_get($payload, 'current_period_start'));
         $periodEnd = $this->timestampToCarbon(data_get($payload, 'current_period_end'));
+        $limits = $this->billing->limitsFor($plan);
+        $renewed = $periodEnd !== null
+            && ($previousPeriodEnd === null || $periodEnd->greaterThan(CarbonImmutable::instance($previousPeriodEnd)));
+
+        $searchUsed = $renewed ? 0 : (int) data_get($subscription->metadata, 'subscription.search_limits.used', 0);
+        $videoBookmarksUsed = $this->billing->videoBookmarkCount($user);
+        $searchBookmarksUsed = \App\Models\CustomKeywordSearch::query()
+            ->where('user_id', $user->id)
+            ->where('is_watchlisted', true)
+            ->count();
+        $videoAnalysisUsed = $renewed ? 0 : (int) data_get($subscription->metadata, 'subscription.video_analysis.used', 0);
 
         $subscription->forceFill([
             'stripe_customer_id' => $customerId,
@@ -127,18 +139,46 @@ class StripeWebhookProcessor
             'canceled_at' => $status === 'canceled' ? now() : null,
             'metadata' => [
                 'plan_slug' => $plan->slug,
-                'searchCreditsLimit' => (int) data_get($subscription->metadata, 'searchCreditsLimit', data_get($plan->metadata, 'searchCreditsLimit', 0)),
-                'searchCreditsUsed' => (int) data_get($subscription->metadata, 'searchCreditsUsed', 0),
-                'bookmarkLimit' => (int) data_get($subscription->metadata, 'bookmarkLimit', data_get($plan->metadata, 'bookmarkLimit', 0)),
-                'bookmarksUsed' => (int) data_get($subscription->metadata, 'bookmarksUsed', 0),
+                'settings' => [
+                    'cta' => (string) data_get($plan->metadata, 'settings.cta', 'Choose plan'),
+                    'popular' => (bool) data_get($plan->metadata, 'settings.popular', false),
+                ],
+                'subscription' => [
+                    'trialEnabled' => (bool) ($limits['trialEnabled'] ?? false),
+                    'search_limits' => [
+                        'used' => max(0, $searchUsed),
+                        'limit' => (int) ($limits['searchLimit'] ?? 0),
+                    ],
+                    'viral_video_bookmarks' => [
+                        'used' => max(0, $videoBookmarksUsed),
+                        'limit' => (int) ($limits['videoBookmarkLimit'] ?? 0),
+                    ],
+                    'search_bookmarks' => [
+                        'used' => max(0, $searchBookmarksUsed),
+                        'limit' => (int) ($limits['searchBookmarkLimit'] ?? 0),
+                    ],
+                    'video_analysis' => [
+                        'used' => max(0, $videoAnalysisUsed),
+                        'limit' => (int) ($limits['videoAnalysisLimit'] ?? 0),
+                    ],
+                ],
             ],
         ])->save();
 
         if ($status === 'active' && $periodEnd !== null) {
             $user->forceFill([
                 'current_plan_slug' => $plan->slug,
+                'monthly_credits_remaining' => $renewed
+                    ? $this->billing->searchCreditsRemaining($user) + ((int) ($limits['searchLimit'] ?? 0))
+                    : $user->monthly_credits_remaining,
                 'plan_renews_at' => $periodEnd,
             ])->save();
+
+            if ($renewed) {
+                $user->forceFill([
+                    'monthly_credits_remaining' => max(0, (int) ($limits['searchLimit'] ?? 0)),
+                ])->save();
+            }
 
             $this->billing->syncSubscriptionUsage($user, $plan);
         }

@@ -126,13 +126,32 @@ class AdminListingMutator
     private function mergePlanMetadata(PricingPlan $plan, array $input): array
     {
         $metadata = $plan->metadata ?? [];
+        $metadata['settings'] ??= [
+            'cta' => 'Choose plan',
+            'popular' => false,
+        ];
+        $metadata['subscription'] ??= [
+            'trialEnabled' => true,
+            'search_limits' => ['used' => 0, 'limit' => 0],
+            'viral_video_bookmarks' => ['used' => 0, 'limit' => 0],
+            'search_bookmarks' => ['used' => 0, 'limit' => 0],
+            'video_analysis' => ['used' => 0, 'limit' => 0],
+        ];
 
         if (array_key_exists('search_credits_limit', $input) && $input['search_credits_limit'] !== null) {
-            $metadata['searchCreditsLimit'] = max(0, (int) $input['search_credits_limit']);
+            $metadata['subscription']['search_limits']['limit'] = max(0, (int) $input['search_credits_limit']);
         }
 
-        if (array_key_exists('bookmark_limit', $input) && $input['bookmark_limit'] !== null) {
-            $metadata['bookmarkLimit'] = max(0, (int) $input['bookmark_limit']);
+        if (array_key_exists('video_bookmark_limit', $input) && $input['video_bookmark_limit'] !== null) {
+            $metadata['subscription']['viral_video_bookmarks']['limit'] = (int) $input['video_bookmark_limit'];
+        }
+
+        if (array_key_exists('search_bookmark_limit', $input) && $input['search_bookmark_limit'] !== null) {
+            $metadata['subscription']['search_bookmarks']['limit'] = (int) $input['search_bookmark_limit'];
+        }
+
+        if (array_key_exists('video_analysis_limit', $input) && $input['video_analysis_limit'] !== null) {
+            $metadata['subscription']['video_analysis']['limit'] = (int) $input['video_analysis_limit'];
         }
 
         return $metadata;
@@ -162,7 +181,12 @@ class AdminListingMutator
         // every subscriber on that plan. The drawer says so explicitly.
         $plan = $subscription->plan()->first();
 
-        if ($plan && (array_key_exists('search_credits_limit', $input) || array_key_exists('bookmark_limit', $input))) {
+        if ($plan && (
+            array_key_exists('search_credits_limit', $input)
+            || array_key_exists('video_bookmark_limit', $input)
+            || array_key_exists('search_bookmark_limit', $input)
+            || array_key_exists('video_analysis_limit', $input)
+        )) {
             $plan->metadata = $this->mergePlanMetadata($plan, $input);
             $plan->save();
         }

@@ -110,6 +110,14 @@ class BillingEntitlementService
                 'billing' => 'Upgrade to Basic or Premium to bookmark videos.',
             ]);
         }
+
+        $limit = $this->videoBookmarkLimit($user);
+
+        if ($limit !== -1 && $this->videoBookmarkCount($user) >= $limit) {
+            throw ValidationException::withMessages([
+                'billing' => 'You have reached your video bookmark limit for this plan.',
+            ]);
+        }
     }
 
     public function ensureCanBookmarkSearch(User $user): void
@@ -120,11 +128,11 @@ class BillingEntitlementService
             ]);
         }
 
-        $limit = $this->bookmarkLimit($user);
+        $limit = $this->searchBookmarkLimit($user);
 
-        if ($limit !== -1 && $this->bookmarkCount($user) >= $limit) {
+        if ($limit !== -1 && $this->searchBookmarkCount($user) >= $limit) {
             throw ValidationException::withMessages([
-                'billing' => 'You have reached your bookmark limit for this plan.',
+                'billing' => 'You have reached your search bookmark limit for this plan.',
             ]);
         }
     }
@@ -141,14 +149,38 @@ class BillingEntitlementService
 
     public function bookmarkLimit(?User $user): int
     {
+        return $this->searchBookmarkLimit($user);
+    }
+
+    public function bookmarkCount(User $user): int
+    {
+        return $this->searchBookmarkCount($user);
+    }
+
+    public function videoBookmarkLimit(?User $user): int
+    {
         if ($user === null) {
             return 0;
         }
 
-        return (int) ($this->limitsForUser($user)['bookmarkLimit'] ?? 0);
+        return (int) ($this->limitsForUser($user)['videoBookmarkLimit'] ?? 0);
     }
 
-    public function bookmarkCount(User $user): int
+    public function videoBookmarkCount(User $user): int
+    {
+        return $user->videoBookmarks()->count();
+    }
+
+    public function searchBookmarkLimit(?User $user): int
+    {
+        if ($user === null) {
+            return 0;
+        }
+
+        return (int) ($this->limitsForUser($user)['searchBookmarkLimit'] ?? 0);
+    }
+
+    public function searchBookmarkCount(User $user): int
     {
         return CustomKeywordSearch::query()
             ->where('user_id', $user->id)
@@ -161,11 +193,26 @@ class BillingEntitlementService
      */
     public function limitsFor(PricingPlan $plan): array
     {
+        $trialEnabled = (bool) data_get($plan->metadata, 'subscription.trialEnabled', false);
+        $searchLimit = (int) data_get($plan->metadata, 'subscription.search_limits.limit', data_get($plan->metadata, 'searchCreditsLimit', 0));
+        $videoBookmarkLimit = (int) data_get($plan->metadata, 'subscription.viral_video_bookmarks.limit', data_get($plan->metadata, 'bookmarkLimit', 0));
+        $searchBookmarkLimit = (int) data_get($plan->metadata, 'subscription.search_bookmarks.limit', data_get($plan->metadata, 'bookmarkLimit', 0));
+        $videoAnalysisLimit = (int) data_get($plan->metadata, 'subscription.video_analysis.limit', 0);
+
         return [
-            'searchCreditsLimit' => (int) data_get($plan->metadata, 'searchCreditsLimit', 0),
-            'searchCreditsUsed' => (int) data_get($plan->metadata, 'searchCreditsUsed', 0),
-            'bookmarkLimit' => (int) data_get($plan->metadata, 'bookmarkLimit', 0),
-            'bookmarksUsed' => (int) data_get($plan->metadata, 'bookmarksUsed', 0),
+            'trialEnabled' => $trialEnabled,
+            'searchLimit' => $searchLimit,
+            'searchUsed' => (int) data_get($plan->metadata, 'subscription.search_limits.used', 0),
+            'videoBookmarkLimit' => $videoBookmarkLimit,
+            'videoBookmarkUsed' => (int) data_get($plan->metadata, 'subscription.viral_video_bookmarks.used', 0),
+            'searchBookmarkLimit' => $searchBookmarkLimit,
+            'searchBookmarkUsed' => (int) data_get($plan->metadata, 'subscription.search_bookmarks.used', 0),
+            'videoAnalysisLimit' => $videoAnalysisLimit,
+            'videoAnalysisUsed' => (int) data_get($plan->metadata, 'subscription.video_analysis.used', 0),
+            'searchCreditsLimit' => $searchLimit,
+            'searchCreditsUsed' => (int) data_get($plan->metadata, 'subscription.search_limits.used', 0),
+            'bookmarkLimit' => $searchBookmarkLimit,
+            'bookmarksUsed' => (int) data_get($plan->metadata, 'subscription.search_bookmarks.used', 0),
         ];
     }
 
@@ -212,14 +259,14 @@ class BillingEntitlementService
 
         if ($this->hasPaidPlan($user)) {
             $subscription = $this->activeSubscriptionFor($user);
-            $used = data_get($subscription?->metadata, 'bookmarksUsed');
+            $used = data_get($subscription?->metadata, 'subscription.search_bookmarks.used');
 
             if ($used !== null) {
                 return max(0, (int) $used);
             }
         }
 
-        return $this->bookmarkCount($user);
+        return $this->searchBookmarkCount($user);
     }
 
     public function syncSubscriptionUsage(User $user, ?PricingPlan $plan = null): void
@@ -237,10 +284,12 @@ class BillingEntitlementService
         }
 
         $searchCreditsUsed = $this->searchCreditsUsed($user);
-        $bookmarksUsed = $this->bookmarkCount($user);
+        $videoBookmarksUsed = $this->videoBookmarkCount($user);
+        $searchBookmarksUsed = $this->searchBookmarkCount($user);
+        $videoAnalysisUsed = max(0, (int) data_get($subscription->metadata, 'subscription.video_analysis.used', 0));
 
         $subscription->forceFill([
-            'metadata' => $this->subscriptionMetadata($plan, $searchCreditsUsed, $bookmarksUsed),
+            'metadata' => $this->subscriptionMetadata($plan, $searchCreditsUsed, $videoBookmarksUsed, $searchBookmarksUsed, $videoAnalysisUsed),
         ])->save();
     }
 
@@ -253,6 +302,15 @@ class BillingEntitlementService
 
         if ($plan === null) {
             return [
+                'trialEnabled' => true,
+                'searchLimit' => $user->current_plan_slug === 'free' ? 1 : 0,
+                'searchUsed' => 0,
+                'videoBookmarkLimit' => 0,
+                'videoBookmarkUsed' => 0,
+                'searchBookmarkLimit' => 0,
+                'searchBookmarkUsed' => 0,
+                'videoAnalysisLimit' => 0,
+                'videoAnalysisUsed' => 0,
                 'searchCreditsLimit' => $user->current_plan_slug === 'free' ? 1 : 0,
                 'searchCreditsUsed' => 0,
                 'bookmarkLimit' => 0,
@@ -324,16 +382,35 @@ class BillingEntitlementService
         ])->save();
     }
 
-    private function subscriptionMetadata(PricingPlan $plan, int $searchCreditsUsed, int $bookmarksUsed): array
+    private function subscriptionMetadata(PricingPlan $plan, int $searchCreditsUsed, int $videoBookmarksUsed, int $searchBookmarksUsed, int $videoAnalysisUsed): array
     {
         $limits = $this->limitsFor($plan);
 
         return [
             'plan_slug' => $plan->slug,
-            'searchCreditsLimit' => (int) $limits['searchCreditsLimit'],
-            'searchCreditsUsed' => max(0, $searchCreditsUsed),
-            'bookmarkLimit' => (int) $limits['bookmarkLimit'],
-            'bookmarksUsed' => max(0, $bookmarksUsed),
+            'settings' => [
+                'cta' => (string) data_get($plan->metadata, 'settings.cta', 'Choose plan'),
+                'popular' => (bool) data_get($plan->metadata, 'settings.popular', false),
+            ],
+            'subscription' => [
+                'trialEnabled' => (bool) ($limits['trialEnabled'] ?? false),
+                'search_limits' => [
+                    'used' => max(0, $searchCreditsUsed),
+                    'limit' => (int) ($limits['searchLimit'] ?? 0),
+                ],
+                'viral_video_bookmarks' => [
+                    'used' => max(0, $videoBookmarksUsed),
+                    'limit' => (int) ($limits['videoBookmarkLimit'] ?? 0),
+                ],
+                'search_bookmarks' => [
+                    'used' => max(0, $searchBookmarksUsed),
+                    'limit' => (int) ($limits['searchBookmarkLimit'] ?? 0),
+                ],
+                'video_analysis' => [
+                    'used' => max(0, $videoAnalysisUsed),
+                    'limit' => (int) ($limits['videoAnalysisLimit'] ?? 0),
+                ],
+            ],
         ];
     }
 

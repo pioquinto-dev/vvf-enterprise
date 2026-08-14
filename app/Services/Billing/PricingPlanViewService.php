@@ -32,7 +32,12 @@ class PricingPlanViewService
                     'saved_amount',
                 ])
                 ->map(function (PricingPlan $plan): array {
-                    $cta = (string) data_get($plan->metadata, 'cta', 'Choose plan');
+                    $cta = (string) data_get($plan->metadata, 'settings.cta', 'Choose plan');
+                    $trialEnabled = (bool) data_get($plan->metadata, 'subscription.trialEnabled', false);
+                    $searchLimit = (int) data_get($plan->metadata, 'subscription.search_limits.limit', 0);
+                    $videoBookmarkLimit = (int) data_get($plan->metadata, 'subscription.viral_video_bookmarks.limit', 0);
+                    $searchBookmarkLimit = (int) data_get($plan->metadata, 'subscription.search_bookmarks.limit', 0);
+                    $videoAnalysisLimit = (int) data_get($plan->metadata, 'subscription.video_analysis.limit', 0);
 
                     if ($plan->slug === 'basic') {
                         $cta = 'Choose Basic';
@@ -48,12 +53,18 @@ class PricingPlanViewService
                         'tagline' => $plan->description,
                         'cta' => $cta,
                         'features' => $plan->features ?? [],
-                        'popular' => (bool) data_get($plan->metadata, 'popular', false),
-                        'trialEnabled' => (bool) data_get($plan->metadata, 'trialEnabled', false),
-                        'searchCreditsLimit' => (int) data_get($plan->metadata, 'searchCreditsLimit', 0),
-                        'searchCreditsUsed' => (int) data_get($plan->metadata, 'searchCreditsUsed', 0),
-                        'bookmarkLimit' => (int) data_get($plan->metadata, 'bookmarkLimit', 0),
-                        'bookmarksUsed' => (int) data_get($plan->metadata, 'bookmarksUsed', 0),
+                        'popular' => (bool) data_get($plan->metadata, 'settings.popular', false),
+                        'trialEnabled' => $trialEnabled,
+                        'searchCreditsLimit' => $searchLimit,
+                        'searchCreditsUsed' => (int) data_get($plan->metadata, 'subscription.search_limits.used', 0),
+                        'bookmarkLimit' => $searchBookmarkLimit,
+                        'bookmarksUsed' => (int) data_get($plan->metadata, 'subscription.search_bookmarks.used', 0),
+                        'videoBookmarkLimit' => $videoBookmarkLimit,
+                        'videoBookmarkUsed' => (int) data_get($plan->metadata, 'subscription.viral_video_bookmarks.used', 0),
+                        'searchBookmarkLimit' => $searchBookmarkLimit,
+                        'searchBookmarkUsed' => (int) data_get($plan->metadata, 'subscription.search_bookmarks.used', 0),
+                        'videoAnalysisLimit' => $videoAnalysisLimit,
+                        'videoAnalysisUsed' => (int) data_get($plan->metadata, 'subscription.video_analysis.used', 0),
                     ];
                 })
                 ->all();

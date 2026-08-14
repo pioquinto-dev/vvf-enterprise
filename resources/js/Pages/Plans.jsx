@@ -1,12 +1,11 @@
 import { Head, usePage } from '@inertiajs/react';
 
 import SettingsShell from './Settings/SettingsShell.jsx';
-import { PRICING } from '../landing/data/dummy.js';
 import { billing } from '../landing/flow/api.js';
 import { Check, Arrow } from '../landing/components/Icons.jsx';
 
 export default function Plans() {
-  const { billing: billingState = {} } = usePage().props;
+  const { billing: billingState = {}, pricingPlans = [] } = usePage().props;
   const current = String(billingState.currentPlan ?? 'free').toLowerCase();
 
   const upgrade = (slug) => billing.checkout(slug);
@@ -24,7 +23,7 @@ export default function Plans() {
         </div>
 
         <div className="plans">
-          {PRICING.monthly.map((plan) => {
+          {pricingPlans.map((plan) => {
             const isCurrent = plan.slug === current;
             const isFree = plan.slug === 'free';
 

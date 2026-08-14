@@ -146,6 +146,7 @@ class SettingsController extends Controller
         $plan = $subscription?->status === 'pending' ? $fallbackPlan : ($subscription?->plan ?? $fallbackPlan);
         $price = $plan?->amount ?? ($plan?->price_cents !== null ? ((int) $plan->price_cents / 100) : null);
         $status = $subscription?->status === 'pending' ? ($user->current_plan_slug === 'free' ? 'free' : 'active') : ($subscription?->status ?? 'free');
+        $videoAnalysisUsed = max(0, (int) data_get($subscription?->metadata, 'subscription.video_analysis.used', $limits['videoAnalysisUsed'] ?? 0));
 
         return [
             'status' => $status,
@@ -158,8 +159,14 @@ class SettingsController extends Controller
             'limits' => [
                 'searchCreditsLimit' => (int) ($limits['searchCreditsLimit'] ?? 0),
                 'searchCreditsUsed' => $this->billing->searchCreditsUsed($user),
-                'bookmarkLimit' => (int) ($limits['bookmarkLimit'] ?? 0),
-                'bookmarksUsed' => $this->billing->bookmarksUsed($user),
+                'videoBookmarkLimit' => (int) ($limits['videoBookmarkLimit'] ?? 0),
+                'videoBookmarkUsed' => $this->billing->videoBookmarkCount($user),
+                'searchBookmarkLimit' => (int) ($limits['searchBookmarkLimit'] ?? 0),
+                'searchBookmarkUsed' => $this->billing->searchBookmarkCount($user),
+                'videoAnalysisLimit' => (int) ($limits['videoAnalysisLimit'] ?? 0),
+                'videoAnalysisUsed' => $videoAnalysisUsed,
+                'bookmarkLimit' => (int) ($limits['searchBookmarkLimit'] ?? 0),
+                'bookmarksUsed' => $this->billing->searchBookmarkCount($user),
             ],
         ];
     }
