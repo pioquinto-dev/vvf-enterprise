@@ -31,8 +31,6 @@ export default function AdminRowMenu({ resource, row, capabilities = {}, onEdit,
     const base = `/x/admin/records/${resource}/${row.id}`;
     const items = [];
 
-    // Edit is the action people actually reach for, so it stays a visible
-    // button. Everything rarer (and everything destructive) lives in the menu.
     const canPreview = capabilities.preview === true;
     const canEdit = capabilities.edit && !row.trashed;
 
@@ -69,7 +67,7 @@ export default function AdminRowMenu({ resource, row, capabilities = {}, onEdit,
                 <button
                     type="button"
                     onClick={() => onPreview(row)}
-                    className="inline-flex h-6 items-center rounded-md border border-white/[.12] bg-white/[.05] px-2 text-[11.5px] font-medium text-white/75 transition hover:border-sky-400/45 hover:bg-sky-400/12 hover:text-white"
+                    className="inline-flex h-6 items-center rounded-md border border-[var(--line)] bg-white px-2 text-[11.5px] font-medium text-[var(--ink)] transition hover:border-[var(--yellow)] hover:bg-[var(--wash)]"
                 >
                     View
                 </button>
@@ -79,7 +77,7 @@ export default function AdminRowMenu({ resource, row, capabilities = {}, onEdit,
                 <button
                     type="button"
                     onClick={() => onEdit(row)}
-                    className="inline-flex h-6 items-center rounded-md border border-white/[.12] bg-white/[.05] px-2 text-[11.5px] font-medium text-white/75 transition hover:border-accent/45 hover:bg-accent/15 hover:text-white"
+                    className="inline-flex h-6 items-center rounded-md border border-[var(--yellow)] bg-[var(--wash)] px-2 text-[11.5px] font-medium text-[var(--amber-ink)] transition hover:bg-[var(--yellow)] hover:text-[#1a1400]"
                 >
                     Edit
                 </button>
@@ -92,8 +90,8 @@ export default function AdminRowMenu({ resource, row, capabilities = {}, onEdit,
                     onClick={() => setOpen((current) => !current)}
                     className={`inline-flex h-6 w-6 items-center justify-center rounded-md border transition ${
                         open
-                            ? 'border-white/[.2] bg-white/[.1] text-white'
-                            : 'border-white/[.12] bg-white/[.05] text-white/55 hover:border-white/25 hover:text-white'
+                            ? 'border-[var(--yellow)] bg-[var(--wash)] text-[var(--ink)]'
+                            : 'border-[var(--line)] bg-white text-[var(--muted)] hover:border-[var(--line-2)] hover:text-[var(--ink)]'
                     }`}
                 >
                     <Dots className="h-3.5 w-3.5" />
@@ -101,14 +99,14 @@ export default function AdminRowMenu({ resource, row, capabilities = {}, onEdit,
             )}
 
             {open && (
-                <div className="absolute top-7 right-0 z-30 w-40 overflow-hidden rounded-lg border border-white/[.09] bg-[#12152a] py-1 shadow-[0_18px_40px_-18px_rgba(0,0,0,.95)]">
+                <div className="absolute top-7 right-0 z-30 w-40 overflow-hidden rounded-lg border border-[var(--line)] bg-white py-1 shadow-[0_18px_40px_-18px_rgba(20,15,0,.3)]">
                     {items.map((item) => (
                         <button
                             key={item.label}
                             type="button"
                             onClick={item.onClick}
-                            className={`block w-full px-3 py-1.5 text-left text-[12.5px] transition hover:bg-white/[.06] ${
-                                item.danger ? 'text-rose-300' : 'text-white/75'
+                            className={`block w-full px-3 py-1.5 text-left text-[12.5px] transition hover:bg-[var(--wash)] ${
+                                item.danger ? 'text-[var(--warn)]' : 'text-[var(--ink)]'
                             }`}
                         >
                             {item.label}
