@@ -37,6 +37,7 @@ class SavedSearchManager
         array $keywords,
         ?string $name,
         string $frequency,
+        ?array $sources = null,
         ?Closure $chargeGuest = null,
     ): CustomKeywordSearch {
         $type = in_array($type, CustomKeywordSearch::allowedTypes(), true)
@@ -59,6 +60,8 @@ class SavedSearchManager
 
         $name = $this->normalizer->name($name, $phrase);
         $signature = $this->normalizer->signature($keywords);
+        $sourceHandle = $this->normalizeSourceHandle($sources['tiktokHandle'] ?? null);
+        $sourceWebsite = $this->normalizeSourceWebsite($sources['website'] ?? null);
 
         // Same keywords in any order means the same saved search. The record
         // is reused so the list stays clean — but re-searching is a real
@@ -72,7 +75,12 @@ class SavedSearchManager
             ->first();
 
         if ($existing !== null) {
-            $existing->update(['name' => $name, 'frequency' => $frequency]);
+            $existing->update([
+                'name' => $name,
+                'frequency' => $frequency,
+                'source_tiktok_handle' => $sourceHandle,
+                'source_website' => $sourceWebsite,
+            ]);
 
             // An already-active run means no new scrape starts, so nothing is
             // charged — the user is just brought back to the search in flight.
@@ -97,6 +105,8 @@ class SavedSearchManager
             'name' => $name,
             'phrase' => $phrase,
             'search_type' => $type,
+            'source_tiktok_handle' => $sourceHandle,
+            'source_website' => $sourceWebsite,
             'keywords' => $keywords,
             'keyword_signature' => $signature,
             'frequency' => $frequency,
@@ -114,6 +124,23 @@ class SavedSearchManager
         $this->queueRun($search, $user !== null);
 
         return $search;
+    }
+
+    private function normalizeSourceHandle(mixed $value): ?string
+    {
+        $handle = trim((string) ($value ?? ''));
+        $handle = ltrim($handle, '@');
+
+        return $handle === '' ? null : $handle;
+    }
+
+    private function normalizeSourceWebsite(mixed $value): ?string
+    {
+        $website = trim((string) ($value ?? ''));
+        $website = preg_replace('#^https?://#i', '', $website) ?? $website;
+        $website = rtrim($website, '/');
+
+        return $website === '' ? null : $website;
     }
 
     public function queueRun(CustomKeywordSearch $search, bool $reservedCredit = false): CustomKeywordSearchRun

@@ -74,6 +74,7 @@ class SavedSearchController extends Controller
             keywords: $request->input('keywords', []),
             name: $request->input('name'),
             frequency: $request->string('frequency')->toString(),
+            sources: $request->input('sources'),
             chargeGuest: fn () => $this->guestQuota->consume($request),
         );
 

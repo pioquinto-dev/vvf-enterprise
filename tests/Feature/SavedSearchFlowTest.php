@@ -131,6 +131,25 @@ class SavedSearchFlowTest extends TestCase
         Queue::assertPushed(RunCustomKeywordSearch::class);
     }
 
+    public function test_creating_a_search_persists_optional_sources(): void
+    {
+        $this->postJson('/saved-searches', [
+            'type' => 'brand',
+            'phrase' => 'rhode skin',
+            'keywords' => ['rhode skin', 'rhode'],
+            'frequency' => 'weekly',
+            'sources' => [
+                'tiktokHandle' => '@rhode',
+                'website' => 'https://rhodeskin.com/',
+            ],
+        ])->assertCreated();
+
+        $search = CustomKeywordSearch::firstOrFail();
+
+        $this->assertSame('rhode', $search->source_tiktok_handle);
+        $this->assertSame('rhodeskin.com', $search->source_website);
+    }
+
     public function test_creating_the_same_keyword_set_reuses_the_existing_search(): void
     {
         // This exercises dedupe, not the quota — a real guest only gets one
