@@ -5,6 +5,7 @@ namespace App\Services\Billing;
 use App\Models\PricingPlan;
 use App\Models\Subscription;
 use App\Models\User;
+use App\Services\Brevo\BrevoLifecycleEmailService;
 use App\Support\AppEventLogger;
 use App\Services\Stripe\StripeClient;
 use Carbon\CarbonImmutable;
@@ -16,6 +17,7 @@ class BillingService
     public function __construct(
         private readonly StripeClient $stripe,
         private readonly BillingEntitlementService $entitlements,
+        private readonly BrevoLifecycleEmailService $emails,
     ) {}
 
     public function checkout(User $user, PricingPlan $plan, bool $withTrial = false): string
@@ -99,7 +101,9 @@ class BillingService
             'plan_renews_at' => $endsAt,
         ])->save();
 
-        $this->upsertUserSubscription($user, [
+        $existingSubscription = Subscription::query()->where('user_id', $user->id)->first();
+
+        $subscription = $this->upsertUserSubscription($user, [
             'plan_id' => $plan->id,
             'stripe_checkout_session_id' => $sessionId,
             'stripe_subscription_id' => $subscriptionId !== '' ? $subscriptionId : null,
@@ -109,6 +113,10 @@ class BillingService
             'current_period_ends_at' => $endsAt,
             'metadata' => $this->subscriptionMetadata($plan, $searchCreditsUsed, $videoBookmarksUsed, $searchBookmarksUsed, $videoAnalysisUsed),
         ]);
+
+        if (! in_array((string) ($existingSubscription?->status ?? ''), ['active', 'trialing', 'trial'], true)) {
+            $this->emails->sendSubscriptionStarted($user, $subscription);
+        }
 
         AppEventLogger::result('billing.checkout.finalized', [
             'user_id' => $user->id,

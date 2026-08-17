@@ -32,3 +32,8 @@ Schedule::command('users:process-pending-account-deletions')
     ->hourly()
     ->withoutOverlapping()
     ->runInBackground();
+
+Schedule::command('brevo:send-trial-ending-emails')
+    ->dailyAt('09:00')
+    ->withoutOverlapping()
+    ->runInBackground();

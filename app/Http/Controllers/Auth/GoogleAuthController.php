@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Models\User;
+use App\Services\Brevo\BrevoLifecycleEmailService;
 use App\Services\Auth\PostAuthenticationRedirector;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\RedirectResponse;
@@ -17,7 +18,10 @@ use Throwable;
 
 class GoogleAuthController extends Controller
 {
-    public function __construct(private readonly PostAuthenticationRedirector $redirector) {}
+    public function __construct(
+        private readonly PostAuthenticationRedirector $redirector,
+        private readonly BrevoLifecycleEmailService $emails,
+    ) {}
 
     public function redirect(Request $request): RedirectResponse
     {
@@ -66,6 +70,7 @@ class GoogleAuthController extends Controller
             ]);
 
             event(new Registered($user));
+            $this->emails->sendNewRegistration($user);
         } elseif (! $user->email_verified_at) {
             $user->forceFill([
                 'email_verified_at' => now(),

@@ -6,13 +6,17 @@ use App\Models\PricingPlan;
 use App\Models\Subscription;
 use App\Models\User;
 use App\Services\Billing\BillingService;
+use App\Services\Brevo\BrevoLifecycleEmailService;
 use App\Support\AppEventLogger;
 use Carbon\CarbonImmutable;
 use Stripe\Event;
 
 class StripeWebhookProcessor
 {
-    public function __construct(private readonly BillingService $billing) {}
+    public function __construct(
+        private readonly BillingService $billing,
+        private readonly BrevoLifecycleEmailService $emails,
+    ) {}
 
     public function handle(Event $event): void
     {
@@ -267,6 +271,10 @@ class StripeWebhookProcessor
                 'monthly_credits_remaining' => 1,
                 'plan_renews_at' => CarbonImmutable::now()->addMonth(),
             ])->save();
+
+            if (! in_array($previousStatus, ['canceled', 'unpaid', 'incomplete_expired'], true)) {
+                $this->emails->sendSubscriptionCanceled($user, $subscription);
+            }
         }
 
         AppEventLogger::result('billing.webhook.subscription_updated', [
