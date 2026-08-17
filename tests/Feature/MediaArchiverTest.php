@@ -217,6 +217,55 @@ class MediaArchiverTest extends TestCase
         $this->assertSame(['jpg', 'image/jpeg'], $archiver->resolveExtension('application/octet-stream', 'https://x/y', 'jpg'));
     }
 
+    public function test_heic_uploads_are_converted_to_jpeg_before_storage(): void
+    {
+        Http::fake([
+            '*' => Http::response('heic-bytes', 200, ['Content-Type' => 'image/heic']),
+        ]);
+
+        $archiver = new class extends MediaArchiver
+        {
+            protected function convertToJpeg(string $source, string $target): bool
+            {
+                file_put_contents($target, 'jpeg-bytes');
+
+                return true;
+            }
+        };
+
+        $result = $archiver->archiveWithReport($this->attributes());
+
+        $this->assertStringContainsString('video_cover.jpg', $result['attributes']['cover']);
+        $this->assertSame([], $result['failures']);
+
+        $folder = '42_7412345678901234567_'.strtotime('2026-08-01T00:00:00Z');
+        Storage::disk('s3')->assertExists("viral_videos/tiktok/{$folder}/{$folder}_video_cover.jpg");
+        Storage::disk('s3')->assertMissing("viral_videos/tiktok/{$folder}/{$folder}_video_cover.heic");
+    }
+
+    public function test_heic_uploads_fall_back_to_original_when_conversion_is_unavailable(): void
+    {
+        Http::fake([
+            '*' => Http::response('heic-bytes', 200, ['Content-Type' => 'image/heic']),
+        ]);
+
+        $archiver = new class extends MediaArchiver
+        {
+            protected function convertToJpeg(string $source, string $target): bool
+            {
+                return false;
+            }
+        };
+
+        $result = $archiver->archiveWithReport($this->attributes());
+
+        $this->assertStringContainsString('video_cover.heic', $result['attributes']['cover']);
+        $this->assertSame([], $result['failures']);
+
+        $folder = '42_7412345678901234567_'.strtotime('2026-08-01T00:00:00Z');
+        Storage::disk('s3')->assertExists("viral_videos/tiktok/{$folder}/{$folder}_video_cover.heic");
+    }
+
     public function test_object_keys_are_deterministic_and_sanitised(): void
     {
         $archiver = app(MediaArchiver::class);

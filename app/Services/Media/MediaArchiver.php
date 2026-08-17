@@ -572,7 +572,7 @@ class MediaArchiver
      * Imagick in-process, then the ImageMagick CLI, then ffmpeg. Hosts vary and
      * none of the three is guaranteed.
      */
-    private function convertToJpeg(string $source, string $target): bool
+    protected function convertToJpeg(string $source, string $target): bool
     {
         if (class_exists(\Imagick::class)) {
             try {
