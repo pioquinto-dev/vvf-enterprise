@@ -1,12 +1,8 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 
 import { compactNumber, percent } from '../../../landing/flow/format.js';
 import { Bookmark, Share, Check, Dots } from '../../../landing/components/Icons.jsx';
-
-const W = 560;
-const H = 180;
-const PAD = 10;
 
 function formatValue(value, format) {
   if (value === null || value === undefined) return '—';
@@ -15,50 +11,51 @@ function formatValue(value, format) {
   return String(value);
 }
 
-/** Maps a series onto the viewBox. A flat series sits mid-height, not on the floor. */
-function toPoints(values) {
-  if (!values || values.length < 2) return [];
-
-  const max = Math.max(...values);
-  const min = Math.min(...values);
-  const range = max - min;
-
-  return values.map((v, i) => {
-    const x = (i / (values.length - 1)) * W;
-    const y = range === 0 ? H / 2 : H - PAD - ((v - min) / range) * (H - 2 * PAD);
-    return [x, y];
-  });
+function formatRunDate(iso) {
+  if (!iso) return null;
+  const date = new Date(iso);
+  return Number.isNaN(date.getTime())
+    ? null
+    : date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 }
 
-/**
- * The 12-week performance chart. Weeks rebuilt from upload dates are drawn
- * dashed and the measured tail solid, so the eye can tell reconstructed
- * history from real history without reading the caption.
- */
-export function PerformanceChart({ trend }) {
+function buildDelta(latest, previous, unit) {
+  if (latest === null || latest === undefined || previous === null || previous === undefined) return null;
+
+  const value = unit === 'points'
+    ? Math.round((latest - previous) * 100) / 100
+    : previous === 0
+      ? null
+      : Math.round((((latest - previous) / previous) * 100) * 10) / 10;
+
+  if (value === null || Number.isNaN(value)) return null;
+
+  return {
+    value,
+    unit,
+    direction: value > 0 ? 'up' : value < 0 ? 'down' : 'flat',
+  };
+}
+
+function deltaLabel(delta) {
+  if (!delta) return 'No comparison yet';
+  const prefix = delta.direction === 'up' ? '↑' : delta.direction === 'down' ? '↓' : '→';
+  const suffix = delta.unit === 'points' ? ' pts' : '%';
+  return `${prefix} ${Math.abs(delta.value)}${suffix}`;
+}
+
+function runLabel(index) {
+  return `Refresh ${index + 1}`;
+}
+
+export function PerformanceChart({ trend, frequency = 'weekly' }) {
   const [metric, setMetric] = useState('views');
 
   const series = trend?.metrics?.[metric];
   const points = trend?.points ?? [];
+  const runs = points.filter((point) => point.posts > 0);
 
-  const geometry = useMemo(() => {
-    const coords = toPoints(series?.values ?? []);
-    if (coords.length === 0) return null;
-
-    const asPoly = (list) => list.map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`).join(' ');
-    const line = asPoly(coords);
-    const firstRecorded = points.findIndex((p) => !p.reconstructed);
-
-    return {
-      line,
-      recorded:
-        firstRecorded >= 0 && firstRecorded < coords.length - 1 ? asPoly(coords.slice(firstRecorded)) : null,
-      area: `${line} ${W},${H} 0,${H}`,
-      last: coords[coords.length - 1],
-    };
-  }, [series, points]);
-
-  if (!series || !geometry) {
+  if (!series || runs.length === 0) {
     return (
       <div className="panel">
         <p className="empty">Not enough history to plot yet.</p>
@@ -66,9 +63,17 @@ export function PerformanceChart({ trend }) {
     );
   }
 
-  const delta = series.delta;
-  const deltaTone = !delta ? 'flat' : delta.direction === 'up' ? 'up' : delta.direction === 'down' ? 'down' : 'flat';
-  const deltaSuffix = delta?.unit === 'points' ? ' pts' : '%';
+  const latestRun = runs[runs.length - 1];
+  const previousRun = runs.length > 1 ? runs[runs.length - 2] : null;
+  const baselineRun = runs[0];
+  const metricKey = series.format === 'percent' ? 'engagement_rate' : metric;
+  const deltaUnit = series.format === 'percent' ? 'points' : 'percent';
+  const currentValue = latestRun?.[metricKey] ?? series.current;
+  const previousDelta = previousRun ? buildDelta(currentValue, previousRun?.[metricKey], deltaUnit) : null;
+  const baselineDelta = baselineRun && baselineRun !== latestRun
+    ? buildDelta(currentValue, baselineRun?.[metricKey], deltaUnit)
+    : null;
+  const maxValue = Math.max(...runs.map((point) => Number(point?.[metricKey]) || 0), 0) || 1;
 
   return (
     <div className="panel">
@@ -81,55 +86,82 @@ export function PerformanceChart({ trend }) {
       </div>
 
       <div className="ts-head">
-        <span className="ts-val">{formatValue(series.current, series.format)}</span>
-        {delta && (
-          <span className={`ts-delta ${deltaTone}`}>
-            {delta.direction === 'up' ? '↑' : delta.direction === 'down' ? '↓' : '→'} {Math.abs(delta.value)}
-            {deltaSuffix} vs 12 wk ago
-          </span>
-        )}
+        <div>
+          <span className="ts-eyebrow">Current checkpoint</span>
+          <div className="ts-headline">
+            <span className="ts-val">{formatValue(currentValue, series.format)}</span>
+            <span className="ts-runlabel">
+              {runLabel(runs.length - 1)}
+              {formatRunDate(latestRun?.week_start) ? ` • ${formatRunDate(latestRun.week_start)}` : ''}
+            </span>
+          </div>
+        </div>
       </div>
 
-      <svg className="ts-svg" viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none">
-        <defs>
-          <linearGradient id="tsfill" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0" stopColor="var(--violet)" stopOpacity=".2" />
-            <stop offset="1" stopColor="var(--violet)" stopOpacity="0" />
-          </linearGradient>
-        </defs>
+      {runs.length === 1 ? (
+        <div className="ts-emptycta">
+          <strong>{runLabel(0)} is your baseline.</strong>
+          <span>Come back next {frequency === 'monthly' ? 'month' : 'week'} to unlock comparison against the next refresh.</span>
+        </div>
+      ) : (
+        <div className="ts-comparegrid">
+          <div className="ts-comparecard">
+            <span className="ts-cardlabel">vs previous refresh</span>
+            <strong className={previousDelta?.direction ?? 'flat'}>{deltaLabel(previousDelta)}</strong>
+            <span>
+              {previousRun ? `${formatValue(previousRun?.[metricKey], series.format)} in ${runLabel(runs.length - 2)}` : 'No previous refresh'}
+            </span>
+          </div>
 
-        <polygon points={geometry.area} fill="url(#tsfill)" />
+          <div className="ts-comparecard">
+            <span className="ts-cardlabel">vs first refresh</span>
+            <strong className={baselineDelta?.direction ?? 'flat'}>{deltaLabel(baselineDelta)}</strong>
+            <span>
+              {formatValue(baselineRun?.[metricKey], series.format)} in {runLabel(0)}
+            </span>
+          </div>
+        </div>
+      )}
 
-        <polyline
-          points={geometry.line}
-          fill="none"
-          stroke="var(--violet)"
-          strokeWidth="2.5"
-          strokeLinejoin="round"
-          strokeLinecap="round"
-          strokeDasharray={trend.has_reconstructed ? '5 4' : undefined}
-          opacity={trend.has_reconstructed ? 0.55 : 1}
-        />
+      <div className="ts-runlist">
+        {runs.map((point, index) => {
+          const value = Number(point?.[metricKey]) || 0;
+          const barHeight = Math.max((value / maxValue) * 100, value > 0 ? 14 : 6);
+          const pointDate = formatRunDate(point.week_start);
+          const isCurrent = index === runs.length - 1;
+          const isBaseline = index === 0;
+          const compareToPrevious = index > 0 ? buildDelta(value, runs[index - 1]?.[metricKey], deltaUnit) : null;
 
-        {geometry.recorded && (
-          <polyline
-            points={geometry.recorded}
-            fill="none"
-            stroke="var(--violet)"
-            strokeWidth="2.5"
-            strokeLinejoin="round"
-            strokeLinecap="round"
-          />
-        )}
+          return (
+            <div key={`${point.week_start}-${metric}-${index}`} className={`ts-runitem${isCurrent ? ' is-current' : ''}`}>
+              <div className="ts-runmeta">
+                <span className="ts-runname">
+                  {runLabel(index)}
+                  {isBaseline ? ' baseline' : ''}
+                </span>
+                <span className="ts-rundate">{pointDate ?? point.label}</span>
+              </div>
 
-        <circle cx={geometry.last[0]} cy={geometry.last[1]} r="4.5" fill="var(--violet)" stroke="#fff" strokeWidth="2" />
-      </svg>
+              <div className="ts-runbarwrap">
+                <div className={`ts-runbar${point.reconstructed ? ' is-reconstructed' : ''}`} style={{ height: `${barHeight}%` }} />
+              </div>
 
-      <div className="ts-x">
-        <span>12 wk ago</span>
-        <span>8 wk</span>
-        <span>4 wk</span>
-        <span>now</span>
+              <div className="ts-runstats">
+                <strong>{formatValue(value, series.format)}</strong>
+                {index === 0 ? (
+                  <span>First refresh</span>
+                ) : (
+                  <span className={compareToPrevious?.direction ?? 'flat'}>{deltaLabel(compareToPrevious)} vs previous</span>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      <div className="ts-foot">
+        <span>Each bar is one refresh run for this tracker.</span>
+        {trend?.has_reconstructed && <span>Dashed bars use reconstructed history until more real refreshes accumulate.</span>}
       </div>
     </div>
   );
