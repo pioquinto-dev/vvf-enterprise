@@ -2,9 +2,11 @@
 
 namespace App\Services\ViralVideoAnalysis;
 
+use App\Models\User;
 use App\Models\VideoAnalysis;
 use App\Models\VideoPreparation;
 use App\Services\Billing\BillingService;
+use Illuminate\Support\Facades\Log;
 
 class UserVideoAnalysisProcessor
 {
@@ -48,12 +50,33 @@ class UserVideoAnalysisProcessor
             'analyzed_at' => now(),
         ])->save();
 
-        if ($analysis->user !== null) {
-            $this->billing->consumeVideoAnalysis($analysis->user);
+        Log::info('Video analysis completed successfully.', [
+            'analysis_id' => $analysis->id,
+            'user_id' => $analysis->user_id,
+            'video_id' => $analysis->video_id,
+            'viral_video_id' => $analysis->viral_video_id,
+        ]);
 
-            $analysis->forceFill([
-                'result' => data_set((array) $analysis->result, '_billing.charged_at', now()->toIso8601String()),
-            ])->save();
+        if ($analysis->user_id !== null) {
+            $user = User::query()->find($analysis->user_id);
+
+            if ($user === null) {
+                Log::warning('Video analysis completed but no user record was found for billing.', [
+                    'analysis_id' => $analysis->id,
+                    'user_id' => $analysis->user_id,
+                    'video_id' => $analysis->video_id,
+                ]);
+
+                return;
+            }
+
+            $this->billing->consumeVideoAnalysis($user);
+
+            Log::info('Video analysis usage synced on successful completion.', [
+                'analysis_id' => $analysis->id,
+                'user_id' => $analysis->user_id,
+                'video_id' => $analysis->video_id,
+            ]);
         }
     }
 }

@@ -9,6 +9,7 @@ use App\Models\Subscription;
 use App\Models\User;
 use App\Models\VideoAnalysis;
 use Carbon\CarbonImmutable;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 
 class BillingEntitlementService
@@ -160,14 +161,28 @@ class BillingEntitlementService
         $subscription = $this->activeSubscriptionFor($user);
 
         if ($subscription === null) {
+            Log::warning('Video analysis credit increment skipped because no active subscription was found.', [
+                'user_id' => $user->id,
+                'current_plan_slug' => $user->current_plan_slug,
+            ]);
             return;
         }
 
-        $used = max(0, (int) data_get($subscription->metadata, 'subscription.video_analysis.used', 0)) + 1;
+        $before = max(0, (int) data_get($subscription->metadata, 'subscription.video_analysis.used', 0));
+        $used = max($before, $this->derivedVideoAnalysisUsed($user));
 
         $subscription->forceFill([
             'metadata' => data_set((array) $subscription->metadata, 'subscription.video_analysis.used', $used),
         ])->save();
+
+        Log::info('Video analysis credit incremented.', [
+            'user_id' => $user->id,
+            'subscription_id' => $subscription->id,
+            'before' => $before,
+            'after' => $used,
+            'status' => $subscription->status,
+            'current_period_ends_at' => $subscription->current_period_ends_at?->toIso8601String(),
+        ]);
     }
 
     public function refundVideoAnalysis(User $user): void
@@ -251,19 +266,7 @@ class BillingEntitlementService
             return 0;
         }
 
-        if ($this->hasPaidPlan($user)) {
-            $subscription = $this->activeSubscriptionFor($user);
-            $used = data_get($subscription?->metadata, 'subscription.video_analysis.used');
-
-            if ($used !== null) {
-                return max(0, (int) $used);
-            }
-        }
-
-        return VideoAnalysis::query()
-            ->where('user_id', $user->id)
-            ->where('status', 'complete')
-            ->count();
+        return $this->derivedVideoAnalysisUsed($user);
     }
 
     /**
@@ -364,7 +367,7 @@ class BillingEntitlementService
         $searchCreditsUsed = $this->searchCreditsUsed($user);
         $videoBookmarksUsed = $this->videoBookmarkCount($user);
         $searchBookmarksUsed = $this->searchBookmarkCount($user);
-        $videoAnalysisUsed = max(0, (int) data_get($subscription->metadata, 'subscription.video_analysis.used', 0));
+        $videoAnalysisUsed = $this->derivedVideoAnalysisUsed($user);
 
         $subscription->forceFill([
             'metadata' => $this->subscriptionMetadata($plan, $searchCreditsUsed, $videoBookmarksUsed, $searchBookmarksUsed, $videoAnalysisUsed),
@@ -406,7 +409,7 @@ class BillingEntitlementService
         $searchUsed = $this->derivedSearchCreditsUsed($user, $limits);
         $videoBookmarkUsed = $this->videoBookmarkCount($user);
         $searchBookmarkUsed = $this->searchBookmarkCount($user);
-        $videoAnalysisUsed = max(0, (int) data_get($subscription->metadata, 'subscription.video_analysis.used', 0));
+        $videoAnalysisUsed = $this->derivedVideoAnalysisUsed($user);
 
         return array_merge($limits, [
             'searchUsed' => $searchUsed,
@@ -439,6 +442,26 @@ class BillingEntitlementService
         }
 
         return max(0, ((int) ($limits['searchCreditsLimit'] ?? 0)) - $this->searchCreditsRemaining($user));
+    }
+
+    private function derivedVideoAnalysisUsed(User $user): int
+    {
+        $query = VideoAnalysis::query()
+            ->where('user_id', $user->id)
+            ->where('status', VideoAnalysis::STATUS_COMPLETE)
+            ->whereNotNull('analyzed_at');
+
+        if ($this->hasPaidPlan($user)) {
+            [$startsAt, $endsAt] = $this->currentBillingWindow($user);
+
+            if ($startsAt !== null && $endsAt !== null) {
+                $query
+                    ->where('analyzed_at', '>=', $startsAt)
+                    ->where('analyzed_at', '<', $endsAt);
+            }
+        }
+
+        return $query->count();
     }
 
     /**

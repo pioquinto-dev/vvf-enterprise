@@ -9281,6 +9281,14 @@ function DetailScreen({ search, isAuthenticated = false, billing = null, onToggl
 	const confirmAnalyze = async () => {
 		if (!pendingAnalysisVideo) return;
 		const video = pendingAnalysisVideo;
+		setAnalysisStates((current) => ({
+			...current,
+			[video.id]: {
+				status: "processing",
+				error: null,
+				analysis: current[video.id]?.analysis ?? null
+			}
+		}));
 		setPendingAnalysisVideo(null);
 		await startAnalysis(video);
 	};

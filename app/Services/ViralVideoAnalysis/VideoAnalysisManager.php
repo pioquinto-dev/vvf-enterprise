@@ -9,6 +9,7 @@ use App\Models\VideoAnalysis;
 use App\Models\VideoPreparation;
 use App\Models\ViralVideo;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class VideoAnalysisManager
 {
@@ -35,7 +36,7 @@ class VideoAnalysisManager
             }
 
             if ($analysis !== null && $analysis->isComplete() && ! $forceRefresh && ! $this->strategist->needsRefresh((array) $analysis->result)) {
-                return $this->ensureCompletedAnalysisCharged($analysis);
+                return $this->ensureCompletedAnalysisUsageSynced($analysis);
             }
 
             $preparation = VideoPreparation::query()
@@ -95,7 +96,7 @@ class VideoAnalysisManager
         }
 
         if ($analysis === null || ! $analysis->isComplete() || ! $this->strategist->needsRefresh((array) $analysis->result)) {
-            return $analysis?->isComplete() ? $this->ensureCompletedAnalysisCharged($analysis) : $analysis;
+            return $analysis?->isComplete() ? $this->ensureCompletedAnalysisUsageSynced($analysis) : $analysis;
         }
 
         return DB::transaction(function () use ($analysis, $video): ?VideoAnalysis {
@@ -184,9 +185,9 @@ class VideoAnalysisManager
         return now()->subMinutes((int) config('viral_video_analysis.processing.stale_after_minutes', 20));
     }
 
-    private function ensureCompletedAnalysisCharged(VideoAnalysis $analysis): VideoAnalysis
+    private function ensureCompletedAnalysisUsageSynced(VideoAnalysis $analysis): VideoAnalysis
     {
-        if (! $analysis->isComplete() || filled(data_get($analysis->result, '_billing.charged_at'))) {
+        if (! $analysis->isComplete()) {
             return $analysis;
         }
 
@@ -196,19 +197,21 @@ class VideoAnalysisManager
                 ->lockForUpdate()
                 ->firstOrFail();
 
-            if (! $locked->isComplete() || filled(data_get($locked->result, '_billing.charged_at'))) {
+            if (! $locked->isComplete()) {
                 return $locked;
             }
 
             $user = $locked->user()->first();
 
+            Log::info('Syncing video analysis usage for completed analysis.', [
+                'analysis_id' => $locked->id,
+                'user_id' => $locked->user_id,
+                'video_id' => $locked->video_id,
+            ]);
+
             if ($user !== null) {
                 $this->billing->consumeVideoAnalysis($user);
             }
-
-            $locked->forceFill([
-                'result' => data_set((array) $locked->result, '_billing.charged_at', now()->toIso8601String()),
-            ])->save();
 
             return $locked->refresh();
         });

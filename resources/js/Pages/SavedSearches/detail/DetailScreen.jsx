@@ -67,6 +67,22 @@ function buildAnalysisStates(results = []) {
   );
 }
 
+function mergeAnalysisIntoItems(items = [], videoId, payload) {
+  return items.map((item) => (
+    item.id === videoId
+      ? {
+          ...item,
+          analysis: payload
+            ? {
+                ...(item.analysis ?? {}),
+                ...payload,
+              }
+            : item.analysis ?? null,
+        }
+      : item
+  ));
+}
+
 function AnalyzeConfirmModal({ video, creditsRemainingAfterUse = 0, busy = false, onConfirm, onCancel }) {
   if (!video) return null;
 
@@ -208,6 +224,21 @@ export default function DetailScreen({
     setAnalysisStates(buildAnalysisStates(search?.results ?? []));
   }, [search]);
 
+  const applyAnalysisUpdate = (videoId, payload) => {
+    if (!videoId) return;
+
+    setAnalysisStates((current) => ({
+      ...current,
+      [videoId]: {
+        status: payload?.status ?? current[videoId]?.status ?? 'idle',
+        error: payload?.error_message ?? payload?.error ?? null,
+        analysis: payload ?? current[videoId]?.analysis ?? null,
+      },
+    }));
+
+    setItems((current) => mergeAnalysisIntoItems(current, videoId, payload));
+  };
+
   const toggleBookmark = async (video) => {
     if (!isAuthenticated) {
       window.location.assign('/auth/google');
@@ -250,30 +281,19 @@ export default function DetailScreen({
     }
 
     try {
-      setAnalysisStates((current) => ({
-        ...current,
-        [video.id]: { status: 'processing' },
-      }));
+      applyAnalysisUpdate(video.id, { status: 'processing', error_message: null });
 
       const payload = await videoAnalysis.request(video.id);
       const nextStatus = payload?.analysis?.status ?? 'processing';
-
-      setAnalysisStates((current) => ({
-        ...current,
-        [video.id]: {
-          status: nextStatus,
-          error: payload?.analysis?.error_message ?? null,
-          analysis: payload?.analysis ?? null,
-        },
-      }));
+      applyAnalysisUpdate(video.id, {
+        ...(payload?.analysis ?? {}),
+        status: nextStatus,
+      });
     } catch (error) {
-      setAnalysisStates((current) => ({
-        ...current,
-        [video.id]: {
-          status: 'failed',
-          error: error?.message ?? 'Could not start video analysis.',
-        },
-      }));
+      applyAnalysisUpdate(video.id, {
+        status: 'failed',
+        error_message: error?.message ?? 'Could not start video analysis.',
+      });
 
       if (error?.status === 422 || error?.status === 401) {
         window.alert(error.payload?.errors?.billing?.[0] || error.payload?.errors?.auth?.[0] || error.message);
@@ -311,14 +331,7 @@ export default function DetailScreen({
     if (!pendingAnalysisVideo) return;
 
     const video = pendingAnalysisVideo;
-    setAnalysisStates((current) => ({
-      ...current,
-      [video.id]: {
-        status: 'processing',
-        error: null,
-        analysis: current[video.id]?.analysis ?? null,
-      },
-    }));
+    applyAnalysisUpdate(video.id, { status: 'processing', error_message: null });
     setPendingAnalysisVideo(null);
     await startAnalysis(video);
   };
@@ -347,20 +360,9 @@ export default function DetailScreen({
 
       if (cancelled) return;
 
-      setAnalysisStates((current) => {
-        const next = { ...current };
-
-        results.forEach(([id, analysis]) => {
-          if (!analysis) return;
-
-          next[id] = {
-            status: analysis.status ?? current[id]?.status ?? 'idle',
-            error: analysis.error_message ?? null,
-            analysis,
-          };
-        });
-
-        return next;
+      results.forEach(([id, analysis]) => {
+        if (!analysis) return;
+        applyAnalysisUpdate(id, analysis);
       });
     }, 2500);
 
@@ -376,15 +378,7 @@ export default function DetailScreen({
   // card CTA reflects "Analyzing Video…" / "View Analysis" without a reload.
   const handleModalAnalysisChange = (videoId, analysis) => {
     if (!videoId || !analysis) return;
-
-    setAnalysisStates((current) => ({
-      ...current,
-      [videoId]: {
-        status: analysis.status ?? current[videoId]?.status ?? 'idle',
-        error: analysis.error_message ?? null,
-        analysis,
-      },
-    }));
+    applyAnalysisUpdate(videoId, analysis);
   };
 
   return (
