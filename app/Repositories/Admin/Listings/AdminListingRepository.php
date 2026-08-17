@@ -129,6 +129,7 @@ class AdminListingRepository
             ],
             'users' => [
                 ['key' => 'user', 'label' => 'User'],
+                ['key' => 'email', 'label' => 'Email'],
                 ['key' => 'plan', 'label' => 'Plan'],
                 ['key' => 'credits', 'label' => 'Credits'],
                 ['key' => 'status', 'label' => 'Status'],
@@ -357,7 +358,12 @@ class AdminListingRepository
             ],
             'subscription' => [
                 'id' => $record->id,
-                'subscriber' => $record->user?->name ?? $record->user?->email ?? 'Unknown',
+                'subscriber' => match (true) {
+                    $record->user !== null && filled($record->user->name) && filled($record->user->email) => $record->user->name.' / '.$record->user->email,
+                    $record->user !== null && filled($record->user->email) => $record->user->email,
+                    $record->user !== null && filled($record->user->name) => $record->user->name,
+                    default => 'Unknown',
+                },
                 'plan' => $record->plan?->name ?? '-',
                 'credits' => (string) ($record->user?->monthly_credits_remaining ?? 0),
                 'status' => $record->trashed() ? 'deleted' : $record->status,
@@ -366,6 +372,7 @@ class AdminListingRepository
             'users' => [
                 'id' => $record->id,
                 'user' => $record->name ?: $record->email,
+                'email' => $record->email ?: '-',
                 'plan' => $record->current_plan_slug ?? 'free',
                 'credits' => (string) ($record->monthly_credits_remaining ?? 0),
                 'status' => $record->trashed() ? 'deleted' : 'active',
