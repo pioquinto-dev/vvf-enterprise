@@ -4,6 +4,7 @@ import AdminDataTable from '../../components/admin/AdminDataTable.jsx';
 import AdminEditDrawer from '../../components/admin/AdminEditDrawer.jsx';
 import AdminEmptyState from '../../components/admin/AdminEmptyState.jsx';
 import AdminFiltersBar from '../../components/admin/AdminFiltersBar.jsx';
+import AdminInsightsStrip from '../../components/admin/AdminInsightsStrip.jsx';
 import AdminPagination from '../../components/admin/AdminPagination.jsx';
 import AdminPreviewDrawer from '../../components/admin/AdminPreviewDrawer.jsx';
 import AdminLayout from './components/AdminLayout.jsx';
@@ -21,6 +22,7 @@ export default function Listing({
     emptyMessage,
     pagination,
     query,
+    insights = [],
 }) {
     const [editing, setEditing] = useState(null);
     const [previewing, setPreviewing] = useState(null);
@@ -40,6 +42,8 @@ export default function Listing({
                 </span>
             }
         >
+            <AdminInsightsStrip insights={insights} />
+
             <section className="overflow-hidden rounded-xl border border-[var(--line)] bg-white shadow-[0_1px_2px_rgba(20,15,0,.04),0_16px_36px_-28px_rgba(20,15,0,.18)]">
                 {rows.length > 0 ? (
                     <AdminDataTable

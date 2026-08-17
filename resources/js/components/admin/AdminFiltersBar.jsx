@@ -14,6 +14,16 @@ function buildQuery(filters, search) {
         if ((filter.value ?? '') !== '') {
             query[filter.name] = filter.value;
         }
+
+        if (filter.name === 'date' && (filter.value ?? '') === 'custom') {
+            if ((filter.dateFrom ?? '') !== '') {
+                query.date_from = filter.dateFrom;
+            }
+
+            if ((filter.dateTo ?? '') !== '') {
+                query.date_to = filter.dateTo;
+            }
+        }
     });
 
     return query;
@@ -69,6 +79,30 @@ function FilterChip({ filter, onChange }) {
     );
 }
 
+function CustomDateRange({ filter, onChange }) {
+    const dateFrom = filter.dateFrom ?? '';
+    const dateTo = filter.dateTo ?? '';
+
+    return (
+        <div className="flex flex-wrap items-center gap-2 rounded-full border border-[var(--yellow)] bg-[var(--wash)] px-2.5 py-1.5">
+            <span className="text-[10px] font-semibold uppercase tracking-[.14em] text-[var(--amber-ink)]">Custom Range</span>
+            <input
+                type="date"
+                value={dateFrom}
+                onChange={(event) => onChange({ dateFrom: event.target.value, dateTo })}
+                className="h-7 rounded-md border border-[var(--line)] bg-white px-2 text-[12px] text-[var(--ink)] outline-none focus:border-[var(--yellow)]"
+            />
+            <span className="text-[12px] text-[var(--faint)]">to</span>
+            <input
+                type="date"
+                value={dateTo}
+                onChange={(event) => onChange({ dateFrom, dateTo: event.target.value })}
+                className="h-7 rounded-md border border-[var(--line)] bg-white px-2 text-[12px] text-[var(--ink)] outline-none focus:border-[var(--yellow)]"
+            />
+        </div>
+    );
+}
+
 export default function AdminFiltersBar({ title, searchPlaceholder, search = '', filters = [] }) {
     const [searchValue, setSearchValue] = useState(search);
     const dirty = useRef(false);
@@ -91,7 +125,18 @@ export default function AdminFiltersBar({ title, searchPlaceholder, search = '',
         return () => clearTimeout(timer);
     }, [searchValue]);
 
-    const activeCount = filters.filter((filter) => (filter.value ?? '') !== '').length + (searchValue !== '' ? 1 : 0);
+    const activeCount =
+        filters.filter((filter) => {
+            if ((filter.value ?? '') === '') {
+                return false;
+            }
+
+            if (filter.name !== 'date' || filter.value !== 'custom') {
+                return true;
+            }
+
+            return (filter.dateFrom ?? '') !== '' || (filter.dateTo ?? '') !== '';
+        }).length + (searchValue !== '' ? 1 : 0);
 
     return (
         <div className="w-full">
@@ -116,16 +161,50 @@ export default function AdminFiltersBar({ title, searchPlaceholder, search = '',
 
             <div className="mt-2 flex flex-wrap items-center gap-1.5">
                 {filters.map((filter) => (
-                    <FilterChip
-                        key={filter.name}
-                        filter={filter}
-                        onChange={(value) =>
-                            submit(
-                                filters.map((item) => (item.name === filter.name ? { ...item, value } : item)),
-                                searchValue,
-                            )
-                        }
-                    />
+                    <div key={filter.name} className="flex flex-wrap items-center gap-1.5">
+                        <FilterChip
+                            filter={filter}
+                            onChange={(value) =>
+                                submit(
+                                    filters.map((item) =>
+                                        item.name === filter.name
+                                            ? {
+                                                  ...item,
+                                                  value,
+                                                  ...(value === 'custom'
+                                                      ? {}
+                                                      : {
+                                                            dateFrom: '',
+                                                            dateTo: '',
+                                                        }),
+                                              }
+                                            : item,
+                                    ),
+                                    searchValue,
+                                )
+                            }
+                        />
+
+                        {filter.name === 'date' && (filter.value ?? '') === 'custom' && (
+                            <CustomDateRange
+                                filter={filter}
+                                onChange={({ dateFrom, dateTo }) =>
+                                    submit(
+                                        filters.map((item) =>
+                                            item.name === filter.name
+                                                ? {
+                                                      ...item,
+                                                      dateFrom,
+                                                      dateTo,
+                                                  }
+                                                : item,
+                                        ),
+                                        searchValue,
+                                    )
+                                }
+                            />
+                        )}
+                    </div>
                 ))}
 
                 {activeCount > 0 && (
@@ -135,7 +214,7 @@ export default function AdminFiltersBar({ title, searchPlaceholder, search = '',
                             dirty.current = false;
                             setSearchValue('');
                             submit(
-                                filters.map((filter) => ({ ...filter, value: '' })),
+                                filters.map((filter) => ({ ...filter, value: '', dateFrom: '', dateTo: '' })),
                                 '',
                             );
                         }}

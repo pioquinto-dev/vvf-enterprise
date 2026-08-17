@@ -24,6 +24,8 @@ class AdminListingService
         $page = max(1, (int) $request->query('page', 1));
         $definitions = $this->listings->filterDefinitions($resource);
         $activeFilters = [];
+        $dateFrom = trim((string) $request->query('date_from', ''));
+        $dateTo = trim((string) $request->query('date_to', ''));
 
         foreach ($definitions as $index => $definition) {
             $value = trim((string) $request->query($definition['name'], ''));
@@ -32,12 +34,25 @@ class AdminListingService
             // value has to travel with it — not only in the query bag.
             $definitions[$index]['value'] = $value;
 
+            if ($definition['name'] === 'date') {
+                $definitions[$index]['dateFrom'] = $dateFrom;
+                $definitions[$index]['dateTo'] = $dateTo;
+            }
+
             if ($value !== '') {
                 $activeFilters[$definition['name']] = $value;
             }
         }
 
-        [$rows, $total] = $this->rows($resource, $search, $activeFilters, $page);
+        if ($dateFrom !== '') {
+            $activeFilters['date_from'] = $dateFrom;
+        }
+
+        if ($dateTo !== '') {
+            $activeFilters['date_to'] = $dateTo;
+        }
+
+        [$rows, $total, $insights] = $this->rows($resource, $search, $activeFilters, $page);
 
         $lastPage = max(1, (int) ceil($total / self::PER_PAGE));
 
@@ -53,6 +68,7 @@ class AdminListingService
             'capabilities' => $this->listings->capabilities($resource),
             'editableFields' => $this->listings->editableFields($resource),
             'emptyMessage' => $this->listings->emptyMessage($resource),
+            'insights' => $insights,
             'pagination' => [
                 'page' => min($page, $lastPage),
                 'perPage' => self::PER_PAGE,
@@ -80,7 +96,7 @@ class AdminListingService
 
     /**
      * @param  array<string, string>  $activeFilters
-     * @return array{0: array<int, array<string, mixed>>, 1: int}
+     * @return array{0: array<int, array<string, mixed>>, 1: int, 2: array<int, array<string, string>>}
      */
     private function rows(string $resource, string $search, array $activeFilters, int $page): array
     {
@@ -93,7 +109,7 @@ class AdminListingService
                     ->contains(fn ($value) => str_contains(mb_strtolower((string) $value), mb_strtolower($search))))
                 ->values();
 
-            return [$rows->all(), $rows->count()];
+            return [$rows->all(), $rows->count(), []];
         }
 
         if ($search !== '') {
@@ -101,8 +117,12 @@ class AdminListingService
         }
 
         foreach ($activeFilters as $name => $value) {
-            $this->listings->applyFilter($resource, $query, $name, $value);
+            $this->listings->applyFilter($resource, $query, $name, $value, $activeFilters);
         }
+
+        $insights = $resource === 'searches'
+            ? $this->listings->searchInsights(clone $query, $activeFilters)
+            : [];
 
         $total = (clone $query)->count();
 
@@ -120,6 +140,6 @@ class AdminListingService
             'archived' => isset($record->archived_at) && $record->archived_at !== null,
         ])->all();
 
-        return [$rows, $total];
+        return [$rows, $total, $insights];
     }
 }

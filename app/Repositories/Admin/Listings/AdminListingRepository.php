@@ -8,8 +8,10 @@ use App\Models\PricingPlan;
 use App\Models\Subscription;
 use App\Models\User;
 use App\Models\ViralVideo;
+use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 
 /**
@@ -60,16 +62,16 @@ class AdminListingRepository
         return match ($resource) {
             'viral-videos' => [
                 ['name' => 'status', 'label' => 'Status', 'options' => ['visible', 'archived', 'deleted']],
-                ['name' => 'date', 'label' => 'Range', 'options' => ['today', '7d', '30d']],
+                ['name' => 'date', 'label' => 'Range', 'options' => ['today', '7d', '30d', 'custom']],
             ],
             'searches' => [
                 ['name' => 'type', 'label' => 'Type', 'options' => ['brand', 'competitor', 'product']],
                 ['name' => 'owner', 'label' => 'Owner', 'options' => $this->ownerOptions()],
-                ['name' => 'date', 'label' => 'Range', 'options' => ['today', '7d', '30d']],
+                ['name' => 'date', 'label' => 'Range', 'options' => ['today', '7d', '30d', 'custom']],
             ],
             'inquiries' => [
                 ['name' => 'category', 'label' => 'Category', 'options' => ['general', 'account', 'billing', 'feature-request', 'bug-report']],
-                ['name' => 'date', 'label' => 'Range', 'options' => ['today', '7d', '30d']],
+                ['name' => 'date', 'label' => 'Range', 'options' => ['today', '7d', '30d', 'custom']],
             ],
             'plans' => [
                 ['name' => 'status', 'label' => 'Status', 'options' => ['active', 'inactive', 'archived', 'deleted']],
@@ -192,19 +194,13 @@ class AdminListingRepository
         };
     }
 
-    public function applyFilter(string $resource, Builder $query, string $name, string $value): void
+    /**
+     * @param  array<string, string>  $activeFilters
+     */
+    public function applyFilter(string $resource, Builder $query, string $name, string $value, array $activeFilters = []): void
     {
         if ($name === 'date') {
-            $since = match ($value) {
-                'today' => now()->startOfDay(),
-                '7d' => now()->subDays(7),
-                '30d' => now()->subDays(30),
-                default => null,
-            };
-
-            if ($since) {
-                $query->where('created_at', '>=', $since);
-            }
+            $this->applyDateFilter($query, $value, $activeFilters['date_from'] ?? null, $activeFilters['date_to'] ?? null);
 
             return;
         }
@@ -235,6 +231,58 @@ class AdminListingRepository
                 ? $query->whereNull('user_id')
                 : $query->where('user_id', $value);
         }
+    }
+
+    public function applyDateFilter(Builder $query, ?string $range, ?string $dateFrom, ?string $dateTo): void
+    {
+        $since = match ($range) {
+            'today' => now()->startOfDay(),
+            '7d' => now()->subDays(7),
+            '30d' => now()->subDays(30),
+            default => null,
+        };
+
+        if ($since !== null) {
+            $query->where('created_at', '>=', $since);
+
+            return;
+        }
+
+        if ($range !== 'custom') {
+            return;
+        }
+
+        $from = $this->parseDateBoundary($dateFrom, false);
+        $to = $this->parseDateBoundary($dateTo, true);
+
+        if ($from !== null) {
+            $query->where('created_at', '>=', $from);
+        }
+
+        if ($to !== null) {
+            $query->where('created_at', '<=', $to);
+        }
+    }
+
+    /**
+     * @return array<int, array<string, string>>
+     */
+    public function searchInsights(Builder $query, array $activeFilters): array
+    {
+        $records = (clone $query)
+            ->select(['id', 'name', 'phrase', 'search_type', 'user_id', 'created_at'])
+            ->with(['user:id,name,email'])
+            ->get();
+
+        if ($records->isEmpty()) {
+            return [];
+        }
+
+        return [
+            $this->themeSummaryInsight($records),
+            $this->trendShiftInsight($activeFilters),
+            $this->repeatSignalInsight($records),
+        ];
     }
 
     private function applyStatusFilter(string $resource, Builder $query, string $value): void
@@ -366,6 +414,186 @@ class AdminListingRepository
             ->all();
 
         return [...$owners, ['value' => 'guest', 'label' => 'Guest (unclaimed)']];
+    }
+
+    /**
+     * @param  Collection<int, CustomKeywordSearch>  $records
+     * @return array<string, string>
+     */
+    private function themeSummaryInsight(Collection $records): array
+    {
+        $topTypes = $records
+            ->countBy(fn (CustomKeywordSearch $search): string => (string) ($search->search_type ?: 'unknown'))
+            ->sortDesc();
+
+        $topType = (string) ($topTypes->keys()->first() ?? 'search');
+        $typeShare = max(1, (int) round(((int) ($topTypes->first() ?? 0) / max(1, $records->count())) * 100));
+
+        $topTerms = $records
+            ->map(fn (CustomKeywordSearch $search): string => trim((string) ($search->phrase ?: $search->name)))
+            ->filter()
+            ->countBy()
+            ->sortDesc()
+            ->keys()
+            ->take(2)
+            ->values();
+
+        $termsText = $topTerms->count() > 0
+            ? $topTerms->map(fn (string $term): string => "'{$term}'")->implode(' and ')
+            : 'current demand';
+
+        return [
+            'label' => 'Theme Summary',
+            'tone' => 'warm',
+            'body' => sprintf(
+                '%s searches lead this slice at %d%% of activity, with %s surfacing most often.',
+                Str::headline($topType),
+                $typeShare,
+                $termsText
+            ),
+        ];
+    }
+
+    /**
+     * @param  array<string, string>  $activeFilters
+     * @return array<string, string>
+     */
+    private function trendShiftInsight(array $activeFilters): array
+    {
+        [$currentStart, $currentEnd] = $this->comparisonWindow($activeFilters);
+
+        $currentQuery = CustomKeywordSearch::query()->whereBetween('created_at', [$currentStart, $currentEnd]);
+        $previousQuery = CustomKeywordSearch::query()->whereBetween('created_at', [
+            $currentStart->subSeconds($currentEnd->diffInSeconds($currentStart) + 1),
+            $currentStart->subSecond(),
+        ]);
+
+        if (($type = $activeFilters['type'] ?? null) !== null && $type !== '') {
+            $currentQuery->where('search_type', $type);
+            $previousQuery->where('search_type', $type);
+        }
+
+        if (($owner = $activeFilters['owner'] ?? null) !== null && $owner !== '') {
+            $owner === 'guest'
+                ? $currentQuery->whereNull('user_id')
+                : $currentQuery->where('user_id', $owner);
+
+            $owner === 'guest'
+                ? $previousQuery->whereNull('user_id')
+                : $previousQuery->where('user_id', $owner);
+        }
+
+        $currentProduct = (clone $currentQuery)->where('search_type', CustomKeywordSearch::TYPE_PRODUCT)->count();
+        $currentBrand = (clone $currentQuery)->where('search_type', CustomKeywordSearch::TYPE_BRAND)->count();
+        $previousProduct = (clone $previousQuery)->where('search_type', CustomKeywordSearch::TYPE_PRODUCT)->count();
+        $previousBrand = (clone $previousQuery)->where('search_type', CustomKeywordSearch::TYPE_BRAND)->count();
+
+        $currentLeader = $currentProduct >= $currentBrand ? 'product' : 'brand';
+        $previousLeader = $previousProduct >= $previousBrand ? 'product' : 'brand';
+
+        $body = $currentLeader !== $previousLeader
+            ? sprintf(
+                '%s searches now edge past %s searches, a noticeable shift from the previous comparison window.',
+                Str::headline($currentLeader),
+                Str::headline($previousLeader)
+            )
+            : sprintf(
+                '%s searches remain the stronger pattern, with the current window broadly matching the previous one.',
+                Str::headline($currentLeader)
+            );
+
+        return [
+            'label' => 'Trend Shift',
+            'tone' => 'amber',
+            'body' => $body,
+        ];
+    }
+
+    /**
+     * @param  Collection<int, CustomKeywordSearch>  $records
+     * @return array<string, string>
+     */
+    private function repeatSignalInsight(Collection $records): array
+    {
+        $duplicates = $records
+            ->map(fn (CustomKeywordSearch $search): string => mb_strtolower(trim((string) ($search->phrase ?: $search->name))))
+            ->filter()
+            ->countBy()
+            ->filter(fn (int $count): bool => $count > 1)
+            ->sortDesc();
+
+        if ($duplicates->isEmpty()) {
+            return [
+                'label' => 'Repeat Signal',
+                'tone' => 'slate',
+                'body' => 'Search activity is relatively spread out right now, with little repeated tracking around the same exact terms.',
+            ];
+        }
+
+        $leaders = $duplicates->keys()
+            ->take(2)
+            ->map(fn (string $term): string => "'{$term}'")
+            ->implode(' and ');
+
+        $repeatCount = (int) $duplicates->sum();
+
+        return [
+            'label' => 'Repeat Signal',
+            'tone' => 'rose',
+            'body' => sprintf(
+                'Repeated tracking is clustering around %s, accounting for %d repeated search entries in this slice.',
+                $leaders,
+                $repeatCount
+            ),
+        ];
+    }
+
+    private function parseDateBoundary(?string $value, bool $endOfDay): ?CarbonImmutable
+    {
+        if (blank($value)) {
+            return null;
+        }
+
+        try {
+            $date = CarbonImmutable::parse($value);
+        } catch (\Throwable) {
+            return null;
+        }
+
+        return $endOfDay ? $date->endOfDay() : $date->startOfDay();
+    }
+
+    /**
+     * @param  array<string, string>  $activeFilters
+     * @return array{0: CarbonImmutable, 1: CarbonImmutable}
+     */
+    private function comparisonWindow(array $activeFilters): array
+    {
+        $now = CarbonImmutable::now();
+        $range = $activeFilters['date'] ?? '';
+
+        if ($range === 'today') {
+            return [$now->startOfDay(), $now];
+        }
+
+        if ($range === '7d') {
+            return [$now->subDays(7), $now];
+        }
+
+        if ($range === '30d') {
+            return [$now->subDays(30), $now];
+        }
+
+        if ($range === 'custom') {
+            $from = $this->parseDateBoundary($activeFilters['date_from'] ?? null, false);
+            $to = $this->parseDateBoundary($activeFilters['date_to'] ?? null, true);
+
+            if ($from !== null || $to !== null) {
+                return [$from ?? $now->subDays(30), $to ?? $now];
+            }
+        }
+
+        return [$now->subDays(30), $now];
     }
 
     /**
