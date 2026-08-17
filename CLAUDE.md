@@ -27,6 +27,8 @@ What it does:
 
 All processes are colour-coded. Ctrl-C stops everything. The script lives in `bin/dev.js`.
 
+On Windows, `composer dev` also opens helper consoles for Stripe forwarding, queue/server trigger logs, and a formatted `vvf system error logs` tail that watches `storage/logs/errors.log` for structured API/internal flow failures.
+
 **Prerequisites:** Node/npm (for `concurrently`), ngrok CLI. Works natively on Windows, macOS, and Linux — no Git Bash or WSL required.
 
 This project is a Laravel 13 app for collecting, browsing, and exporting viral TikTok research data imported from Apify.

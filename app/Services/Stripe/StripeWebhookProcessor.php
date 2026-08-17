@@ -6,6 +6,7 @@ use App\Models\PricingPlan;
 use App\Models\Subscription;
 use App\Models\User;
 use App\Services\Billing\BillingService;
+use App\Support\AppEventLogger;
 use Carbon\CarbonImmutable;
 use Stripe\Event;
 
@@ -15,6 +16,11 @@ class StripeWebhookProcessor
 
     public function handle(Event $event): void
     {
+        AppEventLogger::result('billing.webhook.received', [
+            'event_id' => (string) ($event->id ?? ''),
+            'event_type' => (string) $event->type,
+        ]);
+
         match ($event->type) {
             'checkout.session.completed' => $this->handleCheckoutCompleted($event),
             'invoice.paid' => $this->handleInvoicePaid($event),
@@ -33,16 +39,34 @@ class StripeWebhookProcessor
         $sessionId = (string) ($session->id ?? '');
 
         if ($userId <= 0 || $sessionId === '') {
+            AppEventLogger::error('billing.webhook.checkout_completed.invalid_payload', 'Missing checkout session metadata.', [
+                'event_id' => (string) ($event->id ?? ''),
+                'user_id' => $userId,
+                'stripe_checkout_session_id' => $sessionId,
+            ]);
+
             return;
         }
 
         $user = User::query()->find($userId);
 
         if ($user === null) {
+            AppEventLogger::error('billing.webhook.checkout_completed.user_missing', 'Checkout webhook user was not found.', [
+                'event_id' => (string) ($event->id ?? ''),
+                'user_id' => $userId,
+                'stripe_checkout_session_id' => $sessionId,
+            ]);
+
             return;
         }
 
         $this->billing->finalizeCheckout($user, $sessionId);
+
+        AppEventLogger::result('billing.webhook.checkout_completed', [
+            'event_id' => (string) ($event->id ?? ''),
+            'user_id' => $user->id,
+            'stripe_checkout_session_id' => $sessionId,
+        ]);
     }
 
     private function handleInvoicePaid(Event $event): void
@@ -51,16 +75,32 @@ class StripeWebhookProcessor
         $subscriptionId = (string) ($invoice->subscription ?? '');
 
         if ($subscriptionId === '') {
+            AppEventLogger::error('billing.webhook.invoice_paid.invalid_payload', 'Invoice webhook is missing a subscription id.', [
+                'event_id' => (string) ($event->id ?? ''),
+            ]);
+
             return;
         }
 
         $subscription = Subscription::query()->where('stripe_subscription_id', $subscriptionId)->first();
 
         if ($subscription === null) {
+            AppEventLogger::error('billing.webhook.invoice_paid.subscription_missing', 'Invoice paid subscription was not found.', [
+                'event_id' => (string) ($event->id ?? ''),
+                'stripe_subscription_id' => $subscriptionId,
+            ]);
+
             return;
         }
 
         $subscription->forceFill(['status' => 'active'])->save();
+
+        AppEventLogger::result('billing.webhook.invoice_paid', [
+            'event_id' => (string) ($event->id ?? ''),
+            'subscription_id' => $subscription->id,
+            'user_id' => $subscription->user_id,
+            'stripe_subscription_id' => $subscriptionId,
+        ]);
     }
 
     private function handleInvoicePaymentFailed(Event $event): void
@@ -69,16 +109,32 @@ class StripeWebhookProcessor
         $subscriptionId = (string) ($invoice->subscription ?? '');
 
         if ($subscriptionId === '') {
+            AppEventLogger::error('billing.webhook.invoice_payment_failed.invalid_payload', 'Invoice payment failed webhook is missing a subscription id.', [
+                'event_id' => (string) ($event->id ?? ''),
+            ]);
+
             return;
         }
 
         $subscription = Subscription::query()->where('stripe_subscription_id', $subscriptionId)->first();
 
         if ($subscription === null) {
+            AppEventLogger::error('billing.webhook.invoice_payment_failed.subscription_missing', 'Invoice payment failed subscription was not found.', [
+                'event_id' => (string) ($event->id ?? ''),
+                'stripe_subscription_id' => $subscriptionId,
+            ]);
+
             return;
         }
 
         $subscription->forceFill(['status' => 'past_due'])->save();
+
+        AppEventLogger::result('billing.webhook.invoice_payment_failed', [
+            'event_id' => (string) ($event->id ?? ''),
+            'subscription_id' => $subscription->id,
+            'user_id' => $subscription->user_id,
+            'stripe_subscription_id' => $subscriptionId,
+        ]);
     }
 
     private function handleSubscriptionEvent(Event $event): void
@@ -88,6 +144,13 @@ class StripeWebhookProcessor
         $customerId = (string) ($payload->customer ?? '');
 
         if ($subscriptionId === '' || $customerId === '') {
+            AppEventLogger::error('billing.webhook.subscription_event.invalid_payload', 'Subscription webhook is missing identifiers.', [
+                'event_id' => (string) ($event->id ?? ''),
+                'event_type' => (string) $event->type,
+                'stripe_subscription_id' => $subscriptionId,
+                'stripe_customer_id' => $customerId,
+            ]);
+
             return;
         }
 
@@ -97,6 +160,13 @@ class StripeWebhookProcessor
             ->first();
 
         if ($subscription === null) {
+            AppEventLogger::error('billing.webhook.subscription_event.subscription_missing', 'Subscription webhook could not find a matching subscription.', [
+                'event_id' => (string) ($event->id ?? ''),
+                'event_type' => (string) $event->type,
+                'stripe_subscription_id' => $subscriptionId,
+                'stripe_customer_id' => $customerId,
+            ]);
+
             return;
         }
 
@@ -104,6 +174,14 @@ class StripeWebhookProcessor
         $plan = $subscription->plan;
 
         if ($user === null || $plan === null) {
+            AppEventLogger::error('billing.webhook.subscription_event.related_records_missing', 'Subscription webhook is missing its related user or plan.', [
+                'event_id' => (string) ($event->id ?? ''),
+                'event_type' => (string) $event->type,
+                'subscription_id' => $subscription->id,
+                'user_missing' => $user === null,
+                'plan_missing' => $plan === null,
+            ]);
+
             return;
         }
 
@@ -190,6 +268,18 @@ class StripeWebhookProcessor
                 'plan_renews_at' => CarbonImmutable::now()->addMonth(),
             ])->save();
         }
+
+        AppEventLogger::result('billing.webhook.subscription_updated', [
+            'event_id' => (string) ($event->id ?? ''),
+            'event_type' => (string) $event->type,
+            'subscription_id' => $subscription->id,
+            'user_id' => $user->id,
+            'plan_slug' => $plan->slug,
+            'status' => $status,
+            'renewed' => $renewed,
+            'current_period_starts_at' => $periodStart?->toIso8601String(),
+            'current_period_ends_at' => $periodEnd?->toIso8601String(),
+        ]);
     }
 
     private function timestampToCarbon(mixed $timestamp): ?CarbonImmutable

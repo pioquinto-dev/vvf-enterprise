@@ -3,6 +3,7 @@
 namespace App\Services\CustomKeywordSearch;
 
 use App\Models\CustomKeywordSearch;
+use App\Support\AppEventLogger;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Throwable;
@@ -20,12 +21,21 @@ class SearchSummaryWriter
     public function generate(CustomKeywordSearch $search, array $facts): ?string
     {
         if (! $this->enabled()) {
+            AppEventLogger::result('search_summary.skipped', [
+                'search_id' => $search->id,
+                'reason' => 'disabled',
+            ]);
+
             return null;
         }
 
         $summary = $this->request($search, $facts);
 
         if ($summary === null) {
+            AppEventLogger::error('search_summary.empty', 'Summary generation returned no usable content.', [
+                'search_id' => $search->id,
+            ]);
+
             return null;
         }
 
@@ -33,6 +43,10 @@ class SearchSummaryWriter
             'ai_summary' => $summary,
             'ai_summary_generated_at' => now(),
         ])->save();
+
+        AppEventLogger::result('search_summary.generated', [
+            'search_id' => $search->id,
+        ]);
 
         return $summary;
     }
@@ -49,6 +63,10 @@ class SearchSummaryWriter
     private function request(CustomKeywordSearch $search, array $facts): ?string
     {
         try {
+            AppEventLogger::result('search_summary.request_started', [
+                'search_id' => $search->id,
+            ]);
+
             $response = Http::withToken((string) config('services.openai.api_key'))
                 ->timeout((int) config('custom_keyword_search.analysis.timeout', 45))
                 ->acceptJson()
@@ -86,6 +104,11 @@ class SearchSummaryWriter
                 ]);
 
             if ($response->failed()) {
+                AppEventLogger::error('search_summary.request_failed', 'Search summary request failed.', [
+                    'search_id' => $search->id,
+                    'status' => $response->status(),
+                ]);
+
                 Log::warning('Search summary request failed.', [
                     'search_id' => $search->id,
                     'status' => $response->status(),
@@ -96,8 +119,17 @@ class SearchSummaryWriter
 
             $content = trim((string) data_get($response->json(), 'choices.0.message.content'));
 
+            AppEventLogger::result('search_summary.response_received', [
+                'search_id' => $search->id,
+                'has_content' => $content !== '',
+            ]);
+
             return $content === '' ? null : mb_substr($content, 0, 400);
         } catch (Throwable $e) {
+            AppEventLogger::error('search_summary.exception', $e, [
+                'search_id' => $search->id,
+            ]);
+
             Log::warning('Search summary threw.', ['search_id' => $search->id, 'error' => $e->getMessage()]);
 
             return null;

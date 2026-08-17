@@ -5,6 +5,7 @@ namespace App\Services\ViralVideoAnalysis;
 use App\Models\ApifyTrigger;
 use App\Models\ViralVideo;
 use App\Services\Apify\ApifyClient;
+use App\Support\AppEventLogger;
 use Illuminate\Support\Facades\Log;
 use RuntimeException;
 
@@ -34,6 +35,13 @@ class TranscriptFetcher
         $postUrl = trim((string) $video->post_url);
 
         if ($actorId === '' || $postUrl === '' || ! $this->apify->isConfigured()) {
+            AppEventLogger::result('video_transcript.skipped', [
+                'viral_video_id' => $video->id,
+                'actor_configured' => $actorId !== '',
+                'has_post_url' => $postUrl !== '',
+                'apify_configured' => $this->apify->isConfigured(),
+            ]);
+
             return null;
         }
 
@@ -49,6 +57,12 @@ class TranscriptFetcher
             'status' => 'queued',
             'request_source' => 'viral_video_analysis',
             'input' => $input,
+        ]);
+
+        AppEventLogger::result('video_transcript.fetch_started', [
+            'viral_video_id' => $video->id,
+            'apify_trigger_id' => $trigger->id,
+            'actor_id' => $actorId,
         ]);
 
         try {
@@ -73,6 +87,13 @@ class TranscriptFetcher
             ]);
 
             if ($finalStatus !== 'SUCCEEDED') {
+                AppEventLogger::error('video_transcript.fetch_failed', 'Transcript actor run did not succeed.', [
+                    'viral_video_id' => $video->id,
+                    'apify_trigger_id' => $trigger->id,
+                    'apify_run_id' => $trigger->apify_run_id,
+                    'status' => $finalStatus,
+                ]);
+
                 Log::warning('Transcript actor run did not succeed.', [
                     'viral_video_id' => $video->id,
                     'status' => $finalStatus,
@@ -84,15 +105,43 @@ class TranscriptFetcher
             $datasetId = (string) ($finished['defaultDatasetId'] ?? $trigger->dataset_id ?? '');
 
             if ($datasetId === '') {
+                AppEventLogger::error('video_transcript.dataset_missing', 'Transcript actor finished without a dataset id.', [
+                    'viral_video_id' => $video->id,
+                    'apify_trigger_id' => $trigger->id,
+                    'apify_run_id' => $trigger->apify_run_id,
+                ]);
+
                 return null;
             }
 
             $items = $this->apify->getDatasetItems($datasetId, 1);
             $first = $items[0] ?? null;
 
-            return is_array($first) ? $first : null;
+            if (! is_array($first)) {
+                AppEventLogger::error('video_transcript.payload_missing', 'Transcript actor returned no usable transcript payload.', [
+                    'viral_video_id' => $video->id,
+                    'apify_trigger_id' => $trigger->id,
+                    'dataset_id' => $datasetId,
+                ]);
+
+                return null;
+            }
+
+            AppEventLogger::result('video_transcript.fetched', [
+                'viral_video_id' => $video->id,
+                'apify_trigger_id' => $trigger->id,
+                'dataset_id' => $datasetId,
+                'apify_run_id' => $trigger->apify_run_id,
+            ]);
+
+            return $first;
         } catch (RuntimeException $e) {
             $trigger->update(['status' => 'FAILED', 'finished_at' => now()]);
+
+            AppEventLogger::error('video_transcript.exception', $e, [
+                'viral_video_id' => $video->id,
+                'apify_trigger_id' => $trigger->id,
+            ]);
 
             Log::warning('Transcript actor fetch threw.', [
                 'viral_video_id' => $video->id,

@@ -11,6 +11,7 @@ const stripeLogPath = `${root}\\storage\\logs\\stripe-listener.log`;
 const serveLogPath = `${root}\\storage\\logs\\serve-listener.log`;
 const queueLogPath = `${root}\\storage\\logs\\queue-listener.log`;
 const videoAnalysisQueueLogPath = `${root}\\storage\\logs\\video-analysis-queue-listener.log`;
+const errorsLogPath = `${root}\\storage\\logs\\errors.log`;
 const helperScriptDir = `${root}\\storage\\app\\dev-scripts`;
 
 const appProcesses = [];
@@ -214,6 +215,10 @@ async function launchHelperConsoles() {
                 'analysis',
             ]),
         },
+        {
+            title: 'vvf system error logs',
+            command: formattedJsonTailCommand('vvf system error logs', errorsLogPath),
+        },
     ];
 
     console.log('Helper listeners:');
@@ -246,6 +251,40 @@ function tailFileCommand(path, title = 'vvf ngrok logs') {
         `if (-not (Test-Path '${path}')) { New-Item -ItemType File -Path '${path}' -Force | Out-Null }`,
         `Write-Host 'Watching ${path}'`,
         `Get-Content -Path '${path}' -Wait`,
+    ].join('\r\n');
+}
+
+function formattedJsonTailCommand(title, path) {
+    return [
+        `$Host.UI.RawUI.WindowTitle = '${title}'`,
+        `if (-not (Test-Path '${path}')) { New-Item -ItemType File -Path '${path}' -Force | Out-Null }`,
+        `Write-Host 'Watching ${path}'`,
+        `function Format-VvfErrorLine([string]$line) {`,
+        `  if ([string]::IsNullOrWhiteSpace($line)) { return }`,
+        `  $match = [regex]::Match($line, '^(?<prefix>.+?)\\s(?<json>\\{.*\\})$')`,
+        `  if (-not $match.Success) { Write-Host $line -ForegroundColor Red; return }`,
+        `  $prefix = $match.Groups['prefix'].Value`,
+        `  $json = $match.Groups['json'].Value`,
+        `  try {`,
+        `    $data = $json | ConvertFrom-Json`,
+        `    Write-Host ''`,
+        `    Write-Host ('=' * 96) -ForegroundColor DarkRed`,
+        `    Write-Host $prefix -ForegroundColor Red`,
+        `    foreach ($property in $data.PSObject.Properties) {`,
+        `      $value = $property.Value`,
+        `      if ($null -eq $value) { $rendered = '<null>' }`,
+        `      elseif ($value -is [System.Management.Automation.PSCustomObject] -or $value -is [hashtable] -or $value -is [System.Collections.IEnumerable] -and -not ($value -is [string])) {`,
+        `        $rendered = $value | ConvertTo-Json -Depth 8 -Compress`,
+        `      } else {`,
+        `        $rendered = [string]$value`,
+        `      }`,
+        `      Write-Host ('  {0}: {1}' -f $property.Name, $rendered) -ForegroundColor Yellow`,
+        `    }`,
+        `  } catch {`,
+        `    Write-Host $line -ForegroundColor Red`,
+        `  }`,
+        `}`,
+        `Get-Content -Path '${path}' -Wait | ForEach-Object { Format-VvfErrorLine $_ }`,
     ].join('\r\n');
 }
 

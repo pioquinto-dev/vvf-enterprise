@@ -5,6 +5,7 @@ namespace App\Jobs;
 use App\Http\Resources\SavedSearchPresenter;
 use App\Models\CustomKeywordSearch;
 use App\Models\ViralVideo;
+use App\Support\AppEventLogger;
 use App\Services\CustomKeywordSearch\SearchInsights;
 use App\Services\CustomKeywordSearch\SearchSummaryWriter;
 use App\Services\CustomKeywordSearch\VideoContentAnalyzer;
@@ -46,27 +47,63 @@ class EnrichSearchResults implements ShouldQueue
         $search = CustomKeywordSearch::find($this->searchId);
 
         if ($search === null) {
+            AppEventLogger::error('search_enrichment.search_missing', 'Search enrichment could not find the target search.', [
+                'search_id' => $this->searchId,
+            ]);
+
             return;
         }
 
         $results = SavedSearchPresenter::resultRows($search);
 
         if ($results === []) {
+            AppEventLogger::result('search_enrichment.skipped', [
+                'search_id' => $search->id,
+                'reason' => 'no_results',
+            ]);
+
             return;
         }
 
+        AppEventLogger::result('search_enrichment.started', [
+            'search_id' => $search->id,
+            'result_count' => count($results),
+        ]);
+
         try {
-            $this->classifyTopVideos($search, $analyzer);
+            $classified = $this->classifyTopVideos($search, $analyzer);
+
+            AppEventLogger::result('search_enrichment.classification_completed', [
+                'search_id' => $search->id,
+                'classified_count' => $classified,
+            ]);
         } catch (\Throwable $e) {
+            AppEventLogger::error('search_enrichment.classification_failed', $e, [
+                'search_id' => $search->id,
+            ]);
+
             Log::warning('Content classification failed.', ['search_id' => $search->id, 'error' => $e->getMessage()]);
         }
 
         try {
             // Re-read so the summary can cite labels the pass just wrote.
-            $summaries->generate($search, $this->facts($search, $insights));
+            $summary = $summaries->generate($search, $this->facts($search, $insights));
+
+            AppEventLogger::result('search_enrichment.summary_completed', [
+                'search_id' => $search->id,
+                'summary_generated' => filled($summary),
+            ]);
         } catch (\Throwable $e) {
+            AppEventLogger::error('search_enrichment.summary_failed', $e, [
+                'search_id' => $search->id,
+            ]);
+
             Log::warning('Summary generation failed.', ['search_id' => $search->id, 'error' => $e->getMessage()]);
         }
+
+        AppEventLogger::result('search_enrichment.completed', [
+            'search_id' => $search->id,
+        ]);
     }
 
     /**
@@ -74,7 +111,7 @@ class EnrichSearchResults implements ShouldQueue
      * on the winner and nowhere else, so paying to label result 80 buys
      * nothing a user will ever see.
      */
-    private function classifyTopVideos(CustomKeywordSearch $search, VideoContentAnalyzer $analyzer): void
+    private function classifyTopVideos(CustomKeywordSearch $search, VideoContentAnalyzer $analyzer): int
     {
         $limit = (int) config('custom_keyword_search.analysis.top_videos', 10);
 
@@ -84,10 +121,10 @@ class EnrichSearchResults implements ShouldQueue
             ->pluck('viral_video_id');
 
         if ($videoIds->isEmpty()) {
-            return;
+            return 0;
         }
 
-        $analyzer->analyze(ViralVideo::whereIn('id', $videoIds)->get());
+        return $analyzer->analyze(ViralVideo::whereIn('id', $videoIds)->get());
     }
 
     /**

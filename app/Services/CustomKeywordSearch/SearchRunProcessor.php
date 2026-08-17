@@ -11,6 +11,7 @@ use App\Models\CustomKeywordSearchVideo;
 use App\Models\ViralVideo;
 use App\Services\Apify\ApifyClient;
 use App\Services\Billing\BillingService;
+use App\Support\AppEventLogger;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -51,6 +52,13 @@ class SearchRunProcessor
         try {
             $this->run($search, $run);
         } catch (Throwable $e) {
+            AppEventLogger::error('search.run.failed', $e, [
+                'search_id' => $search->id,
+                'run_id' => $run->id,
+                'search_type' => $search->search_type,
+                'phrase' => $search->phrase,
+            ]);
+
             Log::error('Custom keyword search run failed.', [
                 'search_id' => $search->id,
                 'run_id' => $run->id,
@@ -90,6 +98,15 @@ class SearchRunProcessor
             'input' => $input,
             'search_keywords' => $search->keywords,
             'requested_by_user_id' => $search->user_id,
+        ]);
+
+        AppEventLogger::result('search.run.started', [
+            'search_id' => $search->id,
+            'run_id' => $run->id,
+            'search_type' => $search->search_type,
+            'phrase' => $search->phrase,
+            'keyword_count' => count($search->keywords ?? []),
+            'apify_trigger_id' => $trigger->id,
         ]);
 
         $started = $this->apify->startTaskRun($taskId, $input);
@@ -209,6 +226,22 @@ class SearchRunProcessor
             'status' => CustomKeywordSearch::STATUS_DONE,
             'last_run_at' => now(),
             'next_run_at' => $this->nextRunAt($search->frequency),
+        ]);
+
+        AppEventLogger::result('search.run.completed', [
+            'search_id' => $search->id,
+            'run_id' => $run->id,
+            'search_type' => $search->search_type,
+            'phrase' => $search->phrase,
+            'apify_trigger_id' => $trigger->id,
+            'apify_run_id' => $apifyRunId,
+            'dataset_id' => $datasetId,
+            'received' => $summary['received'] ?? count($rawItems),
+            'kept' => count($kept),
+            'attached' => $attached,
+            'local_pool' => $summary['local_pool'] ?? 0,
+            'compute_units' => $finished['stats']['computeUnits'] ?? null,
+            'usage_total_usd' => $finished['usageTotalUsd'] ?? null,
         ]);
 
         if ($this->reservedCredit($run) && $search->user !== null) {
@@ -377,6 +410,11 @@ class SearchRunProcessor
 
     private function failRun(CustomKeywordSearchRun $run, string $message): void
     {
+        AppEventLogger::error('search.run.marked_failed', $message, [
+            'run_id' => $run->id,
+            'search_id' => $run->search?->id,
+        ]);
+
         $run->update([
             'status' => CustomKeywordSearchRun::STATUS_FAILED,
             'completed_at' => now(),

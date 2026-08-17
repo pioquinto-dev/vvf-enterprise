@@ -5,6 +5,7 @@ namespace App\Services\Billing;
 use App\Models\PricingPlan;
 use App\Models\Subscription;
 use App\Models\User;
+use App\Support\AppEventLogger;
 use App\Services\Stripe\StripeClient;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Str;
@@ -44,14 +45,35 @@ class BillingService
             ...($withTrial ? ['subscription_data' => ['trial_period_days' => 7]] : []),
         ]);
 
+        AppEventLogger::result('billing.checkout.session_created', [
+            'user_id' => $user->id,
+            'plan_id' => $plan->id,
+            'plan_slug' => $plan->slug,
+            'with_trial' => $withTrial,
+            'stripe_customer_id' => $customerId,
+            'stripe_checkout_session_id' => (string) ($session->id ?? ''),
+        ]);
+
         return $session->url;
     }
 
     public function finalizeCheckout(User $user, string $sessionId): void
     {
+        AppEventLogger::result('billing.checkout.finalize_started', [
+            'user_id' => $user->id,
+            'stripe_checkout_session_id' => $sessionId,
+        ]);
+
         $session = $this->stripe->retrieveCheckoutSession($sessionId);
 
         if (($session->payment_status ?? null) !== 'paid' && ($session->status ?? null) !== 'complete') {
+            AppEventLogger::error('billing.checkout.finalize_incomplete', 'Stripe checkout is not complete yet.', [
+                'user_id' => $user->id,
+                'stripe_checkout_session_id' => $sessionId,
+                'payment_status' => $session->payment_status ?? null,
+                'session_status' => $session->status ?? null,
+            ]);
+
             throw ValidationException::withMessages([
                 'billing' => 'Stripe checkout is not complete yet.',
             ]);
@@ -86,6 +108,16 @@ class BillingService
             'current_period_starts_at' => $now,
             'current_period_ends_at' => $endsAt,
             'metadata' => $this->subscriptionMetadata($plan, $searchCreditsUsed, $videoBookmarksUsed, $searchBookmarksUsed, $videoAnalysisUsed),
+        ]);
+
+        AppEventLogger::result('billing.checkout.finalized', [
+            'user_id' => $user->id,
+            'plan_id' => $plan->id,
+            'plan_slug' => $plan->slug,
+            'stripe_checkout_session_id' => $sessionId,
+            'stripe_subscription_id' => $subscriptionId,
+            'stripe_customer_id' => $customerId,
+            'current_period_ends_at' => $endsAt?->toIso8601String(),
         ]);
     }
 
