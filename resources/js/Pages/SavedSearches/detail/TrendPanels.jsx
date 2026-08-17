@@ -4,6 +4,10 @@ import { createPortal } from 'react-dom';
 import { compactNumber, percent } from '../../../landing/flow/format.js';
 import { Bookmark, Share, Check, Dots } from '../../../landing/components/Icons.jsx';
 
+const W = 560;
+const H = 180;
+const PAD = 10;
+
 function formatValue(value, format) {
   if (value === null || value === undefined) return '—';
   if (format === 'compact') return compactNumber(value);
@@ -48,14 +52,58 @@ function runLabel(index) {
   return `Refresh ${index + 1}`;
 }
 
-export function PerformanceChart({ trend, frequency = 'weekly' }) {
+function runCountLabel(count) {
+  return `${count} completed ${count === 1 ? 'run' : 'runs'}`;
+}
+
+function toPoints(values) {
+  if (!values || values.length < 2) return [];
+
+  const max = Math.max(...values);
+  const min = Math.min(...values);
+  const range = max - min;
+
+  return values.map((v, i) => {
+    const x = (i / (values.length - 1)) * W;
+    const y = range === 0 ? H / 2 : H - PAD - ((v - min) / range) * (H - 2 * PAD);
+    return [x, y];
+  });
+}
+
+function fallbackSnapshotFromTrend(trend) {
+  if (!trend?.metrics) return null;
+
+  return {
+    views: trend.metrics.views?.current ?? null,
+    posts: trend.metrics.posts?.current ?? null,
+    engagement: trend.metrics.engagement?.current ?? null,
+    engagement_rate: trend.metrics.rate?.current ?? null,
+  };
+}
+
+export function PerformanceChart({ trend, runs = [], frequency = 'weekly' }) {
   const [metric, setMetric] = useState('views');
 
   const series = trend?.metrics?.[metric];
-  const points = trend?.points ?? [];
-  const runs = points.filter((point) => point.posts > 0);
+  const latestRunId = runs[runs.length - 1]?.id ?? null;
+  const trendFallbackSnapshot = fallbackSnapshotFromTrend(trend);
+  const completedRuns = runs
+    .map((run) => {
+      if (run?.snapshot) return run;
+      if (run?.id !== latestRunId || !trendFallbackSnapshot) return run;
 
-  if (!series || runs.length === 0) {
+      return {
+        ...run,
+        snapshot: {
+          ...trendFallbackSnapshot,
+          captured_at: run?.completed_at ?? null,
+          is_fallback: true,
+        },
+      };
+    })
+    .filter((run) => run?.snapshot);
+
+  if (!series || completedRuns.length === 0) {
     return (
       <div className="panel">
         <p className="empty">Not enough history to plot yet.</p>
@@ -63,17 +111,34 @@ export function PerformanceChart({ trend, frequency = 'weekly' }) {
     );
   }
 
-  const latestRun = runs[runs.length - 1];
-  const previousRun = runs.length > 1 ? runs[runs.length - 2] : null;
-  const baselineRun = runs[0];
+  const latestRun = completedRuns[completedRuns.length - 1];
+  const previousRun = completedRuns.length > 1 ? completedRuns[completedRuns.length - 2] : null;
+  const baselineRun = completedRuns[0];
   const metricKey = series.format === 'percent' ? 'engagement_rate' : metric;
   const deltaUnit = series.format === 'percent' ? 'points' : 'percent';
-  const currentValue = latestRun?.[metricKey] ?? series.current;
-  const previousDelta = previousRun ? buildDelta(currentValue, previousRun?.[metricKey], deltaUnit) : null;
-  const baselineDelta = baselineRun && baselineRun !== latestRun
-    ? buildDelta(currentValue, baselineRun?.[metricKey], deltaUnit)
-    : null;
-  const maxValue = Math.max(...runs.map((point) => Number(point?.[metricKey]) || 0), 0) || 1;
+  const currentValue = latestRun?.snapshot?.[metricKey] ?? series.current;
+  const previousDelta = previousRun ? buildDelta(currentValue, previousRun?.snapshot?.[metricKey], deltaUnit) : null;
+  const values = completedRuns.map((run) => Number(run?.snapshot?.[metricKey]) || 0);
+  const coords = toPoints(values);
+  const line = coords.map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`).join(' ');
+  const area = line ? `${line} ${W},${H} 0,${H}` : '';
+  const lastPoint = coords[coords.length - 1] ?? null;
+  const latestRunDate = formatRunDate(latestRun?.completed_at);
+  const baselineRunDate = formatRunDate(baselineRun?.completed_at);
+
+  const axisLabels = completedRuns.length === 1
+    ? [{ label: runLabel(0), align: 'start' }, { label: 'latest', align: 'end' }]
+    : completedRuns.map((run, index) => ({
+        label:
+          index === 0
+            ? runLabel(0)
+            : index === completedRuns.length - 1
+              ? 'latest'
+              : completedRuns.length <= 4 || index === Math.floor((completedRuns.length - 1) / 2)
+                ? runLabel(index)
+                : '',
+        align: index === 0 ? 'start' : index === completedRuns.length - 1 ? 'end' : 'center',
+      }));
 
   return (
     <div className="panel">
@@ -86,82 +151,85 @@ export function PerformanceChart({ trend, frequency = 'weekly' }) {
       </div>
 
       <div className="ts-head">
-        <div>
-          <span className="ts-eyebrow">Current checkpoint</span>
-          <div className="ts-headline">
-            <span className="ts-val">{formatValue(currentValue, series.format)}</span>
-            <span className="ts-runlabel">
-              {runLabel(runs.length - 1)}
-              {formatRunDate(latestRun?.week_start) ? ` • ${formatRunDate(latestRun.week_start)}` : ''}
-            </span>
-          </div>
-        </div>
+        <span className="ts-val">{formatValue(currentValue, series.format)}</span>
       </div>
 
-      {runs.length === 1 ? (
+      <div className="ts-legend">
+        <span className="ts-chip ts-chip--neutral">
+          <i />
+          {runCountLabel(completedRuns.length)}
+        </span>
+        <span className="ts-chip ts-chip--neutral">
+          <i />
+          Latest run{latestRunDate ? ` • ${latestRunDate}` : ''}
+        </span>
+        {previousDelta ? (
+          <span className={`ts-chip ts-chip--${previousDelta.direction}`}>
+            <i />
+            {deltaLabel(previousDelta)} vs previous run
+          </span>
+        ) : (
+          <span className="ts-chip ts-chip--neutral">
+            <i />
+            Baseline run only
+          </span>
+        )}
+      </div>
+
+      {coords.length >= 2 ? (
+        <svg className="ts-svg" viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none">
+          <defs>
+            <linearGradient id="tsfill" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0" stopColor="var(--violet)" stopOpacity=".2" />
+              <stop offset="1" stopColor="var(--violet)" stopOpacity="0" />
+            </linearGradient>
+          </defs>
+
+          <polygon points={area} fill="url(#tsfill)" />
+          <polyline
+            points={line}
+            fill="none"
+            stroke="var(--violet)"
+            strokeWidth="2.5"
+            strokeLinejoin="round"
+            strokeLinecap="round"
+          />
+          {lastPoint && (
+            <circle cx={lastPoint[0]} cy={lastPoint[1]} r="4.5" fill="var(--violet)" stroke="#fff" strokeWidth="2" />
+          )}
+        </svg>
+      ) : (
         <div className="ts-emptycta">
           <strong>{runLabel(0)} is your baseline.</strong>
           <span>Come back next {frequency === 'monthly' ? 'month' : 'week'} to unlock comparison against the next refresh.</span>
         </div>
-      ) : (
-        <div className="ts-comparegrid">
-          <div className="ts-comparecard">
-            <span className="ts-cardlabel">vs previous refresh</span>
-            <strong className={previousDelta?.direction ?? 'flat'}>{deltaLabel(previousDelta)}</strong>
-            <span>
-              {previousRun ? `${formatValue(previousRun?.[metricKey], series.format)} in ${runLabel(runs.length - 2)}` : 'No previous refresh'}
-            </span>
-          </div>
-
-          <div className="ts-comparecard">
-            <span className="ts-cardlabel">vs first refresh</span>
-            <strong className={baselineDelta?.direction ?? 'flat'}>{deltaLabel(baselineDelta)}</strong>
-            <span>
-              {formatValue(baselineRun?.[metricKey], series.format)} in {runLabel(0)}
-            </span>
-          </div>
-        </div>
       )}
 
-      <div className="ts-runlist">
-        {runs.map((point, index) => {
-          const value = Number(point?.[metricKey]) || 0;
-          const barHeight = Math.max((value / maxValue) * 100, value > 0 ? 14 : 6);
-          const pointDate = formatRunDate(point.week_start);
-          const isCurrent = index === runs.length - 1;
-          const isBaseline = index === 0;
-          const compareToPrevious = index > 0 ? buildDelta(value, runs[index - 1]?.[metricKey], deltaUnit) : null;
-
-          return (
-            <div key={`${point.week_start}-${metric}-${index}`} className={`ts-runitem${isCurrent ? ' is-current' : ''}`}>
-              <div className="ts-runmeta">
-                <span className="ts-runname">
-                  {runLabel(index)}
-                  {isBaseline ? ' baseline' : ''}
-                </span>
-                <span className="ts-rundate">{pointDate ?? point.label}</span>
-              </div>
-
-              <div className="ts-runbarwrap">
-                <div className={`ts-runbar${point.reconstructed ? ' is-reconstructed' : ''}`} style={{ height: `${barHeight}%` }} />
-              </div>
-
-              <div className="ts-runstats">
-                <strong>{formatValue(value, series.format)}</strong>
-                {index === 0 ? (
-                  <span>First refresh</span>
-                ) : (
-                  <span className={compareToPrevious?.direction ?? 'flat'}>{deltaLabel(compareToPrevious)} vs previous</span>
-                )}
-              </div>
-            </div>
-          );
-        })}
+      <div className="ts-x">
+        {axisLabels.map((item, index) => (
+          <span key={`${item.label || 'tick'}-${index}`} className={`ts-x--${item.align}`}>
+            {item.label}
+          </span>
+        ))}
       </div>
 
       <div className="ts-foot">
-        <span>Each bar is one refresh run for this tracker.</span>
-        {trend?.has_reconstructed && <span>Dashed bars use reconstructed history until more real refreshes accumulate.</span>}
+        <div className="ts-mini">
+          <span className="ts-mini__label">Baseline</span>
+          <strong>{runLabel(0)}</strong>
+          <span>{baselineRunDate ?? 'First completed run'}</span>
+        </div>
+        <div className="ts-mini">
+          <span className="ts-mini__label">Latest</span>
+          <strong>{runLabel(completedRuns.length - 1)}</strong>
+          <span>{latestRunDate ?? 'Most recent completed run'}</span>
+        </div>
+        {completedRuns.some((run) => run?.snapshot?.is_fallback) && (
+          <div className="ts-mini ts-mini--note">
+            <span className="ts-mini__label">Note</span>
+            <span>Latest run is using current saved-search metrics because a snapshot record is missing.</span>
+          </div>
+        )}
       </div>
     </div>
   );

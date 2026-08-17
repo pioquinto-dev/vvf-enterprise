@@ -1628,19 +1628,148 @@
     font-weight: 600;
 }
 
+.tracker .ts-legend {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 10px;
+}
+
+.tracker .ts-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    border-radius: 999px;
+    border: 1px solid rgba(222, 211, 193, 0.95);
+    background: rgba(255, 253, 249, 0.9);
+    font-size: 11.5px;
+    font-weight: 600;
+    color: var(--ink-soft);
+    white-space: nowrap;
+}
+
+.tracker .ts-chip i {
+    width: 8px;
+    height: 8px;
+    border-radius: 999px;
+    background: rgba(167, 145, 97, 0.9);
+    flex: 0 0 auto;
+}
+
+.tracker .ts-chip--up {
+    color: var(--up);
+    border-color: rgba(167, 210, 176, 0.9);
+    background: rgba(245, 252, 246, 0.96);
+}
+
+.tracker .ts-chip--up i {
+    background: var(--up);
+}
+
+.tracker .ts-chip--down {
+    color: var(--down);
+    border-color: rgba(240, 205, 197, 0.95);
+    background: rgba(255, 248, 246, 0.96);
+}
+
+.tracker .ts-chip--down i {
+    background: var(--down);
+}
+
+.tracker .ts-chip--flat,
+.tracker .ts-chip--neutral {
+    color: var(--ink-soft);
+}
+
 .tracker .ts-svg {
     width: 100%;
     height: 210px;
     display: block;
 }
 
+.tracker .ts-emptycta {
+    display: grid;
+    gap: 6px;
+    margin: 18px 0;
+    padding: 16px 18px;
+    border-radius: 18px;
+    border: 1px dashed rgba(166, 133, 55, 0.35);
+    background: linear-gradient(180deg, rgba(248, 241, 223, 0.7) 0%, rgba(255, 253, 249, 0.96) 100%);
+}
+
+.tracker .ts-emptycta strong {
+    font-size: 14px;
+    color: var(--ink);
+}
+
+.tracker .ts-emptycta span {
+    font-size: 13px;
+    color: var(--ink-soft);
+}
+
 .tracker .ts-x {
     display: flex;
     justify-content: space-between;
+    gap: 8px;
     font-size: 10.5px;
     color: var(--ink-soft);
     font-family: 'Space Mono', ui-monospace, monospace;
     margin-top: 6px;
+}
+
+.tracker .ts-x span {
+    flex: 1 1 0;
+}
+
+.tracker .ts-x .ts-x--start {
+    text-align: left;
+}
+
+.tracker .ts-x .ts-x--center {
+    text-align: center;
+}
+
+.tracker .ts-x .ts-x--end {
+    text-align: right;
+}
+
+.tracker .ts-foot {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+    margin-top: 14px;
+}
+
+.tracker .ts-mini {
+    display: grid;
+    gap: 3px;
+    padding: 12px 14px;
+    border-radius: 16px;
+    border: 1px solid rgba(222, 211, 193, 0.95);
+    background: rgba(255, 253, 249, 0.86);
+}
+
+.tracker .ts-mini strong {
+    font-size: 13px;
+    color: var(--ink);
+}
+
+.tracker .ts-mini span:last-child {
+    font-size: 11.5px;
+    color: var(--ink-soft);
+}
+
+.tracker .ts-mini__label {
+    font-size: 10px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+    font-family: 'Space Mono', ui-monospace, monospace;
+}
+
+.tracker .ts-mini--note {
+    grid-column: 1 / -1;
 }
 
 /* ---------- heat map ---------- */

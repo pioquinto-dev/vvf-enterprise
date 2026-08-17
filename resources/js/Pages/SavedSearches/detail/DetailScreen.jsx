@@ -605,9 +605,9 @@ export default function DetailScreen({
                 ? `based on the data from videos pulled last ${lastPulledLabel}`
                 : 'based on the latest pulled videos'
             }
-            note="this tracker, past 12 weeks."
+            note="this tracker, across completed search runs."
           />
-          <PerformanceChart trend={trend} />
+          <PerformanceChart trend={trend} runs={search?.runs ?? []} frequency={search?.frequency} />
 
           <SectionHead title="When they post" note="posting schedule by day and hour." />
           <PostingHeatmap heatmap={insights.heatmap} />

@@ -3,6 +3,7 @@
 namespace App\Http\Resources;
 
 use App\Models\CustomKeywordSearch;
+use App\Models\CustomKeywordSearchRun;
 use App\Models\User;
 use App\Models\VideoAnalysis;
 use App\Services\CustomKeywordSearch\SearchInsights;
@@ -125,10 +126,51 @@ class SavedSearchPresenter
         return self::summary($search) + [
             'results' => $results,
             'scanned_count' => (int) data_get($search->latestRun?->raw_summary, 'received', 0),
+            'runs' => self::runHistory($search),
             'ai_summary' => $search->ai_summary,
             'ai_summary_generated_at' => $search->ai_summary_generated_at?->toIso8601String(),
             'insights' => $payload,
         ];
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    private static function runHistory(CustomKeywordSearch $search): array
+    {
+        return $search->runs()
+            ->where('status', CustomKeywordSearchRun::STATUS_DONE)
+            ->orderBy('completed_at')
+            ->with(['search', 'apifyTrigger'])
+            ->get()
+            ->map(function (CustomKeywordSearchRun $run) use ($search): array {
+                $snapshot = $search->snapshots()
+                    ->where('custom_keyword_search_run_id', $run->id)
+                    ->where('is_reconstructed', false)
+                    ->latest('captured_at')
+                    ->first();
+
+                return [
+                    'id' => $run->id,
+                    'status' => $run->status,
+                    'started_at' => $run->started_at?->toIso8601String(),
+                    'completed_at' => $run->completed_at?->toIso8601String(),
+                    'error_message' => $run->error_message,
+                    'summary' => $run->raw_summary ?? [],
+                    'snapshot' => $snapshot ? [
+                        'captured_at' => $snapshot->captured_at?->toIso8601String(),
+                        'posts' => (int) $snapshot->video_count,
+                        'views' => (int) $snapshot->total_views,
+                        'engagement' => (int) $snapshot->total_engagement,
+                        'engagement_rate' => round((float) $snapshot->avg_engagement_rate, 2),
+                        'median_views' => (int) $snapshot->median_views,
+                        'outliers' => (int) $snapshot->outlier_count,
+                        'top_multiple' => round((float) $snapshot->top_multiple, 2),
+                    ] : null,
+                ];
+            })
+            ->values()
+            ->all();
     }
 
     /**
