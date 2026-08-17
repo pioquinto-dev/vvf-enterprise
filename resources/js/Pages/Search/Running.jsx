@@ -13,6 +13,7 @@ export default function Running({ searchId }) {
                     searchId={searchId}
                     onBack={() => router.visit('/bookmark')}
                     onDone={() => router.visit(`/bookmark/${searchId}`)}
+                    onAutoReturn={() => router.visit('/dashboard')}
                 />
             </AppLayout>
         </>

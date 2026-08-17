@@ -60,8 +60,12 @@ class SavedSearchManager
 
         $name = $this->normalizer->name($name, $phrase);
         $signature = $this->normalizer->signature($keywords);
-        $sourceHandle = $this->normalizeSourceHandle($sources['tiktokHandle'] ?? null);
-        $sourceWebsite = $this->normalizeSourceWebsite($sources['website'] ?? null);
+        $sourceHandle = $type === CustomKeywordSearch::TYPE_PRODUCT
+            ? null
+            : $this->normalizeSourceHandle($sources['tiktokHandle'] ?? null);
+        $sourceWebsite = $type === CustomKeywordSearch::TYPE_PRODUCT
+            ? null
+            : $this->normalizeSourceWebsite($sources['website'] ?? null);
 
         // Same keywords in any order means the same saved search. The record
         // is reused so the list stays clean — but re-searching is a real

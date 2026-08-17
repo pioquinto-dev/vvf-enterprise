@@ -4,6 +4,7 @@ import { Google, Arrow, Check, Search } from '../../components/Icons.jsx';
 import { fetchNotifications, updateTracked } from '../api.js';
 
 const POLL_MS = 10000;
+const AUTO_RETURN_MS = 5000;
 
 const STAGES = [
   'Starting the scrape',
@@ -16,7 +17,7 @@ const STAGES = [
  * The transitional loading state after a run is dispatched. Not a wizard step —
  * it has no stepper — just a live view of a scrape already running server-side.
  */
-export default function RunningScreen({ searchId, onBack, onDone }) {
+export default function RunningScreen({ searchId, onBack, onDone, onAutoReturn }) {
   // The capture card exists to get an anonymous visitor an account before the
   // run finishes. Someone already signed in has nothing to claim.
   const { auth = {} } = usePage().props;
@@ -82,6 +83,17 @@ export default function RunningScreen({ searchId, onBack, onDone }) {
     };
   }, [searchId, onDone]);
 
+  useEffect(() => {
+    if (!searchId || failed || finished.current) return undefined;
+
+    const timer = window.setTimeout(() => {
+      updateTracked(searchId, { runningPromptShown: true });
+      onAutoReturn?.();
+    }, AUTO_RETURN_MS);
+
+    return () => window.clearTimeout(timer);
+  }, [failed, onAutoReturn, searchId]);
+
   // Purely cosmetic progression so the wait reads as movement, not a hang.
   useEffect(() => {
     if (failed) return undefined;
@@ -123,7 +135,7 @@ export default function RunningScreen({ searchId, onBack, onDone }) {
 
         <h1 style={{ marginTop: 18 }}>{search?.name ? `Scouting “${search.name}”` : 'Scouting your niche'}</h1>
         <p className="muted" style={{ maxWidth: 420, margin: '12px auto 0' }}>
-          We&rsquo;ll show the results right here the moment they&rsquo;re ready.
+          We&rsquo;ll send you back to the dashboard in a few seconds while this keeps running.
         </p>
 
         <div className="run__s">

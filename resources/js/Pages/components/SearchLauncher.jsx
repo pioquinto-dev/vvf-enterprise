@@ -7,9 +7,6 @@ import { Arrow, Search, Store, Target, Refresh } from '../../landing/components/
  * Step one of the search flow — pick a subject. A mode toggle, one input, and
  * suggestions that *fill* the box rather than firing a search: a search costs a
  * credit, so a stray tap on a suggestion must never spend one.
- *
- * Product searches are gated until the backend supports them, so that mode is
- * shown but locked — the wizard's Sources branching still keys off it.
  */
 
 const TYPES = [

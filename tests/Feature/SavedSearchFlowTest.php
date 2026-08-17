@@ -131,6 +131,28 @@ class SavedSearchFlowTest extends TestCase
         Queue::assertPushed(RunCustomKeywordSearch::class);
     }
 
+    public function test_creating_a_product_search_queues_a_run_without_sources(): void
+    {
+        $response = $this->postJson('/saved-searches', [
+            'type' => 'product',
+            'phrase' => 'lip oil',
+            'keywords' => ['lip oil', 'lip oil review', 'best lip oil'],
+            'frequency' => 'weekly',
+        ]);
+
+        $response->assertCreated()
+            ->assertJsonPath('status', 'scraping');
+
+        $search = CustomKeywordSearch::firstOrFail();
+
+        $this->assertSame(CustomKeywordSearch::TYPE_PRODUCT, $search->search_type);
+        $this->assertSame('lip oil', $search->phrase);
+        $this->assertNull($search->source_tiktok_handle);
+        $this->assertNull($search->source_website);
+
+        Queue::assertPushed(RunCustomKeywordSearch::class);
+    }
+
     public function test_creating_a_search_persists_optional_sources(): void
     {
         $this->postJson('/saved-searches', [
@@ -148,6 +170,26 @@ class SavedSearchFlowTest extends TestCase
 
         $this->assertSame('rhode', $search->source_tiktok_handle);
         $this->assertSame('rhodeskin.com', $search->source_website);
+    }
+
+    public function test_creating_a_product_search_ignores_optional_sources(): void
+    {
+        $this->postJson('/saved-searches', [
+            'type' => 'product',
+            'phrase' => 'lip oil',
+            'keywords' => ['lip oil', 'lip oil review'],
+            'frequency' => 'weekly',
+            'sources' => [
+                'tiktokHandle' => '@not-a-brand',
+                'website' => 'https://example.com/',
+            ],
+        ])->assertCreated();
+
+        $search = CustomKeywordSearch::firstOrFail();
+
+        $this->assertSame(CustomKeywordSearch::TYPE_PRODUCT, $search->search_type);
+        $this->assertNull($search->source_tiktok_handle);
+        $this->assertNull($search->source_website);
     }
 
     public function test_creating_the_same_keyword_set_reuses_the_existing_search(): void

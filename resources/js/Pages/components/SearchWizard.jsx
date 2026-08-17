@@ -133,6 +133,12 @@ export default function SearchWizard({ initialType = 'brand', initialQuery = '',
         setStep(phrase ? 'keywords' : 'subject');
     };
 
+    const leaveRunningScreen = () => {
+        stampUrl(null);
+        setSearchId(null);
+        setStep('subject');
+    };
+
     const onDone = useCallback((found) => router.visit(found?.url ?? `/bookmark/${found?.id ?? searchId}`), [searchId]);
 
     const topTitle =
@@ -157,7 +163,12 @@ export default function SearchWizard({ initialType = 'brand', initialQuery = '',
             )}
 
             {step === 'running' && searchId ? (
-                <RunningScreen searchId={searchId} onBack={backToKeywords} onDone={onDone} />
+                <RunningScreen
+                    searchId={searchId}
+                    onBack={backToKeywords}
+                    onDone={onDone}
+                    onAutoReturn={leaveRunningScreen}
+                />
             ) : (
                 <div className="card">
                     <Stepper kind={kind} current={step} />

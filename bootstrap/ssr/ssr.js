@@ -3527,9 +3527,6 @@ var SearchLauncher_exports = /* @__PURE__ */ __exportAll({ default: () => Search
 * Step one of the search flow — pick a subject. A mode toggle, one input, and
 * suggestions that *fill* the box rather than firing a search: a search costs a
 * credit, so a stray tap on a suggestion must never spend one.
-*
-* Product searches are gated until the backend supports them, so that mode is
-* shown but locked — the wizard's Sources branching still keys off it.
 */
 var TYPES = [
 	{
@@ -9048,6 +9045,15 @@ function buildAnalysisStates(results = []) {
 		analysis: video.analysis
 	}]));
 }
+function mergeAnalysisIntoItems(items = [], videoId, payload) {
+	return items.map((item) => item.id === videoId ? {
+		...item,
+		analysis: payload ? {
+			...item.analysis ?? {},
+			...payload
+		} : item.analysis ?? null
+	} : item);
+}
 function AnalyzeConfirmModal({ video, creditsRemainingAfterUse = 0, busy = false, onConfirm, onCancel }) {
 	if (!video) return null;
 	return /* @__PURE__ */ jsx("div", {
@@ -9200,6 +9206,18 @@ function DetailScreen({ search, isAuthenticated = false, billing = null, onToggl
 		setItems(search?.results ?? []);
 		setAnalysisStates(buildAnalysisStates(search?.results ?? []));
 	}, [search]);
+	const applyAnalysisUpdate = (videoId, payload) => {
+		if (!videoId) return;
+		setAnalysisStates((current) => ({
+			...current,
+			[videoId]: {
+				status: payload?.status ?? current[videoId]?.status ?? "idle",
+				error: payload?.error_message ?? payload?.error ?? null,
+				analysis: payload ?? current[videoId]?.analysis ?? null
+			}
+		}));
+		setItems((current) => mergeAnalysisIntoItems(current, videoId, payload));
+	};
 	const toggleBookmark = async (video) => {
 		if (!isAuthenticated) {
 			window.location.assign("/auth/google");
@@ -9233,28 +9251,21 @@ function DetailScreen({ search, isAuthenticated = false, billing = null, onToggl
 		}
 		if (currentStatus === "processing") return;
 		try {
-			setAnalysisStates((current) => ({
-				...current,
-				[video.id]: { status: "processing" }
-			}));
+			applyAnalysisUpdate(video.id, {
+				status: "processing",
+				error_message: null
+			});
 			const payload = await videoAnalysis.request(video.id);
 			const nextStatus = payload?.analysis?.status ?? "processing";
-			setAnalysisStates((current) => ({
-				...current,
-				[video.id]: {
-					status: nextStatus,
-					error: payload?.analysis?.error_message ?? null,
-					analysis: payload?.analysis ?? null
-				}
-			}));
+			applyAnalysisUpdate(video.id, {
+				...payload?.analysis ?? {},
+				status: nextStatus
+			});
 		} catch (error) {
-			setAnalysisStates((current) => ({
-				...current,
-				[video.id]: {
-					status: "failed",
-					error: error?.message ?? "Could not start video analysis."
-				}
-			}));
+			applyAnalysisUpdate(video.id, {
+				status: "failed",
+				error_message: error?.message ?? "Could not start video analysis."
+			});
 			if (error?.status === 422 || error?.status === 401) {
 				window.alert(error.payload?.errors?.billing?.[0] || error.payload?.errors?.auth?.[0] || error.message);
 				return;
@@ -9281,14 +9292,10 @@ function DetailScreen({ search, isAuthenticated = false, billing = null, onToggl
 	const confirmAnalyze = async () => {
 		if (!pendingAnalysisVideo) return;
 		const video = pendingAnalysisVideo;
-		setAnalysisStates((current) => ({
-			...current,
-			[video.id]: {
-				status: "processing",
-				error: null,
-				analysis: current[video.id]?.analysis ?? null
-			}
-		}));
+		applyAnalysisUpdate(video.id, {
+			status: "processing",
+			error_message: null
+		});
 		setPendingAnalysisVideo(null);
 		await startAnalysis(video);
 	};
@@ -9305,17 +9312,9 @@ function DetailScreen({ search, isAuthenticated = false, billing = null, onToggl
 				}
 			}));
 			if (cancelled) return;
-			setAnalysisStates((current) => {
-				const next = { ...current };
-				results.forEach(([id, analysis]) => {
-					if (!analysis) return;
-					next[id] = {
-						status: analysis.status ?? current[id]?.status ?? "idle",
-						error: analysis.error_message ?? null,
-						analysis
-					};
-				});
-				return next;
+			results.forEach(([id, analysis]) => {
+				if (!analysis) return;
+				applyAnalysisUpdate(id, analysis);
 			});
 		}, 2500);
 		return () => {
@@ -9326,14 +9325,7 @@ function DetailScreen({ search, isAuthenticated = false, billing = null, onToggl
 	const closeAnalysisModal = () => setAnalysisModal(null);
 	const handleModalAnalysisChange = (videoId, analysis) => {
 		if (!videoId || !analysis) return;
-		setAnalysisStates((current) => ({
-			...current,
-			[videoId]: {
-				status: analysis.status ?? current[videoId]?.status ?? "idle",
-				error: analysis.error_message ?? null,
-				analysis
-			}
-		}));
+		applyAnalysisUpdate(videoId, analysis);
 	};
 	return /* @__PURE__ */ jsxs("div", {
 		className: "tracker",

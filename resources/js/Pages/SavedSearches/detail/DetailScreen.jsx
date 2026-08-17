@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { usePage } from '@inertiajs/react';
 
 import { bookmarks, videoAnalysis } from '../../../landing/flow/api.js';
+import EntitlementsBar from '../../components/EntitlementsBar.jsx';
 import { OutlierCard, WinnerVideo } from './OutlierVideos.jsx';
 import AnalysisModal from '../../VideoAnalysis/AnalysisModal.jsx';
 import {
@@ -387,6 +388,7 @@ export default function DetailScreen({
         <a href="/bookmark" className="tbtn">
           ← Back to library
         </a>
+        <EntitlementsBar />
       </div>
 
       <TrackerHead
