@@ -119,6 +119,11 @@ class BillingService
         $this->entitlements->ensureCanBookmark($user);
     }
 
+    public function consumeVideoBookmark(User $user): void
+    {
+        $this->entitlements->consumeVideoBookmark($user);
+    }
+
     public function ensureCanBookmarkSearch(User $user): void
     {
         $this->entitlements->ensureCanBookmarkSearch($user);

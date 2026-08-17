@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react';
-import { router } from '@inertiajs/react';
+import { router, usePage } from '@inertiajs/react';
 
 import SearchLauncher from './SearchLauncher.jsx';
 import EntitlementsBar from './EntitlementsBar.jsx';
@@ -67,7 +67,31 @@ function Stepper({ kind, current }) {
     );
 }
 
+function UsageConfirmModal({ title, body, subject, confirmLabel, busy = false, onConfirm, onCancel }) {
+    return (
+        <div className="bb">
+            <div className="bb-modal">
+                <button className="bb-modal__bg" aria-label="Close" onClick={onCancel} />
+                <div className="bb-modal__box">
+                    <h2>{title}</h2>
+                    <p className="sub">{body}</p>
+                    {subject && <p style={{ marginTop: 16, fontWeight: 700, color: 'var(--ink)' }}>{subject}</p>}
+                    <div className="actrow__r" style={{ marginTop: 24, justifyContent: 'flex-end' }}>
+                        <button type="button" className="btn btn--g" onClick={onCancel} disabled={busy}>
+                            Cancel
+                        </button>
+                        <button type="button" className="btn btn--y" onClick={onConfirm} disabled={busy}>
+                            {busy ? 'Starting…' : confirmLabel}
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+}
+
 export default function SearchWizard({ initialType = 'brand', initialQuery = '', heading = 'Start a search', subheading = 'Pick one brand, competitor, or product — we widen it with smarter keywords on the next step.', subjectExtra = null }) {
+    const { auth = {}, billing = {} } = usePage().props;
     const resumeId = readRunParam();
 
     const [step, setStep] = useState(resumeId ? 'running' : initialQuery ? 'keywords' : 'subject');
@@ -77,8 +101,13 @@ export default function SearchWizard({ initialType = 'brand', initialQuery = '',
     const [searchId, setSearchId] = useState(resumeId);
     const [submitting, setSubmitting] = useState(false);
     const [error, setError] = useState(null);
+    const [confirmPayload, setConfirmPayload] = useState(null);
 
     const kind = kindOf(type);
+    const signedIn = auth.signedIn ?? Boolean(auth.user);
+    const searchLimit = billing.searchCreditsLimit ?? 0;
+    const searchUsed = billing.searchCreditsUsed ?? 0;
+    const searchRemainingAfterUse = searchLimit === -1 ? 'unlimited' : Math.max(0, searchLimit - searchUsed - 1);
 
     const stampUrl = (id) => {
         if (typeof window === 'undefined') return;
@@ -120,11 +149,22 @@ export default function SearchWizard({ initialType = 'brand', initialQuery = '',
         }
     };
 
+    const needsSearchConfirm = signedIn && searchLimit !== 0;
+
+    const runSearch = (payload, sources) => {
+        if (! needsSearchConfirm) {
+            doCreate(payload, sources);
+            return;
+        }
+
+        setConfirmPayload({ payload, sources });
+    };
+
     // Keywords done: brand/competitor go connect sources first; product runs now.
     const afterKeywords = (payload) => {
         setPending(payload);
         if (kind === 'brand') setStep('sources');
-        else doCreate(payload);
+        else runSearch(payload);
     };
 
     const backToKeywords = () => {
@@ -194,14 +234,30 @@ export default function SearchWizard({ initialType = 'brand', initialQuery = '',
                         <SourcesScreen
                             submitting={submitting}
                             onBack={() => setStep('keywords')}
-                            onSkip={() => doCreate(pending)}
-                            onRun={(sources) => doCreate(pending, sources)}
+                            onSkip={() => runSearch(pending)}
+                            onRun={(sources) => runSearch(pending, sources)}
                         />
                     )}
                 </div>
             )}
 
             {step === 'subject' && subjectExtra}
+
+            {confirmPayload && (
+                <UsageConfirmModal
+                    title="Start this search?"
+                    body={`This will use 1 search credit. You will have ${searchRemainingAfterUse} search credits remaining after this run starts. Search credits are not restored later, even if you pause, delete, or rerun the search.`}
+                    subject={confirmPayload.payload?.name ?? confirmPayload.payload?.phrase ?? phrase}
+                    confirmLabel="Start search"
+                    busy={submitting}
+                    onCancel={() => setConfirmPayload(null)}
+                    onConfirm={() => {
+                        const next = confirmPayload;
+                        setConfirmPayload(null);
+                        doCreate(next.payload, next.sources);
+                    }}
+                />
+            )}
         </>
     );
 }

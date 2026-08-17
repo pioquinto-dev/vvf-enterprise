@@ -26,7 +26,7 @@ class BookmarkService
             ->all();
     }
 
-    public function add(User $user, int $videoId): bool
+    public function add(User $user, string $videoId): bool
     {
         $video = ViralVideo::query()->findOrFail($videoId);
         $existing = VideoBookmark::query()
@@ -45,12 +45,12 @@ class BookmarkService
             'viral_video_id' => $video->id,
         ]);
 
-        $this->billing->syncSubscriptionUsage($user);
+        $this->billing->consumeVideoBookmark($user);
 
         return true;
     }
 
-    public function remove(User $user, int $videoId): void
+    public function remove(User $user, string $videoId): void
     {
         $video = ViralVideo::query()->findOrFail($videoId);
 
@@ -59,6 +59,5 @@ class BookmarkService
             ->where('viral_video_id', $video->id)
             ->delete();
 
-        $this->billing->syncSubscriptionUsage($user);
     }
 }

@@ -53,6 +53,17 @@ function numericUsageValue(value, fallback = 0) {
   return Number.isFinite(coerced) ? coerced : fallback;
 }
 
+function usageRemainingLabel(limit, used) {
+  return limit === -1 ? 'unlimited' : Math.max(0, limit - used - 1);
+}
+
+function actionErrorMessage(error, fallback) {
+  return error?.payload?.errors?.billing?.[0]
+    || error?.payload?.errors?.auth?.[0]
+    || error?.message
+    || fallback;
+}
+
 function buildAnalysisStates(results = []) {
   return Object.fromEntries(
     results
@@ -109,6 +120,9 @@ function AnalyzeConfirmModal({ video, creditsRemainingAfterUse = 0, busy = false
           <p className="mt-2 text-[14px] leading-6 text-[#696257]">
             Successful analysis will use 1 credit. You will have {creditsRemainingAfterUse} credits remaining after deduction.
           </p>
+          <p className="mt-2 text-[13px] leading-6 text-[#7a7368]">
+            This credit is not restored later, even if you delete the analysis result and run it again.
+          </p>
           <p className="mt-2 truncate text-[12px] font-medium text-[#8c8579]">
             {video.handle ?? video.creator_name ?? video.title ?? 'Selected video'}
           </p>
@@ -121,6 +135,59 @@ function AnalyzeConfirmModal({ video, creditsRemainingAfterUse = 0, busy = false
               className="inline-flex flex-1 items-center justify-center rounded-full bg-[#f2c44f] px-4 py-2.5 text-[12px] font-semibold text-[#4f3d08] transition hover:bg-[#e8bb48] disabled:cursor-not-allowed disabled:opacity-60"
             >
               {busy ? 'Starting…' : 'Start analysis'}
+            </button>
+            <button
+              type="button"
+              onClick={onCancel}
+              className="inline-flex flex-1 items-center justify-center rounded-full border border-[#ddd6ca] bg-white px-4 py-2.5 text-[12px] font-semibold text-[#5f584d] transition hover:bg-[#faf7f1]"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function BookmarkConfirmModal({ video, creditsRemainingAfterUse = 0, busy = false, onConfirm, onCancel }) {
+  if (!video) return null;
+
+  return (
+    <div className="fixed inset-0 z-[130] flex items-center justify-center bg-[rgba(38,33,28,0.42)] px-4 py-6 backdrop-blur-[2px]" onClick={onCancel}>
+      <div
+        className="w-full max-w-[430px] rounded-[24px] border border-[#d9d1c4] bg-[radial-gradient(circle_at_top,#f7f2e9_0%,#f3efe8_40%,#f1ede6_100%)] p-3 shadow-[0_28px_90px_rgba(42,33,20,0.22)]"
+        onClick={(event) => event.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Confirm video bookmark"
+      >
+        <div className="rounded-[20px] border border-[#ddd6ca] bg-[#fffdf9] p-5">
+          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#fff0bf] text-[#8c6b10]">
+            <svg viewBox="0 0 24 24" className="h-5 w-5 stroke-current" fill="none" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M7 4h10a1 1 0 0 1 1 1v15l-6-3-6 3V5a1 1 0 0 1 1-1Z" />
+            </svg>
+          </div>
+
+          <h3 className="mt-4 text-[20px] font-semibold text-[#1a1a1a]">Bookmark this video?</h3>
+          <p className="mt-2 text-[14px] leading-6 text-[#696257]">
+            This will use 1 bookmark credit. You&apos;ll have {creditsRemainingAfterUse} credits left.
+          </p>
+          <p className="mt-2 text-[13px] leading-6 text-[#7a7368]">
+            This credit is not restored later, even if you remove the bookmark.
+          </p>
+          <p className="mt-2 truncate text-[12px] font-medium text-[#8c8579]">
+            {video.handle ?? video.creator_name ?? video.title ?? 'Selected video'}
+          </p>
+
+          <div className="mt-5 flex gap-3">
+            <button
+              type="button"
+              onClick={onConfirm}
+              disabled={busy}
+              className="inline-flex flex-1 items-center justify-center rounded-full bg-[#f2c44f] px-4 py-2.5 text-[12px] font-semibold text-[#4f3d08] transition hover:bg-[#e8bb48] disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {busy ? 'Saving…' : 'Save bookmark'}
             </button>
             <button
               type="button"
@@ -155,8 +222,10 @@ export default function DetailScreen({
   const [analysisStates, setAnalysisStates] = useState(() => buildAnalysisStates(search?.results ?? []));
   const [analysisModal, setAnalysisModal] = useState(null);
   const [pendingAnalysisVideo, setPendingAnalysisVideo] = useState(null);
+  const [pendingBookmarkVideo, setPendingBookmarkVideo] = useState(null);
   const sharedBilling = usePage().props?.billing ?? {};
   const billingState = billing ?? sharedBilling;
+  const [videoBookmarkUsed, setVideoBookmarkUsed] = useState(() => numericUsageValue(billingState?.videoBookmarkCount, 0));
 
   const insights = search?.insights ?? {};
   const medianViews = insights.baseline?.median_views ?? 0;
@@ -167,9 +236,9 @@ export default function DetailScreen({
   const lastPulledLabel = formatInsightDate(search?.last_run_at);
   const videoAnalysisLimit = numericUsageValue(billingState?.videoAnalysisLimit, 0);
   const videoAnalysisUsed = numericUsageValue(billingState?.videoAnalysisUsed, 0);
-  const creditsRemainingAfterUse = videoAnalysisLimit === -1
-    ? 'unlimited'
-    : Math.max(0, videoAnalysisLimit - videoAnalysisUsed - 1);
+  const videoBookmarkLimit = numericUsageValue(billingState?.videoBookmarkLimit, 0);
+  const analysisCreditsRemainingAfterUse = usageRemainingLabel(videoAnalysisLimit, videoAnalysisUsed);
+  const bookmarkCreditsRemainingAfterUse = usageRemainingLabel(videoBookmarkLimit, videoBookmarkUsed);
 
   const feedItems = items;
 
@@ -225,6 +294,10 @@ export default function DetailScreen({
     setAnalysisStates(buildAnalysisStates(search?.results ?? []));
   }, [search]);
 
+  useEffect(() => {
+    setVideoBookmarkUsed(numericUsageValue(billingState?.videoBookmarkCount, 0));
+  }, [billingState?.videoBookmarkCount]);
+
   const applyAnalysisUpdate = (videoId, payload) => {
     if (!videoId) return;
 
@@ -246,15 +319,34 @@ export default function DetailScreen({
       return;
     }
 
+    if (!video.bookmarked) {
+      setPendingBookmarkVideo(video);
+      return;
+    }
+
+    await commitBookmark(video, 'remove');
+  };
+
+  const commitBookmark = async (video, action) => {
+    if (!isAuthenticated) {
+      window.location.assign('/auth/google');
+      return;
+    }
+
     try {
       setBookmarkingId(video.id);
-      const payload = video.bookmarked ? await bookmarks.remove(video.id) : await bookmarks.save(video.id);
+      const payload = action === 'remove'
+        ? await bookmarks.remove(video.id)
+        : await bookmarks.save(video.id);
+      if (typeof payload?.bookmarkCount === 'number') {
+        setVideoBookmarkUsed(payload.bookmarkCount);
+      }
       setItems((current) =>
         current.map((item) => (item.id === video.id ? { ...item, bookmarked: payload.bookmarked } : item))
       );
     } catch (error) {
       if (error?.status === 422 || error?.status === 401) {
-        window.alert(error.payload?.errors?.billing?.[0] || error.payload?.errors?.auth?.[0] || error.message);
+        window.alert(actionErrorMessage(error, 'Could not update the bookmark.'));
       }
     } finally {
       setBookmarkingId(null);
@@ -297,7 +389,7 @@ export default function DetailScreen({
       });
 
       if (error?.status === 422 || error?.status === 401) {
-        window.alert(error.payload?.errors?.billing?.[0] || error.payload?.errors?.auth?.[0] || error.message);
+        window.alert(actionErrorMessage(error, 'Could not start video analysis.'));
         return;
       }
 
@@ -544,10 +636,24 @@ export default function DetailScreen({
       {pendingAnalysisVideo && (
         <AnalyzeConfirmModal
           video={pendingAnalysisVideo}
-          creditsRemainingAfterUse={creditsRemainingAfterUse}
+          creditsRemainingAfterUse={analysisCreditsRemainingAfterUse}
           busy={false}
           onConfirm={confirmAnalyze}
           onCancel={() => setPendingAnalysisVideo(null)}
+        />
+      )}
+
+      {pendingBookmarkVideo && (
+        <BookmarkConfirmModal
+          video={pendingBookmarkVideo}
+          creditsRemainingAfterUse={bookmarkCreditsRemainingAfterUse}
+          busy={bookmarkingId === pendingBookmarkVideo.id}
+          onConfirm={async () => {
+            const video = pendingBookmarkVideo;
+            setPendingBookmarkVideo(null);
+            await commitBookmark(video, 'save');
+          }}
+          onCancel={() => setPendingBookmarkVideo(null)}
         />
       )}
     </div>

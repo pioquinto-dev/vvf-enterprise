@@ -117,7 +117,7 @@ class StripeWebhookProcessor
             && ($previousPeriodEnd === null || $periodEnd->greaterThan(CarbonImmutable::instance($previousPeriodEnd)));
 
         $searchUsed = $renewed ? 0 : (int) data_get($subscription->metadata, 'subscription.search_limits.used', 0);
-        $videoBookmarksUsed = $this->billing->videoBookmarkCount($user);
+        $videoBookmarksUsed = $renewed ? 0 : $this->billing->videoBookmarkCount($user);
         $searchBookmarksUsed = \App\Models\CustomKeywordSearch::query()
             ->where('user_id', $user->id)
             ->where('is_watchlisted', true)

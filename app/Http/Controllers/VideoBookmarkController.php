@@ -15,7 +15,7 @@ class VideoBookmarkController extends Controller
         private readonly BillingEntitlementService $billing,
     ) {}
 
-    public function store(Request $request, int $videoId): JsonResponse
+    public function store(Request $request, string $videoId): JsonResponse
     {
         $user = $request->user();
 
@@ -34,7 +34,7 @@ class VideoBookmarkController extends Controller
         ]);
     }
 
-    public function destroy(Request $request, int $videoId): JsonResponse
+    public function destroy(Request $request, string $videoId): JsonResponse
     {
         $user = $request->user();
 

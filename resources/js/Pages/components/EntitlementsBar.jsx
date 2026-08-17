@@ -28,7 +28,7 @@ export default function EntitlementsBar() {
     const searchesLow = searchLimit > 0 && searchLeft <= Math.max(1, Math.round(searchLimit * 0.1));
 
     return (
-        <div className="ent">
+        <Link href="/settings/subscription" className="ent" aria-label="Open subscription settings">
             <b>{titleCase(billing.currentPlan)}</b>
             <i />
             <span className={searchesLow ? 'low' : undefined}>
@@ -43,9 +43,9 @@ export default function EntitlementsBar() {
             {!billing.hasPaidPlan && (
                 <>
                     <i />
-                    <Link href="/plans">Upgrade</Link>
+                    <span style={{ textDecoration: 'underline' }}>Upgrade</span>
                 </>
             )}
-        </div>
+        </Link>
     );
 }

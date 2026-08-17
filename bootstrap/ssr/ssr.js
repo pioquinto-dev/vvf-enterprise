@@ -4265,7 +4265,8 @@ function SourcesScreen({ onBack, onSkip, onRun, submitting = false }) {
 }
 //#endregion
 //#region resources/js/landing/flow/screens/RunningScreen.jsx
-var POLL_MS = 1e4;
+var POLL_MS$1 = 1e4;
+var AUTO_RETURN_MS = 5e3;
 var STAGES = [
 	"Starting the scrape",
 	"Pulling videos from TikTok",
@@ -4276,7 +4277,7 @@ var STAGES = [
 * The transitional loading state after a run is dispatched. Not a wizard step —
 * it has no stepper — just a live view of a scrape already running server-side.
 */
-function RunningScreen({ searchId, onBack, onDone }) {
+function RunningScreen({ searchId, onBack, onDone, onAutoReturn }) {
 	const { auth = {} } = usePage().props;
 	const signedIn = auth.signedIn ?? Boolean(auth.user);
 	const [search, setSearch] = useState(null);
@@ -4311,7 +4312,7 @@ function RunningScreen({ searchId, onBack, onDone }) {
 					}
 				}
 			} catch {}
-			timer = window.setTimeout(poll, POLL_MS);
+			timer = window.setTimeout(poll, POLL_MS$1);
 		};
 		const onVisibility = () => {
 			if (document.visibilityState === "visible" && !finished.current) {
@@ -4327,6 +4328,18 @@ function RunningScreen({ searchId, onBack, onDone }) {
 			document.removeEventListener("visibilitychange", onVisibility);
 		};
 	}, [searchId, onDone]);
+	useEffect(() => {
+		if (!searchId || failed || finished.current) return void 0;
+		const timer = window.setTimeout(() => {
+			updateTracked(searchId, { runningPromptShown: true });
+			onAutoReturn?.();
+		}, AUTO_RETURN_MS);
+		return () => window.clearTimeout(timer);
+	}, [
+		failed,
+		onAutoReturn,
+		searchId
+	]);
 	useEffect(() => {
 		if (failed) return void 0;
 		const timer = window.setInterval(() => setStage((s) => Math.min(s + 1, STAGES.length - 1)), 12e3);
@@ -4388,7 +4401,7 @@ function RunningScreen({ searchId, onBack, onDone }) {
 						maxWidth: 420,
 						margin: "12px auto 0"
 					},
-					children: "We’ll show the results right here the moment they’re ready."
+					children: "We’ll send you back to the dashboard in a few seconds while this keeps running."
 				}),
 				/* @__PURE__ */ jsx("div", {
 					className: "run__s",
@@ -4550,7 +4563,58 @@ function Stepper({ kind, current }) {
 		})
 	});
 }
+function UsageConfirmModal$1({ title, body, subject, confirmLabel, busy = false, onConfirm, onCancel }) {
+	return /* @__PURE__ */ jsx("div", {
+		className: "bb",
+		children: /* @__PURE__ */ jsxs("div", {
+			className: "bb-modal",
+			children: [/* @__PURE__ */ jsx("button", {
+				className: "bb-modal__bg",
+				"aria-label": "Close",
+				onClick: onCancel
+			}), /* @__PURE__ */ jsxs("div", {
+				className: "bb-modal__box",
+				children: [
+					/* @__PURE__ */ jsx("h2", { children: title }),
+					/* @__PURE__ */ jsx("p", {
+						className: "sub",
+						children: body
+					}),
+					subject && /* @__PURE__ */ jsx("p", {
+						style: {
+							marginTop: 16,
+							fontWeight: 700,
+							color: "var(--ink)"
+						},
+						children: subject
+					}),
+					/* @__PURE__ */ jsxs("div", {
+						className: "actrow__r",
+						style: {
+							marginTop: 24,
+							justifyContent: "flex-end"
+						},
+						children: [/* @__PURE__ */ jsx("button", {
+							type: "button",
+							className: "btn btn--g",
+							onClick: onCancel,
+							disabled: busy,
+							children: "Cancel"
+						}), /* @__PURE__ */ jsx("button", {
+							type: "button",
+							className: "btn btn--y",
+							onClick: onConfirm,
+							disabled: busy,
+							children: busy ? "Starting…" : confirmLabel
+						})]
+					})
+				]
+			})]
+		})
+	});
+}
 function SearchWizard({ initialType = "brand", initialQuery = "", heading = "Start a search", subheading = "Pick one brand, competitor, or product — we widen it with smarter keywords on the next step.", subjectExtra = null }) {
+	const { auth = {}, billing = {} } = usePage().props;
 	const resumeId = readRunParam();
 	const [step, setStep] = useState(resumeId ? "running" : initialQuery ? "keywords" : "subject");
 	const [type, setType] = useState(initialType);
@@ -4559,7 +4623,12 @@ function SearchWizard({ initialType = "brand", initialQuery = "", heading = "Sta
 	const [searchId, setSearchId] = useState(resumeId);
 	const [submitting, setSubmitting] = useState(false);
 	const [error, setError] = useState(null);
+	const [confirmPayload, setConfirmPayload] = useState(null);
 	const kind = kindOf(type);
+	const signedIn = auth.signedIn ?? Boolean(auth.user);
+	const searchLimit = billing.searchCreditsLimit ?? 0;
+	const searchUsed = billing.searchCreditsUsed ?? 0;
+	const searchRemainingAfterUse = searchLimit === -1 ? "unlimited" : Math.max(0, searchLimit - searchUsed - 1);
 	const stampUrl = (id) => {
 		if (typeof window === "undefined") return;
 		const url = new URL(window.location.href);
@@ -4599,15 +4668,31 @@ function SearchWizard({ initialType = "brand", initialQuery = "", heading = "Sta
 			setSubmitting(false);
 		}
 	};
+	const needsSearchConfirm = signedIn && searchLimit !== 0;
+	const runSearch = (payload, sources) => {
+		if (!needsSearchConfirm) {
+			doCreate(payload, sources);
+			return;
+		}
+		setConfirmPayload({
+			payload,
+			sources
+		});
+	};
 	const afterKeywords = (payload) => {
 		setPending(payload);
 		if (kind === "brand") setStep("sources");
-		else doCreate(payload);
+		else runSearch(payload);
 	};
 	const backToKeywords = () => {
 		stampUrl(null);
 		setSearchId(null);
 		setStep(phrase ? "keywords" : "subject");
+	};
+	const leaveRunningScreen = () => {
+		stampUrl(null);
+		setSearchId(null);
+		setStep("subject");
 	};
 	const onDone = useCallback((found) => router.visit(found?.url ?? `/bookmark/${found?.id ?? searchId}`), [searchId]);
 	const topTitle = step === "subject" ? heading : phrase;
@@ -4620,7 +4705,8 @@ function SearchWizard({ initialType = "brand", initialQuery = "", heading = "Sta
 		step === "running" && searchId ? /* @__PURE__ */ jsx(RunningScreen, {
 			searchId,
 			onBack: backToKeywords,
-			onDone
+			onDone,
+			onAutoReturn: leaveRunningScreen
 		}) : /* @__PURE__ */ jsxs("div", {
 			className: "card",
 			children: [
@@ -4645,17 +4731,31 @@ function SearchWizard({ initialType = "brand", initialQuery = "", heading = "Sta
 				step === "sources" && /* @__PURE__ */ jsx(SourcesScreen, {
 					submitting,
 					onBack: () => setStep("keywords"),
-					onSkip: () => doCreate(pending),
-					onRun: (sources) => doCreate(pending, sources)
+					onSkip: () => runSearch(pending),
+					onRun: (sources) => runSearch(pending, sources)
 				})
 			]
 		}),
-		step === "subject" && subjectExtra
+		step === "subject" && subjectExtra,
+		confirmPayload && /* @__PURE__ */ jsx(UsageConfirmModal$1, {
+			title: "Start this search?",
+			body: `This will use 1 search credit. You will have ${searchRemainingAfterUse} search credits remaining after this run starts. Search credits are not restored later, even if you pause, delete, or rerun the search.`,
+			subject: confirmPayload.payload?.name ?? confirmPayload.payload?.phrase ?? phrase,
+			confirmLabel: "Start search",
+			busy: submitting,
+			onCancel: () => setConfirmPayload(null),
+			onConfirm: () => {
+				const next = confirmPayload;
+				setConfirmPayload(null);
+				doCreate(next.payload, next.sources);
+			}
+		})
 	] });
 }
 //#endregion
 //#region resources/js/Pages/Dashboard.jsx
 var Dashboard_exports = /* @__PURE__ */ __exportAll({ default: () => Dashboard });
+var POLL_MS = 1e4;
 /** "Pick up where you left off" — the three most recent saved searches. */
 function RecentCard({ searches }) {
 	if (!searches?.length) return null;
@@ -4683,21 +4783,96 @@ function RecentCard({ searches }) {
 }
 function Dashboard() {
 	const { flash = {}, recent = [] } = usePage().props;
-	return /* @__PURE__ */ jsxs(Fragment, { children: [/* @__PURE__ */ jsx(Head, { title: "Dashboard · Brand Beacon" }), /* @__PURE__ */ jsxs(AppLayout, {
-		width: "max-w-4xl",
-		children: [flash.status && /* @__PURE__ */ jsx("div", {
-			style: {
-				marginBottom: 18,
-				padding: "12px 16px",
-				borderRadius: "var(--r)",
-				background: "var(--ok-bg)",
-				color: "var(--ok)",
-				fontWeight: 600,
-				fontSize: ".85rem"
-			},
-			children: flash.status
-		}), /* @__PURE__ */ jsx(SearchWizard, { subjectExtra: /* @__PURE__ */ jsx(RecentCard, { searches: recent }) })]
-	})] });
+	const [readyModal, setReadyModal] = useState(null);
+	useEffect(() => {
+		if (readyModal) return void 0;
+		let cancelled = false;
+		let timer;
+		const poll = async () => {
+			if (cancelled) return;
+			const activeTracked = readTracked().filter((entry) => entry?.id && entry.completedPromptShown !== true);
+			if (activeTracked.length === 0) return;
+			try {
+				const done = ((await fetchNotifications(activeTracked.map((entry) => entry.id)))?.searches ?? []).find((search) => search?.status === "done");
+				if (done) {
+					updateTracked(done.id, {
+						completedPromptShown: true,
+						name: done.name,
+						url: done.url
+					});
+					if (!cancelled) setReadyModal(done);
+					return;
+				}
+			} catch {}
+			timer = window.setTimeout(poll, POLL_MS);
+		};
+		poll();
+		return () => {
+			cancelled = true;
+			window.clearTimeout(timer);
+		};
+	}, [readyModal]);
+	const closeReadyModal = () => setReadyModal(null);
+	const viewResults = () => {
+		if (!readyModal?.url) return closeReadyModal();
+		router.visit(readyModal.url);
+	};
+	return /* @__PURE__ */ jsxs(Fragment, { children: [
+		/* @__PURE__ */ jsx(Head, { title: "Dashboard · Brand Beacon" }),
+		/* @__PURE__ */ jsxs(AppLayout, {
+			width: "max-w-4xl",
+			children: [flash.status && /* @__PURE__ */ jsx("div", {
+				style: {
+					marginBottom: 18,
+					padding: "12px 16px",
+					borderRadius: "var(--r)",
+					background: "var(--ok-bg)",
+					color: "var(--ok)",
+					fontWeight: 600,
+					fontSize: ".85rem"
+				},
+				children: flash.status
+			}), /* @__PURE__ */ jsx(SearchWizard, { subjectExtra: /* @__PURE__ */ jsx(RecentCard, { searches: recent }) })]
+		}),
+		readyModal && /* @__PURE__ */ jsx("div", {
+			className: "bb",
+			children: /* @__PURE__ */ jsxs("div", {
+				className: "bb-modal",
+				children: [/* @__PURE__ */ jsx("button", {
+					className: "bb-modal__bg",
+					"aria-label": "Close",
+					onClick: closeReadyModal
+				}), /* @__PURE__ */ jsxs("div", {
+					className: "bb-modal__box",
+					children: [
+						/* @__PURE__ */ jsx("h2", { children: "Search ready" }),
+						/* @__PURE__ */ jsx("p", {
+							className: "sub",
+							children: readyModal.name ? `Your search for ${String.fromCharCode(8220)}${readyModal.name}${String.fromCharCode(8221)} has finished running.` : "Your search has finished running."
+						}),
+						/* @__PURE__ */ jsxs("div", {
+							className: "actrow__r",
+							style: {
+								marginTop: 24,
+								justifyContent: "flex-end"
+							},
+							children: [/* @__PURE__ */ jsx("button", {
+								type: "button",
+								className: "btn btn--g",
+								onClick: closeReadyModal,
+								children: "Close"
+							}), /* @__PURE__ */ jsx("button", {
+								type: "button",
+								className: "btn btn--y",
+								onClick: viewResults,
+								children: "View results"
+							})]
+						})
+					]
+				})]
+			})
+		})
+	] });
 }
 //#endregion
 //#region resources/js/Pages/Home.jsx
@@ -9038,6 +9213,12 @@ function numericUsageValue(value, fallback = 0) {
 	const coerced = Number(value);
 	return Number.isFinite(coerced) ? coerced : fallback;
 }
+function usageRemainingLabel(limit, used) {
+	return limit === -1 ? "unlimited" : Math.max(0, limit - used - 1);
+}
+function actionErrorMessage(error, fallback) {
+	return error?.payload?.errors?.billing?.[0] || error?.payload?.errors?.auth?.[0] || error?.message || fallback;
+}
 function buildAnalysisStates(results = []) {
 	return Object.fromEntries(results.filter((video) => video?.id && video?.analysis).map((video) => [video.id, {
 		status: video.analysis.status ?? "idle",
@@ -9101,6 +9282,10 @@ function AnalyzeConfirmModal({ video, creditsRemainingAfterUse = 0, busy = false
 						]
 					}),
 					/* @__PURE__ */ jsx("p", {
+						className: "mt-2 text-[13px] leading-6 text-[#7a7368]",
+						children: "This credit is not restored later, even if you delete the analysis result and run it again."
+					}),
+					/* @__PURE__ */ jsx("p", {
 						className: "mt-2 truncate text-[12px] font-medium text-[#8c8579]",
 						children: video.handle ?? video.creator_name ?? video.title ?? "Selected video"
 					}),
@@ -9124,6 +9309,72 @@ function AnalyzeConfirmModal({ video, creditsRemainingAfterUse = 0, busy = false
 		})
 	});
 }
+function BookmarkConfirmModal({ video, creditsRemainingAfterUse = 0, busy = false, onConfirm, onCancel }) {
+	if (!video) return null;
+	return /* @__PURE__ */ jsx("div", {
+		className: "fixed inset-0 z-[130] flex items-center justify-center bg-[rgba(38,33,28,0.42)] px-4 py-6 backdrop-blur-[2px]",
+		onClick: onCancel,
+		children: /* @__PURE__ */ jsx("div", {
+			className: "w-full max-w-[430px] rounded-[24px] border border-[#d9d1c4] bg-[radial-gradient(circle_at_top,#f7f2e9_0%,#f3efe8_40%,#f1ede6_100%)] p-3 shadow-[0_28px_90px_rgba(42,33,20,0.22)]",
+			onClick: (event) => event.stopPropagation(),
+			role: "dialog",
+			"aria-modal": "true",
+			"aria-label": "Confirm video bookmark",
+			children: /* @__PURE__ */ jsxs("div", {
+				className: "rounded-[20px] border border-[#ddd6ca] bg-[#fffdf9] p-5",
+				children: [
+					/* @__PURE__ */ jsx("div", {
+						className: "flex h-10 w-10 items-center justify-center rounded-full bg-[#fff0bf] text-[#8c6b10]",
+						children: /* @__PURE__ */ jsx("svg", {
+							viewBox: "0 0 24 24",
+							className: "h-5 w-5 stroke-current",
+							fill: "none",
+							strokeWidth: "2",
+							strokeLinecap: "round",
+							strokeLinejoin: "round",
+							children: /* @__PURE__ */ jsx("path", { d: "M7 4h10a1 1 0 0 1 1 1v15l-6-3-6 3V5a1 1 0 0 1 1-1Z" })
+						})
+					}),
+					/* @__PURE__ */ jsx("h3", {
+						className: "mt-4 text-[20px] font-semibold text-[#1a1a1a]",
+						children: "Bookmark this video?"
+					}),
+					/* @__PURE__ */ jsxs("p", {
+						className: "mt-2 text-[14px] leading-6 text-[#696257]",
+						children: [
+							"This will use 1 bookmark credit. You'll have ",
+							creditsRemainingAfterUse,
+							" credits left."
+						]
+					}),
+					/* @__PURE__ */ jsx("p", {
+						className: "mt-2 text-[13px] leading-6 text-[#7a7368]",
+						children: "This credit is not restored later, even if you remove the bookmark."
+					}),
+					/* @__PURE__ */ jsx("p", {
+						className: "mt-2 truncate text-[12px] font-medium text-[#8c8579]",
+						children: video.handle ?? video.creator_name ?? video.title ?? "Selected video"
+					}),
+					/* @__PURE__ */ jsxs("div", {
+						className: "mt-5 flex gap-3",
+						children: [/* @__PURE__ */ jsx("button", {
+							type: "button",
+							onClick: onConfirm,
+							disabled: busy,
+							className: "inline-flex flex-1 items-center justify-center rounded-full bg-[#f2c44f] px-4 py-2.5 text-[12px] font-semibold text-[#4f3d08] transition hover:bg-[#e8bb48] disabled:cursor-not-allowed disabled:opacity-60",
+							children: busy ? "Saving…" : "Save bookmark"
+						}), /* @__PURE__ */ jsx("button", {
+							type: "button",
+							onClick: onCancel,
+							className: "inline-flex flex-1 items-center justify-center rounded-full border border-[#ddd6ca] bg-white px-4 py-2.5 text-[12px] font-semibold text-[#5f584d] transition hover:bg-[#faf7f1]",
+							children: "Cancel"
+						})]
+					})
+				]
+			})
+		})
+	});
+}
 function DetailScreen({ search, isAuthenticated = false, billing = null, onToggleBookmark, onRefresh, onTogglePause, onDelete, refreshing = false, bookmarkUpdating = false }) {
 	const [visible, setVisible] = useState(PAGE_STEP);
 	const [copied, setCopied] = useState(false);
@@ -9133,6 +9384,7 @@ function DetailScreen({ search, isAuthenticated = false, billing = null, onToggl
 	const [analysisStates, setAnalysisStates] = useState(() => buildAnalysisStates(search?.results ?? []));
 	const [analysisModal, setAnalysisModal] = useState(null);
 	const [pendingAnalysisVideo, setPendingAnalysisVideo] = useState(null);
+	const [pendingBookmarkVideo, setPendingBookmarkVideo] = useState(null);
 	const sharedBilling = usePage().props?.billing ?? {};
 	const billingState = billing ?? sharedBilling;
 	const insights = search?.insights ?? {};
@@ -9144,7 +9396,10 @@ function DetailScreen({ search, isAuthenticated = false, billing = null, onToggl
 	const lastPulledLabel = formatInsightDate(search?.last_run_at);
 	const videoAnalysisLimit = numericUsageValue(billingState?.videoAnalysisLimit, 0);
 	const videoAnalysisUsed = numericUsageValue(billingState?.videoAnalysisUsed, 0);
-	const creditsRemainingAfterUse = videoAnalysisLimit === -1 ? "unlimited" : Math.max(0, videoAnalysisLimit - videoAnalysisUsed - 1);
+	const videoBookmarkLimit = numericUsageValue(billingState?.videoBookmarkLimit, 0);
+	const videoBookmarkUsed = numericUsageValue(billingState?.videoBookmarkCount, 0);
+	const analysisCreditsRemainingAfterUse = usageRemainingLabel(videoAnalysisLimit, videoAnalysisUsed);
+	const bookmarkCreditsRemainingAfterUse = usageRemainingLabel(videoBookmarkLimit, videoBookmarkUsed);
 	const feedItems = items;
 	const [winner, ...rest] = feedItems;
 	const shown = rest.slice(0, visible);
@@ -9223,15 +9478,26 @@ function DetailScreen({ search, isAuthenticated = false, billing = null, onToggl
 			window.location.assign("/auth/google");
 			return;
 		}
+		if (!video.bookmarked) {
+			setPendingBookmarkVideo(video);
+			return;
+		}
+		await commitBookmark(video, "remove");
+	};
+	const commitBookmark = async (video, action) => {
+		if (!isAuthenticated) {
+			window.location.assign("/auth/google");
+			return;
+		}
 		try {
 			setBookmarkingId(video.id);
-			const payload = video.bookmarked ? await bookmarks.remove(video.id) : await bookmarks.save(video.id);
+			const payload = action === "remove" ? await bookmarks.remove(video.id) : await bookmarks.save(video.id);
 			setItems((current) => current.map((item) => item.id === video.id ? {
 				...item,
 				bookmarked: payload.bookmarked
 			} : item));
 		} catch (error) {
-			if (error?.status === 422 || error?.status === 401) window.alert(error.payload?.errors?.billing?.[0] || error.payload?.errors?.auth?.[0] || error.message);
+			if (error?.status === 422 || error?.status === 401) window.alert(actionErrorMessage(error, "Could not update the bookmark."));
 		} finally {
 			setBookmarkingId(null);
 		}
@@ -9267,7 +9533,7 @@ function DetailScreen({ search, isAuthenticated = false, billing = null, onToggl
 				error_message: error?.message ?? "Could not start video analysis."
 			});
 			if (error?.status === 422 || error?.status === 401) {
-				window.alert(error.payload?.errors?.billing?.[0] || error.payload?.errors?.auth?.[0] || error.message);
+				window.alert(actionErrorMessage(error, "Could not start video analysis."));
 				return;
 			}
 			window.alert(error?.message || "Could not start video analysis.");
@@ -9330,13 +9596,13 @@ function DetailScreen({ search, isAuthenticated = false, billing = null, onToggl
 	return /* @__PURE__ */ jsxs("div", {
 		className: "tracker",
 		children: [
-			/* @__PURE__ */ jsx("div", {
+			/* @__PURE__ */ jsxs("div", {
 				className: "viewbar",
-				children: /* @__PURE__ */ jsx("a", {
+				children: [/* @__PURE__ */ jsx("a", {
 					href: "/bookmark",
 					className: "tbtn",
 					children: "← Back to library"
-				})
+				}), /* @__PURE__ */ jsx(EntitlementsBar, {})]
 			}),
 			/* @__PURE__ */ jsx(TrackerHead, {
 				search,
@@ -9495,10 +9761,21 @@ function DetailScreen({ search, isAuthenticated = false, billing = null, onToggl
 			}),
 			pendingAnalysisVideo && /* @__PURE__ */ jsx(AnalyzeConfirmModal, {
 				video: pendingAnalysisVideo,
-				creditsRemainingAfterUse,
+				creditsRemainingAfterUse: analysisCreditsRemainingAfterUse,
 				busy: false,
 				onConfirm: confirmAnalyze,
 				onCancel: () => setPendingAnalysisVideo(null)
+			}),
+			pendingBookmarkVideo && /* @__PURE__ */ jsx(BookmarkConfirmModal, {
+				video: pendingBookmarkVideo,
+				creditsRemainingAfterUse: bookmarkCreditsRemainingAfterUse,
+				busy: bookmarkingId === pendingBookmarkVideo.id,
+				onConfirm: async () => {
+					const video = pendingBookmarkVideo;
+					setPendingBookmarkVideo(null);
+					await commitBookmark(video, "save");
+				},
+				onCancel: () => setPendingBookmarkVideo(null)
 			})
 		]
 	});
@@ -9506,6 +9783,56 @@ function DetailScreen({ search, isAuthenticated = false, billing = null, onToggl
 //#endregion
 //#region resources/js/Pages/SavedSearches/Show.jsx
 var Show_exports$1 = /* @__PURE__ */ __exportAll({ default: () => Show$1 });
+function UsageConfirmModal({ title, body, subject, confirmLabel, busy = false, onConfirm, onCancel }) {
+	return /* @__PURE__ */ jsx("div", {
+		className: "bb",
+		children: /* @__PURE__ */ jsxs("div", {
+			className: "bb-modal",
+			children: [/* @__PURE__ */ jsx("button", {
+				className: "bb-modal__bg",
+				"aria-label": "Close",
+				onClick: onCancel
+			}), /* @__PURE__ */ jsxs("div", {
+				className: "bb-modal__box",
+				children: [
+					/* @__PURE__ */ jsx("h2", { children: title }),
+					/* @__PURE__ */ jsx("p", {
+						className: "sub",
+						children: body
+					}),
+					subject && /* @__PURE__ */ jsx("p", {
+						style: {
+							marginTop: 16,
+							fontWeight: 700,
+							color: "var(--ink)"
+						},
+						children: subject
+					}),
+					/* @__PURE__ */ jsxs("div", {
+						className: "actrow__r",
+						style: {
+							marginTop: 24,
+							justifyContent: "flex-end"
+						},
+						children: [/* @__PURE__ */ jsx("button", {
+							type: "button",
+							className: "btn btn--g",
+							onClick: onCancel,
+							disabled: busy,
+							children: "Cancel"
+						}), /* @__PURE__ */ jsx("button", {
+							type: "button",
+							className: "btn btn--y",
+							onClick: onConfirm,
+							disabled: busy,
+							children: busy ? "Starting…" : confirmLabel
+						})]
+					})
+				]
+			})]
+		})
+	});
+}
 /**
 * The single detail view for every saved search — brand, competitor, and
 * product all render the same analytics tracker (the one design identity).
@@ -9514,7 +9841,11 @@ function Show$1({ search: initial, isAuthenticated = false, billing }) {
 	const [search, setSearch] = useState(initial);
 	const [refreshing, setRefreshing] = useState(false);
 	const [bookmarkingSearch, setBookmarkingSearch] = useState(false);
-	const refresh = async () => {
+	const [confirmRefresh, setConfirmRefresh] = useState(false);
+	const searchLimit = billing?.searchCreditsLimit ?? 0;
+	const searchUsed = billing?.searchCreditsUsed ?? 0;
+	const searchRemainingAfterUse = searchLimit === -1 ? "unlimited" : Math.max(0, searchLimit - searchUsed - 1);
+	const runRefresh = async () => {
 		setRefreshing(true);
 		try {
 			await savedSearch.refresh(search.id);
@@ -9522,6 +9853,13 @@ function Show$1({ search: initial, isAuthenticated = false, billing }) {
 		} catch {
 			setRefreshing(false);
 		}
+	};
+	const refresh = async () => {
+		if (isAuthenticated && searchLimit !== 0) {
+			setConfirmRefresh(true);
+			return;
+		}
+		await runRefresh();
 	};
 	const remove = async () => {
 		await savedSearch.destroy(search.id);
@@ -9546,20 +9884,35 @@ function Show$1({ search: initial, isAuthenticated = false, billing }) {
 			setBookmarkingSearch(false);
 		}
 	};
-	return /* @__PURE__ */ jsxs(Fragment, { children: [/* @__PURE__ */ jsx(Head, { title: `${search.name} · Brand Beacon` }), /* @__PURE__ */ jsx(AppLayout, {
-		width: "max-w-[1240px]",
-		children: /* @__PURE__ */ jsx(DetailScreen, {
-			search,
-			isAuthenticated,
-			billing,
-			refreshing,
-			bookmarkUpdating: bookmarkingSearch,
-			onRefresh: refresh,
-			onToggleBookmark: toggleBookmark,
-			onTogglePause: togglePause,
-			onDelete: remove
+	return /* @__PURE__ */ jsxs(Fragment, { children: [
+		/* @__PURE__ */ jsx(Head, { title: `${search.name} · Brand Beacon` }),
+		/* @__PURE__ */ jsx(AppLayout, {
+			width: "max-w-[1240px]",
+			children: /* @__PURE__ */ jsx(DetailScreen, {
+				search,
+				isAuthenticated,
+				billing,
+				refreshing,
+				bookmarkUpdating: bookmarkingSearch,
+				onRefresh: refresh,
+				onToggleBookmark: toggleBookmark,
+				onTogglePause: togglePause,
+				onDelete: remove
+			})
+		}),
+		confirmRefresh && /* @__PURE__ */ jsx(UsageConfirmModal, {
+			title: "Refresh this search?",
+			body: `This will use 1 search credit. You will have ${searchRemainingAfterUse} search credits remaining after the refresh starts. Search credits are not restored later, even if you pause or delete the search.`,
+			subject: search.name,
+			confirmLabel: "Refresh search",
+			busy: refreshing,
+			onCancel: () => setConfirmRefresh(false),
+			onConfirm: async () => {
+				setConfirmRefresh(false);
+				await runRefresh();
+			}
 		})
-	})] });
+	] });
 }
 //#endregion
 //#region resources/js/Pages/Search/Keywords.jsx
@@ -9587,7 +9940,8 @@ function Running({ searchId }) {
 		children: /* @__PURE__ */ jsx(RunningScreen, {
 			searchId,
 			onBack: () => router.visit("/bookmark"),
-			onDone: () => router.visit(`/bookmark/${searchId}`)
+			onDone: () => router.visit(`/bookmark/${searchId}`),
+			onAutoReturn: () => router.visit("/dashboard")
 		})
 	})] });
 }

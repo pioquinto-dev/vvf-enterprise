@@ -122,6 +122,28 @@ class BillingEntitlementService
         }
     }
 
+    public function consumeVideoBookmark(User $user): void
+    {
+        $subscription = $this->activeSubscriptionFor($user);
+
+        if ($subscription === null) {
+            Log::warning('Video bookmark credit increment skipped because no active subscription was found.', [
+                'user_id' => $user->id,
+                'current_plan_slug' => $user->current_plan_slug,
+            ]);
+
+            return;
+        }
+
+        $before = max(0, (int) data_get($subscription->metadata, 'subscription.viral_video_bookmarks.used', 0));
+        $baseline = max($before, $user->videoBookmarks()->count());
+        $used = $baseline + 1;
+
+        $subscription->forceFill([
+            'metadata' => data_set((array) $subscription->metadata, 'subscription.viral_video_bookmarks.used', $used),
+        ])->save();
+    }
+
     public function ensureCanBookmarkSearch(User $user): void
     {
         if (! $this->hasPaidPlan($user)) {
@@ -231,7 +253,7 @@ class BillingEntitlementService
 
     public function videoBookmarkCount(User $user): int
     {
-        return $user->videoBookmarks()->count();
+        return $this->derivedVideoBookmarkUsed($user);
     }
 
     public function searchBookmarkLimit(?User $user): int
@@ -365,7 +387,7 @@ class BillingEntitlementService
         }
 
         $searchCreditsUsed = $this->searchCreditsUsed($user);
-        $videoBookmarksUsed = $this->videoBookmarkCount($user);
+        $videoBookmarksUsed = $this->derivedVideoBookmarkUsed($user);
         $searchBookmarksUsed = $this->searchBookmarkCount($user);
         $videoAnalysisUsed = $this->derivedVideoAnalysisUsed($user);
 
@@ -407,7 +429,7 @@ class BillingEntitlementService
         }
 
         $searchUsed = $this->derivedSearchCreditsUsed($user, $limits);
-        $videoBookmarkUsed = $this->videoBookmarkCount($user);
+        $videoBookmarkUsed = $this->derivedVideoBookmarkUsed($user);
         $searchBookmarkUsed = $this->searchBookmarkCount($user);
         $videoAnalysisUsed = $this->derivedVideoAnalysisUsed($user);
 
@@ -462,6 +484,24 @@ class BillingEntitlementService
         }
 
         return $query->count();
+    }
+
+    private function derivedVideoBookmarkUsed(User $user): int
+    {
+        $current = $user->videoBookmarks()->count();
+
+        if (! $this->hasPaidPlan($user)) {
+            return $current;
+        }
+
+        $subscription = $this->activeSubscriptionFor($user);
+        $used = data_get($subscription?->metadata, 'subscription.viral_video_bookmarks.used');
+
+        if ($used === null) {
+            return $current;
+        }
+
+        return max($current, (int) $used);
     }
 
     /**
