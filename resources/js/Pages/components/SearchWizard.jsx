@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { router, usePage } from '@inertiajs/react';
 
 import SearchLauncher from './SearchLauncher.jsx';
@@ -26,6 +26,7 @@ import { Check } from '../../landing/components/Icons.jsx';
 /* brand + competitor are both "brand kind" — they have an account to connect. */
 const kindOf = (type) => (type === 'product' ? 'product' : 'brand');
 const nounOf = (type) => (type === 'product' ? 'product' : 'brand');
+const PENDING_SEARCH_KEY = 'brand-beacon.pending-search';
 
 function readRunParam() {
     if (typeof window === 'undefined') return null;
@@ -90,6 +91,65 @@ function UsageConfirmModal({ title, body, subject, confirmLabel, busy = false, o
     );
 }
 
+function AuthPromptModal({ type, phrase, onClose }) {
+    const noun = nounOf(type);
+
+    const goTo = (path) => {
+        if (typeof window === 'undefined') return;
+        window.location.assign(path);
+    };
+
+    return (
+        <div className="bb">
+            <div className="bb-modal">
+                <button className="bb-modal__bg" aria-label="Close" onClick={onClose} />
+                <div className="bb-modal__box">
+                    <h2>Create your account first</h2>
+                    <p className="sub">
+                        Your {noun} is ready. Create an account or sign in first, and we will start this search right after you get back.
+                    </p>
+                    {phrase && <p style={{ marginTop: 16, fontWeight: 700, color: 'var(--ink)' }}>{phrase}</p>}
+                    <div className="actrow__r" style={{ marginTop: 24, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+                        <button type="button" className="btn btn--g" onClick={onClose}>
+                            Not now
+                        </button>
+                        <button type="button" className="btn btn--g" onClick={() => goTo('/login')}>
+                            Sign in
+                        </button>
+                        <button type="button" className="btn btn--y" onClick={() => goTo('/register')}>
+                            Create account
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+function readPendingSearch() {
+    if (typeof window === 'undefined') return null;
+
+    try {
+        const raw = window.sessionStorage.getItem(PENDING_SEARCH_KEY);
+        if (!raw) return null;
+        const parsed = JSON.parse(raw);
+
+        return parsed && typeof parsed === 'object' ? parsed : null;
+    } catch {
+        return null;
+    }
+}
+
+function writePendingSearch(payload) {
+    if (typeof window === 'undefined') return;
+    window.sessionStorage.setItem(PENDING_SEARCH_KEY, JSON.stringify(payload));
+}
+
+function clearPendingSearch() {
+    if (typeof window === 'undefined') return;
+    window.sessionStorage.removeItem(PENDING_SEARCH_KEY);
+}
+
 export default function SearchWizard({ initialType = 'brand', initialQuery = '', heading = 'Start a search', subheading = 'Pick one brand, competitor, or product — we widen it with smarter keywords on the next step.', subjectExtra = null }) {
     const { auth = {}, billing = {} } = usePage().props;
     const resumeId = readRunParam();
@@ -102,6 +162,7 @@ export default function SearchWizard({ initialType = 'brand', initialQuery = '',
     const [submitting, setSubmitting] = useState(false);
     const [error, setError] = useState(null);
     const [confirmPayload, setConfirmPayload] = useState(null);
+    const [authPromptPayload, setAuthPromptPayload] = useState(null);
 
     const kind = kindOf(type);
     const signedIn = auth.signedIn ?? Boolean(auth.user);
@@ -123,25 +184,30 @@ export default function SearchWizard({ initialType = 'brand', initialQuery = '',
         setStep('keywords');
     };
 
-    const doCreate = async (payload, sources) => {
+    const doCreate = async (payload, sources, searchType = type, searchPhrase = payload.phrase || phrase) => {
         setSubmitting(true);
         setError(null);
 
         try {
             const created = await createSavedSearch({
-                type,
-                phrase: payload.phrase || phrase,
+                type: searchType,
+                phrase: searchPhrase,
                 name: payload.name,
                 keywords: payload.keywords,
                 frequency: payload.frequency,
                 sources,
             });
 
+            clearPendingSearch();
             trackSearch({ id: created.id, name: created.name, url: created.url });
             setSearchId(created.id);
             stampUrl(created.id);
             setStep('running');
         } catch (e) {
+            const pendingSearch = readPendingSearch();
+            if (pendingSearch?.started) {
+                writePendingSearch({ ...pendingSearch, started: false });
+            }
             setError(e.message || 'Could not start the search. Try again.');
             setStep('keywords');
         } finally {
@@ -149,9 +215,57 @@ export default function SearchWizard({ initialType = 'brand', initialQuery = '',
         }
     };
 
+    useEffect(() => {
+        if (!signedIn) return;
+
+        const pendingSearch = readPendingSearch();
+
+        if (!pendingSearch || pendingSearch.started) {
+            return;
+        }
+
+        if (!pendingSearch.payload || pendingSearch.type !== 'brand' && pendingSearch.type !== 'competitor' && pendingSearch.type !== 'product') {
+            clearPendingSearch();
+            return;
+        }
+
+        writePendingSearch({ ...pendingSearch, started: true });
+        setType(pendingSearch.type);
+        setPhrase(pendingSearch.phrase ?? '');
+        setPending(pendingSearch.payload);
+        setError(null);
+        setAuthPromptPayload(null);
+
+        if ((pendingSearch.kind ?? kindOf(pendingSearch.type)) === 'brand') {
+            setStep('sources');
+            return;
+        }
+
+        doCreate(
+            pendingSearch.payload,
+            pendingSearch.sources,
+            pendingSearch.type,
+            pendingSearch.phrase ?? pendingSearch.payload?.phrase ?? '',
+        );
+    }, [signedIn]);
+
     const needsSearchConfirm = signedIn && searchLimit !== 0;
 
     const runSearch = (payload, sources) => {
+        if (!signedIn) {
+            writePendingSearch({
+                type,
+                kind,
+                phrase: payload.phrase || phrase,
+                payload,
+                sources: sources ?? null,
+                started: false,
+            });
+            setPending(payload);
+            setAuthPromptPayload({ type, phrase: payload.phrase || phrase });
+            return;
+        }
+
         if (! needsSearchConfirm) {
             doCreate(payload, sources);
             return;
@@ -163,8 +277,17 @@ export default function SearchWizard({ initialType = 'brand', initialQuery = '',
     // Keywords done: brand/competitor go connect sources first; product runs now.
     const afterKeywords = (payload) => {
         setPending(payload);
-        if (kind === 'brand') setStep('sources');
-        else runSearch(payload);
+        if (!signedIn) {
+            runSearch(payload);
+            return;
+        }
+
+        if (kind === 'brand') {
+            setStep('sources');
+            return;
+        }
+
+        runSearch(payload);
     };
 
     const backToKeywords = () => {
@@ -255,6 +378,17 @@ export default function SearchWizard({ initialType = 'brand', initialQuery = '',
                         const next = confirmPayload;
                         setConfirmPayload(null);
                         doCreate(next.payload, next.sources);
+                    }}
+                />
+            )}
+
+            {authPromptPayload && (
+                <AuthPromptModal
+                    type={authPromptPayload.type}
+                    phrase={authPromptPayload.phrase}
+                    onClose={() => {
+                        clearPendingSearch();
+                        setAuthPromptPayload(null);
                     }}
                 />
             )}
