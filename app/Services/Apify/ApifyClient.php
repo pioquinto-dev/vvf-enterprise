@@ -37,6 +37,23 @@ class ApifyClient
     }
 
     /**
+     * @param  array<string, mixed>  $input
+     * @return array<string, mixed>
+     */
+    public function startActorRun(string $actorId, array $input): array
+    {
+        $response = $this->request()->post("/v2/acts/{$actorId}/runs", $input);
+
+        if ($response->failed()) {
+            throw new RuntimeException(
+                "Apify actor run could not be started (HTTP {$response->status()}): ".$response->body()
+            );
+        }
+
+        return (array) $response->json('data', []);
+    }
+
+    /**
      * @return array<string, mixed>
      */
     public function getRun(string $runId): array

@@ -136,7 +136,45 @@ function InlinePlayer({ video, className, buttonClassName = 'play', iconProps = 
   );
 }
 
-export function WinnerVideo({ video, onToggleBookmark, onAnalyze, bookmarking = false, activePlayerId = null, onPlay = null, onClose = null }) {
+function AnalyzeButton({ status = 'idle', small = false, onClick }) {
+  const isProcessing = status === 'processing';
+  const isComplete = status === 'complete';
+  const label = isProcessing ? 'Analyzing Video.....' : isComplete ? 'View Analysis' : 'Analyze video';
+
+  return (
+    <button
+      type="button"
+      className={`bb-analyze${small ? ' bb-analyze--sm' : ''}${isProcessing ? ' opacity-90' : ''}`}
+      onClick={onClick}
+      aria-busy={isProcessing}
+    >
+      {isProcessing ? (
+        <span className="inline-flex items-center gap-2">
+          <span className="relative flex h-3.5 w-3.5 items-center justify-center">
+            <span className="absolute inline-flex h-3.5 w-3.5 animate-ping rounded-full bg-current/35" />
+            <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-current" />
+          </span>
+          {label}
+        </span>
+      ) : (
+        <>
+          <Search className={small ? 'h-[13px] w-[13px]' : 'h-[15px] w-[15px]'} /> {label}
+        </>
+      )}
+    </button>
+  );
+}
+
+export function WinnerVideo({
+  video,
+  onToggleBookmark,
+  onAnalyze,
+  bookmarking = false,
+  activePlayerId = null,
+  onPlay = null,
+  onClose = null,
+  analysisStatus = 'idle',
+}) {
   if (!video) return null;
 
   const playing = activePlayerId === playerIdOf(video);
@@ -223,9 +261,7 @@ export function WinnerVideo({ video, onToggleBookmark, onAnalyze, bookmarking = 
         )}
 
         <div className="cta">
-          <button type="button" className="bb-analyze" onClick={() => onAnalyze?.(video)}>
-            <Search className="h-[15px] w-[15px]" /> Analyze video
-          </button>
+          <AnalyzeButton status={analysisStatus} onClick={() => onAnalyze?.(video, analysisStatus)} />
           {video.post_url && (
             <a href={video.post_url} target="_blank" rel="noreferrer noopener" className="tbtn">
               open in TikTok ↗
@@ -249,7 +285,17 @@ export function WinnerVideo({ video, onToggleBookmark, onAnalyze, bookmarking = 
   );
 }
 
-export function OutlierCard({ video, rank, onToggleBookmark, onAnalyze, bookmarking = false, activePlayerId = null, onPlay = null, onClose = null }) {
+export function OutlierCard({
+  video,
+  rank,
+  onToggleBookmark,
+  onAnalyze,
+  bookmarking = false,
+  activePlayerId = null,
+  onPlay = null,
+  onClose = null,
+  analysisStatus = 'idle',
+}) {
   const rate = percent(video.engagement_rate);
   const duration = formatDuration(video.duration);
 
@@ -321,9 +367,7 @@ export function OutlierCard({ video, rank, onToggleBookmark, onAnalyze, bookmark
         </div>
 
         <div className="bbact">
-          <button type="button" className="bb-analyze bb-analyze--sm" onClick={() => onAnalyze?.(video)}>
-            <Search className="h-[13px] w-[13px]" /> Analyze video
-          </button>
+          <AnalyzeButton small status={analysisStatus} onClick={() => onAnalyze?.(video, analysisStatus)} />
           {onToggleBookmark && (
             <button
               type="button"

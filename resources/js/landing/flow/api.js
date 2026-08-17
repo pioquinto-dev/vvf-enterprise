@@ -92,6 +92,11 @@ export const bookmarks = {
   remove: (id) => request(`${API_V1}/videos/${id}/bookmark`, { method: 'DELETE' }),
 };
 
+export const videoAnalysis = {
+  request: (id, body = {}) => request(`${API_V1}/videos/${id}/analysis`, { method: 'POST', body }),
+  get: (id) => request(`${API_V1}/videos/${id}/analysis`),
+};
+
 /* ---------------- tracked searches (session storage) ---------------- */
 
 const TRACKED_KEY = 'vvf-tracked-searches';

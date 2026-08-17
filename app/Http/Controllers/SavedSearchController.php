@@ -362,7 +362,7 @@ class SavedSearchController extends Controller
         $bookmarkedVideoIds = $this->bookmarks->idsForUser($request->user());
 
         return Inertia::render('SavedSearches/Show', [
-            'search' => SavedSearchPresenter::detail($model, $bookmarkedVideoIds),
+            'search' => SavedSearchPresenter::detail($model, $bookmarkedVideoIds, $request->user()),
             'isAuthenticated' => $request->user() !== null,
         ]);
     }
@@ -377,7 +377,11 @@ class SavedSearchController extends Controller
     public function showJson(Request $request, int $id): JsonResponse
     {
         return response()->json([
-            'search' => SavedSearchPresenter::detail($this->searches->resolve($request, $id), $this->bookmarks->idsForUser($request->user())),
+            'search' => SavedSearchPresenter::detail(
+                $this->searches->resolve($request, $id),
+                $this->bookmarks->idsForUser($request->user()),
+                $request->user(),
+            ),
         ]);
     }
 

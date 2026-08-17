@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\SettingsController;
+use App\Http\Controllers\VideoAnalysisPageController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\SavedSearchController;
 
@@ -19,6 +20,7 @@ Route::middleware('auth')->group(function (): void {
     Route::patch('/settings/appearance', [SettingsController::class, 'updateAppearance'])->name('settings.appearance.update');
     Route::get('/settings/subscription', [SettingsController::class, 'subscription'])->name('settings.subscription');
     Route::get('/plans', [SettingsController::class, 'plans'])->name('plans');
+    Route::get('/videos/{id}/analysis', [VideoAnalysisPageController::class, 'show'])->name('videos.analysis.show');
 });
 
 Route::get('/results/{search}', [SavedSearchController::class, 'show'])->name('results.show');

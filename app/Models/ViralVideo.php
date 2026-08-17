@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class ViralVideo extends Model
@@ -45,6 +46,16 @@ class ViralVideo extends Model
     public function apifyTrigger(): BelongsTo
     {
         return $this->belongsTo(ApifyTrigger::class);
+    }
+
+    public function preparations(): HasMany
+    {
+        return $this->hasMany(VideoPreparation::class);
+    }
+
+    public function analyses(): HasMany
+    {
+        return $this->hasMany(VideoAnalysis::class);
     }
 
     /**

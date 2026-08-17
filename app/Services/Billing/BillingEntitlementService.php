@@ -7,6 +7,7 @@ use App\Models\CustomKeywordSearchRun;
 use App\Models\PricingPlan;
 use App\Models\Subscription;
 use App\Models\User;
+use App\Models\VideoAnalysis;
 use Carbon\CarbonImmutable;
 use Illuminate\Validation\ValidationException;
 
@@ -137,6 +138,53 @@ class BillingEntitlementService
         }
     }
 
+    public function ensureCanAnalyzeVideo(User $user): void
+    {
+        if (! $this->hasPaidPlan($user)) {
+            throw ValidationException::withMessages([
+                'billing' => 'Upgrade to Basic or Premium to analyze videos.',
+            ]);
+        }
+
+        $limit = $this->videoAnalysisLimit($user);
+
+        if ($limit !== -1 && $this->videoAnalysisUsed($user) >= $limit) {
+            throw ValidationException::withMessages([
+                'billing' => 'You have reached your video analysis limit for this plan.',
+            ]);
+        }
+    }
+
+    public function consumeVideoAnalysis(User $user): void
+    {
+        $subscription = $this->activeSubscriptionFor($user);
+
+        if ($subscription === null) {
+            return;
+        }
+
+        $used = max(0, (int) data_get($subscription->metadata, 'subscription.video_analysis.used', 0)) + 1;
+
+        $subscription->forceFill([
+            'metadata' => data_set((array) $subscription->metadata, 'subscription.video_analysis.used', $used),
+        ])->save();
+    }
+
+    public function refundVideoAnalysis(User $user): void
+    {
+        $subscription = $this->activeSubscriptionFor($user);
+
+        if ($subscription === null) {
+            return;
+        }
+
+        $used = max(0, (int) data_get($subscription->metadata, 'subscription.video_analysis.used', 0) - 1);
+
+        $subscription->forceFill([
+            'metadata' => data_set((array) $subscription->metadata, 'subscription.video_analysis.used', $used),
+        ])->save();
+    }
+
     public function hasPaidPlan(?User $user): bool
     {
         if ($user === null) {
@@ -185,6 +233,36 @@ class BillingEntitlementService
         return CustomKeywordSearch::query()
             ->where('user_id', $user->id)
             ->where('is_watchlisted', true)
+            ->count();
+    }
+
+    public function videoAnalysisLimit(?User $user): int
+    {
+        if ($user === null) {
+            return 0;
+        }
+
+        return (int) ($this->limitsForUser($user)['videoAnalysisLimit'] ?? 0);
+    }
+
+    public function videoAnalysisUsed(?User $user): int
+    {
+        if ($user === null) {
+            return 0;
+        }
+
+        if ($this->hasPaidPlan($user)) {
+            $subscription = $this->activeSubscriptionFor($user);
+            $used = data_get($subscription?->metadata, 'subscription.video_analysis.used');
+
+            if ($used !== null) {
+                return max(0, (int) $used);
+            }
+        }
+
+        return VideoAnalysis::query()
+            ->where('user_id', $user->id)
+            ->where('status', 'complete')
             ->count();
     }
 
@@ -318,7 +396,49 @@ class BillingEntitlementService
             ];
         }
 
-        return $this->limitsFor($plan);
+        $limits = $this->limitsFor($plan);
+        $subscription = $this->activeSubscriptionFor($user);
+
+        if ($subscription === null) {
+            return $limits;
+        }
+
+        $searchUsed = $this->derivedSearchCreditsUsed($user, $limits);
+        $videoBookmarkUsed = $this->videoBookmarkCount($user);
+        $searchBookmarkUsed = $this->searchBookmarkCount($user);
+        $videoAnalysisUsed = max(0, (int) data_get($subscription->metadata, 'subscription.video_analysis.used', 0));
+
+        return array_merge($limits, [
+            'searchUsed' => $searchUsed,
+            'videoBookmarkUsed' => $videoBookmarkUsed,
+            'searchBookmarkUsed' => $searchBookmarkUsed,
+            'videoAnalysisUsed' => $videoAnalysisUsed,
+            'searchCreditsUsed' => $searchUsed,
+            'bookmarksUsed' => $searchBookmarkUsed,
+        ]);
+    }
+
+    /**
+     * @param  array<string, int>  $limits
+     */
+    private function derivedSearchCreditsUsed(User $user, array $limits): int
+    {
+        if ($this->hasPaidPlan($user)) {
+            [$startsAt, $endsAt] = $this->currentBillingWindow($user);
+
+            if ($startsAt !== null && $endsAt !== null) {
+                return CustomKeywordSearchRun::query()
+                    ->where('status', CustomKeywordSearchRun::STATUS_DONE)
+                    ->whereNotNull('completed_at')
+                    ->where('completed_at', '>=', $startsAt)
+                    ->where('completed_at', '<', $endsAt)
+                    ->whereJsonContains('raw_summary->credit_reserved', true)
+                    ->whereHas('search', fn ($query) => $query->where('user_id', $user->id))
+                    ->count();
+            }
+        }
+
+        return max(0, ((int) ($limits['searchCreditsLimit'] ?? 0)) - $this->searchCreditsRemaining($user));
     }
 
     /**
@@ -418,6 +538,9 @@ class BillingEntitlementService
     {
         return Subscription::query()
             ->where('user_id', $user->id)
+            ->whereNull('deleted_at')
+            ->orderByRaw("case when status = 'active' then 0 when status = 'trialing' then 1 when status = 'pending' then 2 else 3 end")
+            ->orderByDesc('current_period_ends_at')
             ->first();
     }
 

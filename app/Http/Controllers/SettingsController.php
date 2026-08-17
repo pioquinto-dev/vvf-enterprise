@@ -138,7 +138,9 @@ class SettingsController extends Controller
         $subscription = Subscription::query()
             ->with('plan')
             ->where('user_id', $user->id)
+            ->whereNull('deleted_at')
             ->orderByRaw("case when status = 'pending' then 1 else 0 end")
+            ->orderByDesc('current_period_ends_at')
             ->first();
 
         $limits = $this->billing->limitsForUser($user);

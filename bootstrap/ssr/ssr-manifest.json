@@ -29,6 +29,8 @@
   "resources/js/Pages/Settings/SettingsShell.jsx": [],
   "resources/js/Pages/Settings/Subscription.jsx": [],
   "resources/js/Pages/Trial.jsx": [],
+  "resources/js/Pages/VideoAnalysis/AnalysisModal.jsx": [],
+  "resources/js/Pages/VideoAnalysis/Show.jsx": [],
   "resources/js/Pages/components/AppFooter.jsx": [],
   "resources/js/Pages/components/AppLayout.jsx": [],
   "resources/js/Pages/components/EntitlementsBar.jsx": [],

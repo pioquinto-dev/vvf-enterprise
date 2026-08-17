@@ -2618,7 +2618,7 @@ function compact(n) {
 	if (value >= 1e3) return `${(value / 1e3).toFixed(value >= 1e4 ? 0 : 1)}K`;
 	return String(value);
 }
-function formatDuration$1(duration) {
+function formatDuration$2(duration) {
 	if (duration == null || duration === "") return null;
 	if (typeof duration === "string") return duration;
 	const total = Number(duration);
@@ -2634,7 +2634,7 @@ function formatDuration$1(duration) {
 */
 function VideoCard({ video, rank }) {
 	const multiplier = Number(video.virality_score) > 0 ? `${Math.round(video.virality_score)}x` : null;
-	const duration = formatDuration$1(video.duration);
+	const duration = formatDuration$2(video.duration);
 	const cover = video.thumbnail_url;
 	const link = video.post_url || video.embed_url;
 	return /* @__PURE__ */ jsxs("article", {
@@ -3768,6 +3768,13 @@ var billing = {
 var bookmarks = {
 	save: (id) => request(`${API_V1}/videos/${id}/bookmark`, { method: "POST" }),
 	remove: (id) => request(`${API_V1}/videos/${id}/bookmark`, { method: "DELETE" })
+};
+var videoAnalysis = {
+	request: (id, body = {}) => request(`${API_V1}/videos/${id}/analysis`, {
+		method: "POST",
+		body
+	}),
+	get: (id) => request(`${API_V1}/videos/${id}/analysis`)
 };
 var TRACKED_KEY = "vvf-tracked-searches";
 function readTracked() {
@@ -6889,7 +6896,7 @@ function Index({ searches: initialSearches, bookmarkedVideos = [], filterType = 
 //#endregion
 //#region resources/js/landing/flow/format.js
 /** 4_200_000 → "4.2M". Keeps one decimal only when it adds information. */
-function compactNumber(value) {
+function compactNumber$1(value) {
 	const n = Number(value) || 0;
 	if (n >= 1e9) return trim(n / 1e9) + "B";
 	if (n >= 1e6) return trim(n / 1e6) + "M";
@@ -6954,7 +6961,7 @@ function gradientStyle(video) {
 	for (let i = 0; i < key.length; i++) hash = hash * 31 + key.charCodeAt(i) >>> 0;
 	return GRADIENTS[hash % GRADIENTS.length];
 }
-function formatDuration(duration) {
+function formatDuration$1(duration) {
 	if (duration == null || duration === "") return null;
 	if (typeof duration === "string") return duration;
 	const total = Number(duration);
@@ -7058,11 +7065,32 @@ function InlinePlayer({ video, className, buttonClassName = "play", iconProps = 
 		children: /* @__PURE__ */ jsx(PlayIcon, { ...iconProps })
 	});
 }
-function WinnerVideo({ video, onToggleBookmark, onAnalyze, bookmarking = false, activePlayerId = null, onPlay = null, onClose = null }) {
+function AnalyzeButton({ status = "idle", small = false, onClick }) {
+	const isProcessing = status === "processing";
+	const label = isProcessing ? "Analyzing Video....." : status === "complete" ? "View Analysis" : "Analyze video";
+	return /* @__PURE__ */ jsx("button", {
+		type: "button",
+		className: `bb-analyze${small ? " bb-analyze--sm" : ""}${isProcessing ? " opacity-90" : ""}`,
+		onClick,
+		"aria-busy": isProcessing,
+		children: isProcessing ? /* @__PURE__ */ jsxs("span", {
+			className: "inline-flex items-center gap-2",
+			children: [/* @__PURE__ */ jsxs("span", {
+				className: "relative flex h-3.5 w-3.5 items-center justify-center",
+				children: [/* @__PURE__ */ jsx("span", { className: "absolute inline-flex h-3.5 w-3.5 animate-ping rounded-full bg-current/35" }), /* @__PURE__ */ jsx("span", { className: "relative inline-flex h-2.5 w-2.5 rounded-full bg-current" })]
+			}), label]
+		}) : /* @__PURE__ */ jsxs(Fragment, { children: [
+			/* @__PURE__ */ jsx(Search, { className: small ? "h-[13px] w-[13px]" : "h-[15px] w-[15px]" }),
+			" ",
+			label
+		] })
+	});
+}
+function WinnerVideo({ video, onToggleBookmark, onAnalyze, bookmarking = false, activePlayerId = null, onPlay = null, onClose = null, analysisStatus = "idle" }) {
 	if (!video) return null;
 	const playing = activePlayerId === playerIdOf(video);
 	const rate = percent(video.engagement_rate);
-	const duration = formatDuration(video.duration);
+	const duration = formatDuration$1(video.duration);
 	const tags = creativeTags(video);
 	const hasCreative = video.content_format || video.content_hook || video.content_angle;
 	return /* @__PURE__ */ jsxs("div", {
@@ -7097,7 +7125,7 @@ function WinnerVideo({ video, onToggleBookmark, onAnalyze, bookmarking = false, 
 							children: [/* @__PURE__ */ jsx("i", {}), "Views"]
 						}), /* @__PURE__ */ jsx("span", {
 							className: "num",
-							children: compactNumber(video.views)
+							children: compactNumber$1(video.views)
 						})]
 					})]
 				}),
@@ -7149,17 +7177,17 @@ function WinnerVideo({ video, onToggleBookmark, onAnalyze, bookmarking = false, 
 						/* @__PURE__ */ jsxs("span", { children: [
 							/* @__PURE__ */ jsx(Heart, {}),
 							" ",
-							compactNumber(video.likes)
+							compactNumber$1(video.likes)
 						] }),
 						/* @__PURE__ */ jsxs("span", { children: [
 							/* @__PURE__ */ jsx(Comment, {}),
 							" ",
-							compactNumber(video.comments)
+							compactNumber$1(video.comments)
 						] }),
 						/* @__PURE__ */ jsxs("span", { children: [
 							/* @__PURE__ */ jsx(Share, {}),
 							" ",
-							compactNumber(video.shares)
+							compactNumber$1(video.shares)
 						] }),
 						rate && /* @__PURE__ */ jsxs("span", { children: [
 							/* @__PURE__ */ jsx(Trend, {}),
@@ -7184,11 +7212,9 @@ function WinnerVideo({ video, onToggleBookmark, onAnalyze, bookmarking = false, 
 				/* @__PURE__ */ jsxs("div", {
 					className: "cta",
 					children: [
-						/* @__PURE__ */ jsxs("button", {
-							type: "button",
-							className: "bb-analyze",
-							onClick: () => onAnalyze?.(video),
-							children: [/* @__PURE__ */ jsx(Search, { className: "h-[15px] w-[15px]" }), " Analyze video"]
+						/* @__PURE__ */ jsx(AnalyzeButton, {
+							status: analysisStatus,
+							onClick: () => onAnalyze?.(video, analysisStatus)
 						}),
 						video.post_url && /* @__PURE__ */ jsx("a", {
 							href: video.post_url,
@@ -7215,9 +7241,9 @@ function WinnerVideo({ video, onToggleBookmark, onAnalyze, bookmarking = false, 
 		})]
 	});
 }
-function OutlierCard({ video, rank, onToggleBookmark, onAnalyze, bookmarking = false, activePlayerId = null, onPlay = null, onClose = null }) {
+function OutlierCard({ video, rank, onToggleBookmark, onAnalyze, bookmarking = false, activePlayerId = null, onPlay = null, onClose = null, analysisStatus = "idle" }) {
 	const rate = percent(video.engagement_rate);
-	const duration = formatDuration(video.duration);
+	const duration = formatDuration$1(video.duration);
 	return /* @__PURE__ */ jsxs("article", {
 		className: "bbcard",
 		children: [/* @__PURE__ */ jsxs("div", {
@@ -7257,7 +7283,7 @@ function OutlierCard({ video, rank, onToggleBookmark, onAnalyze, bookmarking = f
 							children: [/* @__PURE__ */ jsx("i", {}), "Views"]
 						}), /* @__PURE__ */ jsx("span", {
 							className: "num",
-							children: compactNumber(video.views)
+							children: compactNumber$1(video.views)
 						})]
 					})]
 				}),
@@ -7302,17 +7328,17 @@ function OutlierCard({ video, rank, onToggleBookmark, onAnalyze, bookmarking = f
 						/* @__PURE__ */ jsxs("span", { children: [
 							/* @__PURE__ */ jsx(Heart, {}),
 							" ",
-							compactNumber(video.likes)
+							compactNumber$1(video.likes)
 						] }),
 						/* @__PURE__ */ jsxs("span", { children: [
 							/* @__PURE__ */ jsx(Comment, {}),
 							" ",
-							compactNumber(video.comments)
+							compactNumber$1(video.comments)
 						] }),
 						/* @__PURE__ */ jsxs("span", { children: [
 							/* @__PURE__ */ jsx(Share, {}),
 							" ",
-							compactNumber(video.shares)
+							compactNumber$1(video.shares)
 						] }),
 						rate && /* @__PURE__ */ jsxs("span", { children: [
 							/* @__PURE__ */ jsx(Trend, {}),
@@ -7323,11 +7349,10 @@ function OutlierCard({ video, rank, onToggleBookmark, onAnalyze, bookmarking = f
 				}),
 				/* @__PURE__ */ jsxs("div", {
 					className: "bbact",
-					children: [/* @__PURE__ */ jsxs("button", {
-						type: "button",
-						className: "bb-analyze bb-analyze--sm",
-						onClick: () => onAnalyze?.(video),
-						children: [/* @__PURE__ */ jsx(Search, { className: "h-[13px] w-[13px]" }), " Analyze video"]
+					children: [/* @__PURE__ */ jsx(AnalyzeButton, {
+						small: true,
+						status: analysisStatus,
+						onClick: () => onAnalyze?.(video, analysisStatus)
 					}), onToggleBookmark && /* @__PURE__ */ jsx("button", {
 						type: "button",
 						className: `tbtn tbtn-ic${video.bookmarked ? " is-saved" : ""}`,
@@ -7343,6 +7368,786 @@ function OutlierCard({ video, rank, onToggleBookmark, onAnalyze, bookmarking = f
 				})
 			]
 		})]
+	});
+}
+//#endregion
+//#region resources/js/Pages/VideoAnalysis/AnalysisModal.jsx
+var AnalysisModal_exports = /* @__PURE__ */ __exportAll({ default: () => AnalysisModal });
+function compactNumber(value) {
+	const number = Number(value || 0);
+	if (!Number.isFinite(number)) return "0";
+	return new Intl.NumberFormat(void 0, {
+		notation: "compact",
+		maximumFractionDigits: 1
+	}).format(number);
+}
+function formatMetric(value) {
+	const number = Number(value || 0);
+	if (!Number.isFinite(number)) return "0";
+	return new Intl.NumberFormat(void 0, { maximumFractionDigits: number >= 100 ? 0 : 1 }).format(number);
+}
+function formatTimestamp(ms) {
+	if (!Number.isFinite(Number(ms))) return null;
+	const total = Math.max(0, Math.floor(Number(ms) / 1e3));
+	return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, "0")}`;
+}
+function formatDuration(seconds) {
+	const total = Number(seconds || 0);
+	if (!Number.isFinite(total) || total <= 0) return "0:14";
+	return `${Math.floor(total / 60)}:${String(Math.round(total % 60)).padStart(2, "0")}`;
+}
+function usePolling(videoId, initial, open) {
+	const [analysis, setAnalysis] = useState(initial);
+	useEffect(() => {
+		setAnalysis(initial);
+	}, [initial, videoId]);
+	useEffect(() => {
+		if (!open || analysis?.status === "complete" || analysis?.status === "failed") return void 0;
+		let cancelled = false;
+		const timer = window.setInterval(async () => {
+			try {
+				const payload = await videoAnalysis.get(videoId);
+				if (!cancelled) setAnalysis(payload.analysis);
+			} catch {}
+		}, 3e3);
+		return () => {
+			cancelled = true;
+			window.clearInterval(timer);
+		};
+	}, [
+		analysis?.status,
+		open,
+		videoId
+	]);
+	return [analysis, setAnalysis];
+}
+var STAT_CHIP = {
+	score: "border-[#d8c9a6] bg-[#FFF3CF]",
+	views: "border-[#e0c5b6] bg-[#FEF0E7]",
+	mut: "border-[#E7E5DF] bg-[#FAF9F6]"
+};
+var STAT_LABEL = {
+	score: "text-[#9A6B00]",
+	views: "text-[#C2410C]",
+	mut: "text-[#5C5A54]"
+};
+function statCards(video) {
+	return [
+		{
+			label: "Outlier",
+			value: `${formatMetric(video.virality_score || 18)}x`,
+			variant: "score"
+		},
+		{
+			label: "Views",
+			value: compactNumber(video.views),
+			variant: "views"
+		},
+		{
+			label: "Eng rate",
+			value: video.engagement_rate ? `${formatMetric(video.engagement_rate)}%` : "12.2%",
+			variant: "mut"
+		},
+		{
+			label: "Shares",
+			value: compactNumber(video.shares),
+			variant: "mut"
+		}
+	];
+}
+function transcriptRows(analysis) {
+	const segments = Array.isArray(analysis?.transcript_segments) ? analysis.transcript_segments : [];
+	if (segments.length > 0) return segments.map((segment, index) => ({
+		id: `segment-${index}`,
+		time: formatTimestamp(segment.start_ms) ?? "0:00",
+		text: segment.text
+	}));
+	const transcript = String(analysis?.transcript || "").trim();
+	if (transcript === "") return [];
+	return transcript.split("\n").map((line) => line.trim()).filter(Boolean).map((line, index) => ({
+		id: `line-${index}`,
+		time: formatTimestamp(index * 3e3) ?? "0:00",
+		text: line
+	}));
+}
+function hookVariations(result) {
+	if (Array.isArray(result?.hooks) && result.hooks.length > 0) return result.hooks.map((hook, index) => ({
+		id: index,
+		label: String.fromCharCode(65 + index),
+		text: typeof hook === "string" ? hook : hook?.text || hook?.variation || JSON.stringify(hook)
+	}));
+	return [];
+}
+function whyDrivers(result) {
+	if (Array.isArray(result?.content_breakdown) && result.content_breakdown.length > 0) return result.content_breakdown.map((item, index) => ({
+		id: index,
+		rank: String(index + 1).padStart(2, "0"),
+		title: item?.title || item?.driver || item?.label || "Outlier signal",
+		body: item?.explanation || item?.reason || String(item),
+		uplift: item?.uplift || item?.delta || item?.impact || null
+	}));
+	const evidence = String(result?.evidence_summary || "").trim();
+	return evidence === "" ? [] : evidence.split(/(?<=\.)\s+/).filter(Boolean).map((line, index) => ({
+		id: index,
+		rank: String(index + 1).padStart(2, "0"),
+		title: `Driver ${index + 1}`,
+		body: line,
+		uplift: null
+	}));
+}
+function strategistRecommendations(result) {
+	const recommendations = result?.creative_strategy?.recommendations;
+	if (Array.isArray(recommendations) && recommendations.length > 0) return recommendations.map((item, index) => ({
+		id: index,
+		rank: String(index + 1).padStart(2, "0"),
+		title: typeof item === "string" ? item : item?.title || item?.headline || `Recommendation ${index + 1}`,
+		body: typeof item === "string" ? null : item?.text || item?.body || item?.reason || null
+	}));
+	const summary = result?.creative_strategy?.summary;
+	return summary ? [{
+		id: 0,
+		rank: "01",
+		title: String(summary),
+		body: null
+	}] : [];
+}
+function blueprintText(result) {
+	const blueprint = result?.creative_strategy?.blueprint;
+	if (typeof blueprint === "string") return blueprint;
+	if (blueprint && typeof blueprint === "object") return Object.entries(blueprint).map(([key, value]) => `${String(key).toUpperCase()} - ${typeof value === "string" ? value : JSON.stringify(value)}`).join("\n");
+	const ctas = Array.isArray(result?.ctas) ? result.ctas : [];
+	const delivery = Array.isArray(result?.delivery_instructions) ? result.delivery_instructions : [];
+	return [...ctas.map((item) => `CTA - ${typeof item === "string" ? item : item?.text || JSON.stringify(item)}`), ...delivery.map((item) => `DELIVERY - ${typeof item === "string" ? item : item?.text || JSON.stringify(item)}`)].join("\n");
+}
+function blueprintRows(blueprint) {
+	return String(blueprint || "").split("\n").map((line) => line.trim()).filter(Boolean).map((line, index) => {
+		const matched = line.match(/^([^:-]+)\s*[:|-]\s*(.+)$/);
+		if (!matched) return {
+			id: `blueprint-${index}`,
+			label: null,
+			body: line
+		};
+		return {
+			id: `blueprint-${index}`,
+			label: matched[1].trim().replace(/_/g, " "),
+			body: matched[2].trim()
+		};
+	});
+}
+function videoEmbedUrl(video) {
+	const id = video?.video_id;
+	if (id) return `https://www.tiktok.com/player/v1/${id}?autoplay=1&description=0&rel=0&music_info=0`;
+	return video?.embed_url ?? null;
+}
+function RegenerateButton({ regenerating, disabled, onClick, fullWidth = false }) {
+	return /* @__PURE__ */ jsxs("button", {
+		type: "button",
+		onClick,
+		disabled,
+		className: `${fullWidth ? "flex w-full justify-center" : "inline-flex"} items-center gap-1.5 rounded-full border border-[#e5ddd1] bg-[#fbfaf7] px-3 py-2 text-[11px] font-semibold text-[#8c6b10] transition hover:bg-[#fff0bf] disabled:cursor-not-allowed disabled:opacity-60`,
+		children: [/* @__PURE__ */ jsxs("svg", {
+			viewBox: "0 0 24 24",
+			className: `h-3.5 w-3.5 stroke-current ${regenerating ? "animate-spin" : ""}`,
+			fill: "none",
+			strokeWidth: "2",
+			strokeLinecap: "round",
+			strokeLinejoin: "round",
+			children: [/* @__PURE__ */ jsx("path", { d: "M21 12a9 9 0 1 1-2.64-6.36" }), /* @__PURE__ */ jsx("path", { d: "M21 3v6h-6" })]
+		}), regenerating ? "Regenerating…" : "Regenerate"]
+	});
+}
+function LeftSidebar({ video, canRegenerate = false, regenerating = false, disabledRegenerate = false, onRegenerate }) {
+	const metrics = statCards(video);
+	const [playing, setPlaying] = useState(false);
+	const [thumbBroken, setThumbBroken] = useState(false);
+	const embed = videoEmbedUrl(video);
+	const hasThumb = Boolean(video.thumbnail_url) && !thumbBroken;
+	const postedAt = video?.uploaded_at ? new Date(video.uploaded_at).toLocaleDateString(void 0, {
+		month: "short",
+		day: "numeric",
+		year: "numeric"
+	}) : null;
+	return /* @__PURE__ */ jsxs("aside", {
+		className: "self-start rounded-[18px] border border-[#E7E5DF] bg-white p-[13px] min-[980px]:sticky min-[980px]:top-0",
+		children: [
+			/* @__PURE__ */ jsx("div", {
+				className: "mx-auto w-full max-w-[260px] overflow-hidden rounded-[13px] bg-[#FAF9F6] min-[980px]:max-w-none",
+				children: playing && embed ? /* @__PURE__ */ jsxs("div", {
+					className: "relative",
+					children: [/* @__PURE__ */ jsx("iframe", {
+						src: embed,
+						title: video?.title || "TikTok video",
+						loading: "lazy",
+						allow: "autoplay; fullscreen; encrypted-media; picture-in-picture",
+						allowFullScreen: true,
+						className: "aspect-[9/13] w-full border-0"
+					}), /* @__PURE__ */ jsx("button", {
+						type: "button",
+						onClick: () => setPlaying(false),
+						"aria-label": "Close player",
+						className: "absolute right-2 top-2 flex h-7 w-7 items-center justify-center rounded-full bg-black/60 text-white backdrop-blur-md transition hover:bg-black/80",
+						children: /* @__PURE__ */ jsx("svg", {
+							viewBox: "0 0 24 24",
+							className: "h-3.5 w-3.5",
+							fill: "none",
+							stroke: "currentColor",
+							strokeWidth: "2.5",
+							strokeLinecap: "round",
+							children: /* @__PURE__ */ jsx("path", { d: "M6 6l12 12M18 6L6 18" })
+						})
+					})]
+				}) : /* @__PURE__ */ jsxs("div", {
+					className: "relative",
+					children: [hasThumb ? /* @__PURE__ */ jsx("img", {
+						src: video.thumbnail_url,
+						alt: "",
+						referrerPolicy: "no-referrer",
+						onError: () => setThumbBroken(true),
+						className: "aspect-[9/13] w-full object-cover"
+					}) : /* @__PURE__ */ jsx("div", { className: "aspect-[9/13] w-full bg-[linear-gradient(165deg,#cfb396,#a98069)]" }), embed && /* @__PURE__ */ jsx("button", {
+						type: "button",
+						onClick: () => setPlaying(true),
+						className: "absolute left-1/2 top-1/2 flex h-10 w-10 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-white/92 text-[#343434] shadow-[0_8px_30px_rgba(0,0,0,0.18)] transition hover:bg-white",
+						"aria-label": video?.title ? `Play: ${video.title}` : "Play video",
+						children: /* @__PURE__ */ jsx("svg", {
+							viewBox: "0 0 24 24",
+							className: "ml-0.5 h-4 w-4 fill-current",
+							children: /* @__PURE__ */ jsx("path", { d: "M8 6.5v11l9-5.5-9-5.5z" })
+						})
+					})]
+				})
+			}),
+			/* @__PURE__ */ jsxs("div", {
+				className: "mt-3 flex items-center gap-[9px]",
+				children: [/* @__PURE__ */ jsx("span", { className: "h-[30px] w-[30px] flex-shrink-0 rounded-full bg-[linear-gradient(150deg,#ffd27a,#ff9a5a_55%,#c0607a)]" }), /* @__PURE__ */ jsxs("div", {
+					className: "min-w-0",
+					children: [/* @__PURE__ */ jsx("div", {
+						className: "truncate text-[13px] font-bold text-[#0B0B0B]",
+						children: video.handle ?? video.creator_name ?? "@creator"
+					}), /* @__PURE__ */ jsxs("div", {
+						className: "text-[11.5px] text-[#5C5A54]",
+						children: [compactNumber(video.followers ?? video.views), " followers"]
+					})]
+				})]
+			}),
+			/* @__PURE__ */ jsxs("div", {
+				className: "mt-[11px] flex flex-wrap items-center gap-2 text-[11.5px] text-[#5C5A54]",
+				children: [
+					/* @__PURE__ */ jsx("span", {
+						className: "rounded-[7px] bg-[#FFF3CF] px-[9px] py-1 text-[10px] font-extrabold uppercase tracking-[0.05em] text-[#9A6B00]",
+						children: "Skincare & Beauty"
+					}),
+					postedAt && /* @__PURE__ */ jsx("span", { children: postedAt }),
+					/* @__PURE__ */ jsx("span", { children: formatDuration(video.duration) })
+				]
+			}),
+			/* @__PURE__ */ jsx("div", {
+				className: "mt-3 grid grid-cols-2 gap-2",
+				children: metrics.map((item) => /* @__PURE__ */ jsxs("div", {
+					className: `rounded-[11px] border px-[11px] py-[9px] ${STAT_CHIP[item.variant]}`,
+					children: [/* @__PURE__ */ jsxs("span", {
+						className: `inline-flex items-center gap-[5px] whitespace-nowrap text-[9px] font-extrabold uppercase tracking-[0.06em] ${STAT_LABEL[item.variant]}`,
+						children: [/* @__PURE__ */ jsx("i", { className: "h-[5px] w-[5px] rounded-full bg-current" }), item.label]
+					}), /* @__PURE__ */ jsx("span", {
+						className: "mt-1 block text-[17px] font-extrabold leading-none tracking-[-0.02em] text-[#0B0B0B] [font-variant-numeric:tabular-nums]",
+						children: item.value
+					})]
+				}, item.label))
+			}),
+			canRegenerate && /* @__PURE__ */ jsx("div", {
+				className: "mt-3",
+				children: /* @__PURE__ */ jsx(RegenerateButton, {
+					regenerating,
+					disabled: disabledRegenerate,
+					onClick: onRegenerate,
+					fullWidth: true
+				})
+			})
+		]
+	});
+}
+function SummaryCard({ summary }) {
+	return /* @__PURE__ */ jsxs("section", {
+		className: "rounded-[14px] border border-[#ddd6ca] bg-[#fbfaf7] px-4 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.65)]",
+		children: [/* @__PURE__ */ jsx("div", {
+			className: "text-[13px] font-semibold text-[#1f1f1f]",
+			children: "Summary"
+		}), /* @__PURE__ */ jsx("p", {
+			className: "mt-1 text-[13px] leading-6 text-[#696257]",
+			children: summary
+		})]
+	});
+}
+function TabRow({ tabs, activeTab, onChange }) {
+	return /* @__PURE__ */ jsx("div", {
+		className: "flex rounded-[14px] border border-[#ddd6ca] bg-[#fbfaf7] p-1",
+		children: tabs.map((tab) => /* @__PURE__ */ jsx("button", {
+			type: "button",
+			onClick: () => onChange(tab.key),
+			className: `flex-1 rounded-[10px] px-3 py-2.5 text-[12px] font-semibold transition ${activeTab === tab.key ? "bg-[#ffeeb8] text-[#6c5715]" : "text-[#5f584d] hover:text-[#1f1f1f]"}`,
+			children: tab.label
+		}, tab.key))
+	});
+}
+function PanelShell({ icon, title, subtitle, children }) {
+	return /* @__PURE__ */ jsxs("section", {
+		className: "rounded-[16px] border border-[#ddd6ca] bg-[#fffdf9] p-4",
+		children: [/* @__PURE__ */ jsxs("div", {
+			className: "flex items-center gap-3",
+			children: [/* @__PURE__ */ jsx("div", {
+				className: "flex h-8 w-8 items-center justify-center rounded-full bg-[#fff0bf] text-[#8c6b10]",
+				children: icon
+			}), /* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsx("div", {
+				className: "text-[20px] font-semibold leading-none text-[#1a1a1a]",
+				children: title
+			}), subtitle && /* @__PURE__ */ jsx("div", {
+				className: "mt-1 text-[11px] text-[#8c8579]",
+				children: subtitle
+			})] })]
+		}), /* @__PURE__ */ jsx("div", {
+			className: "mt-4",
+			children
+		})]
+	});
+}
+function ProcessingState({ status, error }) {
+	return /* @__PURE__ */ jsxs("section", {
+		className: "rounded-[16px] border border-[#ddd6ca] bg-[#fffdf9] p-5",
+		children: [/* @__PURE__ */ jsx("div", {
+			className: "text-[12px] font-semibold uppercase tracking-[0.12em] text-[#8c6b10]",
+			children: status || "idle"
+		}), /* @__PURE__ */ jsx("p", {
+			className: "mt-2 text-[14px] leading-6 text-[#696257]",
+			children: status === "failed" ? error || "This analysis could not be completed." : status === "processing" ? "We are preparing the transcript, shared diagnostics, and creator-facing guidance." : "Analysis has not started yet."
+		})]
+	});
+}
+function ErrorStateModal({ message, retrying, onRetry, onDismiss }) {
+	return /* @__PURE__ */ jsx("div", {
+		className: "absolute inset-0 z-20 flex items-center justify-center rounded-[22px] bg-[rgba(42,33,20,0.28)] px-4 backdrop-blur-[2px]",
+		children: /* @__PURE__ */ jsxs("div", {
+			className: "w-full max-w-[430px] rounded-[20px] border border-[#ddd6ca] bg-[#fffdf9] p-5 shadow-[0_24px_60px_rgba(42,33,20,0.18)]",
+			children: [
+				/* @__PURE__ */ jsx("div", {
+					className: "flex h-10 w-10 items-center justify-center rounded-full bg-[#fff0bf] text-[#8c6b10]",
+					children: /* @__PURE__ */ jsxs("svg", {
+						viewBox: "0 0 24 24",
+						className: "h-5 w-5 stroke-current",
+						fill: "none",
+						strokeWidth: "2",
+						strokeLinecap: "round",
+						strokeLinejoin: "round",
+						children: [
+							/* @__PURE__ */ jsx("path", { d: "M12 8v5" }),
+							/* @__PURE__ */ jsx("path", { d: "M12 16h.01" }),
+							/* @__PURE__ */ jsx("path", { d: "M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z" })
+						]
+					})
+				}),
+				/* @__PURE__ */ jsx("h3", {
+					className: "mt-4 text-[20px] font-semibold text-[#1a1a1a]",
+					children: "Something went wrong"
+				}),
+				/* @__PURE__ */ jsx("p", {
+					className: "mt-2 text-[14px] leading-6 text-[#696257]",
+					children: message || "We could not finish this analysis right now. Please try again later."
+				}),
+				/* @__PURE__ */ jsxs("div", {
+					className: "mt-5 flex gap-3",
+					children: [/* @__PURE__ */ jsx("button", {
+						type: "button",
+						onClick: onRetry,
+						disabled: retrying,
+						className: "inline-flex flex-1 items-center justify-center rounded-full bg-[#f2c44f] px-4 py-2.5 text-[12px] font-semibold text-[#4f3d08] transition hover:bg-[#e8bb48] disabled:cursor-not-allowed disabled:opacity-60",
+						children: retrying ? "Retrying…" : "Try again"
+					}), /* @__PURE__ */ jsx("button", {
+						type: "button",
+						onClick: onDismiss,
+						className: "inline-flex flex-1 items-center justify-center rounded-full border border-[#ddd6ca] bg-white px-4 py-2.5 text-[12px] font-semibold text-[#5f584d] transition hover:bg-[#faf7f1]",
+						children: "Close"
+					})]
+				})
+			]
+		})
+	});
+}
+function WhyTab({ result, video }) {
+	const drivers = whyDrivers(result);
+	const baseline = Number(video?.virality_score);
+	const subtitle = Number.isFinite(baseline) && baseline > 0 ? `${Math.round(baseline)}x baseline` : "Outlier drivers";
+	return /* @__PURE__ */ jsxs(PanelShell, {
+		title: "Why It Went Viral",
+		subtitle,
+		icon: /* @__PURE__ */ jsxs("svg", {
+			viewBox: "0 0 24 24",
+			className: "h-4 w-4 stroke-current",
+			fill: "none",
+			strokeWidth: "2",
+			strokeLinecap: "round",
+			strokeLinejoin: "round",
+			children: [/* @__PURE__ */ jsx("path", { d: "M8 16l8-8" }), /* @__PURE__ */ jsx("path", { d: "M9 8h7v7" })]
+		}),
+		children: [/* @__PURE__ */ jsx("div", {
+			className: "mb-3 text-[10px] font-bold uppercase tracking-[0.1em] text-[#8c8579]",
+			children: "Top outlier drivers"
+		}), /* @__PURE__ */ jsx("div", {
+			className: "space-y-3",
+			children: drivers.map((item) => /* @__PURE__ */ jsx("article", {
+				className: "rounded-[12px] border border-[#ddd6ca] bg-white px-4 py-3",
+				children: /* @__PURE__ */ jsxs("div", {
+					className: "flex items-center gap-3",
+					children: [/* @__PURE__ */ jsx("span", {
+						className: "flex h-6 w-6 items-center justify-center rounded-full bg-[#fff0bf] text-[10px] font-bold text-[#916e16]",
+						children: item.rank
+					}), /* @__PURE__ */ jsxs("div", {
+						className: "min-w-0 flex-1",
+						children: [/* @__PURE__ */ jsxs("div", {
+							className: "flex flex-wrap items-center gap-2",
+							children: [/* @__PURE__ */ jsx("h3", {
+								className: "text-[14px] font-semibold text-[#1a1a1a]",
+								children: item.title
+							}), item.uplift && /* @__PURE__ */ jsx("span", {
+								className: "rounded-full bg-[#dff4df] px-2 py-0.5 text-[10px] font-semibold text-[#2c8a4d]",
+								children: item.uplift
+							})]
+						}), /* @__PURE__ */ jsx("p", {
+							className: "mt-1 text-[13px] leading-5 text-[#696257]",
+							children: item.body
+						})]
+					})]
+				})
+			}, item.id))
+		})]
+	});
+}
+function hookReasons(result) {
+	const reasons = Array.isArray(result?.hook_reasons) ? result.hook_reasons : [];
+	if (reasons.length > 0) return reasons.map((item, index) => ({
+		id: index,
+		title: item?.title || item?.tactic || item?.label || `Hook tactic ${index + 1}`,
+		body: item?.explanation || item?.reason || (typeof item === "string" ? item : "")
+	}));
+	return whyDrivers({ content_breakdown: Array.isArray(result?.content_breakdown) ? result.content_breakdown.slice(0, 3) : [] }).map((item) => ({
+		id: item.id,
+		title: item.title,
+		body: item.body
+	}));
+}
+function HookTab({ result }) {
+	const variations = hookVariations(result);
+	const reasons = hookReasons(result);
+	return /* @__PURE__ */ jsxs(PanelShell, {
+		title: "Hook",
+		subtitle: "first 2 seconds",
+		icon: /* @__PURE__ */ jsx("svg", {
+			viewBox: "0 0 24 24",
+			className: "h-4 w-4 stroke-current",
+			fill: "none",
+			strokeWidth: "2",
+			strokeLinecap: "round",
+			strokeLinejoin: "round",
+			children: /* @__PURE__ */ jsx("path", { d: "M12 3l2.3 4.7L19 8.4l-3.5 3.4.8 4.8L12 14.9 7.7 16.6l.8-4.8L5 8.4l4.7-.7L12 3z" })
+		}),
+		children: [
+			/* @__PURE__ */ jsx("div", {
+				className: "border-l-2 border-[#f0c24b] pl-3 text-[24px] font-semibold leading-8 text-[#1a1a1a]",
+				children: typeof result?.hook_analysis === "string" ? result.hook_analysis : "The core hook is still being assembled."
+			}),
+			/* @__PURE__ */ jsx("div", {
+				className: "mt-5 text-[10px] font-bold uppercase tracking-[0.1em] text-[#8c8579]",
+				children: "Why it works"
+			}),
+			/* @__PURE__ */ jsx("div", {
+				className: "mt-3 space-y-3",
+				children: reasons.map((item) => /* @__PURE__ */ jsx("article", {
+					className: "rounded-[12px] border border-[#ddd6ca] bg-white px-4 py-3",
+					children: /* @__PURE__ */ jsxs("div", {
+						className: "flex gap-3",
+						children: [/* @__PURE__ */ jsx("span", {
+							className: "mt-1 flex h-5 w-5 items-center justify-center rounded-full bg-[#fff0bf] text-[10px] font-bold text-[#916e16]",
+							children: "-"
+						}), /* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsx("div", {
+							className: "text-[14px] font-semibold text-[#1a1a1a]",
+							children: item.title
+						}), /* @__PURE__ */ jsx("p", {
+							className: "mt-1 text-[13px] leading-5 text-[#696257]",
+							children: item.body
+						})] })]
+					})
+				}, item.id))
+			}),
+			/* @__PURE__ */ jsx("div", {
+				className: "mt-5 text-[10px] font-bold uppercase tracking-[0.1em] text-[#8c8579]",
+				children: "Variations to test"
+			}),
+			/* @__PURE__ */ jsx("div", {
+				className: "mt-3 space-y-3",
+				children: variations.map((item) => /* @__PURE__ */ jsxs("div", {
+					className: "flex items-center gap-3 rounded-[12px] border border-[#ddd6ca] bg-white px-4 py-3 text-[13px] text-[#5f584d]",
+					children: [/* @__PURE__ */ jsx("span", {
+						className: "flex h-5 w-5 items-center justify-center rounded-full bg-[#fff0bf] text-[10px] font-bold text-[#916e16]",
+						children: item.label
+					}), /* @__PURE__ */ jsx("span", { children: item.text })]
+				}, item.id))
+			})
+		]
+	});
+}
+function TranscriptTab({ analysis }) {
+	const rows = transcriptRows(analysis);
+	const segments = Array.isArray(analysis?.transcript_segments) ? analysis.transcript_segments : [];
+	const duration = segments.length > 0 ? formatDuration((segments.at(-1)?.end_ms || 14e3) / 1e3) : "0:14";
+	return /* @__PURE__ */ jsx(PanelShell, {
+		title: "Transcript",
+		subtitle: `auto-generated - ${duration}`,
+		icon: /* @__PURE__ */ jsx("svg", {
+			viewBox: "0 0 24 24",
+			className: "h-4 w-4 stroke-current",
+			fill: "none",
+			strokeWidth: "2",
+			strokeLinecap: "round",
+			strokeLinejoin: "round",
+			children: /* @__PURE__ */ jsx("path", { d: "M7 4h10a2 2 0 0 1 2 2v12l-4-2-4 2-4-2-4 2V6a2 2 0 0 1 2-2h2" })
+		}),
+		children: /* @__PURE__ */ jsx("div", {
+			className: "space-y-1",
+			children: rows.map((row) => /* @__PURE__ */ jsxs("div", {
+				className: "grid grid-cols-[44px_minmax(0,1fr)] gap-4 border-b border-dashed border-[#e7dfd1] py-3 last:border-b-0",
+				children: [/* @__PURE__ */ jsx("div", {
+					className: "text-[12px] font-bold text-[#a07512]",
+					children: row.time
+				}), /* @__PURE__ */ jsx("div", {
+					className: "text-[14px] leading-6 text-[#4f4a42]",
+					children: row.text
+				})]
+			}, row.id))
+		})
+	});
+}
+function StrategistTab({ result }) {
+	const recommendations = strategistRecommendations(result);
+	const blueprint = blueprintText(result);
+	const blueprintLines = blueprintRows(blueprint);
+	return /* @__PURE__ */ jsxs(PanelShell, {
+		title: "Creative Strategist",
+		subtitle: "how to replicate this for your brand",
+		icon: /* @__PURE__ */ jsxs("svg", {
+			viewBox: "0 0 24 24",
+			className: "h-4 w-4 stroke-current",
+			fill: "none",
+			strokeWidth: "2",
+			strokeLinecap: "round",
+			strokeLinejoin: "round",
+			children: [/* @__PURE__ */ jsx("circle", {
+				cx: "11",
+				cy: "11",
+				r: "6"
+			}), /* @__PURE__ */ jsx("path", { d: "M20 20l-3.5-3.5" })]
+		}),
+		children: [
+			/* @__PURE__ */ jsx("div", {
+				className: "text-[10px] font-bold uppercase tracking-[0.1em] text-[#8c8579]",
+				children: "Recommendations"
+			}),
+			/* @__PURE__ */ jsx("div", {
+				className: "mt-3 space-y-3",
+				children: recommendations.map((item) => /* @__PURE__ */ jsx("article", {
+					className: "rounded-[12px] border border-[#ddd6ca] bg-white px-4 py-3",
+					children: /* @__PURE__ */ jsxs("div", {
+						className: "flex gap-3",
+						children: [/* @__PURE__ */ jsx("span", {
+							className: "flex h-6 w-6 items-center justify-center rounded-full bg-[#fff0bf] text-[10px] font-bold text-[#916e16]",
+							children: item.rank
+						}), /* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsx("div", {
+							className: "text-[14px] font-semibold text-[#1a1a1a]",
+							children: item.title
+						}), item.body && /* @__PURE__ */ jsx("p", {
+							className: "mt-1 text-[13px] leading-5 text-[#696257]",
+							children: item.body
+						})] })]
+					})
+				}, item.id))
+			}),
+			blueprint && /* @__PURE__ */ jsxs(Fragment, { children: [/* @__PURE__ */ jsx("div", {
+				className: "mt-5 text-[10px] font-bold uppercase tracking-[0.1em] text-[#8c8579]",
+				children: "Script to replicate"
+			}), /* @__PURE__ */ jsx("div", {
+				className: "mt-3 rounded-[14px] border border-dashed border-[#ddc79d] bg-[#fffaf0] px-4 py-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.7)]",
+				children: /* @__PURE__ */ jsx("div", {
+					className: "space-y-3 font-mono text-[12.5px] leading-6 text-[#5f584d]",
+					children: blueprintLines.map((line) => /* @__PURE__ */ jsx("div", { children: line.label ? /* @__PURE__ */ jsxs(Fragment, { children: [
+						/* @__PURE__ */ jsx("span", {
+							className: "font-semibold uppercase tracking-[0.02em] text-[#4a4338]",
+							children: line.label
+						}),
+						/* @__PURE__ */ jsx("span", {
+							className: "text-[#8f8678]",
+							children: " - "
+						}),
+						/* @__PURE__ */ jsx("span", { children: line.body })
+					] }) : /* @__PURE__ */ jsx("span", { children: line.body }) }, line.id))
+				})
+			})] })
+		]
+	});
+}
+function ActivePanel({ activeTab, analysis, result, video }) {
+	if (activeTab === "hook") return /* @__PURE__ */ jsx(HookTab, { result });
+	if (activeTab === "transcript") return /* @__PURE__ */ jsx(TranscriptTab, { analysis });
+	if (activeTab === "strategist") return /* @__PURE__ */ jsx(StrategistTab, { result });
+	return /* @__PURE__ */ jsx(WhyTab, {
+		result,
+		video
+	});
+}
+var DEFAULT_TABS = [
+	{
+		key: "why",
+		label: "Why It Went Viral"
+	},
+	{
+		key: "hook",
+		label: "Hook"
+	},
+	{
+		key: "transcript",
+		label: "Transcript"
+	},
+	{
+		key: "strategist",
+		label: "Creative Strategist"
+	}
+];
+function AnalysisModal({ video, initialAnalysis, tabs = DEFAULT_TABS, open = true, onClose, onAnalysisChange }) {
+	const [activeTab, setActiveTab] = useState(tabs[0]?.key ?? "why");
+	const [analysis, setAnalysis] = usePolling(video.id, initialAnalysis, open);
+	const [regenerating, setRegenerating] = useState(false);
+	const [showErrorModal, setShowErrorModal] = useState(false);
+	const canRegenerate = Boolean(usePage().props?.features?.videoAnalysisRefresh);
+	const onAnalysisChangeRef = useRef(onAnalysisChange);
+	onAnalysisChangeRef.current = onAnalysisChange;
+	useEffect(() => {
+		if (analysis) onAnalysisChangeRef.current?.(video.id, analysis);
+	}, [analysis, video.id]);
+	useEffect(() => {
+		if (!open) return;
+		setShowErrorModal(analysis?.status === "failed");
+	}, [
+		analysis?.status,
+		open,
+		video?.id
+	]);
+	const requestAnalysis = async (forceRefresh = false) => {
+		const payload = await videoAnalysis.request(video.id, forceRefresh ? { force_refresh: true } : {});
+		setShowErrorModal(false);
+		setAnalysis(payload.analysis);
+	};
+	const regenerate = async () => {
+		if (regenerating) return;
+		setRegenerating(true);
+		try {
+			await requestAnalysis(true);
+		} catch (error) {
+			window.alert(error?.message || "Could not regenerate this analysis.");
+		} finally {
+			setRegenerating(false);
+		}
+	};
+	const retryAnalysis = async () => {
+		if (regenerating) return;
+		setRegenerating(true);
+		try {
+			await requestAnalysis(false);
+		} catch (error) {
+			window.alert(error?.message || "Could not restart this analysis.");
+		} finally {
+			setRegenerating(false);
+		}
+	};
+	useEffect(() => {
+		if (!open) return void 0;
+		const previousOverflow = document.body.style.overflow;
+		document.body.style.overflow = "hidden";
+		const handleKeyDown = (event) => {
+			if (event.key === "Escape") onClose?.();
+		};
+		window.addEventListener("keydown", handleKeyDown);
+		return () => {
+			document.body.style.overflow = previousOverflow;
+			window.removeEventListener("keydown", handleKeyDown);
+		};
+	}, [open, onClose]);
+	useEffect(() => {
+		setActiveTab(tabs[0]?.key ?? "why");
+	}, [tabs, video?.id]);
+	if (!open || !video) return null;
+	const result = analysis?.result ?? {};
+	const summary = result.why_it_went_viral || result.evidence_summary || "We are still assembling the summary for this video.";
+	const regenerateDisabled = regenerating || analysis?.status === "processing";
+	return /* @__PURE__ */ jsx("div", {
+		className: "fixed inset-0 z-[120] flex items-center justify-center bg-[rgba(38,33,28,0.42)] px-4 py-6 backdrop-blur-[2px]",
+		onClick: onClose,
+		children: /* @__PURE__ */ jsx("div", {
+			className: "max-h-[calc(100vh-3rem)] w-full max-w-[1150px] overflow-y-auto rounded-[26px] border border-[#d9d1c4] bg-[radial-gradient(circle_at_top,#f7f2e9_0%,#f3efe8_32%,#f1ede6_100%)] p-3 shadow-[0_28px_90px_rgba(42,33,20,0.22)]",
+			onClick: (event) => event.stopPropagation(),
+			role: "dialog",
+			"aria-modal": "true",
+			"aria-label": "Video analysis",
+			children: /* @__PURE__ */ jsxs("div", {
+				className: "relative rounded-[22px] border border-[#d9d1c4] bg-[#f6f3ec] p-4 md:p-5",
+				children: [
+					showErrorModal && /* @__PURE__ */ jsx(ErrorStateModal, {
+						message: analysis?.error_message,
+						retrying: regenerating,
+						onRetry: retryAnalysis,
+						onDismiss: onClose
+					}),
+					/* @__PURE__ */ jsx("button", {
+						type: "button",
+						onClick: onClose,
+						className: "absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-full border border-[#e5ddd1] bg-[#fbfaf7] text-[#8a8479] transition hover:text-[#2a2a2a]",
+						"aria-label": "Close analysis",
+						children: /* @__PURE__ */ jsx("svg", {
+							viewBox: "0 0 24 24",
+							className: "h-4 w-4 stroke-current",
+							fill: "none",
+							strokeWidth: "2",
+							strokeLinecap: "round",
+							children: /* @__PURE__ */ jsx("path", { d: "M6 6l12 12M18 6L6 18" })
+						})
+					}),
+					/* @__PURE__ */ jsxs("div", {
+						className: "grid items-start gap-4 min-[980px]:grid-cols-[292px_minmax(0,1fr)]",
+						children: [/* @__PURE__ */ jsx(LeftSidebar, {
+							video,
+							canRegenerate,
+							regenerating,
+							disabledRegenerate: regenerateDisabled,
+							onRegenerate: regenerate
+						}), /* @__PURE__ */ jsxs("div", {
+							className: "space-y-4",
+							children: [
+								/* @__PURE__ */ jsx(SummaryCard, { summary }),
+								/* @__PURE__ */ jsx(TabRow, {
+									tabs,
+									activeTab,
+									onChange: setActiveTab
+								}),
+								analysis?.status !== "complete" ? /* @__PURE__ */ jsx(ProcessingState, {
+									status: analysis?.status ?? "idle",
+									error: analysis?.error_message
+								}) : /* @__PURE__ */ jsx(ActivePanel, {
+									activeTab,
+									analysis,
+									result,
+									video
+								})
+							]
+						})]
+					})
+				]
+			})
+		})
 	});
 }
 //#endregion
@@ -7439,7 +8244,7 @@ function tileValue(tile) {
 	switch (tile.format) {
 		case "multiple": return splitUnit(outlierLabel(tile.value) ?? "-");
 		case "percent": return splitUnit(percent(tile.value) ?? "-");
-		case "compact": return splitUnit(compactNumber(tile.value));
+		case "compact": return splitUnit(compactNumber$1(tile.value));
 		default: return [String(tile.value), ""];
 	}
 }
@@ -7839,7 +8644,7 @@ var W = 560;
 var H = 180;
 function formatValue(value, format) {
 	if (value === null || value === void 0) return "—";
-	if (format === "compact") return compactNumber(value);
+	if (format === "compact") return compactNumber$1(value);
 	if (format === "percent") return percent(value) ?? "—";
 	return String(value);
 }
@@ -8055,7 +8860,7 @@ function TrackerHead({ search, account, lastRun, nextRun, onToggleWatchlist, onS
 							className: "h",
 							children: account.handle
 						}),
-						account?.followers > 0 && /* @__PURE__ */ jsxs(Fragment, { children: [/* @__PURE__ */ jsx("span", { className: "sep" }), /* @__PURE__ */ jsxs("span", { children: [compactNumber(account.followers), " followers"] })] }),
+						account?.followers > 0 && /* @__PURE__ */ jsxs(Fragment, { children: [/* @__PURE__ */ jsx("span", { className: "sep" }), /* @__PURE__ */ jsxs("span", { children: [compactNumber$1(account.followers), " followers"] })] }),
 						/* @__PURE__ */ jsx("span", { className: "sep" }),
 						/* @__PURE__ */ jsx("span", { children: meta })
 					]
@@ -8227,12 +9032,103 @@ function formatInsightDate(iso) {
 		day: "numeric"
 	});
 }
+function numericUsageValue(value, fallback = 0) {
+	if (typeof value === "number" && Number.isFinite(value)) return value;
+	if (value && typeof value === "object") {
+		if (typeof value.used === "number" && Number.isFinite(value.used)) return value.used;
+		if (typeof value.limit === "number" && Number.isFinite(value.limit)) return value.limit;
+	}
+	const coerced = Number(value);
+	return Number.isFinite(coerced) ? coerced : fallback;
+}
+function buildAnalysisStates(results = []) {
+	return Object.fromEntries(results.filter((video) => video?.id && video?.analysis).map((video) => [video.id, {
+		status: video.analysis.status ?? "idle",
+		error: video.analysis.error_message ?? null,
+		analysis: video.analysis
+	}]));
+}
+function AnalyzeConfirmModal({ video, creditsRemainingAfterUse = 0, busy = false, onConfirm, onCancel }) {
+	if (!video) return null;
+	return /* @__PURE__ */ jsx("div", {
+		className: "fixed inset-0 z-[130] flex items-center justify-center bg-[rgba(38,33,28,0.42)] px-4 py-6 backdrop-blur-[2px]",
+		onClick: onCancel,
+		children: /* @__PURE__ */ jsx("div", {
+			className: "w-full max-w-[430px] rounded-[24px] border border-[#d9d1c4] bg-[radial-gradient(circle_at_top,#f7f2e9_0%,#f3efe8_40%,#f1ede6_100%)] p-3 shadow-[0_28px_90px_rgba(42,33,20,0.22)]",
+			onClick: (event) => event.stopPropagation(),
+			role: "dialog",
+			"aria-modal": "true",
+			"aria-label": "Confirm video analysis",
+			children: /* @__PURE__ */ jsxs("div", {
+				className: "rounded-[20px] border border-[#ddd6ca] bg-[#fffdf9] p-5",
+				children: [
+					/* @__PURE__ */ jsx("div", {
+						className: "flex h-10 w-10 items-center justify-center rounded-full bg-[#fff0bf] text-[#8c6b10]",
+						children: /* @__PURE__ */ jsxs("svg", {
+							viewBox: "0 0 24 24",
+							className: "h-5 w-5 stroke-current",
+							fill: "none",
+							strokeWidth: "2",
+							strokeLinecap: "round",
+							strokeLinejoin: "round",
+							children: [
+								/* @__PURE__ */ jsx("circle", {
+									cx: "12",
+									cy: "12",
+									r: "9"
+								}),
+								/* @__PURE__ */ jsx("path", { d: "M12 8v5" }),
+								/* @__PURE__ */ jsx("path", { d: "M12 16h.01" })
+							]
+						})
+					}),
+					/* @__PURE__ */ jsx("h3", {
+						className: "mt-4 text-[20px] font-semibold text-[#1a1a1a]",
+						children: "Analyze this video?"
+					}),
+					/* @__PURE__ */ jsxs("p", {
+						className: "mt-2 text-[14px] leading-6 text-[#696257]",
+						children: [
+							"Successful analysis will use 1 credit. You will have ",
+							creditsRemainingAfterUse,
+							" credits remaining after deduction."
+						]
+					}),
+					/* @__PURE__ */ jsx("p", {
+						className: "mt-2 truncate text-[12px] font-medium text-[#8c8579]",
+						children: video.handle ?? video.creator_name ?? video.title ?? "Selected video"
+					}),
+					/* @__PURE__ */ jsxs("div", {
+						className: "mt-5 flex gap-3",
+						children: [/* @__PURE__ */ jsx("button", {
+							type: "button",
+							onClick: onConfirm,
+							disabled: busy,
+							className: "inline-flex flex-1 items-center justify-center rounded-full bg-[#f2c44f] px-4 py-2.5 text-[12px] font-semibold text-[#4f3d08] transition hover:bg-[#e8bb48] disabled:cursor-not-allowed disabled:opacity-60",
+							children: busy ? "Starting…" : "Start analysis"
+						}), /* @__PURE__ */ jsx("button", {
+							type: "button",
+							onClick: onCancel,
+							className: "inline-flex flex-1 items-center justify-center rounded-full border border-[#ddd6ca] bg-white px-4 py-2.5 text-[12px] font-semibold text-[#5f584d] transition hover:bg-[#faf7f1]",
+							children: "Cancel"
+						})]
+					})
+				]
+			})
+		})
+	});
+}
 function DetailScreen({ search, isAuthenticated = false, billing = null, onToggleBookmark, onRefresh, onTogglePause, onDelete, refreshing = false, bookmarkUpdating = false }) {
 	const [visible, setVisible] = useState(PAGE_STEP);
 	const [copied, setCopied] = useState(false);
 	const [bookmarkingId, setBookmarkingId] = useState(null);
 	const [items, setItems] = useState(search?.results ?? []);
 	const [activePlayerId, setActivePlayerId] = useState(null);
+	const [analysisStates, setAnalysisStates] = useState(() => buildAnalysisStates(search?.results ?? []));
+	const [analysisModal, setAnalysisModal] = useState(null);
+	const [pendingAnalysisVideo, setPendingAnalysisVideo] = useState(null);
+	const sharedBilling = usePage().props?.billing ?? {};
+	const billingState = billing ?? sharedBilling;
 	const insights = search?.insights ?? {};
 	insights.baseline?.median_views;
 	const threshold = insights.baseline?.outlier_threshold ?? 3;
@@ -8240,6 +9136,9 @@ function DetailScreen({ search, isAuthenticated = false, billing = null, onToggl
 	const trend = insights.trend ?? null;
 	const profile = account?.profile ?? {};
 	const lastPulledLabel = formatInsightDate(search?.last_run_at);
+	const videoAnalysisLimit = numericUsageValue(billingState?.videoAnalysisLimit, 0);
+	const videoAnalysisUsed = numericUsageValue(billingState?.videoAnalysisUsed, 0);
+	const creditsRemainingAfterUse = videoAnalysisLimit === -1 ? "unlimited" : Math.max(0, videoAnalysisLimit - videoAnalysisUsed - 1);
 	const feedItems = items;
 	const [winner, ...rest] = feedItems;
 	const shown = rest.slice(0, visible);
@@ -8297,6 +9196,10 @@ function DetailScreen({ search, isAuthenticated = false, billing = null, onToggl
 			window.setTimeout(() => setCopied(false), 2e3);
 		} catch {}
 	};
+	useEffect(() => {
+		setItems(search?.results ?? []);
+		setAnalysisStates(buildAnalysisStates(search?.results ?? []));
+	}, [search]);
 	const toggleBookmark = async (video) => {
 		if (!isAuthenticated) {
 			window.location.assign("/auth/google");
@@ -8315,7 +9218,115 @@ function DetailScreen({ search, isAuthenticated = false, billing = null, onToggl
 			setBookmarkingId(null);
 		}
 	};
-	const analyze = () => window.alert("Video analysis is coming soon.");
+	const startAnalysis = async (video) => {
+		if (!isAuthenticated) {
+			window.location.assign("/auth/google");
+			return;
+		}
+		const currentStatus = analysisStates[video.id]?.status ?? "idle";
+		if (currentStatus === "complete") {
+			setAnalysisModal({
+				video,
+				analysis: analysisStates[video.id]?.analysis ?? null
+			});
+			return;
+		}
+		if (currentStatus === "processing") return;
+		try {
+			setAnalysisStates((current) => ({
+				...current,
+				[video.id]: { status: "processing" }
+			}));
+			const payload = await videoAnalysis.request(video.id);
+			const nextStatus = payload?.analysis?.status ?? "processing";
+			setAnalysisStates((current) => ({
+				...current,
+				[video.id]: {
+					status: nextStatus,
+					error: payload?.analysis?.error_message ?? null,
+					analysis: payload?.analysis ?? null
+				}
+			}));
+		} catch (error) {
+			setAnalysisStates((current) => ({
+				...current,
+				[video.id]: {
+					status: "failed",
+					error: error?.message ?? "Could not start video analysis."
+				}
+			}));
+			if (error?.status === 422 || error?.status === 401) {
+				window.alert(error.payload?.errors?.billing?.[0] || error.payload?.errors?.auth?.[0] || error.message);
+				return;
+			}
+			window.alert(error?.message || "Could not start video analysis.");
+		}
+	};
+	const analyze = async (video) => {
+		if (!isAuthenticated) {
+			window.location.assign("/auth/google");
+			return;
+		}
+		const currentStatus = analysisStates[video.id]?.status ?? "idle";
+		if (currentStatus === "complete") {
+			setAnalysisModal({
+				video,
+				analysis: analysisStates[video.id]?.analysis ?? null
+			});
+			return;
+		}
+		if (currentStatus === "processing") return;
+		setPendingAnalysisVideo(video);
+	};
+	const confirmAnalyze = async () => {
+		if (!pendingAnalysisVideo) return;
+		const video = pendingAnalysisVideo;
+		setPendingAnalysisVideo(null);
+		await startAnalysis(video);
+	};
+	useEffect(() => {
+		const pendingIds = Object.entries(analysisStates).filter(([, state]) => state?.status === "processing").map(([id]) => id);
+		if (pendingIds.length === 0) return;
+		let cancelled = false;
+		const timer = window.setInterval(async () => {
+			const results = await Promise.all(pendingIds.map(async (id) => {
+				try {
+					return [id, (await videoAnalysis.get(id))?.analysis ?? null];
+				} catch {
+					return [id, null];
+				}
+			}));
+			if (cancelled) return;
+			setAnalysisStates((current) => {
+				const next = { ...current };
+				results.forEach(([id, analysis]) => {
+					if (!analysis) return;
+					next[id] = {
+						status: analysis.status ?? current[id]?.status ?? "idle",
+						error: analysis.error_message ?? null,
+						analysis
+					};
+				});
+				return next;
+			});
+		}, 2500);
+		return () => {
+			cancelled = true;
+			window.clearInterval(timer);
+		};
+	}, [analysisStates]);
+	const closeAnalysisModal = () => setAnalysisModal(null);
+	const handleModalAnalysisChange = (videoId, analysis) => {
+		if (!videoId || !analysis) return;
+		setAnalysisStates((current) => ({
+			...current,
+			[videoId]: {
+				status: analysis.status ?? current[videoId]?.status ?? "idle",
+				error: analysis.error_message ?? null,
+				analysis
+			}
+		}));
+	};
 	return /* @__PURE__ */ jsxs("div", {
 		className: "tracker",
 		children: [
@@ -8402,6 +9413,7 @@ function DetailScreen({ search, isAuthenticated = false, billing = null, onToggl
 					onToggleBookmark: toggleBookmark,
 					onAnalyze: analyze,
 					bookmarking: bookmarkingId === winner?.id,
+					analysisStatus: winner ? analysisStates[winner.id]?.status ?? "idle" : "idle",
 					activePlayerId,
 					onPlay: setActivePlayerId,
 					onClose: () => setActivePlayerId(null)
@@ -8426,6 +9438,7 @@ function DetailScreen({ search, isAuthenticated = false, billing = null, onToggl
 							onToggleBookmark: toggleBookmark,
 							onAnalyze: analyze,
 							bookmarking: bookmarkingId === video.id,
+							analysisStatus: analysisStates[video.id]?.status ?? "idle",
 							activePlayerId,
 							onPlay: setActivePlayerId,
 							onClose: () => setActivePlayerId(null)
@@ -8472,18 +9485,32 @@ function DetailScreen({ search, isAuthenticated = false, billing = null, onToggl
 						nextRunLabel: formatDate$1(search?.next_run_at)
 					}), /* @__PURE__ */ jsx(ScoreDistribution, { distribution: insights.distribution ?? [] })]
 				})
-			] })
+			] }),
+			analysisModal && /* @__PURE__ */ jsx(AnalysisModal, {
+				open: true,
+				video: analysisModal.video,
+				initialAnalysis: analysisModal.analysis,
+				onClose: closeAnalysisModal,
+				onAnalysisChange: handleModalAnalysisChange
+			}),
+			pendingAnalysisVideo && /* @__PURE__ */ jsx(AnalyzeConfirmModal, {
+				video: pendingAnalysisVideo,
+				creditsRemainingAfterUse,
+				busy: false,
+				onConfirm: confirmAnalyze,
+				onCancel: () => setPendingAnalysisVideo(null)
+			})
 		]
 	});
 }
 //#endregion
 //#region resources/js/Pages/SavedSearches/Show.jsx
-var Show_exports = /* @__PURE__ */ __exportAll({ default: () => Show });
+var Show_exports$1 = /* @__PURE__ */ __exportAll({ default: () => Show$1 });
 /**
 * The single detail view for every saved search — brand, competitor, and
 * product all render the same analytics tracker (the one design identity).
 */
-function Show({ search: initial, isAuthenticated = false, billing }) {
+function Show$1({ search: initial, isAuthenticated = false, billing }) {
 	const [search, setSearch] = useState(initial);
 	const [refreshing, setRefreshing] = useState(false);
 	const [bookmarkingSearch, setBookmarkingSearch] = useState(false);
@@ -9294,6 +10321,27 @@ function Trial() {
 	})] });
 }
 //#endregion
+//#region resources/js/Pages/VideoAnalysis/Show.jsx
+var Show_exports = /* @__PURE__ */ __exportAll({ default: () => Show });
+function closeModal() {
+	if (window.history.length > 1) {
+		window.history.back();
+		return;
+	}
+	window.location.assign("/bookmark");
+}
+function Show({ video, analysis: initialAnalysis, tabs }) {
+	return /* @__PURE__ */ jsxs(Fragment, { children: [/* @__PURE__ */ jsx(Head, { title: `Video Analysis · ${video.handle ?? video.creator_name ?? "TikTok"}` }), /* @__PURE__ */ jsx(AppLayout, {
+		width: "max-w-[1400px]",
+		children: /* @__PURE__ */ jsx(AnalysisModal, {
+			video,
+			initialAnalysis,
+			tabs,
+			onClose: closeModal
+		})
+	})] });
+}
+//#endregion
 //#region resources/js/ssr.jsx
 createServer((page) => createInertiaApp({
 	page,
@@ -9316,7 +10364,7 @@ createServer((page) => createInertiaApp({
 			"./Pages/Plans.jsx": Plans_exports,
 			"./Pages/Products.jsx": Products_exports,
 			"./Pages/SavedSearches/Index.jsx": Index_exports,
-			"./Pages/SavedSearches/Show.jsx": Show_exports,
+			"./Pages/SavedSearches/Show.jsx": Show_exports$1,
 			"./Pages/SavedSearches/detail/Badges.jsx": Badges_exports,
 			"./Pages/SavedSearches/detail/DetailScreen.jsx": DetailScreen_exports,
 			"./Pages/SavedSearches/detail/InsightPanels.jsx": InsightPanels_exports,
@@ -9329,6 +10377,8 @@ createServer((page) => createInertiaApp({
 			"./Pages/Settings/SettingsShell.jsx": SettingsShell_exports,
 			"./Pages/Settings/Subscription.jsx": Subscription_exports,
 			"./Pages/Trial.jsx": Trial_exports,
+			"./Pages/VideoAnalysis/AnalysisModal.jsx": AnalysisModal_exports,
+			"./Pages/VideoAnalysis/Show.jsx": Show_exports,
 			"./Pages/components/AppFooter.jsx": AppFooter_exports,
 			"./Pages/components/AppLayout.jsx": AppLayout_exports,
 			"./Pages/components/EntitlementsBar.jsx": EntitlementsBar_exports,

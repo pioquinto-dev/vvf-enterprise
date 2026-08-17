@@ -3,6 +3,8 @@
 namespace App\Http\Resources;
 
 use App\Models\CustomKeywordSearch;
+use App\Models\User;
+use App\Models\VideoAnalysis;
 use App\Services\CustomKeywordSearch\SearchInsights;
 use App\Services\CustomKeywordSearch\TrendBuilder;
 
@@ -62,8 +64,10 @@ class SavedSearchPresenter
      *
      * @return array<int, array<string, mixed>>
      */
-    public static function resultRows(CustomKeywordSearch $search, array $bookmarkedVideoIds = []): array
+    public static function resultRows(CustomKeywordSearch $search, array $bookmarkedVideoIds = [], ?User $user = null): array
     {
+        $analysisByVideoId = self::analysisMapForSearch($search, $user);
+
         return $search->videos()
             // Archived videos stay attached to the search but must not render;
             // the `isset($row['id'])` guard below drops the empty rows.
@@ -78,6 +82,7 @@ class SavedSearchPresenter
                     'bookmarked' => in_array($row->viral_video_id, $bookmarkedVideoIds, true),
                     'is_new_breakout' => (bool) $row->is_new_breakout,
                     'source' => $row->source,
+                    'analysis' => $analysisByVideoId[$row->viral_video_id] ?? null,
                 ]
             ))
             ->filter(fn (array $row): bool => isset($row['id']))
@@ -88,9 +93,9 @@ class SavedSearchPresenter
     /**
      * @return array<string, mixed>
      */
-    public static function detail(CustomKeywordSearch $search, array $bookmarkedVideoIds = []): array
+    public static function detail(CustomKeywordSearch $search, array $bookmarkedVideoIds = [], ?User $user = null): array
     {
-        $results = self::resultRows($search, $bookmarkedVideoIds);
+        $results = self::resultRows($search, $bookmarkedVideoIds, $user);
 
         // Insights are derived from the same rows the cards render, so the
         // median a card is measured against is always the median of what the
@@ -141,5 +146,47 @@ class SavedSearchPresenter
 
             return $row;
         }, $rows);
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    private static function analysisMapForSearch(CustomKeywordSearch $search, ?User $user): array
+    {
+        if ($user === null) {
+            return [];
+        }
+
+        $videoIds = $search->videos()->pluck('viral_video_id')->all();
+
+        if ($videoIds === []) {
+            return [];
+        }
+
+        return VideoAnalysis::query()
+            ->where('user_id', $user->id)
+            ->whereIn('viral_video_id', $videoIds)
+            ->get()
+            ->keyBy('viral_video_id')
+            ->map(fn (VideoAnalysis $analysis): array => self::analysisPayload($analysis))
+            ->all();
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public static function analysisPayload(VideoAnalysis $analysis): array
+    {
+        return [
+            'id' => $analysis->id,
+            'video_id' => $analysis->video_id,
+            'status' => $analysis->status,
+            'result' => $analysis->result,
+            'transcript' => $analysis->transcript,
+            'transcript_segments' => $analysis->transcript_segments,
+            'error_message' => $analysis->error_message,
+            'analyzed_at' => $analysis->analyzed_at?->toIso8601String(),
+            'updated_at' => $analysis->updated_at?->toIso8601String(),
+        ];
     }
 }

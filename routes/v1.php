@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\SavedSearchController;
+use App\Http\Controllers\VideoAnalysisController;
 use App\Http\Controllers\VideoBookmarkController;
 use Illuminate\Support\Facades\Route;
 
@@ -20,4 +21,6 @@ Route::prefix('saved-searches')->group(function (): void {
 Route::prefix('videos')->group(function (): void {
     Route::post('/{id}/bookmark', [VideoBookmarkController::class, 'store'])->whereNumber('id')->name('api.v1.videos.bookmark');
     Route::delete('/{id}/bookmark', [VideoBookmarkController::class, 'destroy'])->whereNumber('id')->name('api.v1.videos.unbookmark');
+    Route::post('/{id}/analysis', [VideoAnalysisController::class, 'store'])->name('api.v1.videos.analysis.store');
+    Route::get('/{id}/analysis', [VideoAnalysisController::class, 'show'])->name('api.v1.videos.analysis.show');
 });

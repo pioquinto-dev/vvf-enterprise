@@ -10,6 +10,7 @@ const ngrokLogPath = `${root}\\storage\\logs\\ngrok-listener.log`;
 const stripeLogPath = `${root}\\storage\\logs\\stripe-listener.log`;
 const serveLogPath = `${root}\\storage\\logs\\serve-listener.log`;
 const queueLogPath = `${root}\\storage\\logs\\queue-listener.log`;
+const videoAnalysisQueueLogPath = `${root}\\storage\\logs\\video-analysis-queue-listener.log`;
 const helperScriptDir = `${root}\\storage\\app\\dev-scripts`;
 
 const appProcesses = [];
@@ -24,9 +25,7 @@ async function main() {
         stdio: ['ignore', 'pipe', 'pipe'],
     });
 
-    pipeWithPrefix(ngrokProcess.stdout, '[ngrok]');
     pipeToFile(ngrokProcess.stdout, ngrokLogPath);
-    pipeWithPrefix(ngrokProcess.stderr, '[ngrok]');
     pipeToFile(ngrokProcess.stderr, ngrokLogPath);
 
     const tunnelUrl = await waitForNgrokUrl();
@@ -39,6 +38,7 @@ async function main() {
     await runNpmCommand(['run', 'build']);
     await runCommand('php', ['artisan', 'queue:restart']);
 
+    logActiveQueues();
     startAppProcesses();
     await launchHelperConsoles();
     forwardTerminationSignals();
@@ -46,11 +46,19 @@ async function main() {
     const exitCode = await waitForAnyExit(appProcesses, [
         'php artisan serve',
         'php artisan queue:work',
+        'php artisan queue:work --queue=video-analysis',
         'npm run dev',
     ]);
 
     await shutdown();
     process.exit(exitCode);
+}
+
+function logActiveQueues() {
+    console.log('Queue connection: redis');
+    console.log('Active queue workers:');
+    console.log('  - php artisan queue:work (default queue)');
+    console.log('  - php artisan queue:work --queue=video-analysis');
 }
 
 async function waitForNgrokUrl() {
@@ -127,20 +135,25 @@ function startAppProcesses() {
     const server = spawnCommand('php', ['-S', '127.0.0.1:8000', '-t', 'public'], {
         stdio: ['ignore', 'pipe', 'pipe'],
     });
-    pipeWithPrefix(server.stdout, '[serve]');
     pipeToFile(server.stdout, serveLogPath);
-    pipeWithPrefix(server.stderr, '[serve]');
     pipeToFile(server.stderr, serveLogPath);
     appProcesses.push(server);
 
     const queueWorker = spawnCommand('php', ['artisan', 'queue:work'], {
+        env: { ...process.env, QUEUE_CONNECTION: 'redis' },
         stdio: ['ignore', 'pipe', 'pipe'],
     });
-    pipeWithPrefix(queueWorker.stdout, '[queue]');
     pipeToFile(queueWorker.stdout, queueLogPath);
-    pipeWithPrefix(queueWorker.stderr, '[queue]');
     pipeToFile(queueWorker.stderr, queueLogPath);
     appProcesses.push(queueWorker);
+
+    const videoAnalysisQueueWorker = spawnCommand('php', ['artisan', 'queue:work', '--queue=video-analysis'], {
+        env: { ...process.env, QUEUE_CONNECTION: 'redis' },
+        stdio: ['ignore', 'pipe', 'pipe'],
+    });
+    pipeToFile(videoAnalysisQueueWorker.stdout, videoAnalysisQueueLogPath);
+    pipeToFile(videoAnalysisQueueWorker.stderr, videoAnalysisQueueLogPath);
+    appProcesses.push(videoAnalysisQueueWorker);
 
     const vite = spawnNpmCommand(['run', 'dev'], {
         stdio: ['ignore', 'pipe', 'pipe'],
@@ -187,7 +200,26 @@ async function launchHelperConsoles() {
                 'exception',
             ]),
         },
+        {
+            title: 'vvf video analysis logs',
+            command: filteredTailCommand('vvf video analysis logs', videoAnalysisQueueLogPath, [
+                'processing',
+                'processed',
+                'failed',
+                'running',
+                'done',
+                'error',
+                'exception',
+                'video',
+                'analysis',
+            ]),
+        },
     ];
+
+    console.log('Helper listeners:');
+    helpers.forEach((helper) => {
+        console.log(`  - ${helper.title}`);
+    });
 
     for (const helper of helpers) {
         const scriptPath = `${helperScriptDir}\\${slugify(helper.title)}.ps1`;

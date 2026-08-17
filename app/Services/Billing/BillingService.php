@@ -124,6 +124,21 @@ class BillingService
         $this->entitlements->ensureCanBookmarkSearch($user);
     }
 
+    public function ensureCanAnalyzeVideo(User $user): void
+    {
+        $this->entitlements->ensureCanAnalyzeVideo($user);
+    }
+
+    public function consumeVideoAnalysis(User $user): void
+    {
+        $this->entitlements->consumeVideoAnalysis($user);
+    }
+
+    public function refundVideoAnalysis(User $user): void
+    {
+        $this->entitlements->refundVideoAnalysis($user);
+    }
+
     public function hasPaidPlan(?User $user): bool
     {
         return $this->entitlements->hasPaidPlan($user);
@@ -152,6 +167,16 @@ class BillingService
     public function searchBookmarkLimit(?User $user): int
     {
         return $this->entitlements->searchBookmarkLimit($user);
+    }
+
+    public function videoAnalysisLimit(?User $user): int
+    {
+        return $this->entitlements->videoAnalysisLimit($user);
+    }
+
+    public function videoAnalysisUsed(?User $user): int
+    {
+        return $this->entitlements->videoAnalysisUsed($user);
     }
 
     public function limitsFor(PricingPlan $plan): array

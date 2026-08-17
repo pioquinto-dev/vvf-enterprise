@@ -48,6 +48,9 @@ class HandleInertiaRequests extends Middleware
                 'name' => config('app.name'),
                 'env' => config('app.env'),
             ],
+            'features' => [
+                'videoAnalysisRefresh' => (bool) config('viral_video_analysis.allow_refresh'),
+            ],
             'auth' => [
                 'signedIn' => $request->user() !== null,
                 'user' => $request->user()
