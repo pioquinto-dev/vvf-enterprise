@@ -5,6 +5,7 @@ use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use App\Models\PricingPlan;
 use App\Services\Billing\BillingService;
+use App\Http\Middleware\CaptureUtmParameters;
 use App\Http\Middleware\RedirectIfAdminAuthenticated;
 use App\Http\Middleware\RequireAdminAuthentication;
 use App\Http\Middleware\EnsurePaidFeaturesAccess;
@@ -22,6 +23,7 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->web(append: [
             HandleInertiaRequests::class,
+            CaptureUtmParameters::class,
         ]);
 
         RedirectIfAuthenticated::redirectUsing(function (Request $request): string {

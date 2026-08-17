@@ -6,6 +6,7 @@ use App\Models\User;
 use App\Models\PricingPlan;
 use App\Services\Brevo\BrevoLifecycleEmailService;
 use App\Services\Billing\BillingService;
+use App\Services\Utm\UtmAttributionService;
 use App\Support\TrialCheckoutIntent;
 use App\Services\Auth\PostAuthenticationRedirector;
 use Illuminate\Auth\Events\Registered;
@@ -26,6 +27,7 @@ class RegisteredUserController extends Controller
         private readonly PostAuthenticationRedirector $redirector,
         private readonly BillingService $billing,
         private readonly BrevoLifecycleEmailService $emails,
+        private readonly UtmAttributionService $utmAttributionService,
     ) {}
 
     public function create(Request $request): Response
@@ -53,6 +55,7 @@ class RegisteredUserController extends Controller
         ]);
 
         event(new Registered($user));
+        $this->utmAttributionService->createSignupAttribution($user, $request);
         $this->emails->sendNewRegistration($user);
         $this->emails->sendVerifyEmail($user);
         Auth::login($user);

@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\User;
+use App\Models\UtmAttribution;
 use App\Services\Brevo\BrevoLifecycleEmailService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Mockery;
@@ -31,5 +32,42 @@ class AuthRegistrationBrevoTest extends TestCase
             'password' => 'password',
             'password_confirmation' => 'password',
         ])->assertRedirect('/dashboard');
+    }
+
+    public function test_manual_registration_persists_signup_utm_attribution_from_session(): void
+    {
+        $emails = Mockery::mock(BrevoLifecycleEmailService::class);
+        $this->app->instance(BrevoLifecycleEmailService::class, $emails);
+
+        $emails->shouldReceive('sendNewRegistration')->once();
+        $emails->shouldReceive('sendVerifyEmail')->once();
+
+        $this->withSession([
+            'utm_params' => [
+                'utm_source' => 'meta',
+                'utm_medium' => 'paid-social',
+                'utm_campaign' => 'august-launch',
+                'utm_content' => 'hero-video',
+                'utm_term' => 'creator tools',
+            ],
+        ])->post('/register', [
+            'name' => 'Jane Example',
+            'email' => 'jane@example.com',
+            'password' => 'password',
+            'password_confirmation' => 'password',
+        ])->assertRedirect('/dashboard');
+
+        $user = User::query()->where('email', 'jane@example.com')->firstOrFail();
+
+        $this->assertDatabaseHas('utm_attributions', [
+            'user_id' => $user->id,
+            'subscription_id' => null,
+            'utm_source' => 'meta',
+            'utm_medium' => 'paid-social',
+            'utm_campaign' => 'august-launch',
+            'utm_content' => 'hero-video',
+            'utm_term' => 'creator tools',
+        ]);
+        $this->assertSame(1, UtmAttribution::query()->where('user_id', $user->id)->count());
     }
 }

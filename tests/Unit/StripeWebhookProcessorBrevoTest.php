@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Services\Billing\BillingService;
 use App\Services\Brevo\BrevoLifecycleEmailService;
 use App\Services\Stripe\StripeWebhookProcessor;
+use App\Services\Utm\UtmAttributionService;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Mockery;
@@ -98,5 +99,77 @@ class StripeWebhookProcessorBrevoTest extends TestCase
 
         $this->assertSame('free', $user->fresh()->current_plan_slug);
         $this->assertSame('canceled', $subscription->fresh()->status);
+    }
+
+    public function test_checkout_finalization_copies_signup_utm_to_subscription_attribution(): void
+    {
+        $user = User::factory()->create([
+            'stripe_customer_id' => 'cus_test_123',
+        ]);
+
+        $plan = PricingPlan::query()->create([
+            'id' => (string) str()->ulid(),
+            'slug' => 'basic',
+            'name' => 'Basic',
+            'stripe_price_id' => 'price_basic',
+            'price_cents' => 2900,
+            'interval_count' => 1,
+            'is_active' => true,
+            'amount' => 29,
+            'annual_amount' => 0,
+            'saved_amount' => 0,
+            'unit_amount' => 2900,
+        ]);
+
+        \App\Models\UtmAttribution::query()->create([
+            'user_id' => $user->id,
+            'utm_source' => 'google',
+            'utm_medium' => 'cpc',
+            'utm_campaign' => 'brand-search',
+            'utm_content' => 'pricing-card',
+            'utm_term' => 'viral video finder',
+        ]);
+
+        $stripe = Mockery::mock(\App\Services\Stripe\StripeClient::class);
+        $entitlements = Mockery::mock(\App\Services\Billing\BillingEntitlementService::class);
+        $emails = Mockery::mock(BrevoLifecycleEmailService::class);
+        $utmAttributionService = app(UtmAttributionService::class);
+
+        $stripe->shouldReceive('retrieveCheckoutSession')
+            ->once()
+            ->with('cs_test_123')
+            ->andReturn((object) [
+                'payment_status' => 'paid',
+                'status' => 'complete',
+                'metadata' => (object) ['plan_slug' => 'basic'],
+                'subscription' => 'sub_test_utm_123',
+                'customer' => 'cus_test_123',
+            ]);
+
+        $entitlements->shouldReceive('videoBookmarkCount')->once()->with(Mockery::type(User::class))->andReturn(0);
+        $entitlements->shouldReceive('searchBookmarkCount')->once()->with(Mockery::type(User::class))->andReturn(0);
+        $entitlements->shouldReceive('limitsFor')->once()->with(Mockery::type(PricingPlan::class))->andReturn([
+            'searchLimit' => 10,
+            'videoBookmarkLimit' => 5,
+            'searchBookmarkLimit' => 3,
+            'videoAnalysisLimit' => 2,
+            'trialEnabled' => false,
+        ]);
+        $entitlements->shouldReceive('remainingSearchCreditsFrom')->once()->andReturn(10);
+
+        $emails->shouldReceive('sendSubscriptionStarted')->once();
+
+        $billing = new BillingService($stripe, $entitlements, $emails, $utmAttributionService);
+        $billing->finalizeCheckout($user, 'cs_test_123');
+
+        $this->assertDatabaseHas('utm_attributions', [
+            'user_id' => $user->id,
+            'subscription_id' => 'sub_test_utm_123',
+            'utm_source' => 'google',
+            'utm_medium' => 'cpc',
+            'utm_campaign' => 'brand-search',
+            'utm_content' => 'pricing-card',
+            'utm_term' => 'viral video finder',
+        ]);
     }
 }

@@ -2580,8 +2580,10 @@ function EntitlementsBar() {
 	const bookmarkLimit = billing.searchBookmarkLimit ?? billing.bookmarkLimit ?? 0;
 	const bookmarksUsed = billing.searchBookmarkCount ?? billing.bookmarksUsed ?? billing.bookmarkCount ?? 0;
 	const searchesLow = searchLimit > 0 && searchLeft <= Math.max(1, Math.round(searchLimit * .1));
-	return /* @__PURE__ */ jsxs("div", {
+	return /* @__PURE__ */ jsxs(Link, {
+		href: "/settings/subscription",
 		className: "ent",
+		"aria-label": "Open subscription settings",
 		children: [
 			/* @__PURE__ */ jsx("b", { children: titleCase$1(billing.currentPlan) }),
 			/* @__PURE__ */ jsx("i", {}),
@@ -2599,8 +2601,8 @@ function EntitlementsBar() {
 				bookmarkLimit > 0 && `/${bookmarkLimit}`,
 				" search bookmarks"
 			] }),
-			!billing.hasPaidPlan && /* @__PURE__ */ jsxs(Fragment, { children: [/* @__PURE__ */ jsx("i", {}), /* @__PURE__ */ jsx(Link, {
-				href: "/plans",
+			!billing.hasPaidPlan && /* @__PURE__ */ jsxs(Fragment, { children: [/* @__PURE__ */ jsx("i", {}), /* @__PURE__ */ jsx("span", {
+				style: { textDecoration: "underline" },
 				children: "Upgrade"
 			})] })
 		]
@@ -4511,6 +4513,7 @@ var SearchWizard_exports = /* @__PURE__ */ __exportAll({ default: () => SearchWi
 */
 var kindOf = (type) => type === "product" ? "product" : "brand";
 var nounOf = (type) => type === "product" ? "product" : "brand";
+var PENDING_SEARCH_KEY = "brand-beacon.pending-search";
 function readRunParam() {
 	if (typeof window === "undefined") return null;
 	const id = new URLSearchParams(window.location.search).get("run");
@@ -4613,6 +4616,92 @@ function UsageConfirmModal$1({ title, body, subject, confirmLabel, busy = false,
 		})
 	});
 }
+function AuthPromptModal({ type, phrase, onClose }) {
+	const noun = nounOf(type);
+	const goTo = (path) => {
+		if (typeof window === "undefined") return;
+		window.location.assign(path);
+	};
+	return /* @__PURE__ */ jsx("div", {
+		className: "bb",
+		children: /* @__PURE__ */ jsxs("div", {
+			className: "bb-modal",
+			children: [/* @__PURE__ */ jsx("button", {
+				className: "bb-modal__bg",
+				"aria-label": "Close",
+				onClick: onClose
+			}), /* @__PURE__ */ jsxs("div", {
+				className: "bb-modal__box",
+				children: [
+					/* @__PURE__ */ jsx("h2", { children: "Create your account first" }),
+					/* @__PURE__ */ jsxs("p", {
+						className: "sub",
+						children: [
+							"Your ",
+							noun,
+							" is ready. Create an account or sign in first, and we will start this search right after you get back."
+						]
+					}),
+					phrase && /* @__PURE__ */ jsx("p", {
+						style: {
+							marginTop: 16,
+							fontWeight: 700,
+							color: "var(--ink)"
+						},
+						children: phrase
+					}),
+					/* @__PURE__ */ jsxs("div", {
+						className: "actrow__r",
+						style: {
+							marginTop: 24,
+							justifyContent: "flex-end",
+							flexWrap: "wrap"
+						},
+						children: [
+							/* @__PURE__ */ jsx("button", {
+								type: "button",
+								className: "btn btn--g",
+								onClick: onClose,
+								children: "Not now"
+							}),
+							/* @__PURE__ */ jsx("button", {
+								type: "button",
+								className: "btn btn--g",
+								onClick: () => goTo("/login"),
+								children: "Sign in"
+							}),
+							/* @__PURE__ */ jsx("button", {
+								type: "button",
+								className: "btn btn--y",
+								onClick: () => goTo("/register"),
+								children: "Create account"
+							})
+						]
+					})
+				]
+			})]
+		})
+	});
+}
+function readPendingSearch() {
+	if (typeof window === "undefined") return null;
+	try {
+		const raw = window.sessionStorage.getItem(PENDING_SEARCH_KEY);
+		if (!raw) return null;
+		const parsed = JSON.parse(raw);
+		return parsed && typeof parsed === "object" ? parsed : null;
+	} catch {
+		return null;
+	}
+}
+function writePendingSearch(payload) {
+	if (typeof window === "undefined") return;
+	window.sessionStorage.setItem(PENDING_SEARCH_KEY, JSON.stringify(payload));
+}
+function clearPendingSearch() {
+	if (typeof window === "undefined") return;
+	window.sessionStorage.removeItem(PENDING_SEARCH_KEY);
+}
 function SearchWizard({ initialType = "brand", initialQuery = "", heading = "Start a search", subheading = "Pick one brand, competitor, or product — we widen it with smarter keywords on the next step.", subjectExtra = null }) {
 	const { auth = {}, billing = {} } = usePage().props;
 	const resumeId = readRunParam();
@@ -4624,6 +4713,7 @@ function SearchWizard({ initialType = "brand", initialQuery = "", heading = "Sta
 	const [submitting, setSubmitting] = useState(false);
 	const [error, setError] = useState(null);
 	const [confirmPayload, setConfirmPayload] = useState(null);
+	const [authPromptPayload, setAuthPromptPayload] = useState(null);
 	const kind = kindOf(type);
 	const signedIn = auth.signedIn ?? Boolean(auth.user);
 	const searchLimit = billing.searchCreditsLimit ?? 0;
@@ -4641,18 +4731,19 @@ function SearchWizard({ initialType = "brand", initialQuery = "", heading = "Sta
 		setPhrase(nextPhrase);
 		setStep("keywords");
 	};
-	const doCreate = async (payload, sources) => {
+	const doCreate = async (payload, sources, searchType = type, searchPhrase = payload.phrase || phrase) => {
 		setSubmitting(true);
 		setError(null);
 		try {
 			const created = await createSavedSearch({
-				type,
-				phrase: payload.phrase || phrase,
+				type: searchType,
+				phrase: searchPhrase,
 				name: payload.name,
 				keywords: payload.keywords,
 				frequency: payload.frequency,
 				sources
 			});
+			clearPendingSearch();
 			trackSearch({
 				id: created.id,
 				name: created.name,
@@ -4662,14 +4753,58 @@ function SearchWizard({ initialType = "brand", initialQuery = "", heading = "Sta
 			stampUrl(created.id);
 			setStep("running");
 		} catch (e) {
+			const pendingSearch = readPendingSearch();
+			if (pendingSearch?.started) writePendingSearch({
+				...pendingSearch,
+				started: false
+			});
 			setError(e.message || "Could not start the search. Try again.");
 			setStep("keywords");
 		} finally {
 			setSubmitting(false);
 		}
 	};
+	useEffect(() => {
+		if (!signedIn) return;
+		const pendingSearch = readPendingSearch();
+		if (!pendingSearch || pendingSearch.started) return;
+		if (!pendingSearch.payload || pendingSearch.type !== "brand" && pendingSearch.type !== "competitor" && pendingSearch.type !== "product") {
+			clearPendingSearch();
+			return;
+		}
+		writePendingSearch({
+			...pendingSearch,
+			started: true
+		});
+		setType(pendingSearch.type);
+		setPhrase(pendingSearch.phrase ?? "");
+		setPending(pendingSearch.payload);
+		setError(null);
+		setAuthPromptPayload(null);
+		if ((pendingSearch.kind ?? kindOf(pendingSearch.type)) === "brand") {
+			setStep("sources");
+			return;
+		}
+		doCreate(pendingSearch.payload, pendingSearch.sources, pendingSearch.type, pendingSearch.phrase ?? pendingSearch.payload?.phrase ?? "");
+	}, [signedIn]);
 	const needsSearchConfirm = signedIn && searchLimit !== 0;
 	const runSearch = (payload, sources) => {
+		if (!signedIn) {
+			writePendingSearch({
+				type,
+				kind,
+				phrase: payload.phrase || phrase,
+				payload,
+				sources: sources ?? null,
+				started: false
+			});
+			setPending(payload);
+			setAuthPromptPayload({
+				type,
+				phrase: payload.phrase || phrase
+			});
+			return;
+		}
 		if (!needsSearchConfirm) {
 			doCreate(payload, sources);
 			return;
@@ -4681,8 +4816,15 @@ function SearchWizard({ initialType = "brand", initialQuery = "", heading = "Sta
 	};
 	const afterKeywords = (payload) => {
 		setPending(payload);
-		if (kind === "brand") setStep("sources");
-		else runSearch(payload);
+		if (!signedIn) {
+			runSearch(payload);
+			return;
+		}
+		if (kind === "brand") {
+			setStep("sources");
+			return;
+		}
+		runSearch(payload);
 	};
 	const backToKeywords = () => {
 		stampUrl(null);
@@ -4748,6 +4890,14 @@ function SearchWizard({ initialType = "brand", initialQuery = "", heading = "Sta
 				const next = confirmPayload;
 				setConfirmPayload(null);
 				doCreate(next.payload, next.sources);
+			}
+		}),
+		authPromptPayload && /* @__PURE__ */ jsx(AuthPromptModal, {
+			type: authPromptPayload.type,
+			phrase: authPromptPayload.phrase,
+			onClose: () => {
+				clearPendingSearch();
+				setAuthPromptPayload(null);
 			}
 		})
 	] });
@@ -8820,7 +8970,36 @@ function formatValue(value, format) {
 	if (format === "percent") return percent(value) ?? "—";
 	return String(value);
 }
-/** Maps a series onto the viewBox. A flat series sits mid-height, not on the floor. */
+function formatRunDate(iso) {
+	if (!iso) return null;
+	const date = new Date(iso);
+	return Number.isNaN(date.getTime()) ? null : date.toLocaleDateString(void 0, {
+		month: "short",
+		day: "numeric"
+	});
+}
+function buildDelta(latest, previous, unit) {
+	if (latest === null || latest === void 0 || previous === null || previous === void 0) return null;
+	const value = unit === "points" ? Math.round((latest - previous) * 100) / 100 : previous === 0 ? null : Math.round((latest - previous) / previous * 100 * 10) / 10;
+	if (value === null || Number.isNaN(value)) return null;
+	return {
+		value,
+		unit,
+		direction: value > 0 ? "up" : value < 0 ? "down" : "flat"
+	};
+}
+function deltaLabel(delta) {
+	if (!delta) return "No comparison yet";
+	const prefix = delta.direction === "up" ? "↑" : delta.direction === "down" ? "↓" : "→";
+	const suffix = delta.unit === "points" ? " pts" : "%";
+	return `${prefix} ${Math.abs(delta.value)}${suffix}`;
+}
+function runLabel(index) {
+	return `Refresh ${index + 1}`;
+}
+function runCountLabel(count) {
+	return `${count} completed ${count === 1 ? "run" : "runs"}`;
+}
 function toPoints(values) {
 	if (!values || values.length < 2) return [];
 	const max = Math.max(...values);
@@ -8830,38 +9009,62 @@ function toPoints(values) {
 		return [i / (values.length - 1) * W, range === 0 ? H / 2 : 170 - (v - min) / range * 160];
 	});
 }
-/**
-* The 12-week performance chart. Weeks rebuilt from upload dates are drawn
-* dashed and the measured tail solid, so the eye can tell reconstructed
-* history from real history without reading the caption.
-*/
-function PerformanceChart({ trend }) {
+function fallbackSnapshotFromTrend(trend) {
+	if (!trend?.metrics) return null;
+	return {
+		views: trend.metrics.views?.current ?? null,
+		posts: trend.metrics.posts?.current ?? null,
+		engagement: trend.metrics.engagement?.current ?? null,
+		engagement_rate: trend.metrics.rate?.current ?? null
+	};
+}
+function PerformanceChart({ trend, runs = [], frequency = "weekly" }) {
 	const [metric, setMetric] = useState("views");
 	const series = trend?.metrics?.[metric];
-	const points = trend?.points ?? [];
-	const geometry = useMemo(() => {
-		const coords = toPoints(series?.values ?? []);
-		if (coords.length === 0) return null;
-		const asPoly = (list) => list.map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`).join(" ");
-		const line = asPoly(coords);
-		const firstRecorded = points.findIndex((p) => !p.reconstructed);
+	const latestRunId = runs[runs.length - 1]?.id ?? null;
+	const trendFallbackSnapshot = fallbackSnapshotFromTrend(trend);
+	const completedRuns = runs.map((run) => {
+		if (run?.snapshot) return run;
+		if (run?.id !== latestRunId || !trendFallbackSnapshot) return run;
 		return {
-			line,
-			recorded: firstRecorded >= 0 && firstRecorded < coords.length - 1 ? asPoly(coords.slice(firstRecorded)) : null,
-			area: `${line} ${W},${H} 0,${H}`,
-			last: coords[coords.length - 1]
+			...run,
+			snapshot: {
+				...trendFallbackSnapshot,
+				captured_at: run?.completed_at ?? null,
+				is_fallback: true
+			}
 		};
-	}, [series, points]);
-	if (!series || !geometry) return /* @__PURE__ */ jsx("div", {
+	}).filter((run) => run?.snapshot);
+	if (!series || completedRuns.length === 0) return /* @__PURE__ */ jsx("div", {
 		className: "panel",
 		children: /* @__PURE__ */ jsx("p", {
 			className: "empty",
 			children: "Not enough history to plot yet."
 		})
 	});
-	const delta = series.delta;
-	const deltaTone = !delta ? "flat" : delta.direction === "up" ? "up" : delta.direction === "down" ? "down" : "flat";
-	const deltaSuffix = delta?.unit === "points" ? " pts" : "%";
+	const latestRun = completedRuns[completedRuns.length - 1];
+	const previousRun = completedRuns.length > 1 ? completedRuns[completedRuns.length - 2] : null;
+	const baselineRun = completedRuns[0];
+	const metricKey = series.format === "percent" ? "engagement_rate" : metric;
+	const deltaUnit = series.format === "percent" ? "points" : "percent";
+	const currentValue = latestRun?.snapshot?.[metricKey] ?? series.current;
+	const previousDelta = previousRun ? buildDelta(currentValue, previousRun?.snapshot?.[metricKey], deltaUnit) : null;
+	const coords = toPoints(completedRuns.map((run) => Number(run?.snapshot?.[metricKey]) || 0));
+	const line = coords.map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`).join(" ");
+	const area = line ? `${line} ${W},${H} 0,${H}` : "";
+	const lastPoint = coords[coords.length - 1] ?? null;
+	const latestRunDate = formatRunDate(latestRun?.completed_at);
+	const baselineRunDate = formatRunDate(baselineRun?.completed_at);
+	const axisLabels = completedRuns.length === 1 ? [{
+		label: runLabel(0),
+		align: "start"
+	}, {
+		label: "latest",
+		align: "end"
+	}] : completedRuns.map((run, index) => ({
+		label: index === 0 ? runLabel(0) : index === completedRuns.length - 1 ? "latest" : completedRuns.length <= 4 || index === Math.floor((completedRuns.length - 1) / 2) ? runLabel(index) : "",
+		align: index === 0 ? "start" : index === completedRuns.length - 1 ? "end" : "center"
+	}));
 	return /* @__PURE__ */ jsxs("div", {
 		className: "panel",
 		children: [
@@ -8873,23 +9076,42 @@ function PerformanceChart({ trend }) {
 					children: definition.label
 				}, key))
 			}),
-			/* @__PURE__ */ jsxs("div", {
+			/* @__PURE__ */ jsx("div", {
 				className: "ts-head",
-				children: [/* @__PURE__ */ jsx("span", {
+				children: /* @__PURE__ */ jsx("span", {
 					className: "ts-val",
-					children: formatValue(series.current, series.format)
-				}), delta && /* @__PURE__ */ jsxs("span", {
-					className: `ts-delta ${deltaTone}`,
-					children: [
-						delta.direction === "up" ? "↑" : delta.direction === "down" ? "↓" : "→",
-						" ",
-						Math.abs(delta.value),
-						deltaSuffix,
-						" vs 12 wk ago"
-					]
-				})]
+					children: formatValue(currentValue, series.format)
+				})
 			}),
-			/* @__PURE__ */ jsxs("svg", {
+			/* @__PURE__ */ jsxs("div", {
+				className: "ts-legend",
+				children: [
+					/* @__PURE__ */ jsxs("span", {
+						className: "ts-chip ts-chip--neutral",
+						children: [/* @__PURE__ */ jsx("i", {}), runCountLabel(completedRuns.length)]
+					}),
+					/* @__PURE__ */ jsxs("span", {
+						className: "ts-chip ts-chip--neutral",
+						children: [
+							/* @__PURE__ */ jsx("i", {}),
+							"Latest run",
+							latestRunDate ? ` • ${latestRunDate}` : ""
+						]
+					}),
+					previousDelta ? /* @__PURE__ */ jsxs("span", {
+						className: `ts-chip ts-chip--${previousDelta.direction}`,
+						children: [
+							/* @__PURE__ */ jsx("i", {}),
+							deltaLabel(previousDelta),
+							" vs previous run"
+						]
+					}) : /* @__PURE__ */ jsxs("span", {
+						className: "ts-chip ts-chip--neutral",
+						children: [/* @__PURE__ */ jsx("i", {}), "Baseline run only"]
+					})
+				]
+			}),
+			coords.length >= 2 ? /* @__PURE__ */ jsxs("svg", {
 				className: "ts-svg",
 				viewBox: `0 0 ${W} ${H}`,
 				preserveAspectRatio: "none",
@@ -8911,44 +9133,73 @@ function PerformanceChart({ trend }) {
 						})]
 					}) }),
 					/* @__PURE__ */ jsx("polygon", {
-						points: geometry.area,
+						points: area,
 						fill: "url(#tsfill)"
 					}),
 					/* @__PURE__ */ jsx("polyline", {
-						points: geometry.line,
-						fill: "none",
-						stroke: "var(--violet)",
-						strokeWidth: "2.5",
-						strokeLinejoin: "round",
-						strokeLinecap: "round",
-						strokeDasharray: trend.has_reconstructed ? "5 4" : void 0,
-						opacity: trend.has_reconstructed ? .55 : 1
-					}),
-					geometry.recorded && /* @__PURE__ */ jsx("polyline", {
-						points: geometry.recorded,
+						points: line,
 						fill: "none",
 						stroke: "var(--violet)",
 						strokeWidth: "2.5",
 						strokeLinejoin: "round",
 						strokeLinecap: "round"
 					}),
-					/* @__PURE__ */ jsx("circle", {
-						cx: geometry.last[0],
-						cy: geometry.last[1],
+					lastPoint && /* @__PURE__ */ jsx("circle", {
+						cx: lastPoint[0],
+						cy: lastPoint[1],
 						r: "4.5",
 						fill: "var(--violet)",
 						stroke: "#fff",
 						strokeWidth: "2"
 					})
 				]
+			}) : /* @__PURE__ */ jsxs("div", {
+				className: "ts-emptycta",
+				children: [/* @__PURE__ */ jsxs("strong", { children: [runLabel(0), " is your baseline."] }), /* @__PURE__ */ jsxs("span", { children: [
+					"Come back next ",
+					frequency === "monthly" ? "month" : "week",
+					" to unlock comparison against the next refresh."
+				] })]
+			}),
+			/* @__PURE__ */ jsx("div", {
+				className: "ts-x",
+				children: axisLabels.map((item, index) => /* @__PURE__ */ jsx("span", {
+					className: `ts-x--${item.align}`,
+					children: item.label
+				}, `${item.label || "tick"}-${index}`))
 			}),
 			/* @__PURE__ */ jsxs("div", {
-				className: "ts-x",
+				className: "ts-foot",
 				children: [
-					/* @__PURE__ */ jsx("span", { children: "12 wk ago" }),
-					/* @__PURE__ */ jsx("span", { children: "8 wk" }),
-					/* @__PURE__ */ jsx("span", { children: "4 wk" }),
-					/* @__PURE__ */ jsx("span", { children: "now" })
+					/* @__PURE__ */ jsxs("div", {
+						className: "ts-mini",
+						children: [
+							/* @__PURE__ */ jsx("span", {
+								className: "ts-mini__label",
+								children: "Baseline"
+							}),
+							/* @__PURE__ */ jsx("strong", { children: runLabel(0) }),
+							/* @__PURE__ */ jsx("span", { children: baselineRunDate ?? "First completed run" })
+						]
+					}),
+					/* @__PURE__ */ jsxs("div", {
+						className: "ts-mini",
+						children: [
+							/* @__PURE__ */ jsx("span", {
+								className: "ts-mini__label",
+								children: "Latest"
+							}),
+							/* @__PURE__ */ jsx("strong", { children: runLabel(completedRuns.length - 1) }),
+							/* @__PURE__ */ jsx("span", { children: latestRunDate ?? "Most recent completed run" })
+						]
+					}),
+					completedRuns.some((run) => run?.snapshot?.is_fallback) && /* @__PURE__ */ jsxs("div", {
+						className: "ts-mini ts-mini--note",
+						children: [/* @__PURE__ */ jsx("span", {
+							className: "ts-mini__label",
+							children: "Note"
+						}), /* @__PURE__ */ jsx("span", { children: "Latest run is using current saved-search metrics because a snapshot record is missing." })]
+					})
 				]
 			})
 		]
@@ -8959,7 +9210,7 @@ function PerformanceChart({ trend }) {
 * brand-level OpenAI lookup, while avatar and follower count only render when
 * the matched videos happened to include that same account.
 */
-function TrackerHead({ search, account, lastRun, nextRun, onToggleWatchlist, onShare, onTogglePause, onDelete, copied, watchlistUpdating }) {
+function TrackerHead({ search, account, lastRun, nextRun, onExportPdf, onToggleWatchlist, onShare, onTogglePause, onDelete, copied, watchlistUpdating }) {
 	const initial = (search?.name ?? "?").slice(0, 1).toUpperCase();
 	const paused = search?.status === "paused";
 	const [menuOpen, setMenuOpen] = useState(false);
@@ -9041,6 +9292,13 @@ function TrackerHead({ search, account, lastRun, nextRun, onToggleWatchlist, onS
 			/* @__PURE__ */ jsxs("div", {
 				className: "head-actions",
 				children: [
+					onExportPdf && /* @__PURE__ */ jsx("button", {
+						className: "tbtn",
+						onClick: onExportPdf,
+						title: "Export PDF",
+						"aria-label": "Export PDF",
+						children: "Export PDF"
+					}),
 					onToggleWatchlist && /* @__PURE__ */ jsx("button", {
 						className: `tbtn tbtn-ic${search?.is_watchlisted ? " is-saved" : ""}`,
 						onClick: onToggleWatchlist,
@@ -9375,7 +9633,7 @@ function BookmarkConfirmModal({ video, creditsRemainingAfterUse = 0, busy = fals
 		})
 	});
 }
-function DetailScreen({ search, isAuthenticated = false, billing = null, onToggleBookmark, onRefresh, onTogglePause, onDelete, refreshing = false, bookmarkUpdating = false }) {
+function DetailScreen({ search, isAuthenticated = false, billing = null, onExportPdf, onToggleBookmark, onRefresh, onTogglePause, onDelete, refreshing = false, bookmarkUpdating = false }) {
 	const [visible, setVisible] = useState(PAGE_STEP);
 	const [copied, setCopied] = useState(false);
 	const [bookmarkingId, setBookmarkingId] = useState(null);
@@ -9387,6 +9645,7 @@ function DetailScreen({ search, isAuthenticated = false, billing = null, onToggl
 	const [pendingBookmarkVideo, setPendingBookmarkVideo] = useState(null);
 	const sharedBilling = usePage().props?.billing ?? {};
 	const billingState = billing ?? sharedBilling;
+	const [videoBookmarkUsed, setVideoBookmarkUsed] = useState(() => numericUsageValue(billingState?.videoBookmarkCount, 0));
 	const insights = search?.insights ?? {};
 	insights.baseline?.median_views;
 	const threshold = insights.baseline?.outlier_threshold ?? 3;
@@ -9397,7 +9656,6 @@ function DetailScreen({ search, isAuthenticated = false, billing = null, onToggl
 	const videoAnalysisLimit = numericUsageValue(billingState?.videoAnalysisLimit, 0);
 	const videoAnalysisUsed = numericUsageValue(billingState?.videoAnalysisUsed, 0);
 	const videoBookmarkLimit = numericUsageValue(billingState?.videoBookmarkLimit, 0);
-	const videoBookmarkUsed = numericUsageValue(billingState?.videoBookmarkCount, 0);
 	const analysisCreditsRemainingAfterUse = usageRemainingLabel(videoAnalysisLimit, videoAnalysisUsed);
 	const bookmarkCreditsRemainingAfterUse = usageRemainingLabel(videoBookmarkLimit, videoBookmarkUsed);
 	const feedItems = items;
@@ -9461,6 +9719,9 @@ function DetailScreen({ search, isAuthenticated = false, billing = null, onToggl
 		setItems(search?.results ?? []);
 		setAnalysisStates(buildAnalysisStates(search?.results ?? []));
 	}, [search]);
+	useEffect(() => {
+		setVideoBookmarkUsed(numericUsageValue(billingState?.videoBookmarkCount, 0));
+	}, [billingState?.videoBookmarkCount]);
 	const applyAnalysisUpdate = (videoId, payload) => {
 		if (!videoId) return;
 		setAnalysisStates((current) => ({
@@ -9492,6 +9753,7 @@ function DetailScreen({ search, isAuthenticated = false, billing = null, onToggl
 		try {
 			setBookmarkingId(video.id);
 			const payload = action === "remove" ? await bookmarks.remove(video.id) : await bookmarks.save(video.id);
+			if (typeof payload?.bookmarkCount === "number") setVideoBookmarkUsed(payload.bookmarkCount);
 			setItems((current) => current.map((item) => item.id === video.id ? {
 				...item,
 				bookmarked: payload.bookmarked
@@ -9609,6 +9871,7 @@ function DetailScreen({ search, isAuthenticated = false, billing = null, onToggl
 				account,
 				lastRun: formatDate$1(search?.last_run_at),
 				nextRun: formatDate$1(search?.next_run_at),
+				onExportPdf,
 				onToggleWatchlist: onToggleBookmark,
 				onShare: share,
 				onTogglePause,
@@ -9730,9 +9993,13 @@ function DetailScreen({ search, isAuthenticated = false, billing = null, onToggl
 				}),
 				/* @__PURE__ */ jsx(SectionHead, {
 					title: lastPulledLabel ? `based on the data from videos pulled last ${lastPulledLabel}` : "based on the latest pulled videos",
-					note: "this tracker, past 12 weeks."
+					note: "this tracker, across completed search runs."
 				}),
-				/* @__PURE__ */ jsx(PerformanceChart, { trend }),
+				/* @__PURE__ */ jsx(PerformanceChart, {
+					trend,
+					runs: search?.runs ?? [],
+					frequency: search?.frequency
+				}),
 				/* @__PURE__ */ jsx(SectionHead, {
 					title: "When they post",
 					note: "posting schedule by day and hour."
@@ -9884,6 +10151,11 @@ function Show$1({ search: initial, isAuthenticated = false, billing }) {
 			setBookmarkingSearch(false);
 		}
 	};
+	const exportPdf = () => {
+		if (!search?.export_pdf_url) return;
+		const separator = search.export_pdf_url.includes("?") ? "&" : "?";
+		window.open(`${search.export_pdf_url}${separator}print=1`, "_blank", "noopener,noreferrer");
+	};
 	return /* @__PURE__ */ jsxs(Fragment, { children: [
 		/* @__PURE__ */ jsx(Head, { title: `${search.name} · Brand Beacon` }),
 		/* @__PURE__ */ jsx(AppLayout, {
@@ -9895,6 +10167,7 @@ function Show$1({ search: initial, isAuthenticated = false, billing }) {
 				refreshing,
 				bookmarkUpdating: bookmarkingSearch,
 				onRefresh: refresh,
+				onExportPdf: exportPdf,
 				onToggleBookmark: toggleBookmark,
 				onTogglePause: togglePause,
 				onDelete: remove

@@ -6,6 +6,7 @@ use App\Models\PricingPlan;
 use App\Models\Subscription;
 use App\Models\User;
 use App\Services\Brevo\BrevoLifecycleEmailService;
+use App\Services\Utm\UtmAttributionService;
 use App\Support\AppEventLogger;
 use App\Services\Stripe\StripeClient;
 use Carbon\CarbonImmutable;
@@ -18,6 +19,7 @@ class BillingService
         private readonly StripeClient $stripe,
         private readonly BillingEntitlementService $entitlements,
         private readonly BrevoLifecycleEmailService $emails,
+        private readonly UtmAttributionService $utmAttributionService,
     ) {}
 
     public function checkout(User $user, PricingPlan $plan, bool $withTrial = false): string
@@ -113,6 +115,8 @@ class BillingService
             'current_period_ends_at' => $endsAt,
             'metadata' => $this->subscriptionMetadata($plan, $searchCreditsUsed, $videoBookmarksUsed, $searchBookmarksUsed, $videoAnalysisUsed),
         ]);
+
+        $this->utmAttributionService->createSubscriptionAttribution($user, $subscriptionId);
 
         if (! in_array((string) ($existingSubscription?->status ?? ''), ['active', 'trialing', 'trial'], true)) {
             $this->emails->sendSubscriptionStarted($user, $subscription);

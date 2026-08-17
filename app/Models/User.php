@@ -42,6 +42,11 @@ class User extends Authenticatable
         return $this->hasMany(Subscription::class);
     }
 
+    public function utmAttributions(): HasMany
+    {
+        return $this->hasMany(UtmAttribution::class);
+    }
+
     public function videoBookmarks(): HasMany
     {
         return $this->hasMany(VideoBookmark::class);
