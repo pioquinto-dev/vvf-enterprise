@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Your BrandBeacon plan is live</title>
+</head>
+<body style="margin:0;padding:0;background-color:#f6f7fb;font-family:Arial,Helvetica,sans-serif;color:#0f172a;">
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color:#f6f7fb;margin:0;padding:24px 0;">
+        <tr>
+            <td align="center">
+                <table role="presentation" width="640" cellspacing="0" cellpadding="0" style="width:640px;max-width:640px;background:#ffffff;border-radius:24px;overflow:hidden;">
+                    <tr>
+                        <td style="padding:40px;background:linear-gradient(135deg,#06283d 0%,#2563eb 100%);color:#ffffff;">
+                            <img src="../../public/brand-beacon-logo.svg" alt="BrandBeacon" width="40" height="40" style="display:block;width:40px;height:40px;">
+                            <h1 style="margin:16px 0 12px;font-size:32px;line-height:1.15;">Your {{params.planName}} plan is active.</h1>
+                            <p style="margin:0;font-size:16px;line-height:1.7;">Hi {{params.firstName}}, your account is ready to do more. You now have access to deeper research, better tracking, and more room to move fast.</p>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="padding:32px 40px 12px;">
+                            <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#eef4ff;border-radius:18px;">
+                                <tr>
+                                    <td style="padding:22px 24px;">
+                                        <p style="margin:0 0 10px;font-size:13px;letter-spacing:1px;text-transform:uppercase;color:#1d4ed8;">Account details</p>
+                                        <p style="margin:0 0 8px;font-size:16px;line-height:1.6;"><strong>Plan:</strong> {{params.planName}}</p>
+                                        <p style="margin:0 0 8px;font-size:16px;line-height:1.6;"><strong>{{params.renewalLabel}}:</strong> {{params.accessEndsAt}}</p>
+                                        <p style="margin:0;font-size:16px;line-height:1.6;"><strong>Trial:</strong> {{params.isTrial}}</p>
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="padding:20px 40px 8px;">
+                            <h2 style="margin:0 0 14px;font-size:22px;">What you can do now</h2>
+                            <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+                                <tr><td style="padding:0 0 10px;font-size:15px;line-height:1.7;">• Run up to {{params.searchLimit}} saved searches in your subscription cycle</td></tr>
+                                <tr><td style="padding:0 0 10px;font-size:15px;line-height:1.7;">• Save up to {{params.videoBookmarkLimit}} viral video bookmarks</td></tr>
+                                <tr><td style="padding:0 0 10px;font-size:15px;line-height:1.7;">• Watchlist up to {{params.searchBookmarkLimit}} product or brand searches</td></tr>
+                                <tr><td style="padding:0 0 10px;font-size:15px;line-height:1.7;">• Use up to {{params.videoAnalysisLimit}} AI video analyses</td></tr>
+                            </table>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="padding:20px 40px 40px;">
+                            <a href="{{params.dashboardUrl}}" style="display:inline-block;background:#0f172a;color:#ffffff;text-decoration:none;font-weight:bold;padding:15px 28px;border-radius:999px;">Start exploring</a>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>
