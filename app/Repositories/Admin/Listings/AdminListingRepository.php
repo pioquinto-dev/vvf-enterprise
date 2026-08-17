@@ -688,7 +688,7 @@ class AdminListingRepository
             ],
             'plans' => [
                 ['name' => 'name', 'label' => 'Name', 'type' => 'text'],
-                ['name' => 'slug', 'label' => 'Slug', 'type' => 'text', 'help' => 'Used in URLs and to match a user\'s current plan. Changing it affects existing accounts.'],
+                ['name' => 'slug', 'label' => 'Slug', 'type' => 'text', 'help' => 'Used in URLs and to match a user\'s current plan. Changing it affects existing accounts.', 'rules' => ['required', 'string', 'max:255', 'unique:plans,slug,{id}']],
                 ['name' => 'description', 'label' => 'Tagline', 'type' => 'text'],
                 ['name' => 'plan_type', 'label' => 'Plan type', 'type' => 'text'],
                 ['name' => 'cta', 'label' => 'CTA label', 'type' => 'text'],
@@ -807,6 +807,43 @@ class AdminListingRepository
                 'free_search_used' => $record->free_search_used_at !== null,
                 // Never round-trips the hash - the field is write-only.
                 'password' => '',
+            ],
+            default => [],
+        };
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function createValues(string $resource): array
+    {
+        return match ($resource) {
+            'plans' => [
+                'name' => '',
+                'slug' => '',
+                'description' => '',
+                'plan_type' => '',
+                'cta' => 'Choose plan',
+                'popular' => false,
+                'trial_enabled' => true,
+                'amount' => 0,
+                'annual_amount' => 0,
+                'saved_amount' => 0,
+                'price_cents' => 0,
+                'unit_amount' => 0,
+                'currency' => 'usd',
+                'interval' => 'month',
+                'interval_count' => 1,
+                'duration' => 'monthly',
+                'search_credits_limit' => 0,
+                'video_bookmark_limit' => 0,
+                'search_bookmark_limit' => 0,
+                'video_analysis_limit' => 0,
+                'stripe_product_id' => '',
+                'stripe_price_id' => '',
+                'plan_environment' => 'production',
+                'is_active' => true,
+                'archived' => false,
             ],
             default => [],
         };

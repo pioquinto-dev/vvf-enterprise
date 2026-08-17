@@ -19,6 +19,7 @@ export default function Listing({
     rows = [],
     capabilities = {},
     editableFields = [],
+    createValues = {},
     emptyMessage,
     pagination,
     query,
@@ -26,6 +27,7 @@ export default function Listing({
 }) {
     const [editing, setEditing] = useState(null);
     const [previewing, setPreviewing] = useState(null);
+    const [creating, setCreating] = useState(false);
 
     const toolbar = <AdminFiltersBar title={title} search={search} searchPlaceholder={searchPlaceholder} filters={filters} />;
     const total = pagination?.total ?? rows.length;
@@ -36,10 +38,21 @@ export default function Listing({
             section={resource}
             toolbar={toolbar}
             actions={
-                <span className="inline-flex items-center gap-1.5 rounded-md border border-[var(--line)] bg-white px-2 py-1 text-[11.5px] text-[var(--muted)]">
-                    <span className="font-semibold text-[var(--ink)]">{total.toLocaleString()}</span>
-                    {total === 1 ? 'record' : 'records'}
-                </span>
+                <div className="flex items-center gap-2">
+                    {resource === 'plans' && (
+                        <button
+                            type="button"
+                            onClick={() => setCreating(true)}
+                            className="inline-flex h-8 items-center rounded-md bg-[var(--yellow)] px-3.5 text-[12.5px] font-semibold text-[#1a1400] transition hover:brightness-105"
+                        >
+                            New plan
+                        </button>
+                    )}
+                    <span className="inline-flex items-center gap-1.5 rounded-md border border-[var(--line)] bg-white px-2 py-1 text-[11.5px] text-[var(--muted)]">
+                        <span className="font-semibold text-[var(--ink)]">{total.toLocaleString()}</span>
+                        {total === 1 ? 'record' : 'records'}
+                    </span>
+                </div>
             }
         >
             <AdminInsightsStrip insights={insights} />
@@ -70,7 +83,18 @@ export default function Listing({
                 title={editing ? String(editing[columns[0]?.key] ?? title) : title}
                 fields={editableFields}
                 row={editing}
+                mode="edit"
                 onClose={() => setEditing(null)}
+            />
+
+            <AdminEditDrawer
+                open={creating}
+                resource={resource}
+                title={`New ${title.slice(0, -1)}`}
+                fields={editableFields}
+                createValues={createValues}
+                mode="create"
+                onClose={() => setCreating(false)}
             />
 
             <AdminPreviewDrawer

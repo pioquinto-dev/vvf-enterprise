@@ -3,24 +3,25 @@ import { useEffect } from 'react';
 
 import { Close } from '../../landing/components/Icons.jsx';
 
-export default function AdminEditDrawer({ open, resource, title, fields = [], row, onClose }) {
+export default function AdminEditDrawer({ open, resource, title, fields = [], row, createValues = null, mode = 'edit', onClose }) {
     const form = useForm({});
 
     useEffect(() => {
-        if (!open || !row) {
+        if (!open) {
             return;
         }
 
         const initial = {};
 
         fields.forEach((field) => {
-            const value = row.values?.[field.name];
+            const source = mode === 'create' ? createValues : row?.values;
+            const value = source?.[field.name];
             initial[field.name] = field.type === 'toggle' ? Boolean(value) : (value ?? '');
         });
 
         form.setDefaults(initial);
         form.setData(initial);
-    }, [open, row?.id]);
+    }, [open, row?.id, mode, createValues]);
 
     if (!open) {
         return null;
@@ -34,10 +35,20 @@ export default function AdminEditDrawer({ open, resource, title, fields = [], ro
             ...Object.fromEntries(
                 fields.filter((field) => field.type === 'toggle').map((field) => [field.name, Boolean(data[field.name])]),
             ),
-        })).patch(`/x/admin/records/${resource}/${row.id}`, {
+        }));
+
+        const options = {
             preserveScroll: true,
             onSuccess: onClose,
-        });
+        };
+
+        if (mode === 'create') {
+            form.post(`/x/admin/records/${resource}`, options);
+
+            return;
+        }
+
+        form.patch(`/x/admin/records/${resource}/${row.id}`, options);
     };
 
     return (
@@ -47,7 +58,7 @@ export default function AdminEditDrawer({ open, resource, title, fields = [], ro
             <aside className="relative flex h-full w-[min(420px,92vw)] flex-col border-l border-[var(--line)] bg-[var(--paper)] shadow-[0_0_60px_-10px_rgba(20,15,0,.24)]">
                 <header className="flex items-center justify-between border-b border-[var(--line)] px-4 py-3">
                     <div>
-                        <p className="text-[10px] font-semibold tracking-[.18em] text-[var(--faint)] uppercase">Edit</p>
+                        <p className="text-[10px] font-semibold tracking-[.18em] text-[var(--faint)] uppercase">{mode === 'create' ? 'Create' : 'Edit'}</p>
                         <h2 className="mt-0.5 truncate text-[14px] font-semibold text-[var(--ink)]">{title}</h2>
                     </div>
                     <button
@@ -128,7 +139,7 @@ export default function AdminEditDrawer({ open, resource, title, fields = [], ro
                             disabled={form.processing}
                             className="h-8 rounded-md bg-[var(--yellow)] px-3.5 text-[12.5px] font-semibold text-[#1a1400] transition hover:brightness-105 disabled:opacity-50"
                         >
-                            {form.processing ? 'Saving...' : 'Save changes'}
+                            {form.processing ? (mode === 'create' ? 'Creating...' : 'Saving...') : mode === 'create' ? 'Create plan' : 'Save changes'}
                         </button>
                     </footer>
                 </form>

@@ -23,37 +23,20 @@ class AdminRecordController extends Controller
     public function update(Request $request, string $resource, string $id): RedirectResponse
     {
         $record = $this->resolve($resource, $id, 'edit');
-
-        $fields = $this->listings->editableFields($resource);
-        $rules = [];
-
-        foreach ($fields as $field) {
-            // A field can declare its own rules (uniqueness, min length). `{id}`
-            // stands in for the record being edited so a unique rule ignores it.
-            if (isset($field['rules'])) {
-                $rules[$field['name']] = array_map(
-                    fn (string $rule): string => str_replace('{id}', (string) $record->getKey(), $rule),
-                    $field['rules'],
-                );
-
-                continue;
-            }
-
-            $rules[$field['name']] = match ($field['type']) {
-                'number' => ['nullable', 'numeric', 'min:0'],
-                'toggle' => ['nullable', 'boolean'],
-                // Options may be plain strings or {value,label} pairs.
-                'select' => ['nullable', 'string', 'in:'.implode(',', array_map(
-                    fn ($option) => is_array($option) ? $option['value'] : $option,
-                    $field['options'] ?? [],
-                ))],
-                default => ['nullable', 'string', 'max:500'],
-            };
-        }
-
-        $this->mutator->update($resource, $record, $request->validate($rules));
+        $this->mutator->update($resource, $record, $request->validate($this->rulesFor($resource, $record->getKey())));
 
         return back()->with('status', 'Record updated.');
+    }
+
+    public function store(Request $request, string $resource): RedirectResponse
+    {
+        if ($resource !== 'plans') {
+            throw new NotFoundHttpException('This resource does not support creation.');
+        }
+
+        $this->mutator->create($resource, $request->validate($this->rulesFor($resource)));
+
+        return back()->with('status', 'Record created.');
     }
 
     public function archive(Request $request, string $resource, string $id): RedirectResponse
@@ -96,5 +79,37 @@ class AdminRecordController extends Controller
         }
 
         return $record;
+    }
+
+    /**
+     * @return array<string, array<int, string>>
+     */
+    private function rulesFor(string $resource, string $recordId = '__create__'): array
+    {
+        $fields = $this->listings->editableFields($resource);
+        $rules = [];
+
+        foreach ($fields as $field) {
+            if (isset($field['rules'])) {
+                $rules[$field['name']] = array_map(
+                    fn (string $rule): string => str_replace('{id}', $recordId, $rule),
+                    $field['rules'],
+                );
+
+                continue;
+            }
+
+            $rules[$field['name']] = match ($field['type']) {
+                'number' => ['nullable', 'numeric', 'min:0'],
+                'toggle' => ['nullable', 'boolean'],
+                'select' => ['nullable', 'string', 'in:'.implode(',', array_map(
+                    fn ($option) => is_array($option) ? $option['value'] : $option,
+                    $field['options'] ?? [],
+                ))],
+                default => ['nullable', 'string', 'max:500'],
+            };
+        }
+
+        return $rules;
     }
 }

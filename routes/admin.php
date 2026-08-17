@@ -56,6 +56,8 @@ Route::prefix('x/admin')
                 Route::get('/', [PlanController::class, 'index'])->name('plans.index');
             });
 
+            Route::post('/records/plans', [AdminRecordController::class, 'store'])->name('records.store');
+
             Route::prefix('subscription')->group(function (): void {
                 Route::get('/', [SubscriptionController::class, 'index'])->name('subscription.index');
             });

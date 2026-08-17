@@ -8,6 +8,7 @@ use App\Models\Subscription;
 use App\Models\User;
 use App\Models\ViralVideo;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -47,6 +48,17 @@ class AdminListingMutator
             'subscription' => $this->updateSubscription($record, $input),
             'users' => $this->updateUser($record, $input),
             default => throw ValidationException::withMessages(['resource' => 'This resource cannot be edited.']),
+        };
+    }
+
+    /**
+     * @param  array<string, mixed>  $input
+     */
+    public function create(string $resource, array $input): Model
+    {
+        return match ($resource) {
+            'plans' => $this->createPlan($input),
+            default => throw ValidationException::withMessages(['resource' => 'This resource cannot be created.']),
         };
     }
 
@@ -113,6 +125,39 @@ class AdminListingMutator
         $plan->metadata = $this->mergePlanMetadata($plan, $input);
         $plan->archived_at = ($input['archived'] ?? false) ? ($plan->archived_at ?? now()) : null;
         $plan->save();
+    }
+
+    /**
+     * @param  array<string, mixed>  $input
+     */
+    private function createPlan(array $input): PricingPlan
+    {
+        $plan = new PricingPlan([
+            'id' => (string) Str::ulid(),
+            'slug' => (string) ($input['slug'] ?? ''),
+            'name' => (string) ($input['name'] ?? ''),
+            'description' => (string) ($input['description'] ?? ''),
+            'plan_type' => (string) ($input['plan_type'] ?? ''),
+            'stripe_product_id' => blank($input['stripe_product_id'] ?? null) ? null : (string) $input['stripe_product_id'],
+            'stripe_price_id' => blank($input['stripe_price_id'] ?? null) ? null : (string) $input['stripe_price_id'],
+            'price_cents' => (int) ($input['price_cents'] ?? 0),
+            'currency' => (string) ($input['currency'] ?? 'usd'),
+            'interval' => (string) ($input['interval'] ?? 'month'),
+            'interval_count' => (int) ($input['interval_count'] ?? 1),
+            'amount' => (float) ($input['amount'] ?? 0),
+            'annual_amount' => (float) ($input['annual_amount'] ?? 0),
+            'saved_amount' => (float) ($input['saved_amount'] ?? 0),
+            'unit_amount' => (int) ($input['unit_amount'] ?? 0),
+            'duration' => (string) ($input['duration'] ?? 'monthly'),
+            'plan_environment' => (string) ($input['plan_environment'] ?? 'production'),
+            'is_active' => (bool) ($input['is_active'] ?? true),
+        ]);
+
+        $plan->metadata = $this->mergePlanMetadata($plan, $input);
+        $plan->archived_at = ($input['archived'] ?? false) ? now() : null;
+        $plan->save();
+
+        return $plan;
     }
 
     /**

@@ -67,6 +67,7 @@ class AdminListingService
             'rows' => $rows,
             'capabilities' => $this->listings->capabilities($resource),
             'editableFields' => $this->listings->editableFields($resource),
+            'createValues' => $this->listings->createValues($resource),
             'emptyMessage' => $this->listings->emptyMessage($resource),
             'insights' => $insights,
             'pagination' => [
