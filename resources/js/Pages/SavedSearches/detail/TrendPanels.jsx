@@ -145,6 +145,7 @@ export function TrackerHead({
   account,
   lastRun,
   nextRun,
+  onExportPdf,
   onToggleWatchlist,
   onShare,
   onTogglePause,
@@ -244,6 +245,16 @@ export function TrackerHead({
         </div>
 
         <div className="head-actions">
+          {onExportPdf && (
+            <button
+              className="tbtn"
+              onClick={onExportPdf}
+              title="Export PDF"
+              aria-label="Export PDF"
+            >
+              Export PDF
+            </button>
+          )}
           {onToggleWatchlist && (
             <button
               className={`tbtn tbtn-ic${search?.is_watchlisted ? ' is-saved' : ''}`}

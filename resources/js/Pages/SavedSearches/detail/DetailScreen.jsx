@@ -207,6 +207,7 @@ export default function DetailScreen({
   search,
   isAuthenticated = false,
   billing = null,
+  onExportPdf,
   onToggleBookmark,
   onRefresh,
   onTogglePause,
@@ -488,6 +489,7 @@ export default function DetailScreen({
         account={account}
         lastRun={formatDate(search?.last_run_at)}
         nextRun={formatDate(search?.next_run_at)}
+        onExportPdf={onExportPdf}
         onToggleWatchlist={onToggleBookmark}
         onShare={share}
         onTogglePause={onTogglePause}
