@@ -8,6 +8,36 @@ import { Arrow } from '../landing/components/Icons.jsx';
 import { fetchNotifications, readTracked, updateTracked } from '../landing/flow/api.js';
 
 const POLL_MS = 10000;
+const RECENT_LIMIT = 3;
+
+function mergeRecentSearches(serverRecent = [], trackedEntries = []) {
+  const trackedMap = new Map(
+    trackedEntries
+      .filter((entry) => entry?.id)
+      .map((entry) => [
+        String(entry.id),
+        {
+          id: entry.id,
+          name: entry.name ?? 'New search',
+          phrase: entry.name ?? 'New search',
+          search_type: entry.search_type ?? 'brand',
+          frequency: entry.frequency ?? 'weekly',
+          status: entry.status ?? 'scraping',
+          url: entry.url ?? `/bookmark/${entry.id}`,
+          result_count: entry.result_count ?? 0,
+          last_run_at: entry.last_run_at ?? null,
+          is_watchlisted: entry.is_watchlisted ?? false,
+        },
+      ])
+  );
+
+  serverRecent.forEach((search) => {
+    if (!search?.id) return;
+    trackedMap.set(String(search.id), { ...trackedMap.get(String(search.id)), ...search });
+  });
+
+  return Array.from(trackedMap.values()).slice(0, RECENT_LIMIT);
+}
 
 /** "Pick up where you left off" — the three most recent saved searches. */
 function RecentCard({ searches }) {
@@ -38,6 +68,41 @@ function RecentCard({ searches }) {
 export default function Dashboard() {
   const { flash = {}, recent = [], searchSuggestions = {} } = usePage().props;
   const [readyModal, setReadyModal] = useState(null);
+  const [recentSearches, setRecentSearches] = useState(() => mergeRecentSearches(recent, readTracked()));
+
+  useEffect(() => {
+    setRecentSearches(mergeRecentSearches(recent, readTracked()));
+  }, [recent]);
+
+  useEffect(() => {
+    const tracked = readTracked().filter((entry) => entry?.id).slice(0, 10);
+
+    if (tracked.length === 0) {
+      setRecentSearches((current) => (current.length > 0 ? current : []));
+      return undefined;
+    }
+
+    let cancelled = false;
+
+    const hydrateRecent = async () => {
+      try {
+        const payload = await fetchNotifications(tracked.map((entry) => entry.id));
+        if (cancelled) return;
+
+        const liveSearches = payload?.searches ?? [];
+        setRecentSearches(mergeRecentSearches(liveSearches, tracked));
+      } catch {
+        if (cancelled) return;
+        setRecentSearches(mergeRecentSearches(recent, tracked));
+      }
+    };
+
+    hydrateRecent();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [recent]);
 
   useEffect(() => {
     if (readyModal) return undefined;
@@ -63,6 +128,15 @@ export default function Dashboard() {
             name: done.name,
             url: done.url,
           });
+          if (!cancelled) {
+            setRecentSearches((current) => mergeRecentSearches(
+              [
+                done,
+                ...current.filter((search) => String(search.id) !== String(done.id)),
+              ],
+              readTracked()
+            ));
+          }
           if (!cancelled) setReadyModal(done);
           return;
         }
@@ -108,7 +182,7 @@ export default function Dashboard() {
           </div>
         )}
 
-        <SearchWizard subjectExtra={<RecentCard searches={recent} />} suggestionsByType={searchSuggestions} />
+        <SearchWizard subjectExtra={<RecentCard searches={recentSearches} />} suggestionsByType={searchSuggestions} />
       </AppLayout>
 
       {readyModal && (
