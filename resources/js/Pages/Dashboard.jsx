@@ -36,7 +36,7 @@ function RecentCard({ searches }) {
 }
 
 export default function Dashboard() {
-  const { flash = {}, recent = [] } = usePage().props;
+  const { flash = {}, recent = [], searchSuggestions = {} } = usePage().props;
   const [readyModal, setReadyModal] = useState(null);
 
   useEffect(() => {
@@ -108,7 +108,7 @@ export default function Dashboard() {
           </div>
         )}
 
-        <SearchWizard subjectExtra={<RecentCard searches={recent} />} />
+        <SearchWizard subjectExtra={<RecentCard searches={recent} />} suggestionsByType={searchSuggestions} />
       </AppLayout>
 
       {readyModal && (

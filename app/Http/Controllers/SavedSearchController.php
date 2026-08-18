@@ -22,6 +22,8 @@ use Inertia\Inertia;
 use Inertia\Response;
 class SavedSearchController extends Controller
 {
+    private const SEARCH_SUGGESTION_TARGET = 5;
+
     public function __construct(
         private readonly KeywordExpansionService $expansion,
         private readonly SavedSearchManager $manager,
@@ -137,6 +139,11 @@ class SavedSearchController extends Controller
 
         return Inertia::render('Dashboard', [
             'recent' => $recent,
+            'searchSuggestions' => [
+                'brand' => $this->suggestions($this->searches->all($request, [CustomKeywordSearch::TYPE_BRAND], false), [CustomKeywordSearch::TYPE_BRAND]),
+                'competitor' => $this->suggestions($this->searches->all($request, [CustomKeywordSearch::TYPE_COMPETITOR], false), [CustomKeywordSearch::TYPE_COMPETITOR]),
+                'product' => $this->suggestions($this->searches->all($request, [CustomKeywordSearch::TYPE_PRODUCT], false), [CustomKeywordSearch::TYPE_PRODUCT]),
+            ],
         ]);
     }
 
@@ -239,15 +246,31 @@ class SavedSearchController extends Controller
     private function suggestions($searches, array $types): array
     {
         $userId = $searches->first()?->user_id;
-        $trackedPhrases = $searches->map(fn (CustomKeywordSearch $s): string => mb_strtolower((string) $s->phrase))->all();
+        $trackedPhrases = $searches
+            ->flatMap(fn (CustomKeywordSearch $s): array => [
+                $this->normalizeSuggestionName((string) $s->phrase),
+                $this->normalizeSuggestionName((string) $s->name),
+            ])
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
 
         $out = [];
         $seen = [];
 
-        $add = function (?string $name, string $why) use (&$out, &$seen, $trackedPhrases): void {
+        $target = self::SEARCH_SUGGESTION_TARGET;
+
+        $add = function (?string $name, string $why) use (&$out, &$seen, $trackedPhrases, $target): void {
             $name = trim((string) $name);
-            $key = mb_strtolower($name);
-            if ($name === '' || count($out) >= 3 || isset($seen[$key]) || in_array($key, $trackedPhrases, true)) {
+            $key = $this->normalizeSuggestionName($name);
+            $coveredByTrackedPhrase = collect($trackedPhrases)->contains(function (string $tracked) use ($key): bool {
+                return $tracked === $key
+                    || str_contains($tracked, $key)
+                    || str_contains($key, $tracked);
+            });
+
+            if ($name === '' || $key === '' || count($out) >= $target || isset($seen[$key]) || $coveredByTrackedPhrase) {
                 return;
             }
             $seen[$key] = true;
@@ -289,7 +312,7 @@ class SavedSearchController extends Controller
         }
 
         // Tier 2 — the most-tracked searches across other users.
-        if (count($out) < 3 && $userId !== null) {
+        if (count($out) < $target && $userId !== null) {
             $popular = DB::table('custom_keyword_searches')
                 ->whereIn('search_type', $types)
                 ->where('user_id', '!=', $userId)
@@ -305,11 +328,47 @@ class SavedSearchController extends Controller
             }
         }
 
-        // Tier 3 — curated fallback when there is nothing to learn from yet.
-        if (count($out) < 3) {
+        // Tier 3 — AI expands the user's recent searches into adjacent but
+        // not-yet-tracked ideas so the chip row stays useful and full.
+        if (count($out) < $target) {
+            $expandedBySearch = $searches
+                ->take(5)
+                ->map(fn (CustomKeywordSearch $search): array => array_values((array) ($this->expansion->expand((string) $search->phrase)['keywords'] ?? [])))
+                ->filter(fn (array $keywords): bool => $keywords !== [])
+                ->values();
+
+            $round = 0;
+
+            while (count($out) < $target && $expandedBySearch->isNotEmpty()) {
+                $addedThisRound = false;
+
+                foreach ($expandedBySearch as $keywords) {
+                    if (! array_key_exists($round, $keywords)) {
+                        continue;
+                    }
+
+                    $before = count($out);
+                    $add($keywords[$round], 'Suggested from your recent searches');
+                    $addedThisRound = $addedThisRound || count($out) > $before;
+
+                    if (count($out) >= $target) {
+                        break;
+                    }
+                }
+
+                if (! $addedThisRound) {
+                    break;
+                }
+
+                $round++;
+            }
+        }
+
+        // Tier 4 — curated fallback when there is still nothing else to show.
+        if (count($out) < $target) {
             $samples = $types === [CustomKeywordSearch::TYPE_PRODUCT]
-                ? ['sol de janeiro', 'laneige lip mask', 'stanley cup']
-                : ['rhode', 'olipop', 'gymshark'];
+                ? ['sol de janeiro', 'laneige lip mask', 'stanley cup', 'brow gel', 'neck cream']
+                : ['rhode', 'olipop', 'gymshark', 'rare beauty', 'summer fridays'];
 
             foreach ($samples as $name) {
                 $add($name, 'Trending in the US');
@@ -317,6 +376,14 @@ class SavedSearchController extends Controller
         }
 
         return $out;
+    }
+
+    private function normalizeSuggestionName(string $value): string
+    {
+        $value = mb_strtolower(trim($value));
+        $value = preg_replace('/[^\pL\pN]+/u', ' ', $value) ?? $value;
+
+        return preg_replace('/\s+/u', ' ', trim($value)) ?? trim($value);
     }
 
     /**

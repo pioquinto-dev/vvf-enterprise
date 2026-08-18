@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { Component, useState } from 'react';
 import { Head, router } from '@inertiajs/react';
 
 import AppLayout from '../components/AppLayout.jsx';
@@ -26,6 +26,38 @@ function UsageConfirmModal({ title, body, subject, confirmLabel, busy = false, o
             </div>
         </div>
     );
+}
+
+class DetailScreenBoundary extends Component {
+    constructor(props) {
+        super(props);
+        this.state = { error: null };
+    }
+
+    static getDerivedStateFromError(error) {
+        return { error };
+    }
+
+    componentDidCatch(error, info) {
+        console.error('SavedSearch detail render failed', error, info);
+    }
+
+    render() {
+        if (this.state.error) {
+            return (
+                <div className="tracker">
+                    <div className="gate">
+                        <h2>Results page failed to render</h2>
+                        <p>
+                            {this.state.error?.message || 'An unexpected error happened while rendering this search.'}
+                        </p>
+                    </div>
+                </div>
+            );
+        }
+
+        return this.props.children;
+    }
 }
 
 /**
@@ -98,18 +130,20 @@ export default function Show({ search: initial, isAuthenticated = false, billing
 
             {/* The tracker carries its own header, so the shell renders content only. */}
             <AppLayout width="max-w-[1240px]">
-                <DetailScreen
-                    search={search}
-                    isAuthenticated={isAuthenticated}
-                    billing={billing}
-                    refreshing={refreshing}
-                    bookmarkUpdating={bookmarkingSearch}
-                    onRefresh={refresh}
-                    onExportPdf={exportPdf}
-                    onToggleBookmark={toggleBookmark}
-                    onTogglePause={togglePause}
-                    onDelete={remove}
-                />
+                <DetailScreenBoundary>
+                    <DetailScreen
+                        search={search}
+                        isAuthenticated={isAuthenticated}
+                        billing={billing}
+                        refreshing={refreshing}
+                        bookmarkUpdating={bookmarkingSearch}
+                        onRefresh={refresh}
+                        onExportPdf={exportPdf}
+                        onToggleBookmark={toggleBookmark}
+                        onTogglePause={togglePause}
+                        onDelete={remove}
+                    />
+                </DetailScreenBoundary>
             </AppLayout>
 
             {confirmRefresh && (

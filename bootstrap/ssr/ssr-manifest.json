@@ -22,6 +22,7 @@
   "resources/js/Pages/SavedSearches/detail/InsightPanels.jsx": [],
   "resources/js/Pages/SavedSearches/detail/OutlierVideos.jsx": [],
   "resources/js/Pages/SavedSearches/detail/TrendPanels.jsx": [],
+  "resources/js/Pages/SavedSearches/detail/tiktokPlayer.js": [],
   "resources/js/Pages/Search/Keywords.jsx": [],
   "resources/js/Pages/Search/Running.jsx": [],
   "resources/js/Pages/Settings/Account.jsx": [],

@@ -143,7 +143,7 @@ function clearPendingSearch() {
     window.sessionStorage.removeItem(PENDING_SEARCH_KEY);
 }
 
-export default function SearchWizard({ initialType = 'brand', initialQuery = '', heading = 'Start a search', subheading = 'Pick one brand, competitor, or product — we widen it with smarter keywords on the next step.', subjectExtra = null }) {
+export default function SearchWizard({ initialType = 'brand', initialQuery = '', heading = 'Start a search', subheading = 'Pick one brand, competitor, or product — we widen it with smarter keywords on the next step.', subjectExtra = null, suggestionsByType = {} }) {
     const { auth = {}, billing = {} } = usePage().props;
     const resumeId = readRunParam();
 
@@ -314,7 +314,12 @@ export default function SearchWizard({ initialType = 'brand', initialQuery = '',
                     <Stepper kind={kind} current={step} />
 
                     {step === 'subject' && (
-                        <SearchLauncher initialType={type} initialQuery={phrase} onSubmit={pickSubject} />
+                        <SearchLauncher
+                            initialType={type}
+                            initialQuery={phrase}
+                            onSubmit={pickSubject}
+                            suggestionsByType={suggestionsByType}
+                        />
                     )}
 
                     {step === 'keywords' && phrase && (

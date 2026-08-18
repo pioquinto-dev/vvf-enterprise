@@ -36,13 +36,19 @@ const TYPES = [
     },
 ];
 
-export default function SearchLauncher({ initialType = 'brand', initialQuery = '', onSubmit }) {
+export default function SearchLauncher({ initialType = 'brand', initialQuery = '', onSubmit, suggestionsByType = {} }) {
     const [type, setType] = useState(initialType);
     const [value, setValue] = useState(initialQuery);
     const inputRef = useRef(null);
 
-    const config = TYPES.find((t) => t.key === type) ?? TYPES[0];
+    const baseConfig = TYPES.find((t) => t.key === type) ?? TYPES[0];
+    const config = {
+        ...baseConfig,
+        dynamicSuggestions: suggestionsByType?.[type] ?? [],
+    };
     const query = value.trim().replace(/\s+/g, ' ');
+    const dynamicSuggestions = (config.dynamicSuggestions ?? []).slice(0, 5);
+    const subjectSuggestions = dynamicSuggestions.length > 0 ? dynamicSuggestions : config.suggestions;
 
     const submit = (event) => {
         event.preventDefault();
@@ -116,14 +122,19 @@ export default function SearchLauncher({ initialType = 'brand', initialQuery = '
                 </div>
             </form>
 
-            {config.suggestions.length > 0 && (
+            {subjectSuggestions.length > 0 && (
                 <div className="subj-sugg">
-                    {config.suggestions.map((s) => (
-                        <button key={s} type="button" className="rchip" onClick={() => setValue(s)}>
-                            <Refresh className="h-[13px] w-[13px]" />
-                            {s}
-                        </button>
-                    ))}
+                    {subjectSuggestions.map((suggestion) => {
+                        const label = typeof suggestion === 'string' ? suggestion : suggestion?.name;
+                        if (!label) return null;
+
+                        return (
+                            <button key={label} type="button" className="rchip" onClick={() => setValue(label)}>
+                                <Refresh className="h-[13px] w-[13px]" />
+                                {label}
+                            </button>
+                        );
+                    })}
                 </div>
             )}
         </div>

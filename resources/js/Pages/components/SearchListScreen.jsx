@@ -132,7 +132,7 @@ export default function SearchListScreen({ kind = 'brand', searches = [], moving
   const searchLeft = billing.searchCreditsRemaining;
   const searchLimit = billing.searchCreditsLimit;
 
-  const recent = useMemo(() => searchList.slice(0, 4), [searchList]);
+  const subjectSuggestions = useMemo(() => suggestions.slice(0, 5), [suggestions]);
 
   const runSearch = (e) => {
     e.preventDefault();
@@ -234,10 +234,10 @@ export default function SearchListScreen({ kind = 'brand', searches = [], moving
           </div>
         </form>
         <div className="bhero__r">
-          {recent.length > 0 && <span className="bhero__rl">Recent</span>}
-          {recent.map((s) => (
-            <button key={s.id} type="button" className="rchip" onClick={() => setSubject(s.phrase || s.name)}>
-              <Refresh className="h-[13px] w-[13px]" /> {s.name}
+          {subjectSuggestions.length > 0 && <span className="bhero__rl">Try searching this</span>}
+          {subjectSuggestions.map((suggestion) => (
+            <button key={suggestion.name} type="button" className="rchip" onClick={() => setSubject(suggestion.name || '')}>
+              <Refresh className="h-[13px] w-[13px]" /> {suggestion.name}
             </button>
           ))}
           {searchLimit > 0 && (

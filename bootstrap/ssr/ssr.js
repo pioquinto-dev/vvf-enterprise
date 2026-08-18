@@ -1,5 +1,5 @@
 import { Head, Link, createInertiaApp, router, useForm, usePage } from "@inertiajs/react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Component, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Fragment, jsx, jsxs } from "react/jsx-runtime";
 import { createPortal } from "react-dom";
 import createServer from "@inertiajs/react/server";
@@ -1428,7 +1428,7 @@ function AdminEditDrawer({ open, resource, title, fields = [], row, createValues
 							type: field.type === "number" ? "number" : field.type === "password" ? "password" : "text",
 							autoComplete: field.type === "password" ? "new-password" : void 0,
 							step: field.step,
-							min: field.type === "number" ? 0 : void 0,
+							min: field.type === "number" ? field.min ?? 0 : void 0,
 							value: form.data[field.name] ?? "",
 							onChange: (event) => form.setData(field.name, event.target.value),
 							className: "h-9 w-full rounded-lg border border-[var(--line)] bg-white px-2.5 text-[13px] text-[var(--ink)] outline-none focus:border-[var(--yellow)]"
@@ -2963,6 +2963,138 @@ function SavedSearchRow({ search, onNavigate, actions }) {
 	});
 }
 //#endregion
+//#region resources/js/landing/flow/api.js
+/**
+* Small fetch wrapper for the saved-search endpoints. Inertia handles page
+* navigation; these calls are the in-page ones that should not re-render the
+* whole document.
+*/
+function csrfToken() {
+	return document.querySelector("meta[name=\"csrf-token\"]")?.getAttribute("content") ?? "";
+}
+var API_V1 = "/api/v1";
+async function request(url, { method = "GET", body } = {}) {
+	const response = await fetch(url, {
+		method,
+		credentials: "same-origin",
+		headers: {
+			Accept: "application/json",
+			"X-Requested-With": "XMLHttpRequest",
+			...body ? { "Content-Type": "application/json" } : {},
+			...method === "GET" ? {} : { "X-CSRF-TOKEN": csrfToken() }
+		},
+		...body ? { body: JSON.stringify(body) } : {}
+	});
+	const payload = await response.json().catch(() => null);
+	if (!response.ok) {
+		const error = new Error(payload?.message || `Request failed (${response.status})`);
+		error.status = response.status;
+		error.payload = payload;
+		throw error;
+	}
+	return payload;
+}
+function expandKeywords(phrase, { signal, fresh = false } = {}) {
+	return fetch(`${API_V1}/saved-searches/expand`, {
+		method: "POST",
+		credentials: "same-origin",
+		signal,
+		headers: {
+			Accept: "application/json",
+			"Content-Type": "application/json",
+			"X-Requested-With": "XMLHttpRequest",
+			"X-CSRF-TOKEN": csrfToken()
+		},
+		body: JSON.stringify({
+			phrase,
+			...fresh ? { fresh: true } : {}
+		})
+	}).then(async (response) => {
+		const payload = await response.json().catch(() => null);
+		if (!response.ok) throw new Error(payload?.message || "Could not suggest keywords.");
+		return payload;
+	});
+}
+function createSavedSearch({ type, phrase, name, keywords, frequency, sources }) {
+	return request(`${API_V1}/saved-searches`, {
+		method: "POST",
+		body: {
+			type,
+			phrase,
+			name,
+			keywords,
+			frequency,
+			...sources ? { sources } : {}
+		}
+	});
+}
+function fetchNotifications(ids) {
+	return request(`${API_V1}/saved-searches/notifications?${ids.map((id) => `ids[]=${encodeURIComponent(id)}`).join("&")}`);
+}
+var savedSearch = {
+	get: (id) => request(`${API_V1}/saved-searches/${id}/json`),
+	bookmark: (id, bookmarked) => request(`${API_V1}/saved-searches/${id}/bookmark`, {
+		method: "PATCH",
+		body: { bookmarked }
+	}),
+	pause: (id) => request(`${API_V1}/saved-searches/${id}/pause`, { method: "PATCH" }),
+	resume: (id) => request(`${API_V1}/saved-searches/${id}/resume`, { method: "PATCH" }),
+	update: (id, body) => request(`${API_V1}/saved-searches/${id}/frequency`, {
+		method: "PATCH",
+		body
+	}),
+	refresh: (id) => request(`${API_V1}/saved-searches/${id}/refresh`, { method: "POST" }),
+	destroy: (id) => request(`${API_V1}/saved-searches/${id}`, { method: "DELETE" })
+};
+var billing = {
+	checkout: (slug) => {
+		window.location.assign(`/billing/checkout/${encodeURIComponent(slug)}`);
+	},
+	trialCheckout: (slug) => {
+		window.location.assign(`/billing/checkout/${encodeURIComponent(slug)}?trial=1`);
+	}
+};
+var bookmarks = {
+	save: (id) => request(`${API_V1}/videos/${id}/bookmark`, { method: "POST" }),
+	remove: (id) => request(`${API_V1}/videos/${id}/bookmark`, { method: "DELETE" })
+};
+var videoAnalysis = {
+	request: (id, body = {}) => request(`${API_V1}/videos/${id}/analysis`, {
+		method: "POST",
+		body
+	}),
+	get: (id) => request(`${API_V1}/videos/${id}/analysis`)
+};
+var TRACKED_KEY = "vvf-tracked-searches";
+function readTracked() {
+	try {
+		const raw = window.sessionStorage.getItem(TRACKED_KEY);
+		const parsed = raw ? JSON.parse(raw) : [];
+		return Array.isArray(parsed) ? parsed : [];
+	} catch {
+		return [];
+	}
+}
+function writeTracked(entries) {
+	try {
+		window.sessionStorage.setItem(TRACKED_KEY, JSON.stringify(entries.slice(0, 10)));
+	} catch {}
+}
+function trackSearch(entry) {
+	const existing = readTracked().filter((t) => String(t.id) !== String(entry.id));
+	writeTracked([{
+		runningPromptShown: false,
+		completedPromptShown: false,
+		...entry
+	}, ...existing]);
+}
+function updateTracked(id, patch) {
+	writeTracked(readTracked().map((t) => String(t.id) === String(id) ? {
+		...t,
+		...patch
+	} : t));
+}
+//#endregion
 //#region resources/js/Pages/components/SearchListScreen.jsx
 var SearchListScreen_exports = /* @__PURE__ */ __exportAll({ default: () => SearchListScreen });
 var COPY = {
@@ -3006,16 +3138,25 @@ function Sel$1({ value, onChange, ariaLabel, children }) {
 		}), /* @__PURE__ */ jsx(Chevron, {})]
 	});
 }
-function BrandCard({ search }) {
+function BrandCard({ search, onOpen, onEdit }) {
 	const status = STATUS[search.status] ?? {
 		label: "Ready",
 		cls: "pill--off"
 	};
 	const initials = (search.name || search.phrase || "?").slice(0, 2).toUpperCase();
 	const topScore = Number(search.top_score) > 0 ? `${Math.round(search.top_score)}x` : "—";
-	return /* @__PURE__ */ jsxs(Link, {
+	return /* @__PURE__ */ jsxs("div", {
 		className: "bcard",
-		href: search.url ?? `/bookmark/${search.id}`,
+		role: "button",
+		tabIndex: 0,
+		onClick: onOpen,
+		onKeyDown: (e) => {
+			if (e.key === "Enter" || e.key === " ") {
+				e.preventDefault();
+				onOpen();
+			}
+		},
+		style: { cursor: "pointer" },
 		children: [
 			/* @__PURE__ */ jsxs("div", {
 				className: "bcard__top",
@@ -3075,9 +3216,15 @@ function BrandCard({ search }) {
 			}),
 			/* @__PURE__ */ jsxs("div", {
 				className: "bcard__foot",
-				children: [/* @__PURE__ */ jsxs("span", { children: ["Updated ", formatDate$2(search.last_run_at)] }), /* @__PURE__ */ jsxs("span", {
-					className: "bcard__go",
-					children: ["Open ", /* @__PURE__ */ jsx(Arrow, {})]
+				children: [/* @__PURE__ */ jsxs("span", { children: ["Updated ", formatDate$2(search.last_run_at)] }), /* @__PURE__ */ jsx("button", {
+					type: "button",
+					className: "btn btn--g btn--sm",
+					onClick: (e) => {
+						e.preventDefault();
+						e.stopPropagation();
+						onEdit();
+					},
+					children: "Edit details"
 				})]
 			})
 		]
@@ -3086,13 +3233,22 @@ function BrandCard({ search }) {
 function SearchListScreen({ kind = "brand", searches = [], moving = [], suggestions = [] }) {
 	const copy = COPY[kind] ?? COPY.brand;
 	const { billing = {} } = usePage().props;
+	const [searchList, setSearchList] = useState(searches);
 	const [subject, setSubject] = useState("");
 	const [query, setQuery] = useState("");
 	const [statusFilter, setStatusFilter] = useState("all");
 	const [sortBy, setSortBy] = useState("outliers");
+	const [modalSearch, setModalSearch] = useState(null);
+	const [formState, setFormState] = useState({
+		name: "",
+		frequency: "weekly",
+		tiktokHandle: "",
+		website: ""
+	});
+	const [submitting, setSubmitting] = useState(false);
 	const searchLeft = billing.searchCreditsRemaining;
 	const searchLimit = billing.searchCreditsLimit;
-	const recent = useMemo(() => searches.slice(0, 4), [searches]);
+	const recent = useMemo(() => searchList.slice(0, 4), [searchList]);
 	const runSearch = (e) => {
 		e.preventDefault();
 		const q = subject.trim().replace(/\s+/g, " ");
@@ -3100,7 +3256,7 @@ function SearchListScreen({ kind = "brand", searches = [], moving = [], suggesti
 	};
 	const filtered = useMemo(() => {
 		const q = query.trim().toLowerCase();
-		const next = searches.filter((s) => {
+		const next = searchList.filter((s) => {
 			const matchesQuery = q === "" || s.name?.toLowerCase().includes(q) || s.phrase?.toLowerCase().includes(q);
 			const matchesStatus = statusFilter === "all" || s.status === statusFilter;
 			return matchesQuery && matchesStatus;
@@ -3115,11 +3271,58 @@ function SearchListScreen({ kind = "brand", searches = [], moving = [], suggesti
 		});
 		return next;
 	}, [
-		searches,
+		searchList,
 		query,
 		statusFilter,
 		sortBy
 	]);
+	useEffect(() => {
+		if (!modalSearch) return void 0;
+		const onEsc = (e) => e.key === "Escape" && !submitting && setModalSearch(null);
+		document.addEventListener("keydown", onEsc);
+		return () => document.removeEventListener("keydown", onEsc);
+	}, [modalSearch, submitting]);
+	const openEdit = (search) => {
+		setModalSearch(search);
+		setFormState({
+			name: search.name ?? "",
+			frequency: search.frequency ?? "weekly",
+			tiktokHandle: search.source_tiktok_handle ?? "",
+			website: search.source_website ?? ""
+		});
+	};
+	const closeEdit = () => {
+		if (submitting) return;
+		setModalSearch(null);
+	};
+	const patchSearch = (id, patch) => {
+		setSearchList((current) => current.map((s) => s.id === id ? {
+			...s,
+			...patch
+		} : s));
+		setModalSearch((current) => current?.id === id ? {
+			...current,
+			...patch
+		} : current);
+	};
+	const submitEdit = async () => {
+		if (!modalSearch) return;
+		setSubmitting(true);
+		try {
+			const { search: updated } = await savedSearch.update(modalSearch.id, {
+				name: formState.name.trim(),
+				frequency: formState.frequency,
+				sources: {
+					tiktokHandle: formState.tiktokHandle.trim(),
+					website: formState.website.trim()
+				}
+			});
+			patchSearch(modalSearch.id, updated);
+			setModalSearch(null);
+		} finally {
+			setSubmitting(false);
+		}
+	};
 	return /* @__PURE__ */ jsxs(AppLayout, {
 		width: "max-w-[1240px]",
 		title: copy.title,
@@ -3281,7 +3484,7 @@ function SearchListScreen({ kind = "brand", searches = [], moving = [], suggesti
 						className: "movers__h",
 						children: [/* @__PURE__ */ jsx("h2", { children: copy.allHeading }), /* @__PURE__ */ jsxs("span", {
 							className: "note",
-							children: [searches.length, " tracked"]
+							children: [searchList.length, " tracked"]
 						})]
 					}),
 					/* @__PURE__ */ jsxs("div", {
@@ -3342,21 +3545,173 @@ function SearchListScreen({ kind = "brand", searches = [], moving = [], suggesti
 								className: "empty__i",
 								children: /* @__PURE__ */ jsx(Search, { className: "h-6 w-6" })
 							}),
-							/* @__PURE__ */ jsx("h2", { children: searches.length === 0 ? `No ${kind} searches yet` : "Nothing matched" }),
+							/* @__PURE__ */ jsx("h2", { children: searchList.length === 0 ? `No ${kind} searches yet` : "Nothing matched" }),
 							/* @__PURE__ */ jsx("p", {
 								className: "muted",
 								style: {
 									maxWidth: 360,
 									margin: "10px auto 0"
 								},
-								children: searches.length === 0 ? `Start one above and it will track on its own schedule.` : "Try a different filter or sort."
+								children: searchList.length === 0 ? `Start one above and it will track on its own schedule.` : "Try a different filter or sort."
 							})
 						]
 					}) : /* @__PURE__ */ jsx("div", {
 						className: "bgrid",
-						children: filtered.map((s) => /* @__PURE__ */ jsx(BrandCard, { search: s }, s.id))
+						children: filtered.map((s) => /* @__PURE__ */ jsx(BrandCard, {
+							search: s,
+							onOpen: () => router.visit(s.url ?? `/bookmark/${s.id}`),
+							onEdit: () => openEdit(s)
+						}, s.id))
 					})
 				]
+			}),
+			modalSearch && /* @__PURE__ */ jsx("div", {
+				className: "bb",
+				children: /* @__PURE__ */ jsxs("div", {
+					className: "bb-modal",
+					children: [/* @__PURE__ */ jsx("button", {
+						className: "bb-modal__bg",
+						"aria-label": "Close",
+						onClick: closeEdit
+					}), /* @__PURE__ */ jsxs("div", {
+						className: "bb-modal__box",
+						children: [
+							/* @__PURE__ */ jsx("h2", { children: "Edit keyword details" }),
+							/* @__PURE__ */ jsx("p", {
+								className: "sub",
+								children: "Update the label and refresh schedule. The keyword set is fixed for this search."
+							}),
+							/* @__PURE__ */ jsxs("div", {
+								style: { marginTop: 20 },
+								children: [/* @__PURE__ */ jsx("p", {
+									className: "sect__n",
+									children: "Keyword set"
+								}), /* @__PURE__ */ jsx("div", {
+									className: "chips",
+									children: modalSearch.keywords.map((keyword) => /* @__PURE__ */ jsx("span", {
+										className: "chip",
+										children: keyword
+									}, keyword))
+								})]
+							}),
+							/* @__PURE__ */ jsxs("div", {
+								style: { marginTop: 20 },
+								children: [/* @__PURE__ */ jsx("label", {
+									className: "lbl",
+									children: "Label"
+								}), /* @__PURE__ */ jsx("input", {
+									className: "fld",
+									value: formState.name,
+									onChange: (e) => setFormState((c) => ({
+										...c,
+										name: e.target.value
+									}))
+								})]
+							}),
+							/* @__PURE__ */ jsxs("div", {
+								style: { marginTop: 20 },
+								children: [/* @__PURE__ */ jsx("label", {
+									className: "lbl",
+									children: "Schedule"
+								}), /* @__PURE__ */ jsx("div", {
+									style: {
+										display: "flex",
+										gap: 8
+									},
+									children: ["weekly", "monthly"].map((frequency) => /* @__PURE__ */ jsx("button", {
+										type: "button",
+										className: `btn ${formState.frequency === frequency ? "btn--y" : "btn--g"} btn--w`,
+										onClick: () => setFormState((c) => ({
+											...c,
+											frequency
+										})),
+										children: frequency === "weekly" ? "Weekly" : "Monthly"
+									}, frequency))
+								})]
+							}),
+							/* @__PURE__ */ jsxs("div", {
+								style: { marginTop: 20 },
+								children: [/* @__PURE__ */ jsx("label", {
+									className: "lbl",
+									children: "TikTok handle"
+								}), /* @__PURE__ */ jsxs("div", {
+									style: { position: "relative" },
+									children: [/* @__PURE__ */ jsx("span", {
+										style: {
+											position: "absolute",
+											left: 14,
+											top: "50%",
+											transform: "translateY(-50%)",
+											color: "var(--muted)",
+											pointerEvents: "none"
+										},
+										children: "@"
+									}), /* @__PURE__ */ jsx("input", {
+										className: "fld",
+										style: { paddingLeft: 28 },
+										value: formState.tiktokHandle,
+										onChange: (e) => setFormState((c) => ({
+											...c,
+											tiktokHandle: e.target.value.replace(/^@/, "")
+										})),
+										placeholder: "rhode",
+										"aria-label": "TikTok handle"
+									})]
+								})]
+							}),
+							/* @__PURE__ */ jsxs("div", {
+								style: { marginTop: 20 },
+								children: [/* @__PURE__ */ jsx("label", {
+									className: "lbl",
+									children: "Website"
+								}), /* @__PURE__ */ jsxs("div", {
+									style: { position: "relative" },
+									children: [/* @__PURE__ */ jsx("span", {
+										style: {
+											position: "absolute",
+											left: 14,
+											top: "50%",
+											transform: "translateY(-50%)",
+											color: "var(--muted)",
+											pointerEvents: "none"
+										},
+										children: "https://"
+									}), /* @__PURE__ */ jsx("input", {
+										className: "fld",
+										style: { paddingLeft: 72 },
+										value: formState.website,
+										onChange: (e) => setFormState((c) => ({
+											...c,
+											website: e.target.value
+										})),
+										placeholder: "rhodeskin.com",
+										"aria-label": "Website"
+									})]
+								})]
+							}),
+							/* @__PURE__ */ jsxs("div", {
+								className: "actrow__r",
+								style: {
+									marginTop: 24,
+									justifyContent: "flex-end"
+								},
+								children: [/* @__PURE__ */ jsx("button", {
+									type: "button",
+									className: "btn btn--g",
+									onClick: closeEdit,
+									disabled: submitting,
+									children: "Cancel"
+								}), /* @__PURE__ */ jsx("button", {
+									type: "button",
+									className: "btn btn--y",
+									onClick: submitEdit,
+									disabled: submitting,
+									children: submitting ? "Saving…" : "Save changes"
+								})]
+							})
+						]
+					})]
+				})
 			})
 		]
 	});
@@ -3797,135 +4152,6 @@ function SearchLauncher({ initialType = "brand", initialQuery = "", onSubmit }) 
 	});
 }
 //#endregion
-//#region resources/js/landing/flow/api.js
-/**
-* Small fetch wrapper for the saved-search endpoints. Inertia handles page
-* navigation; these calls are the in-page ones that should not re-render the
-* whole document.
-*/
-function csrfToken() {
-	return document.querySelector("meta[name=\"csrf-token\"]")?.getAttribute("content") ?? "";
-}
-var API_V1 = "/api/v1";
-async function request(url, { method = "GET", body } = {}) {
-	const response = await fetch(url, {
-		method,
-		credentials: "same-origin",
-		headers: {
-			Accept: "application/json",
-			"X-Requested-With": "XMLHttpRequest",
-			...body ? { "Content-Type": "application/json" } : {},
-			...method === "GET" ? {} : { "X-CSRF-TOKEN": csrfToken() }
-		},
-		...body ? { body: JSON.stringify(body) } : {}
-	});
-	const payload = await response.json().catch(() => null);
-	if (!response.ok) {
-		const error = new Error(payload?.message || `Request failed (${response.status})`);
-		error.status = response.status;
-		error.payload = payload;
-		throw error;
-	}
-	return payload;
-}
-function expandKeywords(phrase, { signal } = {}) {
-	return fetch(`${API_V1}/saved-searches/expand`, {
-		method: "POST",
-		credentials: "same-origin",
-		signal,
-		headers: {
-			Accept: "application/json",
-			"Content-Type": "application/json",
-			"X-Requested-With": "XMLHttpRequest",
-			"X-CSRF-TOKEN": csrfToken()
-		},
-		body: JSON.stringify({ phrase })
-	}).then(async (response) => {
-		const payload = await response.json().catch(() => null);
-		if (!response.ok) throw new Error(payload?.message || "Could not suggest keywords.");
-		return payload;
-	});
-}
-function createSavedSearch({ type, phrase, name, keywords, frequency, sources }) {
-	return request(`${API_V1}/saved-searches`, {
-		method: "POST",
-		body: {
-			type,
-			phrase,
-			name,
-			keywords,
-			frequency,
-			...sources ? { sources } : {}
-		}
-	});
-}
-function fetchNotifications(ids) {
-	return request(`${API_V1}/saved-searches/notifications?${ids.map((id) => `ids[]=${encodeURIComponent(id)}`).join("&")}`);
-}
-var savedSearch = {
-	get: (id) => request(`${API_V1}/saved-searches/${id}/json`),
-	bookmark: (id, bookmarked) => request(`${API_V1}/saved-searches/${id}/bookmark`, {
-		method: "PATCH",
-		body: { bookmarked }
-	}),
-	pause: (id) => request(`${API_V1}/saved-searches/${id}/pause`, { method: "PATCH" }),
-	resume: (id) => request(`${API_V1}/saved-searches/${id}/resume`, { method: "PATCH" }),
-	update: (id, body) => request(`${API_V1}/saved-searches/${id}/frequency`, {
-		method: "PATCH",
-		body
-	}),
-	refresh: (id) => request(`${API_V1}/saved-searches/${id}/refresh`, { method: "POST" }),
-	destroy: (id) => request(`${API_V1}/saved-searches/${id}`, { method: "DELETE" })
-};
-var billing = {
-	checkout: (slug) => {
-		window.location.assign(`/billing/checkout/${encodeURIComponent(slug)}`);
-	},
-	trialCheckout: (slug) => {
-		window.location.assign(`/billing/checkout/${encodeURIComponent(slug)}?trial=1`);
-	}
-};
-var bookmarks = {
-	save: (id) => request(`${API_V1}/videos/${id}/bookmark`, { method: "POST" }),
-	remove: (id) => request(`${API_V1}/videos/${id}/bookmark`, { method: "DELETE" })
-};
-var videoAnalysis = {
-	request: (id, body = {}) => request(`${API_V1}/videos/${id}/analysis`, {
-		method: "POST",
-		body
-	}),
-	get: (id) => request(`${API_V1}/videos/${id}/analysis`)
-};
-var TRACKED_KEY = "vvf-tracked-searches";
-function readTracked() {
-	try {
-		const raw = window.sessionStorage.getItem(TRACKED_KEY);
-		const parsed = raw ? JSON.parse(raw) : [];
-		return Array.isArray(parsed) ? parsed : [];
-	} catch {
-		return [];
-	}
-}
-function writeTracked(entries) {
-	try {
-		window.sessionStorage.setItem(TRACKED_KEY, JSON.stringify(entries.slice(0, 10)));
-	} catch {}
-}
-function trackSearch(entry) {
-	const existing = readTracked().filter((t) => String(t.id) !== String(entry.id));
-	writeTracked([{
-		runningPromptShown: false,
-		completedPromptShown: false,
-		...entry
-	}, ...existing]);
-}
-function updateTracked(id, patch) {
-	writeTracked(readTracked().map((t) => String(t.id) === String(id) ? {
-		...t,
-		...patch
-	} : t));
-}
-//#endregion
 //#region resources/js/landing/flow/screens/KeywordsScreen.jsx
 var KEYWORD_CAP = 12;
 var FREQUENCIES = [{
@@ -4030,7 +4256,7 @@ function KeywordsScreen({ phrase, noun = "brand", nextLabel = "Run search", onBa
 	}, [phrase]);
 	const regenerate = () => {
 		setRegenerating(true);
-		expandKeywords(phrase).then((payload) => {
+		expandKeywords(phrase, { fresh: true }).then((payload) => {
 			const keywords = Array.isArray(payload?.keywords) ? payload.keywords : [phrase];
 			setExpansionSource(payload?.source ?? null);
 			setTerms((prev) => applyExpansion(keywords, phrase, prev));
@@ -4246,15 +4472,13 @@ function KeywordsScreen({ phrase, noun = "brand", nextLabel = "Run search", onBa
 //#endregion
 //#region resources/js/landing/flow/screens/SourcesScreen.jsx
 /**
-* Step three of the brand/competitor flow — optional. Connect the subject's
-* TikTok handle and/or website so results match more tightly. There is nothing
-* to connect for a product search, so the wizard skips this step entirely for
-* products (see SearchWizard's FLOW.kind branching).
+* Step three for every search type — optional. Connect the subject's TikTok
+* handle and/or website so results match more tightly.
 *
 * Both are skippable: "Skip" and "Run the search" both start the scrape; the
-* handle/website ride along in the payload for the backend to use when it can.
+* handle/website ride along in the payload for the backend to use.
 */
-function SourcesScreen({ onBack, onSkip, onRun, submitting = false }) {
+function SourcesScreen({ noun = "brand", onBack, onSkip, onRun, submitting = false }) {
 	const [handle, setHandle] = useState("");
 	const [website, setWebsite] = useState("");
 	const sources = () => ({
@@ -4271,7 +4495,11 @@ function SourcesScreen({ onBack, onSkip, onRun, submitting = false }) {
 						className: "sect__n",
 						children: "Optional"
 					}),
-					/* @__PURE__ */ jsx("h2", { children: "Add the brand’s handle or website" }),
+					/* @__PURE__ */ jsxs("h2", { children: [
+						"Add the ",
+						noun,
+						"’s handle or website"
+					] }),
 					/* @__PURE__ */ jsx("p", {
 						className: "faint",
 						style: {
@@ -4622,10 +4850,9 @@ var SearchWizard_exports = /* @__PURE__ */ __exportAll({ default: () => SearchWi
 /**
 * The whole in-app search flow on one page (Dashboard and /search share it).
 *
-* The wizard branches by search kind, exactly as the handoff spec requires:
-*   - product  → Subject → Keywords → run          (2 steps, no Sources)
-*   - brand /  → Subject → Keywords → Sources → run (3 steps; Sources is last,
-*     competitor    optional, and asks for the account's handle/website)
+* The wizard branches by search kind, but every search can now optionally add
+* source context before it runs:
+*   - product / brand / competitor → Subject → Keywords → Sources → run
 * The run/loading screen is *not* a wizard step and has no stepper.
 *
 * Steps advance in local state so keyword work survives a step back, and a
@@ -4641,17 +4868,12 @@ function readRunParam() {
 	return id && /^\d+$/.test(id) ? Number(id) : null;
 }
 /**
-* The card-header stepper. Sources is brand-only and last; there is no
-* "Results" step — the visitor is already signed in by the time they run.
+* The card-header stepper. Sources is the optional last step for every search;
+* there is no "Results" step — the visitor is already signed in by the time
+* they run.
 */
 function Stepper({ kind, current }) {
-	const steps = kind === "product" ? [{
-		k: "subject",
-		l: "Subject"
-	}, {
-		k: "keywords",
-		l: "Keywords"
-	}] : [
+	const steps = [
 		{
 			k: "subject",
 			l: "Subject"
@@ -4902,11 +5124,7 @@ function SearchWizard({ initialType = "brand", initialQuery = "", heading = "Sta
 		setPending(pendingSearch.payload);
 		setError(null);
 		setAuthPromptPayload(null);
-		if ((pendingSearch.kind ?? kindOf(pendingSearch.type)) === "brand") {
-			setStep("sources");
-			return;
-		}
-		doCreate(pendingSearch.payload, pendingSearch.sources, pendingSearch.type, pendingSearch.phrase ?? pendingSearch.payload?.phrase ?? "");
+		setStep("sources");
 	}, [signedIn]);
 	const needsSearchConfirm = signedIn && searchLimit !== 0;
 	const runSearch = (payload, sources) => {
@@ -4941,11 +5159,7 @@ function SearchWizard({ initialType = "brand", initialQuery = "", heading = "Sta
 			runSearch(payload);
 			return;
 		}
-		if (kind === "brand") {
-			setStep("sources");
-			return;
-		}
-		runSearch(payload);
+		setStep("sources");
 	};
 	const backToKeywords = () => {
 		stampUrl(null);
@@ -4959,7 +5173,7 @@ function SearchWizard({ initialType = "brand", initialQuery = "", heading = "Sta
 	};
 	const onDone = useCallback((found) => router.visit(found?.url ?? `/bookmark/${found?.id ?? searchId}`), [searchId]);
 	const topTitle = step === "subject" ? heading : phrase;
-	const topSub = step === "subject" ? subheading : step === "sources" ? "Step 3 of 3 — optional." : `Step 2 of ${kind === "product" ? 2 : 3} — add terms to expand on your ${nounOf(type)}. Ticking six terms still spends one search.`;
+	const topSub = step === "subject" ? subheading : step === "sources" ? "Step 3 of 3 — optional." : `Step 2 of 3 — add terms to expand on your ${nounOf(type)}. Ticking six terms still spends one search.`;
 	return /* @__PURE__ */ jsxs(Fragment, { children: [
 		step !== "running" && /* @__PURE__ */ jsxs("div", {
 			className: "top",
@@ -4985,13 +5199,14 @@ function SearchWizard({ initialType = "brand", initialQuery = "", heading = "Sta
 				step === "keywords" && phrase && /* @__PURE__ */ jsx(KeywordsScreen, {
 					phrase,
 					noun: nounOf(type),
-					nextLabel: kind === "brand" ? "Continue" : "Run the search",
+					nextLabel: "Continue",
 					submitting,
 					error,
 					onBack: () => setStep("subject"),
 					onSubmit: afterKeywords
 				}, `${type}:${phrase}`),
 				step === "sources" && /* @__PURE__ */ jsx(SourcesScreen, {
+					noun: nounOf(type),
 					submitting,
 					onBack: () => setStep("keywords"),
 					onSkip: () => runSearch(pending),
@@ -6914,7 +7129,7 @@ function Index({ searches: initialSearches, bookmarkedVideos = [], filterType = 
 			const { search: updated } = await savedSearch.update(modalState.search.id, {
 				name: formState.name.trim(),
 				frequency: formState.frequency,
-				sources: modalState.search.search_type === "product" ? void 0 : {
+				sources: {
 					tiktokHandle: formState.tiktokHandle.trim(),
 					website: formState.website.trim()
 				}
@@ -7240,7 +7455,7 @@ function Index({ searches: initialSearches, bookmarkedVideos = [], filterType = 
 									}, f))
 								})]
 							}),
-							modalState.search.search_type !== "product" && /* @__PURE__ */ jsxs(Fragment, { children: [/* @__PURE__ */ jsxs("div", {
+							/* @__PURE__ */ jsxs("div", {
 								style: { marginTop: 20 },
 								children: [/* @__PURE__ */ jsx("label", {
 									className: "lbl",
@@ -7269,7 +7484,8 @@ function Index({ searches: initialSearches, bookmarkedVideos = [], filterType = 
 										"aria-label": "TikTok handle"
 									})]
 								})]
-							}), /* @__PURE__ */ jsxs("div", {
+							}),
+							/* @__PURE__ */ jsxs("div", {
 								style: { marginTop: 20 },
 								children: [/* @__PURE__ */ jsx("label", {
 									className: "lbl",
@@ -7298,7 +7514,7 @@ function Index({ searches: initialSearches, bookmarkedVideos = [], filterType = 
 										"aria-label": "Website"
 									})]
 								})]
-							})] }),
+							}),
 							/* @__PURE__ */ jsxs("div", {
 								className: "actrow__r",
 								style: {
@@ -7452,6 +7668,139 @@ function percent(value, digits = 1) {
 	return `${n.toFixed(digits)}%`;
 }
 //#endregion
+//#region resources/js/Pages/SavedSearches/detail/tiktokPlayer.js
+function detectPlatform(video = {}) {
+	if (String(video.social_media_source || "").toLowerCase() === "tiktok") return "tiktok";
+	return [
+		video.embedUrl,
+		video.postUrl,
+		video.videoUrl,
+		video.embed_url,
+		video.post_url,
+		video.video_url
+	].filter(Boolean).map((value) => String(value).toLowerCase()).some((value) => value.includes("tiktok.com")) ? "tiktok" : null;
+}
+function buildTikTokPlayerUrl(videoId, autoplay = false) {
+	if (!videoId) return null;
+	const url = new URL(`https://www.tiktok.com/player/v1/${videoId}`);
+	url.searchParams.set("autoplay", autoplay ? "1" : "0");
+	url.searchParams.set("controls", "1");
+	url.searchParams.set("progress_bar", "0");
+	url.searchParams.set("play_button", "1");
+	url.searchParams.set("volume_control", "1");
+	url.searchParams.set("fullscreen_button", "0");
+	url.searchParams.set("timestamp", "0");
+	url.searchParams.set("music_info", "0");
+	url.searchParams.set("description", "0");
+	url.searchParams.set("rel", "0");
+	url.searchParams.set("native_context_menu", "0");
+	url.searchParams.set("closed_caption", "0");
+	url.searchParams.set("muted", "0");
+	return url.toString();
+}
+function withTikTokAutoplay(url, autoplay) {
+	if (!url) return null;
+	try {
+		const next = new URL(url);
+		next.searchParams.set("autoplay", autoplay ? "1" : "0");
+		return next.toString();
+	} catch {
+		return url;
+	}
+}
+function previewImageFor(video = {}) {
+	return video.thumbnailUrl || video.thumbnail_url || video.cover || null;
+}
+function isDashboardPlayable(video = {}) {
+	const platform = detectPlatform(video);
+	const videoId = video.videoId || video.video_id;
+	if (platform === "tiktok") return Boolean(videoId);
+	return Boolean(video.embedUrl || video.embed_url || video.postUrl || video.post_url);
+}
+function playerKindFor(video = {}) {
+	return detectPlatform(video) === "tiktok" ? "tiktok" : "iframe";
+}
+function playerUrlFor(video = {}, autoplay = false) {
+	const platform = detectPlatform(video);
+	const videoId = video.videoId || video.video_id;
+	if (platform === "tiktok" && videoId) return buildTikTokPlayerUrl(videoId, autoplay);
+	if (platform === "tiktok") return null;
+	return video.player_url || video.embedUrl || video.embed_url || null;
+}
+function targetOriginFor(iframe) {
+	try {
+		const origin = new URL(iframe?.src || "").origin;
+		return origin && origin !== "null" ? origin : "*";
+	} catch {
+		return "*";
+	}
+}
+function postTikTokMessage(iframe, type) {
+	if (!iframe?.contentWindow) return;
+	iframe.contentWindow.postMessage({
+		"x-tiktok-player": true,
+		type
+	}, targetOriginFor(iframe));
+}
+function stopAndResetTikTokPlayer(shell) {
+	if (!shell) return;
+	const iframe = shell.querySelector("[data-player-frame]");
+	const poster = shell.querySelector("[data-player-poster]");
+	const overlay = shell.querySelector("[data-player-overlay]");
+	const play = shell.querySelector("[data-player-play]");
+	const close = shell.querySelector("[data-player-close]");
+	const container = shell.querySelector("[data-player-container]");
+	if (shell.dataset.playerKind === "tiktok" && iframe) {
+		postTikTokMessage(iframe, "pause");
+		postTikTokMessage(iframe, "mute");
+	}
+	delete shell.dataset.playerWantsAudible;
+	shell.dataset.playerActive = "false";
+	if (container) container.hidden = true;
+	if (close) close.hidden = true;
+	if (poster) poster.hidden = false;
+	if (overlay) overlay.hidden = false;
+	if (play) play.hidden = false;
+	if (iframe) iframe.src = "about:blank";
+}
+function activateTikTokPlayer(shell) {
+	if (!shell) return;
+	const iframe = shell.querySelector("[data-player-frame]");
+	const poster = shell.querySelector("[data-player-poster]");
+	const overlay = shell.querySelector("[data-player-overlay]");
+	const play = shell.querySelector("[data-player-play]");
+	const close = shell.querySelector("[data-player-close]");
+	const container = shell.querySelector("[data-player-container]");
+	const playerSrc = shell.dataset.playerSrc;
+	if (!iframe || !playerSrc) return;
+	document.querySelectorAll("[data-video-player-shell][data-player-active=\"true\"]").forEach((other) => {
+		if (other !== shell) stopAndResetTikTokPlayer(other);
+	});
+	shell.dataset.playerActive = "true";
+	shell.dataset.playerWantsAudible = "true";
+	if (poster) poster.hidden = true;
+	if (overlay) overlay.hidden = true;
+	if (play) play.hidden = true;
+	if (container) container.hidden = false;
+	if (close) close.hidden = false;
+	const nextSrc = shell.dataset.playerKind === "tiktok" ? withTikTokAutoplay(playerSrc, true) : playerSrc;
+	if (!iframe.src || iframe.src === "about:blank") iframe.src = nextSrc;
+	if (shell.dataset.playerKind === "tiktok") {
+		postTikTokMessage(iframe, "unMute");
+		postTikTokMessage(iframe, "play");
+	}
+}
+function handleTikTokPlayerReady(event) {
+	const payload = event?.data;
+	if (!payload || payload["x-tiktok-player"] !== true || payload.type !== "onPlayerReady") return;
+	document.querySelectorAll("[data-video-player-shell][data-player-kind=\"tiktok\"][data-player-active=\"true\"]").forEach((shell) => {
+		const iframe = shell.querySelector("[data-player-frame]");
+		if (!iframe?.contentWindow || event.source !== iframe.contentWindow || shell.dataset.playerWantsAudible !== "true") return;
+		postTikTokMessage(iframe, "unMute");
+		postTikTokMessage(iframe, "play");
+	});
+}
+//#endregion
 //#region resources/js/Pages/SavedSearches/detail/OutlierVideos.jsx
 var OutlierVideos_exports = /* @__PURE__ */ __exportAll({
 	OutlierCard: () => OutlierCard,
@@ -7466,7 +7815,7 @@ var GRADIENTS = [
 	"linear-gradient(150deg,#ffe4a6,#f2ab63 55%,#bd7059)"
 ];
 function gradientStyle(video) {
-	const key = String(video?.video_id ?? video?.id ?? "");
+	const key = String(video?.videoId ?? video?.video_id ?? video?.id ?? "");
 	let hash = 0;
 	for (let i = 0; i < key.length; i++) hash = hash * 31 + key.charCodeAt(i) >>> 0;
 	return GRADIENTS[hash % GRADIENTS.length];
@@ -7478,7 +7827,6 @@ function formatDuration$1(duration) {
 	if (!Number.isFinite(total)) return null;
 	return `${Math.floor(total / 60)}:${String(Math.round(total % 60)).padStart(2, "0")}`;
 }
-/** Tags shown under the winner — the inferred creative signals, as chips. */
 function creativeTags(video) {
 	return [
 		video.content_format,
@@ -7495,27 +7843,27 @@ var PlayIcon = ({ w = 14, h = 16 }) => /* @__PURE__ */ jsx("svg", {
 	"aria-hidden": true,
 	children: /* @__PURE__ */ jsx("path", { d: "M0 0l14 8-14 8z" })
 });
-function embedFor(video) {
-	if (video?.embed_url) return video.embed_url;
-	const id = video?.video_id;
-	return id ? `https://www.tiktok.com/player/v1/${id}?autoplay=1&description=0&rel=0` : null;
-}
 function playerIdOf(video) {
-	return String(video?.id ?? video?.video_id ?? "");
+	return String(video?.id ?? video?.videoId ?? video?.video_id ?? "");
 }
-function Cover({ video }) {
+function isRenderableVideo(video) {
+	return Boolean(previewImageFor(video)) && isDashboardPlayable(video);
+}
+function Cover({ video, hidden = false }) {
 	const [broken, setBroken] = useState(false);
-	const src = video?.thumbnail_url;
+	const src = previewImageFor(video);
 	return /* @__PURE__ */ jsxs(Fragment, { children: [/* @__PURE__ */ jsx("span", {
 		className: "grad",
-		style: { background: gradientStyle(video) }
+		style: { background: gradientStyle(video) },
+		hidden
 	}), src && !broken && /* @__PURE__ */ jsx("img", {
 		className: "cov",
 		src,
 		alt: "",
 		loading: "lazy",
 		referrerPolicy: "no-referrer",
-		onError: () => setBroken(true)
+		onError: () => setBroken(true),
+		hidden
 	})] });
 }
 function Avatar({ video, className }) {
@@ -7532,47 +7880,124 @@ function Avatar({ video, className }) {
 		onError: () => setBroken(true)
 	});
 }
-/**
-* The play button that swaps the cover for the TikTok embed in place. Uses the
-* signed `embed_url` (or a player URL built from the id); the raw `video_url`
-* 403s from a browser origin, so it is never used here.
-*/
-function InlinePlayer({ video, className, buttonClassName = "play", iconProps = {}, activePlayerId, onPlay, onClose }) {
-	const embed = embedFor(video);
+function VideoPlayerShell({ video, activePlayerId, onPlay, onClose, className, discSize = {
+	w: 14,
+	h: 16
+}, rank = null, children = null }) {
+	const shellRef = useRef(null);
+	const iframeRef = useRef(null);
 	const playerId = playerIdOf(video);
-	if (playerId !== "" && activePlayerId === playerId && embed) return /* @__PURE__ */ jsxs(Fragment, { children: [/* @__PURE__ */ jsx("iframe", {
-		src: embed,
-		title: video?.title || "TikTok video",
-		loading: "lazy",
-		allow: "autoplay; fullscreen; encrypted-media; picture-in-picture",
-		allowFullScreen: true,
-		className: `${className} tracker-embed-frame`
-	}), /* @__PURE__ */ jsx("button", {
-		type: "button",
-		onClick: () => onClose?.(),
-		"aria-label": "Close player",
-		className: "absolute top-2.5 right-2.5 z-20 flex h-8 w-8 items-center justify-center rounded-full bg-black/60 text-white backdrop-blur-md transition hover:bg-black/80",
-		children: /* @__PURE__ */ jsx("svg", {
-			viewBox: "0 0 24 24",
-			className: "h-4 w-4",
-			fill: "none",
-			stroke: "currentColor",
-			strokeWidth: "2.5",
-			strokeLinecap: "round",
-			children: /* @__PURE__ */ jsx("path", { d: "M6 6l12 12M18 6L6 18" })
-		})
-	})] });
-	if (!embed) return /* @__PURE__ */ jsx("div", {
-		className: buttonClassName,
-		"aria-hidden": true,
-		children: /* @__PURE__ */ jsx(PlayIcon, { ...iconProps })
-	});
-	return /* @__PURE__ */ jsx("button", {
-		type: "button",
-		onClick: () => onPlay?.(playerId),
-		"aria-label": video?.title ? `Play: ${video.title}` : "Play video",
-		className: buttonClassName,
-		children: /* @__PURE__ */ jsx(PlayIcon, { ...iconProps })
+	const active = playerId !== "" && activePlayerId === playerId;
+	const playerKind = playerKindFor(video);
+	const playerSrc = playerUrlFor(video, false);
+	const titleName = video?.username || video?.handle || video?.creator_name || "creator";
+	const platform = detectPlatform(video);
+	useEffect(() => {
+		const shell = shellRef.current;
+		if (!shell) return;
+		if (active) {
+			activateTikTokPlayer(shell);
+			return;
+		}
+		stopAndResetTikTokPlayer(shell);
+	}, [active]);
+	useEffect(() => {
+		const iframe = iframeRef.current;
+		if (!iframe || playerKind !== "tiktok") return void 0;
+		const replay = () => {
+			const shell = shellRef.current;
+			if (!shell || shell.dataset.playerWantsAudible !== "true") return;
+			postTikTokMessage(iframe, "unMute");
+			postTikTokMessage(iframe, "play");
+		};
+		iframe.addEventListener("load", replay);
+		return () => iframe.removeEventListener("load", replay);
+	}, [playerKind]);
+	if (!isRenderableVideo(video)) return null;
+	const openPlayer = (event) => {
+		event.preventDefault();
+		event.stopPropagation();
+		onPlay?.(playerId);
+	};
+	const closePlayer = (event) => {
+		event.preventDefault();
+		event.stopPropagation();
+		const shell = shellRef.current;
+		if (shell) stopAndResetTikTokPlayer(shell);
+		onClose?.();
+	};
+	return /* @__PURE__ */ jsxs("div", {
+		ref: shellRef,
+		className,
+		"data-video-player-shell": true,
+		"data-player-kind": playerKind,
+		"data-player-src": playerSrc ?? "",
+		"data-player-active": active ? "true" : "false",
+		children: [
+			/* @__PURE__ */ jsx("div", {
+				"data-player-poster": true,
+				children: /* @__PURE__ */ jsx(Cover, {
+					video,
+					hidden: false
+				})
+			}),
+			/* @__PURE__ */ jsx("span", {
+				className: "player-overlay",
+				"data-player-overlay": true,
+				"aria-hidden": true
+			}),
+			rank != null && /* @__PURE__ */ jsx("span", {
+				className: "bbrank",
+				children: String(rank).padStart(2, "0")
+			}),
+			children,
+			/* @__PURE__ */ jsx("button", {
+				type: "button",
+				className: "play",
+				"data-player-play": true,
+				onClick: openPlayer,
+				"aria-label": video?.title ? `Play: ${video.title}` : "Play video",
+				children: /* @__PURE__ */ jsx("span", {
+					className: "play__disc",
+					children: /* @__PURE__ */ jsx(PlayIcon, { ...discSize })
+				})
+			}),
+			/* @__PURE__ */ jsx("div", {
+				className: "tracker-player-host",
+				"data-player-container": true,
+				hidden: true,
+				children: /* @__PURE__ */ jsx("iframe", {
+					ref: iframeRef,
+					src: "about:blank",
+					"data-card-frame": true,
+					"data-player-frame": true,
+					"data-player-kind": playerKind,
+					"data-player-src": playerSrc ?? "",
+					title: platform === "tiktok" ? `TikTok video by ${titleName.startsWith("@") ? titleName : `@${titleName}`}` : `Video preview for ${titleName}`,
+					allow: "accelerometer; controls; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share",
+					allowFullScreen: true,
+					scrolling: "no",
+					className: "tracker-embed-frame"
+				})
+			}),
+			/* @__PURE__ */ jsx("button", {
+				type: "button",
+				onClick: closePlayer,
+				"aria-label": "Close player",
+				className: "tracker-player-close",
+				"data-player-close": true,
+				hidden: true,
+				children: /* @__PURE__ */ jsx("svg", {
+					viewBox: "0 0 24 24",
+					className: "h-4 w-4",
+					fill: "none",
+					stroke: "currentColor",
+					strokeWidth: "2.5",
+					strokeLinecap: "round",
+					children: /* @__PURE__ */ jsx("path", { d: "M6 6l12 12M18 6L6 18" })
+				})
+			})
+		]
 	});
 }
 function AnalyzeButton({ status = "idle", small = false, onClick }) {
@@ -7597,7 +8022,7 @@ function AnalyzeButton({ status = "idle", small = false, onClick }) {
 	});
 }
 function WinnerVideo({ video, onToggleBookmark, onAnalyze, bookmarking = false, activePlayerId = null, onPlay = null, onClose = null, analysisStatus = "idle" }) {
-	if (!video) return null;
+	if (!video || !isRenderableVideo(video)) return null;
 	const playing = activePlayerId === playerIdOf(video);
 	const rate = percent(video.engagement_rate);
 	const duration = formatDuration$1(video.duration);
@@ -7605,10 +8030,17 @@ function WinnerVideo({ video, onToggleBookmark, onAnalyze, bookmarking = false, 
 	const hasCreative = video.content_format || video.content_hook || video.content_angle;
 	return /* @__PURE__ */ jsxs("div", {
 		className: "winner",
-		children: [/* @__PURE__ */ jsxs("div", {
+		children: [/* @__PURE__ */ jsxs(VideoPlayerShell, {
+			video,
+			activePlayerId,
+			onPlay,
+			onClose,
 			className: `vid${playing ? " playing" : ""}`,
+			discSize: {
+				w: 16,
+				h: 18
+			},
 			children: [
-				/* @__PURE__ */ jsx(Cover, { video }),
 				/* @__PURE__ */ jsx("span", {
 					className: "flag",
 					children: "★ winner"
@@ -7638,17 +8070,6 @@ function WinnerVideo({ video, onToggleBookmark, onAnalyze, bookmarking = false, 
 							children: compactNumber$1(video.views)
 						})]
 					})]
-				}),
-				/* @__PURE__ */ jsx(InlinePlayer, {
-					video,
-					className: "absolute inset-0 h-full w-full border-0",
-					iconProps: {
-						w: 16,
-						h: 18
-					},
-					activePlayerId,
-					onPlay,
-					onClose
 				})
 			]
 		}), /* @__PURE__ */ jsxs("div", {
@@ -7752,26 +8173,18 @@ function WinnerVideo({ video, onToggleBookmark, onAnalyze, bookmarking = false, 
 	});
 }
 function OutlierCard({ video, rank, onToggleBookmark, onAnalyze, bookmarking = false, activePlayerId = null, onPlay = null, onClose = null, analysisStatus = "idle" }) {
+	if (!isRenderableVideo(video)) return null;
 	const rate = percent(video.engagement_rate);
 	const duration = formatDuration$1(video.duration);
 	return /* @__PURE__ */ jsxs("article", {
 		className: "bbcard",
-		children: [/* @__PURE__ */ jsxs("div", {
+		children: [/* @__PURE__ */ jsx(VideoPlayerShell, {
+			video,
+			activePlayerId,
+			onPlay,
+			onClose,
 			className: "bbthumb",
-			children: [
-				/* @__PURE__ */ jsx(Cover, { video }),
-				rank != null && /* @__PURE__ */ jsx("span", {
-					className: "bbrank",
-					children: String(rank).padStart(2, "0")
-				}),
-				/* @__PURE__ */ jsx(InlinePlayer, {
-					video,
-					className: "absolute inset-0 z-10 h-full w-full border-0",
-					activePlayerId,
-					onPlay,
-					onClose
-				})
-			]
+			rank
 		}), /* @__PURE__ */ jsxs("div", {
 			className: "bbbody",
 			children: [
@@ -8813,116 +9226,144 @@ function Growth({ growth }) {
 		]
 	});
 }
-function HashtagPanel({ hashtags = [] }) {
+function ExpandableSignalList({ items = [], renderRow, emptyLabel, ariaLabel, moreLabelBuilder }) {
 	const [visible, setVisible] = useState(PANEL_STEP);
-	const shown = hashtags.slice(0, visible);
-	const remaining = Math.max(0, hashtags.length - shown.length);
-	return /* @__PURE__ */ jsxs("div", {
-		className: "hspanel",
-		children: [/* @__PURE__ */ jsx("h3", { children: "# hashtags" }), hashtags.length === 0 ? /* @__PURE__ */ jsx("p", {
-			className: "empty",
-			children: "No hashtags on the matched videos."
-		}) : /* @__PURE__ */ jsxs(Fragment, { children: [/* @__PURE__ */ jsx("div", {
+	const [flashRange, setFlashRange] = useState(null);
+	const listRef = useRef(null);
+	const shown = items.slice(0, visible);
+	const remaining = Math.max(0, items.length - shown.length);
+	useEffect(() => {
+		if (!flashRange) return void 0;
+		const list = listRef.current;
+		if (list) window.requestAnimationFrame(() => {
+			list.scrollTo({
+				top: list.scrollHeight,
+				behavior: "smooth"
+			});
+		});
+		const timeout = window.setTimeout(() => setFlashRange(null), 1800);
+		return () => window.clearTimeout(timeout);
+	}, [flashRange]);
+	useEffect(() => {
+		setVisible(PANEL_STEP);
+		setFlashRange(null);
+	}, [items]);
+	const showMore = () => {
+		const added = Math.min(PANEL_STEP, remaining);
+		if (added <= 0) return;
+		setFlashRange({
+			start: visible,
+			end: visible + added - 1,
+			count: added
+		});
+		setVisible((count) => count + added);
+	};
+	return /* @__PURE__ */ jsx(Fragment, { children: items.length === 0 ? /* @__PURE__ */ jsx("p", {
+		className: "empty",
+		children: emptyLabel
+	}) : /* @__PURE__ */ jsxs(Fragment, { children: [
+		/* @__PURE__ */ jsx("div", {
+			ref: listRef,
 			className: "hlist",
 			role: "list",
-			"aria-label": "Top hashtags",
-			children: shown.map((row, index) => /* @__PURE__ */ jsxs("div", {
-				className: "hrow",
-				role: "listitem",
-				children: [
-					/* @__PURE__ */ jsx("span", {
-						className: "idx",
-						children: index + 1
-					}),
-					/* @__PURE__ */ jsxs("span", {
-						className: "nm",
-						children: ["#", row.tag]
-					}),
-					/* @__PURE__ */ jsxs("span", {
-						className: "cnt",
-						children: [
-							"on ",
-							row.posts,
-							" posts"
-						]
-					}),
-					/* @__PURE__ */ jsx(Growth, { growth: row.growth })
-				]
-			}, row.tag))
-		}), remaining > 0 && /* @__PURE__ */ jsx("div", {
+			"aria-label": ariaLabel,
+			children: shown.map((row, index) => {
+				const isNew = flashRange && index >= flashRange.start && index <= flashRange.end;
+				return /* @__PURE__ */ jsx("div", {
+					className: `hrow${isNew ? " is-new" : ""}`,
+					role: "listitem",
+					children: renderRow(row, index)
+				}, row.id ?? row.tag ?? row.label ?? index);
+			})
+		}),
+		flashRange && /* @__PURE__ */ jsxs("p", {
+			className: "hmore-note",
+			"aria-live": "polite",
+			children: [
+				"Added ",
+				flashRange.count,
+				" more."
+			]
+		}),
+		remaining > 0 && /* @__PURE__ */ jsx("div", {
 			className: "hmore",
-			children: /* @__PURE__ */ jsxs("button", {
+			children: /* @__PURE__ */ jsx("button", {
 				className: "tbtn",
 				type: "button",
-				onClick: () => setVisible((count) => count + PANEL_STEP),
-				children: [
-					"show ",
-					Math.min(PANEL_STEP, remaining),
-					" more"
-				]
+				onClick: showMore,
+				children: moreLabelBuilder(Math.min(PANEL_STEP, remaining))
 			})
-		})] })]
+		})
+	] }) });
+}
+function HashtagPanel({ hashtags = [] }) {
+	return /* @__PURE__ */ jsxs("div", {
+		className: "hspanel",
+		children: [/* @__PURE__ */ jsx("h3", { children: "# hashtags" }), /* @__PURE__ */ jsx(ExpandableSignalList, {
+			items: hashtags,
+			emptyLabel: "No hashtags on the matched videos.",
+			ariaLabel: "Top hashtags",
+			moreLabelBuilder: (count) => `show ${count} more`,
+			renderRow: (row, index) => /* @__PURE__ */ jsxs(Fragment, { children: [
+				/* @__PURE__ */ jsx("span", {
+					className: "idx",
+					children: index + 1
+				}),
+				/* @__PURE__ */ jsxs("span", {
+					className: "nm",
+					children: ["#", row.tag]
+				}),
+				/* @__PURE__ */ jsxs("span", {
+					className: "cnt",
+					children: [
+						"on ",
+						row.posts,
+						" posts"
+					]
+				}),
+				/* @__PURE__ */ jsx(Growth, { growth: row.growth })
+			] })
+		})]
 	});
 }
 function SoundPanel({ sounds = [] }) {
-	const [visible, setVisible] = useState(PANEL_STEP);
-	const shown = sounds.slice(0, visible);
-	const remaining = Math.max(0, sounds.length - shown.length);
 	return /* @__PURE__ */ jsxs("div", {
 		className: "hspanel",
-		children: [/* @__PURE__ */ jsx("h3", { children: "sounds" }), sounds.length === 0 ? /* @__PURE__ */ jsx("p", {
-			className: "empty",
-			children: "No sound credited on the matched videos."
-		}) : /* @__PURE__ */ jsxs(Fragment, { children: [/* @__PURE__ */ jsx("div", {
-			className: "hlist",
-			role: "list",
-			"aria-label": "Top sounds",
-			children: shown.map((row, index) => /* @__PURE__ */ jsxs("div", {
-				className: "hrow",
-				role: "listitem",
-				children: [
-					/* @__PURE__ */ jsx("span", {
-						className: "idx",
-						children: index + 1
-					}),
-					/* @__PURE__ */ jsx("span", {
-						className: "splay",
-						children: /* @__PURE__ */ jsx("svg", {
-							width: "11",
-							height: "12",
-							viewBox: "0 0 14 16",
-							fill: "var(--violet)",
-							"aria-hidden": true,
-							children: /* @__PURE__ */ jsx("path", { d: "M0 0l14 8-14 8z" })
-						})
-					}),
-					/* @__PURE__ */ jsxs("span", {
-						className: "nm",
-						children: [row.label, row.on_top_video && /* @__PURE__ */ jsx("span", {
-							className: "u",
-							children: "used on the winner"
-						})]
-					}),
-					/* @__PURE__ */ jsxs("span", {
-						className: "cnt",
-						children: [row.posts, " posts"]
-					}),
-					/* @__PURE__ */ jsx(Growth, { growth: row.growth })
-				]
-			}, row.label))
-		}), remaining > 0 && /* @__PURE__ */ jsx("div", {
-			className: "hmore",
-			children: /* @__PURE__ */ jsxs("button", {
-				className: "tbtn",
-				type: "button",
-				onClick: () => setVisible((count) => count + PANEL_STEP),
-				children: [
-					"show ",
-					Math.min(PANEL_STEP, remaining),
-					" more"
-				]
-			})
-		})] })]
+		children: [/* @__PURE__ */ jsx("h3", { children: "sounds" }), /* @__PURE__ */ jsx(ExpandableSignalList, {
+			items: sounds,
+			emptyLabel: "No sound credited on the matched videos.",
+			ariaLabel: "Top sounds",
+			moreLabelBuilder: (count) => `show ${count} more`,
+			renderRow: (row, index) => /* @__PURE__ */ jsxs(Fragment, { children: [
+				/* @__PURE__ */ jsx("span", {
+					className: "idx",
+					children: index + 1
+				}),
+				/* @__PURE__ */ jsx("span", {
+					className: "splay",
+					children: /* @__PURE__ */ jsx("svg", {
+						width: "11",
+						height: "12",
+						viewBox: "0 0 14 16",
+						fill: "var(--violet)",
+						"aria-hidden": true,
+						children: /* @__PURE__ */ jsx("path", { d: "M0 0l14 8-14 8z" })
+					})
+				}),
+				/* @__PURE__ */ jsxs("span", {
+					className: "nm",
+					children: [row.label, row.on_top_video && /* @__PURE__ */ jsx("span", {
+						className: "u",
+						children: "used on the winner"
+					})]
+				}),
+				/* @__PURE__ */ jsxs("span", {
+					className: "cnt",
+					children: [row.posts, " posts"]
+				}),
+				/* @__PURE__ */ jsx(Growth, { growth: row.growth })
+			] })
+		})]
 	});
 }
 function PostingHeatmap({ heatmap }) {
@@ -9822,6 +10263,7 @@ function BookmarkConfirmModal({ video, creditsRemainingAfterUse = 0, busy = fals
 	});
 }
 function DetailScreen({ search, isAuthenticated = false, billing = null, onExportPdf, onToggleBookmark, onRefresh, onTogglePause, onDelete, refreshing = false, bookmarkUpdating = false }) {
+	const [outlierSort, setOutlierSort] = useState("outlier");
 	const [visible, setVisible] = useState(PAGE_STEP);
 	const [copied, setCopied] = useState(false);
 	const [bookmarkingId, setBookmarkingId] = useState(null);
@@ -9846,14 +10288,25 @@ function DetailScreen({ search, isAuthenticated = false, billing = null, onExpor
 	const videoBookmarkLimit = numericUsageValue(billingState?.videoBookmarkLimit, 0);
 	const analysisCreditsRemainingAfterUse = usageRemainingLabel(videoAnalysisLimit, videoAnalysisUsed);
 	const bookmarkCreditsRemainingAfterUse = usageRemainingLabel(videoBookmarkLimit, videoBookmarkUsed);
-	const feedItems = items;
+	const renderableItems = (items ?? []).filter((video) => Boolean(previewImageFor(video)) && isDashboardPlayable(video));
+	useEffect(() => {
+		window.addEventListener("message", handleTikTokPlayerReady);
+		return () => window.removeEventListener("message", handleTikTokPlayerReady);
+	}, []);
+	const feedItems = renderableItems;
 	const [winner, ...rest] = feedItems;
-	const shown = rest.slice(0, visible);
+	const sortedRest = [...rest].sort((left, right) => {
+		if (outlierSort === "views") return (Number(right?.views) || 0) - (Number(left?.views) || 0);
+		if (outlierSort === "date_posted") return (new Date(right?.uploaded_at ?? 0).getTime() || 0) - (new Date(left?.uploaded_at ?? 0).getTime() || 0);
+		return (Number(right?.outlier_multiple) || 0) - (Number(left?.outlier_multiple) || 0);
+	});
+	const shown = sortedRest.slice(0, visible);
 	Math.max(...feedItems.map((v) => Number(v.outlier_multiple) || 0), 1);
 	const serverTile = (key) => (insights.tiles ?? []).find((t) => t.key === key) ?? {};
 	const multiples = items.map((v) => Number(v.outlier_multiple) || 0).filter((m) => m > 0);
 	const avgScore = multiples.length ? multiples.reduce((a, b) => a + b, 0) / multiples.length : null;
-	const nowPoint = trend?.points?.[trend.points.length - 1] ?? null;
+	const trendPoints = trend?.points ?? [];
+	const nowPoint = trendPoints[trendPoints.length - 1] ?? null;
 	const tiles = [
 		account?.followers > 0 ? {
 			key: "followers",
@@ -9907,6 +10360,9 @@ function DetailScreen({ search, isAuthenticated = false, billing = null, onExpor
 		setItems(search?.results ?? []);
 		setAnalysisStates(buildAnalysisStates(search?.results ?? []));
 	}, [search]);
+	useEffect(() => {
+		setVisible(PAGE_STEP);
+	}, [outlierSort]);
 	useEffect(() => {
 		setVideoBookmarkUsed(numericUsageValue(billingState?.videoBookmarkCount, 0));
 	}, [billingState?.videoBookmarkCount]);
@@ -10138,14 +10594,50 @@ function DetailScreen({ search, isAuthenticated = false, billing = null, onExpor
 				rest.length > 0 && /* @__PURE__ */ jsxs(Fragment, { children: [
 					/* @__PURE__ */ jsxs("div", {
 						className: "sect-head",
-						style: { marginTop: "34px" },
-						children: [/* @__PURE__ */ jsx("h2", {
-							style: { fontSize: "19px" },
-							children: "more outliers"
-						}), /* @__PURE__ */ jsxs("span", {
-							className: "note",
-							children: [rest.length, " more."]
-						})]
+						style: {
+							marginTop: "34px",
+							alignItems: "center",
+							gap: "12px",
+							flexWrap: "wrap"
+						},
+						children: [
+							/* @__PURE__ */ jsx("h2", {
+								style: { fontSize: "19px" },
+								children: "more outliers"
+							}),
+							/* @__PURE__ */ jsxs("span", {
+								className: "note",
+								children: [sortedRest.length, " more."]
+							}),
+							/* @__PURE__ */ jsxs("div", {
+								className: "ml-auto flex items-center gap-2",
+								children: [/* @__PURE__ */ jsx("label", {
+									htmlFor: "outlier-sort",
+									className: "note",
+									style: { marginLeft: "auto" },
+									children: "sort by"
+								}), /* @__PURE__ */ jsxs("select", {
+									id: "outlier-sort",
+									value: outlierSort,
+									onChange: (event) => setOutlierSort(event.target.value),
+									className: "rounded-[12px] border border-[#ddd6ca] bg-white px-3 py-2 text-[12px] font-semibold text-[#3d372f] shadow-[0_1px_2px_rgba(24,21,17,0.04)]",
+									children: [
+										/* @__PURE__ */ jsx("option", {
+											value: "outlier",
+											children: "Outlier"
+										}),
+										/* @__PURE__ */ jsx("option", {
+											value: "views",
+											children: "Views"
+										}),
+										/* @__PURE__ */ jsx("option", {
+											value: "date_posted",
+											children: "Date posted"
+										})
+									]
+								})]
+							})
+						]
 					}),
 					/* @__PURE__ */ jsx("div", {
 						className: "feed",
@@ -10165,9 +10657,9 @@ function DetailScreen({ search, isAuthenticated = false, billing = null, onExpor
 						className: "loadmore",
 						children: /* @__PURE__ */ jsx("button", {
 							className: "tbtn",
-							disabled: visible >= rest.length,
+							disabled: visible >= sortedRest.length,
 							onClick: () => setVisible((v) => v + PAGE_STEP),
-							children: visible >= rest.length ? "no more this week" : `load ${Math.min(PAGE_STEP, rest.length - visible)} more ↓`
+							children: visible >= sortedRest.length ? "no more this week" : `load ${Math.min(PAGE_STEP, sortedRest.length - visible)} more ↓`
 						})
 					})
 				] }),
@@ -10288,6 +10780,28 @@ function UsageConfirmModal({ title, body, subject, confirmLabel, busy = false, o
 		})
 	});
 }
+var DetailScreenBoundary = class extends Component {
+	constructor(props) {
+		super(props);
+		this.state = { error: null };
+	}
+	static getDerivedStateFromError(error) {
+		return { error };
+	}
+	componentDidCatch(error, info) {
+		console.error("SavedSearch detail render failed", error, info);
+	}
+	render() {
+		if (this.state.error) return /* @__PURE__ */ jsx("div", {
+			className: "tracker",
+			children: /* @__PURE__ */ jsxs("div", {
+				className: "gate",
+				children: [/* @__PURE__ */ jsx("h2", { children: "Results page failed to render" }), /* @__PURE__ */ jsx("p", { children: this.state.error?.message || "An unexpected error happened while rendering this search." })]
+			})
+		});
+		return this.props.children;
+	}
+};
 /**
 * The single detail view for every saved search — brand, competitor, and
 * product all render the same analytics tracker (the one design identity).
@@ -10348,7 +10862,7 @@ function Show$1({ search: initial, isAuthenticated = false, billing }) {
 		/* @__PURE__ */ jsx(Head, { title: `${search.name} · Brand Beacon` }),
 		/* @__PURE__ */ jsx(AppLayout, {
 			width: "max-w-[1240px]",
-			children: /* @__PURE__ */ jsx(DetailScreen, {
+			children: /* @__PURE__ */ jsx(DetailScreenBoundary, { children: /* @__PURE__ */ jsx(DetailScreen, {
 				search,
 				isAuthenticated,
 				billing,
@@ -10359,7 +10873,7 @@ function Show$1({ search: initial, isAuthenticated = false, billing }) {
 				onToggleBookmark: toggleBookmark,
 				onTogglePause: togglePause,
 				onDelete: remove
-			})
+			}) })
 		}),
 		confirmRefresh && /* @__PURE__ */ jsx(UsageConfirmModal, {
 			title: "Refresh this search?",
