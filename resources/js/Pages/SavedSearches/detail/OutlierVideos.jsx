@@ -1,7 +1,17 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import { compactNumber, outlierLabel, percent, relativeTime } from '../../../landing/flow/format.js';
 import { Heart, Comment, Share, Trend, Bookmark, Search, Arrow } from '../../../landing/components/Icons.jsx';
+import {
+  activateTikTokPlayer,
+  detectPlatform,
+  isDashboardPlayable,
+  playerKindFor,
+  playerUrlFor,
+  postTikTokMessage,
+  previewImageFor,
+  stopAndResetTikTokPlayer,
+} from './tiktokPlayer.js';
 
 const GRADIENTS = [
   'linear-gradient(150deg,#ffd27a,#ff9a5a 55%,#c0607a)',
@@ -13,7 +23,7 @@ const GRADIENTS = [
 ];
 
 function gradientStyle(video) {
-  const key = String(video?.video_id ?? video?.id ?? '');
+  const key = String(video?.videoId ?? video?.video_id ?? video?.id ?? '');
   let hash = 0;
   for (let i = 0; i < key.length; i++) hash = (hash * 31 + key.charCodeAt(i)) >>> 0;
   return GRADIENTS[hash % GRADIENTS.length];
@@ -27,7 +37,6 @@ function formatDuration(duration) {
   return `${Math.floor(total / 60)}:${String(Math.round(total % 60)).padStart(2, '0')}`;
 }
 
-/** Tags shown under the winner — the inferred creative signals, as chips. */
 function creativeTags(video) {
   return [
     video.content_format,
@@ -43,23 +52,21 @@ const PlayIcon = ({ w = 14, h = 16 }) => (
   </svg>
 );
 
-function embedFor(video) {
-  if (video?.embed_url) return video.embed_url;
-  const id = video?.video_id;
-  return id ? `https://www.tiktok.com/player/v1/${id}?autoplay=1&description=0&rel=0` : null;
-}
-
 function playerIdOf(video) {
-  return String(video?.id ?? video?.video_id ?? '');
+  return String(video?.id ?? video?.videoId ?? video?.video_id ?? '');
 }
 
-function Cover({ video }) {
+function isRenderableVideo(video) {
+  return Boolean(previewImageFor(video)) && isDashboardPlayable(video);
+}
+
+function Cover({ video, hidden = false }) {
   const [broken, setBroken] = useState(false);
-  const src = video?.thumbnail_url;
+  const src = previewImageFor(video);
 
   return (
     <>
-      <span className="grad" style={{ background: gradientStyle(video) }} />
+      <span className="grad" style={{ background: gradientStyle(video) }} hidden={hidden} />
       {src && !broken && (
         <img
           className="cov"
@@ -68,6 +75,7 @@ function Cover({ video }) {
           loading="lazy"
           referrerPolicy="no-referrer"
           onError={() => setBroken(true)}
+          hidden={hidden}
         />
       )}
     </>
@@ -86,53 +94,104 @@ function Avatar({ video, className }) {
   );
 }
 
-/**
- * The play button that swaps the cover for the TikTok embed in place. Uses the
- * signed `embed_url` (or a player URL built from the id); the raw `video_url`
- * 403s from a browser origin, so it is never used here.
- */
-function InlinePlayer({ video, className, buttonClassName = 'play', iconProps = {}, activePlayerId, onPlay, onClose }) {
-  const embed = embedFor(video);
+function VideoPlayerShell({ video, activePlayerId, onPlay, onClose, className, discSize = { w: 14, h: 16 }, rank = null, children = null }) {
+  const shellRef = useRef(null);
+  const iframeRef = useRef(null);
   const playerId = playerIdOf(video);
-  const playing = playerId !== '' && activePlayerId === playerId;
+  const active = playerId !== '' && activePlayerId === playerId;
+  const playerKind = playerKindFor(video);
+  const playerSrc = playerUrlFor(video, false);
+  const titleName = video?.username || video?.handle || video?.creator_name || 'creator';
+  const platform = detectPlatform(video);
 
-  if (playing && embed) {
-    return (
-      <>
-        <iframe
-          src={embed}
-          title={video?.title || 'TikTok video'}
-          loading="lazy"
-          allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
-          allowFullScreen
-          className={`${className} tracker-embed-frame`}
-        />
-        <button
-          type="button"
-          onClick={() => onClose?.()}
-          aria-label="Close player"
-          className="absolute top-2.5 right-2.5 z-20 flex h-8 w-8 items-center justify-center rounded-full bg-black/60 text-white backdrop-blur-md transition hover:bg-black/80"
-        >
-          <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-            <path d="M6 6l12 12M18 6L6 18" />
-          </svg>
-        </button>
-      </>
-    );
+  useEffect(() => {
+    const shell = shellRef.current;
+    if (!shell) return;
+
+    if (active) {
+      activateTikTokPlayer(shell);
+      return;
+    }
+
+    stopAndResetTikTokPlayer(shell);
+  }, [active]);
+
+  useEffect(() => {
+    const iframe = iframeRef.current;
+    if (!iframe || playerKind !== 'tiktok') return undefined;
+
+    const replay = () => {
+      const shell = shellRef.current;
+      if (!shell || shell.dataset.playerWantsAudible !== 'true') return;
+      postTikTokMessage(iframe, 'unMute');
+      postTikTokMessage(iframe, 'play');
+    };
+
+    iframe.addEventListener('load', replay);
+    return () => iframe.removeEventListener('load', replay);
+  }, [playerKind]);
+
+  if (!isRenderableVideo(video)) {
+    return null;
   }
 
-  if (!embed) {
-    return (
-      <div className={buttonClassName} aria-hidden>
-        <PlayIcon {...iconProps} />
-      </div>
-    );
-  }
+  const openPlayer = (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    onPlay?.(playerId);
+  };
+
+  const closePlayer = (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    const shell = shellRef.current;
+    if (shell) {
+      stopAndResetTikTokPlayer(shell);
+    }
+    onClose?.();
+  };
 
   return (
-    <button type="button" onClick={() => onPlay?.(playerId)} aria-label={video?.title ? `Play: ${video.title}` : 'Play video'} className={buttonClassName}>
-      <PlayIcon {...iconProps} />
-    </button>
+    <div
+      ref={shellRef}
+      className={className}
+      data-video-player-shell
+      data-player-kind={playerKind}
+      data-player-src={playerSrc ?? ''}
+      data-player-active={active ? 'true' : 'false'}
+    >
+      <div data-player-poster>
+        <Cover video={video} hidden={false} />
+      </div>
+      <span className="player-overlay" data-player-overlay aria-hidden />
+      {rank != null && <span className="bbrank">{String(rank).padStart(2, '0')}</span>}
+      {children}
+      <button type="button" className="play" data-player-play onClick={openPlayer} aria-label={video?.title ? `Play: ${video.title}` : 'Play video'}>
+        <span className="play__disc">
+          <PlayIcon {...discSize} />
+        </span>
+      </button>
+      <div className="tracker-player-host" data-player-container hidden>
+        <iframe
+          ref={iframeRef}
+          src="about:blank"
+          data-card-frame
+          data-player-frame
+          data-player-kind={playerKind}
+          data-player-src={playerSrc ?? ''}
+          title={platform === 'tiktok' ? `TikTok video by ${titleName.startsWith('@') ? titleName : `@${titleName}`}` : `Video preview for ${titleName}`}
+          allow="accelerometer; controls; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+          allowFullScreen
+          scrolling="no"
+          className="tracker-embed-frame"
+        />
+      </div>
+      <button type="button" onClick={closePlayer} aria-label="Close player" className="tracker-player-close" data-player-close hidden>
+        <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+          <path d="M6 6l12 12M18 6L6 18" />
+        </svg>
+      </button>
+    </div>
   );
 }
 
@@ -175,7 +234,7 @@ export function WinnerVideo({
   onClose = null,
   analysisStatus = 'idle',
 }) {
-  if (!video) return null;
+  if (!video || !isRenderableVideo(video)) return null;
 
   const playing = activePlayerId === playerIdOf(video);
   const rate = percent(video.engagement_rate);
@@ -185,8 +244,14 @@ export function WinnerVideo({
 
   return (
     <div className="winner">
-      <div className={`vid${playing ? ' playing' : ''}`}>
-        <Cover video={video} />
+      <VideoPlayerShell
+        video={video}
+        activePlayerId={activePlayerId}
+        onPlay={onPlay}
+        onClose={onClose}
+        className={`vid${playing ? ' playing' : ''}`}
+        discSize={{ w: 16, h: 18 }}
+      >
         <span className="flag">★ winner</span>
         <span className="ovscrim" aria-hidden />
         <div className="ovstats">
@@ -205,15 +270,7 @@ export function WinnerVideo({
             <span className="num">{compactNumber(video.views)}</span>
           </div>
         </div>
-        <InlinePlayer
-          video={video}
-          className="absolute inset-0 h-full w-full border-0"
-          iconProps={{ w: 16, h: 18 }}
-          activePlayerId={activePlayerId}
-          onPlay={onPlay}
-          onClose={onClose}
-        />
-      </div>
+      </VideoPlayerShell>
 
       <div className="detail">
         <div className="creator">
@@ -296,22 +353,23 @@ export function OutlierCard({
   onClose = null,
   analysisStatus = 'idle',
 }) {
+  if (!isRenderableVideo(video)) {
+    return null;
+  }
+
   const rate = percent(video.engagement_rate);
   const duration = formatDuration(video.duration);
 
   return (
     <article className="bbcard">
-      <div className="bbthumb">
-        <Cover video={video} />
-        {rank != null && <span className="bbrank">{String(rank).padStart(2, '0')}</span>}
-        <InlinePlayer
-          video={video}
-          className="absolute inset-0 z-10 h-full w-full border-0"
-          activePlayerId={activePlayerId}
-          onPlay={onPlay}
-          onClose={onClose}
-        />
-      </div>
+      <VideoPlayerShell
+        video={video}
+        activePlayerId={activePlayerId}
+        onPlay={onPlay}
+        onClose={onClose}
+        className="bbthumb"
+        rank={rank}
+      />
 
       <div className="bbbody">
         <div className="bbstats">

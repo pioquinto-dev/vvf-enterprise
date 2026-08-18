@@ -5,6 +5,7 @@ import { bookmarks, videoAnalysis } from '../../../landing/flow/api.js';
 import EntitlementsBar from '../../components/EntitlementsBar.jsx';
 import { OutlierCard, WinnerVideo } from './OutlierVideos.jsx';
 import AnalysisModal from '../../VideoAnalysis/AnalysisModal.jsx';
+import { handleTikTokPlayerReady, isDashboardPlayable, previewImageFor } from './tiktokPlayer.js';
 import {
   HashtagPanel,
   OutliersPerWeek,
@@ -215,6 +216,7 @@ export default function DetailScreen({
   refreshing = false,
   bookmarkUpdating = false,
 }) {
+  const [outlierSort, setOutlierSort] = useState('outlier');
   const [visible, setVisible] = useState(PAGE_STEP);
   const [copied, setCopied] = useState(false);
   const [bookmarkingId, setBookmarkingId] = useState(null);
@@ -240,17 +242,35 @@ export default function DetailScreen({
   const videoBookmarkLimit = numericUsageValue(billingState?.videoBookmarkLimit, 0);
   const analysisCreditsRemainingAfterUse = usageRemainingLabel(videoAnalysisLimit, videoAnalysisUsed);
   const bookmarkCreditsRemainingAfterUse = usageRemainingLabel(videoBookmarkLimit, videoBookmarkUsed);
+  const renderableItems = (items ?? []).filter((video) => Boolean(previewImageFor(video)) && isDashboardPlayable(video));
 
-  const feedItems = items;
+  useEffect(() => {
+    window.addEventListener('message', handleTikTokPlayerReady);
+    return () => window.removeEventListener('message', handleTikTokPlayerReady);
+  }, []);
+
+  const feedItems = renderableItems;
 
   const [winner, ...rest] = feedItems;
-  const shown = rest.slice(0, visible);
+  const sortedRest = [...rest].sort((left, right) => {
+    if (outlierSort === 'views') {
+      return (Number(right?.views) || 0) - (Number(left?.views) || 0);
+    }
+
+    if (outlierSort === 'date_posted') {
+      return (new Date(right?.uploaded_at ?? 0).getTime() || 0) - (new Date(left?.uploaded_at ?? 0).getTime() || 0);
+    }
+
+    return (Number(right?.outlier_multiple) || 0) - (Number(left?.outlier_multiple) || 0);
+  });
+  const shown = sortedRest.slice(0, visible);
   const maxMultiple = Math.max(...feedItems.map((v) => Number(v.outlier_multiple) || 0), 1);
 
   const serverTile = (key) => (insights.tiles ?? []).find((t) => t.key === key) ?? {};
   const multiples = items.map((v) => Number(v.outlier_multiple) || 0).filter((m) => m > 0);
   const avgScore = multiples.length ? multiples.reduce((a, b) => a + b, 0) / multiples.length : null;
-  const nowPoint = trend?.points?.[trend.points.length - 1] ?? null;
+  const trendPoints = trend?.points ?? [];
+  const nowPoint = trendPoints[trendPoints.length - 1] ?? null;
 
   const tiles = [
     account?.followers > 0
@@ -294,6 +314,10 @@ export default function DetailScreen({
     setItems(search?.results ?? []);
     setAnalysisStates(buildAnalysisStates(search?.results ?? []));
   }, [search]);
+
+  useEffect(() => {
+    setVisible(PAGE_STEP);
+  }, [outlierSort]);
 
   useEffect(() => {
     setVideoBookmarkUsed(numericUsageValue(billingState?.videoBookmarkCount, 0));
@@ -557,9 +581,24 @@ export default function DetailScreen({
 
           {rest.length > 0 && (
             <>
-              <div className="sect-head" style={{ marginTop: '34px' }}>
+              <div className="sect-head" style={{ marginTop: '34px', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
                 <h2 style={{ fontSize: '19px' }}>more outliers</h2>
-                <span className="note">{rest.length} more.</span>
+                <span className="note">{sortedRest.length} more.</span>
+                <div className="ml-auto flex items-center gap-2">
+                  <label htmlFor="outlier-sort" className="note" style={{ marginLeft: 'auto' }}>
+                    sort by
+                  </label>
+                  <select
+                    id="outlier-sort"
+                    value={outlierSort}
+                    onChange={(event) => setOutlierSort(event.target.value)}
+                    className="rounded-[12px] border border-[#ddd6ca] bg-white px-3 py-2 text-[12px] font-semibold text-[#3d372f] shadow-[0_1px_2px_rgba(24,21,17,0.04)]"
+                  >
+                    <option value="outlier">Outlier</option>
+                    <option value="views">Views</option>
+                    <option value="date_posted">Date posted</option>
+                  </select>
+                </div>
               </div>
 
               <div className="feed">
@@ -582,12 +621,12 @@ export default function DetailScreen({
               <div className="loadmore">
                 <button
                   className="tbtn"
-                  disabled={visible >= rest.length}
+                  disabled={visible >= sortedRest.length}
                   onClick={() => setVisible((v) => v + PAGE_STEP)}
                 >
-                  {visible >= rest.length
+                  {visible >= sortedRest.length
                     ? 'no more this week'
-                    : `load ${Math.min(PAGE_STEP, rest.length - visible)} more ↓`}
+                    : `load ${Math.min(PAGE_STEP, sortedRest.length - visible)} more ↓`}
                 </button>
               </div>
             </>
