@@ -109,7 +109,7 @@ export default function AdminEditDrawer({ open, resource, title, fields = [], ro
                                                 type={field.type === 'number' ? 'number' : field.type === 'password' ? 'password' : 'text'}
                                                 autoComplete={field.type === 'password' ? 'new-password' : undefined}
                                                 step={field.step}
-                                                min={field.type === 'number' ? 0 : undefined}
+                                                min={field.type === 'number' ? (field.min ?? 0) : undefined}
                                                 value={form.data[field.name] ?? ''}
                                                 onChange={(event) => form.setData(field.name, event.target.value)}
                                                 className="h-9 w-full rounded-lg border border-[var(--line)] bg-white px-2.5 text-[13px] text-[var(--ink)] outline-none focus:border-[var(--yellow)]"
