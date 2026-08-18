@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Play, Heart, Comment, Trend, Arrow, Bookmark } from '../components/Icons.jsx';
 import { compactNumber, duration, gradientFor, multiplier, relativeTime } from './format.js';
+import { buildTikTokPlayerUrl } from '../../Pages/SavedSearches/detail/tiktokPlayer.js';
 
 /*
  * The player source.
@@ -8,11 +9,15 @@ import { compactNumber, duration, gradientFor, multiplier, relativeTime } from '
  * `video_url` is not used on purpose: Apify returns TikTok's signed CDN address,
  * which expires within days and 403s from a browser origin. The embed is the
  * only URL that keeps working, so playback goes through it.
+ *
+ * `player/v1` is preferred over the older `embed/v2`: embed/v2 ships TikTok's
+ * own chrome — avatar header, close button, caption bar — which spills outside
+ * the card and makes these look nothing like the tracker's winner card.
+ * player/v1 is the bare video, so both surfaces crop identically through
+ * `.tiktok-frame-host`. `embed_url` stays as the fallback for rows with no id.
  */
 function embedFor(video) {
-  if (video.embed_url) return video.embed_url;
-  const id = video.video_id;
-  return id ? `https://www.tiktok.com/embed/v2/${id}` : null;
+  return buildTikTokPlayerUrl(video.video_id, true) ?? video.embed_url ?? null;
 }
 
 export function Thumb({ video, rank, className = '' }) {
@@ -30,14 +35,17 @@ export function Thumb({ video, rank, className = '' }) {
     >
       {playing && embed ? (
         <>
-          <iframe
-            src={embed}
-            title={video.title || 'TikTok video'}
-            loading="lazy"
-            allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
-            allowFullScreen
-            className="absolute inset-0 h-full w-full border-0"
-          />
+          <div className="tiktok-frame-host">
+            <iframe
+              src={embed}
+              title={video.title || 'TikTok video'}
+              loading="lazy"
+              scrolling="no"
+              allow="accelerometer; controls; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+              allowFullScreen
+              className="tracker-embed-frame"
+            />
+          </div>
           <button
             type="button"
             onClick={() => setPlaying(false)}
