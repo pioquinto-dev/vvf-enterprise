@@ -18,7 +18,7 @@ class KeywordExpansionService
     /**
      * @return array{phrase: string, keywords: array<int, string>, source: string}
      */
-    public function expand(string $phrase): array
+    public function expand(string $phrase, bool $fresh = false): array
     {
         $phrase = $this->normalizer->keyword($phrase);
 
@@ -29,7 +29,7 @@ class KeywordExpansionService
         $cacheKey = 'cks:expand:'.sha1(mb_strtolower($phrase));
         $ttl = (int) config('custom_keyword_search.expansion.cache_seconds', 86400);
 
-        return Cache::remember($cacheKey, $ttl, function () use ($phrase): array {
+        $resolver = function () use ($phrase): array {
             $suggestions = $this->fromOpenAi($phrase);
             $source = 'ai';
 
@@ -43,7 +43,17 @@ class KeywordExpansionService
                 'keywords' => $this->normalizer->keywordSet($phrase, $suggestions),
                 'source' => $source,
             ];
-        });
+        };
+
+        if ($fresh) {
+            $payload = $resolver();
+
+            Cache::put($cacheKey, $payload, $ttl);
+
+            return $payload;
+        }
+
+        return Cache::remember($cacheKey, $ttl, $resolver);
     }
 
     /**

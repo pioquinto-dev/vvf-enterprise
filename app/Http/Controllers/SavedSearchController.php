@@ -38,6 +38,7 @@ class SavedSearchController extends Controller
     {
         $validated = $request->validate([
             'phrase' => ['required', 'string', 'max:'.config('custom_keyword_search.limits.max_phrase_length', 120)],
+            'fresh' => ['nullable', 'boolean'],
         ]);
 
         // Expansion hits OpenAI on a cache miss, so keep it from being hammered.
@@ -51,7 +52,10 @@ class SavedSearchController extends Controller
 
         RateLimiter::hit($key, 60);
 
-        return response()->json($this->expansion->expand($validated['phrase']));
+        return response()->json($this->expansion->expand(
+            $validated['phrase'],
+            (bool) ($validated['fresh'] ?? false),
+        ));
     }
 
     /**

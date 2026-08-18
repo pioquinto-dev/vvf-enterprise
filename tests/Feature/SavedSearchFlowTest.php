@@ -70,6 +70,36 @@ class SavedSearchFlowTest extends TestCase
         });
     }
 
+    public function test_expansion_can_bypass_cache_when_regenerating(): void
+    {
+        config()->set('services.openai.api_key', 'test-key');
+
+        Http::fakeSequence()
+            ->push([
+                'choices' => [[
+                    'message' => ['content' => json_encode(['gymshark review', 'gymshark leggings'])],
+                ]],
+            ])
+            ->push([
+                'choices' => [[
+                    'message' => ['content' => json_encode(['gymshark haul', 'gymshark shorts'])],
+                ]],
+            ]);
+
+        $first = $this->postJson('/saved-searches/expand', ['phrase' => 'gymshark']);
+        $cached = $this->postJson('/saved-searches/expand', ['phrase' => 'gymshark']);
+        $fresh = $this->postJson('/saved-searches/expand', ['phrase' => 'gymshark', 'fresh' => true]);
+
+        $first->assertOk()
+            ->assertJsonPath('keywords.1', 'gymshark review');
+
+        $cached->assertOk()
+            ->assertJsonPath('keywords.1', 'gymshark review');
+
+        $fresh->assertOk()
+            ->assertJsonPath('keywords.1', 'gymshark haul');
+    }
+
     public function test_expansion_filters_out_terms_that_drift_off_the_phrase_anchor(): void
     {
         config()->set('services.openai.api_key', 'test-key');

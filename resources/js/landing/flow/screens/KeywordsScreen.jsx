@@ -97,7 +97,7 @@ export default function KeywordsScreen({
   const regenerate = () => {
     setRegenerating(true);
 
-    expandKeywords(phrase)
+    expandKeywords(phrase, { fresh: true })
       .then((payload) => {
         const keywords = Array.isArray(payload?.keywords) ? payload.keywords : [phrase];
         setExpansionSource(payload?.source ?? null);
