@@ -22,8 +22,10 @@ class BrevoTransactionalEmail
     public static function subscriptionStarted(User $user, Subscription $subscription): array
     {
         $planName = ucfirst((string) ($subscription->plan?->name ?? $subscription->plan?->slug ?? 'Plan'));
-        $endsAt = $subscription->current_period_ends_at;
         $isTrial = in_array($subscription->status, ['trialing', 'trial'], true);
+        $endsAt = $isTrial
+            ? ($subscription->trial_ends_at ?? $subscription->current_period_ends_at)
+            : $subscription->current_period_ends_at;
 
         return self::payload('subscription_started', $user, [
             'firstName' => self::firstName($user->name),
@@ -79,7 +81,7 @@ class BrevoTransactionalEmail
     public static function trialEnding(User $user, Subscription $subscription, int $daysRemaining): array
     {
         $planName = ucfirst((string) ($subscription->plan?->name ?? $subscription->plan?->slug ?? 'Plan'));
-        $endsAt = $subscription->current_period_ends_at;
+        $endsAt = $subscription->trial_ends_at ?? $subscription->current_period_ends_at;
 
         return self::payload('trial_ending', $user, [
             'firstName' => self::firstName($user->name),

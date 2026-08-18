@@ -30,6 +30,8 @@ export default function Subscription({ subscription }) {
   const active = status === 'active';
   const price = subscription?.price ?? 0;
   const interval = subscription?.interval ?? 'month';
+  const isTrialing = status === 'trialing' || status === 'trial';
+  const trialEnds = formatDate(subscription?.trialEndsAt);
   const renews = formatDate(subscription?.renewsAt);
   const invoices = subscription?.invoices ?? [];
 
@@ -50,7 +52,7 @@ export default function Subscription({ subscription }) {
                 <h2>{planName}</h2>
                 <p className="muted" style={{ fontSize: '.86rem', marginTop: 6 }}>
                   {price > 0 ? `$${price}/${interval}` : 'Free plan'}
-                  {renews ? ` · renews ${renews}` : ''}
+                  {isTrialing && trialEnds ? ` · trial ends ${trialEnds}` : renews ? ` · renews ${renews}` : ''}
                 </p>
               </div>
               <span className={`pill ${active ? 'pill--ok' : 'pill--off'}`}>
@@ -73,7 +75,7 @@ export default function Subscription({ subscription }) {
                 {searchLimit > 0 && (
                   <p className="hint">
                     {searchesLeft} search{searchesLeft === 1 ? '' : 'es'} left this cycle
-                    {renews ? `. Resets ${renews}.` : '.'}
+                    {isTrialing && trialEnds ? `. Trial ends ${trialEnds}.` : renews ? `. Resets ${renews}.` : '.'}
                   </p>
                 )}
               </div>

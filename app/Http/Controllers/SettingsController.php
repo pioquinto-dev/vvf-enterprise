@@ -149,6 +149,13 @@ class SettingsController extends Controller
         $price = $plan?->amount ?? ($plan?->price_cents !== null ? ((int) $plan->price_cents / 100) : null);
         $status = $subscription?->status === 'pending' ? ($user->current_plan_slug === 'free' ? 'free' : 'active') : ($subscription?->status ?? 'free');
         $videoAnalysisUsed = max(0, (int) data_get($subscription?->metadata, 'subscription.video_analysis.used', $limits['videoAnalysisUsed'] ?? 0));
+        $trialStartedAt = $subscription?->trial_started_at;
+        $trialEndsAt = in_array($status, ['trialing', 'trial'], true) && $trialStartedAt !== null
+            ? CarbonImmutable::instance($trialStartedAt)->addDays(7)
+            : null;
+        $renewsAt = $status === 'pending'
+            ? null
+            : ($trialEndsAt ?? $subscription?->current_period_ends_at ?? $user->plan_renews_at);
 
         return [
             'status' => $status,
@@ -157,7 +164,9 @@ class SettingsController extends Controller
             'price' => $price !== null ? number_format((float) $price, 2, '.', '') : null,
             'interval' => $plan?->interval ?? 'month',
             'startedAt' => $subscription?->status === 'pending' ? null : $subscription?->current_period_starts_at?->toIso8601String(),
-            'renewsAt' => ($subscription?->status === 'pending' ? null : $subscription?->current_period_ends_at ?? $user->plan_renews_at)?->toIso8601String(),
+            'trialStartedAt' => $trialStartedAt?->toIso8601String(),
+            'trialEndsAt' => $trialEndsAt?->toIso8601String(),
+            'renewsAt' => $renewsAt?->toIso8601String(),
             'limits' => [
                 'searchCreditsLimit' => (int) ($limits['searchCreditsLimit'] ?? 0),
                 'searchCreditsUsed' => $this->billing->searchCreditsUsed($user),

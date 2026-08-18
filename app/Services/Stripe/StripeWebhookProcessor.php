@@ -194,6 +194,12 @@ class StripeWebhookProcessor
         $previousPeriodEnd = $subscription->current_period_ends_at;
         $periodStart = $this->timestampToCarbon(data_get($payload, 'current_period_start'));
         $periodEnd = $this->timestampToCarbon(data_get($payload, 'current_period_end'));
+        $trialEnd = $status === 'trialing'
+            ? ($this->timestampToCarbon(data_get($payload, 'trial_end'))
+                ?? ($subscription->trial_started_at !== null
+                    ? CarbonImmutable::instance($subscription->trial_started_at)->addDays(7)
+                    : ($periodStart?->addDays(7))))
+            : $subscription->trial_ends_at;
         $limits = $this->billing->limitsFor($plan);
         $renewed = $periodEnd !== null
             && ($previousPeriodEnd === null || $periodEnd->greaterThan(CarbonImmutable::instance($previousPeriodEnd)));
@@ -215,6 +221,7 @@ class StripeWebhookProcessor
             'trial_started_at' => $status === 'trialing'
                 ? ($subscription->trial_started_at ?? $periodStart ?? now())
                 : $subscription->trial_started_at,
+            'trial_ends_at' => $status === 'trialing' ? $trialEnd : $subscription->trial_ends_at,
             'trial_completed_at' => $previousStatus === 'trialing' && $status !== 'trialing' && $subscription->trial_completed_at === null
                 ? now()
                 : $subscription->trial_completed_at,

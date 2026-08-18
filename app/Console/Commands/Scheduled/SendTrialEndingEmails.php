@@ -25,7 +25,7 @@ class SendTrialEndingEmails extends Command
         Subscription::query()
             ->with(['user', 'plan'])
             ->whereIn('status', ['trialing', 'trial'])
-            ->whereNotNull('current_period_ends_at')
+            ->whereNotNull('trial_ends_at')
             ->get()
             ->each(function (Subscription $subscription) use (&$sent): void {
                 $user = $subscription->user;
@@ -35,7 +35,7 @@ class SendTrialEndingEmails extends Command
                 }
 
                 $daysRemaining = CarbonImmutable::now()->startOfDay()->diffInDays(
-                    CarbonImmutable::instance($subscription->current_period_ends_at)->startOfDay(),
+                    CarbonImmutable::instance($subscription->trial_ends_at)->startOfDay(),
                     false,
                 );
 

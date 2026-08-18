@@ -21,6 +21,7 @@ class Subscription extends Model
             'current_period_starts_at' => 'datetime',
             'current_period_ends_at' => 'datetime',
             'trial_started_at' => 'datetime',
+            'trial_ends_at' => 'datetime',
             'trial_completed_at' => 'datetime',
             'canceled_at' => 'datetime',
         ];

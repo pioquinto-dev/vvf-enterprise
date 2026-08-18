@@ -88,7 +88,10 @@ class BillingService
         $subscriptionId = (string) ($session->subscription ?? '');
         $customerId = (string) ($session->customer ?? '');
         $now = CarbonImmutable::now();
-        $endsAt = $now->addMonths(max(1, (int) $plan->interval_count));
+        $trialDays = max(0, (int) ($session->metadata->trial_days ?? 0));
+        $trialEndsAt = $trialDays > 0 ? $now->addDays($trialDays) : null;
+        $endsAt = $trialEndsAt ?? $now->addMonths(max(1, (int) $plan->interval_count));
+        $status = $trialEndsAt !== null ? 'trialing' : 'active';
 
         $limits = $this->limitsFor($plan);
         $searchCreditsUsed = 0;
@@ -110,9 +113,11 @@ class BillingService
             'stripe_checkout_session_id' => $sessionId,
             'stripe_subscription_id' => $subscriptionId !== '' ? $subscriptionId : null,
             'stripe_customer_id' => $customerId !== '' ? $customerId : null,
-            'status' => 'active',
+            'status' => $status,
             'current_period_starts_at' => $now,
             'current_period_ends_at' => $endsAt,
+            'trial_started_at' => $trialEndsAt !== null ? $now : null,
+            'trial_ends_at' => $trialEndsAt,
             'metadata' => $this->subscriptionMetadata($plan, $searchCreditsUsed, $videoBookmarksUsed, $searchBookmarksUsed, $videoAnalysisUsed),
         ]);
 

@@ -3,10 +3,19 @@ import { Head, usePage } from '@inertiajs/react';
 import SettingsShell from './Settings/SettingsShell.jsx';
 import { billing } from '../landing/flow/api.js';
 import { Check, Arrow } from '../landing/components/Icons.jsx';
+import { PRICING_PLAN_ORDER } from '../landing/data/dummy.js';
 
 export default function Plans() {
   const { billing: billingState = {}, pricingPlans = [] } = usePage().props;
   const current = String(billingState.currentPlan ?? 'free').toLowerCase();
+  const orderedPlans = [...pricingPlans].sort((a, b) => {
+    const aKey = a.slug ?? a.name?.toLowerCase();
+    const bKey = b.slug ?? b.name?.toLowerCase();
+    const aIndex = PRICING_PLAN_ORDER.indexOf(aKey);
+    const bIndex = PRICING_PLAN_ORDER.indexOf(bKey);
+
+    return (aIndex === -1 ? Number.MAX_SAFE_INTEGER : aIndex) - (bIndex === -1 ? Number.MAX_SAFE_INTEGER : bIndex);
+  });
 
   const upgrade = (slug) => billing.checkout(slug);
 
@@ -23,7 +32,7 @@ export default function Plans() {
         </div>
 
         <div className="plans">
-          {pricingPlans.map((plan) => {
+          {orderedPlans.map((plan) => {
             const isCurrent = plan.slug === current;
             const isFree = plan.slug === 'free';
 
