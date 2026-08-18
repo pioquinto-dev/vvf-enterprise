@@ -44,6 +44,7 @@
   "resources/js/components/admin/AdminEditDrawer.jsx": [],
   "resources/js/components/admin/AdminEmptyState.jsx": [],
   "resources/js/components/admin/AdminFiltersBar.jsx": [],
+  "resources/js/components/admin/AdminInsightsStrip.jsx": [],
   "resources/js/components/admin/AdminPagination.jsx": [],
   "resources/js/components/admin/AdminPreviewDrawer.jsx": [],
   "resources/js/components/admin/AdminRowMenu.jsx": [],

@@ -173,35 +173,55 @@ class SearchRunProcessor
             }
         }
 
-        // Pool in what the database already holds for this phrase. The corpus
-        // has been paid for by earlier runs and sibling searches — a video we
-        // already imported should not need Apify to resurface it. On a
-        // collision the scraped item wins: its stats are minutes old, the
-        // stored row's are from whenever it was last seen.
-        $localCandidates = $this->localCorpus->candidates($search);
-
-        foreach ($localCandidates as $videoId => $localItem) {
-            if (! isset($mapped[$videoId])) {
-                $mapped[$videoId] = $localItem;
-            }
-        }
-
-        ['kept' => $kept, 'summary' => $summary] = $this->matcher->prescreen(
+        // Step 1: take the full Apify dataset and drop anything that fails the
+        // normal matching gates.
+        ['kept' => $apifyMatches, 'summary' => $summary] = $this->matcher->prescreen(
             array_values($mapped),
             $search->phrase,
             $search->keywords ?? []
         );
 
+        // Step 2: pool in what the database already holds for this phrase. The
+        // corpus has been paid for by earlier runs and sibling searches — a
+        // video we already imported should not need Apify to resurface it.
+        $localCandidates = $this->localCorpus->candidates($search);
+        ['kept' => $localMatches, 'summary' => $localSummary] = $this->matcher->prescreen(
+            array_values($localCandidates),
+            $search->phrase,
+            $search->keywords ?? []
+        );
+
+        // Step 3: combine both match sets. On a collision the Apify match wins:
+        // its stats are minutes old, the stored row's are from whenever it was
+        // last seen.
+        $combined = [];
+
+        foreach ($apifyMatches as $item) {
+            $combined[$item['video_id']] = $item;
+        }
+
+        foreach ($localMatches as $item) {
+            if (! isset($combined[$item['video_id']])) {
+                $combined[$item['video_id']] = $item;
+            }
+        }
+
+        $kept = array_values($combined);
+
         $summary['received'] += $invalidItems;
         $summary['invalid_item'] += $invalidItems;
         $summary['local_pool'] = count($localCandidates);
-        $summary['kept_local'] = count(array_filter(
-            $kept,
-            fn (array $item): bool => ($item['origin'] ?? null) === 'local',
-        ));
+        $summary['kept_local'] = count($localMatches);
+        $summary['kept'] = count($kept);
+        $summary['kept_phrase'] += (int) ($localSummary['kept_phrase'] ?? 0);
+        $summary['rescued_by_handle'] += (int) ($localSummary['rescued_by_handle'] ?? 0);
+        $summary['rescued_by_supporting'] += (int) ($localSummary['rescued_by_supporting'] ?? 0);
 
+        // Step 4: sort by the strongest winners first.
         $ranked = $this->matcher->rank($kept);
         $top = array_slice($ranked, 0, (int) config('custom_keyword_search.limits.max_results', 100));
+
+        $summary['kept_apify'] = count($apifyMatches);
 
         $attached = $this->persist($search, $run, $trigger, $top);
 

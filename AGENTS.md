@@ -357,6 +357,42 @@ Non-obvious rule:
 
 - Never push the full keyword set into the remote scrape as a substitute for local filtering. That reduces recall and breaks the intended economics and quality balance.
 
+### Search filtering standards
+
+The search result set is not “whatever Apify returned.” Both scraped items and local recall candidates must survive the same matcher gates before they can appear in results.
+
+Current standard:
+
+1. Pull the full Apify dataset for the phrase.
+2. Filter Apify items through the shared matcher rules.
+3. Pull local corpus candidates from `viral_videos`.
+4. Filter local candidates through the same matcher rules.
+5. Combine both match sets, with Apify winning collisions because its stats are fresher.
+6. Rank the combined winners by strongest outlier signal first.
+
+Filtering gates:
+
+- Item must map into a usable normalized payload.
+- Item must have usable media.
+- Item must satisfy the minimum follower threshold from config.
+- Item must pass the English-title confidence check, unless explicit region data justifies keeping it.
+- Item must match the topic through at least one main match tier:
+  - `phrase`: phrase appears in caption or hashtags.
+  - `handle`: compacted phrase appears in creator handle or display name.
+  - `supporting`: enough supporting keywords matched to qualify as a rescue.
+
+Ranking rules:
+
+- Primary order is highest `virality_score`.
+- Ties break on higher `views`, then newer `uploaded_at`, then stable `video_id`.
+- Handle/supporting rescues get a score haircut so they sort below equally strong direct phrase matches.
+
+Local recall rules:
+
+- Local recall is intentionally broad and cheap at the SQL layer.
+- It only selects likely candidates from the canonical `viral_videos` table.
+- Precision still comes from the same matcher, not from the SQL prefilter.
+
 ### Free-search quota flow
 
 High-level flow:

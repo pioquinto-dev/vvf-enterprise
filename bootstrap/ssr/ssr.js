@@ -1331,28 +1331,39 @@ function AdminDataTable({ columns = [], rows = [], resource, capabilities = {}, 
 }
 //#endregion
 //#region resources/js/components/admin/AdminEditDrawer.jsx
-function AdminEditDrawer({ open, resource, title, fields = [], row, onClose }) {
+function AdminEditDrawer({ open, resource, title, fields = [], row, createValues = null, mode = "edit", onClose }) {
 	const form = useForm({});
 	useEffect(() => {
-		if (!open || !row) return;
+		if (!open) return;
 		const initial = {};
 		fields.forEach((field) => {
-			const value = row.values?.[field.name];
+			const value = (mode === "create" ? createValues : row?.values)?.[field.name];
 			initial[field.name] = field.type === "toggle" ? Boolean(value) : value ?? "";
 		});
 		form.setDefaults(initial);
 		form.setData(initial);
-	}, [open, row?.id]);
+	}, [
+		open,
+		row?.id,
+		mode,
+		createValues
+	]);
 	if (!open) return null;
 	const submit = (event) => {
 		event.preventDefault();
 		form.transform((data) => ({
 			...data,
 			...Object.fromEntries(fields.filter((field) => field.type === "toggle").map((field) => [field.name, Boolean(data[field.name])]))
-		})).patch(`/x/admin/records/${resource}/${row.id}`, {
+		}));
+		const options = {
 			preserveScroll: true,
 			onSuccess: onClose
-		});
+		};
+		if (mode === "create") {
+			form.post(`/x/admin/records/${resource}`, options);
+			return;
+		}
+		form.patch(`/x/admin/records/${resource}/${row.id}`, options);
 	};
 	return /* @__PURE__ */ jsxs("div", {
 		className: "fixed inset-0 z-50 flex justify-end",
@@ -1367,7 +1378,7 @@ function AdminEditDrawer({ open, resource, title, fields = [], row, onClose }) {
 				className: "flex items-center justify-between border-b border-[var(--line)] px-4 py-3",
 				children: [/* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsx("p", {
 					className: "text-[10px] font-semibold tracking-[.18em] text-[var(--faint)] uppercase",
-					children: "Edit"
+					children: mode === "create" ? "Create" : "Edit"
 				}), /* @__PURE__ */ jsx("h2", {
 					className: "mt-0.5 truncate text-[14px] font-semibold text-[var(--ink)]",
 					children: title
@@ -1441,7 +1452,7 @@ function AdminEditDrawer({ open, resource, title, fields = [], row, onClose }) {
 						type: "submit",
 						disabled: form.processing,
 						className: "h-8 rounded-md bg-[var(--yellow)] px-3.5 text-[12.5px] font-semibold text-[#1a1400] transition hover:brightness-105 disabled:opacity-50",
-						children: form.processing ? "Saving..." : "Save changes"
+						children: form.processing ? mode === "create" ? "Creating..." : "Saving..." : mode === "create" ? "Create plan" : "Save changes"
 					})]
 				})]
 			})]
@@ -1469,6 +1480,10 @@ function buildQuery(filters, search) {
 	if (search.trim() !== "") query.search = search.trim();
 	filters.forEach((filter) => {
 		if ((filter.value ?? "") !== "") query[filter.name] = filter.value;
+		if (filter.name === "date" && (filter.value ?? "") === "custom") {
+			if ((filter.dateFrom ?? "") !== "") query.date_from = filter.dateFrom;
+			if ((filter.dateTo ?? "") !== "") query.date_to = filter.dateTo;
+		}
 	});
 	return query;
 }
@@ -1515,6 +1530,41 @@ function FilterChip({ filter, onChange }) {
 		})]
 	});
 }
+function CustomDateRange({ filter, onChange }) {
+	const dateFrom = filter.dateFrom ?? "";
+	const dateTo = filter.dateTo ?? "";
+	return /* @__PURE__ */ jsxs("div", {
+		className: "flex flex-wrap items-center gap-2 rounded-full border border-[var(--yellow)] bg-[var(--wash)] px-2.5 py-1.5",
+		children: [
+			/* @__PURE__ */ jsx("span", {
+				className: "text-[10px] font-semibold uppercase tracking-[.14em] text-[var(--amber-ink)]",
+				children: "Custom Range"
+			}),
+			/* @__PURE__ */ jsx("input", {
+				type: "date",
+				value: dateFrom,
+				onChange: (event) => onChange({
+					dateFrom: event.target.value,
+					dateTo
+				}),
+				className: "h-7 rounded-md border border-[var(--line)] bg-white px-2 text-[12px] text-[var(--ink)] outline-none focus:border-[var(--yellow)]"
+			}),
+			/* @__PURE__ */ jsx("span", {
+				className: "text-[12px] text-[var(--faint)]",
+				children: "to"
+			}),
+			/* @__PURE__ */ jsx("input", {
+				type: "date",
+				value: dateTo,
+				onChange: (event) => onChange({
+					dateFrom,
+					dateTo: event.target.value
+				}),
+				className: "h-7 rounded-md border border-[var(--line)] bg-white px-2 text-[12px] text-[var(--ink)] outline-none focus:border-[var(--yellow)]"
+			})
+		]
+	});
+}
 function AdminFiltersBar({ title, searchPlaceholder, search = "", filters = [] }) {
 	const [searchValue, setSearchValue] = useState(search);
 	const dirty = useRef(false);
@@ -1530,7 +1580,11 @@ function AdminFiltersBar({ title, searchPlaceholder, search = "", filters = [] }
 		const timer = setTimeout(() => submit(filters, searchValue), 350);
 		return () => clearTimeout(timer);
 	}, [searchValue]);
-	const activeCount = filters.filter((filter) => (filter.value ?? "") !== "").length + (searchValue !== "" ? 1 : 0);
+	const activeCount = filters.filter((filter) => {
+		if ((filter.value ?? "") === "") return false;
+		if (filter.name !== "date" || filter.value !== "custom") return true;
+		return (filter.dateFrom ?? "") !== "" || (filter.dateTo ?? "") !== "";
+	}).length + (searchValue !== "" ? 1 : 0);
 	return /* @__PURE__ */ jsxs("div", {
 		className: "w-full",
 		children: [/* @__PURE__ */ jsxs("label", {
@@ -1550,12 +1604,26 @@ function AdminFiltersBar({ title, searchPlaceholder, search = "", filters = [] }
 			})]
 		}), /* @__PURE__ */ jsxs("div", {
 			className: "mt-2 flex flex-wrap items-center gap-1.5",
-			children: [filters.map((filter) => /* @__PURE__ */ jsx(FilterChip, {
-				filter,
-				onChange: (value) => submit(filters.map((item) => item.name === filter.name ? {
-					...item,
-					value
-				} : item), searchValue)
+			children: [filters.map((filter) => /* @__PURE__ */ jsxs("div", {
+				className: "flex flex-wrap items-center gap-1.5",
+				children: [/* @__PURE__ */ jsx(FilterChip, {
+					filter,
+					onChange: (value) => submit(filters.map((item) => item.name === filter.name ? {
+						...item,
+						value,
+						...value === "custom" ? {} : {
+							dateFrom: "",
+							dateTo: ""
+						}
+					} : item), searchValue)
+				}), filter.name === "date" && (filter.value ?? "") === "custom" && /* @__PURE__ */ jsx(CustomDateRange, {
+					filter,
+					onChange: ({ dateFrom, dateTo }) => submit(filters.map((item) => item.name === filter.name ? {
+						...item,
+						dateFrom,
+						dateTo
+					} : item), searchValue)
+				})]
 			}, filter.name)), activeCount > 0 && /* @__PURE__ */ jsxs("button", {
 				type: "button",
 				onClick: () => {
@@ -1563,13 +1631,46 @@ function AdminFiltersBar({ title, searchPlaceholder, search = "", filters = [] }
 					setSearchValue("");
 					submit(filters.map((filter) => ({
 						...filter,
-						value: ""
+						value: "",
+						dateFrom: "",
+						dateTo: ""
 					})), "");
 				},
 				className: "inline-flex h-7 items-center gap-1 rounded-full px-2 text-[12px] text-[var(--faint)] transition hover:bg-[var(--wash)] hover:text-[var(--ink)]",
 				children: [/* @__PURE__ */ jsx(Close, { className: "h-3 w-3" }), "Clear all"]
 			})]
 		})]
+	});
+}
+//#endregion
+//#region resources/js/components/admin/AdminInsightsStrip.jsx
+var TONE_STYLES = {
+	warm: "border-[rgba(230,183,67,.28)] bg-[linear-gradient(135deg,rgba(255,248,225,.96),rgba(255,255,255,.98))] text-[#5e4710]",
+	amber: "border-[rgba(214,153,46,.24)] bg-[linear-gradient(135deg,rgba(255,243,208,.95),rgba(255,255,255,.98))] text-[#6b4d00]",
+	rose: "border-[rgba(204,121,121,.2)] bg-[linear-gradient(135deg,rgba(255,244,241,.96),rgba(255,255,255,.98))] text-[#7b4035]",
+	slate: "border-[rgba(93,104,118,.16)] bg-[linear-gradient(135deg,rgba(247,248,250,.96),rgba(255,255,255,.98))] text-[#475467]"
+};
+function AdminInsightsStrip({ insights = [] }) {
+	if (insights.length === 0) return null;
+	return /* @__PURE__ */ jsx("section", {
+		className: "mb-4 grid gap-3 lg:grid-cols-3",
+		children: insights.map((insight) => /* @__PURE__ */ jsxs("article", {
+			className: `rounded-xl border px-4 py-3 shadow-[0_1px_2px_rgba(20,15,0,.03),0_14px_34px_-30px_rgba(20,15,0,.18)] ${TONE_STYLES[insight.tone] ?? TONE_STYLES.slate}`,
+			children: [
+				/* @__PURE__ */ jsx("p", {
+					className: "text-[10px] font-semibold uppercase tracking-[.16em] opacity-80",
+					children: "AI Insight"
+				}),
+				/* @__PURE__ */ jsx("h3", {
+					className: "mt-1 text-[14px] font-semibold text-[var(--ink)]",
+					children: insight.label
+				}),
+				/* @__PURE__ */ jsx("p", {
+					className: "mt-1 text-[13px] leading-5",
+					children: insight.body
+				})
+			]
+		}, insight.label))
 	});
 }
 //#endregion
@@ -1748,9 +1849,10 @@ function AdminPreviewDrawer({ open, title, row, onClose }) {
 //#endregion
 //#region resources/js/Pages/Admin/Listing.jsx
 var Listing_exports = /* @__PURE__ */ __exportAll({ default: () => Listing });
-function Listing({ resource, title, search, searchPlaceholder, filters = [], columns = [], rows = [], capabilities = {}, editableFields = [], emptyMessage, pagination, query }) {
+function Listing({ resource, title, search, searchPlaceholder, filters = [], columns = [], rows = [], capabilities = {}, editableFields = [], createValues = {}, emptyMessage, pagination, query, insights = [] }) {
 	const [editing, setEditing] = useState(null);
 	const [previewing, setPreviewing] = useState(null);
+	const [creating, setCreating] = useState(false);
 	const toolbar = /* @__PURE__ */ jsx(AdminFiltersBar, {
 		title,
 		search,
@@ -1762,14 +1864,23 @@ function Listing({ resource, title, search, searchPlaceholder, filters = [], col
 		title,
 		section: resource,
 		toolbar,
-		actions: /* @__PURE__ */ jsxs("span", {
-			className: "inline-flex items-center gap-1.5 rounded-md border border-[var(--line)] bg-white px-2 py-1 text-[11.5px] text-[var(--muted)]",
-			children: [/* @__PURE__ */ jsx("span", {
-				className: "font-semibold text-[var(--ink)]",
-				children: total.toLocaleString()
-			}), total === 1 ? "record" : "records"]
+		actions: /* @__PURE__ */ jsxs("div", {
+			className: "flex items-center gap-2",
+			children: [resource === "plans" && /* @__PURE__ */ jsx("button", {
+				type: "button",
+				onClick: () => setCreating(true),
+				className: "inline-flex h-8 items-center rounded-md bg-[var(--yellow)] px-3.5 text-[12.5px] font-semibold text-[#1a1400] transition hover:brightness-105",
+				children: "New plan"
+			}), /* @__PURE__ */ jsxs("span", {
+				className: "inline-flex items-center gap-1.5 rounded-md border border-[var(--line)] bg-white px-2 py-1 text-[11.5px] text-[var(--muted)]",
+				children: [/* @__PURE__ */ jsx("span", {
+					className: "font-semibold text-[var(--ink)]",
+					children: total.toLocaleString()
+				}), total === 1 ? "record" : "records"]
+			})]
 		}),
 		children: [
+			/* @__PURE__ */ jsx(AdminInsightsStrip, { insights }),
 			/* @__PURE__ */ jsxs("section", {
 				className: "overflow-hidden rounded-xl border border-[var(--line)] bg-white shadow-[0_1px_2px_rgba(20,15,0,.04),0_16px_36px_-28px_rgba(20,15,0,.18)]",
 				children: [rows.length > 0 ? /* @__PURE__ */ jsx(AdminDataTable, {
@@ -1793,7 +1904,17 @@ function Listing({ resource, title, search, searchPlaceholder, filters = [], col
 				title: editing ? String(editing[columns[0]?.key] ?? title) : title,
 				fields: editableFields,
 				row: editing,
+				mode: "edit",
 				onClose: () => setEditing(null)
+			}),
+			/* @__PURE__ */ jsx(AdminEditDrawer, {
+				open: creating,
+				resource,
+				title: `New ${title.slice(0, -1)}`,
+				fields: editableFields,
+				createValues,
+				mode: "create",
+				onClose: () => setCreating(false)
 			}),
 			/* @__PURE__ */ jsx(AdminPreviewDrawer, {
 				open: previewing !== null,
@@ -6683,7 +6804,9 @@ function Index({ searches: initialSearches, bookmarkedVideos = [], filterType = 
 	});
 	const [formState, setFormState] = useState({
 		name: "",
-		frequency: "weekly"
+		frequency: "weekly",
+		tiktokHandle: "",
+		website: ""
 	});
 	const [submitting, setSubmitting] = useState(false);
 	const menuRef = useRef(null);
@@ -6756,7 +6879,9 @@ function Index({ searches: initialSearches, bookmarkedVideos = [], filterType = 
 		});
 		if (type === "edit") setFormState({
 			name: search.name ?? "",
-			frequency: search.frequency ?? "weekly"
+			frequency: search.frequency ?? "weekly",
+			tiktokHandle: search.source_tiktok_handle ?? "",
+			website: search.source_website ?? ""
 		});
 	};
 	const closeModal = () => {
@@ -6788,7 +6913,11 @@ function Index({ searches: initialSearches, bookmarkedVideos = [], filterType = 
 		try {
 			const { search: updated } = await savedSearch.update(modalState.search.id, {
 				name: formState.name.trim(),
-				frequency: formState.frequency
+				frequency: formState.frequency,
+				sources: modalState.search.search_type === "product" ? void 0 : {
+					tiktokHandle: formState.tiktokHandle.trim(),
+					website: formState.website.trim()
+				}
 			});
 			patchSearch(modalState.search.id, updated);
 			closeModal();
@@ -7111,6 +7240,65 @@ function Index({ searches: initialSearches, bookmarkedVideos = [], filterType = 
 									}, f))
 								})]
 							}),
+							modalState.search.search_type !== "product" && /* @__PURE__ */ jsxs(Fragment, { children: [/* @__PURE__ */ jsxs("div", {
+								style: { marginTop: 20 },
+								children: [/* @__PURE__ */ jsx("label", {
+									className: "lbl",
+									children: "TikTok handle"
+								}), /* @__PURE__ */ jsxs("div", {
+									style: { position: "relative" },
+									children: [/* @__PURE__ */ jsx("span", {
+										style: {
+											position: "absolute",
+											left: 14,
+											top: "50%",
+											transform: "translateY(-50%)",
+											color: "var(--muted)",
+											pointerEvents: "none"
+										},
+										children: "@"
+									}), /* @__PURE__ */ jsx("input", {
+										className: "fld",
+										style: { paddingLeft: 28 },
+										value: formState.tiktokHandle,
+										onChange: (e) => setFormState((c) => ({
+											...c,
+											tiktokHandle: e.target.value.replace(/^@/, "")
+										})),
+										placeholder: "rhode",
+										"aria-label": "TikTok handle"
+									})]
+								})]
+							}), /* @__PURE__ */ jsxs("div", {
+								style: { marginTop: 20 },
+								children: [/* @__PURE__ */ jsx("label", {
+									className: "lbl",
+									children: "Website"
+								}), /* @__PURE__ */ jsxs("div", {
+									style: { position: "relative" },
+									children: [/* @__PURE__ */ jsx("span", {
+										style: {
+											position: "absolute",
+											left: 14,
+											top: "50%",
+											transform: "translateY(-50%)",
+											color: "var(--muted)",
+											pointerEvents: "none"
+										},
+										children: "https://"
+									}), /* @__PURE__ */ jsx("input", {
+										className: "fld",
+										style: { paddingLeft: 72 },
+										value: formState.website,
+										onChange: (e) => setFormState((c) => ({
+											...c,
+											website: e.target.value
+										})),
+										placeholder: "rhodeskin.com",
+										"aria-label": "Website"
+									})]
+								})]
+							})] }),
 							/* @__PURE__ */ jsxs("div", {
 								className: "actrow__r",
 								style: {
