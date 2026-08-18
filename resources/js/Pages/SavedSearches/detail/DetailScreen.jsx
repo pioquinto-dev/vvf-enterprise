@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { usePage } from '@inertiajs/react';
 
-import { bookmarks, videoAnalysis } from '../../../landing/flow/api.js';
+import { bookmarks, savedSearch as savedSearchApi, videoAnalysis } from '../../../landing/flow/api.js';
 import EntitlementsBar from '../../components/EntitlementsBar.jsx';
 import { OutlierCard, WinnerVideo } from './OutlierVideos.jsx';
 import AnalysisModal from '../../VideoAnalysis/AnalysisModal.jsx';
@@ -208,7 +208,7 @@ export default function DetailScreen({
   search,
   isAuthenticated = false,
   billing = null,
-  onExportPdf,
+  onSearchUpdated,
   onToggleBookmark,
   onRefresh,
   onTogglePause,
@@ -218,7 +218,6 @@ export default function DetailScreen({
 }) {
   const [outlierSort, setOutlierSort] = useState('outlier');
   const [visible, setVisible] = useState(PAGE_STEP);
-  const [copied, setCopied] = useState(false);
   const [bookmarkingId, setBookmarkingId] = useState(null);
   const [items, setItems] = useState(search?.results ?? []);
   const [activePlayerId, setActivePlayerId] = useState(null);
@@ -226,6 +225,9 @@ export default function DetailScreen({
   const [analysisModal, setAnalysisModal] = useState(null);
   const [pendingAnalysisVideo, setPendingAnalysisVideo] = useState(null);
   const [pendingBookmarkVideo, setPendingBookmarkVideo] = useState(null);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [settingsSubmitting, setSettingsSubmitting] = useState(false);
+  const [settingsForm, setSettingsForm] = useState({ name: '', frequency: 'weekly', tiktokHandle: '', website: '' });
   const sharedBilling = usePage().props?.billing ?? {};
   const billingState = billing ?? sharedBilling;
   const [videoBookmarkUsed, setVideoBookmarkUsed] = useState(() => numericUsageValue(billingState?.videoBookmarkCount, 0));
@@ -300,19 +302,18 @@ export default function DetailScreen({
     { ...serverTile('avg_engagement'), label: 'avg eng rate' },
   ];
 
-  const share = async () => {
-    try {
-      await navigator.clipboard.writeText(window.location.href);
-      setCopied(true);
-      window.setTimeout(() => setCopied(false), 2000);
-    } catch {
-      /* clipboard unavailable - the URL is in the address bar anyway */
-    }
-  };
-
   useEffect(() => {
     setItems(search?.results ?? []);
     setAnalysisStates(buildAnalysisStates(search?.results ?? []));
+  }, [search]);
+
+  useEffect(() => {
+    setSettingsForm({
+      name: search?.name ?? '',
+      frequency: search?.frequency ?? 'weekly',
+      tiktokHandle: search?.source_tiktok_handle ?? '',
+      website: search?.source_website ?? '',
+    });
   }, [search]);
 
   useEffect(() => {
@@ -491,6 +492,31 @@ export default function DetailScreen({
   }, [analysisStates]);
 
   const closeAnalysisModal = () => setAnalysisModal(null);
+  const openSettingsModal = () => setSettingsOpen(true);
+  const closeSettingsModal = () => {
+    if (settingsSubmitting) return;
+    setSettingsOpen(false);
+  };
+
+  const submitSettings = async () => {
+    if (!search?.id) return;
+
+    setSettingsSubmitting(true);
+    try {
+      const { search: updated } = await savedSearchApi.update(search.id, {
+        name: settingsForm.name.trim(),
+        frequency: settingsForm.frequency,
+        sources: {
+          tiktokHandle: settingsForm.tiktokHandle.trim(),
+          website: settingsForm.website.trim(),
+        },
+      });
+      onSearchUpdated?.(updated);
+      setSettingsOpen(false);
+    } finally {
+      setSettingsSubmitting(false);
+    }
+  };
 
   // The modal reports its live analysis state (e.g. after a regenerate) so the
   // card CTA reflects "Analyzing Video…" / "View Analysis" without a reload.
@@ -513,12 +539,10 @@ export default function DetailScreen({
         account={account}
         lastRun={formatDate(search?.last_run_at)}
         nextRun={formatDate(search?.next_run_at)}
-        onExportPdf={onExportPdf}
+        onEditDetails={openSettingsModal}
         onToggleWatchlist={onToggleBookmark}
-        onShare={share}
         onTogglePause={onTogglePause}
         onDelete={onDelete}
-        copied={copied}
         watchlistUpdating={bookmarkUpdating}
       />
 
@@ -696,6 +720,118 @@ export default function DetailScreen({
           }}
           onCancel={() => setPendingBookmarkVideo(null)}
         />
+      )}
+
+      {settingsOpen && (
+        <div className="bb">
+          <div className="bb-modal">
+            <button className="bb-modal__bg" aria-label="Close" onClick={closeSettingsModal} />
+            <div className="bb-modal__box">
+              <h2>Edit keyword details</h2>
+              <p className="sub">Update the label and refresh schedule. The keyword set is fixed for this search.</p>
+
+              <div style={{ marginTop: 20 }}>
+                <p className="sect__n">Keyword set</p>
+                <div className="chips">
+                  {(search?.keywords ?? []).map((keyword) => (
+                    <span key={keyword} className="chip">
+                      {keyword}
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              <div style={{ marginTop: 20 }}>
+                <label className="lbl">Label</label>
+                <input
+                  className="fld"
+                  value={settingsForm.name}
+                  onChange={(event) => setSettingsForm((current) => ({ ...current, name: event.target.value }))}
+                  maxLength={80}
+                />
+              </div>
+
+              <div style={{ marginTop: 20 }}>
+                <label className="lbl">Schedule</label>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  {['weekly', 'monthly'].map((frequency) => (
+                    <button
+                      key={frequency}
+                      type="button"
+                      className={`btn ${settingsForm.frequency === frequency ? 'btn--y' : 'btn--g'} btn--w`}
+                      onClick={() => setSettingsForm((current) => ({ ...current, frequency }))}
+                    >
+                      {frequency === 'weekly' ? 'Weekly' : 'Monthly'}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div style={{ marginTop: 20 }}>
+                <label className="lbl">TikTok handle</label>
+                <div style={{ position: 'relative' }}>
+                  <span
+                    style={{
+                      position: 'absolute',
+                      left: 14,
+                      top: '50%',
+                      transform: 'translateY(-50%)',
+                      color: 'var(--muted)',
+                      pointerEvents: 'none',
+                    }}
+                  >
+                    @
+                  </span>
+                  <input
+                    className="fld"
+                    style={{ paddingLeft: 28 }}
+                    value={settingsForm.tiktokHandle}
+                    onChange={(event) => setSettingsForm((current) => ({ ...current, tiktokHandle: event.target.value.replace(/^@/, '') }))}
+                    maxLength={120}
+                    placeholder="rhode"
+                    aria-label="TikTok handle"
+                  />
+                </div>
+              </div>
+
+              <div style={{ marginTop: 20 }}>
+                <label className="lbl">Website</label>
+                <div style={{ position: 'relative' }}>
+                  <span
+                    style={{
+                      position: 'absolute',
+                      left: 14,
+                      top: '50%',
+                      transform: 'translateY(-50%)',
+                      color: 'var(--muted)',
+                      pointerEvents: 'none',
+                    }}
+                  >
+                    https://
+                  </span>
+                  <input
+                    className="fld"
+                    style={{ paddingLeft: 72 }}
+                    value={settingsForm.website}
+                    onChange={(event) => setSettingsForm((current) => ({ ...current, website: event.target.value }))}
+                    maxLength={255}
+                    placeholder="rhodeskin.com"
+                    aria-label="Website"
+                  />
+                </div>
+              </div>
+
+              <div className="actrow__r" style={{ marginTop: 24, justifyContent: 'flex-end' }}>
+                <button type="button" className="btn btn--g" onClick={closeSettingsModal} disabled={settingsSubmitting}>
+                  Cancel
+                </button>
+                <button type="button" className="btn btn--y" onClick={submitSettings} disabled={settingsSubmitting}>
+                  {settingsSubmitting ? 'Saving…' : 'Save changes'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

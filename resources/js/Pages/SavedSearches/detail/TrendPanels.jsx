@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 
 import { compactNumber, percent } from '../../../landing/flow/format.js';
-import { Bookmark, Share, Check, Dots } from '../../../landing/components/Icons.jsx';
+import { Bookmark, Dots } from '../../../landing/components/Icons.jsx';
 
 const W = 560;
 const H = 180;
@@ -245,12 +245,10 @@ export function TrackerHead({
   account,
   lastRun,
   nextRun,
-  onExportPdf,
+  onEditDetails,
   onToggleWatchlist,
-  onShare,
   onTogglePause,
   onDelete,
-  copied,
   watchlistUpdating,
 }) {
   const initial = (search?.name ?? '?').slice(0, 1).toUpperCase();
@@ -284,6 +282,11 @@ export function TrackerHead({
   const openDelete = () => {
     setMenuOpen(false);
     setConfirm('delete');
+  };
+
+  const openEdit = () => {
+    setMenuOpen(false);
+    onEditDetails?.();
   };
 
   const runConfirm = () => {
@@ -345,16 +348,6 @@ export function TrackerHead({
         </div>
 
         <div className="head-actions">
-          {onExportPdf && (
-            <button
-              className="tbtn"
-              onClick={onExportPdf}
-              title="Export PDF"
-              aria-label="Export PDF"
-            >
-              Export PDF
-            </button>
-          )}
           {onToggleWatchlist && (
             <button
               className={`tbtn tbtn-ic${search?.is_watchlisted ? ' is-saved' : ''}`}
@@ -367,15 +360,6 @@ export function TrackerHead({
               <Bookmark className="h-4 w-4" filled={Boolean(search?.is_watchlisted)} />
             </button>
           )}
-          <button
-            className="tbtn tbtn-ic"
-            onClick={onShare}
-            title={copied ? 'Link copied' : 'Share'}
-            aria-label={copied ? 'Link copied' : 'Share'}
-          >
-            {copied ? <Check className="h-4 w-4" /> : <Share className="h-4 w-4" />}
-          </button>
-
           {(onTogglePause || onDelete) && (
             <span className="tk-menu" ref={menuRef}>
               <button
@@ -390,6 +374,11 @@ export function TrackerHead({
               </button>
               {menuOpen && (
                 <div className="menu" role="menu">
+                  {onEditDetails && (
+                    <button type="button" role="menuitem" onClick={openEdit}>
+                      Edit keyword details
+                    </button>
+                  )}
                   {onTogglePause && (
                     <button type="button" role="menuitem" onClick={openPause}>
                       {paused ? 'Resume Tracking' : 'Pause Tracking'}

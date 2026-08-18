@@ -15,7 +15,6 @@ use App\Support\GuestIdentity;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Http\Response as HttpResponse;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\RateLimiter;
 use Inertia\Inertia;
@@ -455,29 +454,6 @@ class SavedSearchController extends Controller
                 $request->user(),
             ),
         ]);
-    }
-
-    /**
-     * Print-friendly export page intended for the browser's "Save as PDF".
-     */
-    public function exportPdf(Request $request, string $search): HttpResponse
-    {
-        $model = $this->searches->resolveByKey($request, $search);
-        $detail = SavedSearchPresenter::detail($model, $this->bookmarks->idsForUser($request->user()), $request->user());
-        $insights = $detail['insights'] ?? [];
-        $results = array_slice((array) ($detail['results'] ?? []), 0, 12);
-        $trendPoints = (array) data_get($insights, 'trend.points', []);
-        $latestTrend = $trendPoints === [] ? null : $trendPoints[array_key_last($trendPoints)];
-
-        return response()
-            ->view('reports.saved-search-export', [
-                'search' => $detail,
-                'insights' => $insights,
-                'results' => $results,
-                'latestTrend' => $latestTrend,
-                'print' => $request->boolean('print', true),
-            ])
-            ->header('Content-Type', 'text/html; charset=UTF-8');
     }
 
     public function pause(Request $request, int $id): JsonResponse

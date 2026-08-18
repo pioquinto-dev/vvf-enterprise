@@ -34,7 +34,6 @@ class SavedSearchPresenter
             'frequency' => $search->frequency,
             'status' => $search->status,
             'url' => $search->url(),
-            'export_pdf_url' => rtrim($search->url(), '/').'/export/pdf',
             'result_count' => $search->videos_count ?? $search->videos()->count(),
             'last_run_at' => $search->last_run_at?->toIso8601String(),
             'next_run_at' => $search->next_run_at?->toIso8601String(),

@@ -117,11 +117,8 @@ export default function Show({ search: initial, isAuthenticated = false, billing
         }
     };
 
-    const exportPdf = () => {
-        if (!search?.export_pdf_url) return;
-
-        const separator = search.export_pdf_url.includes('?') ? '&' : '?';
-        window.open(`${search.export_pdf_url}${separator}print=1`, '_blank', 'noopener,noreferrer');
+    const patchSearch = (patch) => {
+        setSearch((prev) => ({ ...prev, ...patch }));
     };
 
     return (
@@ -138,7 +135,7 @@ export default function Show({ search: initial, isAuthenticated = false, billing
                         refreshing={refreshing}
                         bookmarkUpdating={bookmarkingSearch}
                         onRefresh={refresh}
-                        onExportPdf={exportPdf}
+                        onSearchUpdated={patchSearch}
                         onToggleBookmark={toggleBookmark}
                         onTogglePause={togglePause}
                         onDelete={remove}

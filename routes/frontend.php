@@ -24,7 +24,6 @@ Route::middleware('auth')->group(function (): void {
 });
 
 Route::get('/results/{search}', [SavedSearchController::class, 'show'])->name('results.show');
-Route::get('/results/{search}/export/pdf', [SavedSearchController::class, 'exportPdf'])->name('results.export.pdf');
 
 // Legacy numeric detail links redirect to the canonical /results/{public_id}.
 Route::get('/bookmark/{id}', [SavedSearchController::class, 'showLegacyRedirect'])
