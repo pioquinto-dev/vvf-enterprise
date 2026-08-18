@@ -60,12 +60,8 @@ class SavedSearchManager
 
         $name = $this->normalizer->name($name, $phrase);
         $signature = $this->normalizer->signature($keywords);
-        $sourceHandle = $type === CustomKeywordSearch::TYPE_PRODUCT
-            ? null
-            : $this->normalizeSourceHandle($sources['tiktokHandle'] ?? null);
-        $sourceWebsite = $type === CustomKeywordSearch::TYPE_PRODUCT
-            ? null
-            : $this->normalizeSourceWebsite($sources['website'] ?? null);
+        $sourceHandle = $this->normalizeSourceHandle($sources['tiktokHandle'] ?? null);
+        $sourceWebsite = $this->normalizeSourceWebsite($sources['website'] ?? null);
 
         // Same keywords in any order means the same saved search. The record
         // is reused so the list stays clean — but re-searching is a real
@@ -191,7 +187,13 @@ class SavedSearchManager
         return $search->refresh();
     }
 
-    public function updateSettings(CustomKeywordSearch $search, ?string $name, ?string $frequency): CustomKeywordSearch
+    public function updateSettings(
+        CustomKeywordSearch $search,
+        ?string $name,
+        ?string $frequency,
+        ?string $sourceTikTokHandle = null,
+        ?string $sourceWebsite = null,
+    ): CustomKeywordSearch
     {
         $changes = [];
 
@@ -205,6 +207,14 @@ class SavedSearchManager
             if ($search->status !== CustomKeywordSearch::STATUS_PAUSED) {
                 $changes['next_run_at'] = $this->processor->nextRunAt($frequency);
             }
+        }
+
+        if ($sourceTikTokHandle !== null) {
+            $changes['source_tiktok_handle'] = $this->normalizeSourceHandle($sourceTikTokHandle);
+        }
+
+        if ($sourceWebsite !== null) {
+            $changes['source_website'] = $this->normalizeSourceWebsite($sourceWebsite);
         }
 
         if ($changes !== []) {

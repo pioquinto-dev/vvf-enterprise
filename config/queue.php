@@ -40,7 +40,13 @@ return [
             'connection' => env('DB_QUEUE_CONNECTION'),
             'table' => env('DB_QUEUE_TABLE', 'jobs'),
             'queue' => env('DB_QUEUE', 'default'),
-            'retry_after' => (int) env('DB_QUEUE_RETRY_AFTER', 90),
+            // Saved-search scrape jobs intentionally poll Apify for a long time.
+            // Keep retry_after above that job timeout so the same run is not
+            // picked up a second time while the first worker still owns it.
+            'retry_after' => max(
+                (int) env('DB_QUEUE_RETRY_AFTER', 90),
+                (int) env('CUSTOM_KEYWORD_SEARCH_JOB_TIMEOUT_SECONDS', 1800) + 300
+            ),
             'after_commit' => false,
         ],
 
@@ -68,7 +74,10 @@ return [
             'driver' => 'redis',
             'connection' => env('REDIS_QUEUE_CONNECTION', 'default'),
             'queue' => env('REDIS_QUEUE', 'default'),
-            'retry_after' => (int) env('REDIS_QUEUE_RETRY_AFTER', 90),
+            'retry_after' => max(
+                (int) env('REDIS_QUEUE_RETRY_AFTER', 90),
+                (int) env('CUSTOM_KEYWORD_SEARCH_JOB_TIMEOUT_SECONDS', 1800) + 300
+            ),
             'block_for' => null,
             'after_commit' => false,
         ],

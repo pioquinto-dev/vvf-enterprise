@@ -27,6 +27,8 @@ class SavedSearchPresenter
             'name' => $search->name,
             'phrase' => $search->phrase,
             'search_type' => $search->search_type,
+            'source_tiktok_handle' => $search->source_tiktok_handle,
+            'source_website' => $search->source_website,
             'is_watchlisted' => (bool) $search->is_watchlisted,
             'keywords' => $search->keywords ?? [],
             'frequency' => $search->frequency,

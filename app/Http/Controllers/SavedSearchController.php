@@ -423,18 +423,23 @@ class SavedSearchController extends Controller
         return response()->json(['search' => SavedSearchPresenter::summary($search)]);
     }
 
-    /** Name and frequency only — keywords are fixed once a search exists. */
+    /** Name, schedule, and brand account metadata only — keywords are fixed once a search exists. */
     public function updateFrequency(Request $request, int $id): JsonResponse
     {
         $validated = $request->validate([
             'name' => ['nullable', 'string', 'max:'.config('custom_keyword_search.limits.max_name_length', 80)],
             'frequency' => ['nullable', 'in:'.CustomKeywordSearch::FREQUENCY_WEEKLY.','.CustomKeywordSearch::FREQUENCY_MONTHLY],
+            'sources' => ['nullable', 'array'],
+            'sources.tiktokHandle' => ['nullable', 'string', 'max:120'],
+            'sources.website' => ['nullable', 'string', 'max:255'],
         ]);
 
         $search = $this->manager->updateSettings(
             $this->searches->resolve($request, $id),
             $validated['name'] ?? null,
             $validated['frequency'] ?? null,
+            data_get($validated, 'sources.tiktokHandle'),
+            data_get($validated, 'sources.website'),
         );
 
         return response()->json(['search' => SavedSearchPresenter::summary($search)]);

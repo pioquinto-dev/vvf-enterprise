@@ -18,9 +18,12 @@ class RunCustomKeywordSearch implements ShouldQueue
      */
     public int $tries = 1;
 
-    public int $timeout = 1800;
+    public int $timeout;
 
-    public function __construct(public readonly int $runId) {}
+    public function __construct(public readonly int $runId)
+    {
+        $this->timeout = (int) config('custom_keyword_search.scrape.job_timeout_seconds', 1800);
+    }
 
     /**
      * @return array<int, object>

@@ -12,10 +12,9 @@ import { Check } from '../../landing/components/Icons.jsx';
 /**
  * The whole in-app search flow on one page (Dashboard and /search share it).
  *
- * The wizard branches by search kind, exactly as the handoff spec requires:
- *   - product  → Subject → Keywords → run          (2 steps, no Sources)
- *   - brand /  → Subject → Keywords → Sources → run (3 steps; Sources is last,
- *     competitor    optional, and asks for the account's handle/website)
+ * The wizard branches by search kind, but every search can now optionally add
+ * source context before it runs:
+ *   - product / brand / competitor → Subject → Keywords → Sources → run
  * The run/loading screen is *not* a wizard step and has no stepper.
  *
  * Steps advance in local state so keyword work survives a step back, and a
@@ -23,7 +22,6 @@ import { Check } from '../../landing/components/Icons.jsx';
  * written to the URL is `?run=<id>` once a run exists, as a resume handle.
  */
 
-/* brand + competitor are both "brand kind" — they have an account to connect. */
 const kindOf = (type) => (type === 'product' ? 'product' : 'brand');
 const nounOf = (type) => (type === 'product' ? 'product' : 'brand');
 const PENDING_SEARCH_KEY = 'brand-beacon.pending-search';
@@ -35,21 +33,16 @@ function readRunParam() {
 }
 
 /**
- * The card-header stepper. Sources is brand-only and last; there is no
- * "Results" step — the visitor is already signed in by the time they run.
+ * The card-header stepper. Sources is the optional last step for every search;
+ * there is no "Results" step — the visitor is already signed in by the time
+ * they run.
  */
 function Stepper({ kind, current }) {
-    const steps =
-        kind === 'product'
-            ? [
-                  { k: 'subject', l: 'Subject' },
-                  { k: 'keywords', l: 'Keywords' },
-              ]
-            : [
-                  { k: 'subject', l: 'Subject' },
-                  { k: 'keywords', l: 'Keywords' },
-                  { k: 'sources', l: 'Sources' },
-              ];
+    const steps = [
+        { k: 'subject', l: 'Subject' },
+        { k: 'keywords', l: 'Keywords' },
+        { k: 'sources', l: 'Sources' },
+    ];
     const idx = steps.findIndex((s) => s.k === current);
 
     return (
@@ -236,17 +229,7 @@ export default function SearchWizard({ initialType = 'brand', initialQuery = '',
         setError(null);
         setAuthPromptPayload(null);
 
-        if ((pendingSearch.kind ?? kindOf(pendingSearch.type)) === 'brand') {
-            setStep('sources');
-            return;
-        }
-
-        doCreate(
-            pendingSearch.payload,
-            pendingSearch.sources,
-            pendingSearch.type,
-            pendingSearch.phrase ?? pendingSearch.payload?.phrase ?? '',
-        );
+        setStep('sources');
     }, [signedIn]);
 
     const needsSearchConfirm = signedIn && searchLimit !== 0;
@@ -274,7 +257,6 @@ export default function SearchWizard({ initialType = 'brand', initialQuery = '',
         setConfirmPayload({ payload, sources });
     };
 
-    // Keywords done: brand/competitor go connect sources first; product runs now.
     const afterKeywords = (payload) => {
         setPending(payload);
         if (!signedIn) {
@@ -282,12 +264,7 @@ export default function SearchWizard({ initialType = 'brand', initialQuery = '',
             return;
         }
 
-        if (kind === 'brand') {
-            setStep('sources');
-            return;
-        }
-
-        runSearch(payload);
+        setStep('sources');
     };
 
     const backToKeywords = () => {
@@ -311,7 +288,7 @@ export default function SearchWizard({ initialType = 'brand', initialQuery = '',
             ? subheading
             : step === 'sources'
               ? 'Step 3 of 3 — optional.'
-              : `Step 2 of ${kind === 'product' ? 2 : 3} — add terms to expand on your ${nounOf(type)}. Ticking six terms still spends one search.`;
+              : `Step 2 of 3 — add terms to expand on your ${nounOf(type)}. Ticking six terms still spends one search.`;
 
     return (
         <>
@@ -345,7 +322,7 @@ export default function SearchWizard({ initialType = 'brand', initialQuery = '',
                             key={`${type}:${phrase}`}
                             phrase={phrase}
                             noun={nounOf(type)}
-                            nextLabel={kind === 'brand' ? 'Continue' : 'Run the search'}
+                            nextLabel="Continue"
                             submitting={submitting}
                             error={error}
                             onBack={() => setStep('subject')}
@@ -355,6 +332,7 @@ export default function SearchWizard({ initialType = 'brand', initialQuery = '',
 
                     {step === 'sources' && (
                         <SourcesScreen
+                            noun={nounOf(type)}
                             submitting={submitting}
                             onBack={() => setStep('keywords')}
                             onSkip={() => runSearch(pending)}

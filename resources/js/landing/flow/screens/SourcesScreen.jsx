@@ -2,15 +2,13 @@ import { useState } from 'react';
 import { Play, Store, Arrow } from '../../components/Icons.jsx';
 
 /**
- * Step three of the brand/competitor flow — optional. Connect the subject's
- * TikTok handle and/or website so results match more tightly. There is nothing
- * to connect for a product search, so the wizard skips this step entirely for
- * products (see SearchWizard's FLOW.kind branching).
+ * Step three for every search type — optional. Connect the subject's TikTok
+ * handle and/or website so results match more tightly.
  *
  * Both are skippable: "Skip" and "Run the search" both start the scrape; the
- * handle/website ride along in the payload for the backend to use when it can.
+ * handle/website ride along in the payload for the backend to use.
  */
-export default function SourcesScreen({ onBack, onSkip, onRun, submitting = false }) {
+export default function SourcesScreen({ noun = 'brand', onBack, onSkip, onRun, submitting = false }) {
   const [handle, setHandle] = useState('');
   const [website, setWebsite] = useState('');
 
@@ -24,7 +22,7 @@ export default function SourcesScreen({ onBack, onSkip, onRun, submitting = fals
       <div className="sect__h">
         <div>
           <p className="sect__n">Optional</p>
-          <h2>Add the brand&rsquo;s handle or website</h2>
+          <h2>Add the {noun}&rsquo;s handle or website</h2>
           <p className="faint" style={{ fontSize: '.88rem', marginTop: 8, maxWidth: '60ch' }}>
             Helps us match videos more accurately and unlock better insights.
           </p>

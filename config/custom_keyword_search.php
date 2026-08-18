@@ -49,6 +49,7 @@ return [
         // Poll the Apify run until it reaches a terminal state.
         'poll_seconds' => (int) env('CUSTOM_KEYWORD_SEARCH_POLL_SECONDS', 10),
         'run_timeout_seconds' => (int) env('CUSTOM_KEYWORD_SEARCH_RUN_TIMEOUT_SECONDS', 900),
+        'job_timeout_seconds' => (int) env('CUSTOM_KEYWORD_SEARCH_JOB_TIMEOUT_SECONDS', 1800),
 
         // A run stuck in `running` past this is treated as stale.
         'stale_after_minutes' => (int) env('CUSTOM_KEYWORD_SEARCH_STALE_AFTER_MINUTES', 30),
