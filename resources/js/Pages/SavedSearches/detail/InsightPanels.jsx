@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { compactNumber, outlierLabel, percent } from '../../../landing/flow/format.js';
 import { DeltaLine } from './Badges.jsx';
 
@@ -85,80 +85,125 @@ function Growth({ growth }) {
   );
 }
 
-export function HashtagPanel({ hashtags = [] }) {
+function ExpandableSignalList({ items = [], renderRow, emptyLabel, ariaLabel, moreLabelBuilder }) {
   const [visible, setVisible] = useState(PANEL_STEP);
-  const shown = hashtags.slice(0, visible);
-  const remaining = Math.max(0, hashtags.length - shown.length);
+  const [flashRange, setFlashRange] = useState(null);
+  const listRef = useRef(null);
+  const shown = items.slice(0, visible);
+  const remaining = Math.max(0, items.length - shown.length);
+
+  useEffect(() => {
+    if (!flashRange) return undefined;
+
+    const list = listRef.current;
+    if (list) {
+      window.requestAnimationFrame(() => {
+        list.scrollTo({
+          top: list.scrollHeight,
+          behavior: 'smooth',
+        });
+      });
+    }
+
+    const timeout = window.setTimeout(() => setFlashRange(null), 1800);
+    return () => window.clearTimeout(timeout);
+  }, [flashRange]);
+
+  useEffect(() => {
+    setVisible(PANEL_STEP);
+    setFlashRange(null);
+  }, [items]);
+
+  const showMore = () => {
+    const added = Math.min(PANEL_STEP, remaining);
+    if (added <= 0) return;
+
+    setFlashRange({ start: visible, end: visible + added - 1, count: added });
+    setVisible((count) => count + added);
+  };
 
   return (
-    <div className="hspanel">
-      <h3># hashtags</h3>
-      {hashtags.length === 0 ? (
-        <p className="empty">No hashtags on the matched videos.</p>
+    <>
+      {items.length === 0 ? (
+        <p className="empty">{emptyLabel}</p>
       ) : (
         <>
-          <div className="hlist" role="list" aria-label="Top hashtags">
-            {shown.map((row, index) => (
-              <div className="hrow" key={row.tag} role="listitem">
-                <span className="idx">{index + 1}</span>
-                <span className="nm">#{row.tag}</span>
-                <span className="cnt">on {row.posts} posts</span>
-                <Growth growth={row.growth} />
-              </div>
-            ))}
+          <div ref={listRef} className="hlist" role="list" aria-label={ariaLabel}>
+            {shown.map((row, index) => {
+              const isNew = flashRange && index >= flashRange.start && index <= flashRange.end;
+              return (
+                <div className={`hrow${isNew ? ' is-new' : ''}`} key={row.id ?? row.tag ?? row.label ?? index} role="listitem">
+                  {renderRow(row, index)}
+                </div>
+              );
+            })}
           </div>
+          {flashRange && (
+            <p className="hmore-note" aria-live="polite">
+              Added {flashRange.count} more.
+            </p>
+          )}
           {remaining > 0 && (
             <div className="hmore">
-              <button className="tbtn" type="button" onClick={() => setVisible((count) => count + PANEL_STEP)}>
-                show {Math.min(PANEL_STEP, remaining)} more
+              <button className="tbtn" type="button" onClick={showMore}>
+                {moreLabelBuilder(Math.min(PANEL_STEP, remaining))}
               </button>
             </div>
           )}
         </>
       )}
+    </>
+  );
+}
+
+export function HashtagPanel({ hashtags = [] }) {
+  return (
+    <div className="hspanel">
+      <h3># hashtags</h3>
+      <ExpandableSignalList
+        items={hashtags}
+        emptyLabel="No hashtags on the matched videos."
+        ariaLabel="Top hashtags"
+        moreLabelBuilder={(count) => `show ${count} more`}
+        renderRow={(row, index) => (
+          <>
+            <span className="idx">{index + 1}</span>
+            <span className="nm">#{row.tag}</span>
+            <span className="cnt">on {row.posts} posts</span>
+            <Growth growth={row.growth} />
+          </>
+        )}
+      />
     </div>
   );
 }
 
 export function SoundPanel({ sounds = [] }) {
-  const [visible, setVisible] = useState(PANEL_STEP);
-  const shown = sounds.slice(0, visible);
-  const remaining = Math.max(0, sounds.length - shown.length);
-
   return (
     <div className="hspanel">
       <h3>sounds</h3>
-      {sounds.length === 0 ? (
-        <p className="empty">No sound credited on the matched videos.</p>
-      ) : (
-        <>
-          <div className="hlist" role="list" aria-label="Top sounds">
-            {shown.map((row, index) => (
-              <div className="hrow" key={row.label} role="listitem">
-                <span className="idx">{index + 1}</span>
-                <span className="splay">
-                  <svg width="11" height="12" viewBox="0 0 14 16" fill="var(--violet)" aria-hidden>
-                    <path d="M0 0l14 8-14 8z" />
-                  </svg>
-                </span>
-                <span className="nm">
-                  {row.label}
-                  {row.on_top_video && <span className="u">used on the winner</span>}
-                </span>
-                <span className="cnt">{row.posts} posts</span>
-                <Growth growth={row.growth} />
-              </div>
-            ))}
-          </div>
-          {remaining > 0 && (
-            <div className="hmore">
-              <button className="tbtn" type="button" onClick={() => setVisible((count) => count + PANEL_STEP)}>
-                show {Math.min(PANEL_STEP, remaining)} more
-              </button>
-            </div>
-          )}
-        </>
-      )}
+      <ExpandableSignalList
+        items={sounds}
+        emptyLabel="No sound credited on the matched videos."
+        ariaLabel="Top sounds"
+        moreLabelBuilder={(count) => `show ${count} more`}
+        renderRow={(row, index) => (
+          <>
+            <span className="idx">{index + 1}</span>
+            <span className="splay">
+              <svg width="11" height="12" viewBox="0 0 14 16" fill="var(--violet)" aria-hidden>
+                <path d="M0 0l14 8-14 8z" />
+              </svg>
+            </span>
+            <span className="nm">
+              {row.label}
+              {row.on_top_video && <span className="u">used on the winner</span>}
+            </span>
+            <span className="cnt">{row.posts} posts</span>
+            <Growth growth={row.growth} />
+          </>
+        )}
+      />
     </div>
   );
 }
