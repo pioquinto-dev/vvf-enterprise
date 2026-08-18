@@ -348,8 +348,8 @@ export default function ResultsScreen({
           <div>
             <p className="font-display text-[17px] font-bold text-white">Want another search, or weekly tracking?</p>
             <p className="mt-1.5 text-[13.5px] text-white/60">
-              Free includes 1 search and no bookmarks or video analysis. Basic includes 150 searches, 50 video
-              bookmarks, 50 search bookmarks, and 50 video analysis runs. Premium includes 400 searches and unlimited
+              Free includes 1 search and no bookmarks or video analysis. Growth includes 150 searches, 50 video
+              bookmarks, 50 search bookmarks, and 50 video analysis runs. Scale includes 400 searches and unlimited
               limits across those extras.
             </p>
           </div>

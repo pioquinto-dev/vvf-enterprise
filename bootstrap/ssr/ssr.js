@@ -5922,23 +5922,15 @@ var PRICING_PLAN_ORDER = PRICING.monthly.map((plan) => plan.slug ?? plan.name.to
 var FAQS = [
 	{
 		q: "What counts as one search?",
-		a: "One subject — your brand, a single competitor, or a single product — plus any keywords you attach to widen it. All of those keywords are covered by that one search, so ticking six terms still only spends one."
+		a: "One subject — your brand, a single competitor, or a single product — included are any keywords you attach to widen the search. All of those keywords are covered by that one search, so ticking six terms still only spend one."
 	},
 	{
 		q: "How long does a search take?",
-		a: "Most finish in under 20 minutes. You can stay on the results page and watch it fill in, or close the tab and we will email you the moment it is ready."
+		a: "Most finish in under 5 minutes, but can take up to 20 minutes. You can stay on the results page and watch it fill in, or close the tab and we will email you the moment it is ready."
 	},
 	{
 		q: "Why focus on outliers instead of follower count?",
-		a: "A 500K-follower account posting a 40K-view video tells you nothing. A 12K-follower account posting a 3M-view video tells you the format works. We rank by performance relative to the creator’s own baseline, so breakout content surfaces regardless of account size."
-	},
-	{
-		q: "Do you cover niche categories?",
-		a: "Yes. The index is built from broad TikTok crawls rather than a curated brand list, so small categories still return meaningful volume. If a search comes back thin, we tell you rather than padding it with irrelevant results."
-	},
-	{
-		q: "Can I track competitors I do not name upfront?",
-		a: "On Basic and above, each tracked search can watch a competitor continuously. Add it to Library and Brand Beacon re-runs on your schedule, sending only what changed since last time."
+		a: "A video with 4 million views from a creator with 4 million followers is great, but a video with 4 million views from a creator with 4 thousand followers is something to pay attention to. That video is the outlier, something that performs better than average - that's what we want to track."
 	},
 	{
 		q: "What happens after the 10 day trial?",

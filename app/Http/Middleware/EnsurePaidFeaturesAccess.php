@@ -20,7 +20,7 @@ class EnsurePaidFeaturesAccess
         $user = $request->user();
 
         if (! $this->billing->hasPaidPlan($user)) {
-            return redirect('/trial')->with('status', 'Upgrade to Basic or Premium to access this feature.');
+            return redirect('/trial')->with('status', 'Upgrade to Growth or Scale to access this feature.');
         }
 
         return $next($request);

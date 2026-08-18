@@ -40,8 +40,8 @@ export default function TrialScreen({ onBack, backLabel = 'Back to results' }) {
           Unlock paid tracking
         </h1>
         <p className="mt-3 text-[14.5px] muted">
-          Start on a 7-day trial. Basic includes 150 searches, 50 video bookmarks, 50 search bookmarks, and 50 video
-          analysis runs. Premium includes 400 searches and unlimited limits across those extras.
+          Start on a 7-day trial. Growth includes 150 searches, 50 video bookmarks, 50 search bookmarks, and 50 video
+          analysis runs. Scale includes 400 searches and unlimited limits across those extras.
         </p>
 
         <div className="mx-auto mt-9 grid max-w-2xl gap-5 text-left sm:grid-cols-2">

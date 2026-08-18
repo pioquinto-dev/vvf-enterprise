@@ -32,7 +32,7 @@ class StripeWebhookProcessorBrevoTest extends TestCase
         $plan = PricingPlan::query()->create([
             'id' => (string) str()->ulid(),
             'slug' => 'basic',
-            'name' => 'Basic',
+            'name' => 'Growth',
             'stripe_price_id' => 'price_basic',
             'price_cents' => 2900,
             'interval_count' => 1,
@@ -110,7 +110,7 @@ class StripeWebhookProcessorBrevoTest extends TestCase
         $plan = PricingPlan::query()->create([
             'id' => (string) str()->ulid(),
             'slug' => 'basic',
-            'name' => 'Basic',
+            'name' => 'Growth',
             'stripe_price_id' => 'price_basic',
             'price_cents' => 2900,
             'interval_count' => 1,

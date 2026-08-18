@@ -54,7 +54,7 @@ class VideoAnalysisBillingTest extends TestCase
     {
         $plan = PricingPlan::query()->create([
             'id' => (string) Str::ulid(),
-            'name' => 'Basic',
+            'name' => 'Growth',
             'slug' => 'basic',
             'interval' => 'month',
             'interval_count' => 1,

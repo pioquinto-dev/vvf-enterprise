@@ -40,7 +40,11 @@ class PricingPlanViewService
                     $videoAnalysisLimit = (int) data_get($plan->metadata, 'subscription.video_analysis.limit', 0);
 
                     if ($plan->slug === 'basic') {
-                        $cta = 'Choose Basic';
+                        $cta = 'Choose Growth';
+                    }
+
+                    if ($plan->slug === 'premium') {
+                        $cta = 'Choose Scale';
                     }
 
                     return [

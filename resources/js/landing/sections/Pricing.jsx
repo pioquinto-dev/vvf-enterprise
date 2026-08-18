@@ -1,8 +1,15 @@
 import { Check } from '../components/Icons.jsx';
-import { PRICING } from '../data/dummy.js';
+import { PRICING, PRICING_PLAN_ORDER } from '../data/dummy.js';
 
 export default function Pricing({ plans = [], onStart, onTrial }) {
-  const visiblePlans = plans.length > 0 ? plans : PRICING.monthly;
+  const visiblePlans = (plans.length > 0 ? [...plans] : [...PRICING.monthly]).sort((a, b) => {
+    const aKey = a.slug ?? a.name?.toLowerCase();
+    const bKey = b.slug ?? b.name?.toLowerCase();
+    const aIndex = PRICING_PLAN_ORDER.indexOf(aKey);
+    const bIndex = PRICING_PLAN_ORDER.indexOf(bKey);
+
+    return (aIndex === -1 ? Number.MAX_SAFE_INTEGER : aIndex) - (bIndex === -1 ? Number.MAX_SAFE_INTEGER : bIndex);
+  });
 
   return (
     <section className="sec--pad" id="pricing">
@@ -63,9 +70,9 @@ export default function Pricing({ plans = [], onStart, onTrial }) {
 
         <div className="trial">
           <div>
-            <h3>Start a 7-day Basic trial</h3>
+            <h3>Start a 7-day Growth trial</h3>
             <p>
-              Try the full Basic plan for 7 days. Card details are collected up front, and billing starts only after the
+              Try the full Growth plan for 7 days. Card details are collected up front, and billing starts only after the
               trial ends unless you cancel.
             </p>
           </div>

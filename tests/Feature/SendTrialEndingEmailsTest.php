@@ -24,7 +24,7 @@ class SendTrialEndingEmailsTest extends TestCase
         $plan = PricingPlan::query()->create([
             'id' => (string) str()->ulid(),
             'slug' => 'basic',
-            'name' => 'Basic',
+            'name' => 'Growth',
             'stripe_price_id' => 'price_basic',
             'price_cents' => 2900,
             'interval_count' => 1,
@@ -42,6 +42,8 @@ class SendTrialEndingEmailsTest extends TestCase
             'status' => 'trialing',
             'current_period_starts_at' => CarbonImmutable::now()->subDays(4),
             'current_period_ends_at' => CarbonImmutable::now()->addDays(3),
+            'trial_started_at' => CarbonImmutable::now()->subDays(4),
+            'trial_ends_at' => CarbonImmutable::now()->addDays(3),
             'metadata' => [],
         ]);
 

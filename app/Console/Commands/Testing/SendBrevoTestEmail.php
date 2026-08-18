@@ -93,7 +93,7 @@ class SendBrevoTestEmail extends Command
     {
         $plan = (new PricingPlan())->forceFill([
             'id' => 'test-plan',
-            'name' => 'Premium',
+            'name' => 'Scale',
             'slug' => 'premium',
             'metadata' => [],
         ]);
@@ -105,6 +105,8 @@ class SendBrevoTestEmail extends Command
             'status' => 'active',
             'current_period_starts_at' => CarbonImmutable::now()->subDays(16),
             'current_period_ends_at' => CarbonImmutable::now()->addDays(14),
+            'trial_started_at' => CarbonImmutable::now()->subDays(4),
+            'trial_ends_at' => CarbonImmutable::now()->addDays(3),
             'metadata' => [
                 'subscription' => [
                     'search_limits' => ['used' => 2, 'limit' => 20],

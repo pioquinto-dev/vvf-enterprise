@@ -109,7 +109,7 @@ class BillingEntitlementService
     {
         if (! $this->hasPaidPlan($user)) {
             throw ValidationException::withMessages([
-                'billing' => 'Upgrade to Basic or Premium to bookmark videos.',
+                'billing' => 'Upgrade to Growth or Scale to bookmark videos.',
             ]);
         }
 
@@ -148,7 +148,7 @@ class BillingEntitlementService
     {
         if (! $this->hasPaidPlan($user)) {
             throw ValidationException::withMessages([
-                'billing' => 'Upgrade to Basic or Premium to bookmark searches.',
+                'billing' => 'Upgrade to Growth or Scale to bookmark searches.',
             ]);
         }
 
@@ -165,7 +165,7 @@ class BillingEntitlementService
     {
         if (! $this->hasPaidPlan($user)) {
             throw ValidationException::withMessages([
-                'billing' => 'Upgrade to Basic or Premium to analyze videos.',
+                'billing' => 'Upgrade to Growth or Scale to analyze videos.',
             ]);
         }
 

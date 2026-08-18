@@ -60,7 +60,7 @@ class VideoAnalysisEntitlementTest extends TestCase
     {
         $plan = PricingPlan::query()->create([
             'id' => (string) \Illuminate\Support\Str::ulid(),
-            'name' => 'Basic',
+            'name' => 'Growth',
             'slug' => 'basic',
             'interval' => 'month',
             'interval_count' => 1,

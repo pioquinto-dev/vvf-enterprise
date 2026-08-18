@@ -55,7 +55,7 @@ class PricingPlanTable
             [
                 'id' => (string) Str::ulid(),
                 'slug' => 'basic',
-                'name' => 'Basic',
+                'name' => 'Growth',
                 'stripe_product_id' => null,
                 'stripe_price_id' => null,
                 'price_cents' => 7900,
@@ -74,7 +74,7 @@ class PricingPlanTable
                 ],
                 'metadata' => [
                     'settings' => [
-                        'cta' => 'Choose Basic',
+                        'cta' => 'Choose Growth',
                         'popular' => true,
                     ],
                     'subscription' => [
@@ -97,7 +97,7 @@ class PricingPlanTable
             [
                 'id' => (string) Str::ulid(),
                 'slug' => 'premium',
-                'name' => 'Premium',
+                'name' => 'Scale',
                 'stripe_product_id' => null,
                 'stripe_price_id' => null,
                 'price_cents' => 19900,
@@ -116,7 +116,7 @@ class PricingPlanTable
                 ],
                 'metadata' => [
                     'settings' => [
-                        'cta' => 'Choose Premium',
+                        'cta' => 'Choose Scale',
                         'popular' => false,
                     ],
                     'subscription' => [
