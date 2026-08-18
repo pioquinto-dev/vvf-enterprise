@@ -3248,7 +3248,7 @@ function SearchListScreen({ kind = "brand", searches = [], moving = [], suggesti
 	const [submitting, setSubmitting] = useState(false);
 	const searchLeft = billing.searchCreditsRemaining;
 	const searchLimit = billing.searchCreditsLimit;
-	const recent = useMemo(() => searchList.slice(0, 4), [searchList]);
+	const subjectSuggestions = useMemo(() => suggestions.slice(0, 5), [suggestions]);
 	const runSearch = (e) => {
 		e.preventDefault();
 		const q = subject.trim().replace(/\s+/g, " ");
@@ -3370,20 +3370,20 @@ function SearchListScreen({ kind = "brand", searches = [], moving = [], suggesti
 					/* @__PURE__ */ jsxs("div", {
 						className: "bhero__r",
 						children: [
-							recent.length > 0 && /* @__PURE__ */ jsx("span", {
+							subjectSuggestions.length > 0 && /* @__PURE__ */ jsx("span", {
 								className: "bhero__rl",
-								children: "Recent"
+								children: "Try searching this"
 							}),
-							recent.map((s) => /* @__PURE__ */ jsxs("button", {
+							subjectSuggestions.map((suggestion) => /* @__PURE__ */ jsxs("button", {
 								type: "button",
 								className: "rchip",
-								onClick: () => setSubject(s.phrase || s.name),
+								onClick: () => setSubject(suggestion.name || ""),
 								children: [
 									/* @__PURE__ */ jsx(Refresh, { className: "h-[13px] w-[13px]" }),
 									" ",
-									s.name
+									suggestion.name
 								]
-							}, s.id)),
+							}, suggestion.name)),
 							searchLimit > 0 && /* @__PURE__ */ jsxs("span", {
 								className: "bhero__q",
 								children: [
@@ -4049,12 +4049,24 @@ var TYPES = [
 		]
 	}
 ];
-function SearchLauncher({ initialType = "brand", initialQuery = "", onSubmit }) {
+function SearchLauncher({ initialType = "brand", initialQuery = "", onSubmit, suggestionsByType = {} }) {
 	const [type, setType] = useState(initialType);
 	const [value, setValue] = useState(initialQuery);
+	const [promptStep, setPromptStep] = useState(0);
 	const inputRef = useRef(null);
-	const config = TYPES.find((t) => t.key === type) ?? TYPES[0];
+	const config = {
+		...TYPES.find((t) => t.key === type) ?? TYPES[0],
+		dynamicSuggestions: suggestionsByType?.[type] ?? []
+	};
 	const query = value.trim().replace(/\s+/g, " ");
+	const dynamicSuggestions = (config.dynamicSuggestions ?? []).slice(0, 5);
+	const subjectSuggestions = dynamicSuggestions.length > 0 ? dynamicSuggestions : config.suggestions;
+	const animatedPrompt = promptStep === 0 ? "What do you want to search?" : config.key === "product" ? "What product do you want to research?" : "What brand do you want to research?";
+	useEffect(() => {
+		setPromptStep(0);
+		const timer = window.setTimeout(() => setPromptStep(1), 1400);
+		return () => window.clearTimeout(timer);
+	}, [config.key]);
 	const submit = (event) => {
 		event.preventDefault();
 		if (!query) return;
@@ -4094,59 +4106,71 @@ function SearchLauncher({ initialType = "brand", initialQuery = "", onSubmit }) 
 			/* @__PURE__ */ jsxs("form", {
 				className: "sbox",
 				onSubmit: submit,
-				children: [/* @__PURE__ */ jsx("textarea", {
-					ref: inputRef,
-					rows: 2,
-					maxLength: 80,
-					value,
-					onChange: (e) => setValue(e.target.value),
-					placeholder: config.placeholder,
-					"aria-label": "Search subject",
-					style: {
-						border: "0",
-						outline: "none",
-						boxShadow: "none",
-						borderRadius: 0,
-						background: "transparent",
-						appearance: "none",
-						WebkitAppearance: "none"
-					}
-				}), /* @__PURE__ */ jsxs("div", {
-					className: "sbox__f",
-					children: [/* @__PURE__ */ jsxs("p", {
-						className: "sbox__t",
-						children: [
-							"Try",
-							" ",
-							/* @__PURE__ */ jsxs("button", {
-								type: "button",
-								className: "sbox__try",
-								onClick: useSample,
-								children: [
-									"“",
-									config.sample,
-									"”"
-								]
-							}),
-							/* @__PURE__ */ jsx("br", {}),
-							"One subject per search keeps each result tight."
-						]
-					}), /* @__PURE__ */ jsxs("button", {
-						type: "submit",
-						disabled: !query,
-						className: "btn btn--y",
-						children: ["Continue ", /* @__PURE__ */ jsx(Arrow, {})]
-					})]
-				})]
+				children: [
+					/* @__PURE__ */ jsx("div", {
+						className: `sbox__prompt sbox__prompt--${promptStep}`,
+						"aria-live": "polite",
+						children: animatedPrompt
+					}),
+					/* @__PURE__ */ jsx("textarea", {
+						ref: inputRef,
+						rows: 2,
+						maxLength: 80,
+						value,
+						onChange: (e) => setValue(e.target.value),
+						placeholder: config.placeholder,
+						"aria-label": "Search subject",
+						style: {
+							border: "0",
+							outline: "none",
+							boxShadow: "none",
+							borderRadius: 0,
+							background: "transparent",
+							appearance: "none",
+							WebkitAppearance: "none"
+						}
+					}),
+					/* @__PURE__ */ jsxs("div", {
+						className: "sbox__f",
+						children: [/* @__PURE__ */ jsxs("p", {
+							className: "sbox__t",
+							children: [
+								"Try",
+								" ",
+								/* @__PURE__ */ jsxs("button", {
+									type: "button",
+									className: "sbox__try",
+									onClick: useSample,
+									children: [
+										"“",
+										config.sample,
+										"”"
+									]
+								}),
+								/* @__PURE__ */ jsx("br", {}),
+								"One subject per search keeps each result tight."
+							]
+						}), /* @__PURE__ */ jsxs("button", {
+							type: "submit",
+							disabled: !query,
+							className: "btn btn--y",
+							children: ["Continue ", /* @__PURE__ */ jsx(Arrow, {})]
+						})]
+					})
+				]
 			}),
-			config.suggestions.length > 0 && /* @__PURE__ */ jsx("div", {
+			subjectSuggestions.length > 0 && /* @__PURE__ */ jsx("div", {
 				className: "subj-sugg",
-				children: config.suggestions.map((s) => /* @__PURE__ */ jsxs("button", {
-					type: "button",
-					className: "rchip",
-					onClick: () => setValue(s),
-					children: [/* @__PURE__ */ jsx(Refresh, { className: "h-[13px] w-[13px]" }), s]
-				}, s))
+				children: subjectSuggestions.map((suggestion) => {
+					const label = typeof suggestion === "string" ? suggestion : suggestion?.name;
+					if (!label) return null;
+					return /* @__PURE__ */ jsxs("button", {
+						type: "button",
+						className: "rchip",
+						onClick: () => setValue(label),
+						children: [/* @__PURE__ */ jsx(Refresh, { className: "h-[13px] w-[13px]" }), label]
+					}, label);
+				})
 			})
 		]
 	});
@@ -5045,7 +5069,7 @@ function clearPendingSearch() {
 	if (typeof window === "undefined") return;
 	window.sessionStorage.removeItem(PENDING_SEARCH_KEY);
 }
-function SearchWizard({ initialType = "brand", initialQuery = "", heading = "Start a search", subheading = "Pick one brand, competitor, or product — we widen it with smarter keywords on the next step.", subjectExtra = null }) {
+function SearchWizard({ initialType = "brand", initialQuery = "", heading = "Start a search", subheading = "Pick one brand, competitor, or product — we widen it with smarter keywords on the next step.", subjectExtra = null, suggestionsByType = {} }) {
 	const { auth = {}, billing = {} } = usePage().props;
 	const resumeId = readRunParam();
 	const [step, setStep] = useState(resumeId ? "running" : initialQuery ? "keywords" : "subject");
@@ -5194,7 +5218,8 @@ function SearchWizard({ initialType = "brand", initialQuery = "", heading = "Sta
 				step === "subject" && /* @__PURE__ */ jsx(SearchLauncher, {
 					initialType: type,
 					initialQuery: phrase,
-					onSubmit: pickSubject
+					onSubmit: pickSubject,
+					suggestionsByType
 				}),
 				step === "keywords" && phrase && /* @__PURE__ */ jsx(KeywordsScreen, {
 					phrase,
@@ -5242,6 +5267,29 @@ function SearchWizard({ initialType = "brand", initialQuery = "", heading = "Sta
 //#region resources/js/Pages/Dashboard.jsx
 var Dashboard_exports = /* @__PURE__ */ __exportAll({ default: () => Dashboard });
 var POLL_MS = 1e4;
+var RECENT_LIMIT = 3;
+function mergeRecentSearches(serverRecent = [], trackedEntries = []) {
+	const trackedMap = new Map(trackedEntries.filter((entry) => entry?.id).map((entry) => [String(entry.id), {
+		id: entry.id,
+		name: entry.name ?? "New search",
+		phrase: entry.name ?? "New search",
+		search_type: entry.search_type ?? "brand",
+		frequency: entry.frequency ?? "weekly",
+		status: entry.status ?? "scraping",
+		url: entry.url ?? `/bookmark/${entry.id}`,
+		result_count: entry.result_count ?? 0,
+		last_run_at: entry.last_run_at ?? null,
+		is_watchlisted: entry.is_watchlisted ?? false
+	}]));
+	serverRecent.forEach((search) => {
+		if (!search?.id) return;
+		trackedMap.set(String(search.id), {
+			...trackedMap.get(String(search.id)),
+			...search
+		});
+	});
+	return Array.from(trackedMap.values()).slice(0, RECENT_LIMIT);
+}
 /** "Pick up where you left off" — the three most recent saved searches. */
 function RecentCard({ searches }) {
 	if (!searches?.length) return null;
@@ -5268,8 +5316,35 @@ function RecentCard({ searches }) {
 	});
 }
 function Dashboard() {
-	const { flash = {}, recent = [] } = usePage().props;
+	const { flash = {}, recent = [], searchSuggestions = {} } = usePage().props;
 	const [readyModal, setReadyModal] = useState(null);
+	const [recentSearches, setRecentSearches] = useState(() => mergeRecentSearches(recent, readTracked()));
+	useEffect(() => {
+		setRecentSearches(mergeRecentSearches(recent, readTracked()));
+	}, [recent]);
+	useEffect(() => {
+		const tracked = readTracked().filter((entry) => entry?.id).slice(0, 10);
+		if (tracked.length === 0) {
+			setRecentSearches((current) => current.length > 0 ? current : []);
+			return;
+		}
+		let cancelled = false;
+		const hydrateRecent = async () => {
+			try {
+				const payload = await fetchNotifications(tracked.map((entry) => entry.id));
+				if (cancelled) return;
+				const liveSearches = payload?.searches ?? [];
+				setRecentSearches(mergeRecentSearches(liveSearches, tracked));
+			} catch {
+				if (cancelled) return;
+				setRecentSearches(mergeRecentSearches(recent, tracked));
+			}
+		};
+		hydrateRecent();
+		return () => {
+			cancelled = true;
+		};
+	}, [recent]);
 	useEffect(() => {
 		if (readyModal) return void 0;
 		let cancelled = false;
@@ -5286,6 +5361,7 @@ function Dashboard() {
 						name: done.name,
 						url: done.url
 					});
+					if (!cancelled) setRecentSearches((current) => mergeRecentSearches([done, ...current.filter((search) => String(search.id) !== String(done.id))], readTracked()));
 					if (!cancelled) setReadyModal(done);
 					return;
 				}
@@ -5318,7 +5394,10 @@ function Dashboard() {
 					fontSize: ".85rem"
 				},
 				children: flash.status
-			}), /* @__PURE__ */ jsx(SearchWizard, { subjectExtra: /* @__PURE__ */ jsx(RecentCard, { searches: recent }) })]
+			}), /* @__PURE__ */ jsx(SearchWizard, {
+				subjectExtra: /* @__PURE__ */ jsx(RecentCard, { searches: recentSearches }),
+				suggestionsByType: searchSuggestions
+			})]
 		}),
 		readyModal && /* @__PURE__ */ jsx("div", {
 			className: "bb",
@@ -9839,7 +9918,7 @@ function PerformanceChart({ trend, runs = [], frequency = "weekly" }) {
 * brand-level OpenAI lookup, while avatar and follower count only render when
 * the matched videos happened to include that same account.
 */
-function TrackerHead({ search, account, lastRun, nextRun, onExportPdf, onToggleWatchlist, onShare, onTogglePause, onDelete, copied, watchlistUpdating }) {
+function TrackerHead({ search, account, lastRun, nextRun, onEditDetails, onToggleWatchlist, onTogglePause, onDelete, watchlistUpdating }) {
 	const initial = (search?.name ?? "?").slice(0, 1).toUpperCase();
 	const paused = search?.status === "paused";
 	const [menuOpen, setMenuOpen] = useState(false);
@@ -9864,6 +9943,10 @@ function TrackerHead({ search, account, lastRun, nextRun, onExportPdf, onToggleW
 	const openDelete = () => {
 		setMenuOpen(false);
 		setConfirm("delete");
+	};
+	const openEdit = () => {
+		setMenuOpen(false);
+		onEditDetails?.();
 	};
 	const runConfirm = () => {
 		const action = confirm;
@@ -9920,62 +10003,54 @@ function TrackerHead({ search, account, lastRun, nextRun, onExportPdf, onToggleW
 			}),
 			/* @__PURE__ */ jsxs("div", {
 				className: "head-actions",
-				children: [
-					onExportPdf && /* @__PURE__ */ jsx("button", {
-						className: "tbtn",
-						onClick: onExportPdf,
-						title: "Export PDF",
-						"aria-label": "Export PDF",
-						children: "Export PDF"
-					}),
-					onToggleWatchlist && /* @__PURE__ */ jsx("button", {
-						className: `tbtn tbtn-ic${search?.is_watchlisted ? " is-saved" : ""}`,
-						onClick: onToggleWatchlist,
-						disabled: watchlistUpdating,
-						"aria-pressed": Boolean(search?.is_watchlisted),
-						title: search?.is_watchlisted ? "Bookmarked" : "Add bookmark",
-						"aria-label": search?.is_watchlisted ? "Bookmarked" : "Add bookmark",
-						children: /* @__PURE__ */ jsx(Bookmark, {
-							className: "h-4 w-4",
-							filled: Boolean(search?.is_watchlisted)
-						})
-					}),
-					/* @__PURE__ */ jsx("button", {
+				children: [onToggleWatchlist && /* @__PURE__ */ jsx("button", {
+					className: `tbtn tbtn-ic${search?.is_watchlisted ? " is-saved" : ""}`,
+					onClick: onToggleWatchlist,
+					disabled: watchlistUpdating,
+					"aria-pressed": Boolean(search?.is_watchlisted),
+					title: search?.is_watchlisted ? "Bookmarked" : "Add bookmark",
+					"aria-label": search?.is_watchlisted ? "Bookmarked" : "Add bookmark",
+					children: /* @__PURE__ */ jsx(Bookmark, {
+						className: "h-4 w-4",
+						filled: Boolean(search?.is_watchlisted)
+					})
+				}), (onTogglePause || onDelete) && /* @__PURE__ */ jsxs("span", {
+					className: "tk-menu",
+					ref: menuRef,
+					children: [/* @__PURE__ */ jsx("button", {
 						className: "tbtn tbtn-ic",
-						onClick: onShare,
-						title: copied ? "Link copied" : "Share",
-						"aria-label": copied ? "Link copied" : "Share",
-						children: copied ? /* @__PURE__ */ jsx(Check, { className: "h-4 w-4" }) : /* @__PURE__ */ jsx(Share, { className: "h-4 w-4" })
-					}),
-					(onTogglePause || onDelete) && /* @__PURE__ */ jsxs("span", {
-						className: "tk-menu",
-						ref: menuRef,
-						children: [/* @__PURE__ */ jsx("button", {
-							className: "tbtn tbtn-ic",
-							onClick: () => setMenuOpen((open) => !open),
-							"aria-haspopup": "menu",
-							"aria-expanded": menuOpen,
-							title: "More actions",
-							"aria-label": "More actions",
-							children: /* @__PURE__ */ jsx(Dots, { className: "h-4 w-4" })
-						}), menuOpen && /* @__PURE__ */ jsxs("div", {
-							className: "menu",
-							role: "menu",
-							children: [onTogglePause && /* @__PURE__ */ jsx("button", {
+						onClick: () => setMenuOpen((open) => !open),
+						"aria-haspopup": "menu",
+						"aria-expanded": menuOpen,
+						title: "More actions",
+						"aria-label": "More actions",
+						children: /* @__PURE__ */ jsx(Dots, { className: "h-4 w-4" })
+					}), menuOpen && /* @__PURE__ */ jsxs("div", {
+						className: "menu",
+						role: "menu",
+						children: [
+							onEditDetails && /* @__PURE__ */ jsx("button", {
+								type: "button",
+								role: "menuitem",
+								onClick: openEdit,
+								children: "Edit keyword details"
+							}),
+							onTogglePause && /* @__PURE__ */ jsx("button", {
 								type: "button",
 								role: "menuitem",
 								onClick: openPause,
 								children: paused ? "Resume Tracking" : "Pause Tracking"
-							}), onDelete && /* @__PURE__ */ jsx("button", {
+							}),
+							onDelete && /* @__PURE__ */ jsx("button", {
 								type: "button",
 								role: "menuitem",
 								className: "danger",
 								onClick: openDelete,
 								children: "Delete Tracking"
-							})]
-						})]
-					})
-				]
+							})
+						]
+					})]
+				})]
 			})
 		]
 	}) }), confirm && typeof document !== "undefined" && createPortal(/* @__PURE__ */ jsx("div", {
@@ -10262,10 +10337,9 @@ function BookmarkConfirmModal({ video, creditsRemainingAfterUse = 0, busy = fals
 		})
 	});
 }
-function DetailScreen({ search, isAuthenticated = false, billing = null, onExportPdf, onToggleBookmark, onRefresh, onTogglePause, onDelete, refreshing = false, bookmarkUpdating = false }) {
+function DetailScreen({ search, isAuthenticated = false, billing = null, onSearchUpdated, onToggleBookmark, onRefresh, onTogglePause, onDelete, refreshing = false, bookmarkUpdating = false }) {
 	const [outlierSort, setOutlierSort] = useState("outlier");
 	const [visible, setVisible] = useState(PAGE_STEP);
-	const [copied, setCopied] = useState(false);
 	const [bookmarkingId, setBookmarkingId] = useState(null);
 	const [items, setItems] = useState(search?.results ?? []);
 	const [activePlayerId, setActivePlayerId] = useState(null);
@@ -10273,6 +10347,14 @@ function DetailScreen({ search, isAuthenticated = false, billing = null, onExpor
 	const [analysisModal, setAnalysisModal] = useState(null);
 	const [pendingAnalysisVideo, setPendingAnalysisVideo] = useState(null);
 	const [pendingBookmarkVideo, setPendingBookmarkVideo] = useState(null);
+	const [settingsOpen, setSettingsOpen] = useState(false);
+	const [settingsSubmitting, setSettingsSubmitting] = useState(false);
+	const [settingsForm, setSettingsForm] = useState({
+		name: "",
+		frequency: "weekly",
+		tiktokHandle: "",
+		website: ""
+	});
 	const sharedBilling = usePage().props?.billing ?? {};
 	const billingState = billing ?? sharedBilling;
 	const [videoBookmarkUsed, setVideoBookmarkUsed] = useState(() => numericUsageValue(billingState?.videoBookmarkCount, 0));
@@ -10349,16 +10431,17 @@ function DetailScreen({ search, isAuthenticated = false, billing = null, onExpor
 			label: "avg eng rate"
 		}
 	];
-	const share = async () => {
-		try {
-			await navigator.clipboard.writeText(window.location.href);
-			setCopied(true);
-			window.setTimeout(() => setCopied(false), 2e3);
-		} catch {}
-	};
 	useEffect(() => {
 		setItems(search?.results ?? []);
 		setAnalysisStates(buildAnalysisStates(search?.results ?? []));
+	}, [search]);
+	useEffect(() => {
+		setSettingsForm({
+			name: search?.name ?? "",
+			frequency: search?.frequency ?? "weekly",
+			tiktokHandle: search?.source_tiktok_handle ?? "",
+			website: search?.source_website ?? ""
+		});
 	}, [search]);
 	useEffect(() => {
 		setVisible(PAGE_STEP);
@@ -10495,6 +10578,29 @@ function DetailScreen({ search, isAuthenticated = false, billing = null, onExpor
 		};
 	}, [analysisStates]);
 	const closeAnalysisModal = () => setAnalysisModal(null);
+	const openSettingsModal = () => setSettingsOpen(true);
+	const closeSettingsModal = () => {
+		if (settingsSubmitting) return;
+		setSettingsOpen(false);
+	};
+	const submitSettings = async () => {
+		if (!search?.id) return;
+		setSettingsSubmitting(true);
+		try {
+			const { search: updated } = await savedSearch.update(search.id, {
+				name: settingsForm.name.trim(),
+				frequency: settingsForm.frequency,
+				sources: {
+					tiktokHandle: settingsForm.tiktokHandle.trim(),
+					website: settingsForm.website.trim()
+				}
+			});
+			onSearchUpdated?.(updated);
+			setSettingsOpen(false);
+		} finally {
+			setSettingsSubmitting(false);
+		}
+	};
 	const handleModalAnalysisChange = (videoId, analysis) => {
 		if (!videoId || !analysis) return;
 		applyAnalysisUpdate(videoId, analysis);
@@ -10515,12 +10621,10 @@ function DetailScreen({ search, isAuthenticated = false, billing = null, onExpor
 				account,
 				lastRun: formatDate$1(search?.last_run_at),
 				nextRun: formatDate$1(search?.next_run_at),
-				onExportPdf,
+				onEditDetails: openSettingsModal,
 				onToggleWatchlist: onToggleBookmark,
-				onShare: share,
 				onTogglePause,
 				onDelete,
-				copied,
 				watchlistUpdating: bookmarkUpdating
 			}),
 			/* @__PURE__ */ jsx(AiSummary, {
@@ -10723,6 +10827,157 @@ function DetailScreen({ search, isAuthenticated = false, billing = null, onExpor
 					await commitBookmark(video, "save");
 				},
 				onCancel: () => setPendingBookmarkVideo(null)
+			}),
+			settingsOpen && /* @__PURE__ */ jsx("div", {
+				className: "bb",
+				children: /* @__PURE__ */ jsxs("div", {
+					className: "bb-modal",
+					children: [/* @__PURE__ */ jsx("button", {
+						className: "bb-modal__bg",
+						"aria-label": "Close",
+						onClick: closeSettingsModal
+					}), /* @__PURE__ */ jsxs("div", {
+						className: "bb-modal__box",
+						children: [
+							/* @__PURE__ */ jsx("h2", { children: "Edit keyword details" }),
+							/* @__PURE__ */ jsx("p", {
+								className: "sub",
+								children: "Update the label and refresh schedule. The keyword set is fixed for this search."
+							}),
+							/* @__PURE__ */ jsxs("div", {
+								style: { marginTop: 20 },
+								children: [/* @__PURE__ */ jsx("p", {
+									className: "sect__n",
+									children: "Keyword set"
+								}), /* @__PURE__ */ jsx("div", {
+									className: "chips",
+									children: (search?.keywords ?? []).map((keyword) => /* @__PURE__ */ jsx("span", {
+										className: "chip",
+										children: keyword
+									}, keyword))
+								})]
+							}),
+							/* @__PURE__ */ jsxs("div", {
+								style: { marginTop: 20 },
+								children: [/* @__PURE__ */ jsx("label", {
+									className: "lbl",
+									children: "Label"
+								}), /* @__PURE__ */ jsx("input", {
+									className: "fld",
+									value: settingsForm.name,
+									onChange: (event) => setSettingsForm((current) => ({
+										...current,
+										name: event.target.value
+									})),
+									maxLength: 80
+								})]
+							}),
+							/* @__PURE__ */ jsxs("div", {
+								style: { marginTop: 20 },
+								children: [/* @__PURE__ */ jsx("label", {
+									className: "lbl",
+									children: "Schedule"
+								}), /* @__PURE__ */ jsx("div", {
+									style: {
+										display: "flex",
+										gap: 8
+									},
+									children: ["weekly", "monthly"].map((frequency) => /* @__PURE__ */ jsx("button", {
+										type: "button",
+										className: `btn ${settingsForm.frequency === frequency ? "btn--y" : "btn--g"} btn--w`,
+										onClick: () => setSettingsForm((current) => ({
+											...current,
+											frequency
+										})),
+										children: frequency === "weekly" ? "Weekly" : "Monthly"
+									}, frequency))
+								})]
+							}),
+							/* @__PURE__ */ jsxs("div", {
+								style: { marginTop: 20 },
+								children: [/* @__PURE__ */ jsx("label", {
+									className: "lbl",
+									children: "TikTok handle"
+								}), /* @__PURE__ */ jsxs("div", {
+									style: { position: "relative" },
+									children: [/* @__PURE__ */ jsx("span", {
+										style: {
+											position: "absolute",
+											left: 14,
+											top: "50%",
+											transform: "translateY(-50%)",
+											color: "var(--muted)",
+											pointerEvents: "none"
+										},
+										children: "@"
+									}), /* @__PURE__ */ jsx("input", {
+										className: "fld",
+										style: { paddingLeft: 28 },
+										value: settingsForm.tiktokHandle,
+										onChange: (event) => setSettingsForm((current) => ({
+											...current,
+											tiktokHandle: event.target.value.replace(/^@/, "")
+										})),
+										maxLength: 120,
+										placeholder: "rhode",
+										"aria-label": "TikTok handle"
+									})]
+								})]
+							}),
+							/* @__PURE__ */ jsxs("div", {
+								style: { marginTop: 20 },
+								children: [/* @__PURE__ */ jsx("label", {
+									className: "lbl",
+									children: "Website"
+								}), /* @__PURE__ */ jsxs("div", {
+									style: { position: "relative" },
+									children: [/* @__PURE__ */ jsx("span", {
+										style: {
+											position: "absolute",
+											left: 14,
+											top: "50%",
+											transform: "translateY(-50%)",
+											color: "var(--muted)",
+											pointerEvents: "none"
+										},
+										children: "https://"
+									}), /* @__PURE__ */ jsx("input", {
+										className: "fld",
+										style: { paddingLeft: 72 },
+										value: settingsForm.website,
+										onChange: (event) => setSettingsForm((current) => ({
+											...current,
+											website: event.target.value
+										})),
+										maxLength: 255,
+										placeholder: "rhodeskin.com",
+										"aria-label": "Website"
+									})]
+								})]
+							}),
+							/* @__PURE__ */ jsxs("div", {
+								className: "actrow__r",
+								style: {
+									marginTop: 24,
+									justifyContent: "flex-end"
+								},
+								children: [/* @__PURE__ */ jsx("button", {
+									type: "button",
+									className: "btn btn--g",
+									onClick: closeSettingsModal,
+									disabled: settingsSubmitting,
+									children: "Cancel"
+								}), /* @__PURE__ */ jsx("button", {
+									type: "button",
+									className: "btn btn--y",
+									onClick: submitSettings,
+									disabled: settingsSubmitting,
+									children: settingsSubmitting ? "Saving…" : "Save changes"
+								})]
+							})
+						]
+					})]
+				})
 			})
 		]
 	});
@@ -10853,10 +11108,11 @@ function Show$1({ search: initial, isAuthenticated = false, billing }) {
 			setBookmarkingSearch(false);
 		}
 	};
-	const exportPdf = () => {
-		if (!search?.export_pdf_url) return;
-		const separator = search.export_pdf_url.includes("?") ? "&" : "?";
-		window.open(`${search.export_pdf_url}${separator}print=1`, "_blank", "noopener,noreferrer");
+	const patchSearch = (patch) => {
+		setSearch((prev) => ({
+			...prev,
+			...patch
+		}));
 	};
 	return /* @__PURE__ */ jsxs(Fragment, { children: [
 		/* @__PURE__ */ jsx(Head, { title: `${search.name} · Brand Beacon` }),
@@ -10869,7 +11125,7 @@ function Show$1({ search: initial, isAuthenticated = false, billing }) {
 				refreshing,
 				bookmarkUpdating: bookmarkingSearch,
 				onRefresh: refresh,
-				onExportPdf: exportPdf,
+				onSearchUpdated: patchSearch,
 				onToggleBookmark: toggleBookmark,
 				onTogglePause: togglePause,
 				onDelete: remove

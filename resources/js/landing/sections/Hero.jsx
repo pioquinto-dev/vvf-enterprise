@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 
-import { Arrow, Google, Search, Store, Target, Trend } from '../components/Icons.jsx';
+import { Arrow, Search, Store, Target, Trend } from '../components/Icons.jsx';
 import CountUp from '../components/CountUp.jsx';
 import { STATS } from '../data/dummy.js';
 
@@ -14,11 +14,62 @@ export default function Hero({ onStart }) {
   const [type, setType] = useState('brand');
   const [value, setValue] = useState('');
   const [ghost, setGhost] = useState('');
+  const [typedPrompt, setTypedPrompt] = useState('');
   const inputRef = useRef(null);
 
   const mode = MODES.find((m) => m.key === type) ?? MODES[0];
   const query = value.trim().replace(/\s+/g, ' ');
   const showGhost = value === '';
+  const promptLoop = ['What do you want to search?', mode.prompt];
+  const animatedPrompt = typedPrompt || promptLoop[0];
+
+  useEffect(() => {
+    let promptIndex = 0;
+    let charIndex = 0;
+    let deleting = false;
+    let timer;
+    let cancelled = false;
+
+    const tick = () => {
+      if (cancelled) return;
+
+      const currentPrompt = promptLoop[promptIndex];
+
+      if (!deleting) {
+        charIndex += 1;
+        setTypedPrompt(currentPrompt.slice(0, charIndex));
+
+        if (charIndex >= currentPrompt.length) {
+          timer = window.setTimeout(() => {
+            deleting = true;
+            tick();
+          }, 1400);
+          return;
+        }
+
+        timer = window.setTimeout(tick, 42);
+        return;
+      }
+
+      charIndex -= 1;
+      setTypedPrompt(currentPrompt.slice(0, Math.max(charIndex, 0)));
+
+      if (charIndex <= 0) {
+        deleting = false;
+        promptIndex = (promptIndex + 1) % promptLoop.length;
+      }
+
+      timer = window.setTimeout(tick, 26);
+    };
+
+    setTypedPrompt('');
+    timer = window.setTimeout(tick, 180);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [mode.prompt]);
 
   // Typewriter for the placeholder sample, looping while the field is empty.
   useEffect(() => {
@@ -85,7 +136,8 @@ export default function Hero({ onStart }) {
         </div>
 
         <label className="box__label" htmlFor="search-subject">
-          {mode.prompt}
+          <span>{animatedPrompt}</span>
+          <span className="caret" aria-hidden />
         </label>
 
         <form className="box" onSubmit={submit}>
@@ -104,7 +156,7 @@ export default function Hero({ onStart }) {
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && !e.shiftKey) submit(e);
               }}
-              aria-label={mode.prompt}
+              aria-label={animatedPrompt}
             />
           </div>
 
@@ -130,13 +182,6 @@ export default function Hero({ onStart }) {
         </form>
 
         <div className="hero__ctas">
-          <a href="/auth/google" className="btn btn--ghost btn--lg">
-            <span className="gicon">
-              <Google />
-            </span>
-            Get started free
-            <Arrow className="btn__arrow h-[15px] w-[15px]" />
-          </a>
           <a href="#how" className="btn btn--ghost btn--lg">
             See how it works
           </a>

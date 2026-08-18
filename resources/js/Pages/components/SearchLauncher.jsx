@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { router } from '@inertiajs/react';
 
 import { Arrow, Search, Store, Target, Refresh } from '../../landing/components/Icons.jsx';
@@ -39,6 +39,7 @@ const TYPES = [
 export default function SearchLauncher({ initialType = 'brand', initialQuery = '', onSubmit, suggestionsByType = {} }) {
     const [type, setType] = useState(initialType);
     const [value, setValue] = useState(initialQuery);
+    const [typedPrompt, setTypedPrompt] = useState('');
     const inputRef = useRef(null);
 
     const baseConfig = TYPES.find((t) => t.key === type) ?? TYPES[0];
@@ -49,6 +50,61 @@ export default function SearchLauncher({ initialType = 'brand', initialQuery = '
     const query = value.trim().replace(/\s+/g, ' ');
     const dynamicSuggestions = (config.dynamicSuggestions ?? []).slice(0, 5);
     const subjectSuggestions = dynamicSuggestions.length > 0 ? dynamicSuggestions : config.suggestions;
+    const promptLoop = [
+        'What do you want to search?',
+        config.key === 'product'
+            ? 'What product do you want to research?'
+            : 'What brand do you want to research?',
+    ];
+    const animatedPrompt = typedPrompt || promptLoop[0];
+
+    useEffect(() => {
+        let promptIndex = 0;
+        let charIndex = 0;
+        let deleting = false;
+        let timer;
+        let cancelled = false;
+
+        const tick = () => {
+            if (cancelled) return;
+
+            const currentPrompt = promptLoop[promptIndex];
+
+            if (!deleting) {
+                charIndex += 1;
+                setTypedPrompt(currentPrompt.slice(0, charIndex));
+
+                if (charIndex >= currentPrompt.length) {
+                    timer = window.setTimeout(() => {
+                        deleting = true;
+                        tick();
+                    }, 1400);
+                    return;
+                }
+
+                timer = window.setTimeout(tick, 42);
+                return;
+            }
+
+            charIndex -= 1;
+            setTypedPrompt(currentPrompt.slice(0, Math.max(charIndex, 0)));
+
+            if (charIndex <= 0) {
+                deleting = false;
+                promptIndex = (promptIndex + 1) % promptLoop.length;
+            }
+
+            timer = window.setTimeout(tick, 26);
+        };
+
+        setTypedPrompt('');
+        timer = window.setTimeout(tick, 180);
+
+        return () => {
+            cancelled = true;
+            window.clearTimeout(timer);
+        };
+    }, [config.key]);
 
     const submit = (event) => {
         event.preventDefault();
@@ -88,15 +144,21 @@ export default function SearchLauncher({ initialType = 'brand', initialQuery = '
                 })}
             </div>
 
+            <label className="sbox__label" htmlFor="dashboard-search-subject">
+                <span>{animatedPrompt}</span>
+                <span className="caret" aria-hidden />
+            </label>
+
             <form className="sbox" onSubmit={submit}>
                 <textarea
                     ref={inputRef}
+                    id="dashboard-search-subject"
                     rows={2}
                     maxLength={80}
                     value={value}
                     onChange={(e) => setValue(e.target.value)}
-                    placeholder={config.placeholder}
-                    aria-label="Search subject"
+                    placeholder=""
+                    aria-label={animatedPrompt}
                     style={{
                         border: '0',
                         outline: 'none',
