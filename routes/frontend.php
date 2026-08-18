@@ -8,8 +8,9 @@ use App\Http\Controllers\SavedSearchController;
 Route::middleware('auth')->group(function (): void {
     Route::get('/dashboard', [SavedSearchController::class, 'dashboard'])->name('dashboard');
 
-    Route::redirect('/saved-searches', '/bookmark', 301);
-    Route::get('/bookmark', [SavedSearchController::class, 'index'])->name('bookmark.index');
+    Route::redirect('/saved-searches', '/bookmarks', 301);
+    Route::redirect('/bookmark', '/bookmarks', 301);
+    Route::get('/bookmarks', [SavedSearchController::class, 'index'])->name('bookmark.index');
     Route::get('/brands', [SavedSearchController::class, 'brands'])->name('brands.index');
     Route::get('/products', [SavedSearchController::class, 'products'])->name('products.index');
     Route::get('/settings/account', [SettingsController::class, 'account'])->name('settings.account');
@@ -26,6 +27,10 @@ Route::middleware('auth')->group(function (): void {
 Route::get('/results/{search}', [SavedSearchController::class, 'show'])->name('results.show');
 
 // Legacy numeric detail links redirect to the canonical /results/{public_id}.
+Route::get('/bookmarks/{id}', [SavedSearchController::class, 'showLegacyRedirect'])
+    ->whereNumber('id')
+    ->name('bookmark.show');
+
 Route::get('/bookmark/{id}', [SavedSearchController::class, 'showLegacyRedirect'])
     ->whereNumber('id')
     ->name('bookmark.show');

@@ -11,8 +11,8 @@ export default function Running({ searchId }) {
             <AppLayout width="max-w-4xl">
                 <RunningScreen
                     searchId={searchId}
-                    onBack={() => router.visit('/bookmark')}
-                    onDone={() => router.visit(`/bookmark/${searchId}`)}
+                    onBack={() => router.visit('/bookmarks')}
+                    onDone={() => router.visit(`/bookmarks/${searchId}`)}
                     onAutoReturn={() => router.visit('/dashboard')}
                 />
             </AppLayout>

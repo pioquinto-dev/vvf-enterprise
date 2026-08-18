@@ -528,8 +528,8 @@ export default function DetailScreen({
   return (
     <div className="tracker">
       <div className="viewbar">
-        <a href="/bookmark" className="tbtn">
-          ← Back to library
+        <a href="/bookmarks" className="tbtn">
+          ← Back to bookmarks
         </a>
         <EntitlementsBar />
       </div>

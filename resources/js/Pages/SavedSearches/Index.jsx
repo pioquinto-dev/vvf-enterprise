@@ -72,7 +72,7 @@ export default function Index({
   const [submitting, setSubmitting] = useState(false);
   const menuRef = useRef(null);
 
-  const title = filterType ? FILTER_LABELS[filterType] ?? 'Library' : 'Library';
+  const title = filterType ? FILTER_LABELS[filterType] ?? 'Bookmarks' : 'Bookmarks';
   const searchHref = `/search?type=${filterType === 'competitor' ? 'competitor' : 'brand'}`;
 
   /* close the row menu on outside click / escape */
@@ -330,7 +330,7 @@ export default function Index({
                 <h2>{searches.length === 0 ? 'Nothing saved yet' : 'No searches matched'}</h2>
                 <p className="muted" style={{ maxWidth: 360, margin: '10px auto 0' }}>
                   {searches.length === 0
-                    ? 'Run a search, then bookmark it to keep it here.'
+                    ? 'Run a search, then bookmark it to keep it here in Bookmarks.'
                     : 'Try a different keyword, status, type, or sort combination.'}
                 </p>
                 <Link href={searchHref} className="btn btn--y" style={{ margin: '22px auto 0' }}>

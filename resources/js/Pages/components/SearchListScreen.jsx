@@ -359,7 +359,7 @@ export default function SearchListScreen({ kind = 'brand', searches = [], moving
               <BrandCard
                 key={s.id}
                 search={s}
-                onOpen={() => router.visit(s.url ?? `/bookmark/${s.id}`)}
+                onOpen={() => router.visit(s.url ?? `/bookmarks/${s.id}`)}
                 onEdit={() => openEdit(s)}
               />
             ))}

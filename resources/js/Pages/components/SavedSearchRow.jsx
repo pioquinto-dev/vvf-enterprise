@@ -35,7 +35,7 @@ function formatDate(iso) {
  * One saved-search row (the mockup's `.row`), wired to a presenter summary.
  *
  * - Dashboard "Recent" uses it as a plain Link with static bookmark/dots.
- * - Library passes `onNavigate` (making the row a div button so buttons can
+ * - Bookmarks passes `onNavigate` (making the row a div button so buttons can
  *   nest cleanly) and an `actions` node with the live bookmark toggle + menu.
  */
 export default function SavedSearchRow({ search, onNavigate, actions }) {
@@ -95,7 +95,7 @@ export default function SavedSearchRow({ search, onNavigate, actions }) {
   }
 
   return (
-    <Link className="row" href={search.url ?? `/bookmark/${search.id}`}>
+    <Link className="row" href={search.url ?? `/bookmarks/${search.id}`}>
       {inner}
     </Link>
   );

@@ -21,8 +21,8 @@ const PILL_CLASS = {
  * a later batch and will repoint the last two entries.
  */
 const NAV = [
-    { label: 'Dashboard', href: '/dashboard', icon: Spark, match: '/dashboard' },
-    { label: 'Library', href: '/bookmark', icon: Library, match: '/bookmark' },
+    { label: 'Search', href: '/dashboard', icon: Spark, match: '/dashboard' },
+    { label: 'Bookmarks', href: '/bookmarks', icon: Library, match: '/bookmarks' },
     { label: 'Brand searches', href: '/brands', icon: Store, match: '/brands' },
     { label: 'Product searches', href: '/products', icon: Search, match: '/products' },
 ];

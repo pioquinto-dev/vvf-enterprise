@@ -5,7 +5,7 @@ import SettingsShell from './SettingsShell.jsx';
 
 const TOGGLES = [
   { key: 'disable_animations', title: 'Reduce motion', desc: 'Stop marquees and looping animations across the app.', on: false },
-  { key: 'compact_rows', title: 'Compact rows', desc: 'Tighter spacing in Library and results lists.', on: false },
+  { key: 'compact_rows', title: 'Compact rows', desc: 'Tighter spacing in Bookmarks and results lists.', on: false },
   { key: 'autoplay_previews', title: 'Autoplay previews', desc: 'Play video previews on hover in the results grid.', on: true },
 ];
 

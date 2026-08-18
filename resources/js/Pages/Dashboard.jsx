@@ -23,7 +23,7 @@ function mergeRecentSearches(serverRecent = [], trackedEntries = []) {
           search_type: entry.search_type ?? 'brand',
           frequency: entry.frequency ?? 'weekly',
           status: entry.status ?? 'scraping',
-          url: entry.url ?? `/bookmark/${entry.id}`,
+          url: entry.url ?? `/bookmarks/${entry.id}`,
           result_count: entry.result_count ?? 0,
           last_run_at: entry.last_run_at ?? null,
           is_watchlisted: entry.is_watchlisted ?? false,
@@ -51,7 +51,7 @@ function RecentCard({ searches }) {
             <p className="sect__n">Recent</p>
             <h2>Pick up where you left off</h2>
           </div>
-          <Link href="/bookmark" className="btn btn--g btn--sm">
+          <Link href="/bookmarks" className="btn btn--g btn--sm">
             View all <Arrow />
           </Link>
         </div>

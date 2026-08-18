@@ -147,7 +147,7 @@ class SavedSearchController extends Controller
     }
 
     /**
-     * GET /bookmark — the saved list.
+     * GET /bookmarks — the saved list.
      */
     public function index(Request $request): Response
     {
@@ -161,7 +161,7 @@ class SavedSearchController extends Controller
             ->map(fn (CustomKeywordSearch $search): array => SavedSearchPresenter::summary($search))
             ->all();
 
-        // The Library's "Bookmarked videos" tab lives in the same default view.
+        // The Bookmarks "Bookmarked videos" tab lives in the same default view.
         $videoIds = $bookmarkedOnly ? $this->bookmarks->idsForUser($request->user()) : [];
         $bookmarkedVideos = $videoIds === []
             ? []
@@ -438,7 +438,7 @@ class SavedSearchController extends Controller
         ]);
     }
 
-    /** Old /bookmark/{id} links redirect to the canonical /results/{public_id}. */
+    /** Old /bookmarks/{id} and /bookmark/{id} links redirect to the canonical /results/{public_id}. */
     public function showLegacyRedirect(Request $request, int $id): RedirectResponse
     {
         return redirect($this->searches->resolve($request, $id)->url());
@@ -527,7 +527,7 @@ class SavedSearchController extends Controller
             return response()->json(['deleted' => true]);
         }
 
-        return redirect('/bookmark');
+        return redirect('/bookmarks');
     }
 
     public function bookmark(Request $request, int $id): JsonResponse
