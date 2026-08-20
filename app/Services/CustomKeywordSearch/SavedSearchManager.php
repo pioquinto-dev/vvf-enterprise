@@ -2,11 +2,12 @@
 
 namespace App\Services\CustomKeywordSearch;
 
-use App\Models\User;
-use App\Services\Billing\BillingService;
 use App\Jobs\RunCustomKeywordSearch;
 use App\Models\CustomKeywordSearch;
 use App\Models\CustomKeywordSearchRun;
+use App\Models\User;
+use App\Services\Admin\UserActivityService;
+use App\Services\Billing\BillingService;
 use Closure;
 use Illuminate\Validation\ValidationException;
 
@@ -20,6 +21,7 @@ class SavedSearchManager
         private readonly KeywordNormalizer $normalizer,
         private readonly SearchRunProcessor $processor,
         private readonly BillingService $billing,
+        private readonly UserActivityService $activity,
     ) {}
 
     /**
@@ -94,6 +96,7 @@ class SavedSearchManager
                 }
 
                 $this->queueRun($existing, $user !== null);
+                $this->recordSearch($user, $existing);
             }
 
             return $existing->refresh();
@@ -122,6 +125,7 @@ class SavedSearchManager
         }
 
         $this->queueRun($search, $user !== null);
+        $this->recordSearch($user, $search);
 
         return $search;
     }
@@ -193,8 +197,7 @@ class SavedSearchManager
         ?string $frequency,
         ?string $sourceTikTokHandle = null,
         ?string $sourceWebsite = null,
-    ): CustomKeywordSearch
-    {
+    ): CustomKeywordSearch {
         $changes = [];
 
         if ($name !== null) {
@@ -245,12 +248,22 @@ class SavedSearchManager
         }
 
         $search->update(['is_watchlisted' => $bookmarked]);
+        if ($bookmarked && $search->user !== null) {
+            $this->activity->record($search->user, 'engagement', 'search_bookmarked', 'Bookmarked a search.', ['search_id' => $search->id]);
+        }
 
         if ($search->user !== null) {
             $this->billing->syncSubscriptionUsage($search->user);
         }
 
         return $search->refresh();
+    }
+
+    private function recordSearch(?User $user, CustomKeywordSearch $search): void
+    {
+        if ($user !== null) {
+            $this->activity->record($user, 'engagement', 'search_triggered', sprintf('Triggered a %s search with keyword %s.', $search->search_type, $search->phrase), ['search_id' => $search->id, 'type' => $search->search_type, 'keyword' => $search->phrase]);
+        }
     }
 
     /**

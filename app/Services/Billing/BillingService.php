@@ -5,10 +5,11 @@ namespace App\Services\Billing;
 use App\Models\PricingPlan;
 use App\Models\Subscription;
 use App\Models\User;
+use App\Services\Admin\UserActivityService;
 use App\Services\Brevo\BrevoLifecycleEmailService;
+use App\Services\Stripe\StripeClient;
 use App\Services\Utm\UtmAttributionService;
 use App\Support\AppEventLogger;
-use App\Services\Stripe\StripeClient;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
@@ -20,6 +21,7 @@ class BillingService
         private readonly BillingEntitlementService $entitlements,
         private readonly BrevoLifecycleEmailService $emails,
         private readonly UtmAttributionService $utmAttributionService,
+        private readonly ?UserActivityService $activity = null,
     ) {}
 
     public function checkout(User $user, PricingPlan $plan, bool $withTrial = false): string
@@ -57,6 +59,7 @@ class BillingService
             'stripe_customer_id' => $customerId,
             'stripe_checkout_session_id' => (string) ($session->id ?? ''),
         ]);
+        $this->activity?->record($user, 'engagement', 'checkout_initiated', "Initiated checkout for {$plan->name}.", ['plan' => $plan->slug], 'checkout:'.(string) ($session->id ?? ''));
 
         return $session->url;
     }
@@ -122,6 +125,7 @@ class BillingService
         ]);
 
         $this->utmAttributionService->createSubscriptionAttribution($user, $subscriptionId);
+        $this->activity?->record($user, $status === 'trialing' ? 'regular_trial' : 'paid', $status === 'trialing' ? 'trial_started' : 'subscription_paid', $status === 'trialing' ? "Started a trial on {$plan->name}." : "Started a paid subscription on {$plan->name}.", ['plan' => $plan->slug], 'subscription:'.$sessionId.':'.$status);
 
         if (! in_array((string) ($existingSubscription?->status ?? ''), ['active', 'trialing', 'trial'], true)) {
             $this->emails->sendSubscriptionStarted($user, $subscription);

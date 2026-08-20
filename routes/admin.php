@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Admin\AdminActivityController;
 use App\Http\Controllers\Admin\AdminDashboardController;
 use App\Http\Controllers\Admin\AdminImpersonationController;
 use App\Http\Controllers\Admin\AdminRecordController;
@@ -27,6 +28,7 @@ Route::prefix('x/admin')
 
             Route::get('/', AdminDashboardController::class)->name('dashboard');
             Route::post('/dashboard/refresh', [AdminDashboardController::class, 'refresh'])->name('dashboard.refresh');
+            Route::get('/activity', [AdminActivityController::class, 'index'])->name('activity.index');
 
             /*
              * Row actions for every listing. Resource is constrained to the

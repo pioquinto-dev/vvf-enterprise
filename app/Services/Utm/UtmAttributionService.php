@@ -10,6 +10,8 @@ class UtmAttributionService
 {
     private const SESSION_KEY = 'utm_params';
 
+    private const REFERRER_SESSION_KEY = 'utm_referrer_source';
+
     /**
      * @return array<string, string>
      */
@@ -23,14 +25,17 @@ class UtmAttributionService
     public function createSignupAttribution(User $user, Request $request): ?UtmAttribution
     {
         $params = $this->sessionParams($request);
+        $referrerSource = $request->session()->get(self::REFERRER_SESSION_KEY);
+        $utmSource = strtolower(trim((string) ($params['utm_source'] ?? '')));
+        $source = $utmSource === '' || $utmSource === 'organic' ? $referrerSource : $utmSource;
 
-        if ($params === []) {
+        if ($params === [] && blank($referrerSource)) {
             return null;
         }
 
         return UtmAttribution::query()->create([
             'user_id' => $user->id,
-            'utm_source' => $params['utm_source'] ?? null,
+            'utm_source' => $source,
             'utm_medium' => $params['utm_medium'] ?? null,
             'utm_campaign' => $params['utm_campaign'] ?? null,
             'utm_content' => $params['utm_content'] ?? null,

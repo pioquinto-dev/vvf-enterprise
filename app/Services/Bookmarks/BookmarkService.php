@@ -5,11 +5,12 @@ namespace App\Services\Bookmarks;
 use App\Models\User;
 use App\Models\VideoBookmark;
 use App\Models\ViralVideo;
+use App\Services\Admin\UserActivityService;
 use App\Services\Billing\BillingEntitlementService;
 
 class BookmarkService
 {
-    public function __construct(private readonly BillingEntitlementService $billing) {}
+    public function __construct(private readonly BillingEntitlementService $billing, private readonly UserActivityService $activity) {}
 
     /**
      * @return array<int, int>
@@ -46,6 +47,7 @@ class BookmarkService
         ]);
 
         $this->billing->consumeVideoBookmark($user);
+        $this->activity->record($user, 'engagement', 'video_bookmarked', 'Bookmarked a video.', ['video_id' => $video->id]);
 
         return true;
     }

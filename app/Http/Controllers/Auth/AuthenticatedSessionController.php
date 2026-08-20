@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Auth;
 use App\Models\PricingPlan;
 use App\Models\User;
 use App\Services\Admin\AdminImpersonationService;
+use App\Services\Admin\UserActivityService;
 use App\Services\Auth\PostAuthenticationRedirector;
 use App\Services\Billing\BillingService;
 use App\Support\TrialCheckoutIntent;
@@ -23,6 +24,7 @@ class AuthenticatedSessionController extends Controller
         private readonly PostAuthenticationRedirector $redirector,
         private readonly BillingService $billing,
         private readonly AdminImpersonationService $impersonation,
+        private readonly UserActivityService $activity,
     ) {}
 
     public function create(Request $request): Response
@@ -56,6 +58,9 @@ class AuthenticatedSessionController extends Controller
         }
 
         $request->session()->regenerate();
+        if ($user = $request->user()) {
+            $this->activity->record($user, 'engagement', 'logged_in', 'Logged in.');
+        }
 
         if ($checkout = $this->checkoutRedirect($request)) {
             return Inertia::location($checkout);

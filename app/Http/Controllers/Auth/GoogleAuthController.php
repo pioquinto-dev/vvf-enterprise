@@ -3,8 +3,10 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Models\User;
-use App\Services\Brevo\BrevoLifecycleEmailService;
+use App\Services\Admin\UserActivityService;
 use App\Services\Auth\PostAuthenticationRedirector;
+use App\Services\Brevo\BrevoLifecycleEmailService;
+use Carbon\CarbonImmutable;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -13,7 +15,6 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 use Laravel\Socialite\Facades\Socialite;
-use Carbon\CarbonImmutable;
 use Throwable;
 
 class GoogleAuthController extends Controller
@@ -21,6 +22,7 @@ class GoogleAuthController extends Controller
     public function __construct(
         private readonly PostAuthenticationRedirector $redirector,
         private readonly BrevoLifecycleEmailService $emails,
+        private readonly UserActivityService $activity,
     ) {}
 
     public function redirect(Request $request): RedirectResponse
@@ -58,6 +60,7 @@ class GoogleAuthController extends Controller
             ]);
         }
 
+        $created = ! $user;
         if (! $user) {
             $user = User::create([
                 'name' => trim((string) ($googleUser->getName() ?: $googleUser->getNickname() ?: Str::before($email, '@'))),
@@ -78,6 +81,10 @@ class GoogleAuthController extends Controller
         }
 
         Auth::login($user, remember: true);
+        if ($created) {
+            $this->activity->record($user, 'sign_up', 'account_created', 'Created account.');
+        }
+        $this->activity->record($user, 'engagement', 'logged_in', 'Logged in.');
         $request->session()->regenerate();
 
         return redirect()->intended($this->redirector->destination($request));

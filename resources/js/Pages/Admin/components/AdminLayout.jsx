@@ -14,6 +14,13 @@ const NAV_GROUPS = [
                 description: 'Growth and usage',
                 icon: 'DA',
             },
+            {
+                key: 'activity',
+                label: 'Activity Log',
+                href: '/x/admin/activity',
+                description: 'User activity',
+                icon: 'AL',
+            },
         ],
     },
     {

@@ -2,13 +2,15 @@
 
 namespace App\Http\Controllers\Auth;
 
-use App\Models\User;
 use App\Models\PricingPlan;
-use App\Services\Brevo\BrevoLifecycleEmailService;
+use App\Models\User;
+use App\Services\Admin\UserActivityService;
+use App\Services\Auth\PostAuthenticationRedirector;
 use App\Services\Billing\BillingService;
+use App\Services\Brevo\BrevoLifecycleEmailService;
 use App\Services\Utm\UtmAttributionService;
 use App\Support\TrialCheckoutIntent;
-use App\Services\Auth\PostAuthenticationRedirector;
+use Carbon\CarbonImmutable;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -17,9 +19,8 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rules;
 use Inertia\Inertia;
-use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
 use Inertia\Response;
-use Carbon\CarbonImmutable;
+use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
 
 class RegisteredUserController extends Controller
 {
@@ -28,6 +29,7 @@ class RegisteredUserController extends Controller
         private readonly BillingService $billing,
         private readonly BrevoLifecycleEmailService $emails,
         private readonly UtmAttributionService $utmAttributionService,
+        private readonly UserActivityService $activity,
     ) {}
 
     public function create(Request $request): Response
@@ -59,6 +61,8 @@ class RegisteredUserController extends Controller
         $this->emails->sendNewRegistration($user);
         $this->emails->sendVerifyEmail($user);
         Auth::login($user);
+        $this->activity->record($user, 'sign_up', 'account_created', 'Created account.');
+        $this->activity->record($user, 'engagement', 'logged_in', 'Logged in.');
 
         $request->session()->regenerate();
 

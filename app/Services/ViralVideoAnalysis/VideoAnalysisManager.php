@@ -8,6 +8,9 @@ use App\Models\User;
 use App\Models\VideoAnalysis;
 use App\Models\VideoPreparation;
 use App\Models\ViralVideo;
+use App\Services\Admin\UserActivityService;
+use App\Services\Billing\BillingService;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -16,8 +19,9 @@ class VideoAnalysisManager
     private const STALE_ERROR = 'This analysis took longer than expected and got stuck. Please try again.';
 
     public function __construct(
-        private readonly \App\Services\Billing\BillingService $billing,
+        private readonly BillingService $billing,
         private readonly CreativeStrategistGenerator $strategist,
+        private readonly UserActivityService $activity,
     ) {}
 
     public function request(User $user, ViralVideo $video, bool $forceRefresh = false): VideoAnalysis
@@ -55,6 +59,7 @@ class VideoAnalysisManager
                 'status' => VideoAnalysis::STATUS_PROCESSING,
                 'error_message' => null,
             ])->save();
+            $this->activity->record($user, 'engagement', 'video_analysis_triggered', 'Triggered video analysis.', ['video_id' => $video->id]);
 
             // A forced refresh must rebuild the shared diagnostic too (hook
             // reasons, drivers), so it routes back through preparation rather
@@ -180,7 +185,7 @@ class VideoAnalysisManager
         return $analysis->updated_at !== null && $analysis->updated_at->lte($this->staleCutoff());
     }
 
-    private function staleCutoff(): \Illuminate\Support\Carbon
+    private function staleCutoff(): Carbon
     {
         return now()->subMinutes((int) config('viral_video_analysis.processing.stale_after_minutes', 20));
     }

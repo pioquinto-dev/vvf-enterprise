@@ -9,6 +9,8 @@ class AdminDashboardService
     public function __construct(
         private readonly AdminDashboardRepository $dashboard,
         private readonly DashboardSnapshotService $snapshots,
+        private readonly AcquisitionDashboardService $acquisition,
+        private readonly UserActivityService $activity,
     ) {}
 
     /**
@@ -34,6 +36,8 @@ class AdminDashboardService
                 'rangeStart' => $stats['rangeStart'],
                 'rangeEnd' => $stats['rangeEnd'],
             ],
+            'acquisition' => $this->acquisition->payload($days),
+            'activity' => $this->activity->recentPayload(),
         ];
     }
 }

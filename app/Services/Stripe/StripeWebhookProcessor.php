@@ -2,9 +2,10 @@
 
 namespace App\Services\Stripe;
 
-use App\Models\PricingPlan;
+use App\Models\CustomKeywordSearch;
 use App\Models\Subscription;
 use App\Models\User;
+use App\Services\Admin\UserActivityService;
 use App\Services\Billing\BillingService;
 use App\Services\Brevo\BrevoLifecycleEmailService;
 use App\Support\AppEventLogger;
@@ -16,6 +17,7 @@ class StripeWebhookProcessor
     public function __construct(
         private readonly BillingService $billing,
         private readonly BrevoLifecycleEmailService $emails,
+        private readonly ?UserActivityService $activity = null,
     ) {}
 
     public function handle(Event $event): void
@@ -206,7 +208,7 @@ class StripeWebhookProcessor
 
         $searchUsed = $renewed ? 0 : (int) data_get($subscription->metadata, 'subscription.search_limits.used', 0);
         $videoBookmarksUsed = $renewed ? 0 : $this->billing->videoBookmarkCount($user);
-        $searchBookmarksUsed = \App\Models\CustomKeywordSearch::query()
+        $searchBookmarksUsed = CustomKeywordSearch::query()
             ->where('user_id', $user->id)
             ->where('is_watchlisted', true)
             ->count();
@@ -253,6 +255,16 @@ class StripeWebhookProcessor
                 ],
             ],
         ])->save();
+
+        if ($status === 'trialing' && $previousStatus !== 'trialing') {
+            $this->activity?->record($user, 'regular_trial', 'trial_started', "Started a trial on {$plan->name}.", ['plan' => $plan->slug], 'stripe:'.(string) $event->id.':trial');
+        }
+        if (in_array($status, ['active', 'paid'], true) && ! in_array($previousStatus, ['active', 'paid'], true)) {
+            $this->activity?->record($user, 'paid', 'subscription_paid', "Started a paid subscription on {$plan->name}.", ['plan' => $plan->slug], 'stripe:'.(string) $event->id.':paid');
+        }
+        if (in_array($status, ['canceled', 'unpaid', 'incomplete_expired'], true) && ! in_array($previousStatus, ['canceled', 'unpaid', 'incomplete_expired'], true)) {
+            $this->activity?->record($user, 'cancelled', 'subscription_cancelled', 'Subscription was cancelled.', ['plan' => $plan->slug], 'stripe:'.(string) $event->id.':cancelled');
+        }
 
         if ($status === 'active' && $periodEnd !== null) {
             $user->forceFill([

@@ -259,6 +259,9 @@ Defined in `routes/admin.php`, under `/x/admin`.
 - `/x/admin/login`
 - `/x/admin`
 - `/x/admin/dashboard/refresh`
+  - Refreshes the daily operations snapshot. Acquisition attribution is live and does not need a snapshot refresh.
+- `/x/admin/activity`
+  - Full user activity log with server-side date-range, category, event, and pagination controls.
 - `/x/admin/records/{resource}/{id}`
 - `/x/admin/viral-videos`
 - `/x/admin/searches`
@@ -279,6 +282,18 @@ Important:
 
 - The customer session is time-limited and enforced by `ExpireAdminImpersonation` on every web request.
 - The env-backed admin session stays separate so an admin can return safely after the customer session ends.
+
+### UTM acquisition reporting
+
+- `utm_page_visits` records one anonymous public visit per browser session from the feature's deployment onward. A tagged UTM source wins, an untagged external referrer uses its host, and only no-source/no-referrer traffic is reported as `direct`.
+- Sign-ups and card-on-file trial starts use each user's signup attribution (`subscription_id = null`) so subscription-attribution copies are never counted twice.
+- “Trial - no CC” is intentionally displayed as locked until the product supports that flow.
+- The admin conversion funnel uses the same selected range: trialing is measured from trial starts, paid from trial completion or direct paid starts, and churn from cancellations.
+
+### User activity reporting
+
+- `user_activities` is an append-only activity ledger for sign ups, subscriptions, engagement, and account deletion events.
+- The admin dashboard previews the five most recent records. `/x/admin/activity` provides the complete, paginated activity ledger. Activity starts collecting from deployment; it is not backfilled.
 
 ## Core domain concepts
 

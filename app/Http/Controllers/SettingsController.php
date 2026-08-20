@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\PricingPlan;
 use App\Models\Subscription;
+use App\Services\Admin\UserActivityService;
 use App\Services\Billing\BillingEntitlementService;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\RedirectResponse;
@@ -14,11 +15,13 @@ use Inertia\Response;
 class SettingsController extends Controller
 {
     private const ACCOUNT_DELETION_GRACE_DAYS = 30;
+
     private const DEFAULT_NOTIFICATION_PREFERENCES = [
         'search_finished' => true,
         'virality_alerts' => true,
         'weekly_viral_digest' => false,
     ];
+
     private const DEFAULT_APPEARANCE_PREFERENCES = [
         'disable_animations' => false,
         'compact_rows' => false,
@@ -27,6 +30,7 @@ class SettingsController extends Controller
 
     public function __construct(
         private readonly BillingEntitlementService $billing,
+        private readonly UserActivityService $activity,
     ) {}
 
     public function account(Request $request): Response
@@ -74,6 +78,7 @@ class SettingsController extends Controller
             'deletion_requested_at' => CarbonImmutable::now(),
             'deletion_scheduled_for' => $scheduledFor,
         ])->save();
+        $this->activity->record($user, 'engagement', 'account_deletion_requested', 'Requested account deletion.');
 
         return back()->with('status', sprintf(
             'Account deletion scheduled. You can still use your account and cancel this request before %s.',

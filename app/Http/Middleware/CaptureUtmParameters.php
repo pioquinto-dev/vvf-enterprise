@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Services\Utm\UtmPageVisitService;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -18,6 +19,10 @@ class CaptureUtmParameters
         'utm_term',
     ];
 
+    public function __construct(
+        private readonly UtmPageVisitService $visits,
+    ) {}
+
     public function handle(Request $request, Closure $next): Response
     {
         $params = collect(self::PARAMS)
@@ -28,6 +33,12 @@ class CaptureUtmParameters
         if ($params !== []) {
             $request->session()->put(self::SESSION_KEY, $params);
         }
+
+        if (blank($request->session()->get('utm_referrer_source'))) {
+            $request->session()->put('utm_referrer_source', $this->visits->referrerHost($request));
+        }
+
+        $this->visits->record($request, $request->session()->get(self::SESSION_KEY, []));
 
         return $next($request);
     }
