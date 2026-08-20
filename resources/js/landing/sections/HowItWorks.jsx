@@ -1,6 +1,69 @@
 import { Arrow } from '../components/Icons.jsx';
 import { STEPS } from '../data/dummy.js';
 
+function StepMockup({ step }) {
+  const mockup = step.mockup ?? {};
+
+  if (mockup.type === 'search') {
+    return (
+      <div className="step__mock step__mock--search" aria-hidden="true">
+        <div className="step__mockbar">{mockup.label}</div>
+        <div className="step__searchbox">
+          <span>{mockup.lines?.[0]}</span>
+          <i />
+        </div>
+        <div className="step__stack">
+          {mockup.lines?.slice(1).map((line) => (
+            <span key={line}>{line}</span>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (mockup.type === 'keywords') {
+    return (
+      <div className="step__mock step__mock--keywords" aria-hidden="true">
+        <div className="step__mockbar">{mockup.label}</div>
+        <div className="step__chips">
+          {mockup.chips?.map((chip, index) => (
+            <span key={chip} className={index < 2 ? 'is-on' : ''}>{chip}</span>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (mockup.type === 'results') {
+    return (
+      <div className="step__mock step__mock--results" aria-hidden="true">
+        <div className="step__mockbar">{mockup.label}</div>
+        <div className="step__thumbs">
+          <span />
+          <span />
+          <span />
+        </div>
+        <div className="step__metrics">
+          {mockup.stats?.map((stat) => (
+            <b key={stat}>{stat}</b>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="step__mock step__mock--alerts" aria-hidden="true">
+      <div className="step__mockbar">{mockup.label}</div>
+      <div className="step__notice">
+        <strong>{mockup.lines?.[0]}</strong>
+        <span>{mockup.lines?.[1]}</span>
+      </div>
+      <div className="step__pulse" />
+    </div>
+  );
+}
+
 export default function HowItWorks({ onStart }) {
   return (
     <section className="sec--pad" id="how">
@@ -14,6 +77,7 @@ export default function HowItWorks({ onStart }) {
         <div className="steps">
           {STEPS.map((step) => (
             <div className="step" key={step.n}>
+              <StepMockup step={step} />
               <div className="step__n">{step.n}</div>
               <h3>{step.title}</h3>
               <p>{step.body}</p>

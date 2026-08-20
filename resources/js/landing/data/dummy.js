@@ -56,21 +56,41 @@ export const STEPS = [
     n: '01',
     title: 'Name one subject',
     body: 'Your brand, one competitor, or one product. One subject per search keeps every result readable.',
+    mockup: {
+      type: 'search',
+      label: 'Search setup',
+      lines: ['rhode skin', 'competitor', '1 subject only'],
+    },
   },
   {
     n: '02',
     title: 'Widen with keywords',
     body: 'We suggest the terms people actually pair with your subject on TikTok. Tick the ones that fit.',
+    mockup: {
+      type: 'keywords',
+      label: 'Suggested terms',
+      chips: ['review', 'routine', 'dupe', 'viral'],
+    },
   },
   {
     n: '03',
     title: 'Get the viral cut',
     body: 'We scan hundreds of videos and hand back the top performers, ranked by views and outlier score.',
+    mockup: {
+      type: 'results',
+      label: 'Top hits',
+      stats: ['4.2M', '18x', '6 days'],
+    },
   },
   {
     n: '04',
     title: 'Track it weekly',
     body: 'Save the search and Brand Beacon re-runs it on a schedule, emailing you only what is new.',
+    mockup: {
+      type: 'alerts',
+      label: 'Weekly alert',
+      lines: ['3 new outliers found', 'Delivered every Monday'],
+    },
   },
 ];
 
