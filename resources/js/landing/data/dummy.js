@@ -105,49 +105,49 @@ export const TESTIMONIALS = [
   {
     quote:
       'We found the creator driving 40% of our category’s TikTok volume in the first search. She was not on any agency list we had been sent.',
-    name: 'Dana Whitfield',
+    name: 'Maya Ellison',
     role: 'Head of Growth',
-    company: 'Loops Beauty',
+    company: 'North Circle Beauty',
     avatar: '/images/landing/testimonials/dana-whitfield.png',
   },
   {
     quote:
       'Our competitive readout used to be a Friday afternoon of scrolling. Now it lands in Slack on Monday morning and it is more complete.',
-    name: 'Marcus Idowu',
+    name: 'Jordan Pike',
     role: 'Brand Marketing Lead',
-    company: 'Caraway',
+    company: 'Hearth & Pine',
     avatar: '/images/landing/testimonials/marcus-idowu.png',
   },
   {
     quote:
       'The outlier scoring is the part that matters. Big accounts posting mediocre videos are noise. Brand Beacon filters those out by default.',
-    name: 'Priya Raman',
+    name: 'Nina Sethi',
     role: 'Social Director',
-    company: 'Olipop',
+    company: 'Sunset Soda Co.',
     avatar: '/images/landing/testimonials/priya-raman.png',
   },
   {
     quote:
       'We caught a product complaint trending at 200K views before it hit 2M. That alert alone paid for the year.',
-    name: 'Tom Bexley',
+    name: 'Owen Mercer',
     role: 'VP Communications',
-    company: 'Hexclad',
+    company: 'Forge Kitchenware',
     avatar: '/images/landing/testimonials/tom-bexley.png',
   },
   {
     quote:
       'I ran one free search to test it and forwarded the results to my CMO the same afternoon. We were on Scale by the end of the week.',
-    name: 'Sofia Marchetti',
+    name: 'Elena Rossi',
     role: 'Performance Manager',
-    company: 'Vessi',
+    company: 'Aster Footwear',
     avatar: '/images/landing/testimonials/sofia-marchetti.png',
   },
   {
     quote:
       'It works for our niche, which is the thing every other tool failed at. Small category, still found 300 relevant videos.',
-    name: 'Alex Kerrigan',
+    name: 'Rowan Vale',
     role: 'Founder',
-    company: 'Bala',
+    company: 'Forme Studio',
     avatar: '/images/landing/testimonials/alex-kerrigan.png',
   },
 ];
