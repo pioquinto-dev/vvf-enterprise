@@ -266,7 +266,6 @@ export default function DetailScreen({
   const threshold = insights.baseline?.outlier_threshold ?? 3;
   const account = insights.account ?? null;
   const trend = insights.trend ?? null;
-  const profile = account?.profile ?? {};
   const lastPulledLabel = formatInsightDate(search?.last_run_at);
   const videoAnalysisLimit = numericUsageValue(billingState?.videoAnalysisLimit, 0);
   const videoAnalysisUsed = numericUsageValue(billingState?.videoAnalysisUsed, 0);
@@ -302,24 +301,13 @@ export default function DetailScreen({
   const avgScore = multiples.length ? multiples.reduce((a, b) => a + b, 0) / multiples.length : null;
   const trendPoints = trend?.points ?? [];
   const nowPoint = trendPoints[trendPoints.length - 1] ?? null;
+  const completedRuns = (search?.runs ?? []).filter((run) => run.status === 'done');
+  const latestCompletedRun = completedRuns[completedRuns.length - 1] ?? null;
+  const recentlyMatchedVideos = latestCompletedRun?.snapshot?.posts ?? latestCompletedRun?.summary?.attached ?? items.length;
 
   const tiles = [
-    account?.followers > 0
-      ? {
-          key: 'followers',
-          label: 'followers',
-          value: account.followers,
-          format: 'compact',
-          deltaNode:
-            profile.follower_growth_pct != null ? (
-              <div className={`d ${profile.follower_growth_pct >= 0 ? 'up' : 'down'}`}>
-                {profile.follower_growth_pct >= 0 ? '↑' : '↓'} {Math.abs(profile.follower_growth_pct)}% mo
-              </div>
-            ) : (
-              <div className="d" />
-            ),
-        }
-      : { key: 'videos', label: 'videos matched', value: items.length, format: 'count' },
+    { key: 'videos', label: 'videos matched', value: items.length, format: 'count' },
+    { key: 'recently_matched_videos', label: 'videos matched from recent refresh', value: recentlyMatchedVideos, format: 'count' },
     {
       key: 'outliers',
       label: 'outliers this week',
@@ -328,7 +316,6 @@ export default function DetailScreen({
     },
     { ...serverTile('top_multiple'), label: 'top outlier score' },
     { key: 'avg_score', label: 'avg score', value: avgScore, format: 'multiple' },
-    { ...serverTile('avg_engagement'), label: 'avg eng rate' },
   ];
 
   useEffect(() => {
