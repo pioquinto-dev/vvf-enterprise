@@ -42,14 +42,6 @@ export const FEATURES = [
     accent: 'from-[#0f3d5c] to-[#2aa7c4]',
   },
   {
-    id: 'creators',
-    tag: 'Sourcing',
-    title: 'Creator Shortlists',
-    body: 'Every viral video comes attached to a creator. Filter by engagement, posting cadence, and category fit, then export a shortlist your team can actually reach out to.',
-    bullets: ['Engagement + consistency scores', 'CSV export', 'Dedupe against past outreach'],
-    accent: 'from-[#5c1030] to-[#ff3d71]',
-  },
-  {
     id: 'alerts',
     tag: 'Automation',
     title: 'Virality Alerts',
