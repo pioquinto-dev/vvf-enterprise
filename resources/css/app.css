@@ -5100,7 +5100,7 @@
 .bbh .hero h1 .hl { position: relative; white-space: nowrap; z-index: 1; }
 .bbh .hero h1 .hl::after { content: ''; position: absolute; left: -0.03em; right: -0.03em; bottom: 0.06em; height: 0.28em; background: var(--yellow); z-index: -1; }
 .bbh .hero__sub { margin: 24px auto 0; max-width: 60ch; font-size: 1.08rem; line-height: 1.62; color: var(--muted); }
-.bbh .modes { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin: 40px 0 14px; }
+.bbh .modes { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin: 14px 0 14px; }
 /* Unselected options keep a resting pill so they read as selectable — see the
    matching `.bb .mode` rules above; the two toggles share markup. */
 .bbh .mode { display: inline-flex; align-items: center; gap: 8px; height: 38px; padding: 0 16px; border-radius: 100px; border: 1px solid var(--line); background: var(--white); cursor: pointer; color: var(--muted); font-size: 0.88rem; font-weight: 600; box-shadow: 0 1px 0 rgba(255, 255, 255, 0.65); transition: all 0.2s var(--ease); }
@@ -5111,7 +5111,7 @@
 .bbh .mode[disabled] { color: #9c998f; cursor: not-allowed; background: transparent; border-color: transparent; box-shadow: none; }
 
 /* hero search box */
-.bbh .box__label { display: block; cursor: text; max-width: 720px; margin: 0 auto 14px; text-align: left; padding-left: 4px; font-size: 1.02rem; font-weight: 700; letter-spacing: -0.015em; color: var(--ink); min-height: 26px; }
+.bbh .box__label { display: block; cursor: text; max-width: 720px; margin: 18px auto 0; text-align: center; font-size: 1.02rem; font-weight: 700; letter-spacing: -0.015em; color: var(--ink); min-height: 26px; }
 .bbh .box__label,
 .bb .sbox__label {
     position: relative;
