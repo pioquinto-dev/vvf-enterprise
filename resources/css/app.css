@@ -5238,7 +5238,7 @@
 .bbh .tcard__q { font-size: 2.1rem; line-height: 0.5; color: var(--yellow); font-weight: 900; margin-bottom: 18px; }
 .bbh .tcard blockquote { font-size: 0.95rem; line-height: 1.62; flex: 1; color: var(--body); }
 .bbh .tcard figcaption { display: flex; align-items: center; gap: 11px; margin-top: 22px; padding-top: 17px; border-top: 1px solid var(--line); }
-.bbh .tav { width: 36px; height: 36px; border-radius: 50%; background: var(--wash); display: grid; place-items: center; font-size: 0.76rem; font-weight: 800; color: var(--amber-ink); flex: none; }
+.bbh .tav { width: 36px; height: 36px; border-radius: 50%; background: var(--wash); display: block; object-fit: cover; flex: none; }
 .bbh .tn { display: block; font-size: 0.87rem; font-weight: 700; color: var(--ink); line-height: 1.35; }
 .bbh .tr { display: block; font-size: 0.78rem; color: var(--faint); line-height: 1.35; }
 

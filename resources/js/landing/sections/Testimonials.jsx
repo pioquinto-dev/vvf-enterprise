@@ -6,7 +6,7 @@ function Card({ t }) {
       <div className="tcard__q">“</div>
       <blockquote>{t.quote}</blockquote>
       <figcaption>
-        <span className="tav">{t.initials}</span>
+        <img className="tav" src={t.avatar} alt={t.name} loading="lazy" />
         <span>
           <span className="tn">{t.name}</span>
           <span className="tr">
@@ -27,7 +27,6 @@ export default function Testimonials() {
         <div className="head head--c">
           <p className="eyebrow">Customers</p>
           <h2>Why brand teams switch to Brand Beacon</h2>
-          <p>Placeholder quotes for the MVP — swap these for real ones before launch.</p>
         </div>
       </div>
       <div className="trail">

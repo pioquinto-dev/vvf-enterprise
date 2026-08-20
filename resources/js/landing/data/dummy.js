@@ -108,7 +108,7 @@ export const TESTIMONIALS = [
     name: 'Dana Whitfield',
     role: 'Head of Growth',
     company: 'Loops Beauty',
-    initials: 'DW',
+    avatar: '/images/landing/testimonials/dana-whitfield.png',
   },
   {
     quote:
@@ -116,7 +116,7 @@ export const TESTIMONIALS = [
     name: 'Marcus Idowu',
     role: 'Brand Marketing Lead',
     company: 'Caraway',
-    initials: 'MI',
+    avatar: '/images/landing/testimonials/marcus-idowu.png',
   },
   {
     quote:
@@ -124,7 +124,7 @@ export const TESTIMONIALS = [
     name: 'Priya Raman',
     role: 'Social Director',
     company: 'Olipop',
-    initials: 'PR',
+    avatar: '/images/landing/testimonials/priya-raman.png',
   },
   {
     quote:
@@ -132,7 +132,7 @@ export const TESTIMONIALS = [
     name: 'Tom Bexley',
     role: 'VP Communications',
     company: 'Hexclad',
-    initials: 'TB',
+    avatar: '/images/landing/testimonials/tom-bexley.png',
   },
   {
     quote:
@@ -140,7 +140,7 @@ export const TESTIMONIALS = [
     name: 'Sofia Marchetti',
     role: 'Performance Manager',
     company: 'Vessi',
-    initials: 'SM',
+    avatar: '/images/landing/testimonials/sofia-marchetti.png',
   },
   {
     quote:
@@ -148,7 +148,7 @@ export const TESTIMONIALS = [
     name: 'Alex Kerrigan',
     role: 'Founder',
     company: 'Bala',
-    initials: 'AK',
+    avatar: '/images/landing/testimonials/alex-kerrigan.png',
   },
 ];
 
