@@ -33,7 +33,7 @@ class SearchRunProcessor
         private readonly BillingService $billing,
     ) {}
 
-    public function process(CustomKeywordSearchRun $run): void
+    public function process(CustomKeywordSearchRun $run, bool $throwOnFailure = false): void
     {
         $search = $run->search;
 
@@ -65,8 +65,20 @@ class SearchRunProcessor
                 'error' => $e->getMessage(),
             ]);
 
-            $this->failRun($run, $e->getMessage());
-            $this->settleSearchAfterFailure($search);
+            if ($throwOnFailure) {
+                throw $e;
+            }
+
+            $this->markFailed($run, $e->getMessage());
+        }
+    }
+
+    public function markFailed(CustomKeywordSearchRun $run, string $message): void
+    {
+        $this->failRun($run, $message);
+
+        if ($run->search !== null) {
+            $this->settleSearchAfterFailure($run->search);
         }
     }
 
@@ -163,6 +175,7 @@ class SearchRunProcessor
         foreach ($rawItems as $rawItem) {
             if (! is_array($rawItem)) {
                 $invalidItems++;
+
                 continue;
             }
 

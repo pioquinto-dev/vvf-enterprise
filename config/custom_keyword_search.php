@@ -36,7 +36,8 @@ return [
         'candidate_pool' => (int) env('CUSTOM_KEYWORD_SEARCH_EXPANSION_CANDIDATE_POOL', 12),
         'min_relevance' => (float) env('CUSTOM_KEYWORD_SEARCH_EXPANSION_MIN_RELEVANCE', 0.55),
         'cache_seconds' => (int) env('CUSTOM_KEYWORD_SEARCH_EXPANSION_CACHE_SECONDS', 86400),
-        'timeout' => (int) env('CUSTOM_KEYWORD_SEARCH_EXPANSION_TIMEOUT', 20),
+        'timeout' => (int) env('CUSTOM_KEYWORD_SEARCH_EXPANSION_TIMEOUT', 8),
+        'lock_seconds' => (int) env('CUSTOM_KEYWORD_SEARCH_EXPANSION_LOCK_SECONDS', 12),
     ],
 
     'scrape' => [

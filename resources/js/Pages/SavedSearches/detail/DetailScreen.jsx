@@ -151,6 +151,34 @@ function AnalyzeConfirmModal({ video, creditsRemainingAfterUse = 0, busy = false
   );
 }
 
+function AnalysisFailureModal({ onClose }) {
+  return (
+    <div className="fixed inset-0 z-[130] flex items-center justify-center bg-[rgba(38,33,28,0.42)] px-4 py-6 backdrop-blur-[2px]" onClick={onClose}>
+      <div
+        className="w-full max-w-[430px] rounded-[24px] border border-[#d9d1c4] bg-[radial-gradient(circle_at_top,#f7f2e9_0%,#f3efe8_40%,#f1ede6_100%)] p-3 shadow-[0_28px_90px_rgba(42,33,20,0.22)]"
+        onClick={(event) => event.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Video analysis failed"
+      >
+        <div className="rounded-[20px] border border-[#ddd6ca] bg-[#fffdf9] p-5">
+          <h3 className="text-[20px] font-semibold text-[#1a1a1a]">Something went wrong</h3>
+          <p className="mt-2 text-[14px] leading-6 text-[#696257]">Try again or contact support.</p>
+          <div className="mt-5 flex justify-end">
+            <button
+              type="button"
+              onClick={onClose}
+              className="inline-flex items-center justify-center rounded-full border border-[#ddd6ca] bg-white px-4 py-2.5 text-[12px] font-semibold text-[#5f584d] transition hover:bg-[#faf7f1]"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function BookmarkConfirmModal({ video, creditsRemainingAfterUse = 0, busy = false, onConfirm, onCancel }) {
   if (!video) return null;
 
@@ -223,6 +251,7 @@ export default function DetailScreen({
   const [activePlayerId, setActivePlayerId] = useState(null);
   const [analysisStates, setAnalysisStates] = useState(() => buildAnalysisStates(search?.results ?? []));
   const [analysisModal, setAnalysisModal] = useState(null);
+  const [analysisFailure, setAnalysisFailure] = useState(false);
   const [pendingAnalysisVideo, setPendingAnalysisVideo] = useState(null);
   const [pendingBookmarkVideo, setPendingBookmarkVideo] = useState(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -326,6 +355,10 @@ export default function DetailScreen({
 
   const applyAnalysisUpdate = (videoId, payload) => {
     if (!videoId) return;
+
+    if (payload?.status === 'failed') {
+      setAnalysisFailure(true);
+    }
 
     setAnalysisStates((current) => ({
       ...current,
@@ -465,7 +498,7 @@ export default function DetailScreen({
     }
 
     let cancelled = false;
-    const timer = window.setInterval(async () => {
+    const poll = async () => {
       const results = await Promise.all(
         pendingIds.map(async (id) => {
           try {
@@ -483,7 +516,10 @@ export default function DetailScreen({
         if (!analysis) return;
         applyAnalysisUpdate(id, analysis);
       });
-    }, 2500);
+    };
+
+    poll();
+    const timer = window.setInterval(poll, 2500);
 
     return () => {
       cancelled = true;
@@ -707,6 +743,8 @@ export default function DetailScreen({
           onCancel={() => setPendingAnalysisVideo(null)}
         />
       )}
+
+      {analysisFailure && <AnalysisFailureModal onClose={() => setAnalysisFailure(false)} />}
 
       {pendingBookmarkVideo && (
         <BookmarkConfirmModal

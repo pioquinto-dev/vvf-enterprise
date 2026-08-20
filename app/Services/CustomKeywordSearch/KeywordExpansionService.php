@@ -18,7 +18,7 @@ class KeywordExpansionService
     /**
      * @return array{phrase: string, keywords: array<int, string>, source: string}
      */
-    public function expand(string $phrase, bool $fresh = false): array
+    public function expand(string $phrase, bool $fresh = false, bool $allowAi = true): array
     {
         $phrase = $this->normalizer->keyword($phrase);
 
@@ -28,6 +28,15 @@ class KeywordExpansionService
 
         $cacheKey = 'cks:expand:'.sha1(mb_strtolower($phrase));
         $ttl = (int) config('custom_keyword_search.expansion.cache_seconds', 86400);
+        $cached = Cache::get($cacheKey);
+
+        if (! $fresh && is_array($cached)) {
+            return $cached;
+        }
+
+        if (! $allowAi || ! $this->canUseAi()) {
+            return $this->templatePayload($phrase, $cacheKey, $ttl, $cached);
+        }
 
         $resolver = function () use ($phrase): array {
             $suggestions = $this->fromOpenAi($phrase);
@@ -45,15 +54,48 @@ class KeywordExpansionService
             ];
         };
 
-        if ($fresh) {
-            $payload = $resolver();
+        $lockKey = $cacheKey.':lock';
+        $lockSeconds = max(1, (int) config('custom_keyword_search.expansion.lock_seconds', 12));
+        $hasLock = Cache::add($lockKey, true, $lockSeconds);
 
+        if (! $hasLock) {
+            return $this->templatePayload($phrase, $cacheKey, $ttl, $cached);
+        }
+
+        try {
+            $payload = $resolver();
             Cache::put($cacheKey, $payload, $ttl);
 
             return $payload;
+        } finally {
+            Cache::forget($lockKey);
+        }
+    }
+
+    private function canUseAi(): bool
+    {
+        return ! blank(config('services.openai.api_key'));
+    }
+
+    /**
+     * @param  array{phrase: string, keywords: array<int, string>, source: string}|mixed  $cached
+     * @return array{phrase: string, keywords: array<int, string>, source: string}
+     */
+    private function templatePayload(string $phrase, string $cacheKey, int $ttl, mixed $cached = null): array
+    {
+        if (is_array($cached)) {
+            return $cached;
         }
 
-        return Cache::remember($cacheKey, $ttl, $resolver);
+        $payload = [
+            'phrase' => $phrase,
+            'keywords' => $this->normalizer->keywordSet($phrase, $this->fromTemplates($phrase)),
+            'source' => 'fallback',
+        ];
+
+        Cache::put($cacheKey, $payload, $ttl);
+
+        return $payload;
     }
 
     /**
@@ -61,11 +103,11 @@ class KeywordExpansionService
      */
     private function fromOpenAi(string $phrase): array
     {
-        $apiKey = config('services.openai.api_key');
-
-        if (blank($apiKey)) {
+        if (! $this->canUseAi()) {
             return [];
         }
+
+        $apiKey = (string) config('services.openai.api_key');
 
         $wanted = (int) config('custom_keyword_search.expansion.suggestions', 6);
         $candidatePool = max($wanted, (int) config('custom_keyword_search.expansion.candidate_pool', 12));

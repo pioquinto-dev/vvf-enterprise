@@ -1235,7 +1235,7 @@ function statusTone(value) {
 		};
 	}
 }
-function initials$2(value) {
+function initials$1(value) {
 	return String(value).split(/\s+/).slice(0, 2).map((word) => word.charAt(0)).join("").toUpperCase();
 }
 function renderCell(column, row, index) {
@@ -1260,7 +1260,7 @@ function renderCell(column, row, index) {
 		className: "flex items-center gap-2.5",
 		children: [/* @__PURE__ */ jsx("span", {
 			className: "flex h-6 w-6 shrink-0 items-center justify-center rounded bg-[var(--wash)] text-[10px] font-semibold text-[var(--amber-ink)]",
-			children: initials$2(text)
+			children: initials$1(text)
 		}), /* @__PURE__ */ jsx("span", {
 			className: "truncate text-[13px] font-medium text-[var(--ink)]",
 			children: text
@@ -2459,7 +2459,7 @@ function isActive(currentUrl, item) {
 	if (item.exact) return currentUrl === item.exact;
 	return path.startsWith(item.match);
 }
-function initials$1(name, email) {
+function initials(name, email) {
 	return (name || email || "?").trim().slice(0, 1).toUpperCase();
 }
 function Brand({ onNavigate }) {
@@ -2527,7 +2527,7 @@ function AccountBlock({ signedIn, name, email, onSignOut, signingOut, onNavigate
 			className: "acct__l",
 			children: [/* @__PURE__ */ jsx("span", {
 				className: "avat",
-				children: initials$1(name, email)
+				children: initials(name, email)
 			}), /* @__PURE__ */ jsxs("span", {
 				style: {
 					minWidth: 0,
@@ -4695,12 +4695,14 @@ function RunningScreen({ searchId, onBack, onDone, onAutoReturn }) {
 	const [emailSaved, setEmailSaved] = useState(false);
 	const [stage, setStage] = useState(0);
 	const finished = useRef(false);
+	const polling = useRef(false);
 	useEffect(() => {
 		if (!searchId) return void 0;
 		let timer;
 		let cancelled = false;
 		const poll = async () => {
-			if (cancelled || finished.current) return;
+			if (cancelled || finished.current || polling.current) return;
+			polling.current = true;
 			try {
 				const found = (await fetchNotifications([searchId]))?.searches?.[0];
 				if (found) {
@@ -4720,7 +4722,9 @@ function RunningScreen({ searchId, onBack, onDone, onAutoReturn }) {
 						return;
 					}
 				}
-			} catch {}
+			} catch {} finally {
+				polling.current = false;
+			}
 			timer = window.setTimeout(poll, POLL_MS$1);
 		};
 		const onVisibility = () => {
@@ -5353,42 +5357,34 @@ function Dashboard() {
 	const { flash = {}, recent = [], searchSuggestions = {} } = usePage().props;
 	const [readyModal, setReadyModal] = useState(null);
 	const [recentSearches, setRecentSearches] = useState(() => mergeRecentSearches(recent, readTracked()));
+	const polling = useRef(false);
 	useEffect(() => {
 		setRecentSearches(mergeRecentSearches(recent, readTracked()));
-	}, [recent]);
-	useEffect(() => {
-		const tracked = readTracked().filter((entry) => entry?.id).slice(0, 10);
-		if (tracked.length === 0) {
-			setRecentSearches((current) => current.length > 0 ? current : []);
-			return;
-		}
-		let cancelled = false;
-		const hydrateRecent = async () => {
-			try {
-				const payload = await fetchNotifications(tracked.map((entry) => entry.id));
-				if (cancelled) return;
-				const liveSearches = payload?.searches ?? [];
-				setRecentSearches(mergeRecentSearches(liveSearches, tracked));
-			} catch {
-				if (cancelled) return;
-				setRecentSearches(mergeRecentSearches(recent, tracked));
-			}
-		};
-		hydrateRecent();
-		return () => {
-			cancelled = true;
-		};
 	}, [recent]);
 	useEffect(() => {
 		if (readyModal) return void 0;
 		let cancelled = false;
 		let timer;
 		const poll = async () => {
-			if (cancelled) return;
-			const activeTracked = readTracked().filter((entry) => entry?.id && entry.completedPromptShown !== true);
-			if (activeTracked.length === 0) return;
+			if (cancelled || polling.current) return;
+			const tracked = readTracked().filter((entry) => entry?.id).slice(0, 10);
+			if (tracked.length === 0) {
+				setRecentSearches((current) => current.length > 0 ? current : []);
+				return;
+			}
+			polling.current = true;
+			const activeTracked = tracked.filter((entry) => entry.completedPromptShown !== true);
+			if (activeTracked.length === 0) {
+				polling.current = false;
+				setRecentSearches(mergeRecentSearches(recent, tracked));
+				return;
+			}
 			try {
-				const done = ((await fetchNotifications(activeTracked.map((entry) => entry.id)))?.searches ?? []).find((search) => search?.status === "done");
+				const payload = await fetchNotifications(activeTracked.map((entry) => entry.id));
+				if (cancelled) return;
+				const searches = payload?.searches ?? [];
+				setRecentSearches(mergeRecentSearches([...recent, ...searches], tracked));
+				const done = searches.find((search) => search?.status === "done");
 				if (done) {
 					updateTracked(done.id, {
 						completedPromptShown: true,
@@ -5399,7 +5395,12 @@ function Dashboard() {
 					if (!cancelled) setReadyModal(done);
 					return;
 				}
-			} catch {}
+			} catch {
+				if (cancelled) return;
+				setRecentSearches(mergeRecentSearches(recent, tracked));
+			} finally {
+				polling.current = false;
+			}
 			timer = window.setTimeout(poll, POLL_MS);
 		};
 		poll();
@@ -5407,7 +5408,7 @@ function Dashboard() {
 			cancelled = true;
 			window.clearTimeout(timer);
 		};
-	}, [readyModal]);
+	}, [readyModal, recent]);
 	const closeReadyModal = () => setReadyModal(null);
 	const viewResults = () => {
 		if (!readyModal?.url) return closeReadyModal();
@@ -5681,62 +5682,74 @@ var BRANDS = [
 	{
 		name: "Glossier",
 		category: "Beauty",
-		reach: "4.2M"
+		reach: "4.2M",
+		logo: "/landing/brands/glossier.svg"
 	},
 	{
 		name: "GoPure",
 		category: "Skincare",
-		reach: "1.8M"
+		reach: "1.8M",
+		logo: "/landing/brands/gopure.svg"
 	},
 	{
 		name: "Ridge",
 		category: "Accessories",
-		reach: "3.1M"
+		reach: "3.1M",
+		logo: "/landing/brands/ridge.svg"
 	},
 	{
 		name: "Olipop",
 		category: "Beverage",
-		reach: "6.7M"
+		reach: "6.7M",
+		logo: "/landing/brands/olipop.svg"
 	},
 	{
 		name: "Caraway",
 		category: "Home",
-		reach: "2.4M"
+		reach: "2.4M",
+		logo: "/landing/brands/caraway.svg"
 	},
 	{
 		name: "Loops",
 		category: "Skincare",
-		reach: "980K"
+		reach: "980K",
+		logo: "/landing/brands/loops.svg"
 	},
 	{
 		name: "Hexclad",
 		category: "Kitchen",
-		reach: "5.3M"
+		reach: "5.3M",
+		logo: "/landing/brands/hexclad.svg"
 	},
 	{
 		name: "Vessi",
 		category: "Footwear",
-		reach: "1.2M"
+		reach: "1.2M",
+		logo: "/landing/brands/vessi.svg"
 	},
 	{
 		name: "Bala",
 		category: "Fitness",
-		reach: "2.9M"
+		reach: "2.9M",
+		logo: "/landing/brands/bala.svg"
 	},
 	{
 		name: "Mud\\Wtr",
 		category: "Beverage",
-		reach: "3.8M"
+		reach: "3.8M",
+		logo: "/landing/brands/mudwtr.svg"
 	},
 	{
 		name: "Solawave",
 		category: "Beauty Tech",
-		reach: "4.6M"
+		reach: "4.6M",
+		logo: "/landing/brands/solawave.svg"
 	},
 	{
 		name: "Jones Road",
 		category: "Beauty",
-		reach: "7.1M"
+		reach: "7.1M",
+		logo: "/landing/brands/jones-road.svg"
 	}
 ];
 var FEATURES = [
@@ -5765,18 +5778,6 @@ var FEATURES = [
 		accent: "from-[#0f3d5c] to-[#2aa7c4]"
 	},
 	{
-		id: "creators",
-		tag: "Sourcing",
-		title: "Creator Shortlists",
-		body: "Every viral video comes attached to a creator. Filter by engagement, posting cadence, and category fit, then export a shortlist your team can actually reach out to.",
-		bullets: [
-			"Engagement + consistency scores",
-			"CSV export",
-			"Dedupe against past outreach"
-		],
-		accent: "from-[#5c1030] to-[#ff3d71]"
-	},
-	{
 		id: "alerts",
 		tag: "Automation",
 		title: "Virality Alerts",
@@ -5793,22 +5794,55 @@ var STEPS = [
 	{
 		n: "01",
 		title: "Name one subject",
-		body: "Your brand, one competitor, or one product. One subject per search keeps every result readable."
+		body: "Your brand, one competitor, or one product. One subject per search keeps every result readable.",
+		mockup: {
+			type: "search",
+			label: "Search setup",
+			lines: [
+				"rhode skin",
+				"competitor",
+				"1 subject only"
+			]
+		}
 	},
 	{
 		n: "02",
 		title: "Widen with keywords",
-		body: "We suggest the terms people actually pair with your subject on TikTok. Tick the ones that fit."
+		body: "We suggest the terms people actually pair with your subject on TikTok. Tick the ones that fit.",
+		mockup: {
+			type: "keywords",
+			label: "Suggested terms",
+			chips: [
+				"review",
+				"routine",
+				"dupe",
+				"viral"
+			]
+		}
 	},
 	{
 		n: "03",
 		title: "Get the viral cut",
-		body: "We scan hundreds of videos and hand back the top performers, ranked by views and outlier score."
+		body: "We scan hundreds of videos and hand back the top performers, ranked by views and outlier score.",
+		mockup: {
+			type: "results",
+			label: "Top hits",
+			stats: [
+				"4.2M",
+				"18x",
+				"6 days"
+			]
+		}
 	},
 	{
 		n: "04",
 		title: "Track it weekly",
-		body: "Save the search and Brand Beacon re-runs it on a schedule, emailing you only what is new."
+		body: "Save the search and Brand Beacon re-runs it on a schedule, emailing you only what is new.",
+		mockup: {
+			type: "alerts",
+			label: "Weekly alert",
+			lines: ["3 new outliers found", "Delivered every Monday"]
+		}
 	}
 ];
 var STATS = [
@@ -5832,45 +5866,45 @@ var STATS = [
 var TESTIMONIALS = [
 	{
 		quote: "We found the creator driving 40% of our category’s TikTok volume in the first search. She was not on any agency list we had been sent.",
-		name: "Dana Whitfield",
+		name: "Maya Ellison",
 		role: "Head of Growth",
-		company: "Loops Beauty",
-		initials: "DW"
+		company: "North Circle Beauty",
+		avatar: "/images/landing/testimonials/dana-whitfield.png"
 	},
 	{
 		quote: "Our competitive readout used to be a Friday afternoon of scrolling. Now it lands in Slack on Monday morning and it is more complete.",
-		name: "Marcus Idowu",
+		name: "Jordan Pike",
 		role: "Brand Marketing Lead",
-		company: "Caraway",
-		initials: "MI"
+		company: "Hearth & Pine",
+		avatar: "/images/landing/testimonials/marcus-idowu.png"
 	},
 	{
 		quote: "The outlier scoring is the part that matters. Big accounts posting mediocre videos are noise. Brand Beacon filters those out by default.",
-		name: "Priya Raman",
+		name: "Nina Sethi",
 		role: "Social Director",
-		company: "Olipop",
-		initials: "PR"
+		company: "Sunset Soda Co.",
+		avatar: "/images/landing/testimonials/priya-raman.png"
 	},
 	{
 		quote: "We caught a product complaint trending at 200K views before it hit 2M. That alert alone paid for the year.",
-		name: "Tom Bexley",
+		name: "Owen Mercer",
 		role: "VP Communications",
-		company: "Hexclad",
-		initials: "TB"
+		company: "Forge Kitchenware",
+		avatar: "/images/landing/testimonials/tom-bexley.png"
 	},
 	{
 		quote: "I ran one free search to test it and forwarded the results to my CMO the same afternoon. We were on Scale by the end of the week.",
-		name: "Sofia Marchetti",
+		name: "Elena Rossi",
 		role: "Performance Manager",
-		company: "Vessi",
-		initials: "SM"
+		company: "Aster Footwear",
+		avatar: "/images/landing/testimonials/sofia-marchetti.png"
 	},
 	{
 		quote: "It works for our niche, which is the thing every other tool failed at. Small category, still found 300 relevant videos.",
-		name: "Alex Kerrigan",
+		name: "Rowan Vale",
 		role: "Founder",
-		company: "Bala",
-		initials: "AK"
+		company: "Forme Studio",
+		avatar: "/images/landing/testimonials/alex-kerrigan.png"
 	}
 ];
 var PRICING = { monthly: [
@@ -6009,7 +6043,7 @@ function Hero({ onStart }) {
 	const mode = MODES.find((m) => m.key === type) ?? MODES[0];
 	const query = value.trim().replace(/\s+/g, " ");
 	const showGhost = value === "";
-	const promptLoop = ["What do you want to search?", mode.prompt];
+	const promptLoop = ["Pick what you want to search", mode.prompt];
 	const animatedPrompt = typedPrompt || promptLoop[0];
 	useEffect(() => {
 		let promptIndex = 0;
@@ -6097,6 +6131,14 @@ function Hero({ onStart }) {
 					className: "hero__sub",
 					children: "Enter your brand, a competitor or single product; then we will scan TikTok and return the most viral outlier videos, the creators behind them and the reason they went viral"
 				}),
+				/* @__PURE__ */ jsxs("label", {
+					className: "box__label",
+					htmlFor: "search-subject",
+					children: [/* @__PURE__ */ jsx("span", { children: animatedPrompt }), /* @__PURE__ */ jsx("span", {
+						className: "caret",
+						"aria-hidden": true
+					})]
+				}),
 				/* @__PURE__ */ jsx("div", {
 					className: "modes",
 					role: "tablist",
@@ -6108,14 +6150,6 @@ function Hero({ onStart }) {
 						onClick: () => setType(key),
 						children: [/* @__PURE__ */ jsx(Icon, { className: "h-[15px] w-[15px]" }), label]
 					}, key))
-				}),
-				/* @__PURE__ */ jsxs("label", {
-					className: "box__label",
-					htmlFor: "search-subject",
-					children: [/* @__PURE__ */ jsx("span", { children: animatedPrompt }), /* @__PURE__ */ jsx("span", {
-						className: "caret",
-						"aria-hidden": true
-					})]
 				}),
 				/* @__PURE__ */ jsxs("form", {
 					className: "box",
@@ -6197,15 +6231,16 @@ function Hero({ onStart }) {
 }
 //#endregion
 //#region resources/js/landing/sections/BrandMarquee.jsx
-function initials(name) {
-	return name.replace(/[^a-zA-Z0-9 ]/g, " ").split(/\s+/).filter(Boolean).slice(0, 2).map((word) => word[0]).join("").toUpperCase();
-}
 function Chip({ brand }) {
 	return /* @__PURE__ */ jsxs("div", {
 		className: "chip",
 		children: [/* @__PURE__ */ jsx("span", {
 			className: "chip__i",
-			children: initials(brand.name)
+			children: /* @__PURE__ */ jsx("img", {
+				src: brand.logo,
+				alt: `${brand.name} logo`,
+				loading: "lazy"
+			})
 		}), /* @__PURE__ */ jsxs("span", { children: [/* @__PURE__ */ jsx("span", {
 			className: "chip__n",
 			children: brand.name
@@ -6405,6 +6440,78 @@ function Features() {
 }
 //#endregion
 //#region resources/js/landing/sections/HowItWorks.jsx
+function StepMockup({ step }) {
+	const mockup = step.mockup ?? {};
+	if (mockup.type === "search") return /* @__PURE__ */ jsxs("div", {
+		className: "step__mock step__mock--search",
+		"aria-hidden": "true",
+		children: [
+			/* @__PURE__ */ jsx("div", {
+				className: "step__mockbar",
+				children: mockup.label
+			}),
+			/* @__PURE__ */ jsxs("div", {
+				className: "step__searchbox",
+				children: [/* @__PURE__ */ jsx("span", { children: mockup.lines?.[0] }), /* @__PURE__ */ jsx("i", {})]
+			}),
+			/* @__PURE__ */ jsx("div", {
+				className: "step__stack",
+				children: mockup.lines?.slice(1).map((line) => /* @__PURE__ */ jsx("span", { children: line }, line))
+			})
+		]
+	});
+	if (mockup.type === "keywords") return /* @__PURE__ */ jsxs("div", {
+		className: "step__mock step__mock--keywords",
+		"aria-hidden": "true",
+		children: [/* @__PURE__ */ jsx("div", {
+			className: "step__mockbar",
+			children: mockup.label
+		}), /* @__PURE__ */ jsx("div", {
+			className: "step__chips",
+			children: mockup.chips?.map((chip, index) => /* @__PURE__ */ jsx("span", {
+				className: index < 2 ? "is-on" : "",
+				children: chip
+			}, chip))
+		})]
+	});
+	if (mockup.type === "results") return /* @__PURE__ */ jsxs("div", {
+		className: "step__mock step__mock--results",
+		"aria-hidden": "true",
+		children: [
+			/* @__PURE__ */ jsx("div", {
+				className: "step__mockbar",
+				children: mockup.label
+			}),
+			/* @__PURE__ */ jsxs("div", {
+				className: "step__thumbs",
+				children: [
+					/* @__PURE__ */ jsx("span", {}),
+					/* @__PURE__ */ jsx("span", {}),
+					/* @__PURE__ */ jsx("span", {})
+				]
+			}),
+			/* @__PURE__ */ jsx("div", {
+				className: "step__metrics",
+				children: mockup.stats?.map((stat) => /* @__PURE__ */ jsx("b", { children: stat }, stat))
+			})
+		]
+	});
+	return /* @__PURE__ */ jsxs("div", {
+		className: "step__mock step__mock--alerts",
+		"aria-hidden": "true",
+		children: [
+			/* @__PURE__ */ jsx("div", {
+				className: "step__mockbar",
+				children: mockup.label
+			}),
+			/* @__PURE__ */ jsxs("div", {
+				className: "step__notice",
+				children: [/* @__PURE__ */ jsx("strong", { children: mockup.lines?.[0] }), /* @__PURE__ */ jsx("span", { children: mockup.lines?.[1] })]
+			}),
+			/* @__PURE__ */ jsx("div", { className: "step__pulse" })
+		]
+	});
+}
 function HowItWorks({ onStart }) {
 	return /* @__PURE__ */ jsx("section", {
 		className: "sec--pad",
@@ -6428,6 +6535,7 @@ function HowItWorks({ onStart }) {
 					children: STEPS.map((step) => /* @__PURE__ */ jsxs("div", {
 						className: "step",
 						children: [
+							/* @__PURE__ */ jsx(StepMockup, { step }),
 							/* @__PURE__ */ jsx("div", {
 								className: "step__n",
 								children: step.n
@@ -6461,9 +6569,11 @@ function Card({ t }) {
 				children: "“"
 			}),
 			/* @__PURE__ */ jsx("blockquote", { children: t.quote }),
-			/* @__PURE__ */ jsxs("figcaption", { children: [/* @__PURE__ */ jsx("span", {
+			/* @__PURE__ */ jsxs("figcaption", { children: [/* @__PURE__ */ jsx("img", {
 				className: "tav",
-				children: t.initials
+				src: t.avatar,
+				alt: t.name,
+				loading: "lazy"
 			}), /* @__PURE__ */ jsxs("span", { children: [/* @__PURE__ */ jsx("span", {
 				className: "tn",
 				children: t.name
@@ -6487,14 +6597,10 @@ function Testimonials() {
 			className: "wrap",
 			children: /* @__PURE__ */ jsxs("div", {
 				className: "head head--c",
-				children: [
-					/* @__PURE__ */ jsx("p", {
-						className: "eyebrow",
-						children: "Customers"
-					}),
-					/* @__PURE__ */ jsx("h2", { children: "Why brand teams switch to Brand Beacon" }),
-					/* @__PURE__ */ jsx("p", { children: "Placeholder quotes for the MVP — swap these for real ones before launch." })
-				]
+				children: [/* @__PURE__ */ jsx("p", {
+					className: "eyebrow",
+					children: "Customers"
+				}), /* @__PURE__ */ jsx("h2", { children: "Why brand teams switch to Brand Beacon" })]
 			})
 		}), /* @__PURE__ */ jsx("div", {
 			className: "trail",

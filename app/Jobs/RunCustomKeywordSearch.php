@@ -12,11 +12,11 @@ class RunCustomKeywordSearch implements ShouldQueue
 {
     use Queueable;
 
-    /**
-     * One attempt only. The processor already polls Apify to completion, and a
-     * blind retry would start a second paid scrape for the same run.
-     */
-    public int $tries = 1;
+    /** Established searches get the initial attempt plus three retry attempts. */
+    public int $tries = 4;
+
+    /** @var array<int, int> */
+    public array $backoff = [60, 180, 600];
 
     public int $timeout;
 
@@ -41,18 +41,20 @@ class RunCustomKeywordSearch implements ShouldQueue
             return;
         }
 
-        $processor->process($run);
+        // The first run is user-retried from the UI, so it never burns through
+        // automatic attempts. Later refreshes preserve existing results and
+        // retry transient provider failures before becoming terminal.
+        $processor->process($run, $run->search?->videos()->exists() ?? false);
     }
 
     public function failed(\Throwable $e): void
     {
-        CustomKeywordSearchRun::where('id', $this->runId)
-            ->whereIn('status', [CustomKeywordSearchRun::STATUS_QUEUED, CustomKeywordSearchRun::STATUS_RUNNING])
-            ->update([
-                'status' => CustomKeywordSearchRun::STATUS_FAILED,
-                'error_message' => mb_substr($e->getMessage(), 0, 2000),
-                'completed_at' => now(),
-                'updated_at' => now(),
-            ]);
+        $run = CustomKeywordSearchRun::with('search')->find($this->runId);
+
+        if ($run === null || $run->isTerminal()) {
+            return;
+        }
+
+        app(SearchRunProcessor::class)->markFailed($run, $e->getMessage());
     }
 }

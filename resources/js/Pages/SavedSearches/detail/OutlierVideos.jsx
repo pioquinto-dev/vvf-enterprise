@@ -198,7 +198,7 @@ function VideoPlayerShell({ video, activePlayerId, onPlay, onClose, className, d
 function AnalyzeButton({ status = 'idle', small = false, onClick }) {
   const isProcessing = status === 'processing';
   const isComplete = status === 'complete';
-  const label = isProcessing ? 'Analyzing Video.....' : isComplete ? 'View Analysis' : 'Analyze video';
+  const label = isProcessing ? 'Analyzing Video.....' : isComplete ? 'View Analysis' : 'Analyze Video';
 
   return (
     <button

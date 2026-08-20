@@ -67,6 +67,10 @@ export function fetchNotifications(ids) {
   return request(`${API_V1}/saved-searches/notifications?${query}`);
 }
 
+export function fetchRecentSearches() {
+  return request(`${API_V1}/saved-searches/recent`);
+}
+
 export const savedSearch = {
   get: (id) => request(`${API_V1}/saved-searches/${id}/json`),
   bookmark: (id, bookmarked) =>
@@ -75,6 +79,7 @@ export const savedSearch = {
   resume: (id) => request(`${API_V1}/saved-searches/${id}/resume`, { method: 'PATCH' }),
   update: (id, body) => request(`${API_V1}/saved-searches/${id}/frequency`, { method: 'PATCH', body }),
   refresh: (id) => request(`${API_V1}/saved-searches/${id}/refresh`, { method: 'POST' }),
+  retry: (id) => request(`${API_V1}/saved-searches/${id}/retry`, { method: 'POST' }),
   destroy: (id) => request(`${API_V1}/saved-searches/${id}`, { method: 'DELETE' }),
 };
 

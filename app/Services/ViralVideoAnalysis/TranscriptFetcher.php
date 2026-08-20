@@ -5,6 +5,7 @@ namespace App\Services\ViralVideoAnalysis;
 use App\Models\ApifyTrigger;
 use App\Models\ViralVideo;
 use App\Services\Apify\ApifyClient;
+use App\Services\Apify\ApifyConnectionException;
 use App\Support\AppEventLogger;
 use Illuminate\Support\Facades\Log;
 use RuntimeException;
@@ -135,6 +136,14 @@ class TranscriptFetcher
             ]);
 
             return $first;
+        } catch (ApifyConnectionException $e) {
+            $trigger->update([
+                'status' => 'FAILED',
+                'error_message' => $e->getMessage(),
+                'finished_at' => now(),
+            ]);
+
+            throw $e;
         } catch (RuntimeException $e) {
             $trigger->update(['status' => 'FAILED', 'finished_at' => now()]);
 

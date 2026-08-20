@@ -123,9 +123,16 @@ class ApifyClient
 
     private function request(): PendingRequest
     {
+        $proxy = config('services.apify.proxy');
+
         return Http::withToken((string) config('services.apify.token'))
             ->baseUrl($this->baseUrl())
             ->acceptJson()
+            ->withOptions([
+                // Bypass inherited machine-wide proxy env vars unless Apify
+                // is explicitly configured to use one.
+                'proxy' => filled($proxy) ? (string) $proxy : '',
+            ])
             ->timeout((int) env('HTTP_TIMEOUT', 120))
             ->retry((int) env('HTTP_RETRY_TIMES', 3), 500, throw: false);
     }
@@ -144,7 +151,7 @@ class ApifyClient
         } catch (ConnectionException $e) {
             $target = $this->baseUrl();
 
-            throw new RuntimeException(
+            throw new ApifyConnectionException(
                 "Apify connection failed for {$target}{$path}. Check APIFY_BASE_URL, network egress, and whether the upstream endpoint is reachable. Original error: {$e->getMessage()}",
                 previous: $e,
             );

@@ -6,11 +6,14 @@ use App\Jobs\RunVideoAnalysis;
 use App\Models\VideoAnalysis;
 use App\Models\VideoPreparation;
 use App\Models\ViralVideo;
+use App\Services\Apify\ApifyConnectionException;
 use Illuminate\Support\Facades\Log;
 use RuntimeException;
 
 class VideoPreparationProcessor
 {
+    private const APIFY_CONNECTION_FAILURE = 'Something went wrong. Try again or contact support.';
+
     public function __construct(
         private readonly SharedTranscriptStore $sharedTranscripts,
         private readonly VideoSourceRefresher $refresher,
@@ -31,6 +34,14 @@ class VideoPreparationProcessor
 
         try {
             $this->prepare($preparation, $video);
+        } catch (ApifyConnectionException $e) {
+            Log::warning('Video preparation could not reach Apify.', [
+                'viral_video_id' => $video->id,
+                'video_id' => $video->video_id,
+                'error' => $e->getMessage(),
+            ]);
+
+            $this->failPreparation($preparation, self::APIFY_CONNECTION_FAILURE);
         } catch (RuntimeException $e) {
             Log::warning('Video preparation failed.', [
                 'viral_video_id' => $video->id,

@@ -161,6 +161,31 @@ class SavedSearchFlowTest extends TestCase
         Queue::assertPushed(RunCustomKeywordSearch::class);
     }
 
+    public function test_an_initial_failed_search_can_retry_without_using_the_refresh_endpoint(): void
+    {
+        $this->postJson('/saved-searches', [
+            'phrase' => 'rare beauty',
+            'keywords' => ['rare beauty'],
+            'frequency' => 'weekly',
+        ])->assertCreated();
+
+        $search = CustomKeywordSearch::firstOrFail();
+        $search->update(['status' => CustomKeywordSearch::STATUS_FAILED]);
+        $search->runs()->latest('id')->firstOrFail()->update([
+            'status' => CustomKeywordSearchRun::STATUS_FAILED,
+            'completed_at' => now(),
+            'error_message' => 'Apify connection failed.',
+        ]);
+
+        $this->postJson("/saved-searches/{$search->id}/retry")
+            ->assertOk()
+            ->assertJsonPath('search.status', CustomKeywordSearch::STATUS_SCRAPING)
+            ->assertJsonPath('search.can_retry_initial', false);
+
+        $this->assertSame(2, $search->runs()->count());
+        Queue::assertPushed(RunCustomKeywordSearch::class, 2);
+    }
+
     public function test_creating_a_product_search_queues_a_run_without_sources(): void
     {
         $response = $this->postJson('/saved-searches', [

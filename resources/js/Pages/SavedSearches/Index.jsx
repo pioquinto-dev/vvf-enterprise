@@ -6,7 +6,7 @@ import EntitlementsBar from '../components/EntitlementsBar.jsx';
 import SavedSearchRow from '../components/SavedSearchRow.jsx';
 import VideoCard from '../components/VideoCard.jsx';
 import { Arrow, Bookmark, Search, Chevron, Plus, Dots, Play } from '../../landing/components/Icons.jsx';
-import { savedSearch as api } from '../../landing/flow/api.js';
+import { savedSearch as api, untrackSearch } from '../../landing/flow/api.js';
 
 const FILTER_LABELS = {
   'brand-group': 'Brand searches',
@@ -212,6 +212,7 @@ export default function Index({
     setSubmitting(true);
     try {
       await api.destroy(modalState.search.id);
+      untrackSearch(modalState.search.id);
       removeSearch(modalState.search.id);
       closeModal();
     } finally {

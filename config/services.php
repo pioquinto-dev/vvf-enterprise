@@ -30,6 +30,7 @@ return [
 
     'apify' => [
         'base_url' => env('APIFY_BASE_URL', 'https://api.apify.com/v2'),
+        'proxy' => env('APIFY_PROXY'),
         'token' => env('APIFY_TOKEN'),
         'default_actor' => env('APIFY_DEFAULT_ACTOR'),
     ],

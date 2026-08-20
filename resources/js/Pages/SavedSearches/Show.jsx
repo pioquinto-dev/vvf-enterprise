@@ -3,7 +3,7 @@ import { Head, router } from '@inertiajs/react';
 
 import AppLayout from '../components/AppLayout.jsx';
 import DetailScreen from './detail/DetailScreen.jsx';
-import { savedSearch as api } from '../../landing/flow/api.js';
+import { savedSearch as api, untrackSearch } from '../../landing/flow/api.js';
 
 function UsageConfirmModal({ title, body, subject, confirmLabel, busy = false, onConfirm, onCancel }) {
     return (
@@ -96,6 +96,7 @@ export default function Show({ search: initial, isAuthenticated = false, billing
 
     const remove = async () => {
         await api.destroy(search.id);
+        untrackSearch(search.id);
         router.visit('/bookmarks');
     };
 

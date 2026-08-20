@@ -5,8 +5,11 @@ namespace App\Http\Controllers;
 use App\Http\Requests\StoreSavedSearchRequest;
 use App\Http\Resources\SavedSearchPresenter;
 use App\Models\CustomKeywordSearch;
-use App\Services\Bookmarks\BookmarkService;
+use App\Models\CustomKeywordSearchRun;
+use App\Models\CustomKeywordSearchVideo;
+use App\Models\ViralVideo;
 use App\Services\Billing\BillingService;
+use App\Services\Bookmarks\BookmarkService;
 use App\Services\CustomKeywordSearch\GuestSearchQuota;
 use App\Services\CustomKeywordSearch\KeywordExpansionService;
 use App\Services\CustomKeywordSearch\OwnedSearchResolver;
@@ -15,10 +18,12 @@ use App\Support\GuestIdentity;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\RateLimiter;
 use Inertia\Inertia;
 use Inertia\Response;
+
 class SavedSearchController extends Controller
 {
     private const SEARCH_SUGGESTION_TARGET = 5;
@@ -111,6 +116,22 @@ class SavedSearchController extends Controller
         return response()->json(['searches' => $searches]);
     }
 
+    /** @return array<int, array<string, mixed>> */
+    private function recentSearches(Request $request): array
+    {
+        return $this->searches->all($request, null, false)
+            ->take(3)
+            ->map(fn (CustomKeywordSearch $search): array => SavedSearchPresenter::summary($search))
+            ->values()
+            ->all();
+    }
+
+    /** GET /saved-searches/recent — canonical data for the dashboard card. */
+    public function recent(Request $request): JsonResponse
+    {
+        return response()->json(['searches' => $this->recentSearches($request)]);
+    }
+
     /**
      * GET /dashboard — the search launcher plus the few most recent searches
      * for the "Pick up where you left off" card.
@@ -120,7 +141,7 @@ class SavedSearchController extends Controller
         $runId = $request->integer('run');
 
         if ($runId > 0) {
-            $ownedRun = \App\Models\CustomKeywordSearchRun::query()
+            $ownedRun = CustomKeywordSearchRun::query()
                 ->whereKey($runId)
                 ->whereHas('search', fn ($query) => $query->where('user_id', $request->user()->id))
                 ->exists();
@@ -130,14 +151,8 @@ class SavedSearchController extends Controller
             }
         }
 
-        $recent = $this->searches->all($request, null, false)
-            ->take(3)
-            ->map(fn (CustomKeywordSearch $search): array => SavedSearchPresenter::summary($search))
-            ->values()
-            ->all();
-
         return Inertia::render('Dashboard', [
-            'recent' => $recent,
+            'recent' => $this->recentSearches($request),
             'searchSuggestions' => [
                 'brand' => $this->suggestions($this->searches->all($request, [CustomKeywordSearch::TYPE_BRAND], false), [CustomKeywordSearch::TYPE_BRAND]),
                 'competitor' => $this->suggestions($this->searches->all($request, [CustomKeywordSearch::TYPE_COMPETITOR], false), [CustomKeywordSearch::TYPE_COMPETITOR]),
@@ -165,11 +180,11 @@ class SavedSearchController extends Controller
         $videoIds = $bookmarkedOnly ? $this->bookmarks->idsForUser($request->user()) : [];
         $bookmarkedVideos = $videoIds === []
             ? []
-            : \App\Models\ViralVideo::query()
+            : ViralVideo::query()
                 ->visible()
                 ->whereIn('id', $videoIds)
                 ->get()
-                ->map(fn (\App\Models\ViralVideo $video): array => $video->toCardArray())
+                ->map(fn (ViralVideo $video): array => $video->toCardArray())
                 ->all();
 
         return Inertia::render('SavedSearches/Index', [
@@ -238,7 +253,7 @@ class SavedSearchController extends Controller
      * Tiers 1–2 come from real data; tier 3 is an explicit sample fallback for
      * a fresh install with nothing to learn from yet.
      *
-     * @param  \Illuminate\Support\Collection<int, CustomKeywordSearch>  $searches
+     * @param  Collection<int, CustomKeywordSearch>  $searches
      * @param  array<int, string>  $types
      * @return array<int, array<string, mixed>>
      */
@@ -332,7 +347,7 @@ class SavedSearchController extends Controller
         if (count($out) < $target) {
             $expandedBySearch = $searches
                 ->take(5)
-                ->map(fn (CustomKeywordSearch $search): array => array_values((array) ($this->expansion->expand((string) $search->phrase)['keywords'] ?? [])))
+                ->map(fn (CustomKeywordSearch $search): array => array_values((array) ($this->expansion->expand((string) $search->phrase, allowAi: false)['keywords'] ?? [])))
                 ->filter(fn (array $keywords): bool => $keywords !== [])
                 ->values();
 
@@ -388,7 +403,7 @@ class SavedSearchController extends Controller
     /**
      * Top outlier videos across a set of searches, newest-scored first.
      *
-     * @param  \Illuminate\Support\Collection<int, CustomKeywordSearch>  $searches
+     * @param  Collection<int, CustomKeywordSearch>  $searches
      * @return array<int, array<string, mixed>>
      */
     private function movingThisWeek($searches): array
@@ -400,14 +415,14 @@ class SavedSearchController extends Controller
         $names = $searches->pluck('name', 'id');
         $urls = $searches->mapWithKeys(fn (CustomKeywordSearch $s): array => [$s->id => $s->url()]);
 
-        return \App\Models\CustomKeywordSearchVideo::query()
+        return CustomKeywordSearchVideo::query()
             ->whereIn('custom_keyword_search_id', $searches->pluck('id'))
             ->whereHas('video', fn ($query) => $query->visible())
             ->with('video')
             ->orderByDesc('viral_score')
             ->limit(3)
             ->get()
-            ->map(function (\App\Models\CustomKeywordSearchVideo $row) use ($names, $urls): array {
+            ->map(function (CustomKeywordSearchVideo $row) use ($names, $urls): array {
                 $card = $row->video?->toCardArray() ?? [];
 
                 return [
@@ -515,6 +530,36 @@ class SavedSearchController extends Controller
         }
 
         $this->manager->queueRun($search, $request->user() !== null);
+
+        return response()->json(['search' => SavedSearchPresenter::summary($search->refresh())]);
+    }
+
+    public function retryInitial(Request $request, int $id): JsonResponse
+    {
+        $search = $this->searches->resolve($request, $id);
+
+        if ($search->hasActiveRun()) {
+            return response()->json([
+                'message' => 'This search is already refreshing.',
+                'search' => SavedSearchPresenter::summary($search),
+            ], 409);
+        }
+
+        $latestRun = $search->latestRun;
+
+        if (
+            $search->status !== CustomKeywordSearch::STATUS_FAILED
+            || $latestRun?->status !== CustomKeywordSearchRun::STATUS_FAILED
+            || $search->videos()->exists()
+        ) {
+            return response()->json([
+                'message' => 'Only an initial failed search can be retried here.',
+            ], 422);
+        }
+
+        // The failed first run refunded its reserved credit, so this retry is
+        // deliberately not metered as a separate refresh.
+        $this->manager->queueRun($search);
 
         return response()->json(['search' => SavedSearchPresenter::summary($search->refresh())]);
     }

@@ -21,6 +21,7 @@ class SavedSearchPresenter
     public static function summary(CustomKeywordSearch $search): array
     {
         $latestRun = $search->relationLoaded('latestRun') ? $search->latestRun : $search->latestRun()->first();
+        $resultCount = $search->videos_count ?? $search->videos()->count();
 
         return [
             'id' => $search->id,
@@ -34,13 +35,16 @@ class SavedSearchPresenter
             'frequency' => $search->frequency,
             'status' => $search->status,
             'url' => $search->url(),
-            'result_count' => $search->videos_count ?? $search->videos()->count(),
+            'result_count' => $resultCount,
             'last_run_at' => $search->last_run_at?->toIso8601String(),
             'next_run_at' => $search->next_run_at?->toIso8601String(),
             'created_at' => $search->created_at?->toIso8601String(),
             'latest_run_status' => $latestRun?->status,
             'latest_run_completed_at' => $latestRun?->completed_at?->toIso8601String(),
             'latest_run_error' => $latestRun?->error_message,
+            'can_retry_initial' => $search->status === CustomKeywordSearch::STATUS_FAILED
+                && $latestRun?->status === CustomKeywordSearchRun::STATUS_FAILED
+                && $resultCount === 0,
         ];
     }
 
