@@ -20,7 +20,7 @@ export default function Hero({ onStart }) {
   const mode = MODES.find((m) => m.key === type) ?? MODES[0];
   const query = value.trim().replace(/\s+/g, ' ');
   const showGhost = value === '';
-  const promptLoop = ['What do you want to search?', mode.prompt];
+  const promptLoop = ['Pick what you want to search', mode.prompt];
   const animatedPrompt = typedPrompt || promptLoop[0];
 
   useEffect(() => {
@@ -120,6 +120,11 @@ export default function Hero({ onStart }) {
           videos, the creators behind them and the reason they went viral
         </p>
 
+        <label className="box__label" htmlFor="search-subject">
+          <span>{animatedPrompt}</span>
+          <span className="caret" aria-hidden />
+        </label>
+
         <div className="modes" role="tablist" aria-label="What to research">
           {MODES.map(({ key, label, icon: Icon }) => (
             <button
@@ -134,11 +139,6 @@ export default function Hero({ onStart }) {
             </button>
           ))}
         </div>
-
-        <label className="box__label" htmlFor="search-subject">
-          <span>{animatedPrompt}</span>
-          <span className="caret" aria-hidden />
-        </label>
 
         <form className="box" onSubmit={submit}>
           <div className="box__field">
