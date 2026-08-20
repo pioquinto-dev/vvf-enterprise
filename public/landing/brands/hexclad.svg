@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-labelledby="title">
+  <title>HexClad logo tile</title>
+  <rect width="64" height="64" rx="14" fill="#ffffff"/>
+  <g transform="translate(10 11)" fill="none" stroke="#111111" stroke-width="2.5" stroke-linejoin="round">
+    <path d="m12 1 10 6v12L12 25 2 19V7z"/>
+    <path d="M7 8v10"/>
+    <path d="M7 14h9"/>
+    <path d="M17 8h-4v10h4"/>
+  </g>
+  <text x="41" y="37.5" text-anchor="middle" font-family="Arial Black, Arial, Helvetica, sans-serif" font-size="9.5" font-weight="900" letter-spacing="0.05em" fill="#111111">HEX</text>
+  <text x="41" y="47" text-anchor="middle" font-family="Arial Black, Arial, Helvetica, sans-serif" font-size="9.5" font-weight="900" letter-spacing="0.05em" fill="#111111">CLAD</text>
+</svg>

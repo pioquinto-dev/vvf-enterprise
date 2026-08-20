@@ -1,20 +1,11 @@
 import { BRANDS } from '../data/dummy.js';
 
-function initials(name) {
-  return name
-    .replace(/[^a-zA-Z0-9 ]/g, ' ')
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((word) => word[0])
-    .join('')
-    .toUpperCase();
-}
-
 function Chip({ brand }) {
   return (
     <div className="chip">
-      <span className="chip__i">{initials(brand.name)}</span>
+      <span className="chip__i">
+        <img src={brand.logo} alt={`${brand.name} logo`} loading="lazy" />
+      </span>
       <span>
         <span className="chip__n">{brand.name}</span>
         <span className="chip__m">

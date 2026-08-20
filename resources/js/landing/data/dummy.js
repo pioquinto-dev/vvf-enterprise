@@ -10,18 +10,18 @@ export const NAV_LINKS = [
 ];
 
 export const BRANDS = [
-  { name: 'Glossier', category: 'Beauty', reach: '4.2M' },
-  { name: 'GoPure', category: 'Skincare', reach: '1.8M' },
-  { name: 'Ridge', category: 'Accessories', reach: '3.1M' },
-  { name: 'Olipop', category: 'Beverage', reach: '6.7M' },
-  { name: 'Caraway', category: 'Home', reach: '2.4M' },
-  { name: 'Loops', category: 'Skincare', reach: '980K' },
-  { name: 'Hexclad', category: 'Kitchen', reach: '5.3M' },
-  { name: 'Vessi', category: 'Footwear', reach: '1.2M' },
-  { name: 'Bala', category: 'Fitness', reach: '2.9M' },
-  { name: 'Mud\\Wtr', category: 'Beverage', reach: '3.8M' },
-  { name: 'Solawave', category: 'Beauty Tech', reach: '4.6M' },
-  { name: 'Jones Road', category: 'Beauty', reach: '7.1M' },
+  { name: 'Glossier', category: 'Beauty', reach: '4.2M', logo: '/landing/brands/glossier.svg' },
+  { name: 'GoPure', category: 'Skincare', reach: '1.8M', logo: '/landing/brands/gopure.svg' },
+  { name: 'Ridge', category: 'Accessories', reach: '3.1M', logo: '/landing/brands/ridge.svg' },
+  { name: 'Olipop', category: 'Beverage', reach: '6.7M', logo: '/landing/brands/olipop.svg' },
+  { name: 'Caraway', category: 'Home', reach: '2.4M', logo: '/landing/brands/caraway.svg' },
+  { name: 'Loops', category: 'Skincare', reach: '980K', logo: '/landing/brands/loops.svg' },
+  { name: 'Hexclad', category: 'Kitchen', reach: '5.3M', logo: '/landing/brands/hexclad.svg' },
+  { name: 'Vessi', category: 'Footwear', reach: '1.2M', logo: '/landing/brands/vessi.svg' },
+  { name: 'Bala', category: 'Fitness', reach: '2.9M', logo: '/landing/brands/bala.svg' },
+  { name: 'Mud\\Wtr', category: 'Beverage', reach: '3.8M', logo: '/landing/brands/mudwtr.svg' },
+  { name: 'Solawave', category: 'Beauty Tech', reach: '4.6M', logo: '/landing/brands/solawave.svg' },
+  { name: 'Jones Road', category: 'Beauty', reach: '7.1M', logo: '/landing/brands/jones-road.svg' },
 ];
 
 export const FEATURES = [
