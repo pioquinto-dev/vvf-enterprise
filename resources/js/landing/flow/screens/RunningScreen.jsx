@@ -29,6 +29,7 @@ export default function RunningScreen({ searchId, onBack, onDone, onAutoReturn }
   const [emailSaved, setEmailSaved] = useState(false);
   const [stage, setStage] = useState(0);
   const finished = useRef(false);
+  const polling = useRef(false);
 
   useEffect(() => {
     if (!searchId) return undefined;
@@ -37,7 +38,9 @@ export default function RunningScreen({ searchId, onBack, onDone, onAutoReturn }
     let cancelled = false;
 
     const poll = async () => {
-      if (cancelled || finished.current) return;
+      if (cancelled || finished.current || polling.current) return;
+
+      polling.current = true;
 
       try {
         const payload = await fetchNotifications([searchId]);
@@ -61,6 +64,8 @@ export default function RunningScreen({ searchId, onBack, onDone, onAutoReturn }
         }
       } catch {
         /* transient — the next tick will retry */
+      } finally {
+        polling.current = false;
       }
 
       timer = window.setTimeout(poll, POLL_MS);

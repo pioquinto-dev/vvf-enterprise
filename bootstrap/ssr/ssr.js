@@ -2382,8 +2382,8 @@ var FOOT_NAV = [
 		href: "/"
 	},
 	{
-		label: "Library",
-		href: "/bookmark"
+		label: "Bookmarks",
+		href: "/bookmarks"
 	},
 	{
 		label: "Contact",
@@ -2430,16 +2430,16 @@ var PILL_CLASS = {
 */
 var NAV$1 = [
 	{
-		label: "Dashboard",
+		label: "Search",
 		href: "/dashboard",
 		icon: Spark,
 		match: "/dashboard"
 	},
 	{
-		label: "Library",
-		href: "/bookmark",
+		label: "Bookmarks",
+		href: "/bookmarks",
 		icon: Library,
-		match: "/bookmark"
+		match: "/bookmarks"
 	},
 	{
 		label: "Brand searches",
@@ -2881,7 +2881,7 @@ function formatDate$2(iso) {
 * One saved-search row (the mockup's `.row`), wired to a presenter summary.
 *
 * - Dashboard "Recent" uses it as a plain Link with static bookmark/dots.
-* - Library passes `onNavigate` (making the row a div button so buttons can
+* - Bookmarks passes `onNavigate` (making the row a div button so buttons can
 *   nest cleanly) and an `actions` node with the live bookmark toggle + menu.
 */
 function SavedSearchRow({ search, onNavigate, actions }) {
@@ -2958,7 +2958,7 @@ function SavedSearchRow({ search, onNavigate, actions }) {
 	});
 	return /* @__PURE__ */ jsx(Link, {
 		className: "row",
-		href: search.url ?? `/bookmark/${search.id}`,
+		href: search.url ?? `/bookmarks/${search.id}`,
 		children: inner
 	});
 }
@@ -3559,7 +3559,7 @@ function SearchListScreen({ kind = "brand", searches = [], moving = [], suggesti
 						className: "bgrid",
 						children: filtered.map((s) => /* @__PURE__ */ jsx(BrandCard, {
 							search: s,
-							onOpen: () => router.visit(s.url ?? `/bookmark/${s.id}`),
+							onOpen: () => router.visit(s.url ?? `/bookmarks/${s.id}`),
 							onEdit: () => openEdit(s)
 						}, s.id))
 					})
@@ -4052,7 +4052,7 @@ var TYPES = [
 function SearchLauncher({ initialType = "brand", initialQuery = "", onSubmit, suggestionsByType = {} }) {
 	const [type, setType] = useState(initialType);
 	const [value, setValue] = useState(initialQuery);
-	const [promptStep, setPromptStep] = useState(0);
+	const [typedPrompt, setTypedPrompt] = useState("");
 	const inputRef = useRef(null);
 	const config = {
 		...TYPES.find((t) => t.key === type) ?? TYPES[0],
@@ -4061,11 +4061,44 @@ function SearchLauncher({ initialType = "brand", initialQuery = "", onSubmit, su
 	const query = value.trim().replace(/\s+/g, " ");
 	const dynamicSuggestions = (config.dynamicSuggestions ?? []).slice(0, 5);
 	const subjectSuggestions = dynamicSuggestions.length > 0 ? dynamicSuggestions : config.suggestions;
-	const animatedPrompt = promptStep === 0 ? "What do you want to search?" : config.key === "product" ? "What product do you want to research?" : "What brand do you want to research?";
+	const promptLoop = ["What do you want to search?", config.key === "product" ? "What product do you want to research?" : "What brand do you want to research?"];
+	const animatedPrompt = typedPrompt || promptLoop[0];
 	useEffect(() => {
-		setPromptStep(0);
-		const timer = window.setTimeout(() => setPromptStep(1), 1400);
-		return () => window.clearTimeout(timer);
+		let promptIndex = 0;
+		let charIndex = 0;
+		let deleting = false;
+		let timer;
+		let cancelled = false;
+		const tick = () => {
+			if (cancelled) return;
+			const currentPrompt = promptLoop[promptIndex];
+			if (!deleting) {
+				charIndex += 1;
+				setTypedPrompt(currentPrompt.slice(0, charIndex));
+				if (charIndex >= currentPrompt.length) {
+					timer = window.setTimeout(() => {
+						deleting = true;
+						tick();
+					}, 1400);
+					return;
+				}
+				timer = window.setTimeout(tick, 42);
+				return;
+			}
+			charIndex -= 1;
+			setTypedPrompt(currentPrompt.slice(0, Math.max(charIndex, 0)));
+			if (charIndex <= 0) {
+				deleting = false;
+				promptIndex = (promptIndex + 1) % promptLoop.length;
+			}
+			timer = window.setTimeout(tick, 26);
+		};
+		setTypedPrompt("");
+		timer = window.setTimeout(tick, 180);
+		return () => {
+			cancelled = true;
+			window.clearTimeout(timer);
+		};
 	}, [config.key]);
 	const submit = (event) => {
 		event.preventDefault();
@@ -4103,61 +4136,62 @@ function SearchLauncher({ initialType = "brand", initialQuery = "", onSubmit, su
 					}, option.key);
 				})
 			}),
+			/* @__PURE__ */ jsxs("label", {
+				className: "sbox__label",
+				htmlFor: "dashboard-search-subject",
+				children: [/* @__PURE__ */ jsx("span", { children: animatedPrompt }), /* @__PURE__ */ jsx("span", {
+					className: "caret",
+					"aria-hidden": true
+				})]
+			}),
 			/* @__PURE__ */ jsxs("form", {
 				className: "sbox",
 				onSubmit: submit,
-				children: [
-					/* @__PURE__ */ jsx("div", {
-						className: `sbox__prompt sbox__prompt--${promptStep}`,
-						"aria-live": "polite",
-						children: animatedPrompt
-					}),
-					/* @__PURE__ */ jsx("textarea", {
-						ref: inputRef,
-						rows: 2,
-						maxLength: 80,
-						value,
-						onChange: (e) => setValue(e.target.value),
-						placeholder: config.placeholder,
-						"aria-label": "Search subject",
-						style: {
-							border: "0",
-							outline: "none",
-							boxShadow: "none",
-							borderRadius: 0,
-							background: "transparent",
-							appearance: "none",
-							WebkitAppearance: "none"
-						}
-					}),
-					/* @__PURE__ */ jsxs("div", {
-						className: "sbox__f",
-						children: [/* @__PURE__ */ jsxs("p", {
-							className: "sbox__t",
-							children: [
-								"Try",
-								" ",
-								/* @__PURE__ */ jsxs("button", {
-									type: "button",
-									className: "sbox__try",
-									onClick: useSample,
-									children: [
-										"“",
-										config.sample,
-										"”"
-									]
-								}),
-								/* @__PURE__ */ jsx("br", {}),
-								"One subject per search keeps each result tight."
-							]
-						}), /* @__PURE__ */ jsxs("button", {
-							type: "submit",
-							disabled: !query,
-							className: "btn btn--y",
-							children: ["Continue ", /* @__PURE__ */ jsx(Arrow, {})]
-						})]
-					})
-				]
+				children: [/* @__PURE__ */ jsx("textarea", {
+					ref: inputRef,
+					id: "dashboard-search-subject",
+					rows: 2,
+					maxLength: 80,
+					value,
+					onChange: (e) => setValue(e.target.value),
+					placeholder: "",
+					"aria-label": animatedPrompt,
+					style: {
+						border: "0",
+						outline: "none",
+						boxShadow: "none",
+						borderRadius: 0,
+						background: "transparent",
+						appearance: "none",
+						WebkitAppearance: "none"
+					}
+				}), /* @__PURE__ */ jsxs("div", {
+					className: "sbox__f",
+					children: [/* @__PURE__ */ jsxs("p", {
+						className: "sbox__t",
+						children: [
+							"Try",
+							" ",
+							/* @__PURE__ */ jsxs("button", {
+								type: "button",
+								className: "sbox__try",
+								onClick: useSample,
+								children: [
+									"“",
+									config.sample,
+									"”"
+								]
+							}),
+							/* @__PURE__ */ jsx("br", {}),
+							"One subject per search keeps each result tight."
+						]
+					}), /* @__PURE__ */ jsxs("button", {
+						type: "submit",
+						disabled: !query,
+						className: "btn btn--y",
+						children: ["Continue ", /* @__PURE__ */ jsx(Arrow, {})]
+					})]
+				})]
 			}),
 			subjectSuggestions.length > 0 && /* @__PURE__ */ jsx("div", {
 				className: "subj-sugg",
@@ -4862,7 +4896,7 @@ function RunningScreen({ searchId, onBack, onDone, onAutoReturn }) {
 						fontSize: ".8rem",
 						marginTop: signedIn ? 24 : 18
 					},
-					children: "Safe to close this tab — the search keeps running and stays in Library."
+					children: "Safe to close this tab — the search keeps running and stays in Bookmarks."
 				})
 			]
 		})
@@ -5195,7 +5229,7 @@ function SearchWizard({ initialType = "brand", initialQuery = "", heading = "Sta
 		setSearchId(null);
 		setStep("subject");
 	};
-	const onDone = useCallback((found) => router.visit(found?.url ?? `/bookmark/${found?.id ?? searchId}`), [searchId]);
+	const onDone = useCallback((found) => router.visit(found?.url ?? `/bookmarks/${found?.id ?? searchId}`), [searchId]);
 	const topTitle = step === "subject" ? heading : phrase;
 	const topSub = step === "subject" ? subheading : step === "sources" ? "Step 3 of 3 — optional." : `Step 2 of 3 — add terms to expand on your ${nounOf(type)}. Ticking six terms still spends one search.`;
 	return /* @__PURE__ */ jsxs(Fragment, { children: [
@@ -5276,7 +5310,7 @@ function mergeRecentSearches(serverRecent = [], trackedEntries = []) {
 		search_type: entry.search_type ?? "brand",
 		frequency: entry.frequency ?? "weekly",
 		status: entry.status ?? "scraping",
-		url: entry.url ?? `/bookmark/${entry.id}`,
+		url: entry.url ?? `/bookmarks/${entry.id}`,
 		result_count: entry.result_count ?? 0,
 		last_run_at: entry.last_run_at ?? null,
 		is_watchlisted: entry.is_watchlisted ?? false
@@ -5304,7 +5338,7 @@ function RecentCard({ searches }) {
 					className: "sect__n",
 					children: "Recent"
 				}), /* @__PURE__ */ jsx("h2", { children: "Pick up where you left off" })] }), /* @__PURE__ */ jsxs(Link, {
-					href: "/bookmark",
+					href: "/bookmarks",
 					className: "btn btn--g btn--sm",
 					children: ["View all ", /* @__PURE__ */ jsx(Arrow, {})]
 				})]
@@ -5825,7 +5859,7 @@ var TESTIMONIALS = [
 		initials: "TB"
 	},
 	{
-		quote: "I ran one free search to test it and forwarded the results to my CMO the same afternoon. We were on Premium by the end of the week.",
+		quote: "I ran one free search to test it and forwarded the results to my CMO the same afternoon. We were on Scale by the end of the week.",
 		name: "Sofia Marchetti",
 		role: "Performance Manager",
 		company: "Vessi",
@@ -5866,10 +5900,10 @@ var PRICING = { monthly: [
 	},
 	{
 		slug: "basic",
-		name: "Basic",
+		name: "Growth",
 		price: 79,
 		tagline: "For a single brand.",
-		cta: "Choose Basic",
+		cta: "Choose Growth",
 		popular: true,
 		features: [
 			"150 searches",
@@ -5894,10 +5928,10 @@ var PRICING = { monthly: [
 	},
 	{
 		slug: "premium",
-		name: "Premium",
+		name: "Scale",
 		price: 199,
 		tagline: "For brand and agency teams.",
-		cta: "Choose Premium",
+		cta: "Choose Scale",
 		features: [
 			"400 searches",
 			"Unlimited bookmarks",
@@ -5933,16 +5967,12 @@ var FAQS = [
 		a: "A video with 4 million views from a creator with 4 million followers is great, but a video with 4 million views from a creator with 4 thousand followers is something to pay attention to. That video is the outlier, something that performs better than average - that's what we want to track."
 	},
 	{
-		q: "What happens after the 10 day trial?",
-		a: "The trial converts to Basic at $79/mo unless you cancel before day 10. Cancelling takes two clicks in account settings — no call, no form."
+		q: "What happens after the 7 day trial?",
+		a: "The trial converts to Growth at $79/mo unless you cancel before day 7. Cancelling takes two clicks in account settings — no call, no form."
 	},
 	{
 		q: "Is the data real-time?",
-		a: "Close to it. Videos enter the index within a few hours of posting, and view counts on tracked videos refresh on every scheduled check."
-	},
-	{
-		q: "Do you offer an annual plan?",
-		a: "Yes — annual billing takes about 20% off every paid tier. Toggle billing at the top of the pricing table to see the yearly rate."
+		a: "Effectively, yes. Our collection infrastructure tracks Tiktok at scale and routes new videos through the index within hours of them going live. Every index video is continuously re-evaluated against our outlier scoring engine, so the rankings you see are always tied to live performance."
 	}
 ];
 //#endregion
@@ -5974,10 +6004,50 @@ function Hero({ onStart }) {
 	const [type, setType] = useState("brand");
 	const [value, setValue] = useState("");
 	const [ghost, setGhost] = useState("");
+	const [typedPrompt, setTypedPrompt] = useState("");
 	const inputRef = useRef(null);
 	const mode = MODES.find((m) => m.key === type) ?? MODES[0];
 	const query = value.trim().replace(/\s+/g, " ");
 	const showGhost = value === "";
+	const promptLoop = ["What do you want to search?", mode.prompt];
+	const animatedPrompt = typedPrompt || promptLoop[0];
+	useEffect(() => {
+		let promptIndex = 0;
+		let charIndex = 0;
+		let deleting = false;
+		let timer;
+		let cancelled = false;
+		const tick = () => {
+			if (cancelled) return;
+			const currentPrompt = promptLoop[promptIndex];
+			if (!deleting) {
+				charIndex += 1;
+				setTypedPrompt(currentPrompt.slice(0, charIndex));
+				if (charIndex >= currentPrompt.length) {
+					timer = window.setTimeout(() => {
+						deleting = true;
+						tick();
+					}, 1400);
+					return;
+				}
+				timer = window.setTimeout(tick, 42);
+				return;
+			}
+			charIndex -= 1;
+			setTypedPrompt(currentPrompt.slice(0, Math.max(charIndex, 0)));
+			if (charIndex <= 0) {
+				deleting = false;
+				promptIndex = (promptIndex + 1) % promptLoop.length;
+			}
+			timer = window.setTimeout(tick, 26);
+		};
+		setTypedPrompt("");
+		timer = window.setTimeout(tick, 180);
+		return () => {
+			cancelled = true;
+			window.clearTimeout(timer);
+		};
+	}, [mode.prompt]);
 	useEffect(() => {
 		if (!showGhost) return void 0;
 		const sample = mode.sample;
@@ -6039,10 +6109,13 @@ function Hero({ onStart }) {
 						children: [/* @__PURE__ */ jsx(Icon, { className: "h-[15px] w-[15px]" }), label]
 					}, key))
 				}),
-				/* @__PURE__ */ jsx("label", {
+				/* @__PURE__ */ jsxs("label", {
 					className: "box__label",
 					htmlFor: "search-subject",
-					children: mode.prompt
+					children: [/* @__PURE__ */ jsx("span", { children: animatedPrompt }), /* @__PURE__ */ jsx("span", {
+						className: "caret",
+						"aria-hidden": true
+					})]
 				}),
 				/* @__PURE__ */ jsxs("form", {
 					className: "box",
@@ -6063,7 +6136,7 @@ function Hero({ onStart }) {
 							onKeyDown: (e) => {
 								if (e.key === "Enter" && !e.shiftKey) submit(e);
 							},
-							"aria-label": mode.prompt
+							"aria-label": animatedPrompt
 						})]
 					}), /* @__PURE__ */ jsxs("div", {
 						className: "box__foot",
@@ -6093,24 +6166,13 @@ function Hero({ onStart }) {
 						})]
 					})]
 				}),
-				/* @__PURE__ */ jsxs("div", {
+				/* @__PURE__ */ jsx("div", {
 					className: "hero__ctas",
-					children: [/* @__PURE__ */ jsxs("a", {
-						href: "/auth/google",
-						className: "btn btn--ghost btn--lg",
-						children: [
-							/* @__PURE__ */ jsx("span", {
-								className: "gicon",
-								children: /* @__PURE__ */ jsx(Google, {})
-							}),
-							"Get started free",
-							/* @__PURE__ */ jsx(Arrow, { className: "btn__arrow h-[15px] w-[15px]" })
-						]
-					}), /* @__PURE__ */ jsx("a", {
+					children: /* @__PURE__ */ jsx("a", {
 						href: "#how",
 						className: "btn btn--ghost btn--lg",
 						children: "See how it works"
-					})]
+					})
 				}),
 				/* @__PURE__ */ jsx("p", {
 					className: "hero__note",
@@ -6446,7 +6508,13 @@ function Testimonials() {
 //#endregion
 //#region resources/js/landing/sections/Pricing.jsx
 function Pricing({ plans = [], onStart, onTrial }) {
-	const visiblePlans = plans.length > 0 ? plans : PRICING.monthly;
+	const visiblePlans = (plans.length > 0 ? [...plans] : [...PRICING.monthly]).sort((a, b) => {
+		const aKey = a.slug ?? a.name?.toLowerCase();
+		const bKey = b.slug ?? b.name?.toLowerCase();
+		const aIndex = PRICING_PLAN_ORDER.indexOf(aKey);
+		const bIndex = PRICING_PLAN_ORDER.indexOf(bKey);
+		return (aIndex === -1 ? Number.MAX_SAFE_INTEGER : aIndex) - (bIndex === -1 ? Number.MAX_SAFE_INTEGER : bIndex);
+	});
 	return /* @__PURE__ */ jsx("section", {
 		className: "sec--pad",
 		id: "pricing",
@@ -6521,7 +6589,7 @@ function Pricing({ plans = [], onStart, onTrial }) {
 				}),
 				/* @__PURE__ */ jsxs("div", {
 					className: "trial",
-					children: [/* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsx("h3", { children: "Start a 7-day Basic trial" }), /* @__PURE__ */ jsx("p", { children: "Try the full Basic plan for 7 days. Card details are collected up front, and billing starts only after the trial ends unless you cancel." })] }), /* @__PURE__ */ jsx("button", {
+					children: [/* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsx("h3", { children: "Start a 7-day Growth trial" }), /* @__PURE__ */ jsx("p", { children: "Try the full Growth plan for 7 days. Card details are collected up front, and billing starts only after the trial ends unless you cancel." })] }), /* @__PURE__ */ jsx("button", {
 						type: "button",
 						className: "btn btn--ink",
 						style: { flex: "none" },
@@ -6954,6 +7022,13 @@ var Plans_exports = /* @__PURE__ */ __exportAll({ default: () => Plans });
 function Plans() {
 	const { billing: billingState = {}, pricingPlans = [] } = usePage().props;
 	const current = String(billingState.currentPlan ?? "free").toLowerCase();
+	const orderedPlans = [...pricingPlans].sort((a, b) => {
+		const aKey = a.slug ?? a.name?.toLowerCase();
+		const bKey = b.slug ?? b.name?.toLowerCase();
+		const aIndex = PRICING_PLAN_ORDER.indexOf(aKey);
+		const bIndex = PRICING_PLAN_ORDER.indexOf(bKey);
+		return (aIndex === -1 ? Number.MAX_SAFE_INTEGER : aIndex) - (bIndex === -1 ? Number.MAX_SAFE_INTEGER : bIndex);
+	});
 	const upgrade = (slug) => billing.checkout(slug);
 	return /* @__PURE__ */ jsxs(Fragment, { children: [/* @__PURE__ */ jsx(Head, { title: "Plans · Brand Beacon" }), /* @__PURE__ */ jsxs(SettingsShell, {
 		section: "plans",
@@ -6969,7 +7044,7 @@ function Plans() {
 			})]
 		}), /* @__PURE__ */ jsx("div", {
 			className: "plans",
-			children: pricingPlans.map((plan) => {
+			children: orderedPlans.map((plan) => {
 				const isCurrent = plan.slug === current;
 				const isFree = plan.slug === "free";
 				return /* @__PURE__ */ jsxs("div", {
@@ -7096,7 +7171,7 @@ function Index({ searches: initialSearches, bookmarkedVideos = [], filterType = 
 	});
 	const [submitting, setSubmitting] = useState(false);
 	const menuRef = useRef(null);
-	const title = filterType ? FILTER_LABELS[filterType] ?? "Library" : "Library";
+	const title = filterType ? FILTER_LABELS[filterType] ?? "Bookmarks" : "Bookmarks";
 	const searchHref = `/search?type=${filterType === "competitor" ? "competitor" : "brand"}`;
 	useEffect(() => {
 		if (openMenuId === null) return void 0;
@@ -7404,7 +7479,7 @@ function Index({ searches: initialSearches, bookmarkedVideos = [], filterType = 
 							maxWidth: 360,
 							margin: "10px auto 0"
 						},
-						children: searches.length === 0 ? "Run a search, then bookmark it to keep it here." : "Try a different keyword, status, type, or sort combination."
+						children: searches.length === 0 ? "Run a search, then bookmark it to keep it here in Bookmarks." : "Try a different keyword, status, type, or sort combination."
 					}),
 					/* @__PURE__ */ jsxs(Link, {
 						href: searchHref,
@@ -10603,9 +10678,9 @@ function DetailScreen({ search, isAuthenticated = false, billing = null, onSearc
 			/* @__PURE__ */ jsxs("div", {
 				className: "viewbar",
 				children: [/* @__PURE__ */ jsx("a", {
-					href: "/bookmark",
+					href: "/bookmarks",
 					className: "tbtn",
-					children: "← Back to library"
+					children: "← Back to bookmarks"
 				}), /* @__PURE__ */ jsx(EntitlementsBar, {})]
 			}),
 			/* @__PURE__ */ jsx(TrackerHead, {
@@ -11079,7 +11154,7 @@ function Show$1({ search: initial, isAuthenticated = false, billing }) {
 	};
 	const remove = async () => {
 		await savedSearch.destroy(search.id);
-		router.visit("/bookmark");
+		router.visit("/bookmarks");
 	};
 	const togglePause = async () => {
 		const { search: updated } = search.status === "paused" ? await savedSearch.resume(search.id) : await savedSearch.pause(search.id);
@@ -11162,8 +11237,8 @@ function Running({ searchId }) {
 		width: "max-w-4xl",
 		children: /* @__PURE__ */ jsx(RunningScreen, {
 			searchId,
-			onBack: () => router.visit("/bookmark"),
-			onDone: () => router.visit(`/bookmark/${searchId}`),
+			onBack: () => router.visit("/bookmarks"),
+			onDone: () => router.visit(`/bookmarks/${searchId}`),
 			onAutoReturn: () => router.visit("/dashboard")
 		})
 	})] });
@@ -11403,7 +11478,7 @@ var TOGGLES = [
 	{
 		key: "compact_rows",
 		title: "Compact rows",
-		desc: "Tighter spacing in Library and results lists.",
+		desc: "Tighter spacing in Bookmarks and results lists.",
 		on: false
 	},
 	{
@@ -11521,6 +11596,8 @@ function Subscription({ subscription }) {
 	const active = status === "active";
 	const price = subscription?.price ?? 0;
 	const interval = subscription?.interval ?? "month";
+	const isTrialing = status === "trialing" || status === "trial";
+	const trialEnds = formatDate(subscription?.trialEndsAt);
 	const renews = formatDate(subscription?.renewsAt);
 	const invoices = subscription?.invoices ?? [];
 	const searchesLeft = searchLimit > 0 ? Math.max(0, searchLimit - searchUsed) : 0;
@@ -11548,7 +11625,7 @@ function Subscription({ subscription }) {
 								fontSize: ".86rem",
 								marginTop: 6
 							},
-							children: [price > 0 ? `$${price}/${interval}` : "Free plan", renews ? ` · renews ${renews}` : ""]
+							children: [price > 0 ? `$${price}/${interval}` : "Free plan", isTrialing && trialEnds ? ` · trial ends ${trialEnds}` : renews ? ` · renews ${renews}` : ""]
 						})] }), /* @__PURE__ */ jsxs("span", {
 							className: `pill ${active ? "pill--ok" : "pill--off"}`,
 							children: [/* @__PURE__ */ jsx("i", {}), active ? "Active" : status]
@@ -11596,7 +11673,7 @@ function Subscription({ subscription }) {
 										" search",
 										searchesLeft === 1 ? "" : "es",
 										" left this cycle",
-										renews ? `. Resets ${renews}.` : "."
+										isTrialing && trialEnds ? `. Trial ends ${trialEnds}.` : renews ? `. Resets ${renews}.` : "."
 									]
 								})
 							] }),
@@ -11782,7 +11859,7 @@ function TrialScreen({ onBack, backLabel = "Back to results" }) {
 				}),
 				/* @__PURE__ */ jsx("p", {
 					className: "mt-3 text-[14.5px] muted",
-					children: "Start on a 7-day trial. Basic includes 150 searches, 50 video bookmarks, 50 search bookmarks, and 50 video analysis runs. Premium includes 400 searches and unlimited limits across those extras."
+					children: "Start on a 7-day trial. Growth includes 150 searches, 50 video bookmarks, 50 search bookmarks, and 50 video analysis runs. Scale includes 400 searches and unlimited limits across those extras."
 				}),
 				/* @__PURE__ */ jsx("div", {
 					className: "mx-auto mt-9 grid max-w-2xl gap-5 text-left sm:grid-cols-2",
@@ -11905,7 +11982,7 @@ function closeModal() {
 		window.history.back();
 		return;
 	}
-	window.location.assign("/bookmark");
+	window.location.assign("/bookmarks");
 }
 function Show({ video, analysis: initialAnalysis, tabs }) {
 	return /* @__PURE__ */ jsxs(Fragment, { children: [/* @__PURE__ */ jsx(Head, { title: `Video Analysis · ${video.handle ?? video.creator_name ?? "TikTok"}` }), /* @__PURE__ */ jsx(AppLayout, {

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Head, Link, router, usePage } from '@inertiajs/react';
 
 import AppLayout from './components/AppLayout.jsx';
@@ -69,39 +69,10 @@ export default function Dashboard() {
   const { flash = {}, recent = [], searchSuggestions = {} } = usePage().props;
   const [readyModal, setReadyModal] = useState(null);
   const [recentSearches, setRecentSearches] = useState(() => mergeRecentSearches(recent, readTracked()));
+  const polling = useRef(false);
 
   useEffect(() => {
     setRecentSearches(mergeRecentSearches(recent, readTracked()));
-  }, [recent]);
-
-  useEffect(() => {
-    const tracked = readTracked().filter((entry) => entry?.id).slice(0, 10);
-
-    if (tracked.length === 0) {
-      setRecentSearches((current) => (current.length > 0 ? current : []));
-      return undefined;
-    }
-
-    let cancelled = false;
-
-    const hydrateRecent = async () => {
-      try {
-        const payload = await fetchNotifications(tracked.map((entry) => entry.id));
-        if (cancelled) return;
-
-        const liveSearches = payload?.searches ?? [];
-        setRecentSearches(mergeRecentSearches(liveSearches, tracked));
-      } catch {
-        if (cancelled) return;
-        setRecentSearches(mergeRecentSearches(recent, tracked));
-      }
-    };
-
-    hydrateRecent();
-
-    return () => {
-      cancelled = true;
-    };
   }, [recent]);
 
   useEffect(() => {
@@ -111,15 +82,32 @@ export default function Dashboard() {
     let timer;
 
     const poll = async () => {
-      if (cancelled) return;
+      if (cancelled || polling.current) return;
 
-      const activeTracked = readTracked().filter((entry) => entry?.id && entry.completedPromptShown !== true);
+      const tracked = readTracked().filter((entry) => entry?.id).slice(0, 10);
 
-      if (activeTracked.length === 0) return;
+      if (tracked.length === 0) {
+        setRecentSearches((current) => (current.length > 0 ? current : []));
+        return;
+      }
+
+      polling.current = true;
+
+      const activeTracked = tracked.filter((entry) => entry.completedPromptShown !== true);
+
+      if (activeTracked.length === 0) {
+        polling.current = false;
+        setRecentSearches(mergeRecentSearches(recent, tracked));
+        return;
+      }
 
       try {
         const payload = await fetchNotifications(activeTracked.map((entry) => entry.id));
+        if (cancelled) return;
+
         const searches = payload?.searches ?? [];
+        setRecentSearches(mergeRecentSearches([...recent, ...searches], tracked));
+
         const done = searches.find((search) => search?.status === 'done');
 
         if (done) {
@@ -142,6 +130,10 @@ export default function Dashboard() {
         }
       } catch {
         /* transient — the next tick will retry */
+        if (cancelled) return;
+        setRecentSearches(mergeRecentSearches(recent, tracked));
+      } finally {
+        polling.current = false;
       }
 
       timer = window.setTimeout(poll, POLL_MS);
@@ -153,7 +145,7 @@ export default function Dashboard() {
       cancelled = true;
       window.clearTimeout(timer);
     };
-  }, [readyModal]);
+  }, [readyModal, recent]);
 
   const closeReadyModal = () => setReadyModal(null);
   const viewResults = () => {
