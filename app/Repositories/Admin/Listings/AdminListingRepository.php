@@ -667,7 +667,8 @@ class AdminListingRepository
             // stays read-only.
             'searches' => ['preview' => false, 'edit' => false, 'archive' => false, 'delete' => false],
             'inquiries' => ['preview' => true, 'edit' => false, 'archive' => false, 'delete' => false],
-            'subscription', 'users' => ['edit' => true, 'archive' => false, 'delete' => true],
+            'subscription' => ['edit' => true, 'archive' => false, 'delete' => true],
+            'users' => ['edit' => true, 'archive' => false, 'delete' => true, 'impersonate' => true],
             default => ['preview' => false, 'edit' => false, 'archive' => false, 'delete' => false],
         };
     }

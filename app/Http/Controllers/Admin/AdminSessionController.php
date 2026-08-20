@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Services\Admin\AdminAuthenticationService;
+use App\Services\Admin\AdminImpersonationService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
@@ -13,6 +14,7 @@ class AdminSessionController extends Controller
 {
     public function __construct(
         private readonly AdminAuthenticationService $auth,
+        private readonly AdminImpersonationService $impersonation,
     ) {}
 
     public function create(Request $request): Response
@@ -40,6 +42,10 @@ class AdminSessionController extends Controller
 
     public function destroy(Request $request): RedirectResponse
     {
+        if ($request->session()->has(AdminImpersonationService::SESSION_KEY)) {
+            $this->impersonation->stop($request, 'admin_sign_out');
+        }
+
         $this->auth->logout($request);
 
         return redirect()->route('admin.login');

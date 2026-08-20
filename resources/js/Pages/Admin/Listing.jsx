@@ -1,3 +1,4 @@
+import { router } from '@inertiajs/react';
 import { useState } from 'react';
 
 import AdminDataTable from '../../components/admin/AdminDataTable.jsx';
@@ -66,6 +67,7 @@ export default function Listing({
                         capabilities={capabilities}
                         onEdit={setEditing}
                         onPreview={setPreviewing}
+                        onImpersonate={(row) => router.post(`/x/admin/users/${row.id}/impersonate`)}
                     />
                 ) : (
                     <AdminEmptyState

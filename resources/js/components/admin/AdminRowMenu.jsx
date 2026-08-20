@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 
 import { Dots } from '../../landing/components/Icons.jsx';
 
-export default function AdminRowMenu({ resource, row, capabilities = {}, onEdit, onPreview }) {
+export default function AdminRowMenu({ resource, row, capabilities = {}, onEdit, onPreview, onImpersonate }) {
     const [open, setOpen] = useState(false);
     const container = useRef(null);
 
@@ -33,6 +33,7 @@ export default function AdminRowMenu({ resource, row, capabilities = {}, onEdit,
 
     const canPreview = capabilities.preview === true;
     const canEdit = capabilities.edit && !row.trashed;
+    const canImpersonate = capabilities.impersonate === true && !row.trashed;
 
     if (capabilities.archive && !row.trashed) {
         items.push({
@@ -57,7 +58,7 @@ export default function AdminRowMenu({ resource, row, capabilities = {}, onEdit,
         );
     }
 
-    if (items.length === 0 && !canEdit && !canPreview) {
+    if (items.length === 0 && !canEdit && !canPreview && !canImpersonate) {
         return null;
     }
 
@@ -80,6 +81,20 @@ export default function AdminRowMenu({ resource, row, capabilities = {}, onEdit,
                     className="inline-flex h-6 items-center rounded-md border border-[var(--yellow)] bg-[var(--wash)] px-2 text-[11.5px] font-medium text-[var(--amber-ink)] transition hover:bg-[var(--yellow)] hover:text-[#1a1400]"
                 >
                     Edit
+                </button>
+            )}
+
+            {canImpersonate && (
+                <button
+                    type="button"
+                    onClick={() => {
+                        if (window.confirm(`Log in as ${row.email || row.user} for one hour?`)) {
+                            onImpersonate(row);
+                        }
+                    }}
+                    className="inline-flex h-6 items-center rounded-md border border-[var(--line)] bg-white px-2 text-[11.5px] font-medium text-[var(--ink)] transition hover:border-[var(--yellow)] hover:bg-[var(--wash)]"
+                >
+                    Log in as
                 </button>
             )}
 

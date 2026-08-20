@@ -268,6 +268,18 @@ Defined in `routes/admin.php`, under `/x/admin`.
 - `/x/admin/users`
 - `/x/admin/users/admin-users`
 
+#### Admin impersonation
+
+- `POST /x/admin/users/{user}/impersonate`
+  - Starts an admin-initiated customer session for one hour.
+- `POST /x/admin/impersonation/stop`
+  - Ends the customer session and returns to the admin dashboard.
+
+Important:
+
+- The customer session is time-limited and enforced by `ExpireAdminImpersonation` on every web request.
+- The env-backed admin session stays separate so an admin can return safely after the customer session ends.
+
 ## Core domain concepts
 
 ### Saved search

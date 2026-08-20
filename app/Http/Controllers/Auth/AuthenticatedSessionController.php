@@ -4,23 +4,25 @@ namespace App\Http\Controllers\Auth;
 
 use App\Models\PricingPlan;
 use App\Models\User;
+use App\Services\Admin\AdminImpersonationService;
+use App\Services\Auth\PostAuthenticationRedirector;
 use App\Services\Billing\BillingService;
 use App\Support\TrialCheckoutIntent;
-use App\Services\Auth\PostAuthenticationRedirector;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
-use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
 use Inertia\Response;
+use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
 
 class AuthenticatedSessionController extends Controller
 {
     public function __construct(
         private readonly PostAuthenticationRedirector $redirector,
         private readonly BillingService $billing,
+        private readonly AdminImpersonationService $impersonation,
     ) {}
 
     public function create(Request $request): Response
@@ -64,6 +66,12 @@ class AuthenticatedSessionController extends Controller
 
     public function destroy(Request $request): RedirectResponse
     {
+        if ($request->session()->has(AdminImpersonationService::SESSION_KEY)) {
+            $this->impersonation->stop($request, 'customer_sign_out');
+
+            return redirect()->route('admin.dashboard');
+        }
+
         Auth::guard('web')->logout();
 
         $request->session()->invalidate();

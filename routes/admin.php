@@ -1,13 +1,14 @@
 <?php
 
 use App\Http\Controllers\Admin\AdminDashboardController;
+use App\Http\Controllers\Admin\AdminImpersonationController;
 use App\Http\Controllers\Admin\AdminRecordController;
 use App\Http\Controllers\Admin\AdminSessionController;
 use App\Http\Controllers\Admin\Content\PlanController;
 use App\Http\Controllers\Admin\Content\SearchController;
 use App\Http\Controllers\Admin\Content\ViralVideoController;
-use App\Http\Controllers\Admin\Support\InquiryController;
 use App\Http\Controllers\Admin\Subscription\SubscriptionController;
+use App\Http\Controllers\Admin\Support\InquiryController;
 use App\Http\Controllers\Admin\Users\AdminUserController;
 use App\Http\Controllers\Admin\Users\UserController;
 use Illuminate\Support\Facades\Route;
@@ -22,6 +23,7 @@ Route::prefix('x/admin')
 
         Route::middleware('admin.auth')->group(function (): void {
             Route::post('/logout', [AdminSessionController::class, 'destroy'])->name('logout');
+            Route::post('/impersonation/stop', [AdminImpersonationController::class, 'stop'])->name('impersonation.stop');
 
             Route::get('/', AdminDashboardController::class)->name('dashboard');
             Route::post('/dashboard/refresh', [AdminDashboardController::class, 'refresh'])->name('dashboard.refresh');
@@ -65,6 +67,7 @@ Route::prefix('x/admin')
             Route::prefix('users')->group(function (): void {
                 Route::get('/', [UserController::class, 'index'])->name('users.index');
                 Route::get('/admin-users', [AdminUserController::class, 'index'])->name('admin-users.index');
+                Route::post('/{user}/impersonate', [AdminImpersonationController::class, 'start'])->name('users.impersonate');
             });
         });
     });

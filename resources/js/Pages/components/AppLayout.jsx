@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link, useForm, usePage } from '@inertiajs/react';
+import { Link, router, useForm, usePage } from '@inertiajs/react';
 
 import AppFooter from './AppFooter.jsx';
 import { Logo, Menu, Close, Search, Library, Store, Exit, Spark, Arrow, Lock } from '../../landing/components/Icons.jsx';
@@ -148,6 +148,7 @@ export default function AppLayout({ pill, step, title, subtitle, actions, toolba
     const [drawerOpen, setDrawerOpen] = useState(false);
 
     const signedIn = auth.signedIn ?? Boolean(auth.user);
+    const impersonation = auth.impersonation;
 
     const signOut = () => {
         setDrawerOpen(false);
@@ -240,6 +241,21 @@ export default function AppLayout({ pill, step, title, subtitle, actions, toolba
                 <main className="main">
                     <div className="bb-content">
                         <div className={`mx-auto w-full ${width}`}>
+                            {impersonation && (
+                                <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-[var(--yellow)] bg-[var(--wash)] px-4 py-3 text-[12.5px] text-[var(--amber-ink)]">
+                                    <span>
+                                        You are logged in as {auth.user?.email}. This admin session ends at{' '}
+                                        {new Date(impersonation.expires_at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}.
+                                    </span>
+                                    <button
+                                        type="button"
+                                        onClick={() => router.post('/x/admin/impersonation/stop')}
+                                        className="rounded-md border border-[var(--yellow)] bg-white px-3 py-1.5 text-[12px] font-semibold text-[var(--amber-ink)] transition hover:bg-[var(--yellow)] hover:text-[#1a1400]"
+                                    >
+                                        Return to admin
+                                    </button>
+                                </div>
+                            )}
                             {header}
                             {toolbar && <div>{toolbar}</div>}
                             {children}

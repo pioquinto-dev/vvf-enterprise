@@ -3,6 +3,7 @@
 namespace App\Http\Middleware;
 
 use App\Models\Subscription;
+use App\Services\Admin\AdminImpersonationService;
 use App\Services\Billing\BillingEntitlementService;
 use App\Services\Billing\PricingPlanViewService;
 use Illuminate\Http\Request;
@@ -34,6 +35,7 @@ class HandleInertiaRequests extends Middleware
     {
         $billing = app(BillingEntitlementService::class);
         $pricing = app(PricingPlanViewService::class);
+        $impersonation = app(AdminImpersonationService::class)->active($request);
         $limits = $request->user() ? $billing->limitsForUser($request->user()) : null;
         $subscription = $request->user()
             ? Subscription::query()->where('user_id', $request->user()->id)->first()
@@ -59,6 +61,7 @@ class HandleInertiaRequests extends Middleware
                         'email' => $request->user()->email,
                     ]
                     : null,
+                'impersonation' => $impersonation,
             ],
             'admin' => [
                 'signedIn' => $request->session()->get(config('admin.session_key')) === true,

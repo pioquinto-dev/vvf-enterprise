@@ -1,18 +1,19 @@
 <?php
 
+use App\Http\Middleware\CaptureUtmParameters;
+use App\Http\Middleware\EnsurePaidFeaturesAccess;
+use App\Http\Middleware\ExpireAdminImpersonation;
+use App\Http\Middleware\HandleInertiaRequests;
+use App\Http\Middleware\RedirectIfAdminAuthenticated;
+use App\Http\Middleware\RememberTrialCheckoutIntent;
+use App\Http\Middleware\RequireAdminAuthentication;
+use App\Models\PricingPlan;
+use App\Services\Billing\BillingService;
+use Illuminate\Auth\Middleware\RedirectIfAuthenticated;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
-use App\Models\PricingPlan;
-use App\Services\Billing\BillingService;
-use App\Http\Middleware\CaptureUtmParameters;
-use App\Http\Middleware\RedirectIfAdminAuthenticated;
-use App\Http\Middleware\RequireAdminAuthentication;
-use App\Http\Middleware\EnsurePaidFeaturesAccess;
 use Illuminate\Http\Request;
-use App\Http\Middleware\HandleInertiaRequests;
-use App\Http\Middleware\RememberTrialCheckoutIntent;
-use Illuminate\Auth\Middleware\RedirectIfAuthenticated;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -22,6 +23,7 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->web(append: [
+            ExpireAdminImpersonation::class,
             HandleInertiaRequests::class,
             CaptureUtmParameters::class,
         ]);

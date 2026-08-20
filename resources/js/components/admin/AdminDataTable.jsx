@@ -69,8 +69,8 @@ function renderCell(column, row, index) {
     return <span className="text-[13px] text-[var(--muted)]">{text}</span>;
 }
 
-export default function AdminDataTable({ columns = [], rows = [], resource, capabilities = {}, onEdit = () => {}, onPreview = () => {} }) {
-    const hasActions = Boolean(capabilities.preview || capabilities.edit || capabilities.archive || capabilities.delete);
+export default function AdminDataTable({ columns = [], rows = [], resource, capabilities = {}, onEdit = () => {}, onPreview = () => {}, onImpersonate = () => {} }) {
+    const hasActions = Boolean(capabilities.preview || capabilities.edit || capabilities.archive || capabilities.delete || capabilities.impersonate);
 
     return (
         <>
@@ -87,7 +87,7 @@ export default function AdminDataTable({ columns = [], rows = [], resource, capa
                                 </th>
                             ))}
                             {hasActions && (
-                                <th className="sticky top-0 z-10 w-[104px] border-b border-[var(--line)] bg-[var(--paper)] px-4 py-2 text-right text-[11px] font-semibold tracking-[.06em] whitespace-nowrap text-[var(--faint)] uppercase">
+                                <th className="sticky top-0 z-10 w-[190px] border-b border-[var(--line)] bg-[var(--paper)] px-4 py-2 text-right text-[11px] font-semibold tracking-[.06em] whitespace-nowrap text-[var(--faint)] uppercase">
                                     Actions
                                 </th>
                             )}
@@ -112,6 +112,7 @@ export default function AdminDataTable({ columns = [], rows = [], resource, capa
                                             capabilities={capabilities}
                                             onEdit={onEdit}
                                             onPreview={onPreview}
+                                            onImpersonate={onImpersonate}
                                         />
                                     </td>
                                 )}
@@ -127,7 +128,7 @@ export default function AdminDataTable({ columns = [], rows = [], resource, capa
                         <div className="flex items-center justify-between gap-2">
                             <div className="min-w-0">{renderCell(columns[0], row, 0)}</div>
                             {hasActions && (
-                                <AdminRowMenu resource={resource} row={row} capabilities={capabilities} onEdit={onEdit} onPreview={onPreview} />
+                                <AdminRowMenu resource={resource} row={row} capabilities={capabilities} onEdit={onEdit} onPreview={onPreview} onImpersonate={onImpersonate} />
                             )}
                         </div>
                         {columns.slice(1).map((column) => (
