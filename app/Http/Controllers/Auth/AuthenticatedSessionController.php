@@ -49,9 +49,7 @@ class AuthenticatedSessionController extends Controller
             ]);
         }
 
-        $remember = $request->boolean('remember');
-
-        if (! Auth::attempt($credentials, $remember)) {
+        if (! Auth::attempt($credentials)) {
             throw ValidationException::withMessages([
                 'email' => 'These credentials do not match our records.',
             ]);

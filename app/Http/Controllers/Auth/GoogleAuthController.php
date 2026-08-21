@@ -80,7 +80,7 @@ class GoogleAuthController extends Controller
             ])->save();
         }
 
-        Auth::login($user, remember: true);
+        Auth::login($user);
         if ($created) {
             $this->activity->record($user, 'sign_up', 'account_created', 'Created account.');
         }

@@ -4,7 +4,7 @@ import { Logo, Google, Arrow } from '../../landing/components/Icons.jsx';
 
 export default function Login() {
   const { flash = {} } = usePage().props;
-  const form = useForm({ email: '', password: '', remember: true });
+  const form = useForm({ email: '', password: '' });
 
   const submit = (event) => {
     event.preventDefault();
