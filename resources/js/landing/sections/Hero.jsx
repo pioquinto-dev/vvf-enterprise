@@ -1,8 +1,6 @@
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 
-import { Arrow, Search, Store, Target, Trend } from '../components/Icons.jsx';
-import CountUp from '../components/CountUp.jsx';
-import { STATS } from '../data/dummy.js';
+import { Arrow, Search, Store, Target } from '../components/Icons.jsx';
 
 const MODES = [
   { key: 'brand', label: 'Your brand', icon: Store, prompt: 'Which brand do you want to research?', sample: 'rhode skin' },
@@ -13,92 +11,10 @@ const MODES = [
 export default function Hero({ onStart }) {
   const [type, setType] = useState('brand');
   const [value, setValue] = useState('');
-  const [ghost, setGhost] = useState('');
-  const [typedPrompt, setTypedPrompt] = useState('');
   const inputRef = useRef(null);
 
   const mode = MODES.find((m) => m.key === type) ?? MODES[0];
   const query = value.trim().replace(/\s+/g, ' ');
-  const showGhost = value === '';
-  const promptLoop = ['Pick what you want to search', mode.prompt];
-  const animatedPrompt = typedPrompt || promptLoop[0];
-
-  useEffect(() => {
-    let promptIndex = 0;
-    let charIndex = 0;
-    let deleting = false;
-    let timer;
-    let cancelled = false;
-
-    const tick = () => {
-      if (cancelled) return;
-
-      const currentPrompt = promptLoop[promptIndex];
-
-      if (!deleting) {
-        charIndex += 1;
-        setTypedPrompt(currentPrompt.slice(0, charIndex));
-
-        if (charIndex >= currentPrompt.length) {
-          timer = window.setTimeout(() => {
-            deleting = true;
-            tick();
-          }, 1400);
-          return;
-        }
-
-        timer = window.setTimeout(tick, 42);
-        return;
-      }
-
-      charIndex -= 1;
-      setTypedPrompt(currentPrompt.slice(0, Math.max(charIndex, 0)));
-
-      if (charIndex <= 0) {
-        deleting = false;
-        promptIndex = (promptIndex + 1) % promptLoop.length;
-      }
-
-      timer = window.setTimeout(tick, 26);
-    };
-
-    setTypedPrompt('');
-    timer = window.setTimeout(tick, 180);
-
-    return () => {
-      cancelled = true;
-      window.clearTimeout(timer);
-    };
-  }, [mode.prompt]);
-
-  // Typewriter for the placeholder sample, looping while the field is empty.
-  useEffect(() => {
-    if (!showGhost) return undefined;
-    const sample = mode.sample;
-    let i = 0;
-    let dir = 1;
-    let timer;
-    const tick = () => {
-      setGhost(sample.slice(0, i));
-      if (dir === 1) {
-        i += 1;
-        if (i > sample.length) {
-          dir = -1;
-          timer = window.setTimeout(tick, 1600);
-          return;
-        }
-      } else {
-        i -= 1;
-        if (i < 0) {
-          i = 0;
-          dir = 1;
-        }
-      }
-      timer = window.setTimeout(tick, dir === 1 ? 95 : 45);
-    };
-    tick();
-    return () => window.clearTimeout(timer);
-  }, [mode.sample, showGhost]);
 
   const submit = (e) => {
     e?.preventDefault();
@@ -116,91 +32,58 @@ export default function Hero({ onStart }) {
           TikTok Brand and Social Media <span className="hl">Intelligence Tool</span>
         </h1>
         <p className="hero__sub">
-          Enter your brand, a competitor or single product; then we will scan TikTok and return the most viral outlier
-          videos, the creators behind them and the reason they went viral
+          Pick what to look up, type it in, and we scan TikTok for the outlier videos usually breaking out — the
+          creators behind them, and why they popped.
         </p>
 
-        <label className="box__label" htmlFor="search-subject">
-          <span>{animatedPrompt}</span>
-          <span className="caret" aria-hidden />
-        </label>
-
-        <div className="modes" role="tablist" aria-label="What to research">
-          {MODES.map(({ key, label, icon: Icon }) => (
-            <button
-              key={key}
-              className={`mode${key === type ? ' is-on' : ''}`}
-              role="tab"
-              aria-selected={key === type}
-              onClick={() => setType(key)}
-            >
-              <Icon className="h-[15px] w-[15px]" />
-              {label}
-            </button>
-          ))}
-        </div>
-
         <form className="box" onSubmit={submit}>
+          <p className="box__label">
+            <span className="box__step">1</span>
+            Pick what you want to search
+          </p>
+
+          <div className="modes" role="tablist" aria-label="What to research">
+            {MODES.map(({ key, label, icon: Icon }) => (
+              <button
+                key={key}
+                type="button"
+                className={`mode${key === type ? ' is-on' : ''}`}
+                role="tab"
+                aria-selected={key === type}
+                onClick={() => setType(key)}
+              >
+                <Icon className="h-[15px] w-[15px]" />
+                {label}
+              </button>
+            ))}
+          </div>
+
+          <label className="box__label" htmlFor="search-subject">
+            <span className="box__step">2</span>
+            Type your {type === 'product' ? 'product' : type === 'brand' ? 'brand name' : 'competitor'}
+          </label>
+
           <div className="box__field">
-            <div className={`box__ghost${showGhost ? '' : ' is-off'}`} aria-hidden>
-              <span>{ghost}</span>
-              <span className="caret" />
-            </div>
-            <textarea
+            <input
               ref={inputRef}
               id="search-subject"
-              rows={2}
               maxLength={80}
               value={value}
               onChange={(e) => setValue(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && !e.shiftKey) submit(e);
-              }}
-              aria-label={animatedPrompt}
+              placeholder={mode.sample}
+              aria-label={`Type your ${type === 'product' ? 'product' : type === 'brand' ? 'brand name' : 'competitor'}`}
             />
-          </div>
-
-          <div className="box__foot">
-            <p className="box__try">
-              Try{' '}
-              <button
-                type="button"
-                onClick={() => {
-                  setValue(mode.sample);
-                  inputRef.current?.focus();
-                }}
-              >
-                “{mode.sample}”
-              </button>
-              <span>One subject per search keeps each result tight.</span>
-            </p>
             <button type="submit" className="btn btn--primary btn--lg btn--pulse">
               Find outliers
               <Arrow className="btn__arrow h-[15px] w-[15px]" />
             </button>
           </div>
+
+          <div className="box__foot">
+            <span>1 free search · no credit card</span>
+            <a href="#how">See how it works</a>
+          </div>
         </form>
-
-        <div className="hero__ctas">
-          <a href="#how" className="btn btn--ghost btn--lg">
-            See how it works
-          </a>
-        </div>
-        <p className="hero__note">1 free search · no credit card</p>
-
-        <dl className="stats">
-          {STATS.map((s) => (
-            <div className="stat" key={s.label}>
-              <dt className="stat__v">
-                <CountUp value={s.value} />
-              </dt>
-              <dd className="stat__l">
-                <Trend className="h-[11px] w-[11px]" />
-                {s.label}
-              </dd>
-            </div>
-          ))}
-        </dl>
       </div>
     </section>
   );
