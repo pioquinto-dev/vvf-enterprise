@@ -5145,6 +5145,7 @@
 .bbh .chip { display: flex; align-items: center; gap: 11px; flex: none; padding: 11px 16px; border: 1px solid var(--line); border-radius: var(--r-lg); background: var(--white); }
 .bbh .chip__i { width: 34px; height: 34px; border-radius: var(--r); background: var(--wash); display: grid; place-items: center; overflow: hidden; flex: none; box-shadow: inset 0 0 0 1px rgba(154, 107, 0, 0.06); }
 .bbh .chip__i img { width: 100%; height: 100%; display: block; object-fit: cover; }
+.bbh .chip__copy { display: inline-flex; align-items: baseline; gap: 3px; white-space: nowrap; }
 .bbh .chip__n { font-size: 0.86rem; font-weight: 600; color: var(--ink); line-height: 1.3; }
 .bbh .chip__m { font-size: 0.75rem; color: var(--faint); line-height: 1.3; }
 

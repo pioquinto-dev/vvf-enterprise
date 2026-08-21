@@ -6,7 +6,7 @@ function Chip({ brand }) {
       <span className="chip__i">
         <img src={brand.logo} alt={`${brand.name} logo`} loading="lazy" />
       </span>
-      <span>
+      <span className="chip__copy">
         <span className="chip__n">{brand.name}</span>
         <span className="chip__m">
           {brand.category} · {brand.reach}
