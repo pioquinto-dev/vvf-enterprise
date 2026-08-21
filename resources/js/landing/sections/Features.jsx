@@ -4,11 +4,23 @@ import { Check, Play } from '../components/Icons.jsx';
 import { FEATURES } from '../data/dummy.js';
 
 /* Static marketing preview content (the whole landing is illustrative). */
-const PREVIEW_VIDS = [
-  { handle: '@glossier', mult: '18x', views: '4.2M', image: '/images/landing/discovery-coco-shimmy.png' },
-  { handle: '@glowwithtay', mult: '12x', views: '3.1M', image: '/images/landing/discovery-buyer-beware.png' },
-  { handle: '@cleangirl.ari', mult: '22x', views: '2.8M', image: '/images/landing/discovery-brow-grooming.png' },
-];
+const PREVIEW_VIDEOS = {
+  outliers: [
+    { handle: '@glossier', mult: '18x', views: '4.2M', image: '/images/landing/discovery-coco-shimmy.png' },
+    { handle: '@glowwithtay', mult: '12x', views: '3.1M', image: '/images/landing/discovery-buyer-beware.png' },
+    { handle: '@cleangirl.ari', mult: '22x', views: '2.8M', image: '/images/landing/discovery-brow-grooming.png' },
+  ],
+  competitors: [
+    { handle: '@miasbakes', mult: '18x', views: '3.8M', image: '/images/landing/competitor-sourdough-loaf.jpg' },
+    { handle: '@dailybreadclub', mult: '12x', views: '1.7M', image: '/images/landing/competitor-dough.jpg' },
+    { handle: '@thebuildbrief', mult: '22x', views: '996K', image: '/images/landing/competitor-saas.jpg' },
+  ],
+  alerts: [
+    { handle: '@growwithmara', mult: '18x', views: '2.4M', image: '/images/landing/alert-seed-packets.jpg' },
+    { handle: '@skincarebylola', mult: '12x', views: '1.3M', image: '/images/landing/alert-summer-fridays.jpg' },
+    { handle: '@crocstyle', mult: '22x', views: '847K', image: '/images/landing/alert-crocs.jpg' },
+  ],
+};
 
 const PREVIEW_BARS = [
   { label: 'Outlier 20x+', fill: 92, n: 11 },
@@ -20,6 +32,7 @@ const PREVIEW_BARS = [
 export default function Features() {
   const [active, setActive] = useState(FEATURES[0].id);
   const current = FEATURES.find((f) => f.id === active) ?? FEATURES[0];
+  const currentVideos = PREVIEW_VIDEOS[active] ?? PREVIEW_VIDEOS.outliers;
 
   return (
     <section className="sec wrap" id="features">
@@ -69,14 +82,20 @@ export default function Features() {
             </div>
 
             <div className="prev__vids">
-              {PREVIEW_VIDS.map((v) => (
-                <div key={v.handle}>
+              {currentVideos.map((v, index) => (
+                <div key={`${v.handle}-${index}`}>
                   <div className="vid__t">
                     <img className="vid__img" src={v.image} alt={v.handle} />
                     <span className="vid__x">{v.mult}</span>
-                    <span className="vid__p">
-                      <Play className="h-[11px] w-[11px]" />
-                    </span>
+                    {v.href ? (
+                      <a className="vid__p" href={v.href} target="_blank" rel="noreferrer" aria-label={`Open ${v.handle} on TikTok`}>
+                        <Play className="h-[11px] w-[11px]" />
+                      </a>
+                    ) : (
+                      <span className="vid__p">
+                        <Play className="h-[11px] w-[11px]" />
+                      </span>
+                    )}
                   </div>
                   <p className="vid__v">{v.views}</p>
                   <p className="vid__h">{v.handle}</p>

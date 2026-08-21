@@ -16,214 +16,6 @@ var __exportAll = (all, no_symbols) => {
 	return target;
 };
 //#endregion
-//#region resources/js/components/admin/AdminTrendChart.jsx
-/**
-* Hand-rolled SVG line chart. The admin bundle has no charting dependency and
-* a handful of series over a year of points does not justify adding one.
-*/
-var SERIES = [
-	{
-		key: "signups",
-		label: "Sign ups",
-		color: "#ff2d78"
-	},
-	{
-		key: "trialing",
-		label: "Trialing",
-		color: "#f5c518"
-	},
-	{
-		key: "paid",
-		label: "Active paid",
-		color: "#6d8bff"
-	}
-];
-var WIDTH = 960;
-var HEIGHT = 300;
-var PAD = {
-	top: 16,
-	right: 12,
-	bottom: 26,
-	left: 30
-};
-function niceMax(value) {
-	if (value <= 4) return 4;
-	const magnitude = 10 ** Math.floor(Math.log10(value));
-	return Math.ceil(value / magnitude) * magnitude;
-}
-/**
-* Catmull-Rom through the points, converted to cubic beziers. This is what
-* gives the reference look its soft peaks instead of hard polyline corners.
-*/
-function smoothPath(coords) {
-	if (coords.length === 0) return "";
-	if (coords.length < 3) return coords.map(([x, y], index) => `${index === 0 ? "M" : "L"}${x},${y}`).join(" ");
-	let path = `M${coords[0][0]},${coords[0][1]}`;
-	for (let i = 0; i < coords.length - 1; i += 1) {
-		const p0 = coords[i - 1] ?? coords[i];
-		const p1 = coords[i];
-		const p2 = coords[i + 1];
-		const p3 = coords[i + 2] ?? p2;
-		const c1x = p1[0] + (p2[0] - p0[0]) / 6;
-		const c1y = p1[1] + (p2[1] - p0[1]) / 6;
-		const c2x = p2[0] - (p3[0] - p1[0]) / 6;
-		const c2y = p2[1] - (p3[1] - p1[1]) / 6;
-		path += ` C${c1x},${c1y} ${c2x},${c2y} ${p2[0]},${p2[1]}`;
-	}
-	return path;
-}
-function AdminTrendChart({ points = [] }) {
-	const [hidden, setHidden] = useState({});
-	const [hoverIndex, setHoverIndex] = useState(null);
-	const visible = SERIES.filter((series) => !hidden[series.key]);
-	const { max, xFor, yFor, plotWidth, baseline } = useMemo(() => {
-		const ceiling = niceMax(points.reduce((peak, point) => visible.reduce((inner, series) => Math.max(inner, point[series.key] ?? 0), peak), 0));
-		const innerWidth = WIDTH - PAD.left - PAD.right;
-		const innerHeight = HEIGHT - PAD.top - PAD.bottom;
-		const step = points.length > 1 ? innerWidth / (points.length - 1) : 0;
-		return {
-			max: ceiling,
-			plotWidth: innerWidth,
-			baseline: PAD.top + innerHeight,
-			xFor: (index) => PAD.left + index * step,
-			yFor: (value) => PAD.top + innerHeight - (ceiling === 0 ? 0 : value / ceiling * innerHeight)
-		};
-	}, [points, visible]);
-	if (points.length === 0) return /* @__PURE__ */ jsx("p", {
-		className: "px-4 py-16 text-center text-[13px] text-white/45",
-		children: "No snapshots captured yet."
-	});
-	const gridLines = [
-		0,
-		.25,
-		.5,
-		.75,
-		1
-	];
-	const active = hoverIndex === null ? null : points[hoverIndex];
-	const labelEvery = Math.max(1, Math.ceil(points.length / 14));
-	return /* @__PURE__ */ jsxs("div", { children: [
-		/* @__PURE__ */ jsx("div", {
-			className: "mb-4 flex flex-wrap items-center gap-2",
-			children: SERIES.map((series) => {
-				const off = hidden[series.key];
-				return /* @__PURE__ */ jsx("button", {
-					type: "button",
-					onClick: () => setHidden((current) => ({
-						...current,
-						[series.key]: !current[series.key]
-					})),
-					className: "rounded-full border px-2.5 py-1 text-[10.5px] font-semibold tracking-[.1em] uppercase transition",
-					style: {
-						borderColor: off ? "rgba(255,255,255,.1)" : `${series.color}66`,
-						color: off ? "rgba(255,255,255,.28)" : series.color,
-						backgroundColor: off ? "transparent" : `${series.color}14`
-					},
-					children: series.label
-				}, series.key);
-			})
-		}),
-		/* @__PURE__ */ jsxs("svg", {
-			viewBox: `0 0 ${WIDTH} ${HEIGHT}`,
-			className: "h-[300px] w-full",
-			onMouseLeave: () => setHoverIndex(null),
-			onMouseMove: (event) => {
-				const bounds = event.currentTarget.getBoundingClientRect();
-				const ratio = (event.clientX - bounds.left) / bounds.width * WIDTH;
-				const index = Math.round((ratio - PAD.left) / plotWidth * (points.length - 1));
-				setHoverIndex(Math.min(points.length - 1, Math.max(0, index)));
-			},
-			children: [
-				/* @__PURE__ */ jsx("defs", { children: SERIES.map((series) => /* @__PURE__ */ jsxs("linearGradient", {
-					id: `fill-${series.key}`,
-					x1: "0",
-					y1: "0",
-					x2: "0",
-					y2: "1",
-					children: [/* @__PURE__ */ jsx("stop", {
-						offset: "0%",
-						stopColor: series.color,
-						stopOpacity: "0.22"
-					}), /* @__PURE__ */ jsx("stop", {
-						offset: "100%",
-						stopColor: series.color,
-						stopOpacity: "0"
-					})]
-				}, series.key)) }),
-				gridLines.map((ratio) => {
-					const y = PAD.top + (HEIGHT - PAD.top - PAD.bottom) * ratio;
-					return /* @__PURE__ */ jsxs("g", { children: [/* @__PURE__ */ jsx("line", {
-						x1: PAD.left,
-						x2: WIDTH - PAD.right,
-						y1: y,
-						y2: y,
-						stroke: "rgba(255,255,255,.05)"
-					}), /* @__PURE__ */ jsx("text", {
-						x: 0,
-						y: y + 3,
-						fill: "rgba(255,255,255,.3)",
-						fontSize: "10",
-						children: Math.round(max * (1 - ratio))
-					})] }, ratio);
-				}),
-				visible.map((series) => {
-					const coords = points.map((point, index) => [xFor(index), yFor(point[series.key] ?? 0)]);
-					const line = smoothPath(coords);
-					return /* @__PURE__ */ jsxs("g", { children: [/* @__PURE__ */ jsx("path", {
-						d: `${line} L${coords[coords.length - 1][0]},${baseline} L${coords[0][0]},${baseline} Z`,
-						fill: `url(#fill-${series.key})`
-					}), /* @__PURE__ */ jsx("path", {
-						d: line,
-						fill: "none",
-						stroke: series.color,
-						strokeWidth: "2.25",
-						strokeLinecap: "round"
-					})] }, series.key);
-				}),
-				hoverIndex !== null && /* @__PURE__ */ jsxs("g", { children: [/* @__PURE__ */ jsx("line", {
-					x1: xFor(hoverIndex),
-					x2: xFor(hoverIndex),
-					y1: PAD.top,
-					y2: baseline,
-					stroke: "rgba(255,255,255,.2)"
-				}), visible.map((series) => /* @__PURE__ */ jsx("circle", {
-					cx: xFor(hoverIndex),
-					cy: yFor(points[hoverIndex][series.key] ?? 0),
-					r: "3.5",
-					fill: "#0b0e1c",
-					stroke: series.color,
-					strokeWidth: "2"
-				}, series.key))] }),
-				points.map((point, index) => index % labelEvery === 0 ? /* @__PURE__ */ jsx("text", {
-					x: xFor(index),
-					y: 292,
-					fill: "rgba(255,255,255,.3)",
-					fontSize: "9.5",
-					textAnchor: "middle",
-					children: point.label
-				}, point.date) : null)
-			]
-		}),
-		/* @__PURE__ */ jsx("div", {
-			className: "mt-2 flex min-h-[18px] flex-wrap items-center gap-4 text-[12px] text-white/55",
-			children: active && /* @__PURE__ */ jsxs(Fragment, { children: [/* @__PURE__ */ jsx("span", {
-				className: "font-medium text-white/80",
-				children: active.label
-			}), visible.map((series) => /* @__PURE__ */ jsxs("span", { children: [
-				/* @__PURE__ */ jsx("span", {
-					style: { color: series.color },
-					children: series.label
-				}),
-				" ",
-				/* @__PURE__ */ jsx("span", {
-					className: "text-white",
-					children: active[series.key]
-				})
-			] }, series.key))] })
-		})
-	] });
-}
-//#endregion
 //#region resources/js/landing/components/Icons.jsx
 var Logo = ({ className = "h-7 w-7" }) => /* @__PURE__ */ jsxs("svg", {
 	viewBox: "0 0 32 32",
@@ -686,6 +478,12 @@ var NAV_GROUPS = [
 			href: "/x/admin",
 			description: "Growth and usage",
 			icon: "DA"
+		}, {
+			key: "activity",
+			label: "Activity Log",
+			href: "/x/admin/activity",
+			description: "User activity",
+			icon: "AL"
 		}]
 	},
 	{
@@ -1007,6 +805,409 @@ function AdminLayout({ title, section, children, toolbar = null, actions = null,
 	});
 }
 //#endregion
+//#region resources/js/Pages/Admin/ActivityLog.jsx
+var ActivityLog_exports = /* @__PURE__ */ __exportAll({ default: () => ActivityLog });
+var RANGES = [
+	"7D",
+	"30D",
+	"6M",
+	"1Y"
+];
+var CATEGORIES = [
+	["all", "All activity"],
+	["sign_up", "Sign ups"],
+	["regular_trial", "Regular trials"],
+	["affiliate_trial", "Affiliate trials"],
+	["paid", "Active paid"],
+	["engagement", "Engagement"],
+	["cancelled", "Cancelled"]
+];
+var EVENT_LABELS = {
+	account_created: "Signup Created",
+	logged_in: "Login",
+	search_triggered: "Custom Keyword Search Started",
+	search_bookmarked: "Search Bookmarked",
+	video_bookmarked: "Bookmark Saved",
+	video_analysis_triggered: "Video Analysis Triggered",
+	checkout_initiated: "Checkout Initiated",
+	trial_started: "Trial Started",
+	subscription_paid: "Subscription Activated",
+	subscription_cancelled: "Subscription Canceled",
+	account_deletion_requested: "Account Deletion Requested",
+	account_deleted: "Account Deleted"
+};
+var TONES = {
+	sign_up: "#20cfc2",
+	regular_trial: "#ffae19",
+	affiliate_trial: "#9b6cff",
+	paid: "#ee4393",
+	engagement: "#7b5cff",
+	cancelled: "#fb5c6a"
+};
+function formatTimestamp$1(value) {
+	if (!value) return "-";
+	return new Date(value).toLocaleString(void 0, {
+		month: "short",
+		day: "numeric",
+		year: "numeric",
+		hour: "numeric",
+		minute: "2-digit"
+	});
+}
+function ActivityLog({ rows = [], filters = {}, events = [], pagination = {} }) {
+	const current = {
+		range: filters.range ?? "30D",
+		category: filters.category ?? "all",
+		event: filters.event ?? "all"
+	};
+	const update = (changes) => router.get("/x/admin/activity", {
+		...current,
+		...changes,
+		page: 1
+	}, {
+		preserveScroll: true,
+		replace: true
+	});
+	const goToPage = (page) => router.get("/x/admin/activity", {
+		...current,
+		page
+	}, { preserveScroll: true });
+	return /* @__PURE__ */ jsx(AdminLayout, {
+		title: "Activity Log",
+		section: "activity",
+		children: /* @__PURE__ */ jsxs("section", {
+			className: "rounded-2xl border border-[#dce4f0] bg-[linear-gradient(135deg,_#ffffff_0%,_#f6f9ff_100%)] p-4 shadow-[0_18px_42px_-32px_rgba(50,85,150,.45)] sm:p-5",
+			children: [
+				/* @__PURE__ */ jsxs("div", {
+					className: "flex flex-wrap items-start justify-between gap-4",
+					children: [/* @__PURE__ */ jsxs("div", { children: [
+						/* @__PURE__ */ jsx("p", {
+							className: "text-[10px] font-semibold tracking-[.22em] text-[#ed3d8d] uppercase",
+							children: "Activity"
+						}),
+						/* @__PURE__ */ jsx("h2", {
+							className: "mt-1 text-[22px] font-bold tracking-[-.03em] text-[var(--ink)]",
+							children: "Activity log"
+						}),
+						/* @__PURE__ */ jsx("p", {
+							className: "mt-1 text-[11px] text-[#718197]",
+							children: "All recorded user activity in the selected time range."
+						})
+					] }), /* @__PURE__ */ jsx("div", {
+						className: "flex rounded-xl border border-[#dce4f0] bg-white p-1",
+						children: RANGES.map((range) => /* @__PURE__ */ jsx("button", {
+							type: "button",
+							onClick: () => update({ range }),
+							className: `rounded-lg px-2.5 py-1.5 text-[10px] font-semibold ${current.range === range ? "bg-[#ed3d8d] text-white" : "text-[#718197] hover:bg-[#f6f9ff]"}`,
+							children: range
+						}, range))
+					})]
+				}),
+				/* @__PURE__ */ jsxs("div", {
+					className: "mt-5 flex flex-wrap gap-2",
+					children: [
+						/* @__PURE__ */ jsx("label", {
+							className: "sr-only",
+							htmlFor: "activity-category",
+							children: "Activity category"
+						}),
+						/* @__PURE__ */ jsx("select", {
+							id: "activity-category",
+							value: current.category,
+							onChange: (event) => update({ category: event.target.value }),
+							className: "h-9 rounded-lg border border-[#dce4f0] bg-white px-3 text-[11px] font-medium text-[var(--ink)] outline-none focus:border-[#49d4ef]",
+							children: CATEGORIES.map(([value, label]) => /* @__PURE__ */ jsx("option", {
+								value,
+								children: label
+							}, value))
+						}),
+						/* @__PURE__ */ jsx("label", {
+							className: "sr-only",
+							htmlFor: "activity-event",
+							children: "Activity event"
+						}),
+						/* @__PURE__ */ jsxs("select", {
+							id: "activity-event",
+							value: current.event,
+							onChange: (event) => update({ event: event.target.value }),
+							className: "h-9 min-w-[190px] rounded-lg border border-[#dce4f0] bg-white px-3 text-[11px] font-medium text-[var(--ink)] outline-none focus:border-[#49d4ef]",
+							children: [/* @__PURE__ */ jsx("option", {
+								value: "all",
+								children: "All event keys"
+							}), events.map((event) => /* @__PURE__ */ jsx("option", {
+								value: event,
+								children: EVENT_LABELS[event] ?? event.replaceAll("_", " ")
+							}, event))]
+						})
+					]
+				}),
+				/* @__PURE__ */ jsx("div", {
+					className: "mt-4 overflow-hidden rounded-xl border border-[#dce4f0] bg-white",
+					children: rows.length === 0 ? /* @__PURE__ */ jsx("p", {
+						className: "px-4 py-10 text-center text-[12px] text-[#718197]",
+						children: "No activity matches these filters."
+					}) : rows.map((row) => /* @__PURE__ */ jsxs("article", {
+						className: "flex gap-3 border-b border-[#e8edf5] px-4 py-3 last:border-b-0",
+						children: [
+							/* @__PURE__ */ jsx("span", {
+								className: "mt-1.5 h-2 w-2 shrink-0 rounded-full",
+								style: { backgroundColor: TONES[row.category] ?? "#718197" }
+							}),
+							/* @__PURE__ */ jsxs("div", {
+								className: "min-w-0 flex-1",
+								children: [
+									/* @__PURE__ */ jsxs("div", {
+										className: "flex flex-wrap items-center gap-1.5",
+										children: [/* @__PURE__ */ jsx("strong", {
+											className: "text-[12px] text-[var(--ink)]",
+											children: row.name
+										}), /* @__PURE__ */ jsx("span", {
+											className: "rounded-full border border-[#dce4f0] px-1.5 py-0.5 text-[8px] font-semibold tracking-[.1em] text-[#53657d] uppercase",
+											children: row.category.replace("_", " ")
+										})]
+									}),
+									/* @__PURE__ */ jsx("p", {
+										className: "mt-1 text-[11px] text-[#55667d]",
+										children: row.summary
+									}),
+									/* @__PURE__ */ jsxs("p", {
+										className: "mt-1 text-[10px] text-[#8a98aa]",
+										children: [
+											row.email,
+											" - ",
+											formatTimestamp$1(row.date)
+										]
+									})
+								]
+							}),
+							/* @__PURE__ */ jsx("span", {
+								className: "hidden shrink-0 self-start rounded-full bg-[#f1f4f8] px-2 py-1 text-[8px] font-semibold tracking-[.08em] text-[#718197] uppercase sm:block",
+								children: EVENT_LABELS[row.event] ?? row.event.replaceAll("_", " ")
+							})
+						]
+					}, row.id))
+				}),
+				/* @__PURE__ */ jsxs("div", {
+					className: "mt-4 flex items-center justify-between gap-3 text-[11px] text-[#718197]",
+					children: [/* @__PURE__ */ jsxs("span", { children: [pagination.total ?? 0, " activities"] }), /* @__PURE__ */ jsxs("div", {
+						className: "flex gap-2",
+						children: [
+							/* @__PURE__ */ jsx("button", {
+								type: "button",
+								disabled: (pagination.currentPage ?? 1) <= 1,
+								onClick: () => goToPage(pagination.currentPage - 1),
+								className: "rounded-lg border border-[#dce4f0] bg-white px-3 py-1.5 font-semibold text-[var(--ink)] disabled:cursor-not-allowed disabled:opacity-45",
+								children: "Previous"
+							}),
+							/* @__PURE__ */ jsxs("span", {
+								className: "px-1 py-1.5",
+								children: [
+									"Page ",
+									pagination.currentPage ?? 1,
+									" of ",
+									pagination.lastPage ?? 1
+								]
+							}),
+							/* @__PURE__ */ jsx("button", {
+								type: "button",
+								disabled: (pagination.currentPage ?? 1) >= (pagination.lastPage ?? 1),
+								onClick: () => goToPage(pagination.currentPage + 1),
+								className: "rounded-lg border border-[#dce4f0] bg-white px-3 py-1.5 font-semibold text-[var(--ink)] disabled:cursor-not-allowed disabled:opacity-45",
+								children: "Next"
+							})
+						]
+					})]
+				})
+			]
+		})
+	});
+}
+//#endregion
+//#region resources/js/components/admin/AdminTrendChart.jsx
+var SERIES = [
+	{
+		key: "signups",
+		label: "Sign ups",
+		color: "#ff2d78"
+	},
+	{
+		key: "trialing",
+		label: "Trialing",
+		color: "#ffae19"
+	},
+	{
+		key: "paid",
+		label: "Active paid",
+		color: "#7486ff"
+	}
+];
+var WIDTH = 960;
+var HEIGHT = 250;
+var PAD = {
+	top: 14,
+	right: 12,
+	bottom: 28,
+	left: 32
+};
+function niceMax(value) {
+	if (value <= 4) return 4;
+	const magnitude = 10 ** Math.floor(Math.log10(value));
+	return Math.ceil(value / magnitude) * magnitude;
+}
+function smoothPath(coords, baseline) {
+	if (coords.length < 3) return coords.map(([x, y], index) => `${index === 0 ? "M" : "L"}${x},${y}`).join(" ");
+	let path = `M${coords[0][0]},${coords[0][1]}`;
+	for (let index = 0; index < coords.length - 1; index += 1) {
+		const p0 = coords[index - 1] ?? coords[index];
+		const p1 = coords[index];
+		const p2 = coords[index + 1];
+		const p3 = coords[index + 2] ?? p2;
+		const c1x = p1[0] + (p2[0] - p0[0]) / 6;
+		const c2x = p2[0] - (p3[0] - p1[0]) / 6;
+		const c1y = Math.min(baseline, p1[1] + (p2[1] - p0[1]) / 6);
+		const c2y = Math.min(baseline, p2[1] - (p3[1] - p1[1]) / 6);
+		path += ` C${c1x},${c1y} ${c2x},${c2y} ${p2[0]},${p2[1]}`;
+	}
+	return path;
+}
+function AdminTrendChart({ points = [] }) {
+	const [hidden, setHidden] = useState({});
+	const [hoverIndex, setHoverIndex] = useState(null);
+	const visible = SERIES.filter((series) => !hidden[series.key]);
+	const { max, xFor, yFor, plotWidth, baseline } = useMemo(() => {
+		const ceiling = niceMax(points.reduce((peak, point) => visible.reduce((value, series) => Math.max(value, point[series.key] ?? 0), peak), 0));
+		const innerWidth = WIDTH - PAD.left - PAD.right;
+		const innerHeight = HEIGHT - PAD.top - PAD.bottom;
+		return {
+			max: ceiling,
+			plotWidth: innerWidth,
+			baseline: PAD.top + innerHeight,
+			xFor: (index) => PAD.left + index * (points.length > 1 ? innerWidth / (points.length - 1) : 0),
+			yFor: (value) => PAD.top + innerHeight - value / ceiling * innerHeight
+		};
+	}, [points, visible]);
+	if (points.length === 0) return /* @__PURE__ */ jsx("p", {
+		className: "px-4 py-16 text-center text-[13px] text-[var(--faint)]",
+		children: "No snapshots captured yet."
+	});
+	const active = hoverIndex === null ? null : points[hoverIndex];
+	const labelEvery = Math.max(1, Math.ceil(points.length / 14));
+	const tooltipLeft = hoverIndex === null ? 0 : Math.min(86, Math.max(2, xFor(hoverIndex) / WIDTH * 100));
+	const updateHover = (event) => {
+		const bounds = event.currentTarget.getBoundingClientRect();
+		const ratio = (event.clientX - bounds.left) / bounds.width * WIDTH;
+		const index = Math.round((ratio - PAD.left) / plotWidth * (points.length - 1));
+		setHoverIndex(Math.min(points.length - 1, Math.max(0, index)));
+	};
+	return /* @__PURE__ */ jsxs("div", {
+		className: "relative",
+		children: [
+			/* @__PURE__ */ jsx("div", {
+				className: "mb-3 flex flex-wrap gap-2",
+				children: SERIES.map((series) => {
+					const off = hidden[series.key];
+					return /* @__PURE__ */ jsx("button", {
+						type: "button",
+						onClick: () => setHidden((current) => ({
+							...current,
+							[series.key]: !current[series.key]
+						})),
+						className: "rounded-full border px-2.5 py-1 text-[10px] font-semibold tracking-[.11em] uppercase transition",
+						style: {
+							borderColor: off ? "#dce4f0" : `${series.color}99`,
+							color: off ? "#95a2b3" : series.color,
+							backgroundColor: off ? "#fff" : `${series.color}12`
+						},
+						children: series.label
+					}, series.key);
+				})
+			}),
+			active && /* @__PURE__ */ jsxs("div", {
+				className: "pointer-events-none absolute z-10 w-28 rounded-xl bg-[#101a31] px-3 py-2.5 text-[10px] shadow-[0_14px_30px_rgba(16,26,49,.28)]",
+				style: {
+					left: `${tooltipLeft}%`,
+					top: 50
+				},
+				children: [/* @__PURE__ */ jsx("strong", {
+					className: "block text-[11px] text-white",
+					children: active.label
+				}), visible.map((series) => /* @__PURE__ */ jsxs("span", {
+					className: "mt-1 block",
+					style: { color: series.color },
+					children: [
+						series.label,
+						": ",
+						active[series.key] ?? 0
+					]
+				}, series.key))]
+			}),
+			/* @__PURE__ */ jsxs("svg", {
+				viewBox: `0 0 ${WIDTH} ${HEIGHT}`,
+				className: "h-[250px] w-full",
+				onMouseLeave: () => setHoverIndex(null),
+				onMouseMove: updateHover,
+				children: [
+					[
+						0,
+						.25,
+						.5,
+						.75,
+						1
+					].map((ratio) => {
+						const y = PAD.top + (HEIGHT - PAD.top - PAD.bottom) * ratio;
+						return /* @__PURE__ */ jsxs("g", { children: [/* @__PURE__ */ jsx("line", {
+							x1: PAD.left,
+							x2: WIDTH - PAD.right,
+							y1: y,
+							y2: y,
+							stroke: "#edf1f6"
+						}), /* @__PURE__ */ jsx("text", {
+							x: 2,
+							y: y + 3,
+							fill: "#8b98aa",
+							fontSize: "9",
+							children: Math.round(max * (1 - ratio))
+						})] }, ratio);
+					}),
+					visible.map((series) => {
+						const coords = points.map((point, index) => [xFor(index), yFor(point[series.key] ?? 0)]);
+						return /* @__PURE__ */ jsx("path", {
+							d: smoothPath(coords, baseline),
+							fill: "none",
+							stroke: series.color,
+							strokeWidth: "1.8",
+							strokeLinecap: "round"
+						}, series.key);
+					}),
+					hoverIndex !== null && /* @__PURE__ */ jsxs("g", { children: [/* @__PURE__ */ jsx("line", {
+						x1: xFor(hoverIndex),
+						x2: xFor(hoverIndex),
+						y1: PAD.top,
+						y2: baseline,
+						stroke: "#cbd5e1",
+						strokeDasharray: "3 3"
+					}), visible.map((series) => /* @__PURE__ */ jsx("circle", {
+						cx: xFor(hoverIndex),
+						cy: yFor(points[hoverIndex][series.key] ?? 0),
+						r: "3.4",
+						fill: "#fff",
+						stroke: series.color,
+						strokeWidth: "2"
+					}, series.key))] }),
+					points.map((point, index) => index % labelEvery === 0 ? /* @__PURE__ */ jsx("text", {
+						x: xFor(index),
+						y: 243,
+						fill: "#8b98aa",
+						fontSize: "9",
+						textAnchor: "middle",
+						children: point.label
+					}, point.date) : null)
+				]
+			})
+		]
+	});
+}
+//#endregion
 //#region resources/js/Pages/Admin/Dashboard.jsx
 var Dashboard_exports$1 = /* @__PURE__ */ __exportAll({ default: () => Dashboard$1 });
 function formatDay(value) {
@@ -1046,7 +1247,290 @@ function StatCard({ card }) {
 		]
 	});
 }
-function Dashboard$1({ trend = [], stats = [], snapshot = {}, range = "30D", ranges = [] }) {
+var SOURCE_COLORS = [
+	"#19c7bd",
+	"#ff2d78",
+	"#f6a819",
+	"#7f80ff",
+	"#8bbd4d"
+];
+function sourceColor(index) {
+	return SOURCE_COLORS[index % SOURCE_COLORS.length];
+}
+function AcquisitionDashboard({ acquisition = {} }) {
+	const metrics = acquisition.metrics ?? [];
+	const [activeKey, setActiveKey] = useState("page_views");
+	const [sourceFilter, setSourceFilter] = useState("all");
+	const activeMetric = metrics.find((metric) => metric.key === activeKey && !metric.locked) ?? metrics.find((metric) => !metric.locked);
+	const details = acquisition.details?.[activeMetric?.key] ?? {
+		total: 0,
+		sources: [],
+		rows: []
+	};
+	const rows = sourceFilter === "all" ? details.rows : details.rows.filter((row) => row.source === sourceFilter);
+	const metricLabel = activeMetric?.label ?? "Acquisition";
+	const selectMetric = (metric) => {
+		if (metric.locked) return;
+		setActiveKey(metric.key);
+		setSourceFilter("all");
+	};
+	return /* @__PURE__ */ jsxs("section", {
+		className: "overflow-hidden rounded-2xl border border-[#dce4f0] bg-[linear-gradient(135deg,_#ffffff_0%,_#f6f9ff_100%)] p-4 shadow-[0_18px_42px_-32px_rgba(50,85,150,.45)] sm:p-5",
+		children: [
+			/* @__PURE__ */ jsxs("div", {
+				className: "flex flex-wrap items-start justify-between gap-3",
+				children: [/* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsx("p", {
+					className: "text-[10px] font-semibold tracking-[.22em] text-[#188fb7] uppercase",
+					children: "Acquisition"
+				}), /* @__PURE__ */ jsx("h3", {
+					className: "mt-1 text-[17px] font-semibold text-[var(--ink)]",
+					children: "Where they come from"
+				})] }), /* @__PURE__ */ jsx("span", {
+					className: "rounded-full border border-[#dce4f0] bg-white px-2.5 py-1 text-[10px] font-semibold tracking-[.12em] text-[#74849a] uppercase",
+					children: acquisition.rangeLabel ?? "Current range"
+				})]
+			}),
+			/* @__PURE__ */ jsx("div", {
+				className: "mt-3 grid grid-cols-4 overflow-hidden rounded-2xl border border-[#dce4f0] bg-[#fbfdff]",
+				children: metrics.map((metric) => {
+					const active = activeMetric?.key === metric.key;
+					return /* @__PURE__ */ jsxs("button", {
+						type: "button",
+						disabled: metric.locked,
+						onClick: () => selectMetric(metric),
+						className: `min-h-[62px] border-b border-[#e8edf5] px-3 py-2.5 text-left transition sm:border-r sm:border-b-0 last:sm:border-r-0 ${active ? "bg-white ring-1 ring-inset ring-[#49d4ef]" : metric.locked ? "cursor-not-allowed bg-[#f6f7fa] opacity-55" : "hover:bg-white"}`,
+						children: [/* @__PURE__ */ jsx("span", {
+							className: "block text-[9px] font-semibold tracking-[.16em] text-[#7b8ba0] uppercase",
+							children: metric.label
+						}), /* @__PURE__ */ jsxs("span", {
+							className: "mt-1.5 flex items-center gap-2 text-[21px] leading-none font-bold text-[var(--ink)]",
+							children: [metric.locked ? "Locked" : metric.value.toLocaleString(), active && /* @__PURE__ */ jsx("span", {
+								className: "rounded-full bg-[#dff7fc] px-1.5 py-0.5 text-[8px] font-semibold tracking-[.1em] text-[#2388a4] uppercase",
+								children: "Active"
+							})]
+						})]
+					}, metric.key);
+				})
+			}),
+			/* @__PURE__ */ jsxs("div", {
+				className: "mt-5 flex flex-wrap items-center justify-between gap-2",
+				children: [/* @__PURE__ */ jsx("h4", {
+					className: "text-[14px] font-semibold text-[var(--ink)]",
+					children: metricLabel
+				}), /* @__PURE__ */ jsx("strong", {
+					className: "text-[23px] leading-none tracking-[-.04em] text-[var(--ink)]",
+					children: details.total.toLocaleString()
+				})]
+			}),
+			/* @__PURE__ */ jsx("div", {
+				className: "mt-3 flex h-1.5 overflow-hidden rounded-full bg-[#e9eef5]",
+				children: details.sources.map((source, index) => /* @__PURE__ */ jsx("span", { style: {
+					width: `${source.percentage}%`,
+					backgroundColor: sourceColor(index)
+				} }, source.source))
+			}),
+			/* @__PURE__ */ jsxs("div", {
+				className: "mt-3 flex flex-wrap gap-1.5",
+				children: [/* @__PURE__ */ jsxs("button", {
+					type: "button",
+					onClick: () => setSourceFilter("all"),
+					className: `rounded-full border px-2.5 py-1 text-[10px] font-semibold tracking-[.08em] uppercase transition ${sourceFilter === "all" ? "border-[#49d4ef] bg-[#ebfbff] text-[#2388a4]" : "border-[#dce4f0] bg-white text-[#718197]"}`,
+					children: ["All - ", details.total]
+				}), details.sources.map((source, index) => /* @__PURE__ */ jsxs("button", {
+					type: "button",
+					onClick: () => setSourceFilter(source.source),
+					className: `rounded-full border px-2.5 py-1 text-[10px] font-semibold tracking-[.08em] uppercase transition ${sourceFilter === source.source ? "border-[#49d4ef] bg-[#ebfbff] text-[#2388a4]" : "border-[#dce4f0] bg-white text-[#718197]"}`,
+					children: [
+						/* @__PURE__ */ jsx("span", {
+							className: "mr-1 inline-block h-1.5 w-1.5 rounded-full",
+							style: { backgroundColor: sourceColor(index) }
+						}),
+						source.source,
+						" - ",
+						source.count
+					]
+				}, source.source))]
+			}),
+			/* @__PURE__ */ jsx("div", {
+				className: "mt-3 max-h-[236px] overflow-y-auto rounded-xl border border-[#dce4f0] bg-white",
+				children: rows.length === 0 ? /* @__PURE__ */ jsxs("p", {
+					className: "px-4 py-8 text-center text-[12px] text-[#718197]",
+					children: [
+						"No ",
+						metricLabel.toLowerCase(),
+						" recorded in this range."
+					]
+				}) : rows.map((row) => /* @__PURE__ */ jsxs("div", {
+					className: "flex items-center justify-between gap-3 border-b border-[#e8edf5] px-3 py-2.5 last:border-b-0",
+					children: [/* @__PURE__ */ jsxs("div", {
+						className: "min-w-0",
+						children: [
+							/* @__PURE__ */ jsx("p", {
+								className: "truncate text-[12px] font-semibold text-[var(--ink)]",
+								children: row.name
+							}),
+							/* @__PURE__ */ jsx("p", {
+								className: "truncate text-[10px] text-[#718197]",
+								children: row.email
+							}),
+							/* @__PURE__ */ jsxs("div", {
+								className: "mt-1 flex flex-wrap gap-1",
+								children: [/* @__PURE__ */ jsx("span", {
+									className: "rounded bg-[#e8faff] px-1.5 py-0.5 text-[9px] font-semibold text-[#2388a4] capitalize",
+									children: row.source
+								}), /* @__PURE__ */ jsx("span", {
+									className: "rounded bg-[#f1f4f8] px-1.5 py-0.5 text-[9px] text-[#718197]",
+									children: row.date ? formatDay(row.date.slice(0, 10)) : "-"
+								})]
+							})
+						]
+					}), /* @__PURE__ */ jsx("span", {
+						className: "shrink-0 rounded-full border border-[#dce4f0] px-2 py-1 text-[9px] font-semibold tracking-[.08em] text-[#718197] uppercase",
+						children: row.meta
+					})]
+				}, row.id))
+			})
+		]
+	});
+}
+var FUNNEL_TONES = {
+	teal: "bg-[#20cfc2]",
+	amber: "bg-[#ffae19]",
+	blue: "bg-[#7f80ff]",
+	rose: "bg-[#fb5c6a]"
+};
+function ConversionFunnel({ funnel = {} }) {
+	const steps = funnel.steps ?? [];
+	return /* @__PURE__ */ jsxs("section", {
+		className: "rounded-2xl border border-[#dce4f0] bg-[linear-gradient(135deg,_#ffffff_0%,_#f6f9ff_100%)] p-4 shadow-[0_18px_42px_-32px_rgba(50,85,150,.45)] sm:p-5",
+		children: [/* @__PURE__ */ jsxs("div", {
+			className: "flex flex-wrap items-start justify-between gap-3",
+			children: [/* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsx("p", {
+				className: "text-[10px] font-semibold tracking-[.22em] text-[#188fb7] uppercase",
+				children: "Funnel"
+			}), /* @__PURE__ */ jsx("h3", {
+				className: "mt-1 text-[17px] font-semibold text-[var(--ink)]",
+				children: "Conversion funnel"
+			})] }), /* @__PURE__ */ jsx("span", {
+				className: "text-[10px] font-medium text-[#718197]",
+				children: "Same selected range"
+			})]
+		}), /* @__PURE__ */ jsx("div", {
+			className: "mt-5 space-y-3",
+			children: steps.map((step) => /* @__PURE__ */ jsxs("div", {
+				className: "grid grid-cols-[42px_1fr_86px] items-center gap-2 sm:grid-cols-[54px_1fr_112px] sm:gap-3",
+				children: [
+					/* @__PURE__ */ jsx("span", {
+						className: "text-[10.5px] font-medium text-[#55667d]",
+						children: step.label
+					}),
+					/* @__PURE__ */ jsxs("div", {
+						className: "flex items-center gap-2",
+						children: [/* @__PURE__ */ jsx("strong", {
+							className: "w-7 text-[12px] text-[var(--ink)]",
+							children: step.value.toLocaleString()
+						}), /* @__PURE__ */ jsx("div", {
+							className: "h-3 flex-1 overflow-hidden rounded-full bg-[#edf1f6]",
+							children: /* @__PURE__ */ jsx("span", {
+								className: `block h-full rounded-full ${FUNNEL_TONES[step.tone] ?? FUNNEL_TONES.teal}`,
+								style: { width: `${step.percentage}%` }
+							})
+						})]
+					}),
+					/* @__PURE__ */ jsx("span", {
+						className: "text-right text-[10px] text-[#718197]",
+						children: step.key === "signups" ? step.caption : `${step.percentage.toFixed(1)}% ${step.caption}`
+					})
+				]
+			}, step.key))
+		})]
+	});
+}
+var ACTIVITY_TONES = {
+	sign_up: "#20cfc2",
+	regular_trial: "#ffae19",
+	affiliate_trial: "#9b6cff",
+	paid: "#ee4393",
+	engagement: "#7b5cff",
+	cancelled: "#fb5c6a"
+};
+var ACTIVITY_FILTERS = [
+	["all", "All"],
+	["sign_up", "Sign up"],
+	["regular_trial", "Regular trials"],
+	["affiliate_trial", "Affiliate trials"],
+	["paid", "Paid"],
+	["engagement", "Engagement"],
+	["cancelled", "Cancelled"]
+];
+function RecentActivity({ activity = {} }) {
+	const [filter, setFilter] = useState("all");
+	const rows = (activity.rows ?? []).filter((row) => filter === "all" || row.category === filter);
+	return /* @__PURE__ */ jsxs("section", {
+		className: "rounded-2xl border border-[#dce4f0] bg-[linear-gradient(135deg,_#ffffff_0%,_#f6f9ff_100%)] p-4 shadow-[0_18px_42px_-32px_rgba(50,85,150,.45)] sm:p-5",
+		children: [
+			/* @__PURE__ */ jsxs("div", {
+				className: "flex items-start justify-between gap-3",
+				children: [/* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsx("p", {
+					className: "text-[10px] font-semibold tracking-[.22em] text-[#ed3d8d] uppercase",
+					children: "Activity"
+				}), /* @__PURE__ */ jsx("h3", {
+					className: "mt-1 text-[17px] font-semibold text-[var(--ink)]",
+					children: "Recent activity"
+				})] }), /* @__PURE__ */ jsx(Link, {
+					href: "/x/admin/activity",
+					className: "text-[11px] font-semibold text-[#ed3d8d] transition hover:text-[#b82367]",
+					children: "Show All ->"
+				})]
+			}),
+			/* @__PURE__ */ jsx("div", {
+				className: "mt-4 flex flex-wrap gap-1.5",
+				children: ACTIVITY_FILTERS.map(([key, label]) => /* @__PURE__ */ jsx("button", {
+					type: "button",
+					onClick: () => setFilter(key),
+					className: `rounded-full border px-2.5 py-1 text-[10px] font-semibold transition ${filter === key ? "border-[#ed3d8d] bg-[#fbe1ef] text-[#b82367]" : "border-[#dce4f0] bg-white text-[#718197]"}`,
+					children: label
+				}, key))
+			}),
+			/* @__PURE__ */ jsx("div", {
+				className: "mt-4 rounded-xl border border-[#dce4f0] bg-white",
+				children: rows.length === 0 ? /* @__PURE__ */ jsx("p", {
+					className: "px-4 py-8 text-center text-[12px] text-[#718197]",
+					children: "No recent activity matches this filter."
+				}) : rows.map((row) => /* @__PURE__ */ jsxs("div", {
+					className: "flex gap-2.5 border-b border-[#e8edf5] px-3 py-2.5 last:border-b-0",
+					children: [/* @__PURE__ */ jsx("span", {
+						className: "mt-1.5 h-2 w-2 shrink-0 rounded-full",
+						style: { backgroundColor: ACTIVITY_TONES[row.category] ?? "#718197" }
+					}), /* @__PURE__ */ jsxs("div", {
+						className: "min-w-0",
+						children: [/* @__PURE__ */ jsxs("div", {
+							className: "flex flex-wrap items-center gap-1.5",
+							children: [
+								/* @__PURE__ */ jsx("strong", {
+									className: "text-[12px] text-[var(--ink)]",
+									children: row.name
+								}),
+								/* @__PURE__ */ jsx("span", {
+									className: "rounded-full border border-[#dce4f0] px-1.5 py-0.5 text-[8px] font-semibold tracking-[.1em] text-[#53657d] uppercase",
+									children: row.category.replace("_", " ")
+								}),
+								/* @__PURE__ */ jsx("span", {
+									className: "rounded-full bg-[#f1f4f8] px-1.5 py-0.5 text-[8px] font-semibold tracking-[.08em] text-[#718197] uppercase",
+									children: row.date ? formatDay(row.date.slice(0, 10)) : "-"
+								})
+							]
+						}), /* @__PURE__ */ jsx("p", {
+							className: "mt-1 text-[10.5px] text-[#718197]",
+							children: row.summary
+						})]
+					})]
+				}, row.id))
+			})
+		]
+	});
+}
+function Dashboard$1({ trend = [], stats = [], snapshot = {}, range = "30D", ranges = [], acquisition = {}, activity = {} }) {
 	const refresh = useForm({});
 	const selectRange = (next) => {
 		router.get("/x/admin", { range: next }, {
@@ -1123,15 +1607,23 @@ function Dashboard$1({ trend = [], stats = [], snapshot = {}, range = "30D", ran
 				}), /* @__PURE__ */ jsx(AdminTrendChart, { points: trend })]
 			}),
 			/* @__PURE__ */ jsx("div", {
-				className: "mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-5",
+				className: "mt-3 grid grid-cols-3 gap-2 sm:gap-3 lg:grid-cols-5",
 				children: stats.map((card) => /* @__PURE__ */ jsx(StatCard, { card }, card.key))
+			}),
+			/* @__PURE__ */ jsx("div", {
+				className: "mt-3",
+				children: /* @__PURE__ */ jsx(ConversionFunnel, { funnel: acquisition.funnel })
+			}),
+			/* @__PURE__ */ jsxs("div", {
+				className: "mt-3 grid gap-3 xl:grid-cols-2",
+				children: [/* @__PURE__ */ jsx(RecentActivity, { activity }), /* @__PURE__ */ jsx(AcquisitionDashboard, { acquisition })]
 			})
 		]
 	});
 }
 //#endregion
 //#region resources/js/components/admin/AdminRowMenu.jsx
-function AdminRowMenu({ resource, row, capabilities = {}, onEdit, onPreview }) {
+function AdminRowMenu({ resource, row, capabilities = {}, onEdit, onPreview, onImpersonate }) {
 	const [open, setOpen] = useState(false);
 	const container = useRef(null);
 	useEffect(() => {
@@ -1153,6 +1645,7 @@ function AdminRowMenu({ resource, row, capabilities = {}, onEdit, onPreview }) {
 	const items = [];
 	const canPreview = capabilities.preview === true;
 	const canEdit = capabilities.edit && !row.trashed;
+	const canImpersonate = capabilities.impersonate === true && !row.trashed;
 	if (capabilities.archive && !row.trashed) items.push({
 		label: row.archived ? "Unarchive" : "Archive",
 		onClick: () => act("patch", `${base}/archive`, { archived: !row.archived })
@@ -1167,7 +1660,7 @@ function AdminRowMenu({ resource, row, capabilities = {}, onEdit, onPreview }) {
 			if (window.confirm("Delete this record? It is soft deleted and can be restored.")) act("delete", base);
 		}
 	});
-	if (items.length === 0 && !canEdit && !canPreview) return null;
+	if (items.length === 0 && !canEdit && !canPreview && !canImpersonate) return null;
 	return /* @__PURE__ */ jsxs("div", {
 		ref: container,
 		className: "relative flex items-center justify-end gap-1",
@@ -1183,6 +1676,14 @@ function AdminRowMenu({ resource, row, capabilities = {}, onEdit, onPreview }) {
 				onClick: () => onEdit(row),
 				className: "inline-flex h-6 items-center rounded-md border border-[var(--yellow)] bg-[var(--wash)] px-2 text-[11.5px] font-medium text-[var(--amber-ink)] transition hover:bg-[var(--yellow)] hover:text-[#1a1400]",
 				children: "Edit"
+			}),
+			canImpersonate && /* @__PURE__ */ jsx("button", {
+				type: "button",
+				onClick: () => {
+					if (window.confirm(`Log in as ${row.email || row.user} for one hour?`)) onImpersonate(row);
+				},
+				className: "inline-flex h-6 items-center rounded-md border border-[var(--line)] bg-white px-2 text-[11.5px] font-medium text-[var(--ink)] transition hover:border-[var(--yellow)] hover:bg-[var(--wash)]",
+				children: "Log in as"
 			}),
 			items.length > 0 && /* @__PURE__ */ jsx("button", {
 				type: "button",
@@ -1271,8 +1772,8 @@ function renderCell(column, row, index) {
 		children: text
 	});
 }
-function AdminDataTable({ columns = [], rows = [], resource, capabilities = {}, onEdit = () => {}, onPreview = () => {} }) {
-	const hasActions = Boolean(capabilities.preview || capabilities.edit || capabilities.archive || capabilities.delete);
+function AdminDataTable({ columns = [], rows = [], resource, capabilities = {}, onEdit = () => {}, onPreview = () => {}, onImpersonate = () => {} }) {
+	const hasActions = Boolean(capabilities.preview || capabilities.edit || capabilities.archive || capabilities.delete || capabilities.impersonate);
 	return /* @__PURE__ */ jsxs(Fragment, { children: [/* @__PURE__ */ jsx("div", {
 		className: "hidden overflow-x-auto md:block",
 		children: /* @__PURE__ */ jsxs("table", {
@@ -1281,7 +1782,7 @@ function AdminDataTable({ columns = [], rows = [], resource, capabilities = {}, 
 				className: "sticky top-0 z-10 border-b border-[var(--line)] bg-[var(--paper)] px-4 py-2 text-left text-[11px] font-semibold tracking-[.06em] whitespace-nowrap text-[var(--faint)] uppercase",
 				children: column.label
 			}, column.key)), hasActions && /* @__PURE__ */ jsx("th", {
-				className: "sticky top-0 z-10 w-[104px] border-b border-[var(--line)] bg-[var(--paper)] px-4 py-2 text-right text-[11px] font-semibold tracking-[.06em] whitespace-nowrap text-[var(--faint)] uppercase",
+				className: "sticky top-0 z-10 w-[190px] border-b border-[var(--line)] bg-[var(--paper)] px-4 py-2 text-right text-[11px] font-semibold tracking-[.06em] whitespace-nowrap text-[var(--faint)] uppercase",
 				children: "Actions"
 			})] }) }), /* @__PURE__ */ jsx("tbody", { children: rows.map((row, rowIndex) => /* @__PURE__ */ jsxs("tr", {
 				className: "group transition-colors hover:bg-[rgba(255,248,230,.65)]",
@@ -1295,7 +1796,8 @@ function AdminDataTable({ columns = [], rows = [], resource, capabilities = {}, 
 						row,
 						capabilities,
 						onEdit,
-						onPreview
+						onPreview,
+						onImpersonate
 					})
 				})]
 			}, row.id ?? rowIndex)) })]
@@ -1314,7 +1816,8 @@ function AdminDataTable({ columns = [], rows = [], resource, capabilities = {}, 
 					row,
 					capabilities,
 					onEdit,
-					onPreview
+					onPreview,
+					onImpersonate
 				})]
 			}), columns.slice(1).map((column) => /* @__PURE__ */ jsxs("div", {
 				className: "flex items-center justify-between gap-4",
@@ -1889,7 +2392,8 @@ function Listing({ resource, title, search, searchPlaceholder, filters = [], col
 					resource,
 					capabilities,
 					onEdit: setEditing,
-					onPreview: setPreviewing
+					onPreview: setPreviewing,
+					onImpersonate: (row) => router.post(`/x/admin/users/${row.id}/impersonate`)
 				}) : /* @__PURE__ */ jsx(AdminEmptyState, {
 					title: `No ${title.toLowerCase()} found`,
 					message: emptyMessage || "Nothing matches the current search and filters."
@@ -2572,6 +3076,7 @@ function AppLayout({ pill, step, title, subtitle, actions, toolbar, width = "max
 	const logout = useForm({});
 	const [drawerOpen, setDrawerOpen] = useState(false);
 	const signedIn = auth.signedIn ?? Boolean(auth.user);
+	const impersonation = auth.impersonation;
 	const signOut = () => {
 		setDrawerOpen(false);
 		logout.post("/logout");
@@ -2671,6 +3176,25 @@ function AppLayout({ pill, step, title, subtitle, actions, toolbar, width = "max
 						children: /* @__PURE__ */ jsxs("div", {
 							className: `mx-auto w-full ${width}`,
 							children: [
+								impersonation && /* @__PURE__ */ jsxs("div", {
+									className: "mb-5 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-[var(--yellow)] bg-[var(--wash)] px-4 py-3 text-[12.5px] text-[var(--amber-ink)]",
+									children: [/* @__PURE__ */ jsxs("span", { children: [
+										"You are logged in as ",
+										auth.user?.email,
+										". This admin session ends at",
+										" ",
+										new Date(impersonation.expires_at).toLocaleTimeString([], {
+											hour: "numeric",
+											minute: "2-digit"
+										}),
+										"."
+									] }), /* @__PURE__ */ jsx("button", {
+										type: "button",
+										onClick: () => router.post("/x/admin/impersonation/stop"),
+										className: "rounded-md border border-[var(--yellow)] bg-white px-3 py-1.5 text-[12px] font-semibold text-[var(--amber-ink)] transition hover:bg-[var(--yellow)] hover:text-[#1a1400]",
+										children: "Return to admin"
+									})]
+								}),
 								header,
 								toolbar && /* @__PURE__ */ jsx("div", { children: toolbar }),
 								children
@@ -2732,10 +3256,10 @@ function EntitlementsBar() {
 //#endregion
 //#region resources/js/Pages/components/VideoCard.jsx
 var VideoCard_exports = /* @__PURE__ */ __exportAll({
-	compact: () => compact,
+	compact: () => compact$1,
 	default: () => VideoCard
 });
-function compact(n) {
+function compact$1(n) {
 	const value = Number(n) || 0;
 	if (value >= 1e6) return `${(value / 1e6).toFixed(value >= 1e7 ? 0 : 1)}M`;
 	if (value >= 1e3) return `${(value / 1e3).toFixed(value >= 1e4 ? 0 : 1)}K`;
@@ -2808,9 +3332,9 @@ function VideoCard({ video, rank }) {
 				/* @__PURE__ */ jsxs("div", {
 					className: "vb__s",
 					children: [
-						/* @__PURE__ */ jsxs("span", { children: [/* @__PURE__ */ jsx(Trend, {}), compact(video.views)] }),
-						/* @__PURE__ */ jsxs("span", { children: [/* @__PURE__ */ jsx(Heart, {}), compact(video.likes)] }),
-						/* @__PURE__ */ jsxs("span", { children: [/* @__PURE__ */ jsx(Comment, {}), compact(video.comments)] })
+						/* @__PURE__ */ jsxs("span", { children: [/* @__PURE__ */ jsx(Trend, {}), compact$1(video.views)] }),
+						/* @__PURE__ */ jsxs("span", { children: [/* @__PURE__ */ jsx(Heart, {}), compact$1(video.likes)] }),
+						/* @__PURE__ */ jsxs("span", { children: [/* @__PURE__ */ jsx(Comment, {}), compact$1(video.comments)] })
 					]
 				})
 			]
@@ -3031,6 +3555,9 @@ function createSavedSearch({ type, phrase, name, keywords, frequency, sources })
 function fetchNotifications(ids) {
 	return request(`${API_V1}/saved-searches/notifications?${ids.map((id) => `ids[]=${encodeURIComponent(id)}`).join("&")}`);
 }
+function fetchRecentSearches() {
+	return request(`${API_V1}/saved-searches/recent`);
+}
 var savedSearch = {
 	get: (id) => request(`${API_V1}/saved-searches/${id}/json`),
 	bookmark: (id, bookmarked) => request(`${API_V1}/saved-searches/${id}/bookmark`, {
@@ -3044,6 +3571,7 @@ var savedSearch = {
 		body
 	}),
 	refresh: (id) => request(`${API_V1}/saved-searches/${id}/refresh`, { method: "POST" }),
+	retry: (id) => request(`${API_V1}/saved-searches/${id}/retry`, { method: "POST" }),
 	destroy: (id) => request(`${API_V1}/saved-searches/${id}`, { method: "DELETE" })
 };
 var billing = {
@@ -3093,6 +3621,9 @@ function updateTracked(id, patch) {
 		...t,
 		...patch
 	} : t));
+}
+function untrackSearch(id) {
+	writeTracked(readTracked().filter((t) => String(t.id) !== String(id)));
 }
 //#endregion
 //#region resources/js/Pages/components/SearchListScreen.jsx
@@ -3433,7 +3964,7 @@ function SearchListScreen({ kind = "brand", searches = [], moving = [], suggesti
 								}),
 								/* @__PURE__ */ jsxs("span", {
 									className: "mv__m",
-									children: [v.views != null ? `${compact(v.views)} views` : "", v.handle ? ` · ${v.handle}` : ""]
+									children: [v.views != null ? `${compact$1(v.views)} views` : "", v.handle ? ` · ${v.handle}` : ""]
 								})
 							]
 						})]
@@ -5107,7 +5638,7 @@ function clearPendingSearch() {
 	if (typeof window === "undefined") return;
 	window.sessionStorage.removeItem(PENDING_SEARCH_KEY);
 }
-function SearchWizard({ initialType = "brand", initialQuery = "", heading = "Start a search", subheading = "Pick one brand, competitor, or product — we widen it with smarter keywords on the next step.", subjectExtra = null, suggestionsByType = {} }) {
+function SearchWizard({ initialType = "brand", initialQuery = "", heading = "Start a search", subheading = "Pick one brand, competitor, or product — we widen it with smarter keywords on the next step.", subjectExtra = null, suggestionsByType = {}, onTrackedSearchChange = null }) {
 	const { auth = {}, billing = {} } = usePage().props;
 	const resumeId = readRunParam();
 	const [step, setStep] = useState(resumeId ? "running" : initialQuery ? "keywords" : "subject");
@@ -5154,6 +5685,7 @@ function SearchWizard({ initialType = "brand", initialQuery = "", heading = "Sta
 				name: created.name,
 				url: created.url
 			});
+			onTrackedSearchChange?.();
 			setSearchId(created.id);
 			stampUrl(created.id);
 			setStep("running");
@@ -5305,31 +5837,14 @@ function SearchWizard({ initialType = "brand", initialQuery = "", heading = "Sta
 //#region resources/js/Pages/Dashboard.jsx
 var Dashboard_exports = /* @__PURE__ */ __exportAll({ default: () => Dashboard });
 var POLL_MS = 1e4;
-var RECENT_LIMIT = 3;
-function mergeRecentSearches(serverRecent = [], trackedEntries = []) {
-	const trackedMap = new Map(trackedEntries.filter((entry) => entry?.id).map((entry) => [String(entry.id), {
-		id: entry.id,
-		name: entry.name ?? "New search",
-		phrase: entry.name ?? "New search",
-		search_type: entry.search_type ?? "brand",
-		frequency: entry.frequency ?? "weekly",
-		status: entry.status ?? "scraping",
-		url: entry.url ?? `/bookmarks/${entry.id}`,
-		result_count: entry.result_count ?? 0,
-		last_run_at: entry.last_run_at ?? null,
-		is_watchlisted: entry.is_watchlisted ?? false
-	}]));
-	serverRecent.forEach((search) => {
-		if (!search?.id) return;
-		trackedMap.set(String(search.id), {
-			...trackedMap.get(String(search.id)),
-			...search
-		});
-	});
-	return Array.from(trackedMap.values()).slice(0, RECENT_LIMIT);
-}
+var ACTIVE_SEARCH_STATUSES = /* @__PURE__ */ new Set([
+	"pending",
+	"queued",
+	"running",
+	"scraping"
+]);
 /** "Pick up where you left off" — the three most recent saved searches. */
-function RecentCard({ searches }) {
+function RecentCard({ searches, retryingSearchId, onRetry }) {
 	if (!searches?.length) return null;
 	return /* @__PURE__ */ jsx("div", {
 		className: "card",
@@ -5348,7 +5863,67 @@ function RecentCard({ searches }) {
 				})]
 			}), /* @__PURE__ */ jsx("div", {
 				className: "rows",
-				children: searches.map((search) => /* @__PURE__ */ jsx(SavedSearchRow, { search }, search.id))
+				children: searches.map((search) => {
+					const canRetry = search.can_retry_initial === true;
+					return /* @__PURE__ */ jsx(SavedSearchRow, {
+						search,
+						onNavigate: () => router.visit(search.url),
+						actions: canRetry ? /* @__PURE__ */ jsx("button", {
+							type: "button",
+							className: "btn btn--g btn--sm",
+							onClick: (event) => {
+								event.stopPropagation();
+								onRetry(search);
+							},
+							disabled: retryingSearchId === search.id,
+							children: retryingSearchId === search.id ? "Retrying..." : "Retry search"
+						}) : void 0
+					}, search.id);
+				})
+			})]
+		})
+	});
+}
+function FailedSearchModal({ search, retrying, onRetry, onClose }) {
+	if (!search) return null;
+	return /* @__PURE__ */ jsx("div", {
+		className: "bb",
+		children: /* @__PURE__ */ jsxs("div", {
+			className: "bb-modal",
+			children: [/* @__PURE__ */ jsx("button", {
+				className: "bb-modal__bg",
+				"aria-label": "Close",
+				onClick: onClose,
+				disabled: retrying
+			}), /* @__PURE__ */ jsxs("div", {
+				className: "bb-modal__box",
+				children: [
+					/* @__PURE__ */ jsx("h2", { children: "Something went wrong" }),
+					/* @__PURE__ */ jsx("p", {
+						className: "sub",
+						children: "Try again or contact support."
+					}),
+					/* @__PURE__ */ jsxs("div", {
+						className: "actrow__r",
+						style: {
+							marginTop: 24,
+							justifyContent: "flex-end"
+						},
+						children: [/* @__PURE__ */ jsx("button", {
+							type: "button",
+							className: "btn btn--g",
+							onClick: onClose,
+							disabled: retrying,
+							children: "Close"
+						}), search.can_retry_initial && /* @__PURE__ */ jsx("button", {
+							type: "button",
+							className: "btn btn--y",
+							onClick: onRetry,
+							disabled: retrying,
+							children: retrying ? "Retrying..." : "Retry search"
+						})]
+					})
+				]
 			})]
 		})
 	});
@@ -5356,63 +5931,76 @@ function RecentCard({ searches }) {
 function Dashboard() {
 	const { flash = {}, recent = [], searchSuggestions = {} } = usePage().props;
 	const [readyModal, setReadyModal] = useState(null);
-	const [recentSearches, setRecentSearches] = useState(() => mergeRecentSearches(recent, readTracked()));
+	const [failedModal, setFailedModal] = useState(null);
+	const [retryingSearchId, setRetryingSearchId] = useState(null);
+	const [recentSearches, setRecentSearches] = useState(recent);
 	const polling = useRef(false);
+	const recentSearchesRef = useRef(recent);
+	const recentStatuses = useRef(new Map(recent.map((search) => [String(search.id), search.status])));
+	const hasActiveRecentSearch = recentSearches.some((search) => ACTIVE_SEARCH_STATUSES.has(search.status));
+	const applyRecentSearches = (searches, notifyOnTerminal = false) => {
+		const previousStatuses = recentStatuses.current;
+		recentStatuses.current = new Map(searches.map((search) => [String(search.id), search.status]));
+		recentSearchesRef.current = searches;
+		setRecentSearches(searches);
+		if (!notifyOnTerminal) return;
+		const terminal = searches.find((search) => ACTIVE_SEARCH_STATUSES.has(previousStatuses.get(String(search.id))) && (search.status === "done" || search.status === "failed"));
+		if (terminal?.status === "done") setReadyModal(terminal);
+		if (terminal?.status === "failed") setFailedModal(terminal);
+	};
+	const refreshRecent = async (notifyOnTerminal = false) => {
+		const searches = (await fetchRecentSearches())?.searches ?? [];
+		applyRecentSearches(searches, notifyOnTerminal);
+		return searches;
+	};
 	useEffect(() => {
-		setRecentSearches(mergeRecentSearches(recent, readTracked()));
+		recentStatuses.current = new Map(recent.map((search) => [String(search.id), search.status]));
+		recentSearchesRef.current = recent;
+		setRecentSearches(recent);
 	}, [recent]);
 	useEffect(() => {
-		if (readyModal) return void 0;
+		if (readyModal || failedModal) return void 0;
 		let cancelled = false;
 		let timer;
 		const poll = async () => {
 			if (cancelled || polling.current) return;
-			const tracked = readTracked().filter((entry) => entry?.id).slice(0, 10);
-			if (tracked.length === 0) {
-				setRecentSearches((current) => current.length > 0 ? current : []);
-				return;
-			}
+			if (!recentSearchesRef.current.some((search) => ACTIVE_SEARCH_STATUSES.has(search.status))) return;
 			polling.current = true;
-			const activeTracked = tracked.filter((entry) => entry.completedPromptShown !== true);
-			if (activeTracked.length === 0) {
-				polling.current = false;
-				setRecentSearches(mergeRecentSearches(recent, tracked));
-				return;
-			}
+			tracked.filter((entry) => entry.completedPromptShown !== true);
 			try {
-				const payload = await fetchNotifications(activeTracked.map((entry) => entry.id));
+				const payload = await fetchRecentSearches();
 				if (cancelled) return;
 				const searches = payload?.searches ?? [];
-				setRecentSearches(mergeRecentSearches([...recent, ...searches], tracked));
-				const done = searches.find((search) => search?.status === "done");
-				if (done) {
-					updateTracked(done.id, {
-						completedPromptShown: true,
-						name: done.name,
-						url: done.url
-					});
-					if (!cancelled) setRecentSearches((current) => mergeRecentSearches([done, ...current.filter((search) => String(search.id) !== String(done.id))], readTracked()));
-					if (!cancelled) setReadyModal(done);
-					return;
-				}
-			} catch {
-				if (cancelled) return;
-				setRecentSearches(mergeRecentSearches(recent, tracked));
-			} finally {
+				applyRecentSearches(searches, true);
+			} catch {} finally {
 				polling.current = false;
 			}
-			timer = window.setTimeout(poll, POLL_MS);
+			if (!cancelled) timer = window.setTimeout(poll, POLL_MS);
 		};
 		poll();
 		return () => {
 			cancelled = true;
 			window.clearTimeout(timer);
 		};
-	}, [readyModal, recent]);
+	}, [
+		failedModal,
+		hasActiveRecentSearch,
+		readyModal
+	]);
 	const closeReadyModal = () => setReadyModal(null);
 	const viewResults = () => {
 		if (!readyModal?.url) return closeReadyModal();
 		router.visit(readyModal.url);
+	};
+	const retryFailedSearch = async (failedSearch = failedModal) => {
+		if (!failedSearch?.can_retry_initial || retryingSearchId !== null) return;
+		setRetryingSearchId(failedSearch.id);
+		try {
+			if ((await savedSearch.retry(failedSearch.id))?.search) await refreshRecent();
+			setFailedModal(null);
+		} finally {
+			setRetryingSearchId(null);
+		}
 	};
 	return /* @__PURE__ */ jsxs(Fragment, { children: [
 		/* @__PURE__ */ jsx(Head, { title: "Dashboard · Brand Beacon" }),
@@ -5430,8 +6018,15 @@ function Dashboard() {
 				},
 				children: flash.status
 			}), /* @__PURE__ */ jsx(SearchWizard, {
-				subjectExtra: /* @__PURE__ */ jsx(RecentCard, { searches: recentSearches }),
-				suggestionsByType: searchSuggestions
+				subjectExtra: /* @__PURE__ */ jsx(RecentCard, {
+					searches: recentSearches,
+					retryingSearchId,
+					onRetry: retryFailedSearch
+				}),
+				suggestionsByType: searchSuggestions,
+				onTrackedSearchChange: () => {
+					refreshRecent().catch(() => {});
+				}
 			})]
 		}),
 		readyModal && /* @__PURE__ */ jsx("div", {
@@ -5471,6 +6066,12 @@ function Dashboard() {
 					]
 				})]
 			})
+		}),
+		/* @__PURE__ */ jsx(FailedSearchModal, {
+			search: failedModal,
+			retrying: retryingSearchId === failedModal?.id,
+			onRetry: () => retryFailedSearch(),
+			onClose: () => setFailedModal(null)
 		})
 	] });
 }
@@ -6324,9 +6925,60 @@ var PREVIEW_BARS = [
 		n: 52
 	}
 ];
+function compact(value) {
+	const n = Number(value) || 0;
+	if (n >= 1e6) return `${(n / 1e6).toFixed(n >= 1e7 ? 0 : 1)}M`;
+	if (n >= 1e3) return `${(n / 1e3).toFixed(n >= 1e4 ? 0 : 1)}K`;
+	return String(n);
+}
+function toPreviewVideo(video) {
+	return {
+		handle: video.handle ?? "@tiktok",
+		mult: Number(video.virality_score) > 0 ? `${Math.round(video.virality_score)}x` : null,
+		views: compact(video.views),
+		image: video.thumbnail_url,
+		href: video.post_url ?? null
+	};
+}
 function Features() {
 	const [active, setActive] = useState(FEATURES[0].id);
+	const [dynamicGroups, setDynamicGroups] = useState({});
+	const [loadingDynamic, setLoadingDynamic] = useState(false);
+	const [loadFailed, setLoadFailed] = useState(false);
 	const current = FEATURES.find((f) => f.id === active) ?? FEATURES[0];
+	const currentVideos = dynamicGroups[active] ?? PREVIEW_VIDS;
+	useEffect(() => {
+		if (active === "outliers" || dynamicGroups.competitors || dynamicGroups.alerts || loadingDynamic) return;
+		let cancelled = false;
+		async function loadDynamicGroups() {
+			setLoadingDynamic(true);
+			setLoadFailed(false);
+			try {
+				const response = await fetch("/landing/feature-preview-videos", { headers: { Accept: "application/json" } });
+				if (!response.ok) throw new Error(`Feature preview request failed with ${response.status}`);
+				const payload = await response.json();
+				const mapped = Array.isArray(payload.videos) ? payload.videos.map(toPreviewVideo).filter((video) => video.image) : [];
+				if (cancelled || mapped.length === 0) return;
+				setDynamicGroups({
+					competitors: mapped.slice(0, 3),
+					alerts: mapped.slice(3, 6).length > 0 ? mapped.slice(3, 6) : mapped.slice(0, 3)
+				});
+			} catch (error) {
+				if (!cancelled) setLoadFailed(true);
+			} finally {
+				if (!cancelled) setLoadingDynamic(false);
+			}
+		}
+		loadDynamicGroups();
+		return () => {
+			cancelled = true;
+		};
+	}, [
+		active,
+		dynamicGroups.alerts,
+		dynamicGroups.competitors,
+		loadingDynamic
+	]);
 	return /* @__PURE__ */ jsxs("section", {
 		className: "sec wrap",
 		id: "features",
@@ -6381,7 +7033,7 @@ function Features() {
 					}),
 					/* @__PURE__ */ jsx("div", {
 						className: "prev__vids",
-						children: PREVIEW_VIDS.map((v) => /* @__PURE__ */ jsxs("div", { children: [
+						children: currentVideos.map((v, index) => /* @__PURE__ */ jsxs("div", { children: [
 							/* @__PURE__ */ jsxs("div", {
 								className: "vid__t",
 								children: [
@@ -6394,7 +7046,14 @@ function Features() {
 										className: "vid__x",
 										children: v.mult
 									}),
-									/* @__PURE__ */ jsx("span", {
+									v.href ? /* @__PURE__ */ jsx("a", {
+										className: "vid__p",
+										href: v.href,
+										target: "_blank",
+										rel: "noreferrer",
+										"aria-label": `Open ${v.handle} on TikTok`,
+										children: /* @__PURE__ */ jsx(Play, { className: "h-[11px] w-[11px]" })
+									}) : /* @__PURE__ */ jsx("span", {
 										className: "vid__p",
 										children: /* @__PURE__ */ jsx(Play, { className: "h-[11px] w-[11px]" })
 									})
@@ -6408,8 +7067,12 @@ function Features() {
 								className: "vid__h",
 								children: v.handle
 							})
-						] }, v.handle))
+						] }, `${v.handle}-${index}`))
 					}),
+					loadFailed && active !== "outliers" ? /* @__PURE__ */ jsx("p", {
+						className: "mt-3 text-[12px] text-[#8d877b]",
+						children: "Preview unavailable right now, showing the sample set instead."
+					}) : null,
 					/* @__PURE__ */ jsx("div", {
 						className: "bars",
 						children: PREVIEW_BARS.map((bar) => /* @__PURE__ */ jsxs("div", {
@@ -7408,6 +8071,7 @@ function Index({ searches: initialSearches, bookmarkedVideos = [], filterType = 
 		setSubmitting(true);
 		try {
 			await savedSearch.destroy(modalState.search.id);
+			untrackSearch(modalState.search.id);
 			removeSearch(modalState.search.id);
 			closeModal();
 		} finally {
@@ -8254,7 +8918,7 @@ function VideoPlayerShell({ video, activePlayerId, onPlay, onClose, className, d
 }
 function AnalyzeButton({ status = "idle", small = false, onClick }) {
 	const isProcessing = status === "processing";
-	const label = isProcessing ? "Analyzing Video....." : status === "complete" ? "View Analysis" : "Analyze video";
+	const label = isProcessing ? "Analyzing Video....." : status === "complete" ? "View Analysis" : "Analyze Video";
 	return /* @__PURE__ */ jsx("button", {
 		type: "button",
 		className: `bb-analyze${small ? " bb-analyze--sm" : ""}${isProcessing ? " opacity-90" : ""}`,
@@ -10444,6 +11108,41 @@ function AnalyzeConfirmModal({ video, creditsRemainingAfterUse = 0, busy = false
 		})
 	});
 }
+function AnalysisFailureModal({ onClose }) {
+	return /* @__PURE__ */ jsx("div", {
+		className: "fixed inset-0 z-[130] flex items-center justify-center bg-[rgba(38,33,28,0.42)] px-4 py-6 backdrop-blur-[2px]",
+		onClick: onClose,
+		children: /* @__PURE__ */ jsx("div", {
+			className: "w-full max-w-[430px] rounded-[24px] border border-[#d9d1c4] bg-[radial-gradient(circle_at_top,#f7f2e9_0%,#f3efe8_40%,#f1ede6_100%)] p-3 shadow-[0_28px_90px_rgba(42,33,20,0.22)]",
+			onClick: (event) => event.stopPropagation(),
+			role: "dialog",
+			"aria-modal": "true",
+			"aria-label": "Video analysis failed",
+			children: /* @__PURE__ */ jsxs("div", {
+				className: "rounded-[20px] border border-[#ddd6ca] bg-[#fffdf9] p-5",
+				children: [
+					/* @__PURE__ */ jsx("h3", {
+						className: "text-[20px] font-semibold text-[#1a1a1a]",
+						children: "Something went wrong"
+					}),
+					/* @__PURE__ */ jsx("p", {
+						className: "mt-2 text-[14px] leading-6 text-[#696257]",
+						children: "Try again or contact support."
+					}),
+					/* @__PURE__ */ jsx("div", {
+						className: "mt-5 flex justify-end",
+						children: /* @__PURE__ */ jsx("button", {
+							type: "button",
+							onClick: onClose,
+							className: "inline-flex items-center justify-center rounded-full border border-[#ddd6ca] bg-white px-4 py-2.5 text-[12px] font-semibold text-[#5f584d] transition hover:bg-[#faf7f1]",
+							children: "Close"
+						})
+					})
+				]
+			})
+		})
+	});
+}
 function BookmarkConfirmModal({ video, creditsRemainingAfterUse = 0, busy = false, onConfirm, onCancel }) {
 	if (!video) return null;
 	return /* @__PURE__ */ jsx("div", {
@@ -10518,6 +11217,7 @@ function DetailScreen({ search, isAuthenticated = false, billing = null, onSearc
 	const [activePlayerId, setActivePlayerId] = useState(null);
 	const [analysisStates, setAnalysisStates] = useState(() => buildAnalysisStates(search?.results ?? []));
 	const [analysisModal, setAnalysisModal] = useState(null);
+	const [analysisFailure, setAnalysisFailure] = useState(false);
 	const [pendingAnalysisVideo, setPendingAnalysisVideo] = useState(null);
 	const [pendingBookmarkVideo, setPendingBookmarkVideo] = useState(null);
 	const [settingsOpen, setSettingsOpen] = useState(false);
@@ -10536,7 +11236,6 @@ function DetailScreen({ search, isAuthenticated = false, billing = null, onSearc
 	const threshold = insights.baseline?.outlier_threshold ?? 3;
 	const account = insights.account ?? null;
 	const trend = insights.trend ?? null;
-	const profile = account?.profile ?? {};
 	const lastPulledLabel = formatInsightDate(search?.last_run_at);
 	const videoAnalysisLimit = numericUsageValue(billingState?.videoAnalysisLimit, 0);
 	const videoAnalysisUsed = numericUsageValue(billingState?.videoAnalysisUsed, 0);
@@ -10562,25 +11261,20 @@ function DetailScreen({ search, isAuthenticated = false, billing = null, onSearc
 	const avgScore = multiples.length ? multiples.reduce((a, b) => a + b, 0) / multiples.length : null;
 	const trendPoints = trend?.points ?? [];
 	const nowPoint = trendPoints[trendPoints.length - 1] ?? null;
+	const completedRuns = (search?.runs ?? []).filter((run) => run.status === "done");
+	const latestCompletedRun = completedRuns[completedRuns.length - 1] ?? null;
+	const recentlyMatchedVideos = latestCompletedRun?.snapshot?.posts ?? latestCompletedRun?.summary?.attached ?? items.length;
 	const tiles = [
-		account?.followers > 0 ? {
-			key: "followers",
-			label: "followers",
-			value: account.followers,
-			format: "compact",
-			deltaNode: profile.follower_growth_pct != null ? /* @__PURE__ */ jsxs("div", {
-				className: `d ${profile.follower_growth_pct >= 0 ? "up" : "down"}`,
-				children: [
-					profile.follower_growth_pct >= 0 ? "↑" : "↓",
-					" ",
-					Math.abs(profile.follower_growth_pct),
-					"% mo"
-				]
-			}) : /* @__PURE__ */ jsx("div", { className: "d" })
-		} : {
+		{
 			key: "videos",
 			label: "videos matched",
 			value: items.length,
+			format: "count"
+		},
+		{
+			key: "recently_matched_videos",
+			label: "videos matched from recent refresh",
+			value: recentlyMatchedVideos,
 			format: "count"
 		},
 		{
@@ -10598,10 +11292,6 @@ function DetailScreen({ search, isAuthenticated = false, billing = null, onSearc
 			label: "avg score",
 			value: avgScore,
 			format: "multiple"
-		},
-		{
-			...serverTile("avg_engagement"),
-			label: "avg eng rate"
 		}
 	];
 	useEffect(() => {
@@ -10624,6 +11314,7 @@ function DetailScreen({ search, isAuthenticated = false, billing = null, onSearc
 	}, [billingState?.videoBookmarkCount]);
 	const applyAnalysisUpdate = (videoId, payload) => {
 		if (!videoId) return;
+		if (payload?.status === "failed") setAnalysisFailure(true);
 		setAnalysisStates((current) => ({
 			...current,
 			[videoId]: {
@@ -10731,7 +11422,7 @@ function DetailScreen({ search, isAuthenticated = false, billing = null, onSearc
 		const pendingIds = Object.entries(analysisStates).filter(([, state]) => state?.status === "processing").map(([id]) => id);
 		if (pendingIds.length === 0) return;
 		let cancelled = false;
-		const timer = window.setInterval(async () => {
+		const poll = async () => {
 			const results = await Promise.all(pendingIds.map(async (id) => {
 				try {
 					return [id, (await videoAnalysis.get(id))?.analysis ?? null];
@@ -10744,7 +11435,9 @@ function DetailScreen({ search, isAuthenticated = false, billing = null, onSearc
 				if (!analysis) return;
 				applyAnalysisUpdate(id, analysis);
 			});
-		}, 2500);
+		};
+		poll();
+		const timer = window.setInterval(poll, 2500);
 		return () => {
 			cancelled = true;
 			window.clearInterval(timer);
@@ -10990,6 +11683,7 @@ function DetailScreen({ search, isAuthenticated = false, billing = null, onSearc
 				onConfirm: confirmAnalyze,
 				onCancel: () => setPendingAnalysisVideo(null)
 			}),
+			analysisFailure && /* @__PURE__ */ jsx(AnalysisFailureModal, { onClose: () => setAnalysisFailure(false) }),
 			pendingBookmarkVideo && /* @__PURE__ */ jsx(BookmarkConfirmModal, {
 				video: pendingBookmarkVideo,
 				creditsRemainingAfterUse: bookmarkCreditsRemainingAfterUse,
@@ -11260,6 +11954,7 @@ function Show$1({ search: initial, isAuthenticated = false, billing }) {
 	};
 	const remove = async () => {
 		await savedSearch.destroy(search.id);
+		untrackSearch(search.id);
 		router.visit("/bookmarks");
 	};
 	const togglePause = async () => {
@@ -12108,6 +12803,7 @@ createServer((page) => createInertiaApp({
 	render: renderToString,
 	resolve: (name) => {
 		return (/* @__PURE__ */ Object.assign({
+			"./Pages/Admin/ActivityLog.jsx": ActivityLog_exports,
 			"./Pages/Admin/Dashboard.jsx": Dashboard_exports$1,
 			"./Pages/Admin/Listing.jsx": Listing_exports,
 			"./Pages/Admin/Login.jsx": Login_exports$1,
