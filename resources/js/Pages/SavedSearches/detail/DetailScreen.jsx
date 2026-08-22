@@ -1,712 +1,633 @@
-import { useEffect, useState } from 'react';
-import { usePage } from '@inertiajs/react';
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
+import { Link, router } from '@inertiajs/react';
 
-import { bookmarks, savedSearch as savedSearchApi, videoAnalysis } from '../../../landing/flow/api.js';
-import EntitlementsBar from '../../components/EntitlementsBar.jsx';
-import { OutlierCard, WinnerVideo } from './OutlierVideos.jsx';
+import { savedSearch as savedSearchApi } from '../../../landing/flow/api.js';
 import AnalysisModal from '../../VideoAnalysis/AnalysisModal.jsx';
-import { handleTikTokPlayerReady, isDashboardPlayable, previewImageFor } from './tiktokPlayer.js';
-import {
-  HashtagPanel,
-  OutliersPerWeek,
-  PostingHeatmap,
-  ScoreDistribution,
-  SignalTiles,
-  SoundPanel,
-} from './InsightPanels.jsx';
-import { AiSummary, PerformanceChart, TrackerHead } from './TrendPanels.jsx';
+
+/**
+ * Search analytics tracker — the redesigned results page.
+ *
+ * Layout follows brandbeaconanalyticsredesign.html:
+ *   Back bar · Header (with inline handle editor + kebab) · AI Insights bullets ·
+ *   Stat strip (4 tiles) · Winner outlier with auto-analysis · More outliers
+ *   grid with toggle-open per-card analysis · Analytics card with metric tabs +
+ *   blurred history until the next refresh · When-they-post heatmap with a
+ *   best-time insight bar · Outliers-per-week + Score distribution ·
+ *   Hashtags & sounds scroll panels (each row is a link to TikTok).
+ *
+ * The heavy analytical text (insights, per-video why/replicate, best-time)
+ * comes from a single batched OpenAI call at run completion — see
+ * SearchEnrichmentService on the backend. Nothing on this page fires a call
+ * per section.
+ */
+
+/* ---------------------------- helpers ---------------------------- */
 
 const PAGE_STEP = 4;
+const DAYS_SHORT = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+const HOURS_LABELS = { 0: '12a', 6: '6a', 12: '12p', 18: '6p' };
 
-function SectionHead({ title, note, small = false }) {
-  return (
-    <div className="sect-head">
-      <h2 style={small ? { fontSize: '19px' } : undefined}>{title}</h2>
-      {note && <span className="note">{note}</span>}
-    </div>
-  );
+const STATUS_LABEL = {
+  done: 'Ready',
+  complete: 'Ready',
+  scraping: 'Refreshing',
+  running: 'Refreshing',
+  queued: 'Refreshing',
+  pending: 'Refreshing',
+  paused: 'Paused',
+  failed: 'Failed',
+};
+
+function compact(n) {
+  if (n == null || Number.isNaN(n)) return '—';
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(n >= 10_000_000 ? 0 : 1)}M`;
+  if (n >= 1_000) return `${(n / 1_000).toFixed(n >= 10_000 ? 0 : 1)}K`;
+  return String(Math.round(n));
 }
 
 function formatDate(iso) {
   if (!iso) return null;
-  const date = new Date(iso);
-  return Number.isNaN(date.getTime())
-    ? null
-    : date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime()) ? null : d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 }
 
-function formatInsightDate(iso) {
-  if (!iso) return null;
-  const date = new Date(iso);
-  return Number.isNaN(date.getTime())
-    ? null
-    : date.toLocaleDateString(undefined, { month: 'long', day: 'numeric' });
+function chartGeometry(values) {
+  const points = values.map((value) => Number(value) || 0);
+  if (points.length === 0) return null;
+
+  const min = Math.min(...points);
+  const max = Math.max(...points);
+  const span = max - min;
+  const coordinates = points.map((value, index) => ({
+    x: points.length === 1 ? 50 : 4 + (88 * index) / (points.length - 1),
+    y: span === 0 ? 20 : 34 - ((value - min) / span) * 28,
+  }));
+  const last = coordinates[coordinates.length - 1];
+
+  return {
+    points: coordinates.map(({ x, y }) => `${x.toFixed(2)},${y.toFixed(2)}`).join(' '),
+    last,
+  };
 }
 
-function numericUsageValue(value, fallback = 0) {
-  if (typeof value === 'number' && Number.isFinite(value)) return value;
-  if (value && typeof value === 'object') {
-    if (typeof value.used === 'number' && Number.isFinite(value.used)) return value.used;
-    if (typeof value.limit === 'number' && Number.isFinite(value.limit)) return value.limit;
-  }
+function heatmapBestTime(heatmap) {
+  const peak = heatmap?.peak;
+  const hour = Number(peak?.hour);
+  const count = Number(peak?.count) || 0;
+  if (!peak?.day || !Number.isInteger(hour) || count < 1) return null;
 
-  const coerced = Number(value);
-  return Number.isFinite(coerced) ? coerced : fallback;
+  const hourLabel = hour === 0 ? '12 AM' : hour === 12 ? '12 PM' : hour < 12 ? `${hour} AM` : `${hour - 12} PM`;
+
+  return {
+    sentence: `Busiest posting window: **${peak.day} around ${hourLabel} UTC** (${count} matched ${count === 1 ? 'post' : 'posts'}).`,
+  };
 }
 
-function usageRemainingLabel(limit, used) {
-  return limit === -1 ? 'unlimited' : Math.max(0, limit - used - 1);
+function formatHeatmapHour(hour) {
+  if (hour === 0) return '12:00 AM';
+  if (hour === 12) return '12:00 PM';
+  return hour < 12 ? `${hour}:00 AM` : `${hour - 12}:00 PM`;
 }
 
-function actionErrorMessage(error, fallback) {
-  return error?.payload?.errors?.billing?.[0]
-    || error?.payload?.errors?.auth?.[0]
-    || error?.message
-    || fallback;
+/** Render **bold** markers as <b>…</b> without allowing raw HTML. */
+function renderBold(text) {
+  const parts = String(text ?? '').split(/(\*\*[^*]+\*\*)/g);
+  return parts.map((part, i) => {
+    if (part.startsWith('**') && part.endsWith('**')) {
+      return <b key={i}>{part.slice(2, -2)}</b>;
+    }
+    return <span key={i}>{part}</span>;
+  });
 }
 
-function buildAnalysisStates(results = []) {
-  return Object.fromEntries(
-    results
-      .filter((video) => video?.id && video?.analysis)
-      .map((video) => [
-        video.id,
-        {
-          status: video.analysis.status ?? 'idle',
-          error: video.analysis.error_message ?? null,
-          analysis: video.analysis,
-        },
-      ])
-  );
+function initials(name, fallback = '?') {
+  const source = (name || fallback).trim();
+  return source.slice(0, 2).toUpperCase() || '?';
 }
 
-function mergeAnalysisIntoItems(items = [], videoId, payload) {
-  return items.map((item) => (
-    item.id === videoId
-      ? {
-          ...item,
-          analysis: payload
-            ? {
-                ...(item.analysis ?? {}),
-                ...payload,
-              }
-            : item.analysis ?? null,
-        }
-      : item
-  ));
+/* Deterministic gradient so a video's thumbnail placeholder is stable. */
+function gradientFor(id) {
+  const palettes = [
+    'linear-gradient(150deg,#ffd6a6,#ff9a8f 55%,#c07a9a)',
+    'linear-gradient(150deg,#d8c0ff,#a88fff 55%,#7a9ac0)',
+    'linear-gradient(150deg,#c8f0d8,#7ad0a0 55%,#5aa0c0)',
+    'linear-gradient(150deg,#a6d8ff,#7aa8ff 55%,#8f7aff)',
+    'linear-gradient(150deg,#ffe0a6,#ffbf8f 55%,#c0907a)',
+    'linear-gradient(150deg,#ffc0d8,#ff8fb0 55%,#c07a9a)',
+    'linear-gradient(150deg,#e0d0ff,#b0a0ff 55%,#8f7aff)',
+    'linear-gradient(150deg,#ffd27a,#ff9a5a 60%,#c0607a)',
+  ];
+  let h = 0;
+  const s = String(id || '');
+  for (let i = 0; i < s.length; i += 1) h = (h * 31 + s.charCodeAt(i)) | 0;
+  return palettes[Math.abs(h) % palettes.length];
 }
 
-function AnalyzeConfirmModal({ video, creditsRemainingAfterUse = 0, busy = false, onConfirm, onCancel }) {
-  if (!video) return null;
+/* ------------------------- inline SVG icons ------------------------- */
 
-  return (
-    <div className="fixed inset-0 z-[130] flex items-center justify-center bg-[rgba(38,33,28,0.42)] px-4 py-6 backdrop-blur-[2px]" onClick={onCancel}>
-      <div
-        className="w-full max-w-[430px] rounded-[24px] border border-[#d9d1c4] bg-[radial-gradient(circle_at_top,#f7f2e9_0%,#f3efe8_40%,#f1ede6_100%)] p-3 shadow-[0_28px_90px_rgba(42,33,20,0.22)]"
-        onClick={(event) => event.stopPropagation()}
-        role="dialog"
-        aria-modal="true"
-        aria-label="Confirm video analysis"
-      >
-        <div className="rounded-[20px] border border-[#ddd6ca] bg-[#fffdf9] p-5">
-          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#fff0bf] text-[#8c6b10]">
-            <svg viewBox="0 0 24 24" className="h-5 w-5 stroke-current" fill="none" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="12" cy="12" r="9" />
-              <path d="M12 8v5" />
-              <path d="M12 16h.01" />
-            </svg>
-          </div>
+const Icons = {
+  Back:      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M19 12H5M11 6l-6 6 6 6" /></svg>,
+  Bookmark:  <svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 3h12v18l-6-4.5L6 21z" /></svg>,
+  BookmarkO: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="round"><path d="M6 3h12v18l-6-4.5L6 21z" /></svg>,
+  Kebab:     <svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2" /><circle cx="12" cy="12" r="2" /><circle cx="19" cy="12" r="2" /></svg>,
+  Edit:      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9" /><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z" /></svg>,
+  Refresh:   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12a9 9 0 1 1-2.6-6.4" /><path d="M21 3v6h-6" /></svg>,
+  Pause:     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="6" y="5" width="4" height="14" rx="1" /><rect x="14" y="5" width="4" height="14" rx="1" /></svg>,
+  Trash:     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" /></svg>,
+  Play:      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z" /></svg>,
+  Spark:     <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l1.8 6.2L20 10l-6.2 1.8L12 18l-1.8-6.2L4 10l6.2-1.8z" /></svg>,
+  Eye:       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z" /><circle cx="12" cy="12" r="3" /></svg>,
+  Heart:     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="round"><path d="M12 20s-7-4.5-7-9a4 4 0 0 1 7-2.6A4 4 0 0 1 19 11c0 4.5-7 9-7 9z" /></svg>,
+  Comment:   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H8l-5 4V6a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg>,
+  Share:     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 12v7a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-7" /><path d="m16 6-4-4-4 4" /><path d="M12 2v14" /></svg>,
+  ExtLink:   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M7 17 17 7M8 7h9v9" /></svg>,
+  UpTrend:   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"><path d="M3 17l6-6 4 4 8-8" /><path d="M21 3h-5m5 0v5" /></svg>,
+  ChevDown:  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6" /></svg>,
+  Music:     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18V5l12-2v13" /><circle cx="6" cy="18" r="3" /><circle cx="18" cy="16" r="3" /></svg>,
+  Plus:      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round"><path d="M12 5v14M5 12h14" /></svg>,
+};
 
-          <h3 className="mt-4 text-[20px] font-semibold text-[#1a1a1a]">Analyze this video?</h3>
-          <p className="mt-2 text-[14px] leading-6 text-[#696257]">
-            Successful analysis will use 1 credit. You will have {creditsRemainingAfterUse} credits remaining after deduction.
-          </p>
-          <p className="mt-2 text-[13px] leading-6 text-[#7a7368]">
-            This credit is not restored later, even if you delete the analysis result and run it again.
-          </p>
-          <p className="mt-2 truncate text-[12px] font-medium text-[#8c8579]">
-            {video.handle ?? video.creator_name ?? video.title ?? 'Selected video'}
-          </p>
-
-          <div className="mt-5 flex gap-3">
-            <button
-              type="button"
-              onClick={onConfirm}
-              disabled={busy}
-              className="inline-flex flex-1 items-center justify-center rounded-full bg-[#f2c44f] px-4 py-2.5 text-[12px] font-semibold text-[#4f3d08] transition hover:bg-[#e8bb48] disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              {busy ? 'Starting…' : 'Start analysis'}
-            </button>
-            <button
-              type="button"
-              onClick={onCancel}
-              className="inline-flex flex-1 items-center justify-center rounded-full border border-[#ddd6ca] bg-white px-4 py-2.5 text-[12px] font-semibold text-[#5f584d] transition hover:bg-[#faf7f1]"
-            >
-              Cancel
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function AnalysisFailureModal({ onClose }) {
-  return (
-    <div className="fixed inset-0 z-[130] flex items-center justify-center bg-[rgba(38,33,28,0.42)] px-4 py-6 backdrop-blur-[2px]" onClick={onClose}>
-      <div
-        className="w-full max-w-[430px] rounded-[24px] border border-[#d9d1c4] bg-[radial-gradient(circle_at_top,#f7f2e9_0%,#f3efe8_40%,#f1ede6_100%)] p-3 shadow-[0_28px_90px_rgba(42,33,20,0.22)]"
-        onClick={(event) => event.stopPropagation()}
-        role="dialog"
-        aria-modal="true"
-        aria-label="Video analysis failed"
-      >
-        <div className="rounded-[20px] border border-[#ddd6ca] bg-[#fffdf9] p-5">
-          <h3 className="text-[20px] font-semibold text-[#1a1a1a]">Something went wrong</h3>
-          <p className="mt-2 text-[14px] leading-6 text-[#696257]">Try again or contact support.</p>
-          <div className="mt-5 flex justify-end">
-            <button
-              type="button"
-              onClick={onClose}
-              className="inline-flex items-center justify-center rounded-full border border-[#ddd6ca] bg-white px-4 py-2.5 text-[12px] font-semibold text-[#5f584d] transition hover:bg-[#faf7f1]"
-            >
-              Close
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function BookmarkConfirmModal({ video, creditsRemainingAfterUse = 0, busy = false, onConfirm, onCancel }) {
-  if (!video) return null;
-
-  return (
-    <div className="fixed inset-0 z-[130] flex items-center justify-center bg-[rgba(38,33,28,0.42)] px-4 py-6 backdrop-blur-[2px]" onClick={onCancel}>
-      <div
-        className="w-full max-w-[430px] rounded-[24px] border border-[#d9d1c4] bg-[radial-gradient(circle_at_top,#f7f2e9_0%,#f3efe8_40%,#f1ede6_100%)] p-3 shadow-[0_28px_90px_rgba(42,33,20,0.22)]"
-        onClick={(event) => event.stopPropagation()}
-        role="dialog"
-        aria-modal="true"
-        aria-label="Confirm video bookmark"
-      >
-        <div className="rounded-[20px] border border-[#ddd6ca] bg-[#fffdf9] p-5">
-          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#fff0bf] text-[#8c6b10]">
-            <svg viewBox="0 0 24 24" className="h-5 w-5 stroke-current" fill="none" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M7 4h10a1 1 0 0 1 1 1v15l-6-3-6 3V5a1 1 0 0 1 1-1Z" />
-            </svg>
-          </div>
-
-          <h3 className="mt-4 text-[20px] font-semibold text-[#1a1a1a]">Bookmark this video?</h3>
-          <p className="mt-2 text-[14px] leading-6 text-[#696257]">
-            This will use 1 bookmark credit. You&apos;ll have {creditsRemainingAfterUse} credits left.
-          </p>
-          <p className="mt-2 text-[13px] leading-6 text-[#7a7368]">
-            This credit is not restored later, even if you remove the bookmark.
-          </p>
-          <p className="mt-2 truncate text-[12px] font-medium text-[#8c8579]">
-            {video.handle ?? video.creator_name ?? video.title ?? 'Selected video'}
-          </p>
-
-          <div className="mt-5 flex gap-3">
-            <button
-              type="button"
-              onClick={onConfirm}
-              disabled={busy}
-              className="inline-flex flex-1 items-center justify-center rounded-full bg-[#f2c44f] px-4 py-2.5 text-[12px] font-semibold text-[#4f3d08] transition hover:bg-[#e8bb48] disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              {busy ? 'Saving…' : 'Save bookmark'}
-            </button>
-            <button
-              type="button"
-              onClick={onCancel}
-              className="inline-flex flex-1 items-center justify-center rounded-full border border-[#ddd6ca] bg-white px-4 py-2.5 text-[12px] font-semibold text-[#5f584d] transition hover:bg-[#faf7f1]"
-            >
-              Cancel
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
+/* ============================ COMPONENT ============================ */
 
 export default function DetailScreen({
   search,
   isAuthenticated = false,
-  billing = null,
-  onSearchUpdated,
-  onToggleBookmark,
-  onRefresh,
-  onTogglePause,
-  onDelete,
+  billing,
   refreshing = false,
   bookmarkUpdating = false,
+  onRefresh,
+  onSearchUpdated,
+  onToggleBookmark,
+  onToggleVideoBookmark,
+  bookmarkingVideoId = null,
+  onTogglePause,
+  onDelete,
 }) {
-  const [outlierSort, setOutlierSort] = useState('outlier');
-  const [visible, setVisible] = useState(PAGE_STEP);
-  const [bookmarkingId, setBookmarkingId] = useState(null);
-  const [items, setItems] = useState(search?.results ?? []);
-  const [activePlayerId, setActivePlayerId] = useState(null);
-  const [analysisStates, setAnalysisStates] = useState(() => buildAnalysisStates(search?.results ?? []));
-  const [analysisModal, setAnalysisModal] = useState(null);
-  const [analysisFailure, setAnalysisFailure] = useState(false);
-  const [pendingAnalysisVideo, setPendingAnalysisVideo] = useState(null);
-  const [pendingBookmarkVideo, setPendingBookmarkVideo] = useState(null);
-  const [settingsOpen, setSettingsOpen] = useState(false);
-  const [settingsSubmitting, setSettingsSubmitting] = useState(false);
-  const [settingsForm, setSettingsForm] = useState({ name: '', frequency: 'weekly', tiktokHandle: '', website: '' });
-  const sharedBilling = usePage().props?.billing ?? {};
-  const billingState = billing ?? sharedBilling;
-  const [videoBookmarkUsed, setVideoBookmarkUsed] = useState(() => numericUsageValue(billingState?.videoBookmarkCount, 0));
-
+  const results = search?.results ?? [];
   const insights = search?.insights ?? {};
-  const medianViews = insights.baseline?.median_views ?? 0;
-  const threshold = insights.baseline?.outlier_threshold ?? 3;
-  const account = insights.account ?? null;
-  const trend = insights.trend ?? null;
-  const lastPulledLabel = formatInsightDate(search?.last_run_at);
-  const videoAnalysisLimit = numericUsageValue(billingState?.videoAnalysisLimit, 0);
-  const videoAnalysisUsed = numericUsageValue(billingState?.videoAnalysisUsed, 0);
-  const videoBookmarkLimit = numericUsageValue(billingState?.videoBookmarkLimit, 0);
-  const analysisCreditsRemainingAfterUse = usageRemainingLabel(videoAnalysisLimit, videoAnalysisUsed);
-  const bookmarkCreditsRemainingAfterUse = usageRemainingLabel(videoBookmarkLimit, videoBookmarkUsed);
-  const renderableItems = (items ?? []).filter((video) => Boolean(previewImageFor(video)) && isDashboardPlayable(video));
+  const bullets = search?.insights_bullets ?? [];
 
+  const [handleEditing, setHandleEditing] = useState(false);
+  const [handleDraft, setHandleDraft] = useState(search?.source_tiktok_handle ?? '');
+  const [savingHandle, setSavingHandle] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [expandedCardId, setExpandedCardId] = useState(null);
+  const [analysisModal, setAnalysisModal] = useState(null);
+  const [visible, setVisible] = useState(PAGE_STEP);
+  const [sortKey, setSortKey] = useState('outlier');
+  const [metric, setMetric] = useState('views');
+  const [videoPlayingId, setVideoPlayingId] = useState(null);
+  const [heatmapTooltip, setHeatmapTooltip] = useState(null);
+  const menuRef = useRef(null);
+
+  const menuClose = () => setMenuOpen(false);
   useEffect(() => {
-    window.addEventListener('message', handleTikTokPlayerReady);
-    return () => window.removeEventListener('message', handleTikTokPlayerReady);
-  }, []);
+    if (!menuOpen) return undefined;
+    const onDocClick = (e) => {
+      if (menuRef.current && !menuRef.current.contains(e.target)) menuClose();
+    };
+    document.addEventListener('click', onDocClick);
+    return () => document.removeEventListener('click', onDocClick);
+  }, [menuOpen]);
 
-  const feedItems = renderableItems;
-
-  const [winner, ...rest] = feedItems;
-  const sortedRest = [...rest].sort((left, right) => {
-    if (outlierSort === 'views') {
-      return (Number(right?.views) || 0) - (Number(left?.views) || 0);
-    }
-
-    if (outlierSort === 'date_posted') {
-      return (new Date(right?.uploaded_at ?? 0).getTime() || 0) - (new Date(left?.uploaded_at ?? 0).getTime() || 0);
-    }
-
-    return (Number(right?.outlier_multiple) || 0) - (Number(left?.outlier_multiple) || 0);
-  });
-  const shown = sortedRest.slice(0, visible);
-  const maxMultiple = Math.max(...feedItems.map((v) => Number(v.outlier_multiple) || 0), 1);
-
-  const serverTile = (key) => (insights.tiles ?? []).find((t) => t.key === key) ?? {};
-  const multiples = items.map((v) => Number(v.outlier_multiple) || 0).filter((m) => m > 0);
-  const avgScore = multiples.length ? multiples.reduce((a, b) => a + b, 0) / multiples.length : null;
-  const trendPoints = trend?.points ?? [];
-  const nowPoint = trendPoints[trendPoints.length - 1] ?? null;
-  const completedRuns = (search?.runs ?? []).filter((run) => run.status === 'done');
-  const latestCompletedRun = completedRuns[completedRuns.length - 1] ?? null;
-  const recentlyMatchedVideos = latestCompletedRun?.snapshot?.posts ?? latestCompletedRun?.summary?.attached ?? items.length;
-
-  const tiles = [
-    { key: 'videos', label: 'videos matched', value: items.length, format: 'count' },
-    { key: 'recently_matched_videos', label: 'videos matched from recent refresh', value: recentlyMatchedVideos, format: 'count' },
-    {
-      key: 'outliers',
-      label: 'outliers this week',
-      value: nowPoint ? nowPoint.outliers : (serverTile('outliers').value ?? null),
-      format: 'count',
-    },
-    { ...serverTile('top_multiple'), label: 'top outlier score' },
-    { key: 'avg_score', label: 'avg score', value: avgScore, format: 'multiple' },
-  ];
-
-  useEffect(() => {
-    setItems(search?.results ?? []);
-    setAnalysisStates(buildAnalysisStates(search?.results ?? []));
-  }, [search]);
-
-  useEffect(() => {
-    setSettingsForm({
-      name: search?.name ?? '',
-      frequency: search?.frequency ?? 'weekly',
-      tiktokHandle: search?.source_tiktok_handle ?? '',
-      website: search?.source_website ?? '',
+  /* ------------- winner + rest ------------- */
+  const winner = results[0];
+  const rest = results.slice(1);
+  const sortedRest = useMemo(() => {
+    const arr = [...rest];
+    arr.sort((a, b) => {
+      if (sortKey === 'views') return (b.views ?? 0) - (a.views ?? 0);
+      if (sortKey === 'date') {
+        const at = a.posted_at ? new Date(a.posted_at).getTime() : 0;
+        const bt = b.posted_at ? new Date(b.posted_at).getTime() : 0;
+        return bt - at;
+      }
+      return (b.multiple ?? b.score ?? 0) - (a.multiple ?? a.score ?? 0);
     });
-  }, [search]);
+    return arr;
+  }, [rest, sortKey]);
 
-  useEffect(() => {
-    setVisible(PAGE_STEP);
-  }, [outlierSort]);
+  /* ------------- stats ------------- */
+  const tileByKey = (k) => (insights.tiles ?? []).find((t) => t.key === k) ?? {};
+  const outlierCount = tileByKey('outliers').value ?? results.filter((r) => (r.multiple ?? 0) >= 3).length;
+  const videosInRun = search?.scanned_count ?? results.length;
+  const topMultiple = tileByKey('top_multiple').value ?? (winner?.multiple ?? winner?.score ?? 0);
+  const avgEng = tileByKey('avg_engagement').value ?? null;
+  const medianViews = insights?.baseline?.median_views ?? null;
 
-  useEffect(() => {
-    setVideoBookmarkUsed(numericUsageValue(billingState?.videoBookmarkCount, 0));
-  }, [billingState?.videoBookmarkCount]);
-
-  const applyAnalysisUpdate = (videoId, payload) => {
-    if (!videoId) return;
-
-    if (payload?.status === 'failed') {
-      setAnalysisFailure(true);
-    }
-
-    setAnalysisStates((current) => ({
-      ...current,
-      [videoId]: {
-        status: payload?.status ?? current[videoId]?.status ?? 'idle',
-        error: payload?.error_message ?? payload?.error ?? null,
-        analysis: payload ?? current[videoId]?.analysis ?? null,
-      },
-    }));
-
-    setItems((current) => mergeAnalysisIntoItems(current, videoId, payload));
-  };
-
-  const toggleBookmark = async (video) => {
-    if (!isAuthenticated) {
-      window.location.assign('/auth/google');
-      return;
-    }
-
-    if (!video.bookmarked) {
-      setPendingBookmarkVideo(video);
-      return;
-    }
-
-    await commitBookmark(video, 'remove');
-  };
-
-  const commitBookmark = async (video, action) => {
-    if (!isAuthenticated) {
-      window.location.assign('/auth/google');
-      return;
-    }
-
+  /* ------------- handle save ------------- */
+  const saveHandle = async () => {
+    const clean = handleDraft.trim().replace(/^@/, '');
+    setSavingHandle(true);
     try {
-      setBookmarkingId(video.id);
-      const payload = action === 'remove'
-        ? await bookmarks.remove(video.id)
-        : await bookmarks.save(video.id);
-      if (typeof payload?.bookmarkCount === 'number') {
-        setVideoBookmarkUsed(payload.bookmarkCount);
-      }
-      setItems((current) =>
-        current.map((item) => (item.id === video.id ? { ...item, bookmarked: payload.bookmarked } : item))
-      );
-    } catch (error) {
-      if (error?.status === 422 || error?.status === 401) {
-        window.alert(actionErrorMessage(error, 'Could not update the bookmark.'));
-      }
-    } finally {
-      setBookmarkingId(null);
-    }
-  };
-
-  const startAnalysis = async (video) => {
-    if (!isAuthenticated) {
-      window.location.assign('/auth/google');
-      return;
-    }
-
-    const currentStatus = analysisStates[video.id]?.status ?? 'idle';
-
-    if (currentStatus === 'complete') {
-      setAnalysisModal({
-        video,
-        analysis: analysisStates[video.id]?.analysis ?? null,
-      });
-      return;
-    }
-
-    if (currentStatus === 'processing') {
-      return;
-    }
-
-    try {
-      applyAnalysisUpdate(video.id, { status: 'processing', error_message: null });
-
-      const payload = await videoAnalysis.request(video.id);
-      const nextStatus = payload?.analysis?.status ?? 'processing';
-      applyAnalysisUpdate(video.id, {
-        ...(payload?.analysis ?? {}),
-        status: nextStatus,
-      });
-    } catch (error) {
-      applyAnalysisUpdate(video.id, {
-        status: 'failed',
-        error_message: error?.message ?? 'Could not start video analysis.',
-      });
-
-      if (error?.status === 422 || error?.status === 401) {
-        window.alert(actionErrorMessage(error, 'Could not start video analysis.'));
-        return;
-      }
-
-      window.alert(error?.message || 'Could not start video analysis.');
-    }
-  };
-
-  const analyze = async (video) => {
-    if (!isAuthenticated) {
-      window.location.assign('/auth/google');
-      return;
-    }
-
-    const currentStatus = analysisStates[video.id]?.status ?? 'idle';
-
-    if (currentStatus === 'complete') {
-      setAnalysisModal({
-        video,
-        analysis: analysisStates[video.id]?.analysis ?? null,
-      });
-      return;
-    }
-
-    if (currentStatus === 'processing') {
-      return;
-    }
-
-    setPendingAnalysisVideo(video);
-  };
-
-  const confirmAnalyze = async () => {
-    if (!pendingAnalysisVideo) return;
-
-    const video = pendingAnalysisVideo;
-    applyAnalysisUpdate(video.id, { status: 'processing', error_message: null });
-    setPendingAnalysisVideo(null);
-    await startAnalysis(video);
-  };
-
-  useEffect(() => {
-    const pendingIds = Object.entries(analysisStates)
-      .filter(([, state]) => state?.status === 'processing')
-      .map(([id]) => id);
-
-    if (pendingIds.length === 0) {
-      return undefined;
-    }
-
-    let cancelled = false;
-    const poll = async () => {
-      const results = await Promise.all(
-        pendingIds.map(async (id) => {
-          try {
-            const payload = await videoAnalysis.get(id);
-            return [id, payload?.analysis ?? null];
-          } catch {
-            return [id, null];
-          }
-        })
-      );
-
-      if (cancelled) return;
-
-      results.forEach(([id, analysis]) => {
-        if (!analysis) return;
-        applyAnalysisUpdate(id, analysis);
-      });
-    };
-
-    poll();
-    const timer = window.setInterval(poll, 2500);
-
-    return () => {
-      cancelled = true;
-      window.clearInterval(timer);
-    };
-  }, [analysisStates]);
-
-  const closeAnalysisModal = () => setAnalysisModal(null);
-  const openSettingsModal = () => setSettingsOpen(true);
-  const closeSettingsModal = () => {
-    if (settingsSubmitting) return;
-    setSettingsOpen(false);
-  };
-
-  const submitSettings = async () => {
-    if (!search?.id) return;
-
-    setSettingsSubmitting(true);
-    try {
-      const { search: updated } = await savedSearchApi.update(search.id, {
-        name: settingsForm.name.trim(),
-        frequency: settingsForm.frequency,
+      const payload = await savedSearchApi.update(search.id, {
         sources: {
-          tiktokHandle: settingsForm.tiktokHandle.trim(),
-          website: settingsForm.website.trim(),
+          tiktokHandle: clean,
+          website: search?.source_website ?? '',
         },
       });
-      onSearchUpdated?.(updated);
-      setSettingsOpen(false);
+      onSearchUpdated?.(payload?.search ?? { source_tiktok_handle: clean });
+      setHandleEditing(false);
     } finally {
-      setSettingsSubmitting(false);
+      setSavingHandle(false);
     }
   };
 
-  // The modal reports its live analysis state (e.g. after a regenerate) so the
-  // card CTA reflects "Analyzing Video…" / "View Analysis" without a reload.
-  const handleModalAnalysisChange = (videoId, analysis) => {
-    if (!videoId || !analysis) return;
-    applyAnalysisUpdate(videoId, analysis);
+  /* ------------- metric tabs ------------- */
+  const trend = insights?.trend ?? {};
+  const metricKeys = { views: 'views', posts: 'posts', eng: 'engagement', engrate: 'rate' };
+  const activeSeries = trend?.metrics?.[metricKeys[metric]] ?? null;
+  const chartValues = activeSeries?.values ?? [];
+  const chart = chartGeometry(chartValues);
+  const completedRunCount = search?.runs?.length ?? 0;
+  const analyticsUnlocked = completedRunCount >= 2;
+  const showTrendMetric = analyticsUnlocked && activeSeries !== null;
+  const metricConfig = {
+    views:   { value: showTrendMetric ? compact(activeSeries.current) : compact(medianViews), label: showTrendMetric ? 'views in latest week' : 'median views per video' },
+    posts:   { value: showTrendMetric ? Number(activeSeries.current ?? 0).toLocaleString() : (videosInRun ?? 0).toLocaleString(), label: showTrendMetric ? 'posts in latest week' : 'videos in this run' },
+    eng:     { value: showTrendMetric ? compact(activeSeries.current) : '—', label: showTrendMetric ? 'engagements in latest week' : 'avg engagements per video' },
+    engrate: { value: showTrendMetric ? `${Number(activeSeries.current ?? 0).toFixed(1)}%` : (avgEng != null ? `${Number(avgEng).toFixed(1)}%` : '—'), label: showTrendMetric ? 'engagement rate in latest week' : 'average engagement rate' },
   };
 
+  /* ------------- posting heatmap ------------- */
+  const heatCells = insights?.heatmap?.cells ?? [];
+  const heatMax = Math.max(1, Number(insights?.heatmap?.max) || 0);
+  const bestPostTime = search?.best_post_time ?? heatmapBestTime(insights?.heatmap);
+
+  /* ------------- outliers per week + distribution ------------- */
+  const distribution = insights?.distribution ?? [];
+  const distMax = Math.max(1, ...distribution.map((d) => d.count ?? 0));
+  const weeklyBars = trend?.outliers_per_week ?? [];
+  const weeklyMax = Math.max(1, ...weeklyBars.map((b) => b.count ?? b.value ?? 0));
+
+  /* ------------- hashtags + sounds ------------- */
+  const hashtags = insights?.hashtags ?? [];
+  const sounds = insights?.sounds ?? [];
+  const hashMax = Math.max(1, ...hashtags.map((h) => h.count ?? 0));
+  const soundMax = Math.max(1, ...sounds.map((s) => s.count ?? 0));
+
+  /* ------------- open analysis modal (existing flow) ------------- */
+  const openAnalysis = (video) => setAnalysisModal({ video, analysis: video.analysis ?? null });
+  const closeAnalysis = () => setAnalysisModal(null);
+
+  /* ============================ RENDER ============================ */
+
   return (
-    <div className="tracker">
-      <div className="viewbar">
-        <a href="/bookmarks" className="tbtn">
-          ← Back to bookmarks
-        </a>
-        <EntitlementsBar />
+    <>
+      <style>{scopedCss}</style>
+
+      {/* top bar */}
+      <div className="rs-viewbar">
+        <Link className="rs-tbtn" href="/bookmarks">{Icons.Back} Back to bookmarks</Link>
       </div>
 
-      <TrackerHead
-        search={search}
-        account={account}
-        lastRun={formatDate(search?.last_run_at)}
-        nextRun={formatDate(search?.next_run_at)}
-        onEditDetails={openSettingsModal}
-        onToggleWatchlist={onToggleBookmark}
-        onTogglePause={onTogglePause}
-        onDelete={onDelete}
-        watchlistUpdating={bookmarkUpdating}
-      />
-
-      <AiSummary summary={search?.ai_summary} generatedAt={search?.ai_summary_generated_at} />
-
-      <SignalTiles tiles={tiles} deltas={insights.tile_deltas ?? {}} />
-
-      {items.length === 0 ? (
-        <div className="gate">
-          <h2>No videos cleared the bar</h2>
-          <p>
-            We scanned TikTok for <b>{search?.phrase}</b> but nothing matched the phrase with a real creator behind
-            it. Narrower phrases and brand names often do this - try a broader one, or run it again.
-          </p>
-          <div className="acts">
-            <button className="tbtn primary" onClick={onRefresh} disabled={refreshing}>
-              {refreshing ? 'refreshing...' : 'run it again'}
-            </button>
-          </div>
-        </div>
-      ) : !isAuthenticated ? (
-        <div className="gate">
-          <h2>Sign in to view the matched videos</h2>
-          <p>
-            We found {items.length} videos for this search. Continue with Google to unlock the winner, the ranked
-            list, and outbound TikTok links.
-          </p>
-          <div className="acts">
-            <a href="/auth/google" className="tbtn primary">
-              continue with Google
-            </a>
-            {billing?.trialEligible ?? true ? (
-              <a href="/trial" className="tbtn">
-                start free trial
-              </a>
-            ) : (
-              <button className="tbtn" disabled>
-                trial unavailable
+      {/* HEADER */}
+      <div className="rs-bhead">
+        <span className="rs-bhead__l" style={{ background: gradientFor(search?.id ?? search?.name) }}>
+          {initials(search?.name, search?.phrase)}
+        </span>
+        <div style={{ minWidth: 0, flex: 1 }}>
+          <h1 className="rs-h1">{search?.name || search?.phrase}</h1>
+          <div className="rs-bmeta">
+            <span className="rs-bbadge">{(search?.search_type ?? 'brand').replace(/^\w/, (c) => c.toUpperCase())}</span>
+            <span className="rs-handle">
+              <span>{search?.source_tiktok_handle ? `@${search.source_tiktok_handle.replace(/^@/, '')}` : 'no handle set'}</span>
+              <button className="rs-ed" title="Edit TikTok handle" onClick={() => { setHandleDraft(search?.source_tiktok_handle ?? ''); setHandleEditing((v) => !v); }}>
+                {Icons.Edit}
               </button>
+            </span>
+            {search?.frequency && (
+              <>
+                <span className="rs-sep" />
+                <span>
+                  {search.frequency} · {search.last_run_at ? `last run ${formatDate(search.last_run_at)}` : 'not run yet'}
+                  {search.next_run_at ? ` · next refresh ${formatDate(search.next_run_at)}` : ''}
+                </span>
+              </>
             )}
+            <span className="rs-sep" />
+            <span>{`${STATUS_LABEL[search?.status] ?? 'Ready'}`}</span>
           </div>
         </div>
-      ) : (
+        <div className="rs-bhead__x" ref={menuRef}>
+          <button className={`rs-iconbtn${search?.is_watchlisted ? ' on' : ''}`} title="Bookmark" onClick={onToggleBookmark} disabled={bookmarkUpdating}>
+            {search?.is_watchlisted ? Icons.Bookmark : Icons.BookmarkO}
+          </button>
+          <button className="rs-iconbtn" title="More" onClick={(e) => { e.stopPropagation(); setMenuOpen((v) => !v); }}>
+            {Icons.Kebab}
+          </button>
+          {menuOpen && (
+            <div className="rs-menu" onClick={(e) => e.stopPropagation()}>
+              <button onClick={() => { setMenuOpen(false); setHandleEditing(true); }}>{Icons.Edit} Edit TikTok handle</button>
+              <button onClick={() => { setMenuOpen(false); onRefresh?.(); }} disabled={refreshing}>{Icons.Refresh} {refreshing ? 'Refreshing…' : 'Refresh now'}</button>
+              <button onClick={() => { setMenuOpen(false); onTogglePause?.(); }}>{Icons.Pause} {search?.status === 'paused' ? 'Resume tracking' : 'Pause tracking'}</button>
+              <hr />
+              <button style={{ color: '#B0431B' }} onClick={() => { setMenuOpen(false); onDelete?.(); }}>{Icons.Trash} Delete search</button>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* inline handle editor */}
+      {handleEditing && (
+        <div className="rs-hedit">
+          <span className="rs-hedit__pre">@</span>
+          <input
+            autoFocus
+            value={handleDraft}
+            onChange={(e) => setHandleDraft(e.target.value.replace(/^@/, ''))}
+            placeholder="tiktok handle"
+            onKeyDown={(e) => { if (e.key === 'Enter') saveHandle(); if (e.key === 'Escape') setHandleEditing(false); }}
+          />
+          <button className="rs-btn rs-btn--y rs-btn--sm" onClick={saveHandle} disabled={savingHandle}>
+            {savingHandle ? 'Saving…' : 'Save'}
+          </button>
+          <button className="rs-btn rs-btn--g rs-btn--sm" onClick={() => setHandleEditing(false)} disabled={savingHandle}>Cancel</button>
+        </div>
+      )}
+
+      {/* AI INSIGHTS */}
+      {(bullets.length > 0 || search?.ai_summary) && (
+        <div className="rs-ai">
+          <div className="rs-ai__h">
+            {Icons.Spark}
+            <span className="rs-ai__t">Insights</span>
+            <span className="rs-ai__when">{formatDate(search?.ai_summary_generated_at)}</span>
+          </div>
+          {bullets.length > 0 ? (
+            <ul className="rs-ai__list">
+              {bullets.map((line, i) => (
+                <li key={i}>{renderBold(line)}</li>
+              ))}
+            </ul>
+          ) : (
+            <p style={{ fontSize: '.92rem', lineHeight: 1.5, color: 'var(--body)' }}>{search.ai_summary}</p>
+          )}
+        </div>
+      )}
+
+      {/* STATS */}
+      <div className="rs-stats">
+        <div className="rs-stt">
+          <span className="rs-stt__k">Outliers found</span>
+          <span className="rs-stt__v">{Number(outlierCount ?? 0).toLocaleString()}</span>
+          <span className="rs-stt__d up">{Icons.UpTrend}<span>{outlierCount ?? 0} this cycle</span></span>
+        </div>
+        <div className="rs-stt">
+          <span className="rs-stt__k">Videos in this search</span>
+          <span className="rs-stt__v">{Number(videosInRun ?? 0).toLocaleString()}</span>
+          <span className="rs-stt__d">{search?.last_run_at ? `all from the ${formatDate(search.last_run_at)} refresh` : 'this run'}</span>
+        </div>
+        <div className="rs-stt hi">
+          <span className="rs-stt__k">Top outlier score</span>
+          <span className="rs-stt__v">{compact(topMultiple ?? 0)}<small>×</small></span>
+          <span className="rs-stt__d">{medianViews ? `vs ${compact(medianViews)} median views` : '—'}</span>
+        </div>
+        <div className="rs-stt">
+          <span className="rs-stt__k">Avg engagement rate</span>
+          <span className="rs-stt__v">{avgEng != null ? Number(avgEng).toFixed(1) : '—'}<small>%</small></span>
+          <span className="rs-stt__d">across {results.length} videos</span>
+        </div>
+      </div>
+
+      {/* OUTLIER VIDEOS — winner */}
+      {winner && (
         <>
-          <SectionHead
-            title="outlier videos"
-            note="their posts that beat the search median. ranked by outlier score."
-          />
-
-          <WinnerVideo
-            video={winner}
-            onToggleBookmark={toggleBookmark}
-            onAnalyze={analyze}
-            bookmarking={bookmarkingId === winner?.id}
-            analysisStatus={winner ? (analysisStates[winner.id]?.status ?? 'idle') : 'idle'}
-            activePlayerId={activePlayerId}
-            onPlay={setActivePlayerId}
-            onClose={() => setActivePlayerId(null)}
-          />
-
-          {rest.length > 0 && (
-            <>
-              <div className="sect-head" style={{ marginTop: '34px', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
-                <h2 style={{ fontSize: '19px' }}>more outliers</h2>
-                <span className="note">{sortedRest.length} more.</span>
-                <div className="ml-auto flex items-center gap-2">
-                  <label htmlFor="outlier-sort" className="note" style={{ marginLeft: 'auto' }}>
-                    sort by
-                  </label>
-                  <select
-                    id="outlier-sort"
-                    value={outlierSort}
-                    onChange={(event) => setOutlierSort(event.target.value)}
-                    className="rounded-[12px] border border-[#ddd6ca] bg-white px-3 py-2 text-[12px] font-semibold text-[#3d372f] shadow-[0_1px_2px_rgba(24,21,17,0.04)]"
-                  >
-                    <option value="outlier">Outlier</option>
-                    <option value="views">Views</option>
-                    <option value="date_posted">Date posted</option>
-                  </select>
+          <div className="rs-sh"><h2>Outlier videos</h2><span className="rs-note">Their posts that beat the search median, ranked by outlier score.</span></div>
+          <div className="rs-winner">
+            <VideoFrame video={winner} winner isPlaying={videoPlayingId === winner.id} onTogglePlay={() => setVideoPlayingId((v) => v === winner.id ? null : winner.id)} />
+            <div className="rs-wdet">
+              <div className="rs-wcreator">
+                <span className="rs-av" style={{ background: gradientFor(winner.handle ?? winner.id) }} />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div className="rs-wc__n">{winner.handle || winner.username || '—'}</div>
+                  <div className="rs-wc__s">{winner.posted_at ? formatDate(winner.posted_at) : ''} on TikTok</div>
                 </div>
+                {winner.tiktok_url && (
+                  <a href={winner.tiktok_url} target="_blank" rel="noopener" className="rs-ic2" title="Open in TikTok">{Icons.ExtLink}</a>
+                )}
               </div>
-
-              <div className="feed">
-                {shown.map((video, index) => (
-                  <OutlierCard
-                    key={video.id}
-                    video={video}
-                    rank={index + 2}
-                    onToggleBookmark={toggleBookmark}
-                    onAnalyze={analyze}
-                    bookmarking={bookmarkingId === video.id}
-                    analysisStatus={analysisStates[video.id]?.status ?? 'idle'}
-                    activePlayerId={activePlayerId}
-                    onPlay={setActivePlayerId}
-                    onClose={() => setActivePlayerId(null)}
-                  />
-                ))}
+              <p className="rs-wcap">{winner.title || winner.caption}</p>
+              <div className="rs-wmets">
+                <span>{Icons.Eye}<b>{compact(winner.views)}</b></span>
+                <span>{Icons.Heart}<b>{compact(winner.likes)}</b></span>
+                <span>{Icons.Comment}<b>{compact(winner.comments)}</b></span>
+                <span>{Icons.Share}<b>{compact(winner.shares)}</b></span>
               </div>
-
-              <div className="loadmore">
+              <VideoTags video={winner} />
+              <AutoAnalysis video={winner} />
+              <div className="rs-wact">
+                <button className="rs-btn rs-btn--y" onClick={() => openAnalysis(winner)}>{Icons.Spark}<span>Analyze video</span></button>
                 <button
-                  className="tbtn"
-                  disabled={visible >= sortedRest.length}
-                  onClick={() => setVisible((v) => v + PAGE_STEP)}
+                  className={`rs-ic2${winner.bookmarked ? ' on' : ''}`}
+                  onClick={() => onToggleVideoBookmark?.(winner)}
+                  disabled={bookmarkingVideoId === winner.id}
+                  title={winner.bookmarked ? 'Remove from bookmarks' : 'Save video'}
+                  aria-label={winner.bookmarked ? 'Remove from bookmarks' : 'Save video'}
                 >
-                  {visible >= sortedRest.length
-                    ? 'no more this week'
-                    : `load ${Math.min(PAGE_STEP, sortedRest.length - visible)} more ↓`}
+                  {winner.bookmarked ? Icons.Bookmark : Icons.BookmarkO}
                 </button>
               </div>
-            </>
-          )}
-
-          <SectionHead title="hashtags & sounds they use" note="from the videos matched by this search." />
-          <div className="hs">
-            <HashtagPanel hashtags={insights.hashtags} />
-            <SoundPanel sounds={insights.sounds} />
+            </div>
           </div>
+        </>
+      )}
 
-          <SectionHead
-            title={
-              lastPulledLabel
-                ? `based on the data from videos pulled last ${lastPulledLabel}`
-                : 'based on the latest pulled videos'
-            }
-            note="this tracker, across completed search runs."
-          />
-          <PerformanceChart trend={trend} runs={search?.runs ?? []} frequency={search?.frequency} />
+      {/* MORE OUTLIERS */}
+      {sortedRest.length > 0 && (
+        <>
+          <div className="rs-sh"><h2>More outliers</h2>
+            <span className="rs-sortsel">
+              <span className="rs-sortsel__pre">Sort:</span>
+              <select value={sortKey} onChange={(e) => setSortKey(e.target.value)} style={{ paddingLeft: 44 }}>
+                <option value="outlier">Outlier score</option>
+                <option value="views">Views</option>
+                <option value="date">Date posted</option>
+              </select>
+              {Icons.ChevDown}
+            </span>
+          </div>
+          <div className="rs-ogrid">
+            {sortedRest.slice(0, visible).map((v) => (
+              <OutlierCard
+                key={v.id}
+                video={v}
+                expanded={expandedCardId === v.id}
+                onToggle={() => setExpandedCardId((cur) => cur === v.id ? null : v.id)}
+                onAnalyze={() => openAnalysis(v)}
+                onToggleBookmark={() => onToggleVideoBookmark?.(v)}
+                bookmarking={bookmarkingVideoId === v.id}
+                isPlaying={videoPlayingId === v.id}
+                onTogglePlay={() => setVideoPlayingId((cur) => cur === v.id ? null : v.id)}
+              />
+            ))}
+          </div>
+          {visible < sortedRest.length && (
+            <div className="rs-loadmore">
+              <button className="rs-btn rs-btn--g" onClick={() => setVisible((n) => n + PAGE_STEP)}>
+                {Icons.Plus} Load {Math.min(PAGE_STEP, sortedRest.length - visible)} more
+              </button>
+            </div>
+          )}
+        </>
+      )}
 
-          <SectionHead title="When they post" note="posting schedule by day and hour." />
-          <PostingHeatmap heatmap={insights.heatmap} />
+      {/* ANALYTICS */}
+      <div className="rs-sh"><h2>Analytics</h2><span className="rs-note">This tracker, across completed search runs.</span></div>
+      <div className="rs-acard">
+        <div className="rs-mtabs">
+          {[
+            ['views', 'Views'], ['posts', 'Posts'], ['eng', 'Engagement'], ['engrate', 'Eng rate'],
+          ].map(([key, label]) => (
+            <button key={key} className={`rs-mtab${metric === key ? ' on' : ''}`} onClick={() => setMetric(key)}>{label}</button>
+          ))}
+        </div>
+        <div className="rs-abig">
+          <span className="rs-abig__v">{metricConfig[metric].value}</span>
+          <span className="rs-abig__l">{metricConfig[metric].label}</span>
+        </div>
+        <span className="rs-achip"><i />{analyticsUnlocked
+          ? (trend?.has_reconstructed ? 'Includes reconstructed weeks' : 'Recorded refresh history')
+          : `Baseline · Refresh 1 · ${formatDate(search?.last_run_at) || '—'}`}
+        </span>
+        <div className="rs-achart">
+          <svg viewBox="0 0 100 40" preserveAspectRatio="none">
+            {chart && <polyline points={chart.points} fill="none" stroke="#E0A100" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />}
+            {chart && <circle cx={chart.last.x} cy={chart.last.y} r="2.1" fill="#F6C445" stroke="#fff" strokeWidth="1" />}
+          </svg>
+          {!analyticsUnlocked && <span className="rs-achart__dot" />}
+          <span className="rs-achart__now">now</span>
+          {!analyticsUnlocked && (
+            <div className="rs-achart__blur">
+              <div>
+                <b>Week-over-week unlocks at your next refresh</b>
+                <p>Come back after {formatDate(search?.next_run_at) || 'the next scheduled run'} to compare this run against the last. History stays blurred until there are two points to trend.</p>
+              </div>
+            </div>
+          )}
+        </div>
+        <div className="rs-axlabels">
+          <span>Refresh {Math.max(1, completedRunCount)} · {formatDate(search?.last_run_at) || '—'}</span>
+          <span>Next · {formatDate(search?.next_run_at) || '—'}</span>
+        </div>
+      </div>
 
-          <SectionHead title="More data" note="how the tracker is moving." />
-          <div className="datagrid">
-            <OutliersPerWeek
-              bars={trend?.outliers_per_week ?? []}
-              threshold={threshold}
-              totalOutliers={(insights.distribution ?? []).reduce((sum, row) => sum + row.count, 0)}
-              nextRunLabel={formatDate(search?.next_run_at)}
-            />
-            <ScoreDistribution distribution={insights.distribution ?? []} />
+      {/* WHEN THEY POST */}
+      {heatCells.length > 0 && (
+        <>
+          <div className="rs-sh"><h2>When they post</h2><span className="rs-note">Posting schedule by day and hour.</span></div>
+          <div className="rs-heat">
+            <div className="rs-heatscroll">
+              <div className="rs-heatgrid">
+                <div />
+                {Array.from({ length: 24 }, (_, h) => (
+                  <div key={h} className="rs-hh" style={{ justifyContent: 'center' }}>{HOURS_LABELS[h] ?? ''}</div>
+                ))}
+                {DAYS_SHORT.map((day, di) => (
+                  <Fragment key={di}>
+                    <div className="rs-hlabel">{day}</div>
+                    {Array.from({ length: 24 }, (_, h) => {
+                      const count = Number(heatCells?.[di]?.[h]) || 0;
+                      const lvl = count > 0 ? Math.min(5, Math.ceil((count / heatMax) * 5)) : 0;
+                      const bg = ['var(--paper)', 'var(--a1)', 'var(--a2)', 'var(--a3)', 'var(--a4)', 'var(--a5)'][lvl];
+                      const tooltip = `${day} ${formatHeatmapHour(h)} UTC - ${count} ${count === 1 ? 'post' : 'posts'}`;
+                      const updateTooltip = (event) => setHeatmapTooltip({
+                        label: tooltip,
+                        x: event.clientX,
+                        y: event.clientY,
+                      });
+                      return (
+                        <div
+                          key={`c-${di}-${h}`}
+                          className={`rs-hcell${count > 0 ? ' has-posts' : ''}`}
+                          style={{ background: bg }}
+                          title={count > 0 ? tooltip : undefined}
+                          aria-label={count > 0 ? tooltip : undefined}
+                          onMouseEnter={count > 0 ? updateTooltip : undefined}
+                          onMouseMove={count > 0 ? updateTooltip : undefined}
+                          onMouseLeave={count > 0 ? () => setHeatmapTooltip(null) : undefined}
+                        />
+                      );
+                    })}
+                  </Fragment>
+                ))}
+              </div>
+            </div>
+            <div className="rs-hlegend">less
+              <span style={{ background: 'var(--a1)' }} />
+              <span style={{ background: 'var(--a2)' }} />
+              <span style={{ background: 'var(--a3)' }} />
+              <span style={{ background: 'var(--a4)' }} />
+              <span style={{ background: 'var(--a5)' }} />
+              more
+            </div>
+            {bestPostTime?.sentence && (
+              <div className="rs-insightbox">
+                {Icons.Spark}
+                <p>{renderBold(bestPostTime.sentence)}</p>
+              </div>
+            )}
+          </div>
+          {heatmapTooltip && (
+            <div
+              className="rs-heat-tooltip"
+              style={{ left: heatmapTooltip.x + 12, top: heatmapTooltip.y - 34 }}
+              role="status"
+            >
+              {heatmapTooltip.label}
+            </div>
+          )}
+        </>
+      )}
+
+      {/* MORE DATA */}
+      {(weeklyBars.length > 0 || distribution.length > 0) && (
+        <>
+          <div className="rs-sh"><h2>More data</h2><span className="rs-note">How the tracker is moving.</span></div>
+          <div className="rs-two">
+            <div className="rs-dcard">
+              <h3>Outliers per week</h3><p className="rs-sub">Their posts scoring 3× or higher.</p>
+              <div className="rs-owk">
+                {weeklyBars.slice(-6).map((b, i) => {
+                  const count = b.count ?? b.value ?? 0;
+                  const isPeak = count === weeklyMax && count > 0;
+                  return (
+                    <div key={i} className={`rs-owk__col${isPeak ? ' peak' : ''}`}>
+                      <span className="rs-owk__v">{count}</span>
+                      <div className="rs-owk__bar" style={{ height: `${Math.max(2, (count / weeklyMax) * 100)}%` }} />
+                      <span className="rs-owk__x">{b.label ?? `wk ${i + 1}`}</span>
+                    </div>
+                  );
+                })}
+                {weeklyBars.length === 0 && <p style={{ fontSize: '.85rem', color: 'var(--faint-2)' }}>No weekly history yet — comes online after your second refresh.</p>}
+              </div>
+            </div>
+            <div className="rs-dcard">
+              <h3>Score distribution</h3><p className="rs-sub">This search's {distribution.reduce((s, d) => s + (d.count ?? 0), 0)} outliers.</p>
+              <div className="rs-dist">
+                {distribution.map((d) => {
+                  const shade = d.count / distMax > 0.7 ? 'var(--a5)' : d.count / distMax > 0.4 ? 'var(--a4)' : d.count / distMax > 0.2 ? 'var(--a3)' : 'var(--a2)';
+                  return (
+                    <div key={d.label} className="rs-drow">
+                      <span className="rs-drow__lbl">{d.label}</span>
+                      <div className="rs-drow__track"><span className="rs-drow__fill" style={{ width: `${(d.count / distMax) * 100}%`, background: shade }} /></div>
+                      <span className="rs-drow__c">{d.count}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* HASHTAGS & SOUNDS */}
+      {(hashtags.length > 0 || sounds.length > 0) && (
+        <>
+          <div className="rs-sh"><h2>Hashtags &amp; sounds</h2><span className="rs-note">Across this search's outlier videos.</span></div>
+          <div className="rs-two">
+            <ScrollPanel title="Hashtags they used" items={hashtags.map((h) => ({ label: h.tag, count: h.count, url: `https://www.tiktok.com/tag/${encodeURIComponent(String(h.tag).replace(/^#/, ''))}` }))} max={hashMax} />
+            <ScrollPanel title="Sounds they used" items={sounds.map((s) => ({ label: s.label, count: s.count, icon: Icons.Music, url: `https://www.tiktok.com/search/sound?q=${encodeURIComponent(s.label)}` }))} max={soundMax} barColor="var(--a4)" />
           </div>
         </>
       )}
@@ -716,148 +637,392 @@ export default function DetailScreen({
           open
           video={analysisModal.video}
           initialAnalysis={analysisModal.analysis}
-          onClose={closeAnalysisModal}
-          onAnalysisChange={handleModalAnalysisChange}
+          onClose={closeAnalysis}
+          onAnalysisChange={() => {}}
         />
       )}
+    </>
+  );
+}
 
-      {pendingAnalysisVideo && (
-        <AnalyzeConfirmModal
-          video={pendingAnalysisVideo}
-          creditsRemainingAfterUse={analysisCreditsRemainingAfterUse}
-          busy={false}
-          onConfirm={confirmAnalyze}
-          onCancel={() => setPendingAnalysisVideo(null)}
-        />
-      )}
+/* -------------------- sub-components -------------------- */
 
-      {analysisFailure && <AnalysisFailureModal onClose={() => setAnalysisFailure(false)} />}
-
-      {pendingBookmarkVideo && (
-        <BookmarkConfirmModal
-          video={pendingBookmarkVideo}
-          creditsRemainingAfterUse={bookmarkCreditsRemainingAfterUse}
-          busy={bookmarkingId === pendingBookmarkVideo.id}
-          onConfirm={async () => {
-            const video = pendingBookmarkVideo;
-            setPendingBookmarkVideo(null);
-            await commitBookmark(video, 'save');
-          }}
-          onCancel={() => setPendingBookmarkVideo(null)}
-        />
-      )}
-
-      {settingsOpen && (
-        <div className="bb">
-          <div className="bb-modal">
-            <button className="bb-modal__bg" aria-label="Close" onClick={closeSettingsModal} />
-            <div className="bb-modal__box">
-              <h2>Edit keyword details</h2>
-              <p className="sub">Update the label and refresh schedule. The keyword set is fixed for this search.</p>
-
-              <div style={{ marginTop: 20 }}>
-                <p className="sect__n">Keyword set</p>
-                <div className="chips">
-                  {(search?.keywords ?? []).map((keyword) => (
-                    <span key={keyword} className="chip">
-                      {keyword}
-                    </span>
-                  ))}
-                </div>
-              </div>
-
-              <div style={{ marginTop: 20 }}>
-                <label className="lbl">Label</label>
-                <input
-                  className="fld"
-                  value={settingsForm.name}
-                  onChange={(event) => setSettingsForm((current) => ({ ...current, name: event.target.value }))}
-                  maxLength={80}
-                />
-              </div>
-
-              <div style={{ marginTop: 20 }}>
-                <label className="lbl">Schedule</label>
-                <div style={{ display: 'flex', gap: 8 }}>
-                  {['weekly', 'monthly'].map((frequency) => (
-                    <button
-                      key={frequency}
-                      type="button"
-                      className={`btn ${settingsForm.frequency === frequency ? 'btn--y' : 'btn--g'} btn--w`}
-                      onClick={() => setSettingsForm((current) => ({ ...current, frequency }))}
-                    >
-                      {frequency === 'weekly' ? 'Weekly' : 'Monthly'}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div style={{ marginTop: 20 }}>
-                <label className="lbl">TikTok handle</label>
-                <div style={{ position: 'relative' }}>
-                  <span
-                    style={{
-                      position: 'absolute',
-                      left: 14,
-                      top: '50%',
-                      transform: 'translateY(-50%)',
-                      color: 'var(--muted)',
-                      pointerEvents: 'none',
-                    }}
-                  >
-                    @
-                  </span>
-                  <input
-                    className="fld"
-                    style={{ paddingLeft: 28 }}
-                    value={settingsForm.tiktokHandle}
-                    onChange={(event) => setSettingsForm((current) => ({ ...current, tiktokHandle: event.target.value.replace(/^@/, '') }))}
-                    maxLength={120}
-                    placeholder="rhode"
-                    aria-label="TikTok handle"
-                  />
-                </div>
-              </div>
-
-              <div style={{ marginTop: 20 }}>
-                <label className="lbl">Website</label>
-                <div style={{ position: 'relative' }}>
-                  <span
-                    style={{
-                      position: 'absolute',
-                      left: 14,
-                      top: '50%',
-                      transform: 'translateY(-50%)',
-                      color: 'var(--muted)',
-                      pointerEvents: 'none',
-                    }}
-                  >
-                    https://
-                  </span>
-                  <input
-                    className="fld"
-                    style={{ paddingLeft: 72 }}
-                    value={settingsForm.website}
-                    onChange={(event) => setSettingsForm((current) => ({ ...current, website: event.target.value }))}
-                    maxLength={255}
-                    placeholder="rhodeskin.com"
-                    aria-label="Website"
-                  />
-                </div>
-              </div>
-
-              <div className="actrow__r" style={{ marginTop: 24, justifyContent: 'flex-end' }}>
-                <button type="button" className="btn btn--g" onClick={closeSettingsModal} disabled={settingsSubmitting}>
-                  Cancel
-                </button>
-                <button type="button" className="btn btn--y" onClick={submitSettings} disabled={settingsSubmitting}>
-                  {settingsSubmitting ? 'Saving…' : 'Save changes'}
-                </button>
-              </div>
-            </div>
-          </div>
+function VideoFrame({ video, winner = false, isPlaying, onTogglePlay }) {
+  const bg = video.thumbnail_url ? undefined : gradientFor(video.id ?? video.handle);
+  return (
+    <div className={`rs-vf${isPlaying ? ' playing' : ''}${winner ? ' rs-vf--big' : ''}`} onClick={onTogglePlay}>
+      {video.thumbnail_url
+        ? <img className="rs-vf__img" src={video.thumbnail_url} alt="" loading="lazy" />
+        : <div className="rs-vf__img" style={{ background: bg }} />}
+      <div className="rs-vf__scrim" />
+      {winner
+        ? <span className="rs-vf__win">{Icons.Spark}Winner</span>
+        : <span className="rs-vf__rank">{video.rank ?? ''}</span>}
+      {video.duration != null && <span className="rs-vf__dur">{formatDuration(video.duration)}</span>}
+      <button className="rs-vf__play" aria-label="Play">{Icons.Play}</button>
+      <div className="rs-vf__prog" />
+      <div className="rs-vf__stats">
+        <div className="rs-vchip rs-vchip--out">
+          <div className="rs-vchip__l">Outlier score</div>
+          <div className="rs-vchip__n">{compact(video.multiple ?? video.score ?? 0)}×</div>
         </div>
-      )}
+        <div className="rs-vchip rs-vchip--views">
+          <div className="rs-vchip__l">Views</div>
+          <div className="rs-vchip__n">{compact(video.views)}</div>
+        </div>
+      </div>
     </div>
   );
 }
+
+function formatDuration(seconds) {
+  if (seconds == null || Number.isNaN(seconds)) return null;
+  const s = Math.round(seconds);
+  const m = Math.floor(s / 60);
+  return `${m}:${String(s % 60).padStart(2, '0')}`;
+}
+
+function VideoTags({ video }) {
+  const tags = [];
+  if (video.content_format) tags.push(video.content_format);
+  if (video.content_hook)   tags.push(`Hook: ${video.content_hook}`);
+  if (video.content_angle)  tags.push(video.content_angle);
+  if (tags.length === 0) {
+    (Array.isArray(video.hashtags) ? video.hashtags : [])
+      .filter(Boolean)
+      .slice(0, 3)
+      .forEach((tag) => tags.push(String(tag).startsWith('#') ? String(tag) : `#${tag}`));
+  }
+  if (tags.length === 0) return null;
+  return (
+    <div className="rs-tags">
+      {tags.map((t, i) => <span key={i} className="rs-tag">{t}</span>)}
+    </div>
+  );
+}
+
+function AutoAnalysis({ video }) {
+  const rows = [];
+  if (video.why_broke_out)    rows.push(['Why it broke out', video.why_broke_out]);
+  if (!video.why_broke_out && video.outlier_multiple != null) {
+    rows.push(['Performance signal', `${compact(video.views)} views, ${compact(video.outlier_multiple)}× the search median.`]);
+  }
+  if (video.content_format)   rows.push(['Format', video.content_format]);
+  if (video.replicate_with)   rows.push(['Replicate with', video.replicate_with]);
+  if (rows.length === 0) return null;
+
+  return (
+    <div className="rs-anz">
+      <div className="rs-anz__h">{Icons.Spark}Analysis</div>
+      <dl>
+        {rows.map(([dt, dd]) => (
+          <Fragment key={dt}>
+            <dt>{dt}</dt>
+            <dd>{dd}</dd>
+          </Fragment>
+        ))}
+      </dl>
+    </div>
+  );
+}
+
+function OutlierCard({ video, expanded, onToggle, onAnalyze, onToggleBookmark, bookmarking, isPlaying, onTogglePlay }) {
+  return (
+    <article className={`rs-oc${expanded ? ' analyzed' : ''}`}>
+      <VideoFrame video={video} isPlaying={isPlaying} onTogglePlay={onTogglePlay} />
+      <div className="rs-oc__b">
+        <div className="rs-oc__cr">
+          <span className="rs-av" style={{ background: gradientFor(video.handle ?? video.id), width: 26, height: 26, borderRadius: '50%', flex: 'none' }} />
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div className="rs-oc__h">{video.handle || video.username || '—'}</div>
+            <div className="rs-oc__s">{video.posted_at ? formatDate(video.posted_at) : ''}</div>
+          </div>
+          {video.tiktok_url && (
+            <a href={video.tiktok_url} target="_blank" rel="noopener" className="rs-ic2" title="Open in TikTok">{Icons.ExtLink}</a>
+          )}
+        </div>
+        <p className="rs-oc__c">{video.title || video.caption}</p>
+        <div className="rs-oc__st">
+          <span>{Icons.Eye}{compact(video.views)}</span>
+          <span>{Icons.Heart}{compact(video.likes)}</span>
+          <span>{Icons.Comment}{compact(video.comments)}</span>
+          <span>{Icons.Share}{compact(video.shares)}</span>
+        </div>
+        {expanded && (
+          <div className="rs-oc__panel">
+            <AutoAnalysis video={video} />
+          </div>
+        )}
+        <div className="rs-oc__an">
+          <button className="rs-btn rs-btn--y rs-btn--sm" onClick={onToggle}>
+            {Icons.Spark}<span>{expanded ? 'Hide analysis' : 'Analyze video'}</span>
+          </button>
+          <button className="rs-ic2" title="Deep analyze" onClick={onAnalyze}>{Icons.ExtLink}</button>
+          <button
+            className={`rs-ic2${video.bookmarked ? ' on' : ''}`}
+            title={video.bookmarked ? 'Remove from bookmarks' : 'Save video'}
+            aria-label={video.bookmarked ? 'Remove from bookmarks' : 'Save video'}
+            onClick={onToggleBookmark}
+            disabled={bookmarking}
+          >
+            {video.bookmarked ? Icons.Bookmark : Icons.BookmarkO}
+          </button>
+        </div>
+      </div>
+    </article>
+  );
+}
+
+function ScrollPanel({ title, items, max, barColor = 'var(--a3)' }) {
+  const listRef = useRef(null);
+  const [atEnd, setAtEnd] = useState(false);
+
+  useEffect(() => {
+    const el = listRef.current;
+    if (!el) return undefined;
+    const update = () => {
+      const end = el.scrollTop + el.clientHeight >= el.scrollHeight - 4;
+      setAtEnd(end || el.scrollHeight <= el.clientHeight);
+    };
+    el.addEventListener('scroll', update);
+    update();
+    return () => el.removeEventListener('scroll', update);
+  }, [items]);
+
+  return (
+    <div className={`rs-scrollp${atEnd ? ' is-end' : ''}`}>
+      <div className="rs-scrollp__hd">
+        <h3>{title}</h3>
+        <span className="rs-scrollp__cnt">{items.length} total</span>
+      </div>
+      <div className="rs-scrollp__list" ref={listRef}>
+        {items.map((it, i) => (
+          <a key={i} className="rs-hrow" href={it.url} target="_blank" rel="noopener">
+            <div className="rs-hrow__n">{it.icon}<span>{it.label}</span>{Icons.ExtLink}</div>
+            <div className="rs-hrow__bar"><i style={{ width: `${(it.count / max) * 100}%`, background: barColor }} /></div>
+            <div className="rs-hrow__c">{it.count}</div>
+          </a>
+        ))}
+      </div>
+      {!atEnd && <div className="rs-scrollp__fade"><span>scroll for more</span></div>}
+    </div>
+  );
+}
+
+/* -------------------- scoped CSS (mockup ported verbatim, `rs-` prefixed) -------------------- */
+
+const scopedCss = `
+:root{--a1:#FDF0C8;--a2:#FBDE8E;--a3:#F6C445;--a4:#E0A100;--a5:#B87400}
+.rs-viewbar{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:22px;flex-wrap:wrap}
+.rs-tbtn{display:inline-flex;align-items:center;gap:7px;font-size:.85rem;font-weight:700;color:var(--muted)}
+.rs-tbtn:hover{color:var(--ink)}
+.rs-tbtn svg{width:15px;height:15px}
+
+.rs-bhead{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.rs-bhead__l{width:50px;height:50px;border-radius:13px;display:grid;place-items:center;color:#fff;font-weight:800;font-size:1.05rem;flex:none;text-shadow:0 1px 3px rgba(0,0,0,.15)}
+.rs-h1{font-size:1.5rem;font-weight:800;letter-spacing:-.034em;color:var(--ink);line-height:1.15}
+.rs-bmeta{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:4px;font-size:.82rem;color:var(--faint-2,#9A968E)}
+.rs-bbadge{font-size:.64rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--amber-ink);background:var(--wash);padding:3px 8px;border-radius:6px}
+.rs-sep{width:3px;height:3px;border-radius:50%;background:#CFCCC3}
+.rs-handle{display:inline-flex;align-items:center;gap:5px}
+.rs-ed{width:22px;height:22px;border-radius:6px;display:grid;place-items:center;color:var(--faint-2,#9A968E);border:0;background:transparent;cursor:pointer;transition:.15s}
+.rs-ed:hover{background:var(--paper);color:var(--ink)} .rs-ed svg{width:13px;height:13px}
+.rs-bhead__x{margin-left:auto;display:flex;gap:8px;flex:none;position:relative}
+.rs-iconbtn{width:42px;height:42px;border-radius:11px;border:1px solid var(--line-2,#DEDBD3);background:var(--white);display:grid;place-items:center;color:var(--muted);cursor:pointer;transition:.15s;position:relative}
+.rs-iconbtn:hover:not(:disabled){border-color:var(--faint-2,#9A968E);color:var(--ink)}
+.rs-iconbtn.on{background:var(--wash);border-color:var(--yellow);color:var(--amber-ink)}
+.rs-iconbtn svg{width:18px;height:18px}
+.rs-iconbtn:disabled{opacity:.5;cursor:not-allowed}
+.rs-menu{position:absolute;top:50px;right:0;width:220px;background:var(--white);border:1px solid var(--line);border-radius:16px;padding:6px;z-index:20;box-shadow:0 8px 24px -8px rgba(0,0,0,.15)}
+.rs-menu button{display:flex;align-items:center;gap:10px;width:100%;padding:9px 11px;border-radius:11px;font-size:.85rem;font-weight:600;color:var(--body);text-align:left;background:transparent;border:0;cursor:pointer}
+.rs-menu button:hover{background:var(--paper);color:var(--ink)} .rs-menu button svg{width:15px;height:15px;color:var(--faint-2,#9A968E)}
+.rs-menu hr{border:0;border-top:1px solid var(--line);margin:5px 6px}
+
+.rs-hedit{display:flex;align-items:center;gap:8px;margin-top:12px;padding:10px 12px;border:1px solid var(--line-2,#DEDBD3);border-radius:100px;background:var(--white);max-width:460px}
+.rs-hedit__pre{font-size:.9rem;font-weight:700;color:var(--faint-2,#9A968E)}
+.rs-hedit input{flex:1;border:0;outline:0;background:transparent;font:inherit;font-size:.92rem;font-weight:700;color:var(--ink)}
+.rs-btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:42px;padding:0 18px;border-radius:100px;font-size:.88rem;font-weight:700;letter-spacing:-.01em;white-space:nowrap;transition:.16s;border:0;cursor:pointer}
+.rs-btn svg{width:15px;height:15px;flex:none}
+.rs-btn--y{background:var(--yellow);color:#1A1400} .rs-btn--y:hover:not(:disabled){background:var(--yellow-hot,#FFD84D)}
+.rs-btn--g{border:1px solid var(--line-2,#DEDBD3);background:var(--white);color:var(--ink)}
+.rs-btn--g:hover:not(:disabled){border-color:var(--faint-2,#9A968E);background:var(--paper)}
+.rs-btn--sm{height:34px;padding:0 14px;font-size:.82rem;font-weight:600}
+.rs-btn:disabled{opacity:.55;cursor:not-allowed}
+
+.rs-ai{border:1px solid #F2E4B8;background:var(--wash);border-radius:16px;padding:18px 20px;margin-top:20px}
+.rs-ai__h{display:flex;align-items:center;gap:9px;margin-bottom:10px}
+.rs-ai__h svg{width:19px;height:19px;color:var(--amber-ink)}
+.rs-ai__t{font-size:.72rem;font-weight:800;letter-spacing:.13em;text-transform:uppercase;color:var(--amber-ink)}
+.rs-ai__when{margin-left:auto;font-size:.75rem;color:var(--faint,#7C7972)}
+.rs-ai__list{list-style:none;display:flex;flex-direction:column;gap:7px;padding:0;margin:0}
+.rs-ai__list li{position:relative;padding-left:20px;font-size:.9rem;line-height:1.45;color:var(--body)}
+.rs-ai__list li::before{content:'';position:absolute;left:4px;top:9px;width:6px;height:6px;border-radius:50%;background:var(--amber-ink)}
+.rs-ai__list b{color:var(--ink);font-weight:800}
+
+.rs-sh{display:flex;align-items:baseline;justify-content:space-between;gap:16px;margin:38px 0 14px;flex-wrap:wrap}
+.rs-sh h2{font-size:1.06rem;font-weight:800;letter-spacing:-.028em;color:var(--ink);display:flex;align-items:center;gap:11px}
+.rs-sh h2::before{content:'';width:4px;height:16px;border-radius:2px;background:var(--yellow)}
+.rs-note{font-size:.82rem;color:var(--faint-2,#9A968E)}
+
+.rs-stats{display:grid;grid-template-columns:repeat(4,1fr);background:var(--white);border:1px solid var(--line);border-radius:16px;overflow:hidden;margin-top:18px}
+.rs-stt{padding:17px 20px;border-right:1px solid var(--line);display:flex;flex-direction:column;gap:11px}
+.rs-stt:last-child{border-right:none}
+.rs-stt__k{font-size:.73rem;color:var(--faint-2,#9A968E);font-weight:600}
+.rs-stt__v{font-size:1.72rem;font-weight:800;letter-spacing:-.05em;color:var(--ink);line-height:1;font-variant-numeric:tabular-nums}
+.rs-stt__v small{font-size:.52em;font-weight:700;color:var(--faint-2,#9A968E);margin-left:1px}
+.rs-stt__d{font-size:.75rem;color:var(--faint-2,#9A968E);font-weight:500;display:inline-flex;align-items:center;gap:5px}
+.rs-stt__d.up{color:var(--ok);font-weight:600} .rs-stt__d svg{width:11px;height:11px}
+.rs-stt.hi .rs-stt__v{color:var(--amber-ink)}
+
+.rs-winner{display:grid;grid-template-columns:262px 1fr;gap:22px;background:var(--white);border:1px solid var(--line);border-radius:20px;padding:20px}
+.rs-vf{position:relative;width:100%;aspect-ratio:9/16;border-radius:14px;overflow:hidden;background:#1a1a1a;cursor:pointer}
+.rs-vf--big{max-width:262px}
+.rs-vf__img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.rs-vf__scrim{position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.28),transparent 22% 62%,rgba(0,0,0,.5));transition:opacity .2s}
+.rs-vf__play{position:absolute;inset:0;margin:auto;width:56px;height:56px;border-radius:50%;background:rgba(255,255,255,.92);display:grid;place-items:center;transition:.15s;border:0;cursor:pointer}
+.rs-vf__play svg{width:20px;height:20px;margin-left:2px;color:#1A1400}
+.rs-vf:hover .rs-vf__play{transform:scale(1.06)}
+.rs-vf__win{position:absolute;top:10px;left:10px;display:inline-flex;align-items:center;gap:5px;padding:4px 9px;border-radius:100px;background:var(--yellow);color:#1A1400;font-size:.68rem;font-weight:800;letter-spacing:.02em}
+.rs-vf__win svg{width:11px;height:11px}
+.rs-vf__dur{position:absolute;top:10px;right:10px;padding:2px 7px;border-radius:6px;background:rgba(0,0,0,.6);color:#fff;font-size:.7rem;font-weight:700}
+.rs-vf__rank{position:absolute;top:10px;left:10px;width:24px;height:24px;border-radius:7px;background:rgba(0,0,0,.62);color:#fff;display:grid;place-items:center;font-size:.74rem;font-weight:800}
+.rs-vf__stats{position:absolute;left:10px;right:10px;bottom:10px;display:flex;gap:7px;transition:transform .34s,opacity .22s}
+.rs-vf.playing .rs-vf__stats{transform:translateY(165%);opacity:0}
+.rs-vf.playing .rs-vf__play,.rs-vf.playing .rs-vf__scrim{opacity:0}
+.rs-vchip{flex:1;border-radius:10px;padding:7px 10px;background:rgba(24,22,20,.58);backdrop-filter:blur(6px);box-shadow:0 2px 8px -4px rgba(0,0,0,.4)}
+.rs-vchip__l{font-size:.6rem;font-weight:800;text-transform:uppercase;letter-spacing:.05em;opacity:.9}
+.rs-vchip__n{font-size:1.02rem;font-weight:900;letter-spacing:-.025em;margin-top:2px;font-variant-numeric:tabular-nums}
+.rs-vchip--out .rs-vchip__l{color:#F4CE6A} .rs-vchip--out .rs-vchip__n{color:#FFD766}
+.rs-vchip--views .rs-vchip__l{color:#F0AEC1} .rs-vchip--views .rs-vchip__n{color:#F7C2D2}
+.rs-vf__prog{position:absolute;left:0;bottom:0;height:3px;width:0;background:var(--yellow)}
+.rs-vf.playing .rs-vf__prog{animation:rs-play 9s linear forwards}
+@keyframes rs-play{to{width:100%}}
+
+.rs-wdet{min-width:0;display:flex;flex-direction:column}
+.rs-wcreator{display:flex;align-items:center;gap:10px}
+.rs-av{width:34px;height:34px;border-radius:50%;flex:none}
+.rs-wc__n{font-size:.92rem;font-weight:800;color:var(--ink)}
+.rs-wc__s{font-size:.76rem;color:var(--faint-2,#9A968E)}
+.rs-wcap{font-size:.92rem;color:var(--body);line-height:1.5;margin:13px 0}
+.rs-wmets{display:flex;flex-wrap:wrap;gap:24px;padding:13px 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line);margin:13px 0}
+.rs-wmets span{display:inline-flex;align-items:center;gap:7px;font-size:.9rem;color:var(--faint-2,#9A968E);font-weight:500}
+.rs-wmets svg{width:16px;height:16px;color:var(--faint-2,#9A968E);flex:none}
+.rs-wmets b{font-weight:700;color:var(--ink);font-variant-numeric:tabular-nums}
+.rs-tags{display:flex;flex-wrap:wrap;gap:7px;margin:13px 0}
+.rs-tag{font-size:.76rem;font-weight:600;color:var(--amber-ink);background:var(--wash);border:1px solid #F2E4B8;border-radius:100px;padding:4px 11px}
+.rs-anz{border:1px solid var(--line);border-radius:16px;padding:14px 16px;background:var(--paper)}
+.rs-anz__h{display:flex;align-items:center;gap:8px;font-size:.74rem;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--amber-ink);margin-bottom:9px}
+.rs-anz__h svg{width:14px;height:14px}
+.rs-anz dl{display:grid;grid-template-columns:auto 1fr;gap:6px 14px}
+.rs-anz dt{font-size:.8rem;font-weight:700;color:var(--faint,#7C7972)}
+.rs-anz dd{font-size:.85rem;color:var(--body)}
+.rs-wact{display:flex;gap:10px;margin-top:14px;flex-wrap:wrap}
+.rs-ic2{width:36px;height:36px;flex:none;border:1px solid var(--line-2,#DEDBD3);border-radius:100px;background:var(--white);display:grid;place-items:center;color:var(--muted);cursor:pointer;transition:.15s}
+.rs-ic2:hover{border-color:var(--faint-2,#9A968E);color:var(--ink)}
+.rs-ic2.on{background:var(--wash);border-color:var(--yellow);color:var(--amber-ink)}
+.rs-ic2:disabled{opacity:.5;cursor:not-allowed}
+.rs-ic2 svg{width:15px;height:15px}
+
+.rs-sortsel{position:relative;display:inline-flex;align-items:center}
+.rs-sortsel select{appearance:none;height:38px;padding:0 34px 0 14px;border:1px solid var(--line-2,#DEDBD3);border-radius:100px;background:var(--white);font-size:.83rem;font-weight:600;color:var(--ink);cursor:pointer}
+.rs-sortsel svg{position:absolute;right:12px;width:15px;height:15px;color:var(--faint-2,#9A968E);pointer-events:none}
+.rs-sortsel__pre{position:absolute;left:14px;font-size:.83rem;color:var(--faint-2,#9A968E);pointer-events:none;z-index:1}
+.rs-ogrid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+.rs-oc{background:var(--white);border:1px solid var(--line);border-radius:16px;overflow:hidden;display:flex;flex-direction:column}
+.rs-oc:hover{border-color:var(--line-2,#DEDBD3)}
+.rs-oc .rs-vf{border-radius:0}
+.rs-oc__b{padding:12px 13px;display:flex;flex-direction:column;flex:1;gap:0}
+.rs-oc__cr{display:flex;align-items:center;gap:8px}
+.rs-oc__h{font-size:.82rem;font-weight:800;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rs-oc__s{font-size:.7rem;color:var(--faint-2,#9A968E)}
+.rs-oc__c{font-size:.8rem;color:var(--muted);line-height:1.4;margin-top:8px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.rs-oc__st{display:flex;justify-content:space-between;gap:6px;margin-top:11px}
+.rs-oc__st span{display:inline-flex;align-items:center;gap:5px;font-size:.76rem;color:var(--faint-2,#9A968E);font-weight:600;font-variant-numeric:tabular-nums}
+.rs-oc__st svg{width:13px;height:13px;color:var(--faint-2,#9A968E);flex:none}
+.rs-oc__panel{margin-top:10px}
+.rs-oc__an{margin-top:auto;padding-top:11px;display:flex;gap:8px;align-items:center}
+.rs-oc__an .rs-btn{flex:1}
+.rs-loadmore{display:flex;justify-content:center;margin-top:20px}
+
+.rs-acard{background:var(--white);border:1px solid var(--line);border-radius:20px;padding:20px 22px}
+.rs-mtabs{display:inline-flex;gap:4px;padding:4px;background:var(--canvas);border:1px solid var(--line);border-radius:100px;margin-bottom:18px}
+.rs-mtab{height:34px;padding:0 15px;border-radius:100px;font-size:.83rem;font-weight:600;color:var(--muted);background:transparent;border:0;cursor:pointer}
+.rs-mtab.on{background:var(--ink);color:#fff}
+.rs-abig{display:flex;align-items:flex-end;gap:12px}
+.rs-abig__v{font-size:2.2rem;font-weight:900;letter-spacing:-.05em;color:var(--ink);line-height:.9;font-variant-numeric:tabular-nums}
+.rs-abig__l{font-size:.85rem;color:var(--faint-2,#9A968E);padding-bottom:4px}
+.rs-achip{display:inline-flex;align-items:center;gap:6px;height:26px;padding:0 11px;border-radius:100px;background:var(--wash);color:var(--amber-ink);font-size:.74rem;font-weight:700;margin-top:12px}
+.rs-achip i{width:6px;height:6px;border-radius:50%;background:var(--amber-ink)}
+.rs-achart{position:relative;height:150px;margin-top:16px;border-radius:16px;overflow:hidden;border:1px solid var(--line)}
+.rs-achart svg{position:absolute;inset:0;width:100%;height:100%}
+.rs-achart__blur{position:absolute;inset:0;z-index:1;background:rgba(250,249,246,.5);backdrop-filter:blur(3px);display:flex;align-items:center;justify-content:center;text-align:center;padding:16px}
+.rs-achart__blur b{display:block;font-size:.86rem;color:var(--ink);font-weight:800;max-width:320px}
+.rs-achart__blur p{font-size:.78rem;color:var(--faint,#7C7972);margin-top:3px;line-height:1.4;max-width:320px}
+.rs-achart__dot{position:absolute;z-index:2;right:14%;top:34px;width:12px;height:12px;border-radius:50%;background:var(--yellow);border:2.5px solid #fff;box-shadow:0 0 0 3px rgba(255,198,41,.3)}
+.rs-achart__now{position:absolute;z-index:2;right:8%;top:56px;font-size:.72rem;font-weight:800;color:var(--amber-ink)}
+.rs-axlabels{display:flex;justify-content:space-between;margin-top:9px;font-size:.72rem;color:var(--faint-2,#9A968E);font-weight:600}
+
+.rs-heat{background:var(--white);border:1px solid var(--line);border-radius:20px;padding:20px}
+.rs-heatscroll{overflow-x:auto;padding-bottom:6px}
+.rs-heatgrid{display:grid;grid-template-columns:34px repeat(24,1fr);gap:3px;min-width:620px}
+.rs-hh{font-size:.66rem;color:var(--faint-2,#9A968E);font-weight:700;display:flex;align-items:center}
+.rs-hlabel{grid-column:1/2;font-size:.72rem;color:var(--muted);font-weight:700;display:flex;align-items:center;height:20px}
+.rs-hcell{height:20px;border-radius:4px;background:var(--paper)}
+.rs-hcell.has-posts{cursor:help}
+.rs-heat-tooltip{position:fixed;z-index:60;pointer-events:none;padding:6px 9px;border-radius:7px;background:#1F1D1A;color:#fff;font-size:.7rem;font-weight:700;white-space:nowrap;box-shadow:0 4px 12px rgba(0,0,0,.2)}
+.rs-hlegend{display:flex;align-items:center;gap:6px;margin-top:14px;font-size:.72rem;color:var(--faint-2,#9A968E);font-weight:600}
+.rs-hlegend span{width:16px;height:12px;border-radius:3px}
+.rs-insightbox{display:flex;gap:11px;margin-top:16px;padding:14px 16px;background:var(--wash);border:1px solid #F2E4B8;border-radius:16px}
+.rs-insightbox svg{width:18px;height:18px;color:var(--amber-ink);flex:none;margin-top:1px}
+.rs-insightbox p{font-size:.86rem;color:var(--body);line-height:1.5}
+.rs-insightbox b{color:var(--ink);font-weight:800}
+
+.rs-two{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.rs-dcard{background:var(--white);border:1px solid var(--line);border-radius:20px;padding:20px}
+.rs-dcard h3{font-size:.95rem;font-weight:800;color:var(--ink);letter-spacing:-.028em}
+.rs-sub{font-size:.78rem;color:var(--faint-2,#9A968E);margin-top:2px}
+.rs-owk{display:flex;align-items:flex-end;gap:12px;height:120px;margin-top:20px}
+.rs-owk__col{flex:1;display:flex;flex-direction:column;align-items:center;gap:7px;height:100%;justify-content:flex-end}
+.rs-owk__bar{width:100%;max-width:34px;border-radius:7px 7px 0 0;background:var(--a2);transition:.2s}
+.rs-owk__col.peak .rs-owk__bar{background:var(--yellow)}
+.rs-owk__v{font-size:.78rem;font-weight:800;color:var(--ink)}
+.rs-owk__x{font-size:.7rem;color:var(--faint-2,#9A968E);font-weight:600}
+.rs-dist{display:flex;flex-direction:column;gap:11px;margin-top:18px}
+.rs-drow{display:grid;grid-template-columns:52px 1fr 30px;align-items:center;gap:12px}
+.rs-drow__lbl{font-size:.8rem;font-weight:700;color:var(--muted)}
+.rs-drow__track{height:10px;border-radius:100px;background:var(--paper);overflow:hidden}
+.rs-drow__fill{height:100%;border-radius:100px;display:block}
+.rs-drow__c{font-size:.82rem;font-weight:800;color:var(--ink);text-align:right;font-variant-numeric:tabular-nums}
+
+.rs-scrollp{position:relative;background:var(--white);border:1px solid var(--line);border-radius:20px;overflow:hidden}
+.rs-scrollp__hd{display:flex;align-items:center;justify-content:space-between;padding:16px 20px 10px}
+.rs-scrollp__hd h3{font-size:.95rem;font-weight:800;color:var(--ink)}
+.rs-scrollp__cnt{font-size:.75rem;color:var(--faint-2,#9A968E);font-weight:600}
+.rs-scrollp__list{max-height:232px;overflow-y:auto;padding:2px 20px 20px;scrollbar-width:thin;scrollbar-color:var(--line-2) transparent}
+.rs-scrollp__list::-webkit-scrollbar{width:7px}
+.rs-scrollp__list::-webkit-scrollbar-thumb{background:var(--line-2,#DEDBD3);border-radius:100px;border:2px solid var(--white)}
+.rs-hrow{display:grid;grid-template-columns:1fr 74px 30px;align-items:center;gap:12px;padding:9px 0;border-top:1px solid var(--line);color:inherit;text-decoration:none;transition:.14s}
+.rs-hrow:first-child{border-top:none}
+.rs-hrow:hover{background:var(--paper);border-radius:8px;padding-left:6px;padding-right:6px}
+.rs-hrow__n{display:flex;align-items:center;gap:8px;font-size:.86rem;font-weight:700;color:var(--ink);min-width:0}
+.rs-hrow__n svg:first-child{width:15px;height:15px;color:var(--faint-2,#9A968E);flex:none}
+.rs-hrow__n span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rs-hrow__n svg:last-child{width:12px;height:12px;color:var(--faint-2,#9A968E);flex:none;opacity:0;transition:.14s}
+.rs-hrow:hover .rs-hrow__n svg:last-child{opacity:1}
+.rs-hrow__bar{height:8px;border-radius:100px;background:var(--paper);overflow:hidden}
+.rs-hrow__bar i{display:block;height:100%;border-radius:100px;background:var(--a3)}
+.rs-hrow__c{font-size:.82rem;font-weight:800;color:var(--muted);text-align:right;font-variant-numeric:tabular-nums}
+.rs-scrollp__fade{position:absolute;left:0;right:0;bottom:0;height:48px;background:linear-gradient(transparent,var(--white));pointer-events:none;display:flex;align-items:flex-end;justify-content:center;padding-bottom:8px;transition:opacity .2s}
+.rs-scrollp__fade span{display:inline-flex;align-items:center;gap:5px;font-size:.72rem;font-weight:700;color:var(--faint,#7C7972);background:var(--white);border:1px solid var(--line);border-radius:100px;padding:3px 10px}
+.rs-scrollp.is-end .rs-scrollp__fade{opacity:0}
+
+@media (max-width:1080px){.rs-ogrid{grid-template-columns:repeat(2,1fr)}}
+@media (max-width:900px){
+  .rs-stats{grid-template-columns:1fr 1fr}
+  .rs-stt:nth-child(2){border-right:none}
+  .rs-stt:nth-child(1),.rs-stt:nth-child(2){border-bottom:1px solid var(--line)}
+  .rs-winner{grid-template-columns:1fr}.rs-vf--big{max-width:240px;margin:0 auto}
+  .rs-two{grid-template-columns:1fr}
+}
+@media (max-width:560px){.rs-ogrid{grid-template-columns:1fr 1fr}}
+`;

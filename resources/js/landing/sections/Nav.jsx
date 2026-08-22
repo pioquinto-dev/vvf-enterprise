@@ -3,7 +3,7 @@ import { Link } from '@inertiajs/react';
 
 import { Logo, Google } from '../components/Icons.jsx';
 
-export default function Nav() {
+export default function Nav({ homeHref = '#top' }) {
   const [stuck, setStuck] = useState(false);
 
   useEffect(() => {
@@ -16,7 +16,7 @@ export default function Nav() {
   return (
     <header className={`nav${stuck ? ' is-stuck' : ''}`} id="nav">
       <div className="wrap nav__in">
-        <a href="#top" className="brand">
+        <a href={homeHref} className="brand">
           <Logo className="h-8 w-8" />
           <span>Brand Beacon</span>
         </a>

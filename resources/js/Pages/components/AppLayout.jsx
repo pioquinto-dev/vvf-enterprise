@@ -42,7 +42,7 @@ function initials(name, email) {
 
 function Brand({ onNavigate }) {
     return (
-        <Link href="/" onClick={onNavigate} className="side__brand">
+        <Link href="/dashboard" onClick={onNavigate} className="side__brand">
             <Logo className="h-[30px] w-[30px]" />
             <span>Brand Beacon</span>
         </Link>

@@ -60,6 +60,8 @@ class CustomKeywordSearch extends Model
             'next_run_at' => 'datetime',
             'is_watchlisted' => 'boolean',
             'ai_summary_generated_at' => 'datetime',
+            'insights_bullets' => 'array',
+            'best_post_time' => 'array',
         ];
     }
 

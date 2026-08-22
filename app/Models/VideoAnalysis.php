@@ -22,6 +22,7 @@ class VideoAnalysis extends Model
         return [
             'transcript_segments' => 'array',
             'result' => 'array',
+            'counts_toward_quota' => 'boolean',
             'analyzed_at' => 'datetime',
             'locked_at' => 'datetime',
         ];

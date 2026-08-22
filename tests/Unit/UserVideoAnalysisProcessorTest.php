@@ -68,6 +68,27 @@ class UserVideoAnalysisProcessorTest extends TestCase
         $this->assertSame(0, (int) data_get($user->subscriptions()->first()->fresh()->metadata, 'subscription.video_analysis.used'));
     }
 
+    public function test_automatic_winner_analysis_does_not_consume_a_credit(): void
+    {
+        $user = $this->paidUserWithVideoAnalysisLimit(limit: 50, used: 0);
+        $analysis = $this->analysisFor($user, countsTowardQuota: false);
+        $this->preparationFor($analysis);
+
+        $mock = Mockery::mock(CreativeStrategistGenerator::class);
+        $mock->shouldReceive('generate')->once()->andReturn([
+            'transcript' => 'winner transcript',
+            'transcript_segments' => [],
+            'result' => ['creative_strategy' => ['summary' => 'Keep the proof early.']],
+        ]);
+        app()->instance(CreativeStrategistGenerator::class, $mock);
+
+        app(UserVideoAnalysisProcessor::class)->process($analysis->fresh());
+
+        $this->assertSame(VideoAnalysis::STATUS_COMPLETE, $analysis->fresh()->status);
+        $this->assertFalse($analysis->fresh()->counts_toward_quota);
+        $this->assertSame(0, (int) data_get($user->subscriptions()->first()->fresh()->metadata, 'subscription.video_analysis.used'));
+    }
+
     public function test_apify_connection_failure_marks_the_analysis_failed_without_consuming_a_credit(): void
     {
         $user = $this->paidUserWithVideoAnalysisLimit(limit: 50, used: 0);
@@ -161,7 +182,7 @@ class UserVideoAnalysisProcessorTest extends TestCase
         return $user;
     }
 
-    private function analysisFor(User $user): VideoAnalysis
+    private function analysisFor(User $user, bool $countsTowardQuota = true): VideoAnalysis
     {
         return VideoAnalysis::query()->create([
             'id' => (string) Str::ulid(),
@@ -169,6 +190,7 @@ class UserVideoAnalysisProcessorTest extends TestCase
             'viral_video_id' => (string) Str::ulid(),
             'video_id' => '7300000000000000001',
             'status' => VideoAnalysis::STATUS_PROCESSING,
+            'counts_toward_quota' => $countsTowardQuota,
         ]);
     }
 

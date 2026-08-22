@@ -26,9 +26,65 @@ class VideoAnalysisManager
 
     public function request(User $user, ViralVideo $video, bool $forceRefresh = false): VideoAnalysis
     {
-        $this->billing->ensureCanAnalyzeVideo($user);
+        return $this->queue($user, $video, $forceRefresh, true);
+    }
 
-        return DB::transaction(function () use ($user, $video, $forceRefresh): VideoAnalysis {
+    /**
+     * Queues the current saved-search winner without consuming a user credit.
+     * A completed analysis is reused; this is a search-run benefit, not a
+     * request to regenerate the same video's strategy on every refresh.
+     */
+    public function requestAutomaticWinner(User $user, ViralVideo $video): VideoAnalysis
+    {
+        return $this->queue($user, $video, false, false);
+    }
+
+    /**
+     * Completes the automatic winner analysis before a search run is marked
+     * ready. The regular queued jobs remain the single implementation of
+     * preparation and generation; dispatching them synchronously simply makes
+     * their terminal state part of the search-run contract.
+     */
+    public function requestAutomaticWinnerAndWait(User $user, ViralVideo $video): VideoAnalysis
+    {
+        $analysis = $this->requestAutomaticWinner($user, $video)->refresh();
+
+        if (! $analysis->isProcessing()) {
+            return $analysis;
+        }
+
+        $preparation = VideoPreparation::query()
+            ->where('video_id', $analysis->video_id)
+            ->first();
+
+        if ($preparation !== null && ! $preparation->isComplete()) {
+            PrepareVideoAnalysis::dispatchSync($preparation->id);
+        }
+
+        $analysis = $analysis->fresh();
+
+        if ($analysis->isProcessing()) {
+            RunVideoAnalysis::dispatchSync($analysis->id);
+        }
+
+        $analysis = $analysis->fresh();
+
+        if ($analysis->isProcessing()) {
+            // A search must not advertise a ready winner while its automatic
+            // analysis is left in limbo. Preserve the search result, but make
+            // the analysis outcome explicit and terminal.
+            $analysis->forceFill([
+                'status' => VideoAnalysis::STATUS_FAILED,
+                'error_message' => 'Automatic winner analysis did not finish before the search completed.',
+            ])->save();
+        }
+
+        return $analysis->refresh();
+    }
+
+    private function queue(User $user, ViralVideo $video, bool $forceRefresh, bool $countsTowardQuota): VideoAnalysis
+    {
+        return DB::transaction(function () use ($user, $video, $forceRefresh, $countsTowardQuota): VideoAnalysis {
             $analysis = VideoAnalysis::query()
                 ->where('user_id', $user->id)
                 ->where('video_id', $video->video_id)
@@ -39,8 +95,23 @@ class VideoAnalysisManager
                 return $analysis;
             }
 
-            if ($analysis !== null && $analysis->isComplete() && ! $forceRefresh && ! $this->strategist->needsRefresh((array) $analysis->result)) {
-                return $this->ensureCompletedAnalysisUsageSynced($analysis);
+            if ($analysis !== null && $analysis->isComplete() && ! $forceRefresh) {
+                if (! $countsTowardQuota || ! $this->strategist->needsRefresh((array) $analysis->result)) {
+                    return $analysis->counts_toward_quota
+                        ? $this->ensureCompletedAnalysisUsageSynced($analysis)
+                        : $analysis;
+                }
+            }
+
+            // Automatic runs never replace or retry an existing manual
+            // analysis. That keeps the search benefit free and preserves the
+            // user's original billing record.
+            if (! $countsTowardQuota && $analysis !== null) {
+                return $analysis;
+            }
+
+            if ($countsTowardQuota) {
+                $this->billing->ensureCanAnalyzeVideo($user);
             }
 
             $preparation = VideoPreparation::query()
@@ -52,6 +123,7 @@ class VideoAnalysisManager
                 'user_id' => $user->id,
                 'viral_video_id' => $video->id,
                 'video_id' => $video->video_id,
+                'counts_toward_quota' => $countsTowardQuota,
             ]);
 
             $analysis->fill([
@@ -98,6 +170,10 @@ class VideoAnalysisManager
 
         if ($analysis !== null && $analysis->isProcessing() && $this->isStale($analysis)) {
             return $this->failStaleAnalysis($analysis, $video);
+        }
+
+        if ($analysis !== null && ! $analysis->counts_toward_quota && $analysis->isComplete()) {
+            return $analysis;
         }
 
         if ($analysis === null || ! $analysis->isComplete() || ! $this->strategist->needsRefresh((array) $analysis->result)) {
@@ -192,7 +268,7 @@ class VideoAnalysisManager
 
     private function ensureCompletedAnalysisUsageSynced(VideoAnalysis $analysis): VideoAnalysis
     {
-        if (! $analysis->isComplete()) {
+        if (! $analysis->isComplete() || ! $analysis->counts_toward_quota) {
             return $analysis;
         }
 
@@ -202,7 +278,7 @@ class VideoAnalysisManager
                 ->lockForUpdate()
                 ->firstOrFail();
 
-            if (! $locked->isComplete()) {
+            if (! $locked->isComplete() || ! $locked->counts_toward_quota) {
                 return $locked;
             }
 

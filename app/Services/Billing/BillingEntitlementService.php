@@ -471,6 +471,7 @@ class BillingEntitlementService
         $query = VideoAnalysis::query()
             ->where('user_id', $user->id)
             ->where('status', VideoAnalysis::STATUS_COMPLETE)
+            ->where('counts_toward_quota', true)
             ->whereNotNull('analyzed_at');
 
         if ($this->hasPaidPlan($user)) {

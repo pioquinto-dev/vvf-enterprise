@@ -3,7 +3,7 @@ import { Head, router } from '@inertiajs/react';
 
 import AppLayout from '../components/AppLayout.jsx';
 import DetailScreen from './detail/DetailScreen.jsx';
-import { savedSearch as api, untrackSearch } from '../../landing/flow/api.js';
+import { bookmarks, savedSearch as api, untrackSearch } from '../../landing/flow/api.js';
 
 function UsageConfirmModal({ title, body, subject, confirmLabel, busy = false, onConfirm, onCancel }) {
     return (
@@ -68,6 +68,7 @@ export default function Show({ search: initial, isAuthenticated = false, billing
     const [search, setSearch] = useState(initial);
     const [refreshing, setRefreshing] = useState(false);
     const [bookmarkingSearch, setBookmarkingSearch] = useState(false);
+    const [bookmarkingVideoId, setBookmarkingVideoId] = useState(null);
     const [confirmRefresh, setConfirmRefresh] = useState(false);
 
     const searchLimit = billing?.searchCreditsLimit ?? 0;
@@ -122,6 +123,29 @@ export default function Show({ search: initial, isAuthenticated = false, billing
         setSearch((prev) => ({ ...prev, ...patch }));
     };
 
+    const toggleVideoBookmark = async (video) => {
+        if (!video?.id || bookmarkingVideoId !== null) return;
+
+        setBookmarkingVideoId(video.id);
+
+        try {
+            const response = video.bookmarked
+                ? await bookmarks.remove(video.id)
+                : await bookmarks.save(video.id);
+
+            setSearch((prev) => ({
+                ...prev,
+                results: (prev.results ?? []).map((result) => (
+                    String(result.id) === String(video.id)
+                        ? { ...result, bookmarked: Boolean(response.bookmarked) }
+                        : result
+                )),
+            }));
+        } finally {
+            setBookmarkingVideoId(null);
+        }
+    };
+
     return (
         <>
             <Head title={`${search.name} · Brand Beacon`} />
@@ -138,6 +162,8 @@ export default function Show({ search: initial, isAuthenticated = false, billing
                         onRefresh={refresh}
                         onSearchUpdated={patchSearch}
                         onToggleBookmark={toggleBookmark}
+                        onToggleVideoBookmark={toggleVideoBookmark}
+                        bookmarkingVideoId={bookmarkingVideoId}
                         onTogglePause={togglePause}
                         onDelete={remove}
                     />

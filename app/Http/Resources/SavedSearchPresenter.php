@@ -81,17 +81,27 @@ class SavedSearchPresenter
             ->with(['video' => fn ($query) => $query->visible()])
             ->orderBy('rank')
             ->get()
-            ->map(fn ($row): array => array_merge(
-                $row->video?->toCardArray() ?? [],
-                [
-                    'rank' => $row->rank,
-                    'score' => (float) $row->viral_score,
-                    'bookmarked' => in_array($row->viral_video_id, $bookmarkedVideoIds, true),
-                    'is_new_breakout' => (bool) $row->is_new_breakout,
-                    'source' => $row->source,
-                    'analysis' => $analysisByVideoId[$row->viral_video_id] ?? null,
-                ]
-            ))
+            ->map(function ($row) use ($analysisByVideoId, $bookmarkedVideoIds): array {
+                $video = $row->video;
+
+                return array_merge(
+                    $video?->toCardArray() ?? [],
+                    [
+                        'rank' => $row->rank,
+                        'score' => (float) $row->viral_score,
+                        'bookmarked' => in_array($row->viral_video_id, $bookmarkedVideoIds, true),
+                        'is_new_breakout' => (bool) $row->is_new_breakout,
+                        'source' => $row->source,
+                        'analysis' => $analysisByVideoId[$row->viral_video_id] ?? null,
+                        // enrichment fields — nullable, populated by SearchEnrichmentService
+                        'content_format' => $video?->content_format,
+                        'content_hook' => $video?->content_hook,
+                        'content_angle' => $video?->content_angle,
+                        'why_broke_out' => $video?->content_why_broke_out,
+                        'replicate_with' => $video?->content_replicate_with,
+                    ]
+                );
+            })
             ->filter(fn (array $row): bool => isset($row['id']))
             ->values()
             ->all();
@@ -134,6 +144,8 @@ class SavedSearchPresenter
             'runs' => self::runHistory($search),
             'ai_summary' => $search->ai_summary,
             'ai_summary_generated_at' => $search->ai_summary_generated_at?->toIso8601String(),
+            'insights_bullets' => is_array($search->insights_bullets) ? $search->insights_bullets : [],
+            'best_post_time' => is_array($search->best_post_time) ? $search->best_post_time : null,
             'insights' => $payload,
         ];
     }

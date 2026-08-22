@@ -86,7 +86,7 @@ class UserVideoAnalysisProcessor
             'segment_count' => count($result['transcript_segments'] ?? []),
         ]);
 
-        if ($analysis->user_id !== null) {
+        if ($analysis->counts_toward_quota && $analysis->user_id !== null) {
             $user = User::query()->find($analysis->user_id);
 
             if ($user === null) {

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\StoreSavedSearchRequest;
 use App\Http\Resources\SavedSearchPresenter;
+use App\Jobs\EnrichSearchResults;
 use App\Models\CustomKeywordSearch;
 use App\Models\CustomKeywordSearchRun;
 use App\Models\CustomKeywordSearchSnapshot;
@@ -541,10 +542,44 @@ class SavedSearchController extends Controller
         $model = $this->searches->resolveByKey($request, $search);
         $bookmarkedVideoIds = $this->bookmarks->idsForUser($request->user());
 
+        $this->backfillEnrichmentIfMissing($model);
+
         return Inertia::render('SavedSearches/Show', [
             'search' => SavedSearchPresenter::detail($model, $bookmarkedVideoIds, $request->user()),
             'isAuthenticated' => $request->user() !== null,
         ]);
+    }
+
+    /**
+     * Kick off enrichment when a search has videos but no analysis on them.
+     *
+     * The scrape job dispatches EnrichSearchResults itself, but that dispatch
+     * can quietly fail (queue worker not running, AI call errored, retries
+     * exhausted). Re-dispatching on view is cheap — the job's
+     * WithoutOverlapping middleware dedupes concurrent runs — and it means a
+     * user hitting the results page always converges on a fully enriched
+     * search rather than staring at a Winner card with no tags or analysis.
+     */
+    private function backfillEnrichmentIfMissing(CustomKeywordSearch $search): void
+    {
+        if ($search->hasActiveRun()) {
+            return;
+        }
+
+        $needsEnrichment = $search->videos()
+            ->whereHas('video', fn ($q) => $q->whereNull('content_why_broke_out'))
+            ->exists();
+
+        if (!$needsEnrichment) {
+            return;
+        }
+
+        try {
+            EnrichSearchResults::dispatch($search->id)
+                ->onQueue((string) config('custom_keyword_search.queue', 'default'));
+        } catch (\Throwable $e) {
+            // Never let a page-view side effect break the render.
+        }
     }
 
     /** Old /bookmarks/{id} and /bookmark/{id} links redirect to the canonical /results/{public_id}. */
@@ -556,9 +591,12 @@ class SavedSearchController extends Controller
     /** JSON twin of show(), used to refresh the results page in place. */
     public function showJson(Request $request, int $id): JsonResponse
     {
+        $model = $this->searches->resolve($request, $id);
+        $this->backfillEnrichmentIfMissing($model);
+
         return response()->json([
             'search' => SavedSearchPresenter::detail(
-                $this->searches->resolve($request, $id),
+                $model,
                 $this->bookmarks->idsForUser($request->user()),
                 $request->user(),
             ),

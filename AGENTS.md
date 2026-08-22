@@ -378,7 +378,13 @@ High-level flow:
 4. Apify is called with only the primary phrase.
 5. Local keyword filtering and ranking happen after dataset retrieval.
 6. Results persist into search, runs, videos, and snapshots.
-7. Media archiving and some enrichment happen asynchronously.
+7. The rank-one video is automatically analyzed for free when it is new for the search run; the run stays active until that analysis reaches a terminal state. Unchanged winners reuse their prior analysis.
+8. Media archiving happens asynchronously; search insight enrichment runs synchronously after each completed search run.
+
+Automatic winner-analysis rule:
+
+- It is stored against the search owner with `counts_toward_quota = false` and must never increment video-analysis usage.
+- A different winner on a future completed run gets its own free analysis. Existing manual analyses are reused and never reclassified as free.
 
 Non-obvious rule:
 

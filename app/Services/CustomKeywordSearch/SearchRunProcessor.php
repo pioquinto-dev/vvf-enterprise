@@ -11,6 +11,7 @@ use App\Models\CustomKeywordSearchVideo;
 use App\Models\ViralVideo;
 use App\Services\Apify\ApifyClient;
 use App\Services\Billing\BillingService;
+use App\Services\ViralVideoAnalysis\VideoAnalysisManager;
 use App\Support\AppEventLogger;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -31,6 +32,7 @@ class SearchRunProcessor
         private readonly SnapshotRecorder $snapshots,
         private readonly LocalCorpusRecall $localCorpus,
         private readonly BillingService $billing,
+        private readonly VideoAnalysisManager $videoAnalyses,
     ) {}
 
     public function process(CustomKeywordSearchRun $run, bool $throwOnFailure = false): void
@@ -236,6 +238,7 @@ class SearchRunProcessor
 
         $summary['kept_apify'] = count($apifyMatches);
 
+        $previousWinnerVideoId = $this->previousWinnerVideoId($search);
         $attached = $this->persist($search, $run, $trigger, $top);
 
         $trigger->update([
@@ -245,6 +248,47 @@ class SearchRunProcessor
             'filter_summary' => $summary,
         ]);
 
+        if ($this->reservedCredit($run) && $search->user !== null) {
+            $this->billing->syncSubscriptionUsage($search->user);
+        }
+
+        // The scrape is complete before any supplemental work begins, so a
+        // failure below must never reopen a finished run.
+        try {
+            $this->snapshots->record($search->refresh(), $run);
+        } catch (Throwable $e) {
+            Log::warning('Snapshot recording failed.', ['search_id' => $search->id, 'error' => $e->getMessage()]);
+        }
+
+        try {
+            $winnerAnalysis = $this->analyzeWinnerIfChanged($search, $run, $previousWinnerVideoId);
+            if ($winnerAnalysis?->status === \App\Models\VideoAnalysis::STATUS_FAILED) {
+                Log::warning('Automatic winner analysis finished unsuccessfully.', [
+                    'search_id' => $search->id,
+                    'run_id' => $run->id,
+                    'analysis_id' => $winnerAnalysis->id,
+                    'error' => $winnerAnalysis->error_message,
+                ]);
+            }
+        } catch (Throwable $e) {
+            // The search result is complete already; record an unexpected
+            // analysis failure without invalidating its successfully scraped
+            // data.
+            Log::warning('Automatic winner analysis failed.', ['search_id' => $search->id, 'error' => $e->getMessage()]);
+        }
+
+        try {
+            // Equivalent to `php artisan search:enrich <id> --sync`. Run this
+            // inline so insights and per-card creative analysis are present
+            // when the refreshed search-results page is first rendered.
+            EnrichSearchResults::dispatchSync($search->id);
+        } catch (Throwable $e) {
+            Log::warning('Synchronous search enrichment failed.', ['search_id' => $search->id, 'error' => $e->getMessage()]);
+        }
+
+        // The running screen polls this state before it navigates to the
+        // detail page. Marking the run done only after enrichment prevents a
+        // results page from rendering between the scrape and its AI content.
         $run->update([
             'status' => CustomKeywordSearchRun::STATUS_DONE,
             'completed_at' => now(),
@@ -276,26 +320,6 @@ class SearchRunProcessor
             'compute_units' => $finished['stats']['computeUnits'] ?? null,
             'usage_total_usd' => $finished['usageTotalUsd'] ?? null,
         ]);
-
-        if ($this->reservedCredit($run) && $search->user !== null) {
-            $this->billing->syncSubscriptionUsage($search->user);
-        }
-
-        // Everything past this point is enrichment. The scrape has already
-        // succeeded and the user's results are live — a failure here must not
-        // reopen a finished run.
-        try {
-            $this->snapshots->record($search->refresh(), $run);
-        } catch (Throwable $e) {
-            Log::warning('Snapshot recording failed.', ['search_id' => $search->id, 'error' => $e->getMessage()]);
-        }
-
-        try {
-            EnrichSearchResults::dispatch($search->id)
-                ->onQueue((string) config('custom_keyword_search.queue', 'default'));
-        } catch (Throwable $e) {
-            Log::warning('Enrichment dispatch failed.', ['search_id' => $search->id, 'error' => $e->getMessage()]);
-        }
     }
 
     /**
@@ -409,6 +433,52 @@ class SearchRunProcessor
         $this->queueMediaArchive($freshlyScraped);
 
         return $attached;
+    }
+
+    private function previousWinnerVideoId(CustomKeywordSearch $search): ?string
+    {
+        $previous = $search->videos()
+            ->whereHas('run', fn ($query) => $query->where('status', CustomKeywordSearchRun::STATUS_DONE))
+            ->with('run')
+            ->get()
+            ->sortByDesc(fn (CustomKeywordSearchVideo $row) => $row->run?->completed_at?->getTimestamp() ?? 0)
+            ->firstWhere('rank', 1);
+
+        return $previous?->viral_video_id;
+    }
+
+    private function analyzeWinnerIfChanged(
+        CustomKeywordSearch $search,
+        CustomKeywordSearchRun $run,
+        ?string $previousWinnerVideoId,
+    ): ?\App\Models\VideoAnalysis {
+        if ($search->user === null) {
+            return null;
+        }
+
+        $winner = $search->videos()
+            ->where('custom_keyword_search_run_id', $run->id)
+            ->where('rank', 1)
+            ->with('video')
+            ->first();
+
+        if ($winner?->video === null) {
+            return null;
+        }
+
+        $analysis = $this->videoAnalyses->requestAutomaticWinnerAndWait($search->user, $winner->video);
+
+        AppEventLogger::result('search.winner_analysis_queued', [
+            'search_id' => $search->id,
+            'run_id' => $run->id,
+            'viral_video_id' => $winner->viral_video_id,
+            'previous_winner_video_id' => $previousWinnerVideoId,
+            'winner_changed' => $winner->viral_video_id !== $previousWinnerVideoId,
+            'analysis_id' => $analysis->id,
+            'analysis_status' => $analysis->status,
+        ]);
+
+        return $analysis;
     }
 
     /**

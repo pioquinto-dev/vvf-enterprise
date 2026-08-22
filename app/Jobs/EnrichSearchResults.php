@@ -5,10 +5,9 @@ namespace App\Jobs;
 use App\Http\Resources\SavedSearchPresenter;
 use App\Models\CustomKeywordSearch;
 use App\Models\ViralVideo;
-use App\Support\AppEventLogger;
+use App\Services\CustomKeywordSearch\SearchEnrichmentService;
 use App\Services\CustomKeywordSearch\SearchInsights;
-use App\Services\CustomKeywordSearch\SearchSummaryWriter;
-use App\Services\CustomKeywordSearch\VideoContentAnalyzer;
+use App\Support\AppEventLogger;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Queue\Middleware\WithoutOverlapping;
@@ -18,8 +17,12 @@ use Illuminate\Support\Facades\Log;
  * The AI pass, run after a scrape lands.
  *
  * Kept off the scrape job on purpose: a failure here must never mark a run as
- * failed. The scrape is the product; classification and the summary line are
- * decoration, and the page renders perfectly well without either.
+ * failed. The scrape is the product; analytical text is decoration, and the
+ * page renders perfectly well without it.
+ *
+ * A single OpenAI call now covers what used to be two — bullet insights, the
+ * per-video format/hook/angle + why-it-broke-out + replicate-with lines, and
+ * the best-time-to-post sentence — via SearchEnrichmentService.
  */
 class EnrichSearchResults implements ShouldQueue
 {
@@ -28,6 +31,8 @@ class EnrichSearchResults implements ShouldQueue
     public int $tries = 2;
 
     public int $timeout = 300;
+
+    private const VIDEO_BUDGET = 8;
 
     public function __construct(public readonly int $searchId) {}
 
@@ -40,8 +45,7 @@ class EnrichSearchResults implements ShouldQueue
     }
 
     public function handle(
-        VideoContentAnalyzer $analyzer,
-        SearchSummaryWriter $summaries,
+        SearchEnrichmentService $enrichment,
         SearchInsights $insights,
     ): void {
         $search = CustomKeywordSearch::find($this->searchId);
@@ -71,95 +75,108 @@ class EnrichSearchResults implements ShouldQueue
         ]);
 
         try {
-            $classified = $this->classifyTopVideos($search, $analyzer);
+            // Pull the top-N ViralVideos (models) that the service will label.
+            $topVideoIds = $search->videos()
+                ->orderBy('rank')
+                ->limit(self::VIDEO_BUDGET)
+                ->pluck('viral_video_id');
 
-            AppEventLogger::result('search_enrichment.classification_completed', [
+            $topVideos = ViralVideo::whereIn('id', $topVideoIds)->get();
+
+            $enrichment->enrich($search, $this->facts($search, $insights, $results), $topVideos);
+
+            AppEventLogger::result('search_enrichment.completed', [
                 'search_id' => $search->id,
-                'classified_count' => $classified,
             ]);
         } catch (\Throwable $e) {
-            AppEventLogger::error('search_enrichment.classification_failed', $e, [
+            AppEventLogger::error('search_enrichment.exception', $e, [
                 'search_id' => $search->id,
             ]);
-
-            Log::warning('Content classification failed.', ['search_id' => $search->id, 'error' => $e->getMessage()]);
+            Log::warning('Search enrichment failed.', ['search_id' => $search->id, 'error' => $e->getMessage()]);
         }
-
-        try {
-            // Re-read so the summary can cite labels the pass just wrote.
-            $summary = $summaries->generate($search, $this->facts($search, $insights));
-
-            AppEventLogger::result('search_enrichment.summary_completed', [
-                'search_id' => $search->id,
-                'summary_generated' => filled($summary),
-            ]);
-        } catch (\Throwable $e) {
-            AppEventLogger::error('search_enrichment.summary_failed', $e, [
-                'search_id' => $search->id,
-            ]);
-
-            Log::warning('Summary generation failed.', ['search_id' => $search->id, 'error' => $e->getMessage()]);
-        }
-
-        AppEventLogger::result('search_enrichment.completed', [
-            'search_id' => $search->id,
-        ]);
     }
 
     /**
-     * Only the top slice is classified. The page shows format, hook and angle
-     * on the winner and nowhere else, so paying to label result 80 buys
-     * nothing a user will ever see.
-     */
-    private function classifyTopVideos(CustomKeywordSearch $search, VideoContentAnalyzer $analyzer): int
-    {
-        $limit = (int) config('custom_keyword_search.analysis.top_videos', 10);
-
-        $videoIds = $search->videos()
-            ->orderBy('rank')
-            ->limit($limit)
-            ->pluck('viral_video_id');
-
-        if ($videoIds->isEmpty()) {
-            return 0;
-        }
-
-        return $analyzer->analyze(ViralVideo::whereIn('id', $videoIds)->get());
-    }
-
-    /**
-     * Pre-computed figures for the summary writer. Everything the model is
-     * allowed to say a number about appears in here first.
+     * Pre-computed figures + top hashtags/sounds + a posting heatmap best cell.
+     * Everything the enrichment model is allowed to quote as a number must be
+     * present in this payload.
      *
+     * @param  array<int, array<string, mixed>>  $results
      * @return array<string, mixed>
      */
-    private function facts(CustomKeywordSearch $search, SearchInsights $insights): array
+    private function facts(CustomKeywordSearch $search, SearchInsights $insights, array $results): array
     {
-        $results = SavedSearchPresenter::resultRows($search);
-
-        // Built without the phrase on purpose: the summary never cites the
-        // brand account, and passing it would spend a second OpenAI call
-        // re-deciding something the detail page has already cached.
-        $payload = $insights->build($insights->withMultiples($results));
+        $payload = $insights->build($insights->withMultiples($results), $search->phrase);
         $top = $results[0] ?? [];
 
         return [
             'phrase' => $search->phrase,
             'videos_matched' => count($results),
-            'median_views' => $payload['baseline']['median_views'],
-            'outlier_count' => collect($payload['tiles'])->firstWhere('key', 'outliers')['value'] ?? null,
-            'top_multiple' => collect($payload['tiles'])->firstWhere('key', 'top_multiple')['value'] ?? null,
-            'avg_engagement_rate' => collect($payload['tiles'])->firstWhere('key', 'avg_engagement')['value'] ?? null,
+            'median_views' => data_get($payload, 'baseline.median_views'),
+            'outlier_count' => collect($payload['tiles'] ?? [])->firstWhere('key', 'outliers')['value'] ?? null,
+            'top_multiple' => collect($payload['tiles'] ?? [])->firstWhere('key', 'top_multiple')['value'] ?? null,
+            'avg_engagement_rate' => collect($payload['tiles'] ?? [])->firstWhere('key', 'avg_engagement')['value'] ?? null,
             'top_video' => [
                 'caption' => mb_substr((string) ($top['title'] ?? ''), 0, 160),
                 'views' => $top['views'] ?? null,
                 'handle' => $top['handle'] ?? null,
-                'format' => $top['content_format'] ?? null,
-                'angle' => $top['content_angle'] ?? null,
+                'multiple' => $top['multiple'] ?? null,
                 'sound' => $top['sound_label'] ?? null,
             ],
-            'top_hashtags' => collect($payload['hashtags'] ?? [])->take(3)->pluck('tag')->all(),
-            'top_sounds' => collect($payload['sounds'] ?? [])->take(2)->pluck('label')->all(),
+            'top_hashtags' => collect($payload['hashtags'] ?? [])->take(5)->pluck('tag')->all(),
+            'top_sounds' => collect($payload['sounds'] ?? [])->take(3)->pluck('label')->all(),
+            'posting_heatmap' => [
+                'best' => $this->bestPostingCell($results),
+            ],
         ];
+    }
+
+    /**
+     * Given the outlier rows, return the day+hour cell with the most posts.
+     * Deterministic, no OpenAI — the service is only asked to phrase the
+     * finding, not compute it.
+     *
+     * @param  array<int, array<string, mixed>>  $results
+     * @return array<string, mixed>|null
+     */
+    private function bestPostingCell(array $results): ?array
+    {
+        $days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+        $counts = [];
+
+        foreach ($results as $row) {
+            // Card rows consistently expose the canonical upload timestamp as
+            // `uploaded_at`; the older aliases only exist on a few importers.
+            $iso = $row['uploaded_at'] ?? $row['posted_at'] ?? $row['createdAt'] ?? $row['published_at'] ?? null;
+            if (! $iso) continue;
+            try {
+                $d = new \DateTimeImmutable((string) $iso, new \DateTimeZone('UTC'));
+            } catch (\Throwable) {
+                continue;
+            }
+
+            $key = ((int) $d->format('w')).'|'.((int) $d->format('G'));
+            $counts[$key] = ($counts[$key] ?? 0) + 1;
+        }
+
+        if ($counts === []) return null;
+
+        arsort($counts);
+        [$dayIdx, $hour] = array_map('intval', explode('|', (string) array_key_first($counts)));
+
+        return [
+            'day' => $days[$dayIdx] ?? null,
+            'hour_24' => $hour,
+            'hour_label' => $this->humanHour($hour).' UTC',
+            'post_count' => reset($counts),
+        ];
+    }
+
+    private function humanHour(int $h): string
+    {
+        if ($h === 0)  return '12 AM';
+        if ($h === 12) return '12 PM';
+
+        return $h < 12 ? "{$h} AM" : ($h - 12).' PM';
     }
 }
