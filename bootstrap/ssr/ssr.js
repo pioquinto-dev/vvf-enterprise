@@ -10407,6 +10407,129 @@ function AnalysisModal({ video, initialAnalysis, tabs = DEFAULT_TABS, open = tru
 	});
 }
 //#endregion
+//#region resources/js/Pages/SavedSearches/detail/tiktokPlayer.js
+function detectPlatform(video = {}) {
+	if (String(video.social_media_source || "").toLowerCase() === "tiktok") return "tiktok";
+	return [
+		video.embedUrl,
+		video.postUrl,
+		video.videoUrl,
+		video.embed_url,
+		video.post_url,
+		video.video_url
+	].filter(Boolean).map((value) => String(value).toLowerCase()).some((value) => value.includes("tiktok.com")) ? "tiktok" : null;
+}
+function buildTikTokPlayerUrl(videoId, autoplay = false) {
+	if (!videoId) return null;
+	const url = new URL(`https://www.tiktok.com/player/v1/${videoId}`);
+	url.searchParams.set("autoplay", autoplay ? "1" : "0");
+	url.searchParams.set("controls", "1");
+	url.searchParams.set("progress_bar", "0");
+	url.searchParams.set("play_button", "1");
+	url.searchParams.set("volume_control", "1");
+	url.searchParams.set("fullscreen_button", "0");
+	url.searchParams.set("timestamp", "0");
+	url.searchParams.set("music_info", "0");
+	url.searchParams.set("description", "0");
+	url.searchParams.set("rel", "0");
+	url.searchParams.set("native_context_menu", "0");
+	url.searchParams.set("closed_caption", "0");
+	url.searchParams.set("muted", "0");
+	return url.toString();
+}
+function withTikTokAutoplay(url, autoplay) {
+	if (!url) return null;
+	try {
+		const next = new URL(url);
+		next.searchParams.set("autoplay", autoplay ? "1" : "0");
+		return next.toString();
+	} catch {
+		return url;
+	}
+}
+function previewImageFor(video = {}) {
+	return video.thumbnailUrl || video.thumbnail_url || video.cover || null;
+}
+function isDashboardPlayable(video = {}) {
+	const platform = detectPlatform(video);
+	const videoId = video.videoId || video.video_id;
+	if (platform === "tiktok") return Boolean(videoId);
+	return Boolean(video.embedUrl || video.embed_url || video.postUrl || video.post_url);
+}
+function playerKindFor(video = {}) {
+	return detectPlatform(video) === "tiktok" ? "tiktok" : "iframe";
+}
+function playerUrlFor(video = {}, autoplay = false) {
+	const platform = detectPlatform(video);
+	const videoId = video.videoId || video.video_id;
+	if (platform === "tiktok" && videoId) return buildTikTokPlayerUrl(videoId, autoplay);
+	if (platform === "tiktok") return null;
+	return video.player_url || video.embedUrl || video.embed_url || null;
+}
+function targetOriginFor(iframe) {
+	try {
+		const origin = new URL(iframe?.src || "").origin;
+		return origin && origin !== "null" ? origin : "*";
+	} catch {
+		return "*";
+	}
+}
+function postTikTokMessage(iframe, type) {
+	if (!iframe?.contentWindow) return;
+	iframe.contentWindow.postMessage({
+		"x-tiktok-player": true,
+		type
+	}, targetOriginFor(iframe));
+}
+function stopAndResetTikTokPlayer(shell) {
+	if (!shell) return;
+	const iframe = shell.querySelector("[data-player-frame]");
+	const poster = shell.querySelector("[data-player-poster]");
+	const overlay = shell.querySelector("[data-player-overlay]");
+	const play = shell.querySelector("[data-player-play]");
+	const close = shell.querySelector("[data-player-close]");
+	const container = shell.querySelector("[data-player-container]");
+	if (shell.dataset.playerKind === "tiktok" && iframe) {
+		postTikTokMessage(iframe, "pause");
+		postTikTokMessage(iframe, "mute");
+	}
+	delete shell.dataset.playerWantsAudible;
+	shell.dataset.playerActive = "false";
+	if (container) container.hidden = true;
+	if (close) close.hidden = true;
+	if (poster) poster.hidden = false;
+	if (overlay) overlay.hidden = false;
+	if (play) play.hidden = false;
+	if (iframe) iframe.src = "about:blank";
+}
+function activateTikTokPlayer(shell) {
+	if (!shell) return;
+	const iframe = shell.querySelector("[data-player-frame]");
+	const poster = shell.querySelector("[data-player-poster]");
+	const overlay = shell.querySelector("[data-player-overlay]");
+	const play = shell.querySelector("[data-player-play]");
+	const close = shell.querySelector("[data-player-close]");
+	const container = shell.querySelector("[data-player-container]");
+	const playerSrc = shell.dataset.playerSrc;
+	if (!iframe || !playerSrc) return;
+	document.querySelectorAll("[data-video-player-shell][data-player-active=\"true\"]").forEach((other) => {
+		if (other !== shell) stopAndResetTikTokPlayer(other);
+	});
+	shell.dataset.playerActive = "true";
+	shell.dataset.playerWantsAudible = "true";
+	if (poster) poster.hidden = true;
+	if (overlay) overlay.hidden = true;
+	if (play) play.hidden = true;
+	if (container) container.hidden = false;
+	if (close) close.hidden = false;
+	const nextSrc = shell.dataset.playerKind === "tiktok" ? withTikTokAutoplay(playerSrc, true) : playerSrc;
+	if (!iframe.src || iframe.src === "about:blank") iframe.src = nextSrc;
+	if (shell.dataset.playerKind === "tiktok") {
+		postTikTokMessage(iframe, "unMute");
+		postTikTokMessage(iframe, "play");
+	}
+}
+//#endregion
 //#region resources/js/Pages/SavedSearches/detail/DetailScreen.jsx
 var DetailScreen_exports = /* @__PURE__ */ __exportAll({ default: () => DetailScreen });
 /**
@@ -11519,11 +11642,15 @@ function DetailScreen({ search, isAuthenticated = false, billing, refreshing = f
 }
 function VideoFrame({ video, winner = false, isPlaying, onTogglePlay }) {
 	const bg = video.thumbnail_url ? void 0 : gradientFor(video.id ?? video.handle);
+	const playerUrl = playerUrlFor(video, true);
+	const [playerReady, setPlayerReady] = useState(false);
+	useEffect(() => {
+		setPlayerReady(false);
+	}, [isPlaying, playerUrl]);
 	return /* @__PURE__ */ jsxs("div", {
 		className: `rs-vf${isPlaying ? " playing" : ""}${winner ? " rs-vf--big" : ""}`,
-		onClick: onTogglePlay,
 		children: [
-			video.thumbnail_url ? /* @__PURE__ */ jsx("img", {
+			!isPlaying && (video.thumbnail_url ? /* @__PURE__ */ jsx("img", {
 				className: "rs-vf__img",
 				src: video.thumbnail_url,
 				alt: "",
@@ -11531,8 +11658,16 @@ function VideoFrame({ video, winner = false, isPlaying, onTogglePlay }) {
 			}) : /* @__PURE__ */ jsx("div", {
 				className: "rs-vf__img",
 				style: { background: bg }
+			})),
+			isPlaying && playerUrl && /* @__PURE__ */ jsx("iframe", {
+				className: "rs-vf__player",
+				src: playerUrl,
+				title: video.title ? `Video: ${video.title}` : "Video preview",
+				allow: "autoplay; encrypted-media; fullscreen",
+				allowFullScreen: true,
+				onLoad: () => setPlayerReady(true)
 			}),
-			/* @__PURE__ */ jsx("div", { className: "rs-vf__scrim" }),
+			!isPlaying && /* @__PURE__ */ jsx("div", { className: "rs-vf__scrim" }),
 			winner ? /* @__PURE__ */ jsxs("span", {
 				className: "rs-vf__win",
 				children: [Icons.Spark, "Winner"]
@@ -11544,13 +11679,23 @@ function VideoFrame({ video, winner = false, isPlaying, onTogglePlay }) {
 				className: "rs-vf__dur",
 				children: formatDuration$1(video.duration)
 			}),
-			/* @__PURE__ */ jsx("button", {
+			!isPlaying && /* @__PURE__ */ jsx("button", {
 				className: "rs-vf__play",
+				onClick: onTogglePlay,
 				"aria-label": "Play",
 				children: Icons.Play
 			}),
-			/* @__PURE__ */ jsx("div", { className: "rs-vf__prog" }),
-			/* @__PURE__ */ jsxs("div", {
+			isPlaying && playerUrl && !playerReady && /* @__PURE__ */ jsx("span", {
+				className: "rs-vf__loading",
+				children: "Loading video…"
+			}),
+			isPlaying && /* @__PURE__ */ jsx("button", {
+				className: "rs-vf__close",
+				onClick: onTogglePlay,
+				"aria-label": "Close video preview",
+				children: "×"
+			}),
+			!isPlaying && /* @__PURE__ */ jsxs("div", {
 				className: "rs-vf__stats",
 				children: [/* @__PURE__ */ jsxs("div", {
 					className: "rs-vchip rs-vchip--out",
@@ -11827,28 +11972,26 @@ var scopedCss = `
 .rs-stt.hi .rs-stt__v{color:var(--amber-ink)}
 
 .rs-winner{display:grid;grid-template-columns:262px 1fr;gap:22px;background:var(--white);border:1px solid var(--line);border-radius:20px;padding:20px}
-.rs-vf{position:relative;width:100%;aspect-ratio:9/16;border-radius:14px;overflow:hidden;background:#1a1a1a;cursor:pointer}
+.rs-vf{position:relative;width:100%;aspect-ratio:9/16;border-radius:14px;overflow:hidden;background:#1a1a1a}
 .rs-vf--big{max-width:262px}
 .rs-vf__img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.rs-vf__player{position:absolute;inset:0;width:100%;height:100%;border:0;background:#000}
 .rs-vf__scrim{position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.28),transparent 22% 62%,rgba(0,0,0,.5));transition:opacity .2s}
 .rs-vf__play{position:absolute;inset:0;margin:auto;width:56px;height:56px;border-radius:50%;background:rgba(255,255,255,.92);display:grid;place-items:center;transition:.15s;border:0;cursor:pointer}
 .rs-vf__play svg{width:20px;height:20px;margin-left:2px;color:#1A1400}
 .rs-vf:hover .rs-vf__play{transform:scale(1.06)}
+.rs-vf__loading{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);padding:6px 9px;border-radius:8px;background:rgba(0,0,0,.7);color:#fff;font-size:.7rem;font-weight:700;white-space:nowrap;pointer-events:none}
+.rs-vf__close{position:absolute;top:9px;right:9px;width:28px;height:28px;border:0;border-radius:50%;background:rgba(0,0,0,.65);color:#fff;font-size:1.25rem;line-height:1;cursor:pointer}
 .rs-vf__win{position:absolute;top:10px;left:10px;display:inline-flex;align-items:center;gap:5px;padding:4px 9px;border-radius:100px;background:var(--yellow);color:#1A1400;font-size:.68rem;font-weight:800;letter-spacing:.02em}
 .rs-vf__win svg{width:11px;height:11px}
 .rs-vf__dur{position:absolute;top:10px;right:10px;padding:2px 7px;border-radius:6px;background:rgba(0,0,0,.6);color:#fff;font-size:.7rem;font-weight:700}
 .rs-vf__rank{position:absolute;top:10px;left:10px;width:24px;height:24px;border-radius:7px;background:rgba(0,0,0,.62);color:#fff;display:grid;place-items:center;font-size:.74rem;font-weight:800}
 .rs-vf__stats{position:absolute;left:10px;right:10px;bottom:10px;display:flex;gap:7px;transition:transform .34s,opacity .22s}
-.rs-vf.playing .rs-vf__stats{transform:translateY(165%);opacity:0}
-.rs-vf.playing .rs-vf__play,.rs-vf.playing .rs-vf__scrim{opacity:0}
 .rs-vchip{flex:1;border-radius:10px;padding:7px 10px;background:rgba(24,22,20,.58);backdrop-filter:blur(6px);box-shadow:0 2px 8px -4px rgba(0,0,0,.4)}
 .rs-vchip__l{font-size:.6rem;font-weight:800;text-transform:uppercase;letter-spacing:.05em;opacity:.9}
 .rs-vchip__n{font-size:1.02rem;font-weight:900;letter-spacing:-.025em;margin-top:2px;font-variant-numeric:tabular-nums}
 .rs-vchip--out .rs-vchip__l{color:#F4CE6A} .rs-vchip--out .rs-vchip__n{color:#FFD766}
 .rs-vchip--views .rs-vchip__l{color:#F0AEC1} .rs-vchip--views .rs-vchip__n{color:#F7C2D2}
-.rs-vf__prog{position:absolute;left:0;bottom:0;height:3px;width:0;background:var(--yellow)}
-.rs-vf.playing .rs-vf__prog{animation:rs-play 9s linear forwards}
-@keyframes rs-play{to{width:100%}}
 
 .rs-wdet{min-width:0;display:flex;flex-direction:column}
 .rs-wcreator{display:flex;align-items:center;gap:10px}
@@ -12719,129 +12862,6 @@ function ScoreDistribution({ distribution = [] }) {
 			})
 		]
 	});
-}
-//#endregion
-//#region resources/js/Pages/SavedSearches/detail/tiktokPlayer.js
-function detectPlatform(video = {}) {
-	if (String(video.social_media_source || "").toLowerCase() === "tiktok") return "tiktok";
-	return [
-		video.embedUrl,
-		video.postUrl,
-		video.videoUrl,
-		video.embed_url,
-		video.post_url,
-		video.video_url
-	].filter(Boolean).map((value) => String(value).toLowerCase()).some((value) => value.includes("tiktok.com")) ? "tiktok" : null;
-}
-function buildTikTokPlayerUrl(videoId, autoplay = false) {
-	if (!videoId) return null;
-	const url = new URL(`https://www.tiktok.com/player/v1/${videoId}`);
-	url.searchParams.set("autoplay", autoplay ? "1" : "0");
-	url.searchParams.set("controls", "1");
-	url.searchParams.set("progress_bar", "0");
-	url.searchParams.set("play_button", "1");
-	url.searchParams.set("volume_control", "1");
-	url.searchParams.set("fullscreen_button", "0");
-	url.searchParams.set("timestamp", "0");
-	url.searchParams.set("music_info", "0");
-	url.searchParams.set("description", "0");
-	url.searchParams.set("rel", "0");
-	url.searchParams.set("native_context_menu", "0");
-	url.searchParams.set("closed_caption", "0");
-	url.searchParams.set("muted", "0");
-	return url.toString();
-}
-function withTikTokAutoplay(url, autoplay) {
-	if (!url) return null;
-	try {
-		const next = new URL(url);
-		next.searchParams.set("autoplay", autoplay ? "1" : "0");
-		return next.toString();
-	} catch {
-		return url;
-	}
-}
-function previewImageFor(video = {}) {
-	return video.thumbnailUrl || video.thumbnail_url || video.cover || null;
-}
-function isDashboardPlayable(video = {}) {
-	const platform = detectPlatform(video);
-	const videoId = video.videoId || video.video_id;
-	if (platform === "tiktok") return Boolean(videoId);
-	return Boolean(video.embedUrl || video.embed_url || video.postUrl || video.post_url);
-}
-function playerKindFor(video = {}) {
-	return detectPlatform(video) === "tiktok" ? "tiktok" : "iframe";
-}
-function playerUrlFor(video = {}, autoplay = false) {
-	const platform = detectPlatform(video);
-	const videoId = video.videoId || video.video_id;
-	if (platform === "tiktok" && videoId) return buildTikTokPlayerUrl(videoId, autoplay);
-	if (platform === "tiktok") return null;
-	return video.player_url || video.embedUrl || video.embed_url || null;
-}
-function targetOriginFor(iframe) {
-	try {
-		const origin = new URL(iframe?.src || "").origin;
-		return origin && origin !== "null" ? origin : "*";
-	} catch {
-		return "*";
-	}
-}
-function postTikTokMessage(iframe, type) {
-	if (!iframe?.contentWindow) return;
-	iframe.contentWindow.postMessage({
-		"x-tiktok-player": true,
-		type
-	}, targetOriginFor(iframe));
-}
-function stopAndResetTikTokPlayer(shell) {
-	if (!shell) return;
-	const iframe = shell.querySelector("[data-player-frame]");
-	const poster = shell.querySelector("[data-player-poster]");
-	const overlay = shell.querySelector("[data-player-overlay]");
-	const play = shell.querySelector("[data-player-play]");
-	const close = shell.querySelector("[data-player-close]");
-	const container = shell.querySelector("[data-player-container]");
-	if (shell.dataset.playerKind === "tiktok" && iframe) {
-		postTikTokMessage(iframe, "pause");
-		postTikTokMessage(iframe, "mute");
-	}
-	delete shell.dataset.playerWantsAudible;
-	shell.dataset.playerActive = "false";
-	if (container) container.hidden = true;
-	if (close) close.hidden = true;
-	if (poster) poster.hidden = false;
-	if (overlay) overlay.hidden = false;
-	if (play) play.hidden = false;
-	if (iframe) iframe.src = "about:blank";
-}
-function activateTikTokPlayer(shell) {
-	if (!shell) return;
-	const iframe = shell.querySelector("[data-player-frame]");
-	const poster = shell.querySelector("[data-player-poster]");
-	const overlay = shell.querySelector("[data-player-overlay]");
-	const play = shell.querySelector("[data-player-play]");
-	const close = shell.querySelector("[data-player-close]");
-	const container = shell.querySelector("[data-player-container]");
-	const playerSrc = shell.dataset.playerSrc;
-	if (!iframe || !playerSrc) return;
-	document.querySelectorAll("[data-video-player-shell][data-player-active=\"true\"]").forEach((other) => {
-		if (other !== shell) stopAndResetTikTokPlayer(other);
-	});
-	shell.dataset.playerActive = "true";
-	shell.dataset.playerWantsAudible = "true";
-	if (poster) poster.hidden = true;
-	if (overlay) overlay.hidden = true;
-	if (play) play.hidden = true;
-	if (container) container.hidden = false;
-	if (close) close.hidden = false;
-	const nextSrc = shell.dataset.playerKind === "tiktok" ? withTikTokAutoplay(playerSrc, true) : playerSrc;
-	if (!iframe.src || iframe.src === "about:blank") iframe.src = nextSrc;
-	if (shell.dataset.playerKind === "tiktok") {
-		postTikTokMessage(iframe, "unMute");
-		postTikTokMessage(iframe, "play");
-	}
 }
 //#endregion
 //#region resources/js/Pages/SavedSearches/detail/OutlierVideos.jsx

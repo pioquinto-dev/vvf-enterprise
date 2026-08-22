@@ -3,6 +3,7 @@ import { Link, router } from '@inertiajs/react';
 
 import { savedSearch as savedSearchApi } from '../../../landing/flow/api.js';
 import AnalysisModal from '../../VideoAnalysis/AnalysisModal.jsx';
+import { playerUrlFor } from './tiktokPlayer.js';
 
 /**
  * Search analytics tracker — the redesigned results page.
@@ -649,19 +650,37 @@ export default function DetailScreen({
 
 function VideoFrame({ video, winner = false, isPlaying, onTogglePlay }) {
   const bg = video.thumbnail_url ? undefined : gradientFor(video.id ?? video.handle);
+  const playerUrl = playerUrlFor(video, true);
+  const [playerReady, setPlayerReady] = useState(false);
+
+  useEffect(() => {
+    setPlayerReady(false);
+  }, [isPlaying, playerUrl]);
+
   return (
-    <div className={`rs-vf${isPlaying ? ' playing' : ''}${winner ? ' rs-vf--big' : ''}`} onClick={onTogglePlay}>
-      {video.thumbnail_url
+    <div className={`rs-vf${isPlaying ? ' playing' : ''}${winner ? ' rs-vf--big' : ''}`}>
+      {!isPlaying && (video.thumbnail_url
         ? <img className="rs-vf__img" src={video.thumbnail_url} alt="" loading="lazy" />
-        : <div className="rs-vf__img" style={{ background: bg }} />}
-      <div className="rs-vf__scrim" />
+        : <div className="rs-vf__img" style={{ background: bg }} />)}
+      {isPlaying && playerUrl && (
+        <iframe
+          className="rs-vf__player"
+          src={playerUrl}
+          title={video.title ? `Video: ${video.title}` : 'Video preview'}
+          allow="autoplay; encrypted-media; fullscreen"
+          allowFullScreen
+          onLoad={() => setPlayerReady(true)}
+        />
+      )}
+      {!isPlaying && <div className="rs-vf__scrim" />}
       {winner
         ? <span className="rs-vf__win">{Icons.Spark}Winner</span>
         : <span className="rs-vf__rank">{video.rank ?? ''}</span>}
       {video.duration != null && <span className="rs-vf__dur">{formatDuration(video.duration)}</span>}
-      <button className="rs-vf__play" aria-label="Play">{Icons.Play}</button>
-      <div className="rs-vf__prog" />
-      <div className="rs-vf__stats">
+      {!isPlaying && <button className="rs-vf__play" onClick={onTogglePlay} aria-label="Play">{Icons.Play}</button>}
+      {isPlaying && playerUrl && !playerReady && <span className="rs-vf__loading">Loading video…</span>}
+      {isPlaying && <button className="rs-vf__close" onClick={onTogglePlay} aria-label="Close video preview">×</button>}
+      {!isPlaying && <div className="rs-vf__stats">
         <div className="rs-vchip rs-vchip--out">
           <div className="rs-vchip__l">Outlier score</div>
           <div className="rs-vchip__n">{compact(video.multiple ?? video.score ?? 0)}×</div>
@@ -671,6 +690,7 @@ function VideoFrame({ video, winner = false, isPlaying, onTogglePlay }) {
           <div className="rs-vchip__n">{compact(video.views)}</div>
         </div>
       </div>
+      }
     </div>
   );
 }
@@ -875,28 +895,26 @@ const scopedCss = `
 .rs-stt.hi .rs-stt__v{color:var(--amber-ink)}
 
 .rs-winner{display:grid;grid-template-columns:262px 1fr;gap:22px;background:var(--white);border:1px solid var(--line);border-radius:20px;padding:20px}
-.rs-vf{position:relative;width:100%;aspect-ratio:9/16;border-radius:14px;overflow:hidden;background:#1a1a1a;cursor:pointer}
+.rs-vf{position:relative;width:100%;aspect-ratio:9/16;border-radius:14px;overflow:hidden;background:#1a1a1a}
 .rs-vf--big{max-width:262px}
 .rs-vf__img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.rs-vf__player{position:absolute;inset:0;width:100%;height:100%;border:0;background:#000}
 .rs-vf__scrim{position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.28),transparent 22% 62%,rgba(0,0,0,.5));transition:opacity .2s}
 .rs-vf__play{position:absolute;inset:0;margin:auto;width:56px;height:56px;border-radius:50%;background:rgba(255,255,255,.92);display:grid;place-items:center;transition:.15s;border:0;cursor:pointer}
 .rs-vf__play svg{width:20px;height:20px;margin-left:2px;color:#1A1400}
 .rs-vf:hover .rs-vf__play{transform:scale(1.06)}
+.rs-vf__loading{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);padding:6px 9px;border-radius:8px;background:rgba(0,0,0,.7);color:#fff;font-size:.7rem;font-weight:700;white-space:nowrap;pointer-events:none}
+.rs-vf__close{position:absolute;top:9px;right:9px;width:28px;height:28px;border:0;border-radius:50%;background:rgba(0,0,0,.65);color:#fff;font-size:1.25rem;line-height:1;cursor:pointer}
 .rs-vf__win{position:absolute;top:10px;left:10px;display:inline-flex;align-items:center;gap:5px;padding:4px 9px;border-radius:100px;background:var(--yellow);color:#1A1400;font-size:.68rem;font-weight:800;letter-spacing:.02em}
 .rs-vf__win svg{width:11px;height:11px}
 .rs-vf__dur{position:absolute;top:10px;right:10px;padding:2px 7px;border-radius:6px;background:rgba(0,0,0,.6);color:#fff;font-size:.7rem;font-weight:700}
 .rs-vf__rank{position:absolute;top:10px;left:10px;width:24px;height:24px;border-radius:7px;background:rgba(0,0,0,.62);color:#fff;display:grid;place-items:center;font-size:.74rem;font-weight:800}
 .rs-vf__stats{position:absolute;left:10px;right:10px;bottom:10px;display:flex;gap:7px;transition:transform .34s,opacity .22s}
-.rs-vf.playing .rs-vf__stats{transform:translateY(165%);opacity:0}
-.rs-vf.playing .rs-vf__play,.rs-vf.playing .rs-vf__scrim{opacity:0}
 .rs-vchip{flex:1;border-radius:10px;padding:7px 10px;background:rgba(24,22,20,.58);backdrop-filter:blur(6px);box-shadow:0 2px 8px -4px rgba(0,0,0,.4)}
 .rs-vchip__l{font-size:.6rem;font-weight:800;text-transform:uppercase;letter-spacing:.05em;opacity:.9}
 .rs-vchip__n{font-size:1.02rem;font-weight:900;letter-spacing:-.025em;margin-top:2px;font-variant-numeric:tabular-nums}
 .rs-vchip--out .rs-vchip__l{color:#F4CE6A} .rs-vchip--out .rs-vchip__n{color:#FFD766}
 .rs-vchip--views .rs-vchip__l{color:#F0AEC1} .rs-vchip--views .rs-vchip__n{color:#F7C2D2}
-.rs-vf__prog{position:absolute;left:0;bottom:0;height:3px;width:0;background:var(--yellow)}
-.rs-vf.playing .rs-vf__prog{animation:rs-play 9s linear forwards}
-@keyframes rs-play{to{width:100%}}
 
 .rs-wdet{min-width:0;display:flex;flex-direction:column}
 .rs-wcreator{display:flex;align-items:center;gap:10px}
