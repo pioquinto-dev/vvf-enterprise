@@ -104,10 +104,20 @@ class VideoAnalysisManager
             }
 
             // Automatic runs never replace or retry an existing manual
-            // analysis. That keeps the search benefit free and preserves the
-            // user's original billing record.
+            // analysis. A failed automatic analysis is the exception: retry it
+            // free so a transient transcript/source failure does not poison
+            // the winner forever.
             if (! $countsTowardQuota && $analysis !== null) {
-                return $analysis;
+                if ($analysis->counts_toward_quota || $analysis->status !== VideoAnalysis::STATUS_FAILED) {
+                    return $analysis;
+                }
+            }
+
+            // A retry from the result page must preserve the free winner
+            // benefit instead of turning its original failed attempt into a
+            // billable manual analysis.
+            if ($analysis !== null && ! $analysis->counts_toward_quota) {
+                $countsTowardQuota = false;
             }
 
             if ($countsTowardQuota) {

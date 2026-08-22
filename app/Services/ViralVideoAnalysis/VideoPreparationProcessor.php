@@ -59,18 +59,23 @@ class VideoPreparationProcessor
         $payload = is_array($video->raw_payload) ? $video->raw_payload : [];
 
         if ($sharedTranscript === null || blank($sharedTranscript->transcript)) {
-            // Refresh stats/metadata from the scrape, then fetch the transcript
-            // from the dedicated transcript actor. Fall back to whatever
-            // subtitles the scrape carried if the transcript actor comes back
-            // empty.
-            $payload = $this->refresher->refresh($video);
-
+            // A search winner was just scraped, so use its dedicated transcript
+            // actor first. Re-scraping the same post before this step adds a
+            // second provider dependency and can fail even when a transcript
+            // is available.
             $transcriptPayload = $this->transcriptFetcher->fetch($video);
             $normalized = $transcriptPayload !== null
                 ? $this->transcripts->extract($transcriptPayload)
                 : ['transcript' => null, 'transcript_segments' => null];
 
             if (blank($normalized['transcript'])) {
+                $normalized = $this->transcripts->extract($payload);
+            }
+
+            if (blank($normalized['transcript'])) {
+                // Older/manual videos may not retain usable source data. Only
+                // then refresh the post and use its payload as a final fallback.
+                $payload = $this->refresher->refresh($video);
                 $normalized = $this->transcripts->extract($payload);
             }
 
