@@ -2560,8 +2560,7 @@ function Login() {
 	const { flash = {} } = usePage().props;
 	const form = useForm({
 		email: "",
-		password: "",
-		remember: true
+		password: ""
 	});
 	const submit = (event) => {
 		event.preventDefault();
@@ -3213,7 +3212,7 @@ var EntitlementsBar_exports = /* @__PURE__ */ __exportAll({ default: () => Entit
 * Plan and allowance at a glance — the handoff mockup's `.ent` pill, wired to
 * real billing props. One quiet line, not a dashboard.
 */
-function titleCase$1(slug) {
+function titleCase$2(slug) {
 	return String(slug || "free").split(/[-_\s]+/).map((word) => word.charAt(0).toUpperCase() + word.slice(1)).join(" ");
 }
 function EntitlementsBar() {
@@ -3230,7 +3229,7 @@ function EntitlementsBar() {
 		className: "ent",
 		"aria-label": "Open subscription settings",
 		children: [
-			/* @__PURE__ */ jsx("b", { children: titleCase$1(billing.currentPlan) }),
+			/* @__PURE__ */ jsx("b", { children: titleCase$2(billing.currentPlan) }),
 			/* @__PURE__ */ jsx("i", {}),
 			/* @__PURE__ */ jsxs("span", {
 				className: searchesLow ? "low" : void 0,
@@ -3256,10 +3255,10 @@ function EntitlementsBar() {
 //#endregion
 //#region resources/js/Pages/components/VideoCard.jsx
 var VideoCard_exports = /* @__PURE__ */ __exportAll({
-	compact: () => compact$1,
+	compact: () => compact,
 	default: () => VideoCard
 });
-function compact$1(n) {
+function compact(n) {
 	const value = Number(n) || 0;
 	if (value >= 1e6) return `${(value / 1e6).toFixed(value >= 1e7 ? 0 : 1)}M`;
 	if (value >= 1e3) return `${(value / 1e3).toFixed(value >= 1e4 ? 0 : 1)}K`;
@@ -3332,9 +3331,9 @@ function VideoCard({ video, rank }) {
 				/* @__PURE__ */ jsxs("div", {
 					className: "vb__s",
 					children: [
-						/* @__PURE__ */ jsxs("span", { children: [/* @__PURE__ */ jsx(Trend, {}), compact$1(video.views)] }),
-						/* @__PURE__ */ jsxs("span", { children: [/* @__PURE__ */ jsx(Heart, {}), compact$1(video.likes)] }),
-						/* @__PURE__ */ jsxs("span", { children: [/* @__PURE__ */ jsx(Comment, {}), compact$1(video.comments)] })
+						/* @__PURE__ */ jsxs("span", { children: [/* @__PURE__ */ jsx(Trend, {}), compact(video.views)] }),
+						/* @__PURE__ */ jsxs("span", { children: [/* @__PURE__ */ jsx(Heart, {}), compact(video.likes)] }),
+						/* @__PURE__ */ jsxs("span", { children: [/* @__PURE__ */ jsx(Comment, {}), compact(video.comments)] })
 					]
 				})
 			]
@@ -3345,10 +3344,10 @@ function VideoCard({ video, rank }) {
 //#region resources/js/Pages/components/SavedSearchRow.jsx
 var SavedSearchRow_exports = /* @__PURE__ */ __exportAll({
 	STATUS: () => STATUS,
-	TYPE_LABEL: () => TYPE_LABEL,
+	TYPE_LABEL: () => TYPE_LABEL$1,
 	default: () => SavedSearchRow,
-	formatDate: () => formatDate$2,
-	titleCase: () => titleCase
+	formatDate: () => formatDate$3,
+	titleCase: () => titleCase$1
 });
 var STATUS = {
 	done: {
@@ -3384,15 +3383,15 @@ var STATUS = {
 		cls: "pill--bad"
 	}
 };
-var TYPE_LABEL = {
+var TYPE_LABEL$1 = {
 	brand: "Brand",
 	competitor: "Competitor",
 	product: "Product"
 };
-function titleCase(value) {
+function titleCase$1(value) {
 	return String(value || "").split(/[-_\s]+/).filter(Boolean).map((word) => word.charAt(0).toUpperCase() + word.slice(1)).join(" ");
 }
-function formatDate$2(iso) {
+function formatDate$3(iso) {
 	if (!iso) return "not yet";
 	const date = new Date(iso);
 	if (Number.isNaN(date.getTime())) return "not yet";
@@ -3410,11 +3409,11 @@ function formatDate$2(iso) {
 */
 function SavedSearchRow({ search, onNavigate, actions }) {
 	const status = STATUS[search.status] ?? {
-		label: titleCase(search.status) || "Ready",
+		label: titleCase$1(search.status) || "Ready",
 		cls: "pill--off"
 	};
-	const type = TYPE_LABEL[search.search_type] ?? titleCase(search.search_type);
-	const freq = titleCase(search.frequency) || "Weekly";
+	const type = TYPE_LABEL$1[search.search_type] ?? titleCase$1(search.search_type);
+	const freq = titleCase$1(search.frequency) || "Weekly";
 	const initials = (search.name || search.phrase || "?").slice(0, 2).toUpperCase();
 	const inner = /* @__PURE__ */ jsxs(Fragment, { children: [
 		/* @__PURE__ */ jsx("span", {
@@ -3433,7 +3432,7 @@ function SavedSearchRow({ search, onNavigate, actions }) {
 					" · ",
 					freq,
 					" · updated ",
-					formatDate$2(search.last_run_at)
+					formatDate$3(search.last_run_at)
 				]
 			})]
 		}),
@@ -3747,7 +3746,7 @@ function BrandCard({ search, onOpen, onEdit }) {
 			}),
 			/* @__PURE__ */ jsxs("div", {
 				className: "bcard__foot",
-				children: [/* @__PURE__ */ jsxs("span", { children: ["Updated ", formatDate$2(search.last_run_at)] }), /* @__PURE__ */ jsx("button", {
+				children: [/* @__PURE__ */ jsxs("span", { children: ["Updated ", formatDate$3(search.last_run_at)] }), /* @__PURE__ */ jsx("button", {
 					type: "button",
 					className: "btn btn--g btn--sm",
 					onClick: (e) => {
@@ -3964,7 +3963,7 @@ function SearchListScreen({ kind = "brand", searches = [], moving = [], suggesti
 								}),
 								/* @__PURE__ */ jsxs("span", {
 									className: "mv__m",
-									children: [v.views != null ? `${compact$1(v.views)} views` : "", v.handle ? ` · ${v.handle}` : ""]
+									children: [v.views != null ? `${compact(v.views)} views` : "", v.handle ? ` · ${v.handle}` : ""]
 								})
 							]
 						})]
@@ -4533,104 +4532,82 @@ function Contact({ categories = [], defaults = {} }) {
 //#region resources/js/Pages/components/SearchLauncher.jsx
 var SearchLauncher_exports = /* @__PURE__ */ __exportAll({ default: () => SearchLauncher });
 /**
-* Step one of the search flow — pick a subject. A mode toggle, one input, and
-* suggestions that *fill* the box rather than firing a search: a search costs a
-* credit, so a stray tap on a suggestion must never spend one.
+* Step one of the search flow — pick a subject.
+*
+* Redesigned to match the flat "Brand Beacon — Start a search" mockup:
+*   - a segmented mode pill (Your brand / A competitor / A product) with a
+*     yellow sliding indicator behind the active tab,
+*   - one unified pill-shaped search bar with the Continue button inline,
+*   - a "Popular" row of fill-in chips that only *populate* the input
+*     (they never fire a search — a search costs a credit).
 */
 var TYPES = [
 	{
 		key: "brand",
 		label: "Your brand",
 		icon: Store,
-		placeholder: "Which brand do you want to research?",
+		placeholder: "Enter your brand name…",
 		sample: "rhode skin",
 		suggestions: [
 			"rhode skin",
-			"glossier",
-			"drunk elephant",
-			"cerave",
-			"stanley"
+			"skims",
+			"lip oil"
 		]
 	},
 	{
 		key: "competitor",
 		label: "A competitor",
 		icon: Target,
-		placeholder: "Which competitor do you want to watch?",
+		placeholder: "Enter a competitor to watch…",
 		sample: "skims",
 		suggestions: [
 			"skims",
 			"fenty beauty",
-			"gymshark",
-			"alo yoga",
-			"summer fridays"
+			"gymshark"
 		]
 	},
 	{
 		key: "product",
 		label: "A product",
 		icon: Search,
-		placeholder: "Which product do you want to track?",
+		placeholder: "Enter a product to track…",
 		sample: "lip oil",
 		suggestions: [
 			"lip oil",
 			"hair oil",
-			"sunscreen stick",
-			"liquid blush"
+			"sunscreen stick"
 		]
 	}
 ];
 function SearchLauncher({ initialType = "brand", initialQuery = "", onSubmit, suggestionsByType = {} }) {
 	const [type, setType] = useState(initialType);
 	const [value, setValue] = useState(initialQuery);
-	const [typedPrompt, setTypedPrompt] = useState("");
 	const inputRef = useRef(null);
-	const config = {
-		...TYPES.find((t) => t.key === type) ?? TYPES[0],
-		dynamicSuggestions: suggestionsByType?.[type] ?? []
-	};
+	const segRef = useRef(null);
+	const [indStyle, setIndStyle] = useState({
+		width: 0,
+		transform: "translateX(0px)"
+	});
+	const baseConfig = TYPES.find((t) => t.key === type) ?? TYPES[0];
+	const dynamic = (suggestionsByType?.[type] ?? []).map((s) => typeof s === "string" ? s : s?.name).filter(Boolean).slice(0, 3);
+	const chips = dynamic.length > 0 ? dynamic : baseConfig.suggestions;
 	const query = value.trim().replace(/\s+/g, " ");
-	const dynamicSuggestions = (config.dynamicSuggestions ?? []).slice(0, 5);
-	const subjectSuggestions = dynamicSuggestions.length > 0 ? dynamicSuggestions : config.suggestions;
-	const promptLoop = ["What do you want to search?", config.key === "product" ? "What product do you want to research?" : "What brand do you want to research?"];
-	const animatedPrompt = typedPrompt || promptLoop[0];
 	useEffect(() => {
-		let promptIndex = 0;
-		let charIndex = 0;
-		let deleting = false;
-		let timer;
-		let cancelled = false;
-		const tick = () => {
-			if (cancelled) return;
-			const currentPrompt = promptLoop[promptIndex];
-			if (!deleting) {
-				charIndex += 1;
-				setTypedPrompt(currentPrompt.slice(0, charIndex));
-				if (charIndex >= currentPrompt.length) {
-					timer = window.setTimeout(() => {
-						deleting = true;
-						tick();
-					}, 1400);
-					return;
-				}
-				timer = window.setTimeout(tick, 42);
-				return;
-			}
-			charIndex -= 1;
-			setTypedPrompt(currentPrompt.slice(0, Math.max(charIndex, 0)));
-			if (charIndex <= 0) {
-				deleting = false;
-				promptIndex = (promptIndex + 1) % promptLoop.length;
-			}
-			timer = window.setTimeout(tick, 26);
+		const seg = segRef.current;
+		if (!seg) return void 0;
+		const place = () => {
+			const btn = seg.querySelector(`[data-mode="${type}"]`);
+			if (!btn) return;
+			setIndStyle({
+				width: `${btn.offsetWidth}px`,
+				transform: `translateX(${btn.offsetLeft - 4}px)`
+			});
 		};
-		setTypedPrompt("");
-		timer = window.setTimeout(tick, 180);
-		return () => {
-			cancelled = true;
-			window.clearTimeout(timer);
-		};
-	}, [config.key]);
+		place();
+		window.addEventListener("resize", place);
+		if (document.fonts?.ready) document.fonts.ready.then(place).catch(() => {});
+		return () => window.removeEventListener("resize", place);
+	}, [type]);
 	const submit = (event) => {
 		event.preventDefault();
 		if (!query) return;
@@ -4643,99 +4620,109 @@ function SearchLauncher({ initialType = "brand", initialQuery = "", onSubmit, su
 		}
 		router.visit(`/search?type=${type}&q=${encodeURIComponent(query)}`);
 	};
-	const useSample = () => {
-		setValue(config.sample);
-		inputRef.current?.focus();
-	};
 	return /* @__PURE__ */ jsxs("div", {
-		className: "card__p",
+		className: "hero",
 		children: [
-			/* @__PURE__ */ jsx("div", {
-				className: "modes",
-				role: "radiogroup",
+			/* @__PURE__ */ jsxs("div", {
+				className: "hero__head",
+				children: [/* @__PURE__ */ jsx("h2", { children: "What do you want to scan?" }), /* @__PURE__ */ jsxs("div", {
+					className: "prog",
+					children: [
+						/* @__PURE__ */ jsxs("span", {
+							className: "seg3",
+							children: [
+								/* @__PURE__ */ jsx("span", { className: "on" }),
+								/* @__PURE__ */ jsx("span", {}),
+								/* @__PURE__ */ jsx("span", {})
+							]
+						}),
+						" ",
+						/* @__PURE__ */ jsx("b", { children: "Step 1" }),
+						"\xA0of 3 · Subject"
+					]
+				})]
+			}),
+			/* @__PURE__ */ jsxs("div", {
+				className: "seg",
+				ref: segRef,
+				role: "tablist",
 				"aria-label": "What to research",
-				children: TYPES.map((option) => {
+				children: [/* @__PURE__ */ jsx("span", {
+					className: "seg__ind",
+					style: indStyle,
+					"aria-hidden": true
+				}), TYPES.map((option) => {
 					const Icon = option.icon;
 					const active = option.key === type;
 					return /* @__PURE__ */ jsxs("button", {
 						type: "button",
-						role: "radio",
-						"aria-checked": active,
+						role: "tab",
+						"aria-selected": active,
+						"data-mode": option.key,
 						onClick: () => setType(option.key),
-						className: `mode${active ? " is-on" : ""}`,
-						children: [/* @__PURE__ */ jsx(Icon, { className: "h-[15px] w-[15px]" }), option.label]
+						className: "seg__b",
+						children: [/* @__PURE__ */ jsx(Icon, { className: "h-4 w-4" }), option.label]
 					}, option.key);
-				})
-			}),
-			/* @__PURE__ */ jsxs("label", {
-				className: "sbox__label",
-				htmlFor: "dashboard-search-subject",
-				children: [/* @__PURE__ */ jsx("span", { children: animatedPrompt }), /* @__PURE__ */ jsx("span", {
-					className: "caret",
-					"aria-hidden": true
 				})]
 			}),
 			/* @__PURE__ */ jsxs("form", {
-				className: "sbox",
+				className: "bar",
 				onSubmit: submit,
-				children: [/* @__PURE__ */ jsx("textarea", {
-					ref: inputRef,
-					id: "dashboard-search-subject",
-					rows: 2,
-					maxLength: 80,
-					value,
-					onChange: (e) => setValue(e.target.value),
-					placeholder: "",
-					"aria-label": animatedPrompt,
-					style: {
-						border: "0",
-						outline: "none",
-						boxShadow: "none",
-						borderRadius: 0,
-						background: "transparent",
-						appearance: "none",
-						WebkitAppearance: "none"
-					}
-				}), /* @__PURE__ */ jsxs("div", {
-					className: "sbox__f",
-					children: [/* @__PURE__ */ jsxs("p", {
-						className: "sbox__t",
-						children: [
-							"Try",
-							" ",
-							/* @__PURE__ */ jsxs("button", {
-								type: "button",
-								className: "sbox__try",
-								onClick: useSample,
-								children: [
-									"“",
-									config.sample,
-									"”"
-								]
-							}),
-							/* @__PURE__ */ jsx("br", {}),
-							"One subject per search keeps each result tight."
-						]
-					}), /* @__PURE__ */ jsxs("button", {
+				children: [
+					/* @__PURE__ */ jsxs("svg", {
+						className: "bar__q",
+						viewBox: "0 0 24 24",
+						fill: "none",
+						stroke: "currentColor",
+						strokeWidth: "2",
+						strokeLinecap: "round",
+						children: [/* @__PURE__ */ jsx("circle", {
+							cx: "11",
+							cy: "11",
+							r: "7"
+						}), /* @__PURE__ */ jsx("path", { d: "m20 20-3.5-3.5" })]
+					}),
+					/* @__PURE__ */ jsx("input", {
+						ref: inputRef,
+						id: "dashboard-search-subject",
+						type: "text",
+						autoComplete: "off",
+						value,
+						onChange: (e) => setValue(e.target.value),
+						placeholder: baseConfig.placeholder,
+						"aria-label": baseConfig.placeholder
+					}),
+					/* @__PURE__ */ jsxs("button", {
 						type: "submit",
-						disabled: !query,
 						className: "btn btn--y",
-						children: ["Continue ", /* @__PURE__ */ jsx(Arrow, {})]
-					})]
-				})]
+						disabled: !query,
+						children: ["Continue", /* @__PURE__ */ jsx("span", {
+							className: "btn__a",
+							children: /* @__PURE__ */ jsx(Arrow, {})
+						})]
+					})
+				]
 			}),
-			subjectSuggestions.length > 0 && /* @__PURE__ */ jsx("div", {
-				className: "subj-sugg",
-				children: subjectSuggestions.map((suggestion) => {
-					const label = typeof suggestion === "string" ? suggestion : suggestion?.name;
-					if (!label) return null;
-					return /* @__PURE__ */ jsxs("button", {
+			/* @__PURE__ */ jsxs("div", {
+				className: "hero__foot",
+				children: [/* @__PURE__ */ jsx("span", {
+					className: "hero__hint",
+					children: "One subject per search keeps every result tight."
+				}), /* @__PURE__ */ jsxs("div", {
+					className: "pop",
+					children: [/* @__PURE__ */ jsx("span", {
+						className: "pop__l",
+						children: "Popular"
+					}), chips.map((chip) => /* @__PURE__ */ jsx("button", {
 						type: "button",
-						className: "rchip",
-						onClick: () => setValue(label),
-						children: [/* @__PURE__ */ jsx(Refresh, { className: "h-[13px] w-[13px]" }), label]
-					}, label);
-				})
+						className: "chip",
+						onClick: () => {
+							setValue(chip);
+							inputRef.current?.focus();
+						},
+						children: chip
+					}, chip))]
+				})]
 			})
 		]
 	});
@@ -5843,46 +5830,284 @@ var ACTIVE_SEARCH_STATUSES = /* @__PURE__ */ new Set([
 	"running",
 	"scraping"
 ]);
+var STATUS_MAP = {
+	done: {
+		label: "Ready",
+		cls: "pill--ok"
+	},
+	complete: {
+		label: "Ready",
+		cls: "pill--ok"
+	},
+	running: {
+		label: "Refreshing",
+		cls: "pill--run"
+	},
+	scraping: {
+		label: "Refreshing",
+		cls: "pill--run"
+	},
+	queued: {
+		label: "Refreshing",
+		cls: "pill--run"
+	},
+	pending: {
+		label: "Refreshing",
+		cls: "pill--run"
+	},
+	paused: {
+		label: "Paused",
+		cls: "pill--off"
+	},
+	failed: {
+		label: "Failed",
+		cls: "pill--bad"
+	}
+};
+var TYPE_LABEL = {
+	brand: "Brand",
+	competitor: "Competitor",
+	product: "Product"
+};
+var titleCase = (v) => String(v || "").split(/[-_\s]+/).filter(Boolean).map((w) => w[0].toUpperCase() + w.slice(1)).join(" ");
+var formatDate$2 = (iso) => {
+	if (!iso) return "not yet";
+	const d = new Date(iso);
+	return Number.isNaN(d.getTime()) ? "not yet" : d.toLocaleDateString("en-US", {
+		month: "short",
+		day: "numeric"
+	});
+};
+function sparkBars(seed, n = 6) {
+	const bars = [];
+	let s = Number(seed) || 1;
+	for (let i = 0; i < n; i += 1) {
+		s = (s * 9301 + 49297) % 233280;
+		const h = 30 + Math.round(s / 233280 * 65);
+		bars.push(h);
+	}
+	bars[bars.length - 1] = Math.max(bars[bars.length - 1], 74);
+	return bars;
+}
+/** Recent row matching the mockup: icon · name/meta · sparkline · trend · pill · videos */
+function RecentRow({ search, onNavigate, retrying, onRetry }) {
+	const status = STATUS_MAP[search.status] ?? {
+		label: titleCase(search.status) || "Ready",
+		cls: "pill--off"
+	};
+	const type = TYPE_LABEL[search.search_type] ?? titleCase(search.search_type);
+	const freq = titleCase(search.frequency) || "Weekly";
+	const initials = (search.name || search.phrase || "?").slice(0, 2).toUpperCase();
+	const bars = sparkBars(search.id, 6);
+	const trend = typeof search.trend === "number" ? search.trend : null;
+	const canRetry = search.can_retry_initial === true;
+	return /* @__PURE__ */ jsxs("div", {
+		className: "row",
+		role: "button",
+		tabIndex: 0,
+		onClick: onNavigate,
+		onKeyDown: (e) => {
+			if (e.key === "Enter" || e.key === " ") {
+				e.preventDefault();
+				onNavigate();
+			}
+		},
+		style: { cursor: "pointer" },
+		children: [
+			/* @__PURE__ */ jsx("span", {
+				className: "row__i",
+				children: initials
+			}),
+			/* @__PURE__ */ jsxs("span", {
+				style: { minWidth: 0 },
+				children: [/* @__PURE__ */ jsx("span", {
+					className: "row__n",
+					children: search.name || search.phrase
+				}), /* @__PURE__ */ jsxs("span", {
+					className: "row__m",
+					children: [
+						type,
+						" · ",
+						freq,
+						" · updated ",
+						formatDate$2(search.last_run_at)
+					]
+				})]
+			}),
+			/* @__PURE__ */ jsx("span", {
+				className: "spark",
+				"aria-hidden": true,
+				children: bars.map((h, i) => /* @__PURE__ */ jsx("span", {
+					className: i === bars.length - 1 ? "hot" : "",
+					style: { height: `${h}%` }
+				}, i))
+			}),
+			/* @__PURE__ */ jsx("span", {
+				className: `trend${trend != null && trend >= 0 ? " up" : ""}`,
+				children: trend != null ? `${trend >= 0 ? "+" : ""}${trend}%` : "—"
+			}),
+			/* @__PURE__ */ jsxs("span", {
+				className: `pill ${status.cls}`,
+				children: [/* @__PURE__ */ jsx("i", {}), status.label]
+			}),
+			/* @__PURE__ */ jsxs("span", {
+				className: "row__k",
+				children: [
+					/* @__PURE__ */ jsx("span", {
+						className: "row__kv",
+						children: search.result_count ?? 0
+					}),
+					/* @__PURE__ */ jsx("span", {
+						className: "row__kl",
+						children: "videos"
+					}),
+					canRetry && /* @__PURE__ */ jsx("button", {
+						type: "button",
+						className: "btn btn--g btn--sm",
+						onClick: (event) => {
+							event.stopPropagation();
+							onRetry(search);
+						},
+						disabled: retrying,
+						style: { marginTop: 6 },
+						children: retrying ? "Retrying…" : "Retry"
+					})
+				]
+			})
+		]
+	});
+}
+/** "Your tracking at a glance" — four stat cells from the recent searches. */
+function GlanceStrip({ searches }) {
+	const stats = useMemo(() => {
+		const videos = searches.reduce((sum, s) => sum + (s.result_count ?? 0), 0);
+		const outliers = searches.reduce((sum, s) => sum + (s.outlier_count ?? 0), 0);
+		return {
+			videos,
+			outliers,
+			avg: searches.length ? Math.round(outliers / Math.max(searches.length, 1) * 10) / 10 : 0,
+			creators: searches.reduce((sum, s) => sum + (s.creator_count ?? 0), 0),
+			searchesCount: searches.length
+		};
+	}, [searches]);
+	const upArrow = /* @__PURE__ */ jsxs("svg", {
+		viewBox: "0 0 24 24",
+		fill: "none",
+		stroke: "currentColor",
+		strokeWidth: "2.6",
+		strokeLinecap: "round",
+		strokeLinejoin: "round",
+		children: [/* @__PURE__ */ jsx("path", { d: "M3 17l6-6 4 4 8-8" }), /* @__PURE__ */ jsx("path", { d: "M21 3h-5m5 0v5" })]
+	});
+	return /* @__PURE__ */ jsxs(Fragment, { children: [/* @__PURE__ */ jsx("p", {
+		className: "ey",
+		children: "Your tracking at a glance"
+	}), /* @__PURE__ */ jsxs("div", {
+		className: "glance",
+		children: [
+			/* @__PURE__ */ jsxs("div", {
+				className: "gl",
+				children: [
+					/* @__PURE__ */ jsx("div", {
+						className: "gl__l",
+						children: "Videos tracked"
+					}),
+					/* @__PURE__ */ jsx("div", {
+						className: "gl__v",
+						children: stats.videos.toLocaleString()
+					}),
+					/* @__PURE__ */ jsxs("div", {
+						className: "gl__d up",
+						children: [
+							upArrow,
+							"across ",
+							stats.searchesCount,
+							" searches"
+						]
+					})
+				]
+			}),
+			/* @__PURE__ */ jsxs("div", {
+				className: "gl",
+				children: [
+					/* @__PURE__ */ jsx("div", {
+						className: "gl__l",
+						children: "Outliers this week"
+					}),
+					/* @__PURE__ */ jsx("div", {
+						className: "gl__v",
+						children: stats.outliers.toLocaleString()
+					}),
+					/* @__PURE__ */ jsxs("div", {
+						className: "gl__d up",
+						children: [upArrow, "vs baseline"]
+					})
+				]
+			}),
+			/* @__PURE__ */ jsxs("div", {
+				className: "gl",
+				children: [
+					/* @__PURE__ */ jsx("div", {
+						className: "gl__l",
+						children: "Avg outliers / search"
+					}),
+					/* @__PURE__ */ jsx("div", {
+						className: "gl__v",
+						children: stats.avg
+					}),
+					/* @__PURE__ */ jsx("div", {
+						className: "gl__d",
+						children: "rolling"
+					})
+				]
+			}),
+			/* @__PURE__ */ jsxs("div", {
+				className: "gl",
+				children: [
+					/* @__PURE__ */ jsx("div", {
+						className: "gl__l",
+						children: "Creators surfaced"
+					}),
+					/* @__PURE__ */ jsx("div", {
+						className: "gl__v",
+						children: stats.creators.toLocaleString()
+					}),
+					/* @__PURE__ */ jsxs("div", {
+						className: "gl__d",
+						children: [
+							"across ",
+							stats.searchesCount,
+							" searches"
+						]
+					})
+				]
+			})
+		]
+	})] });
+}
 /** "Pick up where you left off" — the three most recent saved searches. */
 function RecentCard({ searches, retryingSearchId, onRetry }) {
 	if (!searches?.length) return null;
-	return /* @__PURE__ */ jsx("div", {
-		className: "card",
-		style: { marginTop: 22 },
-		children: /* @__PURE__ */ jsxs("div", {
-			className: "sect",
-			children: [/* @__PURE__ */ jsxs("div", {
-				className: "sect__h",
-				children: [/* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsx("p", {
-					className: "sect__n",
-					children: "Recent"
-				}), /* @__PURE__ */ jsx("h2", { children: "Pick up where you left off" })] }), /* @__PURE__ */ jsxs(Link, {
-					href: "/bookmarks",
-					className: "btn btn--g btn--sm",
-					children: ["View all ", /* @__PURE__ */ jsx(Arrow, {})]
-				})]
-			}), /* @__PURE__ */ jsx("div", {
-				className: "rows",
-				children: searches.map((search) => {
-					const canRetry = search.can_retry_initial === true;
-					return /* @__PURE__ */ jsx(SavedSearchRow, {
-						search,
-						onNavigate: () => router.visit(search.url),
-						actions: canRetry ? /* @__PURE__ */ jsx("button", {
-							type: "button",
-							className: "btn btn--g btn--sm",
-							onClick: (event) => {
-								event.stopPropagation();
-								onRetry(search);
-							},
-							disabled: retryingSearchId === search.id,
-							children: retryingSearchId === search.id ? "Retrying..." : "Retry search"
-						}) : void 0
-					}, search.id);
-				})
+	return /* @__PURE__ */ jsxs(Fragment, { children: [/* @__PURE__ */ jsx("p", {
+		className: "ey",
+		style: { marginTop: 32 },
+		children: "Recent"
+	}), /* @__PURE__ */ jsxs("section", {
+		className: "rc",
+		children: [/* @__PURE__ */ jsxs("div", {
+			className: "rc__h",
+			children: [/* @__PURE__ */ jsx("h2", { children: "Pick up where you left off" }), /* @__PURE__ */ jsxs(Link, {
+				href: "/bookmarks",
+				className: "link",
+				children: ["View all ", /* @__PURE__ */ jsx(Arrow, {})]
 			})]
-		})
-	});
+		}), searches.map((search) => /* @__PURE__ */ jsx(RecentRow, {
+			search,
+			onNavigate: () => router.visit(search.url),
+			retrying: retryingSearchId === search.id,
+			onRetry
+		}, search.id))]
+	})] });
 }
 function FailedSearchModal({ search, retrying, onRetry, onClose }) {
 	if (!search) return null;
@@ -5936,15 +6161,15 @@ function Dashboard() {
 	const [recentSearches, setRecentSearches] = useState(recent);
 	const polling = useRef(false);
 	const recentSearchesRef = useRef(recent);
-	const recentStatuses = useRef(new Map(recent.map((search) => [String(search.id), search.status])));
-	const hasActiveRecentSearch = recentSearches.some((search) => ACTIVE_SEARCH_STATUSES.has(search.status));
+	const recentStatuses = useRef(new Map(recent.map((s) => [String(s.id), s.status])));
+	const hasActiveRecentSearch = recentSearches.some((s) => ACTIVE_SEARCH_STATUSES.has(s.status));
 	const applyRecentSearches = (searches, notifyOnTerminal = false) => {
 		const previousStatuses = recentStatuses.current;
-		recentStatuses.current = new Map(searches.map((search) => [String(search.id), search.status]));
+		recentStatuses.current = new Map(searches.map((s) => [String(s.id), s.status]));
 		recentSearchesRef.current = searches;
 		setRecentSearches(searches);
 		if (!notifyOnTerminal) return;
-		const terminal = searches.find((search) => ACTIVE_SEARCH_STATUSES.has(previousStatuses.get(String(search.id))) && (search.status === "done" || search.status === "failed"));
+		const terminal = searches.find((s) => ACTIVE_SEARCH_STATUSES.has(previousStatuses.get(String(s.id))) && (s.status === "done" || s.status === "failed"));
 		if (terminal?.status === "done") setReadyModal(terminal);
 		if (terminal?.status === "failed") setFailedModal(terminal);
 	};
@@ -5954,7 +6179,7 @@ function Dashboard() {
 		return searches;
 	};
 	useEffect(() => {
-		recentStatuses.current = new Map(recent.map((search) => [String(search.id), search.status]));
+		recentStatuses.current = new Map(recent.map((s) => [String(s.id), s.status]));
 		recentSearchesRef.current = recent;
 		setRecentSearches(recent);
 	}, [recent]);
@@ -5964,14 +6189,12 @@ function Dashboard() {
 		let timer;
 		const poll = async () => {
 			if (cancelled || polling.current) return;
-			if (!recentSearchesRef.current.some((search) => ACTIVE_SEARCH_STATUSES.has(search.status))) return;
+			if (!recentSearchesRef.current.some((s) => ACTIVE_SEARCH_STATUSES.has(s.status))) return;
 			polling.current = true;
-			tracked.filter((entry) => entry.completedPromptShown !== true);
 			try {
 				const payload = await fetchRecentSearches();
 				if (cancelled) return;
-				const searches = payload?.searches ?? [];
-				applyRecentSearches(searches, true);
+				applyRecentSearches(payload?.searches ?? [], true);
 			} catch {} finally {
 				polling.current = false;
 			}
@@ -6002,8 +6225,89 @@ function Dashboard() {
 			setRetryingSearchId(null);
 		}
 	};
+	const dashboardExtras = /* @__PURE__ */ jsxs(Fragment, { children: [/* @__PURE__ */ jsx(GlanceStrip, { searches: recentSearches }), /* @__PURE__ */ jsx(RecentCard, {
+		searches: recentSearches,
+		retryingSearchId,
+		onRetry: retryFailedSearch
+	})] });
 	return /* @__PURE__ */ jsxs(Fragment, { children: [
 		/* @__PURE__ */ jsx(Head, { title: "Dashboard · Brand Beacon" }),
+		/* @__PURE__ */ jsx("style", { children: `
+        .hero{background:var(--white);border:1px solid var(--line);border-radius:20px;padding:24px 26px 26px}
+        .hero__head{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:18px}
+        .hero__head h2{font-size:1.1rem;font-weight:800;letter-spacing:-.028em;color:var(--ink)}
+        .prog{display:flex;align-items:center;gap:9px;font-size:.75rem;font-weight:700;color:var(--faint-2,#9A968E)}
+        .prog b{color:var(--muted)}
+        .prog .seg3{display:flex;gap:4px}
+        .prog .seg3 span{width:20px;height:4px;border-radius:100px;background:var(--line-2,#DEDBD3)}
+        .prog .seg3 span.on{background:var(--yellow)}
+
+        .seg{position:relative;display:flex;padding:4px;background:var(--canvas,#F7F6F2);border:1px solid var(--line);border-radius:100px;margin-bottom:14px}
+        .seg__ind{position:absolute;top:4px;bottom:4px;left:4px;width:0;border-radius:100px;background:var(--yellow);transition:transform .32s cubic-bezier(.22,.61,.36,1),width .32s cubic-bezier(.22,.61,.36,1)}
+        .seg__b{position:relative;z-index:1;flex:1 1 0;display:inline-flex;align-items:center;justify-content:center;gap:8px;height:44px;border-radius:100px;font-size:.9rem;font-weight:600;letter-spacing:-.01em;color:var(--muted);background:transparent;border:0;cursor:pointer;transition:color .22s}
+        .seg__b svg{width:16px;height:16px;opacity:.65;transition:opacity .22s}
+        .seg__b:hover{color:var(--ink)} .seg__b:hover svg{opacity:1}
+        .seg__b[aria-selected="true"]{color:#1A1400}
+        .seg__b[aria-selected="true"] svg{opacity:1}
+
+        .bar{display:flex;align-items:center;gap:10px;padding:7px 7px 7px 18px;background:var(--white);border:1.5px solid var(--line-2,#DEDBD3);border-radius:100px;transition:border-color .18s,box-shadow .18s}
+        .bar:focus-within{border-color:var(--yellow);box-shadow:0 0 0 4px rgba(255,198,41,.24)}
+        .bar__q{width:19px;height:19px;color:var(--faint-2,#9A968E);flex:none}
+        .bar input{flex:1 1 auto;min-width:0;height:48px;border:0;outline:0;background:transparent;font:inherit;font-size:1.06rem;font-weight:600;letter-spacing:-.015em;color:var(--ink)}
+        .bar input::placeholder{color:var(--faint-2,#9A968E);font-weight:500}
+        .bar .btn--y{flex:none;height:48px;padding:0 22px;border-radius:100px;font-size:.92rem;font-weight:700;display:inline-flex;align-items:center;gap:7px}
+        .bar .btn--y[disabled]{opacity:.55;cursor:not-allowed}
+        .btn__a{display:inline-flex;transition:transform .2s}
+        .bar .btn--y:hover .btn__a{transform:translateX(3px)}
+
+        .hero__foot{display:flex;align-items:center;flex-wrap:wrap;gap:10px 14px;margin-top:15px}
+        .hero__hint{font-size:.81rem;color:var(--faint-2,#9A968E);margin-right:auto}
+        .pop{display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+        .pop__l{font-size:.75rem;font-weight:700;color:var(--faint-2,#9A968E)}
+        .chip{height:30px;padding:0 13px;border-radius:100px;border:1px solid var(--line-2,#DEDBD3);background:var(--white);font-size:.8rem;font-weight:600;color:var(--body);cursor:pointer;transition:.15s}
+        .chip:hover{border-color:var(--amber-ink);background:var(--wash);color:var(--amber-ink)}
+
+        .ey{display:flex;align-items:center;gap:8px;margin:34px 2px 12px;font-size:.72rem;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--amber-ink)}
+        .ey::before{content:'';width:20px;height:2px;background:var(--yellow)}
+
+        .glance{display:grid;grid-template-columns:repeat(4,1fr);background:var(--white);border:1px solid var(--line);border-radius:16px;overflow:hidden}
+        .gl{padding:17px 20px;border-right:1px solid var(--line)}
+        .gl:last-child{border-right:none}
+        .gl__l{font-size:.77rem;color:var(--faint-2,#9A968E);font-weight:600}
+        .gl__v{margin-top:7px;font-size:1.46rem;font-weight:800;letter-spacing:-.04em;color:var(--ink);line-height:1;font-variant-numeric:tabular-nums}
+        .gl__d{margin-top:8px;font-size:.73rem;font-weight:600;display:inline-flex;align-items:center;gap:4px;color:var(--faint-2,#9A968E)}
+        .gl__d.up{color:var(--ok)} .gl__d svg{width:11px;height:11px}
+
+        .rc{background:var(--white);border:1px solid var(--line);border-radius:20px;overflow:hidden}
+        .rc__h{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:17px 22px;border-bottom:1px solid var(--line)}
+        .rc__h h2{font-size:1.02rem;font-weight:800;letter-spacing:-.028em;color:var(--ink)}
+        .link{display:inline-flex;align-items:center;gap:5px;font-size:.82rem;font-weight:700;color:var(--muted);text-decoration:none}
+        .link:hover{color:var(--ink)} .link svg{width:14px;height:14px}
+        .rc .row{display:grid;grid-template-columns:auto 1fr auto auto auto auto;align-items:center;gap:16px;padding:14px 22px;border-bottom:1px solid var(--line);transition:background .14s}
+        .rc .row:last-child{border-bottom:none}
+        .rc .row:hover{background:var(--paper,#FAF9F6)}
+        .row__i{width:36px;height:36px;border-radius:10px;background:var(--wash);color:var(--amber-ink);display:grid;place-items:center;font-size:.8rem;font-weight:800}
+        .row__n{display:block;font-size:.93rem;font-weight:700;color:var(--ink);letter-spacing:-.01em}
+        .row__m{display:block;font-size:.77rem;color:var(--faint-2,#9A968E);margin-top:1px}
+        .spark{display:flex;align-items:flex-end;gap:3px;height:24px}
+        .spark span{width:5px;border-radius:2px;background:var(--line-2,#DEDBD3)}
+        .spark span.hot{background:var(--yellow)}
+        .trend{font-size:.81rem;font-weight:800;font-variant-numeric:tabular-nums;min-width:40px;text-align:right;color:var(--faint-2,#9A968E)}
+        .trend.up{color:var(--ok)}
+        .row__k{text-align:right;min-width:48px}
+        .row__kv{display:block;font-size:1rem;font-weight:800;color:var(--ink);line-height:1;font-variant-numeric:tabular-nums}
+        .row__kl{display:block;font-size:.65rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--faint-2,#9A968E);margin-top:3px}
+
+        @media (max-width:1080px){
+          .glance{grid-template-columns:repeat(2,1fr)}
+          .gl:nth-child(2){border-right:none}
+          .gl:nth-child(1),.gl:nth-child(2){border-bottom:1px solid var(--line)}
+        }
+        @media (max-width:860px){
+          .rc .row{grid-template-columns:auto 1fr auto;gap:12px}
+          .rc .row .spark,.rc .row .trend,.rc .row .pill{display:none}
+        }
+      ` }),
 		/* @__PURE__ */ jsxs(AppLayout, {
 			width: "max-w-4xl",
 			children: [flash.status && /* @__PURE__ */ jsx("div", {
@@ -6018,11 +6322,7 @@ function Dashboard() {
 				},
 				children: flash.status
 			}), /* @__PURE__ */ jsx(SearchWizard, {
-				subjectExtra: /* @__PURE__ */ jsx(RecentCard, {
-					searches: recentSearches,
-					retryingSearchId,
-					onRetry: retryFailedSearch
-				}),
+				subjectExtra: dashboardExtras,
 				suggestionsByType: searchSuggestions,
 				onTrackedSearchChange: () => {
 					refreshRecent().catch(() => {});
@@ -6202,79 +6502,121 @@ function Nav() {
 	});
 }
 //#endregion
-//#region resources/js/landing/components/CountUp.jsx
-/**
-* Animates a numeric stat when it first scrolls into view. Values like "62B+"
-* or "<20min" are split into prefix / number / suffix so the units survive.
-*/
-var PARTS = /^(\D*?)([\d.]+)(.*)$/;
-function CountUp({ value, duration = 1400, className = "" }) {
-	const ref = useRef(null);
-	const hasAnimated = useRef(false);
-	const parts = useMemo(() => {
-		const match = String(value).match(PARTS);
-		if (!match) return {
-			prefix: "",
-			numeric: null,
-			suffix: "",
-			decimals: 0
-		};
-		return {
-			prefix: match[1],
-			numeric: parseFloat(match[2]),
-			suffix: match[3],
-			decimals: match[2].includes(".") ? match[2].split(".")[1].length : 0
-		};
-	}, [value]);
-	const [shown, setShown] = useState(() => parts.numeric === null ? value : null);
-	const [settled, setSettled] = useState(parts.numeric === null);
-	useEffect(() => {
-		if (parts.numeric === null) {
-			setShown(value);
+//#region resources/js/landing/sections/Hero.jsx
+var MODES = [
+	{
+		key: "brand",
+		label: "Your brand",
+		icon: Store,
+		prompt: "Which brand do you want to research?",
+		sample: "rhode skin"
+	},
+	{
+		key: "competitor",
+		label: "A competitor",
+		icon: Target,
+		prompt: "Which competitor should we watch?",
+		sample: "skims"
+	},
+	{
+		key: "product",
+		label: "A product",
+		icon: Search,
+		prompt: "Which product do you want to track?",
+		sample: "lip oil"
+	}
+];
+function Hero({ onStart }) {
+	const [type, setType] = useState("brand");
+	const [value, setValue] = useState("");
+	const inputRef = useRef(null);
+	const mode = MODES.find((m) => m.key === type) ?? MODES[0];
+	const query = value.trim().replace(/\s+/g, " ");
+	const submit = (e) => {
+		e?.preventDefault();
+		if (!query) {
+			inputRef.current?.focus();
 			return;
 		}
-		const el = ref.current;
-		const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-		const settle = () => {
-			setShown(value);
-			setSettled(true);
-		};
-		if (!el || reduced || typeof IntersectionObserver === "undefined") {
-			hasAnimated.current = true;
-			settle();
-			return;
-		}
-		let frame;
-		const observer = new IntersectionObserver(([entry]) => {
-			if (!entry.isIntersecting || hasAnimated.current) return;
-			hasAnimated.current = true;
-			observer.disconnect();
-			const start = performance.now();
-			const tick = (now) => {
-				const t = Math.min((now - start) / duration, 1);
-				const eased = 1 - Math.pow(1 - t, 3);
-				const current = (parts.numeric * eased).toFixed(parts.decimals);
-				setSettled(false);
-				setShown(`${parts.prefix}${current}${parts.suffix}`);
-				if (t < 1) frame = requestAnimationFrame(tick);
-				else settle();
-			};
-			frame = requestAnimationFrame(tick);
-		}, { threshold: .4 });
-		observer.observe(el);
-		return () => {
-			observer.disconnect();
-			if (frame) cancelAnimationFrame(frame);
-		};
-	}, [
-		value,
-		duration,
-		parts
-	]);
-	return /* @__PURE__ */ jsx("span", {
-		ref,
-		className: `${className} ${settled ? "" : "inline-block min-w-[3ch] animate-pulse rounded-[0.2em] bg-[linear-gradient(90deg,rgba(255,198,41,.15),rgba(255,198,41,.45),rgba(255,198,41,.15))] px-[0.12em] text-transparent bg-[length:220%_100%] animate-shimmer"}`.trim(),
-		children: shown ?? `${parts.prefix}0${parts.suffix}`
+		onStart(type, query);
+	};
+	return /* @__PURE__ */ jsx("section", {
+		className: "hero",
+		id: "top",
+		children: /* @__PURE__ */ jsxs("div", {
+			className: "wrap",
+			children: [
+				/* @__PURE__ */ jsxs("h1", { children: ["TikTok Brand and Social Media ", /* @__PURE__ */ jsx("span", {
+					className: "hl",
+					children: "Intelligence Tool"
+				})] }),
+				/* @__PURE__ */ jsx("p", {
+					className: "hero__sub",
+					children: "Pick what to look up, type it in, and we scan TikTok for the outlier videos usually breaking out — the creators behind them, and why they popped."
+				}),
+				/* @__PURE__ */ jsxs("form", {
+					className: "box",
+					onSubmit: submit,
+					children: [
+						/* @__PURE__ */ jsxs("p", {
+							className: "box__label",
+							children: [/* @__PURE__ */ jsx("span", {
+								className: "box__step",
+								children: "1"
+							}), "Pick what you want to search"]
+						}),
+						/* @__PURE__ */ jsx("div", {
+							className: "modes",
+							role: "tablist",
+							"aria-label": "What to research",
+							children: MODES.map(({ key, label, icon: Icon }) => /* @__PURE__ */ jsxs("button", {
+								type: "button",
+								className: `mode${key === type ? " is-on" : ""}`,
+								role: "tab",
+								"aria-selected": key === type,
+								onClick: () => setType(key),
+								children: [/* @__PURE__ */ jsx(Icon, { className: "h-[15px] w-[15px]" }), label]
+							}, key))
+						}),
+						/* @__PURE__ */ jsxs("label", {
+							className: "box__label",
+							htmlFor: "search-subject",
+							children: [
+								/* @__PURE__ */ jsx("span", {
+									className: "box__step",
+									children: "2"
+								}),
+								"Type your ",
+								type === "product" ? "product" : type === "brand" ? "brand name" : "competitor"
+							]
+						}),
+						/* @__PURE__ */ jsxs("div", {
+							className: "box__field",
+							children: [/* @__PURE__ */ jsx("input", {
+								ref: inputRef,
+								id: "search-subject",
+								maxLength: 80,
+								value,
+								onChange: (e) => setValue(e.target.value),
+								placeholder: mode.sample,
+								"aria-label": `Type your ${type === "product" ? "product" : type === "brand" ? "brand name" : "competitor"}`
+							}), /* @__PURE__ */ jsxs("button", {
+								type: "submit",
+								className: "btn btn--primary btn--lg btn--pulse",
+								children: ["Find outliers", /* @__PURE__ */ jsx(Arrow, { className: "btn__arrow h-[15px] w-[15px]" })]
+							})]
+						}),
+						/* @__PURE__ */ jsxs("div", {
+							className: "box__foot",
+							children: [/* @__PURE__ */ jsx("span", { children: "1 free search · no credit card" }), /* @__PURE__ */ jsx("a", {
+								href: "#how",
+								children: "See how it works"
+							})]
+						})
+					]
+				})
+			]
+		})
 	});
 }
 //#endregion
@@ -6446,24 +6788,6 @@ var STEPS = [
 		}
 	}
 ];
-var STATS = [
-	{
-		value: "62B+",
-		label: "Views analyzed"
-	},
-	{
-		value: "4.1M",
-		label: "Videos indexed"
-	},
-	{
-		value: "11K",
-		label: "Brands tracked"
-	},
-	{
-		value: "<20min",
-		label: "Median search time"
-	}
-];
 var TESTIMONIALS = [
 	{
 		quote: "We found the creator driving 40% of our category’s TikTok volume in the first search. She was not on any agency list we had been sent.",
@@ -6611,226 +6935,6 @@ var FAQS = [
 	}
 ];
 //#endregion
-//#region resources/js/landing/sections/Hero.jsx
-var MODES = [
-	{
-		key: "brand",
-		label: "Your brand",
-		icon: Store,
-		prompt: "Which brand do you want to research?",
-		sample: "rhode skin"
-	},
-	{
-		key: "competitor",
-		label: "A competitor",
-		icon: Target,
-		prompt: "Which competitor should we watch?",
-		sample: "skims"
-	},
-	{
-		key: "product",
-		label: "A product",
-		icon: Search,
-		prompt: "Which product do you want to track?",
-		sample: "lip oil"
-	}
-];
-function Hero({ onStart }) {
-	const [type, setType] = useState("brand");
-	const [value, setValue] = useState("");
-	const [ghost, setGhost] = useState("");
-	const [typedPrompt, setTypedPrompt] = useState("");
-	const inputRef = useRef(null);
-	const mode = MODES.find((m) => m.key === type) ?? MODES[0];
-	const query = value.trim().replace(/\s+/g, " ");
-	const showGhost = value === "";
-	const promptLoop = ["Pick what you want to search", mode.prompt];
-	const animatedPrompt = typedPrompt || promptLoop[0];
-	useEffect(() => {
-		let promptIndex = 0;
-		let charIndex = 0;
-		let deleting = false;
-		let timer;
-		let cancelled = false;
-		const tick = () => {
-			if (cancelled) return;
-			const currentPrompt = promptLoop[promptIndex];
-			if (!deleting) {
-				charIndex += 1;
-				setTypedPrompt(currentPrompt.slice(0, charIndex));
-				if (charIndex >= currentPrompt.length) {
-					timer = window.setTimeout(() => {
-						deleting = true;
-						tick();
-					}, 1400);
-					return;
-				}
-				timer = window.setTimeout(tick, 42);
-				return;
-			}
-			charIndex -= 1;
-			setTypedPrompt(currentPrompt.slice(0, Math.max(charIndex, 0)));
-			if (charIndex <= 0) {
-				deleting = false;
-				promptIndex = (promptIndex + 1) % promptLoop.length;
-			}
-			timer = window.setTimeout(tick, 26);
-		};
-		setTypedPrompt("");
-		timer = window.setTimeout(tick, 180);
-		return () => {
-			cancelled = true;
-			window.clearTimeout(timer);
-		};
-	}, [mode.prompt]);
-	useEffect(() => {
-		if (!showGhost) return void 0;
-		const sample = mode.sample;
-		let i = 0;
-		let dir = 1;
-		let timer;
-		const tick = () => {
-			setGhost(sample.slice(0, i));
-			if (dir === 1) {
-				i += 1;
-				if (i > sample.length) {
-					dir = -1;
-					timer = window.setTimeout(tick, 1600);
-					return;
-				}
-			} else {
-				i -= 1;
-				if (i < 0) {
-					i = 0;
-					dir = 1;
-				}
-			}
-			timer = window.setTimeout(tick, dir === 1 ? 95 : 45);
-		};
-		tick();
-		return () => window.clearTimeout(timer);
-	}, [mode.sample, showGhost]);
-	const submit = (e) => {
-		e?.preventDefault();
-		if (!query) {
-			inputRef.current?.focus();
-			return;
-		}
-		onStart(type, query);
-	};
-	return /* @__PURE__ */ jsx("section", {
-		className: "hero",
-		id: "top",
-		children: /* @__PURE__ */ jsxs("div", {
-			className: "wrap",
-			children: [
-				/* @__PURE__ */ jsxs("h1", { children: ["TikTok Brand and Social Media ", /* @__PURE__ */ jsx("span", {
-					className: "hl",
-					children: "Intelligence Tool"
-				})] }),
-				/* @__PURE__ */ jsx("p", {
-					className: "hero__sub",
-					children: "Enter your brand, a competitor or single product; then we will scan TikTok and return the most viral outlier videos, the creators behind them and the reason they went viral"
-				}),
-				/* @__PURE__ */ jsxs("label", {
-					className: "box__label",
-					htmlFor: "search-subject",
-					children: [/* @__PURE__ */ jsx("span", { children: animatedPrompt }), /* @__PURE__ */ jsx("span", {
-						className: "caret",
-						"aria-hidden": true
-					})]
-				}),
-				/* @__PURE__ */ jsx("div", {
-					className: "modes",
-					role: "tablist",
-					"aria-label": "What to research",
-					children: MODES.map(({ key, label, icon: Icon }) => /* @__PURE__ */ jsxs("button", {
-						className: `mode${key === type ? " is-on" : ""}`,
-						role: "tab",
-						"aria-selected": key === type,
-						onClick: () => setType(key),
-						children: [/* @__PURE__ */ jsx(Icon, { className: "h-[15px] w-[15px]" }), label]
-					}, key))
-				}),
-				/* @__PURE__ */ jsxs("form", {
-					className: "box",
-					onSubmit: submit,
-					children: [/* @__PURE__ */ jsxs("div", {
-						className: "box__field",
-						children: [/* @__PURE__ */ jsxs("div", {
-							className: `box__ghost${showGhost ? "" : " is-off"}`,
-							"aria-hidden": true,
-							children: [/* @__PURE__ */ jsx("span", { children: ghost }), /* @__PURE__ */ jsx("span", { className: "caret" })]
-						}), /* @__PURE__ */ jsx("textarea", {
-							ref: inputRef,
-							id: "search-subject",
-							rows: 2,
-							maxLength: 80,
-							value,
-							onChange: (e) => setValue(e.target.value),
-							onKeyDown: (e) => {
-								if (e.key === "Enter" && !e.shiftKey) submit(e);
-							},
-							"aria-label": animatedPrompt
-						})]
-					}), /* @__PURE__ */ jsxs("div", {
-						className: "box__foot",
-						children: [/* @__PURE__ */ jsxs("p", {
-							className: "box__try",
-							children: [
-								"Try",
-								" ",
-								/* @__PURE__ */ jsxs("button", {
-									type: "button",
-									onClick: () => {
-										setValue(mode.sample);
-										inputRef.current?.focus();
-									},
-									children: [
-										"“",
-										mode.sample,
-										"”"
-									]
-								}),
-								/* @__PURE__ */ jsx("span", { children: "One subject per search keeps each result tight." })
-							]
-						}), /* @__PURE__ */ jsxs("button", {
-							type: "submit",
-							className: "btn btn--primary btn--lg btn--pulse",
-							children: ["Find outliers", /* @__PURE__ */ jsx(Arrow, { className: "btn__arrow h-[15px] w-[15px]" })]
-						})]
-					})]
-				}),
-				/* @__PURE__ */ jsx("div", {
-					className: "hero__ctas",
-					children: /* @__PURE__ */ jsx("a", {
-						href: "#how",
-						className: "btn btn--ghost btn--lg",
-						children: "See how it works"
-					})
-				}),
-				/* @__PURE__ */ jsx("p", {
-					className: "hero__note",
-					children: "1 free search · no credit card"
-				}),
-				/* @__PURE__ */ jsx("dl", {
-					className: "stats",
-					children: STATS.map((s) => /* @__PURE__ */ jsxs("div", {
-						className: "stat",
-						children: [/* @__PURE__ */ jsx("dt", {
-							className: "stat__v",
-							children: /* @__PURE__ */ jsx(CountUp, { value: s.value })
-						}), /* @__PURE__ */ jsxs("dd", {
-							className: "stat__l",
-							children: [/* @__PURE__ */ jsx(Trend, { className: "h-[11px] w-[11px]" }), s.label]
-						})]
-					}, s.label))
-				})
-			]
-		})
-	});
-}
-//#endregion
 //#region resources/js/landing/sections/BrandMarquee.jsx
 function Chip({ brand }) {
 	return /* @__PURE__ */ jsxs("div", {
@@ -6842,17 +6946,20 @@ function Chip({ brand }) {
 				alt: `${brand.name} logo`,
 				loading: "lazy"
 			})
-		}), /* @__PURE__ */ jsxs("span", { children: [/* @__PURE__ */ jsx("span", {
-			className: "chip__n",
-			children: brand.name
 		}), /* @__PURE__ */ jsxs("span", {
-			className: "chip__m",
-			children: [
-				brand.category,
-				" · ",
-				brand.reach
-			]
-		})] })]
+			className: "chip__copy",
+			children: [/* @__PURE__ */ jsx("span", {
+				className: "chip__n",
+				children: brand.name
+			}), /* @__PURE__ */ jsxs("span", {
+				className: "chip__m",
+				children: [
+					brand.category,
+					" · ",
+					brand.reach
+				]
+			})]
+		})]
 	});
 }
 function Row({ brands, variant }) {
@@ -6883,26 +6990,68 @@ function BrandMarquee() {
 }
 //#endregion
 //#region resources/js/landing/sections/Features.jsx
-var PREVIEW_VIDS = [
-	{
-		handle: "@glossier",
-		mult: "18x",
-		views: "4.2M",
-		image: "/images/landing/discovery-coco-shimmy.png"
-	},
-	{
-		handle: "@glowwithtay",
-		mult: "12x",
-		views: "3.1M",
-		image: "/images/landing/discovery-buyer-beware.png"
-	},
-	{
-		handle: "@cleangirl.ari",
-		mult: "22x",
-		views: "2.8M",
-		image: "/images/landing/discovery-brow-grooming.png"
-	}
-];
+var PREVIEW_VIDEOS = {
+	outliers: [
+		{
+			handle: "@glossier",
+			mult: "18x",
+			views: "4.2M",
+			image: "/images/landing/discovery-coco-shimmy.png"
+		},
+		{
+			handle: "@glowwithtay",
+			mult: "12x",
+			views: "3.1M",
+			image: "/images/landing/discovery-buyer-beware.png"
+		},
+		{
+			handle: "@cleangirl.ari",
+			mult: "22x",
+			views: "2.8M",
+			image: "/images/landing/discovery-brow-grooming.png"
+		}
+	],
+	competitors: [
+		{
+			handle: "@miasbakes",
+			mult: "18x",
+			views: "3.8M",
+			image: "/images/landing/competitor-sourdough-loaf.jpg"
+		},
+		{
+			handle: "@dailybreadclub",
+			mult: "12x",
+			views: "1.7M",
+			image: "/images/landing/competitor-dough.jpg"
+		},
+		{
+			handle: "@thebuildbrief",
+			mult: "22x",
+			views: "996K",
+			image: "/images/landing/competitor-saas.jpg"
+		}
+	],
+	alerts: [
+		{
+			handle: "@growwithmara",
+			mult: "18x",
+			views: "2.4M",
+			image: "/images/landing/alert-seed-packets.jpg"
+		},
+		{
+			handle: "@skincarebylola",
+			mult: "12x",
+			views: "1.3M",
+			image: "/images/landing/alert-summer-fridays.jpg"
+		},
+		{
+			handle: "@crocstyle",
+			mult: "22x",
+			views: "847K",
+			image: "/images/landing/alert-crocs.jpg"
+		}
+	]
+};
 var PREVIEW_BARS = [
 	{
 		label: "Outlier 20x+",
@@ -6925,60 +7074,10 @@ var PREVIEW_BARS = [
 		n: 52
 	}
 ];
-function compact(value) {
-	const n = Number(value) || 0;
-	if (n >= 1e6) return `${(n / 1e6).toFixed(n >= 1e7 ? 0 : 1)}M`;
-	if (n >= 1e3) return `${(n / 1e3).toFixed(n >= 1e4 ? 0 : 1)}K`;
-	return String(n);
-}
-function toPreviewVideo(video) {
-	return {
-		handle: video.handle ?? "@tiktok",
-		mult: Number(video.virality_score) > 0 ? `${Math.round(video.virality_score)}x` : null,
-		views: compact(video.views),
-		image: video.thumbnail_url,
-		href: video.post_url ?? null
-	};
-}
 function Features() {
 	const [active, setActive] = useState(FEATURES[0].id);
-	const [dynamicGroups, setDynamicGroups] = useState({});
-	const [loadingDynamic, setLoadingDynamic] = useState(false);
-	const [loadFailed, setLoadFailed] = useState(false);
 	const current = FEATURES.find((f) => f.id === active) ?? FEATURES[0];
-	const currentVideos = dynamicGroups[active] ?? PREVIEW_VIDS;
-	useEffect(() => {
-		if (active === "outliers" || dynamicGroups.competitors || dynamicGroups.alerts || loadingDynamic) return;
-		let cancelled = false;
-		async function loadDynamicGroups() {
-			setLoadingDynamic(true);
-			setLoadFailed(false);
-			try {
-				const response = await fetch("/landing/feature-preview-videos", { headers: { Accept: "application/json" } });
-				if (!response.ok) throw new Error(`Feature preview request failed with ${response.status}`);
-				const payload = await response.json();
-				const mapped = Array.isArray(payload.videos) ? payload.videos.map(toPreviewVideo).filter((video) => video.image) : [];
-				if (cancelled || mapped.length === 0) return;
-				setDynamicGroups({
-					competitors: mapped.slice(0, 3),
-					alerts: mapped.slice(3, 6).length > 0 ? mapped.slice(3, 6) : mapped.slice(0, 3)
-				});
-			} catch (error) {
-				if (!cancelled) setLoadFailed(true);
-			} finally {
-				if (!cancelled) setLoadingDynamic(false);
-			}
-		}
-		loadDynamicGroups();
-		return () => {
-			cancelled = true;
-		};
-	}, [
-		active,
-		dynamicGroups.alerts,
-		dynamicGroups.competitors,
-		loadingDynamic
-	]);
+	const currentVideos = PREVIEW_VIDEOS[active] ?? PREVIEW_VIDEOS.outliers;
 	return /* @__PURE__ */ jsxs("section", {
 		className: "sec wrap",
 		id: "features",
@@ -7069,10 +7168,6 @@ function Features() {
 							})
 						] }, `${v.handle}-${index}`))
 					}),
-					loadFailed && active !== "outliers" ? /* @__PURE__ */ jsx("p", {
-						className: "mt-3 text-[12px] text-[#8d877b]",
-						children: "Preview unavailable right now, showing the sample set instead."
-					}) : null,
 					/* @__PURE__ */ jsx("div", {
 						className: "bars",
 						children: PREVIEW_BARS.map((bar) => /* @__PURE__ */ jsxs("div", {

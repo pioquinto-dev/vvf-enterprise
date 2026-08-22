@@ -6,6 +6,7 @@ use App\Http\Requests\StoreSavedSearchRequest;
 use App\Http\Resources\SavedSearchPresenter;
 use App\Models\CustomKeywordSearch;
 use App\Models\CustomKeywordSearchRun;
+use App\Models\CustomKeywordSearchSnapshot;
 use App\Models\CustomKeywordSearchVideo;
 use App\Models\ViralVideo;
 use App\Services\Billing\BillingService;
@@ -133,6 +134,98 @@ class SavedSearchController extends Controller
     }
 
     /**
+     * "Your tracking at a glance" — portfolio-wide counters shown above the
+     * recent list. Everything is a single aggregate query so the payload stays
+     * cheap even when the account has hundreds of saved searches.
+     *
+     * @return array<string, int>
+     */
+    private function dashboardStats(Request $request): array
+    {
+        $userId = $request->user()?->id;
+        $guestToken = GuestIdentity::token($request);
+
+        $searchIds = CustomKeywordSearch::query()
+            ->ownedBy($userId, $guestToken)
+            ->pluck('id');
+
+        $empty = [
+            'videos_tracked' => 0,
+            'videos_tracked_delta_week' => 0,
+            'outliers_this_week' => 0,
+            'outliers_delta_week' => 0,
+            'avg_outlier_score' => 0,
+            'creators_surfaced' => 0,
+            'searches_count' => 0,
+        ];
+
+        if ($searchIds->isEmpty()) {
+            return $empty;
+        }
+
+        $weekAgo = now()->subDays(7);
+        $twoWeeksAgo = now()->subDays(14);
+
+        // Videos tracked = all rows across the user's searches, with "new this
+        // week" derived from when the join row was written.
+        $videosTracked = CustomKeywordSearchVideo::query()
+            ->whereIn('custom_keyword_search_id', $searchIds)
+            ->count();
+
+        $videosThisWeek = CustomKeywordSearchVideo::query()
+            ->whereIn('custom_keyword_search_id', $searchIds)
+            ->where('created_at', '>=', $weekAgo)
+            ->count();
+
+        // Outliers = breakout rows. Delta compares the current 7-day window to
+        // the prior 7-day window.
+        $outliersThisWeek = CustomKeywordSearchVideo::query()
+            ->whereIn('custom_keyword_search_id', $searchIds)
+            ->where('is_new_breakout', true)
+            ->where('created_at', '>=', $weekAgo)
+            ->count();
+
+        $outliersPriorWeek = CustomKeywordSearchVideo::query()
+            ->whereIn('custom_keyword_search_id', $searchIds)
+            ->where('is_new_breakout', true)
+            ->whereBetween('created_at', [$twoWeeksAgo, $weekAgo])
+            ->count();
+
+        // Avg outlier score = average of each search's most recent snapshot
+        // `top_multiple`, rounded to a whole "N×".
+        $latestPerSearch = CustomKeywordSearchSnapshot::query()
+            ->selectRaw('custom_keyword_search_id, MAX(captured_at) as latest_at')
+            ->whereIn('custom_keyword_search_id', $searchIds)
+            ->where('is_reconstructed', false)
+            ->groupBy('custom_keyword_search_id');
+
+        $avgScore = (float) CustomKeywordSearchSnapshot::query()
+            ->joinSub($latestPerSearch, 'latest', function ($join) {
+                $join->on('custom_keyword_search_snapshots.custom_keyword_search_id', '=', 'latest.custom_keyword_search_id')
+                    ->on('custom_keyword_search_snapshots.captured_at', '=', 'latest.latest_at');
+            })
+            ->avg('custom_keyword_search_snapshots.top_multiple');
+
+        // Distinct creators across all videos surfaced by the user's searches.
+        $creatorsSurfaced = CustomKeywordSearchVideo::query()
+            ->join('viral_videos', 'viral_videos.id', '=', 'custom_keyword_search_videos.viral_video_id')
+            ->whereIn('custom_keyword_search_videos.custom_keyword_search_id', $searchIds)
+            ->whereNotNull('viral_videos.username')
+            ->distinct()
+            ->count('viral_videos.username');
+
+        return [
+            'videos_tracked' => (int) $videosTracked,
+            'videos_tracked_delta_week' => (int) $videosThisWeek,
+            'outliers_this_week' => (int) $outliersThisWeek,
+            'outliers_delta_week' => (int) ($outliersThisWeek - $outliersPriorWeek),
+            'avg_outlier_score' => (int) round($avgScore),
+            'creators_surfaced' => (int) $creatorsSurfaced,
+            'searches_count' => (int) $searchIds->count(),
+        ];
+    }
+
+    /**
      * GET /dashboard — the search launcher plus the few most recent searches
      * for the "Pick up where you left off" card.
      */
@@ -153,6 +246,7 @@ class SavedSearchController extends Controller
 
         return Inertia::render('Dashboard', [
             'recent' => $this->recentSearches($request),
+            'stats' => $this->dashboardStats($request),
             'searchSuggestions' => [
                 'brand' => $this->suggestions($this->searches->all($request, [CustomKeywordSearch::TYPE_BRAND], false), [CustomKeywordSearch::TYPE_BRAND]),
                 'competitor' => $this->suggestions($this->searches->all($request, [CustomKeywordSearch::TYPE_COMPETITOR], false), [CustomKeywordSearch::TYPE_COMPETITOR]),
