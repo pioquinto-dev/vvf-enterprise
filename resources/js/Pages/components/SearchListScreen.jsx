@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link, router, usePage } from '@inertiajs/react';
 
 import AppLayout from './AppLayout.jsx';
+import BrandInlineFlow from './BrandInlineFlow.jsx';
 import EntitlementsBar from './EntitlementsBar.jsx';
 import { compact } from './VideoCard.jsx';
 import { STATUS, formatDate } from './SavedSearchRow.jsx';
@@ -210,43 +211,57 @@ export default function SearchListScreen({ kind = 'brand', searches = [], moving
 
   return (
     <AppLayout width="max-w-[1240px]" title={copy.title} subtitle={copy.subtitle} actions={<EntitlementsBar />}>
-      {/* ---------------- hero ---------------- */}
-      <section className="bhero">
-        <p className="bhero__k">{copy.heroEyebrow}</p>
-        <form className="sbox" onSubmit={runSearch}>
-          <textarea
-            rows={2}
-            maxLength={80}
-            value={subject}
-            onChange={(e) => setSubject(e.target.value)}
-            placeholder={copy.placeholder}
-            aria-label={copy.heroEyebrow}
-          />
-          <div className="sbox__f">
-            <p className="sbox__t">
-              Try <b>“{copy.sample}”</b>
-              <br />
-              {copy.heroHint}
-            </p>
-            <button type="submit" className="btn btn--y btn--lg">
-              <Search className="h-[15px] w-[15px]" /> Find outliers
-            </button>
+      {/* ---------------- hero ----------------
+         Brand hub uses the expand-in-place inline flow. Product hub keeps
+         the classic launcher for now — the dashboard's SearchWizard is
+         untouched. */}
+      {kind === 'brand' ? (
+        <BrandInlineFlow
+          kind="brand"
+          eyebrow={copy.heroEyebrow}
+          placeholder={copy.placeholder}
+          sample={copy.sample}
+          hint={copy.heroHint}
+          onCreated={(created) => setSearchList((current) => [{ ...created, search_type: 'brand' }, ...current])}
+        />
+      ) : (
+        <section className="bhero">
+          <p className="bhero__k">{copy.heroEyebrow}</p>
+          <form className="sbox" onSubmit={runSearch}>
+            <textarea
+              rows={2}
+              maxLength={80}
+              value={subject}
+              onChange={(e) => setSubject(e.target.value)}
+              placeholder={copy.placeholder}
+              aria-label={copy.heroEyebrow}
+            />
+            <div className="sbox__f">
+              <p className="sbox__t">
+                Try <b>“{copy.sample}”</b>
+                <br />
+                {copy.heroHint}
+              </p>
+              <button type="submit" className="btn btn--y btn--lg">
+                <Search className="h-[15px] w-[15px]" /> Find outliers
+              </button>
+            </div>
+          </form>
+          <div className="bhero__r">
+            {subjectSuggestions.length > 0 && <span className="bhero__rl">Try searching this</span>}
+            {subjectSuggestions.map((suggestion) => (
+              <button key={suggestion.name} type="button" className="rchip" onClick={() => setSubject(suggestion.name || '')}>
+                <Refresh className="h-[13px] w-[13px]" /> {suggestion.name}
+              </button>
+            ))}
+            {searchLimit > 0 && (
+              <span className="bhero__q">
+                {searchLeft} of {searchLimit} searches left this cycle
+              </span>
+            )}
           </div>
-        </form>
-        <div className="bhero__r">
-          {subjectSuggestions.length > 0 && <span className="bhero__rl">Try searching this</span>}
-          {subjectSuggestions.map((suggestion) => (
-            <button key={suggestion.name} type="button" className="rchip" onClick={() => setSubject(suggestion.name || '')}>
-              <Refresh className="h-[13px] w-[13px]" /> {suggestion.name}
-            </button>
-          ))}
-          {searchLimit > 0 && (
-            <span className="bhero__q">
-              {searchLeft} of {searchLimit} searches left this cycle
-            </span>
-          )}
-        </div>
-      </section>
+        </section>
+      )}
 
       {/* ---------------- moving this week ---------------- */}
       {moving.length > 0 && (
