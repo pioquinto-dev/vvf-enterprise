@@ -29,7 +29,7 @@ export const FEATURES = [
     id: 'outliers',
     tag: 'Discovery',
     title: 'Outlier Vault',
-    body: 'Surface the TikToks in your category that broke out this week — the ones running 10x above the creator’s own baseline, not just the ones with big follower counts.',
+    body: "Surface the TikToks in your category that broke out this week. The ones running 10× above the creator's own baseline, not just the ones with big follower counts.",
     bullets: ['Outlier scoring vs creator baseline', 'Last 7 / 30 / 90 day windows', 'Sound, hashtag and format tags'],
     accent: 'from-[#3a2b6b] to-[#8b3df0]',
   },
@@ -46,7 +46,7 @@ export const FEATURES = [
     tag: 'Automation',
     title: 'Virality Alerts',
     body: 'Get pinged the moment a video mentioning your brand crosses a threshold you set. Catch the good ones early, and the bad ones earlier.',
-    bullets: ['Threshold + velocity triggers', 'Slack and email delivery', 'Per-search mute rules'],
+    bullets: ['Threshold and velocity triggers', 'Slack and email delivery', 'Per-search mute rules'],
     accent: 'from-[#173a2a] to-[#3fbf7a]',
   },
 ];
