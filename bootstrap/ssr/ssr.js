@@ -6045,11 +6045,13 @@ function RunningScreen({ searchId, onBack, onDone, onAutoReturn }) {
 	const signedIn = auth.signedIn ?? Boolean(auth.user);
 	const [search, setSearch] = useState(null);
 	const [failed, setFailed] = useState(null);
+	const [completed, setCompleted] = useState(null);
 	const [email, setEmail] = useState("");
 	const [emailSaved, setEmailSaved] = useState(false);
 	const [stage, setStage] = useState(0);
 	const finished = useRef(false);
 	const polling = useRef(false);
+	const completionTimer = useRef(null);
 	useEffect(() => {
 		if (!searchId) return void 0;
 		let timer;
@@ -6067,7 +6069,8 @@ function RunningScreen({ searchId, onBack, onDone, onAutoReturn }) {
 							completedPromptShown: true,
 							name: found.name
 						});
-						onDone?.(found);
+						setCompleted(found);
+						completionTimer.current = window.setTimeout(() => onDone?.(found), 900);
 						return;
 					}
 					if (found.status === "failed") {
@@ -6092,17 +6095,19 @@ function RunningScreen({ searchId, onBack, onDone, onAutoReturn }) {
 		return () => {
 			cancelled = true;
 			window.clearTimeout(timer);
+			window.clearTimeout(completionTimer.current);
 			document.removeEventListener("visibilitychange", onVisibility);
 		};
 	}, [searchId, onDone]);
 	useEffect(() => {
-		if (!searchId || failed || finished.current) return void 0;
+		if (!searchId || failed || completed || finished.current) return void 0;
 		const timer = window.setTimeout(() => {
 			updateTracked(searchId, { runningPromptShown: true });
 			onAutoReturn?.();
 		}, AUTO_RETURN_MS);
 		return () => window.clearTimeout(timer);
 	}, [
+		completed,
 		failed,
 		onAutoReturn,
 		searchId
@@ -6139,6 +6144,35 @@ function RunningScreen({ searchId, onBack, onDone, onAutoReturn }) {
 					className: "btn btn--g",
 					style: { margin: "24px auto 0" },
 					children: "Edit keywords and retry"
+				})
+			]
+		})
+	});
+	if (completed) return /* @__PURE__ */ jsx("div", {
+		className: "card",
+		children: /* @__PURE__ */ jsxs("div", {
+			className: "run",
+			children: [
+				/* @__PURE__ */ jsx("div", {
+					className: "run__d",
+					children: /* @__PURE__ */ jsx(Check, {})
+				}),
+				/* @__PURE__ */ jsxs("span", {
+					className: "pill pill--ok",
+					style: { margin: "0 auto" },
+					children: [/* @__PURE__ */ jsx("i", {}), "Search complete"]
+				}),
+				/* @__PURE__ */ jsx("h1", {
+					style: { marginTop: 18 },
+					children: "Your results are ready"
+				}),
+				/* @__PURE__ */ jsx("p", {
+					className: "muted",
+					style: {
+						maxWidth: 420,
+						margin: "12px auto 0"
+					},
+					children: "Videos, durable media, winner analysis, and search insights are ready. Opening your results now."
 				})
 			]
 		})
@@ -10616,6 +10650,12 @@ function formatHeatmapHour(hour) {
 	if (hour === 12) return "12:00 PM";
 	return hour < 12 ? `${hour}:00 AM` : `${hour - 12}:00 PM`;
 }
+function analysisCtaLabel(analysis) {
+	if (analysis?.status === "processing") return "Analyzing video...";
+	if (analysis?.status === "complete") return "View analysis";
+	if (analysis?.status === "failed") return "Retry analysis";
+	return "Analyze video";
+}
 /** Render **bold** markers as <b>…</b> without allowing raw HTML. */
 function renderBold(text) {
 	return String(text ?? "").split(/(\*\*[^*]+\*\*)/g).map((part, i) => {
@@ -10844,7 +10884,6 @@ var Icons = {
 	})
 };
 function DetailScreen({ search, isAuthenticated = false, billing, refreshing = false, bookmarkUpdating = false, onRefresh, onSearchUpdated, onToggleBookmark, onToggleVideoBookmark, bookmarkingVideoId = null, onTogglePause, onDelete }) {
-	const results = search?.results ?? [];
 	const insights = search?.insights ?? {};
 	const bullets = search?.insights_bullets ?? [];
 	const [handleEditing, setHandleEditing] = useState(false);
@@ -10858,7 +10897,12 @@ function DetailScreen({ search, isAuthenticated = false, billing, refreshing = f
 	const [metric, setMetric] = useState("views");
 	const [videoPlayingId, setVideoPlayingId] = useState(null);
 	const [heatmapTooltip, setHeatmapTooltip] = useState(null);
+	const [analysisByVideoId, setAnalysisByVideoId] = useState({});
 	const menuRef = useRef(null);
+	const results = useMemo(() => (search?.results ?? []).map((video) => ({
+		...video,
+		analysis: analysisByVideoId[video.id] ?? video.analysis ?? null
+	})), [search?.results, analysisByVideoId]);
 	const menuClose = () => setMenuOpen(false);
 	useEffect(() => {
 		if (!menuOpen) return void 0;
@@ -10947,6 +10991,13 @@ function DetailScreen({ search, isAuthenticated = false, billing, refreshing = f
 		analysis: video.analysis ?? null
 	});
 	const closeAnalysis = () => setAnalysisModal(null);
+	const updateVideoAnalysis = (videoId, analysis) => {
+		if (!videoId || !analysis) return;
+		setAnalysisByVideoId((current) => current[videoId]?.updated_at === analysis.updated_at && current[videoId]?.status === analysis.status ? current : {
+			...current,
+			[videoId]: analysis
+		});
+	};
 	return /* @__PURE__ */ jsxs(Fragment$1, { children: [
 		/* @__PURE__ */ jsx("style", { children: scopedCss }),
 		/* @__PURE__ */ jsx("div", {
@@ -11273,7 +11324,8 @@ function DetailScreen({ search, isAuthenticated = false, billing, refreshing = f
 						children: [/* @__PURE__ */ jsxs("button", {
 							className: "rs-btn rs-btn--y",
 							onClick: () => openAnalysis(winner),
-							children: [Icons.Spark, /* @__PURE__ */ jsx("span", { children: "Analyze video" })]
+							"aria-busy": winner.analysis?.status === "processing",
+							children: [Icons.Spark, /* @__PURE__ */ jsx("span", { children: analysisCtaLabel(winner.analysis) })]
 						}), /* @__PURE__ */ jsx("button", {
 							className: `rs-ic2${winner.bookmarked ? " on" : ""}`,
 							onClick: () => onToggleVideoBookmark?.(winner),
@@ -11636,7 +11688,7 @@ function DetailScreen({ search, isAuthenticated = false, billing, refreshing = f
 			video: analysisModal.video,
 			initialAnalysis: analysisModal.analysis,
 			onClose: closeAnalysis,
-			onAnalysisChange: () => {}
+			onAnalysisChange: updateVideoAnalysis
 		})
 	] });
 }

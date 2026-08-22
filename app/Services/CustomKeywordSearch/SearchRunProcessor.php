@@ -239,7 +239,13 @@ class SearchRunProcessor
         $summary['kept_apify'] = count($apifyMatches);
 
         $previousWinnerVideoId = $this->previousWinnerVideoId($search);
-        $attached = $this->persist($search, $run, $trigger, $top);
+        $freshlyScraped = [];
+        $attached = $this->persist($search, $run, $trigger, $top, $freshlyScraped);
+
+        // A result is not ready to render until its freshly scraped imagery is
+        // durable. This is intentionally synchronous: the running screen must
+        // not send a user to cards backed by short-lived provider URLs.
+        $this->archiveMediaBeforeCompletion($freshlyScraped);
 
         $trigger->update([
             'item_count' => count($rawItems),
@@ -260,31 +266,15 @@ class SearchRunProcessor
             Log::warning('Snapshot recording failed.', ['search_id' => $search->id, 'error' => $e->getMessage()]);
         }
 
-        try {
-            $winnerAnalysis = $this->analyzeWinnerIfChanged($search, $run, $previousWinnerVideoId);
-            if ($winnerAnalysis?->status === \App\Models\VideoAnalysis::STATUS_FAILED) {
-                Log::warning('Automatic winner analysis finished unsuccessfully.', [
-                    'search_id' => $search->id,
-                    'run_id' => $run->id,
-                    'analysis_id' => $winnerAnalysis->id,
-                    'error' => $winnerAnalysis->error_message,
-                ]);
-            }
-        } catch (Throwable $e) {
-            // The search result is complete already; record an unexpected
-            // analysis failure without invalidating its successfully scraped
-            // data.
-            Log::warning('Automatic winner analysis failed.', ['search_id' => $search->id, 'error' => $e->getMessage()]);
+        $winnerAnalysis = $this->analyzeWinnerIfChanged($search, $run, $previousWinnerVideoId);
+        if ($search->user !== null && $attached > 0 && $winnerAnalysis?->status !== \App\Models\VideoAnalysis::STATUS_COMPLETE) {
+            throw new RuntimeException('The winner video analysis did not complete: '.($winnerAnalysis?->error_message ?? 'no analysis was created.'));
         }
 
-        try {
-            // Equivalent to `php artisan search:enrich <id> --sync`. Run this
-            // inline so insights and per-card creative analysis are present
-            // when the refreshed search-results page is first rendered.
-            EnrichSearchResults::dispatchSync($search->id);
-        } catch (Throwable $e) {
-            Log::warning('Synchronous search enrichment failed.', ['search_id' => $search->id, 'error' => $e->getMessage()]);
-        }
+        // Equivalent to `php artisan search:enrich <id> --sync`. Run this
+        // inline so insights and per-card creative analysis are present when
+        // the refreshed search-results page is first rendered.
+        EnrichSearchResults::dispatchSync($search->id);
 
         // The running screen polls this state before it navigates to the
         // detail page. Marking the run done only after enrichment prevents a
@@ -333,12 +323,11 @@ class SearchRunProcessor
         CustomKeywordSearchRun $run,
         ApifyTrigger $trigger,
         array $items,
+        array &$freshlyScraped,
     ): int {
         if ($items === []) {
             return 0;
         }
-
-        $freshlyScraped = [];
 
         $attached = DB::transaction(function () use ($search, $run, $trigger, $items, &$freshlyScraped): int {
             $existingIds = $search->videos()->pluck('viral_video_id')->all();
@@ -430,8 +419,6 @@ class SearchRunProcessor
             return $attached;
         });
 
-        $this->queueMediaArchive($freshlyScraped);
-
         return $attached;
     }
 
@@ -482,32 +469,20 @@ class SearchRunProcessor
     }
 
     /**
-     * Hands the freshly scraped rows to the archiver.
-     *
-     * Queued, never inline: the source URLs are already saved, so a slow or
-     * broken bucket costs the run nothing. It is dispatched after the
-     * transaction commits so the worker cannot race ahead of the rows it is
-     * meant to read.
-     *
-     * Fresh imports use the strict single-row job so archiving starts
-     * immediately after the Apify results land in `viral_videos`.
+     * Archives fresh imports before exposing a completed search. The job owns
+     * the canonical archive behavior; synchronous dispatch simply makes media
+     * durability part of this run's completion contract.
      *
      * @param  array<int, string>  $viralVideoIds
      */
-    private function queueMediaArchive(array $viralVideoIds): void
+    private function archiveMediaBeforeCompletion(array $viralVideoIds): void
     {
         if ($viralVideoIds === [] || ! config('viral_videos.media.enabled', false)) {
             return;
         }
 
-        if (config('custom_keyword_search.skip_media_archive', true)) {
-            return;
-        }
-
-        $queue = (string) config('viral_videos.media.queue', 'default');
-
         foreach (array_unique($viralVideoIds) as $viralVideoId) {
-            ArchiveViralVideoMedia::dispatch($viralVideoId)->onQueue($queue);
+            ArchiveViralVideoMedia::dispatchSync($viralVideoId);
         }
     }
 

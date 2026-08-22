@@ -25,11 +25,13 @@ export default function RunningScreen({ searchId, onBack, onDone, onAutoReturn }
 
   const [search, setSearch] = useState(null);
   const [failed, setFailed] = useState(null);
+  const [completed, setCompleted] = useState(null);
   const [email, setEmail] = useState('');
   const [emailSaved, setEmailSaved] = useState(false);
   const [stage, setStage] = useState(0);
   const finished = useRef(false);
   const polling = useRef(false);
+  const completionTimer = useRef(null);
 
   useEffect(() => {
     if (!searchId) return undefined;
@@ -52,7 +54,8 @@ export default function RunningScreen({ searchId, onBack, onDone, onAutoReturn }
           if (found.status === 'done') {
             finished.current = true;
             updateTracked(searchId, { completedPromptShown: true, name: found.name });
-            onDone?.(found);
+            setCompleted(found);
+            completionTimer.current = window.setTimeout(() => onDone?.(found), 900);
             return;
           }
 
@@ -84,12 +87,13 @@ export default function RunningScreen({ searchId, onBack, onDone, onAutoReturn }
     return () => {
       cancelled = true;
       window.clearTimeout(timer);
+      window.clearTimeout(completionTimer.current);
       document.removeEventListener('visibilitychange', onVisibility);
     };
   }, [searchId, onDone]);
 
   useEffect(() => {
-    if (!searchId || failed || finished.current) return undefined;
+    if (!searchId || failed || completed || finished.current) return undefined;
 
     const timer = window.setTimeout(() => {
       updateTracked(searchId, { runningPromptShown: true });
@@ -97,7 +101,7 @@ export default function RunningScreen({ searchId, onBack, onDone, onAutoReturn }
     }, AUTO_RETURN_MS);
 
     return () => window.clearTimeout(timer);
-  }, [failed, onAutoReturn, searchId]);
+  }, [completed, failed, onAutoReturn, searchId]);
 
   // Purely cosmetic progression so the wait reads as movement, not a hang.
   useEffect(() => {
@@ -119,6 +123,21 @@ export default function RunningScreen({ searchId, onBack, onDone, onAutoReturn }
           <button onClick={onBack} className="btn btn--g" style={{ margin: '24px auto 0' }}>
             Edit keywords and retry
           </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (completed) {
+    return (
+      <div className="card">
+        <div className="run">
+          <div className="run__d"><Check /></div>
+          <span className="pill pill--ok" style={{ margin: '0 auto' }}><i />Search complete</span>
+          <h1 style={{ marginTop: 18 }}>Your results are ready</h1>
+          <p className="muted" style={{ maxWidth: 420, margin: '12px auto 0' }}>
+            Videos, durable media, winner analysis, and search insights are ready. Opening your results now.
+          </p>
         </div>
       </div>
     );

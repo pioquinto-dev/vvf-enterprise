@@ -90,6 +90,13 @@ function formatHeatmapHour(hour) {
   return hour < 12 ? `${hour}:00 AM` : `${hour - 12}:00 PM`;
 }
 
+function analysisCtaLabel(analysis) {
+  if (analysis?.status === 'processing') return 'Analyzing video...';
+  if (analysis?.status === 'complete') return 'View analysis';
+  if (analysis?.status === 'failed') return 'Retry analysis';
+  return 'Analyze video';
+}
+
 /** Render **bold** markers as <b>…</b> without allowing raw HTML. */
 function renderBold(text) {
   const parts = String(text ?? '').split(/(\*\*[^*]+\*\*)/g);
@@ -164,7 +171,6 @@ export default function DetailScreen({
   onTogglePause,
   onDelete,
 }) {
-  const results = search?.results ?? [];
   const insights = search?.insights ?? {};
   const bullets = search?.insights_bullets ?? [];
 
@@ -179,7 +185,15 @@ export default function DetailScreen({
   const [metric, setMetric] = useState('views');
   const [videoPlayingId, setVideoPlayingId] = useState(null);
   const [heatmapTooltip, setHeatmapTooltip] = useState(null);
+  const [analysisByVideoId, setAnalysisByVideoId] = useState({});
   const menuRef = useRef(null);
+
+  // The modal polls independently. Keep those live results here so the card
+  // that launched it immediately changes from "Analyzing" to "View analysis".
+  const results = useMemo(() => (search?.results ?? []).map((video) => ({
+    ...video,
+    analysis: analysisByVideoId[video.id] ?? video.analysis ?? null,
+  })), [search?.results, analysisByVideoId]);
 
   const menuClose = () => setMenuOpen(false);
   useEffect(() => {
@@ -270,6 +284,15 @@ export default function DetailScreen({
   /* ------------- open analysis modal (existing flow) ------------- */
   const openAnalysis = (video) => setAnalysisModal({ video, analysis: video.analysis ?? null });
   const closeAnalysis = () => setAnalysisModal(null);
+  const updateVideoAnalysis = (videoId, analysis) => {
+    if (!videoId || !analysis) return;
+
+    setAnalysisByVideoId((current) => (
+      current[videoId]?.updated_at === analysis.updated_at && current[videoId]?.status === analysis.status
+        ? current
+        : { ...current, [videoId]: analysis }
+    ));
+  };
 
   /* ============================ RENDER ============================ */
 
@@ -418,7 +441,13 @@ export default function DetailScreen({
               <VideoTags video={winner} />
               <AutoAnalysis video={winner} />
               <div className="rs-wact">
-                <button className="rs-btn rs-btn--y" onClick={() => openAnalysis(winner)}>{Icons.Spark}<span>Analyze video</span></button>
+                <button
+                  className="rs-btn rs-btn--y"
+                  onClick={() => openAnalysis(winner)}
+                  aria-busy={winner.analysis?.status === 'processing'}
+                >
+                  {Icons.Spark}<span>{analysisCtaLabel(winner.analysis)}</span>
+                </button>
                 <button
                   className={`rs-ic2${winner.bookmarked ? ' on' : ''}`}
                   onClick={() => onToggleVideoBookmark?.(winner)}
@@ -639,7 +668,7 @@ export default function DetailScreen({
           video={analysisModal.video}
           initialAnalysis={analysisModal.analysis}
           onClose={closeAnalysis}
-          onAnalysisChange={() => {}}
+          onAnalysisChange={updateVideoAnalysis}
         />
       )}
     </>

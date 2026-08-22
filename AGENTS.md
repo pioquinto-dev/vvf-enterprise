@@ -378,8 +378,9 @@ High-level flow:
 4. Apify is called with only the primary phrase.
 5. Local keyword filtering and ranking happen after dataset retrieval.
 6. Results persist into search, runs, videos, and snapshots.
-7. The rank-one video is automatically analyzed for free when it is new for the search run; the run stays active until that analysis reaches a terminal state. Unchanged winners reuse their prior analysis.
-8. Media archiving happens asynchronously; search insight enrichment runs synchronously after each completed search run.
+7. Freshly scraped result assets are migrated to object storage before the run is marked done (when media archiving is enabled). Existing media repair remains asynchronous.
+8. The rank-one video is automatically analyzed for free when it is new for the search run; the run stays active until that analysis completes. Unchanged winners reuse their prior analysis.
+9. Search insight enrichment runs synchronously before the completed result is exposed.
 
 Automatic winner-analysis rule:
 
@@ -492,13 +493,13 @@ Important:
 
 High-level flow:
 
-1. Imports keep source CDN URLs first.
-2. A queued archival pass downloads and re-uploads assets to the configured storage disk.
+1. Fresh saved-search imports synchronously download and re-upload assets to the configured storage disk before the run becomes ready.
+2. Other imports and repair passes use queued archival.
 3. The model is updated only after upload verification passes.
 
 Important rules:
 
-- Uploading must never block the import request path.
+- Uploading may block a saved-search worker, but must never block the import request path.
 - A provider-side dead asset should be cleared instead of retried forever.
 - A local upload failure should keep the original source URL for later retry.
 
