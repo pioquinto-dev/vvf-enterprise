@@ -2,10 +2,13 @@
 
 namespace App\Http\Controllers\Auth;
 
+use App\Http\Controllers\FreeSearchFunnelController;
 use App\Models\User;
 use App\Services\Admin\UserActivityService;
 use App\Services\Auth\PostAuthenticationRedirector;
 use App\Services\Brevo\BrevoLifecycleEmailService;
+use App\Services\Billing\BillingService;
+use App\Services\CustomKeywordSearch\SavedSearchManager;
 use Carbon\CarbonImmutable;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\RedirectResponse;
@@ -23,6 +26,8 @@ class GoogleAuthController extends Controller
         private readonly PostAuthenticationRedirector $redirector,
         private readonly BrevoLifecycleEmailService $emails,
         private readonly UserActivityService $activity,
+        private readonly SavedSearchManager $searches,
+        private readonly BillingService $billing,
     ) {}
 
     public function redirect(Request $request): RedirectResponse
@@ -86,6 +91,29 @@ class GoogleAuthController extends Controller
         }
         $this->activity->record($user, 'engagement', 'logged_in', 'Logged in.');
         $request->session()->regenerate();
+
+        if ($pending = FreeSearchFunnelController::pull($request)) {
+            try {
+                $this->billing->ensureCanCreateSearch($user);
+                $search = $this->searches->create(
+                    user: $user,
+                    guestToken: null,
+                    type: $pending['type'],
+                    phrase: $pending['phrase'],
+                    keywords: $pending['keywords'],
+                    name: $pending['phrase'],
+                    frequency: $pending['frequency'],
+                    sources: $pending['sources'] ?? null,
+                );
+
+                return redirect()->route('search.running', ['id' => $search->id]);
+            } catch (\Illuminate\Validation\ValidationException $exception) {
+                return redirect()->route('search.keywords')->with(
+                    'free_search_error',
+                    collect($exception->errors())->flatten()->first() ?? 'We could not start this search.',
+                );
+            }
+        }
 
         return redirect()->intended($this->redirector->destination($request));
     }

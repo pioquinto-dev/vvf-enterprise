@@ -181,7 +181,7 @@ Defined in `routes/public.php`.
 - `/`
   - Marketing landing page.
 - `/search`
-  - Public keyword step of the search funnel.
+  - Standalone public free-search funnel. It collects the subject and refinements without creating a search; the Google callback creates the account-owned search after sign-in.
 - `/search/running`
   - Public running-state view.
 - `/trial`

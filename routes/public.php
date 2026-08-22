@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\ComingSoonInterestController;
 use App\Http\Controllers\ContactInquiryController;
+use App\Http\Controllers\FreeSearchFunnelController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Auth\EmailVerificationController;
 use App\Http\Controllers\Auth\GoogleAuthController;
@@ -26,13 +27,16 @@ Route::post('/contact', [ContactInquiryController::class, 'store'])->name('conta
 
 Route::prefix('search')->group(function (): void {
     Route::get('/', function (Request $request) {
-        return Inertia::render('Search/Keywords', [
+        return Inertia::render('Search/Free', [
             'phrase' => trim((string) $request->query('q', '')),
             'type' => in_array($request->query('type'), ['brand', 'competitor', 'product'], true)
                 ? $request->query('type')
                 : 'brand',
+            'error' => $request->session()->pull('free_search_error'),
         ]);
     })->name('search.keywords');
+
+    Route::post('/pending', [FreeSearchFunnelController::class, 'store'])->name('search.pending');
 
     Route::get('/running', function (Request $request) {
         return Inertia::render('Search/Running', [

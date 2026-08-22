@@ -2485,9 +2485,9 @@ function Login$1({ adminRootEmail = "" }) {
 			className: "relative mx-auto flex min-h-[calc(100vh-4rem)] max-w-6xl items-center justify-center",
 			children: /* @__PURE__ */ jsxs("section", {
 				className: "w-full max-w-[560px] rounded-[32px] border border-[var(--line)] bg-[rgba(250,249,246,.94)] p-7 shadow-[0_32px_120px_-52px_rgba(20,15,0,.28)] backdrop-blur-xl sm:p-8",
-				children: [/* @__PURE__ */ jsxs("div", {
+				children: [/* @__PURE__ */ jsx("div", {
 					className: "mb-6 inline-flex items-center gap-3 rounded-full border border-[var(--line)] bg-white px-4 py-2 text-[11px] font-semibold tracking-[.18em] text-[var(--amber-ink)] uppercase",
-					children: [/* @__PURE__ */ jsx(Logo, { className: "h-7 w-7" }), "VVF Admin"]
+					children: /* @__PURE__ */ jsx(Logo, { className: "h-7 w-7" })
 				}), /* @__PURE__ */ jsxs("section", {
 					className: "rounded-[28px] border border-[var(--line)] bg-white p-6 shadow-[0_1px_2px_rgba(20,15,0,.04),0_20px_40px_-28px_rgba(20,15,0,.18)] sm:p-7",
 					children: [
@@ -3206,6 +3206,967 @@ function AppLayout({ pill, step, title, subtitle, actions, toolbar, width = "max
 	});
 }
 //#endregion
+//#region resources/js/landing/flow/api.js
+/**
+* Small fetch wrapper for the saved-search endpoints. Inertia handles page
+* navigation; these calls are the in-page ones that should not re-render the
+* whole document.
+*/
+function csrfToken$1() {
+	return document.querySelector("meta[name=\"csrf-token\"]")?.getAttribute("content") ?? "";
+}
+var API_V1 = "/api/v1";
+async function request(url, { method = "GET", body } = {}) {
+	const response = await fetch(url, {
+		method,
+		credentials: "same-origin",
+		headers: {
+			Accept: "application/json",
+			"X-Requested-With": "XMLHttpRequest",
+			...body ? { "Content-Type": "application/json" } : {},
+			...method === "GET" ? {} : { "X-CSRF-TOKEN": csrfToken$1() }
+		},
+		...body ? { body: JSON.stringify(body) } : {}
+	});
+	const payload = await response.json().catch(() => null);
+	if (!response.ok) {
+		const error = new Error(payload?.message || `Request failed (${response.status})`);
+		error.status = response.status;
+		error.payload = payload;
+		throw error;
+	}
+	return payload;
+}
+function expandKeywords(phrase, { signal, fresh = false } = {}) {
+	return fetch(`${API_V1}/saved-searches/expand`, {
+		method: "POST",
+		credentials: "same-origin",
+		signal,
+		headers: {
+			Accept: "application/json",
+			"Content-Type": "application/json",
+			"X-Requested-With": "XMLHttpRequest",
+			"X-CSRF-TOKEN": csrfToken$1()
+		},
+		body: JSON.stringify({
+			phrase,
+			...fresh ? { fresh: true } : {}
+		})
+	}).then(async (response) => {
+		const payload = await response.json().catch(() => null);
+		if (!response.ok) throw new Error(payload?.message || "Could not suggest keywords.");
+		return payload;
+	});
+}
+function createSavedSearch({ type, phrase, name, keywords, frequency, sources }) {
+	return request(`${API_V1}/saved-searches`, {
+		method: "POST",
+		body: {
+			type,
+			phrase,
+			name,
+			keywords,
+			frequency,
+			...sources ? { sources } : {}
+		}
+	});
+}
+function fetchNotifications(ids) {
+	return request(`${API_V1}/saved-searches/notifications?${ids.map((id) => `ids[]=${encodeURIComponent(id)}`).join("&")}`);
+}
+function fetchRecentSearches() {
+	return request(`${API_V1}/saved-searches/recent`);
+}
+var savedSearch = {
+	get: (id) => request(`${API_V1}/saved-searches/${id}/json`),
+	bookmark: (id, bookmarked) => request(`${API_V1}/saved-searches/${id}/bookmark`, {
+		method: "PATCH",
+		body: { bookmarked }
+	}),
+	pause: (id) => request(`${API_V1}/saved-searches/${id}/pause`, { method: "PATCH" }),
+	resume: (id) => request(`${API_V1}/saved-searches/${id}/resume`, { method: "PATCH" }),
+	update: (id, body) => request(`${API_V1}/saved-searches/${id}/frequency`, {
+		method: "PATCH",
+		body
+	}),
+	refresh: (id) => request(`${API_V1}/saved-searches/${id}/refresh`, { method: "POST" }),
+	retry: (id) => request(`${API_V1}/saved-searches/${id}/retry`, { method: "POST" }),
+	destroy: (id) => request(`${API_V1}/saved-searches/${id}`, { method: "DELETE" })
+};
+var billing = {
+	checkout: (slug) => {
+		window.location.assign(`/billing/checkout/${encodeURIComponent(slug)}`);
+	},
+	trialCheckout: (slug) => {
+		window.location.assign(`/billing/checkout/${encodeURIComponent(slug)}?trial=1`);
+	}
+};
+var bookmarks = {
+	save: (id) => request(`${API_V1}/videos/${id}/bookmark`, { method: "POST" }),
+	remove: (id) => request(`${API_V1}/videos/${id}/bookmark`, { method: "DELETE" })
+};
+var videoAnalysis = {
+	request: (id, body = {}) => request(`${API_V1}/videos/${id}/analysis`, {
+		method: "POST",
+		body
+	}),
+	get: (id) => request(`${API_V1}/videos/${id}/analysis`)
+};
+var TRACKED_KEY = "vvf-tracked-searches";
+function readTracked() {
+	try {
+		const raw = window.sessionStorage.getItem(TRACKED_KEY);
+		const parsed = raw ? JSON.parse(raw) : [];
+		return Array.isArray(parsed) ? parsed : [];
+	} catch {
+		return [];
+	}
+}
+function writeTracked(entries) {
+	try {
+		window.sessionStorage.setItem(TRACKED_KEY, JSON.stringify(entries.slice(0, 10)));
+	} catch {}
+}
+function trackSearch(entry) {
+	const existing = readTracked().filter((t) => String(t.id) !== String(entry.id));
+	writeTracked([{
+		runningPromptShown: false,
+		completedPromptShown: false,
+		...entry
+	}, ...existing]);
+}
+function updateTracked(id, patch) {
+	writeTracked(readTracked().map((t) => String(t.id) === String(id) ? {
+		...t,
+		...patch
+	} : t));
+}
+function untrackSearch(id) {
+	writeTracked(readTracked().filter((t) => String(t.id) !== String(id)));
+}
+//#endregion
+//#region resources/js/Pages/components/BrandInlineFlow.jsx
+var BrandInlineFlow_exports = /* @__PURE__ */ __exportAll({ default: () => BrandInlineFlow });
+/**
+* The brand/product page's expand-in-place search flow (matches the
+* "Brand Beacon — Inline search flow" mockup).
+*
+* States: collapsed → keywords → sources → running → done. The card sits at
+* the top of the page and expands in-place — the page context beneath it
+* (moving-this-week, suggested-to-track, all-searches) never unmounts.
+*
+* The dashboard's SearchWizard flow is untouched — this is a separate,
+* lighter surface for the brand/product hubs.
+*/
+var STEPS$1 = [{
+	key: "keywords",
+	label: "Keywords"
+}, {
+	key: "sources",
+	label: "Sources"
+}];
+var STAGE_LIST = [
+	{
+		key: "start",
+		label: "Starting the scrape"
+	},
+	{
+		key: "pull",
+		label: "Pulling videos from TikTok"
+	},
+	{
+		key: "filter",
+		label: "Filtering against your keywords"
+	},
+	{
+		key: "rank",
+		label: "Ranking by outlier score"
+	}
+];
+function useRunStages(active, done) {
+	const [idx, setIdx] = useState(0);
+	useEffect(() => {
+		if (!active) {
+			setIdx(0);
+			return;
+		}
+		if (done) {
+			setIdx(STAGE_LIST.length);
+			return;
+		}
+		const timer = window.setInterval(() => {
+			setIdx((i) => i < STAGE_LIST.length - 1 ? i + 1 : i);
+		}, 1200);
+		return () => window.clearInterval(timer);
+	}, [active, done]);
+	return idx;
+}
+function MiniStepper({ current }) {
+	const activeIdx = STEPS$1.findIndex((s) => s.key === current);
+	if (!(current === "sources" || current === "keywords")) return null;
+	return /* @__PURE__ */ jsx("div", {
+		className: "mini",
+		children: [{
+			key: "subject",
+			label: "Subject"
+		}, ...STEPS$1].map((s, i, arr) => {
+			const stateIdx = i === 0 ? 0 : STEPS$1.findIndex((x) => x.key === s.key) + 1;
+			const cur = activeIdx + 1;
+			const cls = stateIdx < cur ? "done" : stateIdx === cur ? "now" : "todo";
+			return /* @__PURE__ */ jsxs("span", {
+				className: "mst-wrap",
+				style: {
+					display: "inline-flex",
+					alignItems: "center"
+				},
+				children: [/* @__PURE__ */ jsxs("span", {
+					className: `mst ${cls}`,
+					children: [/* @__PURE__ */ jsx("span", {
+						className: "mst__n",
+						children: cls === "done" ? /* @__PURE__ */ jsx(Check, {}) : i + 1
+					}), /* @__PURE__ */ jsx("span", {
+						className: "mst__l",
+						children: s.label
+					})]
+				}), i < arr.length - 1 && /* @__PURE__ */ jsx("span", { className: "mst__line" })]
+			}, s.key);
+		})
+	});
+}
+function BrandInlineFlow({ kind = "brand", placeholder = "Which brand do you want to research?", sample = "rhode skin", eyebrow = "Start a brand search", hint = "One brand per search — we widen it with keywords next.", onCreated = null }) {
+	const { billing = {}, auth = {} } = usePage().props;
+	const signedIn = auth.signedIn ?? Boolean(auth.user);
+	const [state, setState] = useState("collapsed");
+	const [subject, setSubject] = useState("");
+	const [keywords, setKeywords] = useState([]);
+	const [frequency, setFrequency] = useState("weekly");
+	const [tiktokHandle, setTiktokHandle] = useState("");
+	const [website, setWebsite] = useState("");
+	const [emailWhenReady, setEmailWhenReady] = useState(true);
+	const [addKeyword, setAddKeyword] = useState("");
+	const [expanding, setExpanding] = useState(false);
+	const [submitting, setSubmitting] = useState(false);
+	const [error, setError] = useState(null);
+	const [searchResult, setSearchResult] = useState(null);
+	const [runDone, setRunDone] = useState(false);
+	const runIdxRef = useRef(0);
+	const runIdx = useRunStages(state === "running", runDone);
+	runIdxRef.current = runIdx;
+	const inputRef = useRef(null);
+	const kwCount = useMemo(() => keywords.filter((k) => k.selected).length, [keywords]);
+	const searchLeft = billing.searchCreditsRemaining;
+	const searchLimit = billing.searchCreditsLimit;
+	const startFlow = async () => {
+		const q = subject.trim().replace(/\s+/g, " ");
+		if (!q) return;
+		setSubject(q);
+		setError(null);
+		setState("keywords");
+		setExpanding(true);
+		try {
+			const seed = [...((await expandKeywords(q))?.keywords ?? []).slice(0, 6).map((label) => ({
+				label,
+				selected: true,
+				source: "ai"
+			}))];
+			const seen = /* @__PURE__ */ new Set();
+			const deduped = seed.filter((k) => {
+				const key = k.label.toLowerCase();
+				if (seen.has(key)) return false;
+				seen.add(key);
+				return true;
+			});
+			setKeywords(deduped);
+		} catch (e) {
+			setError(e.message || "Could not suggest keywords.");
+			setKeywords([{
+				label: q,
+				selected: true,
+				source: "yours"
+			}]);
+		} finally {
+			setExpanding(false);
+		}
+	};
+	const collapse = () => {
+		setState("collapsed");
+		setKeywords([]);
+		setSearchResult(null);
+		setRunDone(false);
+		setError(null);
+		setAddKeyword("");
+	};
+	const toggleKeyword = (label) => {
+		setKeywords((current) => current.map((k) => k.label === label ? {
+			...k,
+			selected: !k.selected
+		} : k));
+	};
+	const addOwnKeyword = () => {
+		const v = addKeyword.trim().replace(/\s+/g, " ");
+		if (!v) return;
+		if (keywords.some((k) => k.label.toLowerCase() === v.toLowerCase())) {
+			setAddKeyword("");
+			return;
+		}
+		setKeywords((current) => [...current, {
+			label: v,
+			selected: true,
+			source: "yours"
+		}]);
+		setAddKeyword("");
+	};
+	const regenerate = async () => {
+		if (!subject) return;
+		setExpanding(true);
+		try {
+			const fresh = ((await expandKeywords(subject, { fresh: true }))?.keywords ?? []).slice(0, 6);
+			setKeywords((current) => [...fresh.map((label) => ({
+				label,
+				selected: true,
+				source: "ai"
+			})), ...current.filter((k) => k.source === "yours")]);
+		} catch (e) {
+			setError(e.message || "Could not regenerate keywords.");
+		} finally {
+			setExpanding(false);
+		}
+	};
+	const runSearch = async () => {
+		if (!signedIn) {
+			window.location.assign(`/search?type=${kind}&q=${encodeURIComponent(subject)}`);
+			return;
+		}
+		const selected = keywords.filter((k) => k.selected).map((k) => k.label);
+		if (selected.length === 0) {
+			setError("Pick at least one keyword.");
+			return;
+		}
+		setSubmitting(true);
+		setError(null);
+		setState("running");
+		setRunDone(false);
+		try {
+			const created = await createSavedSearch({
+				type: kind,
+				phrase: subject,
+				name: subject,
+				keywords: selected,
+				frequency,
+				sources: {
+					tiktokHandle: tiktokHandle.trim().replace(/^@/, ""),
+					website: website.trim()
+				}
+			});
+			trackSearch({
+				id: created.id,
+				name: created.name,
+				url: created.url
+			});
+			setSearchResult(created);
+			onCreated?.(created);
+		} catch (e) {
+			setError(e.message || "Could not start the search.");
+			setState("sources");
+			setSubmitting(false);
+		}
+	};
+	useEffect(() => {
+		if (state !== "running" || !searchResult?.id) return void 0;
+		let cancelled = false;
+		let timer;
+		const tick = async () => {
+			if (cancelled) return;
+			try {
+				const s = (await fetchNotifications([searchResult.id]))?.searches?.[0];
+				if (!cancelled && s && (s.status === "done" || s.status === "complete")) {
+					setSearchResult((current) => ({
+						...current,
+						...s
+					}));
+					setRunDone(true);
+					setSubmitting(false);
+					window.setTimeout(() => !cancelled && setState("done"), 800);
+					return;
+				}
+				if (!cancelled && s?.status === "failed") {
+					setError("The search failed to complete.");
+					setSubmitting(false);
+					setState("sources");
+					return;
+				}
+			} catch {}
+			timer = window.setTimeout(tick, 4e3);
+		};
+		tick();
+		return () => {
+			cancelled = true;
+			window.clearTimeout(timer);
+		};
+	}, [state, searchResult?.id]);
+	const viewResults = () => {
+		if (searchResult?.url) router.visit(searchResult.url);
+	};
+	const showFlowBar = state !== "collapsed";
+	const pFillWidth = state === "running" ? `${8 + runIdx / STAGE_LIST.length * 88}%` : runDone ? "100%" : "8%";
+	return /* @__PURE__ */ jsxs(Fragment, { children: [/* @__PURE__ */ jsx("style", { children: `
+        .bif{background:var(--white);border:1px solid var(--line);border-radius:20px;padding:26px 28px;margin-bottom:44px}
+        .bif__ey{display:flex;align-items:center;gap:10px;margin-bottom:18px;font-size:.72rem;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--amber-ink)}
+        .bif__ey::before{content:'';width:22px;height:2px;background:var(--yellow)}
+        .bif__bar{display:flex;align-items:center;gap:14px;padding:9px 9px 9px 22px;background:var(--white);border:1.5px solid var(--line-2,#DEDBD3);border-radius:100px;transition:border-color .18s,box-shadow .18s,background .18s}
+        .bif__entry{display:flex;align-items:center;gap:14px;flex:1 1 auto;min-width:0;white-space:nowrap}
+        .bif__bar:hover{border-color:var(--faint-2,#9A968E)}
+        .bif__bar:focus-within{border-color:var(--yellow);box-shadow:0 0 0 5px rgba(255,198,41,.22);background:#FFFDF6}
+        .bif__bar svg.q{width:22px;height:22px;color:var(--faint-2,#9A968E);flex:none;transition:color .18s}
+        .bif__bar:focus-within svg.q{color:var(--amber-ink)}
+        .bif__bar input{flex:1 1 auto;min-width:0;width:100%;height:54px;line-height:54px;border:0;outline:0;background:transparent;font:inherit;font-size:1.14rem;font-weight:600;letter-spacing:-.02em;color:var(--ink);padding:0 4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+        .bif__bar input::placeholder{color:var(--faint-2,#9A968E);font-weight:500;letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+        .bif__cta{flex:none;display:inline-flex;align-items:center;gap:9px;height:54px;padding:0 26px;border-radius:100px;font-size:.96rem;font-weight:800;letter-spacing:-.015em;color:#1A1400;background:var(--yellow);border:0;cursor:pointer;box-shadow:0 1px 0 rgba(0,0,0,.04),0 4px 12px -6px rgba(255,198,41,.5);transition:background .18s,box-shadow .18s,transform .18s}
+        .bif__cta svg{width:16px;height:16px;flex:none}
+        .bif__cta:hover:not(:disabled){background:var(--yellow-hot,#FFD84D);box-shadow:0 1px 0 rgba(0,0,0,.05),0 6px 18px -6px rgba(255,198,41,.75);transform:translateY(-1px)}
+        .bif__cta:active:not(:disabled){transform:translateY(0)}
+        .bif__cta:disabled{opacity:.55;cursor:not-allowed;box-shadow:none}
+        .bif__hint{margin-top:14px;padding-left:6px;font-size:.85rem;color:var(--faint-2,#9A968E);line-height:1.5}
+        .bif__hint b{color:var(--muted);font-weight:700}
+        @media (max-width:640px){
+          .bif{padding:20px}
+          .bif__bar{flex-wrap:wrap;padding:12px;border-radius:20px;gap:10px}
+          .bif__entry{width:100%;gap:10px}
+          .bif__bar input{width:100%;height:44px;font-size:1.02rem;padding:0 6px}
+          .bif__cta{width:100%;justify-content:center;height:48px}
+        }
+        .flowbar{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+        .flowbar__head{display:flex;align-items:center;gap:14px;width:100%}
+        .subject{display:inline-flex;align-items:center;gap:9px;height:40px;padding:0 8px 0 14px;border:1px solid var(--line-2,#DEDBD3);border-radius:100px;background:var(--paper,#FAF9F6)}
+        .subject b{font-size:.96rem;font-weight:800;color:var(--ink);letter-spacing:-.01em}
+        .subject .edit{width:26px;height:26px;border-radius:50%;display:grid;place-items:center;color:var(--faint,#7C7972);border:0;background:transparent;cursor:pointer;transition:.15s}
+        .subject .edit:hover{background:#fff;color:var(--ink)} .subject .edit svg{width:14px;height:14px}
+        .mini{display:flex;align-items:center;gap:6px}
+        .mst{display:flex;align-items:center;gap:7px}
+        .mst__n{width:22px;height:22px;border-radius:50%;display:grid;place-items:center;font-size:.72rem;font-weight:800;flex:none}
+        .mst__n svg{width:11px;height:11px}
+        .mst.todo .mst__n{background:#fff;border:1.5px solid var(--line-2,#DEDBD3);color:var(--faint-2,#9A968E)}
+        .mst.now .mst__n{background:var(--yellow);color:#1A1400}
+        .mst.done .mst__n{background:var(--ink);color:#fff}
+        .mst__l{font-size:.8rem;font-weight:700;color:var(--faint-2,#9A968E)}
+        .mst.now .mst__l{color:var(--ink)}
+        .mst__line{width:22px;height:1.5px;background:var(--line-2,#DEDBD3);margin:0 4px}
+        .flowbar .cancel{margin-left:auto;width:38px;height:38px;border-radius:50%;display:grid;place-items:center;color:var(--faint,#7C7972);border:1px solid var(--line);background:transparent;cursor:pointer}
+        .flowbar .cancel:hover{color:var(--ink);border-color:var(--line-2,#DEDBD3);background:var(--paper,#FAF9F6)} .flowbar .cancel svg{width:16px;height:16px}
+        .divide{height:1px;background:var(--line);margin:20px 0}
+        .ph{margin-bottom:14px}
+        .ph__k{font-size:.7rem;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--amber-ink);margin-bottom:6px}
+        .ph h3{font-size:.96rem;font-weight:800;color:var(--ink);letter-spacing:-.028em}
+        .ph p.sub{font-size:.85rem;color:var(--faint-2,#9A968E);margin-top:5px}
+        .ph__row{display:flex;align-items:flex-start;justify-content:space-between;gap:16px}
+        .chips{display:flex;flex-wrap:wrap;gap:8px}
+        .kw{display:inline-flex;align-items:center;gap:8px;height:38px;padding:0 14px;border-radius:100px;background:var(--white);border:1px solid var(--line-2,#DEDBD3);font-size:.86rem;font-weight:600;color:var(--body);cursor:pointer;transition:.15s}
+        .kw:hover{border-color:var(--faint-2,#9A968E)}
+        .kw__c{width:16px;height:16px;border-radius:50%;border:1.5px solid var(--line-2,#DEDBD3);display:grid;place-items:center;color:transparent;transition:.15s}
+        .kw__c svg{width:10px;height:10px}
+        .kw.on{background:var(--wash);border-color:var(--yellow);color:#5C4200}
+        .kw.on .kw__c{background:var(--yellow);border-color:var(--yellow);color:#1A1400}
+        .kw__tag{font-size:.64rem;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--amber-ink);background:#fff;border-radius:5px;padding:2px 5px}
+        .kw--add{border-style:dashed;color:var(--amber-ink);font-weight:700;background:transparent;display:inline-flex;align-items:center;gap:8px;height:38px;padding:0 14px;border-radius:100px;border:1px dashed var(--line-2,#DEDBD3);cursor:pointer;font-size:.86rem}
+        .kw--add svg{width:14px;height:14px}
+        .kw--input{display:inline-flex;align-items:center;height:38px;padding:0 6px 0 14px;border-radius:100px;border:1.5px solid var(--yellow);background:var(--white);gap:6px}
+        .kw--input input{border:0;outline:0;background:transparent;font:inherit;font-size:.86rem;font-weight:600;color:var(--ink);min-width:120px}
+        .kw--input button{width:26px;height:26px;border-radius:50%;border:0;background:var(--yellow);color:#1A1400;display:grid;place-items:center;cursor:pointer}
+        .kw--input button svg{width:12px;height:12px}
+        .khint{font-size:.8rem;color:var(--faint-2,#9A968E);margin-top:12px}
+        .khint b{color:var(--ink)}
+        .schead{font-size:.9rem;font-weight:700;color:var(--ink);margin-top:22px}
+        .freq{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:16px}
+        .fq{text-align:left;padding:14px 16px;border:1px solid var(--line-2,#DEDBD3);border-radius:16px;background:var(--white);cursor:pointer;transition:.15s}
+        .fq:hover{border-color:var(--faint-2,#9A968E)}
+        .fq__t{display:flex;align-items:center;gap:9px;font-size:.9rem;font-weight:700;color:var(--ink)}
+        .fq__r{width:17px;height:17px;border-radius:50%;border:2px solid var(--line-2,#DEDBD3);flex:none;transition:.15s}
+        .fq p{font-size:.79rem;color:var(--faint-2,#9A968E);margin-top:6px}
+        .fq.on{border-color:var(--yellow);background:var(--wash)}
+        .fq.on .fq__r{border-color:var(--yellow);box-shadow:inset 0 0 0 3.5px var(--yellow)}
+        .srcs{display:flex;flex-direction:column;gap:10px}
+        .src{border:1px solid var(--line-2,#DEDBD3);border-radius:16px;padding:15px 16px;background:var(--white)}
+        .src__h{display:flex;align-items:center;gap:10px;margin-bottom:11px}
+        .src__i{width:30px;height:30px;border-radius:8px;background:var(--paper,#FAF9F6);display:grid;place-items:center;color:var(--muted);flex:none}
+        .src__i svg{width:15px;height:15px}
+        .src__t{font-size:.88rem;font-weight:700;color:var(--ink)}
+        .src__f{display:flex;align-items:center;gap:2px;height:44px;padding:0 14px;border:1px solid var(--line-2,#DEDBD3);border-radius:100px;background:var(--white);transition:.16s}
+        .src__f:focus-within{border-color:var(--yellow);box-shadow:0 0 0 4px rgba(255,198,41,.22)}
+        .src__pre{font-size:.92rem;font-weight:600;color:var(--faint-2,#9A968E)}
+        .src__f input{flex:1;border:0;outline:0;background:transparent;font:inherit;font-size:.92rem;font-weight:600;color:var(--ink)}
+        .src__m{font-size:.78rem;color:var(--muted);margin-top:9px;padding-left:2px}
+        .src__m.faint{color:var(--faint-2,#9A968E)}
+        .biffoot{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-top:20px}
+        .biffoot__r{display:flex;gap:10px;flex-wrap:wrap}
+        .run{text-align:center;padding:8px 0 4px}
+        .run__ring{width:46px;height:46px;margin:0 auto 14px;border-radius:50%;border:3px solid var(--wash);border-top-color:var(--yellow);animation:bif-spin 1s linear infinite}
+        @keyframes bif-spin{to{transform:rotate(360deg)}}
+        .run h3{font-size:1.08rem;font-weight:800;color:var(--ink)}
+        .run .sub{font-size:.86rem;color:var(--muted);margin-top:5px}
+        .pbar{height:7px;border-radius:100px;background:var(--paper,#FAF9F6);overflow:hidden;margin:18px 0 16px}
+        .pbar__f{height:100%;border-radius:100px;background:var(--yellow);transition:width .6s cubic-bezier(.22,.61,.36,1)}
+        .stages{display:flex;flex-direction:column;gap:2px;text-align:left;max-width:400px;margin:0 auto}
+        .stg{display:flex;align-items:center;gap:12px;padding:10px 14px;border-radius:11px;font-size:.88rem;font-weight:600;color:var(--faint-2,#9A968E);transition:.2s}
+        .stg__i{width:20px;height:20px;border-radius:50%;border:1.5px solid var(--line-2,#DEDBD3);flex:none;display:grid;place-items:center;color:transparent} .stg__i svg{width:11px;height:11px}
+        .stg.now{background:var(--wash);color:var(--ink)}
+        .stg.now .stg__i{border-color:var(--yellow);border-top-color:transparent;animation:bif-spin 1s linear infinite}
+        .stg.done{color:var(--muted)} .stg.done .stg__i{background:var(--ink);border-color:var(--ink);color:#fff}
+        .run__note{display:flex;align-items:center;justify-content:center;gap:10px;margin-top:18px;font-size:.83rem;color:var(--faint-2,#9A968E)}
+        .sw{width:36px;height:21px;border-radius:100px;background:var(--line-2,#DEDBD3);position:relative;transition:.18s;flex:none;cursor:pointer;border:0}
+        .sw::after{content:'';position:absolute;top:2px;left:2px;width:17px;height:17px;border-radius:50%;background:#fff;transition:.18s}
+        .sw.on{background:var(--yellow)} .sw.on::after{left:17px}
+        .done{display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+        .done__c{width:44px;height:44px;border-radius:50%;background:var(--ok-bg);color:var(--ok);display:grid;place-items:center;flex:none}
+        .done__c svg{width:22px;height:22px}
+        .done h3{font-size:1.06rem;font-weight:800;color:var(--ink)}
+        .done p{font-size:.85rem;color:var(--muted);margin-top:2px}
+        .done__r{margin-left:auto;display:flex;gap:10px;flex-wrap:wrap}
+        .bif__err{margin-top:12px;padding:10px 14px;border-radius:12px;background:#FBEDE6;color:#B0431B;font-size:.85rem;font-weight:600}
+      ` }), /* @__PURE__ */ jsxs("section", {
+		className: "bif",
+		children: [
+			state === "collapsed" && /* @__PURE__ */ jsxs(Fragment, { children: [
+				/* @__PURE__ */ jsx("p", {
+					className: "bif__ey",
+					children: eyebrow
+				}),
+				/* @__PURE__ */ jsxs("form", {
+					className: "bif__bar",
+					onSubmit: (e) => {
+						e.preventDefault();
+						startFlow();
+					},
+					children: [/* @__PURE__ */ jsxs("div", {
+						className: "bif__entry",
+						children: [/* @__PURE__ */ jsxs("svg", {
+							className: "q",
+							viewBox: "0 0 24 24",
+							fill: "none",
+							stroke: "currentColor",
+							strokeWidth: "2",
+							strokeLinecap: "round",
+							children: [/* @__PURE__ */ jsx("circle", {
+								cx: "11",
+								cy: "11",
+								r: "7"
+							}), /* @__PURE__ */ jsx("path", { d: "m20 20-3.5-3.5" })]
+						}), /* @__PURE__ */ jsx("input", {
+							ref: inputRef,
+							type: "text",
+							autoComplete: "off",
+							value: subject,
+							onChange: (e) => setSubject(e.target.value),
+							placeholder,
+							"aria-label": eyebrow
+						})]
+					}), /* @__PURE__ */ jsxs("button", {
+						type: "submit",
+						className: "bif__cta",
+						disabled: !subject.trim(),
+						children: [/* @__PURE__ */ jsx(Search, { className: "h-4 w-4" }), " Find outliers"]
+					})]
+				}),
+				/* @__PURE__ */ jsxs("p", {
+					className: "bif__hint",
+					children: [
+						hint,
+						" Try ",
+						/* @__PURE__ */ jsxs("b", { children: [
+							"\"",
+							sample,
+							"\""
+						] }),
+						searchLimit > 0 && /* @__PURE__ */ jsxs(Fragment, { children: [
+							" · ",
+							searchLeft,
+							" of ",
+							searchLimit,
+							" searches left this cycle"
+						] })
+					]
+				})
+			] }),
+			showFlowBar && /* @__PURE__ */ jsxs(Fragment, { children: [/* @__PURE__ */ jsxs("div", {
+				className: "flowbar",
+				children: [/* @__PURE__ */ jsxs("div", {
+					className: "flowbar__head",
+					children: [/* @__PURE__ */ jsxs("span", {
+						className: "subject",
+						children: [/* @__PURE__ */ jsx("b", { children: subject }), /* @__PURE__ */ jsx("button", {
+							type: "button",
+							className: "edit",
+							title: "Change subject",
+							onClick: () => {
+								collapse();
+								setTimeout(() => inputRef.current?.focus(), 0);
+							},
+							children: /* @__PURE__ */ jsxs("svg", {
+								viewBox: "0 0 24 24",
+								fill: "none",
+								stroke: "currentColor",
+								strokeWidth: "2",
+								strokeLinecap: "round",
+								strokeLinejoin: "round",
+								children: [/* @__PURE__ */ jsx("path", { d: "M12 20h9" }), /* @__PURE__ */ jsx("path", { d: "M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z" })]
+							})
+						})]
+					}), state !== "running" && state !== "done" && /* @__PURE__ */ jsx("button", {
+						className: "cancel",
+						title: "Cancel",
+						onClick: collapse,
+						children: /* @__PURE__ */ jsx(Close, { className: "h-4 w-4" })
+					})]
+				}), /* @__PURE__ */ jsx(MiniStepper, { current: state })]
+			}), /* @__PURE__ */ jsx("div", { className: "divide" })] }),
+			state === "keywords" && /* @__PURE__ */ jsxs("div", { children: [
+				/* @__PURE__ */ jsxs("div", {
+					className: "ph ph__row",
+					children: [/* @__PURE__ */ jsxs("div", { children: [
+						/* @__PURE__ */ jsx("p", {
+							className: "ph__k",
+							children: "Expand"
+						}),
+						/* @__PURE__ */ jsx("h3", { children: "Widen the pull" }),
+						/* @__PURE__ */ jsxs("p", {
+							className: "sub",
+							children: [
+								"Terms people actually pair with ",
+								subject,
+								" on TikTok."
+							]
+						})
+					] }), /* @__PURE__ */ jsxs("button", {
+						type: "button",
+						className: "btn btn--g btn--sm",
+						onClick: regenerate,
+						disabled: expanding,
+						children: [
+							/* @__PURE__ */ jsx(Refresh, { className: "h-4 w-4" }),
+							" ",
+							expanding ? "Loading…" : "Regenerate"
+						]
+					})]
+				}),
+				/* @__PURE__ */ jsxs("div", {
+					className: "chips",
+					children: [keywords.map((k) => /* @__PURE__ */ jsxs("button", {
+						type: "button",
+						className: `kw${k.selected ? " on" : ""}`,
+						onClick: () => toggleKeyword(k.label),
+						children: [
+							/* @__PURE__ */ jsx("span", {
+								className: "kw__c",
+								children: /* @__PURE__ */ jsx("svg", {
+									viewBox: "0 0 24 24",
+									fill: "none",
+									stroke: "currentColor",
+									strokeWidth: "3.4",
+									strokeLinecap: "round",
+									strokeLinejoin: "round",
+									children: /* @__PURE__ */ jsx("path", { d: "m5 13 4 4L19 7" })
+								})
+							}),
+							k.label,
+							k.source === "yours" && /* @__PURE__ */ jsx("span", {
+								className: "kw__tag",
+								children: "yours"
+							})
+						]
+					}, k.label)), /* @__PURE__ */ jsxs("span", {
+						className: "kw--input",
+						children: [/* @__PURE__ */ jsx("input", {
+							type: "text",
+							value: addKeyword,
+							onChange: (e) => setAddKeyword(e.target.value),
+							onKeyDown: (e) => {
+								if (e.key === "Enter") {
+									e.preventDefault();
+									addOwnKeyword();
+								}
+							},
+							placeholder: "Add your own",
+							"aria-label": "Add your own keyword"
+						}), /* @__PURE__ */ jsx("button", {
+							type: "button",
+							onClick: addOwnKeyword,
+							title: "Add",
+							children: /* @__PURE__ */ jsx(Plus, { className: "h-3 w-3" })
+						})]
+					})]
+				}),
+				/* @__PURE__ */ jsxs("p", {
+					className: "khint",
+					children: [/* @__PURE__ */ jsx("b", { children: kwCount }), " selected · each keyword widens the same single search."]
+				}),
+				/* @__PURE__ */ jsx("p", {
+					className: "schead",
+					children: "How often should we re-run it?"
+				}),
+				/* @__PURE__ */ jsx("div", {
+					className: "freq",
+					children: [{
+						key: "weekly",
+						label: "Weekly",
+						desc: "Fresh viral videos every week. Best for fast-moving categories."
+					}, {
+						key: "monthly",
+						label: "Monthly",
+						desc: "A lighter monthly pull for slower niches."
+					}].map((f) => /* @__PURE__ */ jsxs("button", {
+						type: "button",
+						className: `fq${frequency === f.key ? " on" : ""}`,
+						onClick: () => setFrequency(f.key),
+						children: [/* @__PURE__ */ jsxs("span", {
+							className: "fq__t",
+							children: [/* @__PURE__ */ jsx("span", { className: "fq__r" }), f.label]
+						}), /* @__PURE__ */ jsx("p", { children: f.desc })]
+					}, f.key))
+				}),
+				error && /* @__PURE__ */ jsx("div", {
+					className: "bif__err",
+					children: error
+				}),
+				/* @__PURE__ */ jsxs("div", {
+					className: "biffoot",
+					children: [/* @__PURE__ */ jsx("button", {
+						type: "button",
+						className: "btn btn--g",
+						onClick: collapse,
+						children: "Cancel"
+					}), /* @__PURE__ */ jsxs("button", {
+						type: "button",
+						className: "btn btn--y",
+						onClick: () => setState("sources"),
+						disabled: kwCount === 0,
+						children: ["Continue ", /* @__PURE__ */ jsx(Arrow, {})]
+					})]
+				})
+			] }),
+			state === "sources" && /* @__PURE__ */ jsxs("div", { children: [
+				/* @__PURE__ */ jsxs("div", {
+					className: "ph",
+					children: [
+						/* @__PURE__ */ jsx("p", {
+							className: "ph__k",
+							children: "Optional"
+						}),
+						/* @__PURE__ */ jsxs("h3", { children: [
+							"Add the ",
+							kind === "product" ? "product" : "brand",
+							"'s handle or website"
+						] }),
+						/* @__PURE__ */ jsx("p", {
+							className: "sub",
+							children: "Helps us match videos more accurately and unlock better insights."
+						})
+					]
+				}),
+				/* @__PURE__ */ jsxs("div", {
+					className: "srcs",
+					children: [/* @__PURE__ */ jsxs("div", {
+						className: "src",
+						children: [
+							/* @__PURE__ */ jsxs("div", {
+								className: "src__h",
+								children: [/* @__PURE__ */ jsx("span", {
+									className: "src__i",
+									children: /* @__PURE__ */ jsx("svg", {
+										viewBox: "0 0 24 24",
+										fill: "currentColor",
+										children: /* @__PURE__ */ jsx("path", { d: "M8 5v14l11-7z" })
+									})
+								}), /* @__PURE__ */ jsx("span", {
+									className: "src__t",
+									children: "TikTok handle"
+								})]
+							}),
+							/* @__PURE__ */ jsxs("div", {
+								className: "src__f",
+								children: [/* @__PURE__ */ jsx("span", {
+									className: "src__pre",
+									children: "@"
+								}), /* @__PURE__ */ jsx("input", {
+									value: tiktokHandle,
+									onChange: (e) => setTiktokHandle(e.target.value.replace(/^@/, "")),
+									placeholder: sample.split(" ")[0]
+								})]
+							}),
+							/* @__PURE__ */ jsx("p", {
+								className: "src__m faint",
+								children: "Optional"
+							})
+						]
+					}), /* @__PURE__ */ jsxs("div", {
+						className: "src",
+						children: [
+							/* @__PURE__ */ jsxs("div", {
+								className: "src__h",
+								children: [/* @__PURE__ */ jsx("span", {
+									className: "src__i",
+									children: /* @__PURE__ */ jsx("svg", {
+										viewBox: "0 0 24 24",
+										fill: "none",
+										stroke: "currentColor",
+										strokeWidth: "2",
+										strokeLinecap: "round",
+										strokeLinejoin: "round",
+										children: /* @__PURE__ */ jsx("path", { d: "M3 9l1.5-5h15L21 9M3 9v10a1 1 0 0 0 1 1h16a1 1 0 0 0 1-1V9M3 9h18M9 20v-6h6v6" })
+									})
+								}), /* @__PURE__ */ jsx("span", {
+									className: "src__t",
+									children: "Website"
+								})]
+							}),
+							/* @__PURE__ */ jsxs("div", {
+								className: "src__f",
+								children: [/* @__PURE__ */ jsx("span", {
+									className: "src__pre",
+									children: "https://"
+								}), /* @__PURE__ */ jsx("input", {
+									value: website,
+									onChange: (e) => setWebsite(e.target.value),
+									placeholder: `${sample.split(" ")[0]}.com`
+								})]
+							}),
+							/* @__PURE__ */ jsx("p", {
+								className: "src__m faint",
+								children: "Optional"
+							})
+						]
+					})]
+				}),
+				error && /* @__PURE__ */ jsx("div", {
+					className: "bif__err",
+					children: error
+				}),
+				/* @__PURE__ */ jsxs("div", {
+					className: "biffoot",
+					children: [/* @__PURE__ */ jsx("button", {
+						type: "button",
+						className: "btn btn--g",
+						onClick: () => setState("keywords"),
+						children: "Back"
+					}), /* @__PURE__ */ jsxs("div", {
+						className: "biffoot__r",
+						children: [/* @__PURE__ */ jsx("button", {
+							type: "button",
+							className: "btn btn--g",
+							onClick: runSearch,
+							disabled: submitting,
+							children: "Skip"
+						}), /* @__PURE__ */ jsxs("button", {
+							type: "button",
+							className: "btn btn--y",
+							onClick: runSearch,
+							disabled: submitting,
+							children: [
+								submitting ? "Starting…" : "Run the search",
+								" ",
+								/* @__PURE__ */ jsx(Arrow, {})
+							]
+						})]
+					})]
+				})
+			] }),
+			state === "running" && /* @__PURE__ */ jsxs("div", {
+				className: "run",
+				children: [
+					/* @__PURE__ */ jsx("div", { className: "run__ring" }),
+					/* @__PURE__ */ jsxs("h3", { children: ["Scanning TikTok for ", subject] }),
+					/* @__PURE__ */ jsxs("p", {
+						className: "sub",
+						children: [
+							"Widening with ",
+							kwCount,
+							" keyword",
+							kwCount === 1 ? "" : "s",
+							" · ",
+							frequency,
+							" schedule"
+						]
+					}),
+					/* @__PURE__ */ jsx("div", {
+						className: "pbar",
+						children: /* @__PURE__ */ jsx("div", {
+							className: "pbar__f",
+							style: { width: pFillWidth }
+						})
+					}),
+					/* @__PURE__ */ jsx("div", {
+						className: "stages",
+						children: STAGE_LIST.map((s, i) => {
+							return /* @__PURE__ */ jsxs("div", {
+								className: `stg ${runDone || i < runIdx ? "done" : i === runIdx ? "now" : ""}`.trim(),
+								children: [/* @__PURE__ */ jsx("span", {
+									className: "stg__i",
+									children: /* @__PURE__ */ jsx("svg", {
+										viewBox: "0 0 24 24",
+										fill: "none",
+										stroke: "currentColor",
+										strokeWidth: "3.4",
+										strokeLinecap: "round",
+										strokeLinejoin: "round",
+										children: /* @__PURE__ */ jsx("path", { d: "m5 13 4 4L19 7" })
+									})
+								}), s.label]
+							}, s.key);
+						})
+					}),
+					/* @__PURE__ */ jsxs("div", {
+						className: "run__note",
+						children: ["Email me when it's ready", /* @__PURE__ */ jsx("button", {
+							type: "button",
+							className: `sw${emailWhenReady ? " on" : ""}`,
+							onClick: () => setEmailWhenReady((v) => !v),
+							"aria-pressed": emailWhenReady,
+							"aria-label": "Toggle email notification"
+						})]
+					})
+				]
+			}),
+			state === "done" && searchResult && /* @__PURE__ */ jsxs("div", {
+				className: "done",
+				children: [
+					/* @__PURE__ */ jsx("span", {
+						className: "done__c",
+						children: /* @__PURE__ */ jsx("svg", {
+							viewBox: "0 0 24 24",
+							fill: "none",
+							stroke: "currentColor",
+							strokeWidth: "3",
+							strokeLinecap: "round",
+							strokeLinejoin: "round",
+							children: /* @__PURE__ */ jsx("path", { d: "m5 13 4 4L19 7" })
+						})
+					}),
+					/* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsxs("h3", { children: [searchResult.name || subject, " is ready"] }), /* @__PURE__ */ jsxs("p", { children: [
+						searchResult.outlier_count ?? 0,
+						" outlier",
+						(searchResult.outlier_count ?? 0) === 1 ? "" : "s",
+						" this week",
+						searchResult.top_score ? ` · top score ${Math.round(searchResult.top_score)}×` : "",
+						searchResult.result_count != null ? ` · ${searchResult.result_count} videos scanned` : ""
+					] })] }),
+					/* @__PURE__ */ jsxs("div", {
+						className: "done__r",
+						children: [/* @__PURE__ */ jsx("button", {
+							type: "button",
+							className: "btn btn--g",
+							onClick: collapse,
+							children: "Start another"
+						}), /* @__PURE__ */ jsxs("button", {
+							type: "button",
+							className: "btn btn--y",
+							onClick: viewResults,
+							children: ["View results ", /* @__PURE__ */ jsx(Arrow, {})]
+						})]
+					})
+				]
+			})
+		]
+	})] });
+}
+//#endregion
 //#region resources/js/Pages/components/EntitlementsBar.jsx
 var EntitlementsBar_exports = /* @__PURE__ */ __exportAll({ default: () => EntitlementsBar });
 /**
@@ -3486,145 +4447,6 @@ function SavedSearchRow({ search, onNavigate, actions }) {
 	});
 }
 //#endregion
-//#region resources/js/landing/flow/api.js
-/**
-* Small fetch wrapper for the saved-search endpoints. Inertia handles page
-* navigation; these calls are the in-page ones that should not re-render the
-* whole document.
-*/
-function csrfToken() {
-	return document.querySelector("meta[name=\"csrf-token\"]")?.getAttribute("content") ?? "";
-}
-var API_V1 = "/api/v1";
-async function request(url, { method = "GET", body } = {}) {
-	const response = await fetch(url, {
-		method,
-		credentials: "same-origin",
-		headers: {
-			Accept: "application/json",
-			"X-Requested-With": "XMLHttpRequest",
-			...body ? { "Content-Type": "application/json" } : {},
-			...method === "GET" ? {} : { "X-CSRF-TOKEN": csrfToken() }
-		},
-		...body ? { body: JSON.stringify(body) } : {}
-	});
-	const payload = await response.json().catch(() => null);
-	if (!response.ok) {
-		const error = new Error(payload?.message || `Request failed (${response.status})`);
-		error.status = response.status;
-		error.payload = payload;
-		throw error;
-	}
-	return payload;
-}
-function expandKeywords(phrase, { signal, fresh = false } = {}) {
-	return fetch(`${API_V1}/saved-searches/expand`, {
-		method: "POST",
-		credentials: "same-origin",
-		signal,
-		headers: {
-			Accept: "application/json",
-			"Content-Type": "application/json",
-			"X-Requested-With": "XMLHttpRequest",
-			"X-CSRF-TOKEN": csrfToken()
-		},
-		body: JSON.stringify({
-			phrase,
-			...fresh ? { fresh: true } : {}
-		})
-	}).then(async (response) => {
-		const payload = await response.json().catch(() => null);
-		if (!response.ok) throw new Error(payload?.message || "Could not suggest keywords.");
-		return payload;
-	});
-}
-function createSavedSearch({ type, phrase, name, keywords, frequency, sources }) {
-	return request(`${API_V1}/saved-searches`, {
-		method: "POST",
-		body: {
-			type,
-			phrase,
-			name,
-			keywords,
-			frequency,
-			...sources ? { sources } : {}
-		}
-	});
-}
-function fetchNotifications(ids) {
-	return request(`${API_V1}/saved-searches/notifications?${ids.map((id) => `ids[]=${encodeURIComponent(id)}`).join("&")}`);
-}
-function fetchRecentSearches() {
-	return request(`${API_V1}/saved-searches/recent`);
-}
-var savedSearch = {
-	get: (id) => request(`${API_V1}/saved-searches/${id}/json`),
-	bookmark: (id, bookmarked) => request(`${API_V1}/saved-searches/${id}/bookmark`, {
-		method: "PATCH",
-		body: { bookmarked }
-	}),
-	pause: (id) => request(`${API_V1}/saved-searches/${id}/pause`, { method: "PATCH" }),
-	resume: (id) => request(`${API_V1}/saved-searches/${id}/resume`, { method: "PATCH" }),
-	update: (id, body) => request(`${API_V1}/saved-searches/${id}/frequency`, {
-		method: "PATCH",
-		body
-	}),
-	refresh: (id) => request(`${API_V1}/saved-searches/${id}/refresh`, { method: "POST" }),
-	retry: (id) => request(`${API_V1}/saved-searches/${id}/retry`, { method: "POST" }),
-	destroy: (id) => request(`${API_V1}/saved-searches/${id}`, { method: "DELETE" })
-};
-var billing = {
-	checkout: (slug) => {
-		window.location.assign(`/billing/checkout/${encodeURIComponent(slug)}`);
-	},
-	trialCheckout: (slug) => {
-		window.location.assign(`/billing/checkout/${encodeURIComponent(slug)}?trial=1`);
-	}
-};
-var bookmarks = {
-	save: (id) => request(`${API_V1}/videos/${id}/bookmark`, { method: "POST" }),
-	remove: (id) => request(`${API_V1}/videos/${id}/bookmark`, { method: "DELETE" })
-};
-var videoAnalysis = {
-	request: (id, body = {}) => request(`${API_V1}/videos/${id}/analysis`, {
-		method: "POST",
-		body
-	}),
-	get: (id) => request(`${API_V1}/videos/${id}/analysis`)
-};
-var TRACKED_KEY = "vvf-tracked-searches";
-function readTracked() {
-	try {
-		const raw = window.sessionStorage.getItem(TRACKED_KEY);
-		const parsed = raw ? JSON.parse(raw) : [];
-		return Array.isArray(parsed) ? parsed : [];
-	} catch {
-		return [];
-	}
-}
-function writeTracked(entries) {
-	try {
-		window.sessionStorage.setItem(TRACKED_KEY, JSON.stringify(entries.slice(0, 10)));
-	} catch {}
-}
-function trackSearch(entry) {
-	const existing = readTracked().filter((t) => String(t.id) !== String(entry.id));
-	writeTracked([{
-		runningPromptShown: false,
-		completedPromptShown: false,
-		...entry
-	}, ...existing]);
-}
-function updateTracked(id, patch) {
-	writeTracked(readTracked().map((t) => String(t.id) === String(id) ? {
-		...t,
-		...patch
-	} : t));
-}
-function untrackSearch(id) {
-	writeTracked(readTracked().filter((t) => String(t.id) !== String(id)));
-}
-//#endregion
 //#region resources/js/Pages/components/SearchListScreen.jsx
 var SearchListScreen_exports = /* @__PURE__ */ __exportAll({ default: () => SearchListScreen });
 var COPY = {
@@ -3859,7 +4681,17 @@ function SearchListScreen({ kind = "brand", searches = [], moving = [], suggesti
 		subtitle: copy.subtitle,
 		actions: /* @__PURE__ */ jsx(EntitlementsBar, {}),
 		children: [
-			/* @__PURE__ */ jsxs("section", {
+			kind === "brand" ? /* @__PURE__ */ jsx(BrandInlineFlow, {
+				kind: "brand",
+				eyebrow: copy.heroEyebrow,
+				placeholder: copy.placeholder,
+				sample: copy.sample,
+				hint: copy.heroHint,
+				onCreated: (created) => setSearchList((current) => [{
+					...created,
+					search_type: "brand"
+				}, ...current])
+			}) : /* @__PURE__ */ jsxs("section", {
 				className: "bhero",
 				children: [
 					/* @__PURE__ */ jsx("p", {
@@ -4541,7 +5373,7 @@ var SearchLauncher_exports = /* @__PURE__ */ __exportAll({ default: () => Search
 *   - a "Popular" row of fill-in chips that only *populate* the input
 *     (they never fire a search — a search costs a credit).
 */
-var TYPES = [
+var TYPES$1 = [
 	{
 		key: "brand",
 		label: "Your brand",
@@ -4588,7 +5420,7 @@ function SearchLauncher({ initialType = "brand", initialQuery = "", onSubmit, su
 		width: 0,
 		transform: "translateX(0px)"
 	});
-	const baseConfig = TYPES.find((t) => t.key === type) ?? TYPES[0];
+	const baseConfig = TYPES$1.find((t) => t.key === type) ?? TYPES$1[0];
 	const dynamic = (suggestionsByType?.[type] ?? []).map((s) => typeof s === "string" ? s : s?.name).filter(Boolean).slice(0, 3);
 	const chips = dynamic.length > 0 ? dynamic : baseConfig.suggestions;
 	const query = value.trim().replace(/\s+/g, " ");
@@ -4638,7 +5470,11 @@ function SearchLauncher({ initialType = "brand", initialQuery = "", onSubmit, su
 						}),
 						" ",
 						/* @__PURE__ */ jsx("b", { children: "Step 1" }),
-						"\xA0of 3 · Subject"
+						"\xA0of 3",
+						/* @__PURE__ */ jsx("span", {
+							className: "prog__detail",
+							children: " · Subject"
+						})
 					]
 				})]
 			}),
@@ -4651,7 +5487,7 @@ function SearchLauncher({ initialType = "brand", initialQuery = "", onSubmit, su
 					className: "seg__ind",
 					style: indStyle,
 					"aria-hidden": true
-				}), TYPES.map((option) => {
+				}), TYPES$1.map((option) => {
 					const Icon = option.icon;
 					const active = option.key === type;
 					return /* @__PURE__ */ jsxs("button", {
@@ -5452,7 +6288,7 @@ function readRunParam() {
 * there is no "Results" step — the visitor is already signed in by the time
 * they run.
 */
-function Stepper({ kind, current }) {
+function Stepper$1({ kind, current }) {
 	const steps = [
 		{
 			k: "subject",
@@ -5768,7 +6604,7 @@ function SearchWizard({ initialType = "brand", initialQuery = "", heading = "Sta
 		}) : /* @__PURE__ */ jsxs("div", {
 			className: "card",
 			children: [
-				/* @__PURE__ */ jsx(Stepper, {
+				/* @__PURE__ */ jsx(Stepper$1, {
 					kind,
 					current: step
 				}),
@@ -5899,7 +6735,11 @@ function RecentRow({ search, onNavigate, retrying, onRetry }) {
 	const freq = titleCase(search.frequency) || "Weekly";
 	const initials = (search.name || search.phrase || "?").slice(0, 2).toUpperCase();
 	const bars = sparkBars(search.id, 6);
-	const trend = typeof search.trend === "number" ? search.trend : null;
+	const trend = typeof search.trend === "number" ? search.trend : (() => {
+		const last = bars[bars.length - 1];
+		const prevAvg = bars.slice(0, -1).reduce((a, b) => a + b, 0) / (bars.length - 1);
+		return prevAvg ? Math.round((last - prevAvg) / prevAvg * 100) : 0;
+	})();
 	const canRetry = search.can_retry_initial === true;
 	return /* @__PURE__ */ jsxs("div", {
 		className: "row",
@@ -5943,8 +6783,8 @@ function RecentRow({ search, onNavigate, retrying, onRetry }) {
 				}, i))
 			}),
 			/* @__PURE__ */ jsx("span", {
-				className: `trend${trend != null && trend >= 0 ? " up" : ""}`,
-				children: trend != null ? `${trend >= 0 ? "+" : ""}${trend}%` : "—"
+				className: `trend${trend >= 0 ? " up" : ""}`,
+				children: `${trend >= 0 ? "+" : ""}${trend}%`
 			}),
 			/* @__PURE__ */ jsxs("span", {
 				className: `pill ${status.cls}`,
@@ -5977,19 +6817,17 @@ function RecentRow({ search, onNavigate, retrying, onRetry }) {
 		]
 	});
 }
-/** "Your tracking at a glance" — four stat cells from the recent searches. */
-function GlanceStrip({ searches }) {
-	const stats = useMemo(() => {
-		const videos = searches.reduce((sum, s) => sum + (s.result_count ?? 0), 0);
-		const outliers = searches.reduce((sum, s) => sum + (s.outlier_count ?? 0), 0);
-		return {
-			videos,
-			outliers,
-			avg: searches.length ? Math.round(outliers / Math.max(searches.length, 1) * 10) / 10 : 0,
-			creators: searches.reduce((sum, s) => sum + (s.creator_count ?? 0), 0),
-			searchesCount: searches.length
-		};
-	}, [searches]);
+/** "Your tracking at a glance" — portfolio-wide stats from the server. */
+function GlanceStrip({ stats }) {
+	const s = stats ?? {};
+	const videos = s.videos_tracked ?? 0;
+	const videosNew = s.videos_tracked_delta_week ?? 0;
+	const outliers = s.outliers_this_week ?? 0;
+	const outliersDelta = s.outliers_delta_week ?? 0;
+	const avgScore = s.avg_outlier_score ?? 0;
+	const creators = s.creators_surfaced ?? 0;
+	const searchesCount = s.searches_count ?? 0;
+	const fmtDelta = (n) => `${n >= 0 ? "+" : "−"}${Math.abs(n).toLocaleString()}`;
 	const upArrow = /* @__PURE__ */ jsxs("svg", {
 		viewBox: "0 0 24 24",
 		fill: "none",
@@ -6014,15 +6852,15 @@ function GlanceStrip({ searches }) {
 					}),
 					/* @__PURE__ */ jsx("div", {
 						className: "gl__v",
-						children: stats.videos.toLocaleString()
+						children: videos.toLocaleString()
 					}),
 					/* @__PURE__ */ jsxs("div", {
 						className: "gl__d up",
 						children: [
 							upArrow,
-							"across ",
-							stats.searchesCount,
-							" searches"
+							"+",
+							videosNew.toLocaleString(),
+							" this week"
 						]
 					})
 				]
@@ -6036,11 +6874,15 @@ function GlanceStrip({ searches }) {
 					}),
 					/* @__PURE__ */ jsx("div", {
 						className: "gl__v",
-						children: stats.outliers.toLocaleString()
+						children: outliers.toLocaleString()
 					}),
 					/* @__PURE__ */ jsxs("div", {
-						className: "gl__d up",
-						children: [upArrow, "vs baseline"]
+						className: `gl__d${outliersDelta >= 0 ? " up" : ""}`,
+						children: [
+							upArrow,
+							fmtDelta(outliersDelta),
+							" vs last"
+						]
 					})
 				]
 			}),
@@ -6049,15 +6891,15 @@ function GlanceStrip({ searches }) {
 				children: [
 					/* @__PURE__ */ jsx("div", {
 						className: "gl__l",
-						children: "Avg outliers / search"
+						children: "Avg outlier score"
 					}),
-					/* @__PURE__ */ jsx("div", {
+					/* @__PURE__ */ jsxs("div", {
 						className: "gl__v",
-						children: stats.avg
+						children: [avgScore, "×"]
 					}),
 					/* @__PURE__ */ jsx("div", {
 						className: "gl__d",
-						children: "rolling"
+						children: "above baseline"
 					})
 				]
 			}),
@@ -6070,13 +6912,13 @@ function GlanceStrip({ searches }) {
 					}),
 					/* @__PURE__ */ jsx("div", {
 						className: "gl__v",
-						children: stats.creators.toLocaleString()
+						children: creators.toLocaleString()
 					}),
 					/* @__PURE__ */ jsxs("div", {
 						className: "gl__d",
 						children: [
 							"across ",
-							stats.searchesCount,
+							searchesCount,
 							" searches"
 						]
 					})
@@ -6154,7 +6996,7 @@ function FailedSearchModal({ search, retrying, onRetry, onClose }) {
 	});
 }
 function Dashboard() {
-	const { flash = {}, recent = [], searchSuggestions = {} } = usePage().props;
+	const { flash = {}, recent = [], stats = null, searchSuggestions = {} } = usePage().props;
 	const [readyModal, setReadyModal] = useState(null);
 	const [failedModal, setFailedModal] = useState(null);
 	const [retryingSearchId, setRetryingSearchId] = useState(null);
@@ -6225,7 +7067,7 @@ function Dashboard() {
 			setRetryingSearchId(null);
 		}
 	};
-	const dashboardExtras = /* @__PURE__ */ jsxs(Fragment, { children: [/* @__PURE__ */ jsx(GlanceStrip, { searches: recentSearches }), /* @__PURE__ */ jsx(RecentCard, {
+	const dashboardExtras = /* @__PURE__ */ jsxs(Fragment, { children: [/* @__PURE__ */ jsx(GlanceStrip, { stats }), /* @__PURE__ */ jsx(RecentCard, {
 		searches: recentSearches,
 		retryingSearchId,
 		onRetry: retryFailedSearch
@@ -6244,7 +7086,7 @@ function Dashboard() {
 
         .seg{position:relative;display:flex;padding:4px;background:var(--canvas,#F7F6F2);border:1px solid var(--line);border-radius:100px;margin-bottom:14px}
         .seg__ind{position:absolute;top:4px;bottom:4px;left:4px;width:0;border-radius:100px;background:var(--yellow);transition:transform .32s cubic-bezier(.22,.61,.36,1),width .32s cubic-bezier(.22,.61,.36,1)}
-        .seg__b{position:relative;z-index:1;flex:1 1 0;display:inline-flex;align-items:center;justify-content:center;gap:8px;height:44px;border-radius:100px;font-size:.9rem;font-weight:600;letter-spacing:-.01em;color:var(--muted);background:transparent;border:0;cursor:pointer;transition:color .22s}
+        .seg__b{position:relative;z-index:1;flex:1 1 0;display:inline-flex;align-items:center;justify-content:center;gap:8px;min-width:0;height:44px;padding:0 10px;border-radius:100px;font-size:.9rem;font-weight:600;letter-spacing:-.01em;color:var(--muted);background:transparent;border:0;cursor:pointer;transition:color .22s;white-space:nowrap}
         .seg__b svg{width:16px;height:16px;opacity:.65;transition:opacity .22s}
         .seg__b:hover{color:var(--ink)} .seg__b:hover svg{opacity:1}
         .seg__b[aria-selected="true"]{color:#1A1400}
@@ -6255,7 +7097,7 @@ function Dashboard() {
         .bar__q{width:19px;height:19px;color:var(--faint-2,#9A968E);flex:none}
         .bar input{flex:1 1 auto;min-width:0;height:48px;border:0;outline:0;background:transparent;font:inherit;font-size:1.06rem;font-weight:600;letter-spacing:-.015em;color:var(--ink)}
         .bar input::placeholder{color:var(--faint-2,#9A968E);font-weight:500}
-        .bar .btn--y{flex:none;height:48px;padding:0 22px;border-radius:100px;font-size:.92rem;font-weight:700;display:inline-flex;align-items:center;gap:7px}
+        .bar .btn--y{flex:none;height:48px;padding:0 18px;border-radius:100px;font-size:.88rem;font-weight:700;display:inline-flex;align-items:center;gap:6px}
         .bar .btn--y[disabled]{opacity:.55;cursor:not-allowed}
         .btn__a{display:inline-flex;transition:transform .2s}
         .bar .btn--y:hover .btn__a{transform:translateX(3px)}
@@ -6306,6 +7148,25 @@ function Dashboard() {
         @media (max-width:860px){
           .rc .row{grid-template-columns:auto 1fr auto;gap:12px}
           .rc .row .spark,.rc .row .trend,.rc .row .pill{display:none}
+        }
+        @media (max-width:640px){
+          .hero{padding:18px}
+          .hero__head{align-items:flex-start;gap:10px;margin-bottom:14px}
+          .hero__head h2{font-size:1rem}
+          .prog{font-size:.68rem;gap:6px}
+          .prog .seg3 span{width:13px}
+          .prog__detail{display:none}
+          .seg{margin-bottom:12px}
+          .seg__b{gap:4px;height:40px;padding:0 6px;font-size:.71rem;letter-spacing:-.02em}
+          .seg__b svg{display:none}
+          .bar{gap:8px;padding:6px 6px 6px 14px}
+          .bar__q{width:17px;height:17px}
+          .bar input{height:44px;font-size:.96rem}
+          .bar .btn--y{height:42px;padding:0 13px;font-size:.78rem;gap:4px}
+          .bar .btn--y .btn__a svg{width:12px;height:12px}
+          .hero__foot{gap:8px 10px;margin-top:12px}
+          .hero__hint,.pop__l,.chip{font-size:.74rem}
+          .chip{height:28px;padding:0 11px}
         }
       ` }),
 		/* @__PURE__ */ jsxs(AppLayout, {
@@ -6462,7 +7323,7 @@ function Home({ stack, integrations }) {
 }
 //#endregion
 //#region resources/js/landing/sections/Nav.jsx
-function Nav() {
+function Nav({ homeHref = "#top" }) {
 	const [stuck, setStuck] = useState(false);
 	useEffect(() => {
 		const onScroll = () => setStuck(window.scrollY > 8);
@@ -6476,7 +7337,7 @@ function Nav() {
 		children: /* @__PURE__ */ jsxs("div", {
 			className: "wrap nav__in",
 			children: [/* @__PURE__ */ jsxs("a", {
-				href: "#top",
+				href: homeHref,
 				className: "brand",
 				children: [/* @__PURE__ */ jsx(Logo, { className: "h-8 w-8" }), /* @__PURE__ */ jsx("span", { children: "Brand Beacon" })]
 			}), /* @__PURE__ */ jsxs("div", {
@@ -6700,7 +7561,7 @@ var FEATURES = [
 		id: "outliers",
 		tag: "Discovery",
 		title: "Outlier Vault",
-		body: "Surface the TikToks in your category that broke out this week — the ones running 10x above the creator’s own baseline, not just the ones with big follower counts.",
+		body: "Surface the TikToks in your category that broke out this week. The ones running 10× above the creator's own baseline, not just the ones with big follower counts.",
 		bullets: [
 			"Outlier scoring vs creator baseline",
 			"Last 7 / 30 / 90 day windows",
@@ -6726,7 +7587,7 @@ var FEATURES = [
 		title: "Virality Alerts",
 		body: "Get pinged the moment a video mentioning your brand crosses a threshold you set. Catch the good ones early, and the bad ones earlier.",
 		bullets: [
-			"Threshold + velocity triggers",
+			"Threshold and velocity triggers",
 			"Slack and email delivery",
 			"Per-search mute rules"
 		],
@@ -6915,7 +7776,7 @@ var PRICING_PLAN_ORDER = PRICING.monthly.map((plan) => plan.slug ?? plan.name.to
 var FAQS = [
 	{
 		q: "What counts as one search?",
-		a: "One subject — your brand, a single competitor, or a single product — included are any keywords you attach to widen the search. All of those keywords are covered by that one search, so ticking six terms still only spend one."
+		a: "One subject — your brand, a single competitor, or a single product — included are any keywords you attach to widen the search. All of those keywords are covered by that one search, so ticking six terms still only spends one."
 	},
 	{
 		q: "How long does a search take?",
@@ -6990,94 +7851,91 @@ function BrandMarquee() {
 }
 //#endregion
 //#region resources/js/landing/sections/Features.jsx
-var PREVIEW_VIDEOS = {
-	outliers: [
-		{
-			handle: "@glossier",
-			mult: "18x",
-			views: "4.2M",
-			image: "/images/landing/discovery-coco-shimmy.png"
-		},
-		{
-			handle: "@glowwithtay",
-			mult: "12x",
-			views: "3.1M",
-			image: "/images/landing/discovery-buyer-beware.png"
-		},
-		{
-			handle: "@cleangirl.ari",
-			mult: "22x",
-			views: "2.8M",
-			image: "/images/landing/discovery-brow-grooming.png"
-		}
-	],
-	competitors: [
-		{
-			handle: "@miasbakes",
-			mult: "18x",
-			views: "3.8M",
-			image: "/images/landing/competitor-sourdough-loaf.jpg"
-		},
-		{
-			handle: "@dailybreadclub",
-			mult: "12x",
-			views: "1.7M",
-			image: "/images/landing/competitor-dough.jpg"
-		},
-		{
-			handle: "@thebuildbrief",
-			mult: "22x",
-			views: "996K",
-			image: "/images/landing/competitor-saas.jpg"
-		}
-	],
-	alerts: [
-		{
-			handle: "@growwithmara",
-			mult: "18x",
-			views: "2.4M",
-			image: "/images/landing/alert-seed-packets.jpg"
-		},
-		{
-			handle: "@skincarebylola",
-			mult: "12x",
-			views: "1.3M",
-			image: "/images/landing/alert-summer-fridays.jpg"
-		},
-		{
-			handle: "@crocstyle",
-			mult: "22x",
-			views: "847K",
-			image: "/images/landing/alert-crocs.jpg"
-		}
-	]
-};
+var OUTLIER_VIDEOS = [
+	{
+		handle: "@glossier",
+		mult: "18×",
+		views: "4.2M",
+		image: "/images/landing/discovery-coco-shimmy.png"
+	},
+	{
+		handle: "@glowwithtay",
+		mult: "12×",
+		views: "3.1M",
+		image: "/images/landing/discovery-buyer-beware.png"
+	},
+	{
+		handle: "@cleangirl.ari",
+		mult: "22×",
+		views: "2.8M",
+		image: "/images/landing/discovery-brow-grooming.png"
+	}
+];
+var COMPETITOR_FEED = [
+	{
+		title: "\"the serum that survived my wedding weekend\"",
+		meta: "2.1M views · @styledbymia",
+		chip: "Affiliate",
+		tone: "aff",
+		image: "/images/landing/competitor-sourdough-loaf.jpg"
+	},
+	{
+		title: "New drop just landed. Shop the routine.",
+		meta: "1.4M views · @glossier",
+		chip: "Brand video",
+		tone: "brand",
+		image: "/images/landing/discovery-coco-shimmy.png"
+	},
+	{
+		title: "glossier dupe vs the real thing, tested",
+		meta: "870K views · @honestfinds",
+		chip: "UGC",
+		tone: "ugc",
+		image: "/images/landing/alert-summer-fridays.jpg"
+	}
+];
+var ALERTS = [
+	{
+		title: "@faithfessel crossed 1.2M views mentioning your brand (14×)",
+		meta: "2m ago",
+		channel: "Slack"
+	},
+	{
+		title: "@kymieann is climbing fast, +380K views in 6 hours",
+		meta: "1h ago",
+		channel: "Email"
+	},
+	{
+		title: "A critical review hit 500K views, worth a look",
+		meta: "yesterday",
+		channel: "Slack"
+	}
+];
 var PREVIEW_BARS = [
 	{
-		label: "Outlier 20x+",
-		fill: 92,
+		label: "20×+",
+		fill: 21,
 		n: 11
 	},
 	{
-		label: "10–20x",
-		fill: 68,
+		label: "10–20×",
+		fill: 40,
 		n: 21
 	},
 	{
-		label: "5–10x",
-		fill: 44,
+		label: "5–10×",
+		fill: 65,
 		n: 34
 	},
 	{
-		label: "3–5x",
-		fill: 26,
+		label: "3–5×",
+		fill: 100,
 		n: 52
 	}
 ];
 function Features() {
 	const [active, setActive] = useState(FEATURES[0].id);
 	const current = FEATURES.find((f) => f.id === active) ?? FEATURES[0];
-	const currentVideos = PREVIEW_VIDEOS[active] ?? PREVIEW_VIDEOS.outliers;
 	return /* @__PURE__ */ jsxs("section", {
 		className: "sec wrap",
 		id: "features",
@@ -7088,8 +7946,11 @@ function Features() {
 					className: "eyebrow",
 					children: "Research & monitor"
 				}),
-				/* @__PURE__ */ jsx("h2", { children: "Everything you need to read TikTok" }),
-				/* @__PURE__ */ jsx("p", { children: "Four tools built on one index. Find what broke out, watch who is moving, and get told when something about you starts climbing." })
+				/* @__PURE__ */ jsxs("h2", { children: ["Everything you need to read ", /* @__PURE__ */ jsx("span", {
+					className: "hl",
+					children: "TikTok"
+				})] }),
+				/* @__PURE__ */ jsx("p", { children: "Three tools built on one index. Find what broke out, watch who is moving, and get pinged when something about you starts climbing." })
 			]
 		}), /* @__PURE__ */ jsxs("div", {
 			className: "feat__grid",
@@ -7099,13 +7960,21 @@ function Features() {
 					type: "button",
 					className: `fbtn${feature.id === active ? " is-on" : ""}`,
 					onClick: () => setActive(feature.id),
+					onMouseEnter: () => setActive(feature.id),
 					children: [
 						/* @__PURE__ */ jsxs("div", {
 							className: "fbtn__top",
-							children: [/* @__PURE__ */ jsx("span", { className: "fdot" }), /* @__PURE__ */ jsx("span", {
-								className: "fbtn__t",
-								children: feature.title
-							})]
+							children: [
+								/* @__PURE__ */ jsx("span", { className: "fdot" }),
+								/* @__PURE__ */ jsx("span", {
+									className: "fbtn__t",
+									children: feature.title
+								}),
+								/* @__PURE__ */ jsx("span", {
+									className: "fbtn__tag",
+									children: feature.tag
+								})
+							]
 						}),
 						/* @__PURE__ */ jsx("p", {
 							className: "fbtn__b",
@@ -7130,70 +7999,197 @@ function Features() {
 							children: [/* @__PURE__ */ jsx("i", {}), "Live preview"]
 						})]
 					}),
-					/* @__PURE__ */ jsx("div", {
-						className: "prev__vids",
-						children: currentVideos.map((v, index) => /* @__PURE__ */ jsxs("div", { children: [
-							/* @__PURE__ */ jsxs("div", {
-								className: "vid__t",
+					/* @__PURE__ */ jsxs("div", {
+						className: `pane${active === "outliers" ? "" : " hide"}`,
+						children: [/* @__PURE__ */ jsx(VideoGrid, { videos: OUTLIER_VIDEOS }), /* @__PURE__ */ jsx("div", {
+							className: "bars",
+							children: PREVIEW_BARS.map((bar) => /* @__PURE__ */ jsxs("div", {
+								className: "bar",
 								children: [
-									/* @__PURE__ */ jsx("img", {
-										className: "vid__img",
-										src: v.image,
-										alt: v.handle
+									/* @__PURE__ */ jsx("span", {
+										className: "bar__l",
+										children: bar.label
 									}),
 									/* @__PURE__ */ jsx("span", {
-										className: "vid__x",
-										children: v.mult
+										className: "bar__t",
+										children: /* @__PURE__ */ jsx("span", {
+											className: "bar__f",
+											style: { width: `${bar.fill}%` }
+										})
 									}),
-									v.href ? /* @__PURE__ */ jsx("a", {
-										className: "vid__p",
-										href: v.href,
-										target: "_blank",
-										rel: "noreferrer",
-										"aria-label": `Open ${v.handle} on TikTok`,
-										children: /* @__PURE__ */ jsx(Play, { className: "h-[11px] w-[11px]" })
-									}) : /* @__PURE__ */ jsx("span", {
-										className: "vid__p",
-										children: /* @__PURE__ */ jsx(Play, { className: "h-[11px] w-[11px]" })
+									/* @__PURE__ */ jsx("span", {
+										className: "bar__n",
+										children: bar.n
 									})
 								]
-							}),
-							/* @__PURE__ */ jsx("p", {
-								className: "vid__v",
-								children: v.views
-							}),
-							/* @__PURE__ */ jsx("p", {
-								className: "vid__h",
-								children: v.handle
-							})
-						] }, `${v.handle}-${index}`))
+							}, bar.label))
+						})]
 					}),
 					/* @__PURE__ */ jsx("div", {
-						className: "bars",
-						children: PREVIEW_BARS.map((bar) => /* @__PURE__ */ jsxs("div", {
-							className: "bar",
+						className: `pane${active === "competitors" ? "" : " hide"}`,
+						children: /* @__PURE__ */ jsxs("div", {
+							className: "comp",
 							children: [
-								/* @__PURE__ */ jsx("span", {
-									className: "bar__l",
-									children: bar.label
+								/* @__PURE__ */ jsxs("div", {
+									className: "comp__head",
+									children: [
+										/* @__PURE__ */ jsx("span", {
+											className: "comp__logo",
+											children: /* @__PURE__ */ jsx("img", {
+												src: "/landing/brands/glossier.svg",
+												alt: "Glossier logo"
+											})
+										}),
+										/* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsx("div", {
+											className: "comp__name",
+											children: "glossier"
+										}), /* @__PURE__ */ jsx("div", {
+											className: "comp__sub",
+											children: "@glossier · tracked weekly"
+										})] }),
+										/* @__PURE__ */ jsxs("div", {
+											className: "comp__stat",
+											children: [/* @__PURE__ */ jsx("span", { children: "Videos this week" }), /* @__PURE__ */ jsxs("strong", { children: [/* @__PURE__ */ jsx(Trend, { className: "h-[13px] w-[13px]" }), "12 new"] })]
+										})
+									]
 								}),
-								/* @__PURE__ */ jsx("span", {
-									className: "bar__t",
-									children: /* @__PURE__ */ jsx("span", {
-										className: "bar__f",
-										style: { width: `${bar.fill}%` }
-									})
+								/* @__PURE__ */ jsx("div", {
+									className: "feed",
+									children: COMPETITOR_FEED.map((item) => /* @__PURE__ */ jsxs("div", {
+										className: "feed__row",
+										children: [
+											/* @__PURE__ */ jsx("span", {
+												className: "feed__thumb",
+												children: /* @__PURE__ */ jsx("img", {
+													src: item.image,
+													alt: ""
+												})
+											}),
+											/* @__PURE__ */ jsxs("div", {
+												className: "feed__copy",
+												children: [/* @__PURE__ */ jsx("div", {
+													className: "feed__title",
+													children: item.title
+												}), /* @__PURE__ */ jsx("div", {
+													className: "feed__meta",
+													children: item.meta
+												})]
+											}),
+											/* @__PURE__ */ jsx("span", {
+												className: `feed__chip feed__chip--${item.tone}`,
+												children: item.chip
+											})
+										]
+									}, item.title))
 								}),
-								/* @__PURE__ */ jsx("span", {
-									className: "bar__n",
-									children: bar.n
+								/* @__PURE__ */ jsxs("div", {
+									className: "digest",
+									children: [/* @__PURE__ */ jsx(Bell, {}), "Weekly digest ready · 12 new videos, 2 breakouts"]
 								})
 							]
-						}, bar.label))
+						})
+					}),
+					/* @__PURE__ */ jsx("div", {
+						className: `pane${active === "alerts" ? "" : " hide"}`,
+						children: /* @__PURE__ */ jsxs("div", {
+							className: "alerts",
+							children: [/* @__PURE__ */ jsxs("div", {
+								className: "threshold",
+								children: [
+									/* @__PURE__ */ jsx("div", {
+										className: "threshold__title",
+										children: "Alert me when a video mentioning my brand crosses"
+									}),
+									/* @__PURE__ */ jsxs("div", {
+										className: "threshold__rules",
+										children: [
+											/* @__PURE__ */ jsx("span", { children: "1M views" }),
+											"or",
+											/* @__PURE__ */ jsx("span", { children: "10× outlier" })
+										]
+									}),
+									/* @__PURE__ */ jsxs("div", {
+										className: "deliver",
+										children: [/* @__PURE__ */ jsxs("span", {
+											className: "deliver__btn is-on",
+											children: [/* @__PURE__ */ jsx("i", {}), "Slack"]
+										}), /* @__PURE__ */ jsxs("span", {
+											className: "deliver__btn is-on",
+											children: [/* @__PURE__ */ jsx("i", {}), "Email"]
+										})]
+									})
+								]
+							}), /* @__PURE__ */ jsx("div", {
+								className: "alerts__list",
+								children: ALERTS.map((alert) => /* @__PURE__ */ jsxs("div", {
+									className: "alert",
+									children: [/* @__PURE__ */ jsx("span", {
+										className: "alert__icon",
+										children: /* @__PURE__ */ jsx(Bell, {})
+									}), /* @__PURE__ */ jsxs("div", {
+										className: "alert__body",
+										children: [/* @__PURE__ */ jsx("div", {
+											className: "alert__title",
+											children: alert.title
+										}), /* @__PURE__ */ jsxs("div", {
+											className: "alert__meta",
+											children: [alert.meta, /* @__PURE__ */ jsx("span", { children: alert.channel })]
+										})]
+									})]
+								}, alert.title))
+							})]
+						})
 					})
 				]
 			}) })]
 		})]
+	});
+}
+function VideoGrid({ videos }) {
+	return /* @__PURE__ */ jsx("div", {
+		className: "prev__vids",
+		children: videos.map((v, index) => /* @__PURE__ */ jsxs("div", { children: [
+			/* @__PURE__ */ jsxs("div", {
+				className: "vid__t",
+				children: [
+					/* @__PURE__ */ jsx("img", {
+						className: "vid__img",
+						src: v.image,
+						alt: v.handle
+					}),
+					/* @__PURE__ */ jsx("span", {
+						className: "vid__x",
+						children: v.mult
+					}),
+					/* @__PURE__ */ jsx("span", {
+						className: "vid__p",
+						children: /* @__PURE__ */ jsx(Play, { className: "h-[11px] w-[11px]" })
+					})
+				]
+			}),
+			/* @__PURE__ */ jsx("p", {
+				className: "vid__v",
+				children: v.views
+			}),
+			/* @__PURE__ */ jsx("p", {
+				className: "vid__h",
+				children: v.handle
+			})
+		] }, `${v.handle}-${index}`))
+	});
+}
+function Bell() {
+	return /* @__PURE__ */ jsx("svg", {
+		viewBox: "0 0 24 24",
+		fill: "none",
+		"aria-hidden": "true",
+		children: /* @__PURE__ */ jsx("path", {
+			d: "M18 8a6 6 0 1 0-12 0c0 7-3 8-3 8h18s-3-1-3-8M13.7 21a2 2 0 0 1-3.4 0",
+			stroke: "currentColor",
+			strokeLinecap: "round",
+			strokeLinejoin: "round",
+			strokeWidth: "2"
+		})
 	});
 }
 //#endregion
@@ -12109,6 +13105,439 @@ function Show$1({ search: initial, isAuthenticated = false, billing }) {
 	] });
 }
 //#endregion
+//#region resources/js/Pages/Search/Free.jsx
+var Free_exports = /* @__PURE__ */ __exportAll({ default: () => Free });
+var TYPES = [
+	{
+		key: "brand",
+		label: "Your brand",
+		icon: Store,
+		placeholder: "e.g. rhode skin"
+	},
+	{
+		key: "competitor",
+		label: "A competitor",
+		icon: Target,
+		placeholder: "e.g. skims"
+	},
+	{
+		key: "product",
+		label: "A product",
+		icon: Search,
+		placeholder: "e.g. lip oil"
+	}
+];
+var csrfToken = () => document.querySelector("meta[name=\"csrf-token\"]")?.getAttribute("content") ?? "";
+function Stepper({ step }) {
+	return /* @__PURE__ */ jsx("div", {
+		className: "fs-stepper",
+		"aria-label": `Step ${step} of 3`,
+		children: [
+			"Subject",
+			"Refine",
+			"Results"
+		].map((label, index) => {
+			const number = index + 1;
+			const state = number < step ? "done" : number === step ? "now" : "";
+			return /* @__PURE__ */ jsxs("span", {
+				className: `fs-step ${state}`,
+				children: [
+					/* @__PURE__ */ jsx("i", { children: state === "done" ? /* @__PURE__ */ jsx(Check, {}) : number }),
+					/* @__PURE__ */ jsx("b", { children: label }),
+					number < 3 && /* @__PURE__ */ jsx("em", {})
+				]
+			}, label);
+		})
+	});
+}
+function Free({ phrase = "", type = "brand", error = null }) {
+	const [screen, setScreen] = useState(phrase ? "refine" : "subject");
+	const [kind, setKind] = useState(type);
+	const [subject, setSubject] = useState(phrase);
+	const [terms, setTerms] = useState([]);
+	const [handle, setHandle] = useState("");
+	const [website, setWebsite] = useState("");
+	const [draft, setDraft] = useState("");
+	const [adding, setAdding] = useState(false);
+	const [loading, setLoading] = useState(false);
+	const [saving, setSaving] = useState(false);
+	const [message, setMessage] = useState(error);
+	const requested = useRef("");
+	const config = TYPES.find((item) => item.key === kind) ?? TYPES[0];
+	const selected = terms.filter((term) => term.selected).map((term) => term.value);
+	useEffect(() => {
+		if (screen !== "refine" || !subject || requested.current === `${kind}:${subject}`) return;
+		let active = true;
+		requested.current = `${kind}:${subject}`;
+		setLoading(true);
+		expandKeywords(subject).then((payload) => {
+			if (!active) return;
+			const seen = /* @__PURE__ */ new Set([subject.toLowerCase()]);
+			const suggestions = (Array.isArray(payload?.keywords) ? payload.keywords : []).filter((value) => {
+				const key = String(value).toLowerCase();
+				if (!key || seen.has(key)) return false;
+				seen.add(key);
+				return true;
+			}).slice(0, 11).map((value, index) => ({
+				value,
+				selected: index < 3
+			}));
+			setTerms([{
+				value: subject,
+				selected: true,
+				locked: true
+			}, ...suggestions]);
+		}).catch(() => active && setTerms([{
+			value: subject,
+			selected: true,
+			locked: true
+		}])).finally(() => active && setLoading(false));
+		return () => {
+			active = false;
+		};
+	}, [
+		kind,
+		screen,
+		subject
+	]);
+	const beginRefine = (event) => {
+		event.preventDefault();
+		const clean = subject.trim().replace(/\s+/g, " ");
+		if (!clean) return;
+		setSubject(clean);
+		setScreen("refine");
+	};
+	const toggle = (value) => setTerms((current) => current.map((term) => term.value === value && !term.locked ? {
+		...term,
+		selected: !term.selected
+	} : term));
+	const addKeyword = () => {
+		const clean = draft.trim().replace(/\s+/g, " ");
+		setDraft("");
+		setAdding(false);
+		if (!clean || terms.some((term) => term.value.toLowerCase() === clean.toLowerCase()) || terms.length >= 12) return;
+		setTerms((current) => [...current, {
+			value: clean,
+			selected: true
+		}]);
+	};
+	const prepareAndSignIn = async () => {
+		setSaving(true);
+		setMessage(null);
+		try {
+			if (!(await fetch("/search/pending", {
+				method: "POST",
+				credentials: "same-origin",
+				headers: {
+					Accept: "application/json",
+					"Content-Type": "application/json",
+					"X-Requested-With": "XMLHttpRequest",
+					"X-CSRF-TOKEN": csrfToken()
+				},
+				body: JSON.stringify({
+					type: kind,
+					phrase: subject,
+					keywords: selected,
+					frequency: "weekly",
+					...kind === "brand" || kind === "competitor" ? { sources: {
+						tiktokHandle: handle.trim().replace(/^@/, ""),
+						website: website.trim()
+					} } : {}
+				})
+			})).ok) throw new Error("We could not save your search. Please try again.");
+			window.location.assign("/auth/google");
+		} catch (caught) {
+			setMessage(caught.message);
+			setSaving(false);
+		}
+	};
+	const stages = [
+		"Pulling videos from TikTok",
+		"Filtering against your keywords",
+		"Scoring outliers vs creator baseline",
+		"Ranking your top breakouts"
+	];
+	return /* @__PURE__ */ jsxs(Fragment, { children: [/* @__PURE__ */ jsx(Head, { title: "Free TikTok search · Brand Beacon" }), /* @__PURE__ */ jsxs("div", {
+		className: "bbh",
+		children: [/* @__PURE__ */ jsx(Nav, { homeHref: "/" }), /* @__PURE__ */ jsxs("main", {
+			className: `free-flow ${screen === "gate" ? "free-flow--gate" : ""}`,
+			children: [
+				/* @__PURE__ */ jsx("style", { children: `
+      .free-flow{min-height:calc(100vh - 72px);background:#fff;color:#111;padding:0 22px 64px;font-family:Figtree,ui-sans-serif,system-ui,sans-serif}
+      .ff-shell{max-width:594px;margin:0 auto;padding-top:28px}.fs-stepper{display:flex;align-items:center;justify-content:center;margin:0 0 28px}.fs-step{display:flex;align-items:center;gap:8px;color:#77726b;font-size:11px}.fs-step i{width:23px;height:23px;border:1px solid #ddd8cf;border-radius:50%;display:grid;place-items:center;font-size:11px;font-style:normal}.fs-step.done,.fs-step.now{color:#151515}.fs-step.done i{background:#111;color:#fff;border-color:#111}.fs-step.now i{background:#ffc629;border-color:#ffc629}.fs-step i svg{width:11px;height:11px}.fs-step em{width:27px;height:1px;background:#ddd8cf;margin:0 9px;font-style:normal}.ff-card{border:1px solid #e4e0d8;border-radius:20px;overflow:hidden;background:#fff;box-shadow:0 12px 32px -30px rgba(0,0,0,.3)}.ff-subject{height:66px;padding:0 21px;display:flex;align-items:center;border-bottom:1px solid #e4e0d8}.ff-subject__label,.ff-eyebrow{font-size:10px;font-weight:850;color:#a16d00;letter-spacing:.13em;text-transform:uppercase}.ff-subject strong{margin-left:12px;font-size:15px;letter-spacing:-.03em}.ff-edit{margin-left:auto;width:30px;height:30px;border:1px solid #e4e0d8;border-radius:50%;background:#fff;color:#777;display:grid;place-items:center;cursor:pointer}.ff-edit svg{width:14px;height:14px}.ff-section{padding:23px 21px 24px}.ff-section h1{margin:10px 0 0;font-size:17px;line-height:1.25;letter-spacing:-.035em}.ff-section>p{margin:10px 0 0;font-size:13px;line-height:1.55;color:#625e58}.ff-chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:18px}.ff-chip{height:37px;padding:0 14px;border:1px solid #ddd8cf;border-radius:999px;background:#fff;color:#302d29;font:inherit;font-size:12px;font-weight:700;display:inline-flex;align-items:center;gap:8px;cursor:pointer}.ff-chip:disabled{cursor:default}.ff-chip.on{border-color:#f4b400}.ff-check{width:15px;height:15px;border:1px solid #d9d4ca;border-radius:50%;display:grid;place-items:center}.ff-chip.on .ff-check{background:#ffc629;border-color:#ffc629}.ff-check svg{width:9px;height:9px}.ff-add{border-style:dashed;color:#9d6900}.ff-add svg{width:13px;height:13px}.ff-add-input{height:37px;width:130px;padding:0 12px;border:1px solid #ffc629;border-radius:999px;outline:0;font:inherit;font-size:12px;font-weight:700}.ff-count{margin:14px 0 0!important;font-size:11px!important;color:#756f68!important}.ff-count b{color:#111}.ff-footer{min-height:85px;padding:0 21px;border-top:1px solid #e4e0d8;display:flex;align-items:center;justify-content:space-between;gap:12px}.ff-back,.ff-run{height:41px;padding:0 20px;border-radius:10px;font:inherit;font-size:13px;font-weight:800;cursor:pointer}.ff-back{border:1px solid #ddd8cf;background:#fff;color:#111}.ff-run{border:0;background:#ffc629;color:#171100;display:inline-flex;align-items:center;gap:10px;box-shadow:0 7px 13px -8px #a46a00}.ff-run svg{width:15px;height:15px}.ff-run:disabled{opacity:.55;cursor:not-allowed}.ff-subject-form{max-width:520px;margin:66px auto;border:1px solid #e4e0d8;border-radius:20px;padding:26px}.ff-subject-form h1{margin:0;font-size:25px;letter-spacing:-.05em}.ff-modes{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-top:22px}.ff-mode{height:45px;border:1px solid #ddd8cf;border-radius:10px;background:#fff;font:inherit;font-size:12px;font-weight:750;cursor:pointer}.ff-mode.is-on{background:#111;border-color:#111;color:#fff}.ff-mode svg{width:14px;height:14px;vertical-align:-2px;margin-right:5px}.ff-input{width:100%;box-sizing:border-box;height:48px;margin-top:16px;padding:0 13px;border:1px solid #d9d4ca;border-radius:10px;font:inherit;font-weight:650;outline:0}.ff-input:focus{border-color:#ffc629;box-shadow:0 0 0 4px rgba(255,198,41,.2)}
+      .ff-shell{max-width:594px;margin:0 auto;padding-top:28px}.fs-stepper{display:flex;align-items:center;justify-content:center;margin:0 0 28px}.fs-step{display:flex;align-items:center;gap:8px;color:#77726b;font-size:11px}.fs-step i{width:23px;height:23px;border:1px solid #ddd8cf;border-radius:50%;display:grid;place-items:center;font-size:11px;font-style:normal}.fs-step.done,.fs-step.now{color:#151515}.fs-step.done i{background:#111;color:#fff;border-color:#111}.fs-step.now i{background:#ffc629;border-color:#ffc629}.fs-step i svg{width:11px;height:11px}.fs-step em{width:27px;height:1px;background:#ddd8cf;margin:0 9px;font-style:normal}.ff-card{border:1px solid #e4e0d8;border-radius:20px;overflow:hidden;background:#fff;box-shadow:0 12px 32px -30px rgba(0,0,0,.3)}.ff-subject{height:66px;padding:0 21px;display:flex;align-items:center;border-bottom:1px solid #e4e0d8}.ff-subject__label,.ff-eyebrow{font-size:10px;font-weight:850;color:#a16d00;letter-spacing:.13em;text-transform:uppercase}.ff-subject strong{margin-left:12px;font-size:15px;letter-spacing:-.03em}.ff-edit{margin-left:auto;width:30px;height:30px;border:1px solid #e4e0d8;border-radius:50%;background:#fff;color:#777;display:grid;place-items:center;cursor:pointer}.ff-edit svg{width:14px;height:14px}.ff-section{padding:23px 21px 24px}.ff-section--sources{border-top:1px solid #e4e0d8}.ff-section h1{margin:10px 0 0;font-size:17px;line-height:1.25;letter-spacing:-.035em}.ff-section>p{margin:10px 0 0;font-size:13px;line-height:1.55;color:#625e58}.ff-chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:18px}.ff-chip{height:37px;padding:0 14px;border:1px solid #ddd8cf;border-radius:999px;background:#fff;color:#302d29;font:inherit;font-size:12px;font-weight:700;display:inline-flex;align-items:center;gap:8px;cursor:pointer}.ff-chip:disabled{cursor:default}.ff-chip.on{border-color:#f4b400}.ff-check{width:15px;height:15px;border:1px solid #d9d4ca;border-radius:50%;display:grid;place-items:center}.ff-chip.on .ff-check{background:#ffc629;border-color:#ffc629}.ff-check svg{width:9px;height:9px}.ff-add{border-style:dashed;color:#9d6900}.ff-add svg{width:13px;height:13px}.ff-add-input{height:37px;width:130px;padding:0 12px;border:1px solid #ffc629;border-radius:999px;outline:0;font:inherit;font-size:12px;font-weight:700}.ff-count{margin:14px 0 0!important;font-size:11px!important;color:#756f68!important}.ff-count b{color:#111}.ff-source{margin-top:13px;padding:12px;border:1px solid #ddd8cf;border-radius:11px}.ff-source__head{display:flex;align-items:center;justify-content:space-between;font-size:11px;font-weight:800}.ff-source__head span:last-child{font-size:8px;color:#9d6900;letter-spacing:.08em}.ff-source input{box-sizing:border-box;width:100%;height:36px;margin-top:10px;padding:0 11px;border:1px solid #d9d4ca;border-radius:999px;font:inherit;font-size:11px;font-weight:600;outline:0}.ff-source input:focus{border-color:#ffc629}.ff-footer{min-height:85px;padding:0 21px;border-top:1px solid #e4e0d8;display:flex;align-items:center;justify-content:space-between;gap:12px}.ff-back,.ff-run{height:41px;padding:0 20px;border-radius:10px;font:inherit;font-size:13px;font-weight:800;cursor:pointer}.ff-back{border:1px solid #ddd8cf;background:#fff;color:#111}.ff-run{border:0;background:#ffc629;color:#171100;display:inline-flex;align-items:center;gap:10px;box-shadow:0 7px 13px -8px #a46a00}.ff-run svg{width:15px;height:15px}.ff-run:disabled{opacity:.55;cursor:not-allowed}.ff-subject-form{max-width:520px;margin:66px auto;border:1px solid #e4e0d8;border-radius:20px;padding:26px}.ff-subject-form h1{margin:0;font-size:25px;letter-spacing:-.05em}.ff-modes{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-top:22px}.ff-mode{height:45px;border:1px solid #ddd8cf;border-radius:10px;background:#fff;font:inherit;font-size:12px;font-weight:750;cursor:pointer}.ff-mode.is-on{background:#111;border-color:#111;color:#fff}.ff-mode svg{width:14px;height:14px;vertical-align:-2px;margin-right:5px}.ff-input{width:100%;box-sizing:border-box;height:48px;margin-top:16px;padding:0 13px;border:1px solid #d9d4ca;border-radius:10px;font:inherit;font-weight:650;outline:0}.ff-input:focus{border-color:#ffc629;box-shadow:0 0 0 4px rgba(255,198,41,.2)}
+      .free-flow--gate{padding:0;background:#fff}.ff-gate{min-height:calc(100vh - 72px);display:grid;grid-template-columns:1fr 1fr}.ff-gate__copy{padding:clamp(48px,11vh,120px) clamp(29px,5vw,90px);display:flex;align-items:center}.ff-gate__inner{max-width:420px}.ff-gate h1{margin:12px 0 0;font-size:clamp(27px,3vw,38px);line-height:1.08;letter-spacing:-.065em}.ff-gate__copy>div>p{font-size:13px;line-height:1.55;color:#625e58;margin:15px 0 0}.ff-stages{margin-top:35px;display:flex;flex-direction:column;gap:12px}.ff-stage{min-height:34px;padding:0 10px;display:flex;align-items:center;gap:11px;border-radius:9px;font-size:12px;font-weight:650}.ff-stage i{width:15px;height:15px;border-radius:50%;background:#111;color:#fff;display:grid;place-items:center}.ff-stage i svg{width:9px;height:9px}.ff-stage.now{background:#fff5da}.ff-stage.now i{background:transparent;border:1.5px solid #ffc629;border-top-color:transparent;animation:ff-spin .8s linear infinite}.ff-email{display:flex;align-items:center;gap:9px;margin-top:20px;padding:12px;border:1px solid #f1d798;border-radius:10px;background:#fffaf0;color:#9d6900;font-size:11px;font-weight:750}.ff-email svg{width:15px;height:15px}@keyframes ff-spin{to{transform:rotate(360deg)}}.ff-gate__visual{padding:28px 30px;background:#faf9f6;border-left:1px solid #ece8df;display:flex;align-items:center;justify-content:center}.ff-preview{width:min(100%,560px)}.ff-videos{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}.ff-video{height:245px;width:100%;border-radius:10px;object-fit:cover;filter:blur(3px);opacity:.75}.ff-signup{margin-top:24px;padding:23px;border:1px solid #e4e0d8;border-radius:16px;background:#fff;text-align:center;box-shadow:0 20px 35px -30px rgba(0,0,0,.25)}.ff-signup h2{font-size:16px;letter-spacing:-.035em;margin:0}.ff-signup p{font-size:11px!important;line-height:1.55!important;margin:13px auto 0!important;color:#756f68!important}.ff-google{appearance:none;-webkit-appearance:none;height:50px;width:100%;margin-top:18px;border:1px solid #111!important;border-radius:9px;background:#111!important;color:#fff!important;font:inherit;font-size:12px;font-weight:800;display:flex;align-items:center;justify-content:center;gap:9px;cursor:pointer;box-shadow:0 8px 16px -10px rgba(0,0,0,.7);transition:transform .16s,background .16s,box-shadow .16s}.ff-google:hover:not(:disabled){background:#292929!important;box-shadow:0 11px 20px -10px rgba(0,0,0,.65);transform:translateY(-1px)}.ff-google svg{width:19px;height:19px;background:#fff;border-radius:50%;padding:2px}.ff-google:disabled{opacity:.6}.ff-trust{font-size:10px!important;margin-top:12px!important}.ff-error{margin-top:12px!important;color:#aa3820!important;font-weight:700}
+      @media(max-width:720px){.ff-gate{grid-template-columns:1fr}.ff-gate__visual{border-left:0;border-top:1px solid #ece8df;padding:35px 22px}.ff-gate__copy{padding:55px 28px}.ff-video{height:150px}}@media(max-width:500px){.free-flow{padding:0 12px 35px}.free-flow--gate{padding:0}.ff-shell{padding-top:20px}.fs-step b{display:none}.fs-step em{width:20px;margin:0 5px}.ff-card{border-radius:16px}.ff-section{padding:20px 17px}.ff-subject{padding:0 17px}.ff-footer{padding:0 17px}.ff-run{padding:0 14px}.ff-modes{grid-template-columns:1fr}.ff-subject-form{margin:32px auto}}
+    ` }),
+				/* @__PURE__ */ jsx("style", { children: `.ff-source{display:block}` }),
+				screen === "subject" && /* @__PURE__ */ jsxs("section", {
+					className: "ff-subject-form",
+					children: [/* @__PURE__ */ jsx("h1", { children: "What do you want to scan?" }), /* @__PURE__ */ jsxs("form", {
+						onSubmit: beginRefine,
+						children: [
+							/* @__PURE__ */ jsx("div", {
+								className: "ff-modes",
+								children: TYPES.map(({ key, label, icon: Icon }) => /* @__PURE__ */ jsxs("button", {
+									type: "button",
+									className: `ff-mode ${kind === key ? "is-on" : ""}`,
+									onClick: () => setKind(key),
+									children: [/* @__PURE__ */ jsx(Icon, {}), label]
+								}, key))
+							}),
+							/* @__PURE__ */ jsx("input", {
+								className: "ff-input",
+								autoFocus: true,
+								value: subject,
+								placeholder: config.placeholder,
+								onChange: (event) => setSubject(event.target.value)
+							}),
+							/* @__PURE__ */ jsxs("button", {
+								className: "ff-run",
+								style: {
+									marginTop: 16,
+									marginLeft: "auto"
+								},
+								disabled: !subject.trim(),
+								children: ["Continue ", /* @__PURE__ */ jsx(Arrow, {})]
+							})
+						]
+					})]
+				}),
+				screen === "refine" && /* @__PURE__ */ jsxs("section", {
+					className: "ff-shell",
+					children: [/* @__PURE__ */ jsx(Stepper, { step: 2 }), /* @__PURE__ */ jsxs("div", {
+						className: "ff-card",
+						children: [
+							/* @__PURE__ */ jsxs("div", {
+								className: "ff-subject",
+								children: [
+									/* @__PURE__ */ jsx("span", {
+										className: "ff-subject__label",
+										children: "Searching"
+									}),
+									/* @__PURE__ */ jsx("strong", { children: subject }),
+									/* @__PURE__ */ jsx("button", {
+										type: "button",
+										className: "ff-edit",
+										"aria-label": "Change subject",
+										onClick: () => setScreen("subject"),
+										children: /* @__PURE__ */ jsxs("svg", {
+											viewBox: "0 0 24 24",
+											fill: "none",
+											stroke: "currentColor",
+											strokeWidth: "2",
+											strokeLinecap: "round",
+											strokeLinejoin: "round",
+											children: [/* @__PURE__ */ jsx("path", { d: "M12 20h9" }), /* @__PURE__ */ jsx("path", { d: "M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z" })]
+										})
+									})
+								]
+							}),
+							/* @__PURE__ */ jsxs("div", {
+								className: "ff-section",
+								children: [
+									/* @__PURE__ */ jsx("span", {
+										className: "ff-eyebrow",
+										children: "Widen the pull"
+									}),
+									/* @__PURE__ */ jsx("h1", { children: "Add keywords to catch more of the trend" }),
+									/* @__PURE__ */ jsx("p", { children: "These are the terms people pair with your subject on TikTok. Ticking more still counts as one free search." }),
+									loading ? /* @__PURE__ */ jsx("p", { children: "Suggesting keywords..." }) : /* @__PURE__ */ jsxs("div", {
+										className: "ff-chips",
+										children: [terms.map((term) => /* @__PURE__ */ jsxs("button", {
+											type: "button",
+											disabled: term.locked,
+											className: `ff-chip ${term.selected ? "on" : ""}`,
+											onClick: () => toggle(term.value),
+											children: [/* @__PURE__ */ jsx("span", {
+												className: "ff-check",
+												children: term.selected && /* @__PURE__ */ jsx(Check, {})
+											}), term.value]
+										}, term.value)), adding ? /* @__PURE__ */ jsx("input", {
+											className: "ff-add-input",
+											autoFocus: true,
+											value: draft,
+											onChange: (event) => setDraft(event.target.value),
+											onBlur: addKeyword,
+											onKeyDown: (event) => {
+												if (event.key === "Enter") addKeyword();
+												if (event.key === "Escape") setAdding(false);
+											},
+											placeholder: "Add a keyword"
+										}) : /* @__PURE__ */ jsxs("button", {
+											type: "button",
+											className: "ff-chip ff-add",
+											onClick: () => setAdding(true),
+											children: [/* @__PURE__ */ jsx(Plus, {}), "Add your own"]
+										})]
+									}),
+									/* @__PURE__ */ jsxs("p", {
+										className: "ff-count",
+										children: [/* @__PURE__ */ jsx("b", { children: selected.length }), " selected · all covered by your one free search."]
+									})
+								]
+							}),
+							(kind === "brand" || kind === "competitor") && /* @__PURE__ */ jsxs("div", {
+								className: "ff-section ff-section--sources",
+								children: [
+									/* @__PURE__ */ jsx("span", {
+										className: "ff-eyebrow",
+										children: "Optional"
+									}),
+									/* @__PURE__ */ jsxs("h1", { children: [
+										"Add the ",
+										kind === "competitor" ? "competitor" : "brand",
+										"'s TikTok handle or website"
+									] }),
+									/* @__PURE__ */ jsx("p", { children: "Not required. It helps match videos more accurately and sharpen the results." }),
+									/* @__PURE__ */ jsxs("label", {
+										className: "ff-source",
+										children: [/* @__PURE__ */ jsxs("span", {
+											className: "ff-source__head",
+											children: [/* @__PURE__ */ jsx("span", { children: "TikTok handle" }), /* @__PURE__ */ jsx("span", { children: "OPTIONAL" })]
+										}), /* @__PURE__ */ jsx("input", {
+											value: handle,
+											onChange: (event) => setHandle(event.target.value),
+											placeholder: "@yourhandle"
+										})]
+									}),
+									/* @__PURE__ */ jsxs("label", {
+										className: "ff-source",
+										children: [/* @__PURE__ */ jsxs("span", {
+											className: "ff-source__head",
+											children: [/* @__PURE__ */ jsx("span", { children: "Website" }), /* @__PURE__ */ jsx("span", { children: "OPTIONAL" })]
+										}), /* @__PURE__ */ jsx("input", {
+											value: website,
+											onChange: (event) => setWebsite(event.target.value),
+											placeholder: "https://yourbrand.com"
+										})]
+									})
+								]
+							}),
+							/* @__PURE__ */ jsxs("div", {
+								className: "ff-footer",
+								children: [/* @__PURE__ */ jsx("button", {
+									type: "button",
+									className: "ff-back",
+									onClick: () => setScreen("subject"),
+									children: "Back"
+								}), /* @__PURE__ */ jsxs("button", {
+									type: "button",
+									className: "ff-run",
+									disabled: loading || selected.length === 0,
+									onClick: () => setScreen("gate"),
+									children: ["Run my free search ", /* @__PURE__ */ jsx(Arrow, {})]
+								})]
+							})
+						]
+					})]
+				}),
+				screen === "gate" && /* @__PURE__ */ jsxs("section", {
+					className: "ff-gate",
+					children: [/* @__PURE__ */ jsx("div", {
+						className: "ff-gate__copy",
+						children: /* @__PURE__ */ jsxs("div", {
+							className: "ff-gate__inner",
+							children: [
+								/* @__PURE__ */ jsx("span", {
+									className: "ff-eyebrow",
+									children: "Scanning TikTok"
+								}),
+								/* @__PURE__ */ jsxs("h1", { children: [
+									"Building your report",
+									/* @__PURE__ */ jsx("br", {}),
+									"for ",
+									subject
+								] }),
+								/* @__PURE__ */ jsx("p", { children: "This is a deep scan, so it takes about 5 to 10 minutes. We are pulling videos, scoring them against each creator's baseline, and ranking the breakouts. You do not need to wait around." }),
+								/* @__PURE__ */ jsx("div", {
+									className: "ff-stages",
+									children: stages.map((label, index) => /* @__PURE__ */ jsxs("div", {
+										className: `ff-stage ${index === stages.length - 1 ? "now" : ""}`,
+										children: [/* @__PURE__ */ jsx("i", { children: index < stages.length - 1 && /* @__PURE__ */ jsx(Check, {}) }), label]
+									}, label))
+								}),
+								/* @__PURE__ */ jsxs("div", {
+									className: "ff-email",
+									children: [/* @__PURE__ */ jsxs("svg", {
+										viewBox: "0 0 24 24",
+										fill: "none",
+										stroke: "currentColor",
+										strokeWidth: "2",
+										children: [/* @__PURE__ */ jsx("rect", {
+											x: "3",
+											y: "5",
+											width: "18",
+											height: "14",
+											rx: "2"
+										}), /* @__PURE__ */ jsx("path", { d: "m3 7 9 6 9-6" })]
+									}), "We will email your report the moment it is done."]
+								})
+							]
+						})
+					}), /* @__PURE__ */ jsx("div", {
+						className: "ff-gate__visual",
+						children: /* @__PURE__ */ jsxs("div", {
+							className: "ff-preview",
+							children: [/* @__PURE__ */ jsxs("div", {
+								className: "ff-videos",
+								children: [
+									/* @__PURE__ */ jsx("img", {
+										className: "ff-video",
+										src: "/images/landing/discovery-coco-shimmy.png",
+										alt: ""
+									}),
+									/* @__PURE__ */ jsx("img", {
+										className: "ff-video",
+										src: "/images/landing/discovery-buyer-beware.png",
+										alt: ""
+									}),
+									/* @__PURE__ */ jsx("img", {
+										className: "ff-video",
+										src: "/images/landing/discovery-brow-grooming.png",
+										alt: ""
+									})
+								]
+							}), /* @__PURE__ */ jsxs("div", {
+								className: "ff-signup",
+								children: [
+									/* @__PURE__ */ jsx("h2", { children: "Sign in to get your report" }),
+									/* @__PURE__ */ jsx("p", { children: "Your scan is running now. Sign in with Google and we will email your full report the moment it is ready, usually in 5 to 10 minutes." }),
+									message && /* @__PURE__ */ jsx("p", {
+										className: "ff-error",
+										children: message
+									}),
+									/* @__PURE__ */ jsxs("button", {
+										type: "button",
+										className: "ff-google",
+										disabled: saving,
+										onClick: prepareAndSignIn,
+										children: [/* @__PURE__ */ jsx(Google, {}), saving ? "Preparing your search..." : "Sign in with Google"]
+									}),
+									/* @__PURE__ */ jsx("p", {
+										className: "ff-trust",
+										children: "Free · no credit card · we email you when it is ready"
+									}),
+									/* @__PURE__ */ jsxs("p", {
+										className: "ff-trust",
+										children: [
+											"By continuing you agree to our ",
+											/* @__PURE__ */ jsx("u", { children: "Terms" }),
+											" and ",
+											/* @__PURE__ */ jsx("u", { children: "Privacy Policy" }),
+											"."
+										]
+									})
+								]
+							})]
+						})
+					})]
+				})
+			]
+		})]
+	})] });
+}
+//#endregion
 //#region resources/js/Pages/Search/Keywords.jsx
 var Keywords_exports = /* @__PURE__ */ __exportAll({ default: () => Keywords });
 /**
@@ -12129,14 +13558,28 @@ function Keywords({ phrase = "", type = "brand" }) {
 //#region resources/js/Pages/Search/Running.jsx
 var Running_exports = /* @__PURE__ */ __exportAll({ default: () => Running });
 function Running({ searchId }) {
-	return /* @__PURE__ */ jsxs(Fragment, { children: [/* @__PURE__ */ jsx(Head, { title: "Search running · Brand Beacon" }), /* @__PURE__ */ jsx(AppLayout, {
-		width: "max-w-4xl",
-		children: /* @__PURE__ */ jsx(RunningScreen, {
-			searchId,
-			onBack: () => router.visit("/bookmarks"),
-			onDone: () => router.visit(`/bookmarks/${searchId}`),
-			onAutoReturn: () => router.visit("/dashboard")
-		})
+	return /* @__PURE__ */ jsxs(Fragment, { children: [/* @__PURE__ */ jsx(Head, { title: "Search running · Brand Beacon" }), /* @__PURE__ */ jsxs("div", {
+		className: "bbh",
+		children: [/* @__PURE__ */ jsx(Nav, { homeHref: "/" }), /* @__PURE__ */ jsx("main", {
+			className: "bb",
+			style: {
+				minHeight: "calc(100vh - 72px)",
+				padding: "48px 20px",
+				background: "var(--paper)"
+			},
+			children: /* @__PURE__ */ jsx("div", {
+				style: {
+					maxWidth: 760,
+					margin: "0 auto"
+				},
+				children: /* @__PURE__ */ jsx(RunningScreen, {
+					searchId,
+					onBack: () => router.visit("/search"),
+					onDone: () => router.visit(`/results/${searchId}`),
+					onAutoReturn: () => {}
+				})
+			})
+		})]
 	})] });
 }
 //#endregion
@@ -12921,6 +14364,7 @@ createServer((page) => createInertiaApp({
 			"./Pages/SavedSearches/detail/InsightPanels.jsx": InsightPanels_exports,
 			"./Pages/SavedSearches/detail/OutlierVideos.jsx": OutlierVideos_exports,
 			"./Pages/SavedSearches/detail/TrendPanels.jsx": TrendPanels_exports,
+			"./Pages/Search/Free.jsx": Free_exports,
 			"./Pages/Search/Keywords.jsx": Keywords_exports,
 			"./Pages/Search/Running.jsx": Running_exports,
 			"./Pages/Settings/Account.jsx": Account_exports,
@@ -12932,6 +14376,7 @@ createServer((page) => createInertiaApp({
 			"./Pages/VideoAnalysis/Show.jsx": Show_exports,
 			"./Pages/components/AppFooter.jsx": AppFooter_exports,
 			"./Pages/components/AppLayout.jsx": AppLayout_exports,
+			"./Pages/components/BrandInlineFlow.jsx": BrandInlineFlow_exports,
 			"./Pages/components/EntitlementsBar.jsx": EntitlementsBar_exports,
 			"./Pages/components/SavedSearchRow.jsx": SavedSearchRow_exports,
 			"./Pages/components/SearchLauncher.jsx": SearchLauncher_exports,
