@@ -238,7 +238,7 @@ export const FAQS = [
 	},
 	{
 		q: "How long does a search take?",
-		a: "Most finish in under 5 minutes, but can take up to 20 minutes. You can stay on the results page and watch it fill in, or close the tab and we will email you the moment it is ready."
+		a: "Most finish around 5 minutes, but can take up to 20 minutes. You can stay on the results page and watch it fill in, or close the tab and we will email you the moment it is ready."
 	},
 	{
 		q: "Why focus on breakouts?",
