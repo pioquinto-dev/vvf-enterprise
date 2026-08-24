@@ -54,8 +54,8 @@ export const FEATURES = [
 export const STEPS = [
   {
     n: '01',
-    title: 'Name one subject',
-    body: 'Your brand, one competitor, or one product. One subject per search keeps every result readable.',
+    title: 'Give us a keyword',
+    body: 'Enter your brand, a competitor, or a product keyword to start the search.',
     mockup: {
       type: 'search',
       label: 'Search setup',
@@ -64,8 +64,8 @@ export const STEPS = [
   },
   {
     n: '02',
-    title: 'Widen with keywords',
-    body: 'We suggest the terms people actually pair with your subject on TikTok. Tick the ones that fit.',
+    title: 'Keep the keywords that fit',
+    body: 'We suggest related terms people already use on TikTok. Keep the ones that match what you want to find.',
     mockup: {
       type: 'keywords',
       label: 'Suggested terms',
@@ -74,8 +74,8 @@ export const STEPS = [
   },
   {
     n: '03',
-    title: 'Get the viral cut',
-    body: 'We scan hundreds of videos and hand back the top performers, ranked by views and outlier score.',
+    title: 'We show you Breakouts',
+    body: "We scan millions of videos and hand back the Viral Breakouts - videos that outperform their creator's average.",
     mockup: {
       type: 'results',
       label: 'Top hits',
