@@ -21,11 +21,6 @@ import {
  * lighter surface for the brand/product hubs.
  */
 
-const STEPS = [
-  { key: 'keywords', label: 'Keywords' },
-  { key: 'sources',  label: 'Sources'  },
-];
-
 const STAGE_LIST = [
   { key: 'start',   label: 'Starting the scrape' },
   { key: 'pull',    label: 'Pulling videos from TikTok' },
@@ -54,14 +49,17 @@ function useRunStages(active, done) {
 }
 
 function MiniStepper({ current }) {
-  const activeIdx = STEPS.findIndex((s) => s.key === current);
+  const steps = current === 'sources'
+    ? [{ key: 'keywords', label: 'Keywords' }, { key: 'sources', label: 'Sources' }]
+    : [{ key: 'keywords', label: 'Keywords' }];
+  const activeIdx = steps.findIndex((s) => s.key === current);
   const shown = current === 'sources' || current === 'keywords';
   if (!shown) return null;
 
   return (
     <div className="mini">
-      {[{ key: 'subject', label: 'Subject' }, ...STEPS].map((s, i, arr) => {
-        const stateIdx = i === 0 ? 0 : STEPS.findIndex((x) => x.key === s.key) + 1;
+      {[{ key: 'subject', label: 'Subject' }, ...steps].map((s, i, arr) => {
+        const stateIdx = i === 0 ? 0 : steps.findIndex((x) => x.key === s.key) + 1;
         const cur = activeIdx + 1;
         const cls = stateIdx < cur ? 'done' : stateIdx === cur ? 'now' : 'todo';
         return (
@@ -110,6 +108,7 @@ export default function BrandInlineFlow({
   const kwCount = useMemo(() => keywords.filter((k) => k.selected).length, [keywords]);
   const searchLeft = billing.searchCreditsRemaining;
   const searchLimit = billing.searchCreditsLimit;
+  const supportsSources = kind !== 'product';
 
   /* -------- collapsed -> keywords: fetch suggested terms -------- */
   const startFlow = async () => {
@@ -220,8 +219,8 @@ export default function BrandInlineFlow({
       onCreated?.(created);
     } catch (e) {
       setError(e.message || 'Could not start the search.');
-      setState('sources');
-      setSubmitting(false);
+        setState(supportsSources ? 'sources' : 'keywords');
+        setSubmitting(false);
     }
   };
 
@@ -247,7 +246,7 @@ export default function BrandInlineFlow({
         if (!cancelled && s?.status === 'failed') {
           setError('The search failed to complete.');
           setSubmitting(false);
-          setState('sources');
+          setState(supportsSources ? 'sources' : 'keywords');
           return;
         }
       } catch {
@@ -261,7 +260,7 @@ export default function BrandInlineFlow({
       cancelled = true;
       window.clearTimeout(timer);
     };
-  }, [state, searchResult?.id]);
+  }, [state, searchResult?.id, supportsSources]);
 
   const viewResults = () => {
     if (searchResult?.url) router.visit(searchResult.url);
@@ -532,17 +531,17 @@ export default function BrandInlineFlow({
               <button
                 type="button"
                 className="btn btn--y"
-                onClick={() => setState('sources')}
-                disabled={kwCount === 0}
+                onClick={() => (supportsSources ? setState('sources') : runSearch())}
+                disabled={kwCount === 0 || submitting}
               >
-                Continue <Arrow />
+                {supportsSources ? <>Continue <Arrow /></> : <>{submitting ? 'Starting…' : 'Run the search'} <Arrow /></>}
               </button>
             </div>
           </div>
         )}
 
         {/* ---------- SOURCES ---------- */}
-        {state === 'sources' && (
+        {supportsSources && state === 'sources' && (
           <div>
             <div className="ph">
               <p className="ph__k">Optional</p>
