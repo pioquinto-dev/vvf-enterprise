@@ -43,7 +43,7 @@ export const FEATURES = [
   },
   {
     id: 'alerts',
-    tag: 'Automation',
+    tag: 'Coming soon',
     title: 'Virality Alerts',
     body: 'Get pinged the moment a video mentioning your brand crosses a threshold you set. Catch the good ones early, and the bad ones earlier.',
     bullets: ['Threshold and velocity triggers', 'Slack and email delivery', 'Per-search mute rules'],

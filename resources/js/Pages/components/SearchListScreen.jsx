@@ -267,7 +267,7 @@ export default function SearchListScreen({ kind = 'brand', searches = [], moving
       {moving.length > 0 && (
         <section className="movers">
           <div className="movers__h">
-            <h2>Moving this week</h2>
+            <h2>Breakout videos this week</h2>
             <span className="note">{copy.moversNote}</span>
           </div>
           <div className="movers__g">
