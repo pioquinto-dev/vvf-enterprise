@@ -241,8 +241,8 @@ export const FAQS = [
 		a: "Most finish in under 5 minutes, but can take up to 20 minutes. You can stay on the results page and watch it fill in, or close the tab and we will email you the moment it is ready."
 	},
 	{
-		q: "Why focus on outliers instead of follower count?",
-		a: "A video with 4 million views from a creator with 4 million followers is great, but a video with 4 million views from a creator with 4 thousand followers is something to pay attention to. That video is the outlier, something that performs better than average - that's what we want to track."
+		q: "Why focus on breakouts?",
+		a: "A video with 4 million views from a creator with 4 million followers is great, but a video with 4 million views from a creator with 4 thousand followers is something to pay attention to. Breakouts are videos that outperform their creator's average. That's what we want to track."
 	},
   {
     q: 'What happens after the 8-day trial?',
