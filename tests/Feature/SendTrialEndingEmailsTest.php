@@ -26,13 +26,13 @@ class SendTrialEndingEmailsTest extends TestCase
             'slug' => 'basic',
             'name' => 'Growth',
             'stripe_price_id' => 'price_basic',
-            'price_cents' => 2900,
+            'price_cents' => 9900,
             'interval_count' => 1,
             'is_active' => true,
-            'amount' => 29,
+            'amount' => 99,
             'annual_amount' => 0,
             'saved_amount' => 0,
-            'unit_amount' => 2900,
+            'unit_amount' => 9900,
         ]);
 
         $subscription = Subscription::query()->create([

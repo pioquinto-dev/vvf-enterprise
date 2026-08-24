@@ -176,7 +176,7 @@ export const PRICING = {
     {
       slug: 'basic',
       name: 'Growth',
-      price: 79,
+      price: 99,
       tagline: 'For a single brand.',
       cta: 'Choose Growth',
       popular: true,
@@ -246,7 +246,7 @@ export const FAQS = [
 	},
   {
     q: 'What happens after the 7 day trial?',
-    a: 'The trial converts to Growth at $79/mo unless you cancel before day 7. Cancelling takes two clicks in account settings — no call, no form.',
+    a: 'The trial converts to Growth at $99/mo unless you cancel before day 7. Cancelling takes two clicks in account settings — no call, no form.',
   },
   {
     q: 'Is the data real-time?',
