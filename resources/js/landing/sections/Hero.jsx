@@ -32,8 +32,7 @@ export default function Hero({ onStart }) {
           TikTok Brand and Social Media <span className="hl">Intelligence Tool</span>
         </h1>
         <p className="hero__sub">
-          Pick what to look up, type it in, and we scan TikTok for the outlier videos usually breaking out — the
-          creators behind them, and why they popped.
+          Facebook has an ad library. Organic TikTok doesn't. So we built it.
         </p>
 
         <form className="box" onSubmit={submit}>
