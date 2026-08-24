@@ -234,7 +234,7 @@ export const PRICING_PLAN_ORDER = PRICING.monthly.map((plan) => plan.slug ?? pla
 export const FAQS = [
 	{
 		q: "What counts as one search?",
-		a: "One subject — your brand, a single competitor, or a single product — included are any keywords you attach to widen the search. All of those keywords are covered by that one search, so ticking six terms still only spends one."
+		a: "One subject: your brand, a single competitor, or a single product. Included are any keywords you attach to widen the search. All of those keywords are covered by that one search, so ticking six terms still only spends one."
 	},
 	{
 		q: "How long does a search take?",
@@ -246,7 +246,7 @@ export const FAQS = [
 	},
   {
     q: 'What happens after the 7 day trial?',
-    a: 'The trial converts to Growth at $99/mo unless you cancel before day 7. Cancelling takes two clicks in account settings — no call, no form.',
+    a: 'The trial converts to Growth at $99/mo unless you cancel before day 7. Cancelling takes two clicks in account settings, with no call or form required.',
   },
   {
     q: 'Is the data real-time?',
