@@ -80,7 +80,21 @@ class VideoPreparationProcessor
             }
 
             if (blank($normalized['transcript'])) {
-                throw new RuntimeException('No transcript was available from the source payload.');
+                $fallbackTranscript = $this->fallbackTranscript($video, $payload);
+
+                if (blank($fallbackTranscript)) {
+                    throw new RuntimeException('No transcript was available from the source payload.');
+                }
+
+                Log::info('Video preparation fell back to saved caption context.', [
+                    'viral_video_id' => $video->id,
+                    'video_id' => $video->video_id,
+                ]);
+
+                $normalized = [
+                    'transcript' => $fallbackTranscript,
+                    'transcript_segments' => null,
+                ];
             }
 
             $sharedTranscript = $this->sharedTranscripts->upsertTranscript(
@@ -173,5 +187,42 @@ class VideoPreparationProcessor
                 'error_message' => $message,
                 'updated_at' => now(),
             ]);
+    }
+
+    /**
+     * When the transcript actor and payload both come up empty, keep automatic
+     * winner analysis alive with the best text context we already have locally.
+     *
+     * @param  array<string, mixed>  $payload
+     */
+    private function fallbackTranscript(ViralVideo $video, array $payload): ?string
+    {
+        $hashtags = array_values(array_filter(
+            array_map(
+                fn (mixed $tag): string => trim((string) $tag),
+                is_array($video->hashtags) ? $video->hashtags : []
+            ),
+            fn (string $value): bool => $value !== ''
+        ));
+
+        $parts = array_values(array_filter([
+            trim((string) $video->title),
+            trim((string) ($payload['desc'] ?? '')),
+            trim((string) ($payload['description'] ?? '')),
+            trim((string) ($payload['text'] ?? '')),
+            trim((string) ($payload['title'] ?? '')),
+            $hashtags !== [] ? 'Hashtags: '.implode(' ', array_map(
+                fn (string $tag): string => str_starts_with($tag, '#') ? $tag : '#'.$tag,
+                array_slice($hashtags, 0, 12)
+            )) : '',
+            filled($video->soundLabel()) ? 'Sound: '.$video->soundLabel() : '',
+            filled($video->username) ? 'Creator: @'.$video->username : '',
+        ], fn (string $value): bool => $value !== ''));
+
+        if ($parts === []) {
+            return null;
+        }
+
+        return implode("\n", array_values(array_unique($parts)));
     }
 }

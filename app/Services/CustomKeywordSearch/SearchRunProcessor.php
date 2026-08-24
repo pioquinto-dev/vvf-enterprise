@@ -33,6 +33,7 @@ class SearchRunProcessor
         private readonly LocalCorpusRecall $localCorpus,
         private readonly BillingService $billing,
         private readonly VideoAnalysisManager $videoAnalyses,
+        private readonly BrandAccountResolver $brandAccounts,
     ) {}
 
     public function process(CustomKeywordSearchRun $run, bool $throwOnFailure = false): void
@@ -241,6 +242,7 @@ class SearchRunProcessor
         $previousWinnerVideoId = $this->previousWinnerVideoId($search);
         $freshlyScraped = [];
         $attached = $this->persist($search, $run, $trigger, $top, $freshlyScraped);
+        $this->fillMissingSourceHandleFromAi($search, $top);
 
         // A result is not ready to render until its freshly scraped imagery is
         // durable. This is intentionally synchronous: the running screen must
@@ -432,6 +434,30 @@ class SearchRunProcessor
             ->firstWhere('rank', 1);
 
         return $previous?->viral_video_id;
+    }
+
+    /**
+     * Restore the initial guessed brand handle when the user left the source
+     * handle blank. Explicit user input always wins and is never overwritten.
+     *
+     * @param  array<int, array<string, mixed>>  $results
+     */
+    private function fillMissingSourceHandleFromAi(CustomKeywordSearch $search, array $results): void
+    {
+        if ($search->search_type === CustomKeywordSearch::TYPE_PRODUCT || ! blank($search->source_tiktok_handle)) {
+            return;
+        }
+
+        $detected = $this->brandAccounts->resolve($results, $search->phrase);
+        $handle = ltrim(trim((string) ($detected['handle'] ?? '')), '@');
+
+        if ($handle === '') {
+            return;
+        }
+
+        $search->update([
+            'source_tiktok_handle' => $handle,
+        ]);
     }
 
     private function analyzeWinnerIfChanged(

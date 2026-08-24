@@ -11365,7 +11365,7 @@ function DetailScreen({ search, isAuthenticated = false, billing: billing$1, ref
 					video: v,
 					expanded: expandedCardId === v.id,
 					locked: !canAnalyzeMoreOutliers,
-					onToggle: () => setExpandedCardId((cur) => cur === v.id ? null : v.id),
+					onToggle: () => !canAnalyzeMoreOutliers ? openUpgradeModal() : setExpandedCardId((cur) => cur === v.id ? null : v.id),
 					onAnalyze: () => canAnalyzeMoreOutliers ? openAnalysis(v) : openUpgradeModal(),
 					onToggleBookmark: () => onToggleVideoBookmark?.(v),
 					bookmarking: bookmarkingVideoId === v.id,
