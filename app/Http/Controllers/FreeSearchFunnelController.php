@@ -42,4 +42,10 @@ class FreeSearchFunnelController extends Controller
 
         return is_array($payload) ? $payload : null;
     }
+
+    /** @param array<string, mixed> $payload */
+    public static function put(Request $request, array $payload): void
+    {
+        $request->session()->put(self::SESSION_KEY, $payload);
+    }
 }

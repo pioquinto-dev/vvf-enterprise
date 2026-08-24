@@ -108,7 +108,12 @@ class GoogleAuthController extends Controller
 
                 return redirect()->route('search.running', ['id' => $search->id]);
             } catch (\Illuminate\Validation\ValidationException $exception) {
-                return redirect()->route('search.keywords')->with(
+                FreeSearchFunnelController::put($request, $pending);
+
+                return redirect()->route('search.keywords', [
+                    'q' => $pending['phrase'] ?? '',
+                    'type' => $pending['type'] ?? 'brand',
+                ])->with(
                     'free_search_error',
                     collect($exception->errors())->flatten()->first() ?? 'We could not start this search.',
                 );
