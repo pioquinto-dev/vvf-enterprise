@@ -134,6 +134,7 @@ export default function SearchListScreen({ kind = 'brand', searches = [], moving
   const searchLimit = billing.searchCreditsLimit;
 
   const subjectSuggestions = useMemo(() => suggestions.slice(0, 5), [suggestions]);
+  const suggestedToTrack = useMemo(() => suggestions.slice(0, 4), [suggestions]);
 
   const runSearch = (e) => {
     e.preventDefault();
@@ -249,7 +250,7 @@ export default function SearchListScreen({ kind = 'brand', searches = [], moving
       )}
 
       {/* ---------------- suggested to track ---------------- */}
-      {suggestions.length > 0 && (
+      {suggestedToTrack.length > 0 && (
         <section className="sugg">
           <div className="movers__h">
             <h2>Suggested to track</h2>
@@ -260,7 +261,7 @@ export default function SearchListScreen({ kind = 'brand', searches = [], moving
             </span>
           </div>
           <div className="sugg__g">
-            {suggestions.map((s) => (
+            {suggestedToTrack.map((s) => (
               <div className="sg" key={s.name}>
                 <span className="sg__av">{s.name.slice(0, 2).toUpperCase()}</span>
                 <span style={{ minWidth: 0 }}>
