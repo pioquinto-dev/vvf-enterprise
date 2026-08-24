@@ -107,12 +107,6 @@ class BillingEntitlementService
 
     public function ensureCanBookmark(User $user): void
     {
-        if (! $this->hasPaidPlan($user)) {
-            throw ValidationException::withMessages([
-                'billing' => 'Upgrade to Growth or Scale to bookmark videos.',
-            ]);
-        }
-
         $limit = $this->videoBookmarkLimit($user);
 
         if ($limit !== -1 && $this->videoBookmarkCount($user) >= $limit) {
@@ -408,7 +402,7 @@ class BillingEntitlementService
                 'trialEnabled' => true,
                 'searchLimit' => $user->current_plan_slug === 'free' ? 1 : 0,
                 'searchUsed' => 0,
-                'videoBookmarkLimit' => 0,
+                'videoBookmarkLimit' => $user->current_plan_slug === 'free' ? -1 : 0,
                 'videoBookmarkUsed' => 0,
                 'searchBookmarkLimit' => 0,
                 'searchBookmarkUsed' => 0,

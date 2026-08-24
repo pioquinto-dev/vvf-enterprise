@@ -79,6 +79,7 @@ class GoogleAuthController extends Controller
 
             event(new Registered($user));
             $this->emails->sendNewRegistration($user);
+            $this->billing->ensureSubscriptionRecord($user);
         } elseif (! $user->email_verified_at) {
             $user->forceFill([
                 'email_verified_at' => now(),

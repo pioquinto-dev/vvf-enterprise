@@ -60,6 +60,7 @@ class RegisteredUserController extends Controller
         $this->utmAttributionService->createSignupAttribution($user, $request);
         $this->emails->sendNewRegistration($user);
         $this->emails->sendVerifyEmail($user);
+        $this->billing->ensureSubscriptionRecord($user);
         Auth::login($user);
         $this->activity->record($user, 'sign_up', 'account_created', 'Created account.');
         $this->activity->record($user, 'engagement', 'logged_in', 'Logged in.');

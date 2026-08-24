@@ -297,6 +297,37 @@ class BillingService
         return $this->entitlements->limitsForUser($user);
     }
 
+    public function ensureSubscriptionRecord(User $user): Subscription
+    {
+        $existing = Subscription::query()
+            ->where('user_id', $user->id)
+            ->whereNull('deleted_at')
+            ->first();
+
+        if ($existing !== null) {
+            return $existing;
+        }
+
+        $plan = PricingPlan::query()->where('slug', $user->current_plan_slug)->first();
+        $searchCreditsUsed = $this->entitlements->searchCreditsUsed($user);
+        $videoBookmarksUsed = $this->entitlements->videoBookmarkCount($user);
+        $searchBookmarksUsed = $this->entitlements->searchBookmarkCount($user);
+        $videoAnalysisUsed = $this->entitlements->videoAnalysisUsed($user);
+        $status = $user->current_plan_slug === 'free' ? 'free' : 'pending';
+
+        return Subscription::query()->create([
+            'id' => (string) Str::ulid(),
+            'user_id' => $user->id,
+            'plan_id' => $plan?->id,
+            'status' => $status,
+            'current_period_starts_at' => CarbonImmutable::now(),
+            'current_period_ends_at' => $user->plan_renews_at,
+            'metadata' => $plan !== null
+                ? $this->subscriptionMetadata($plan, $searchCreditsUsed, $videoBookmarksUsed, $searchBookmarksUsed, $videoAnalysisUsed)
+                : null,
+        ]);
+    }
+
     private function subscriptionMetadata(PricingPlan $plan, int $searchCreditsUsed, int $videoBookmarksUsed, int $searchBookmarksUsed, int $videoAnalysisUsed): array
     {
         $limits = $this->limitsFor($plan);

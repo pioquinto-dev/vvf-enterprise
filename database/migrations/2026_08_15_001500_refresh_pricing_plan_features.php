@@ -10,7 +10,7 @@ return new class extends Migration
         PricingPlan::query()->where('slug', 'free')->update([
             'features' => [
                 '1 free search',
-                '0 video bookmarks',
+                'Unlimited video bookmarks',
                 '0 search bookmarks',
                 '0 video analysis',
             ],
@@ -23,7 +23,6 @@ return new class extends Migration
                 '50 viral video bookmarks',
                 '50 video analysis',
                 'Weekly + monthly scheduling',
-                'CSV export for reports',
                 'Virality alerts',
             ],
         ]);
@@ -36,7 +35,6 @@ return new class extends Migration
                 'Unlimited video analysis',
                 'Weekly + monthly scheduling',
                 'Virality alerts',
-                'CSV export for reports',
             ],
         ]);
     }

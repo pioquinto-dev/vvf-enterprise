@@ -26,7 +26,7 @@ class PricingPlanTable
                 'is_active' => true,
                 'features' => [
                     '1 free search',
-                    '0 video bookmarks',
+                    'Unlimited video bookmarks',
                     '0 search bookmarks',
                     '0 video analysis',
                 ],
@@ -38,7 +38,7 @@ class PricingPlanTable
                     'subscription' => [
                         'trialEnabled' => true,
                         'search_limits' => ['used' => 0, 'limit' => 1],
-                        'viral_video_bookmarks' => ['used' => 0, 'limit' => 0],
+                        'viral_video_bookmarks' => ['used' => 0, 'limit' => -1],
                         'search_bookmarks' => ['used' => 0, 'limit' => 0],
                         'video_analysis' => ['used' => 0, 'limit' => 0],
                     ],
