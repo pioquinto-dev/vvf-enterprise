@@ -16,6 +16,8 @@ use Illuminate\Validation\ValidationException;
 
 class BillingService
 {
+    private const TRIAL_DAYS = 8;
+
     public function __construct(
         private readonly StripeClient $stripe,
         private readonly BillingEntitlementService $entitlements,
@@ -46,9 +48,9 @@ class BillingService
             'metadata' => [
                 'plan_slug' => $plan->slug,
                 'user_id' => (string) $user->id,
-                'trial_days' => $withTrial ? '7' : '0',
+                'trial_days' => $withTrial ? (string) self::TRIAL_DAYS : '0',
             ],
-            ...($withTrial ? ['subscription_data' => ['trial_period_days' => 7]] : []),
+            ...($withTrial ? ['subscription_data' => ['trial_period_days' => self::TRIAL_DAYS]] : []),
         ]);
 
         AppEventLogger::result('billing.checkout.session_created', [

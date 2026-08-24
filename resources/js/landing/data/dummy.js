@@ -245,8 +245,8 @@ export const FAQS = [
 		a: "A video with 4 million views from a creator with 4 million followers is great, but a video with 4 million views from a creator with 4 thousand followers is something to pay attention to. That video is the outlier, something that performs better than average - that's what we want to track."
 	},
   {
-    q: 'What happens after the 7 day trial?',
-    a: 'The trial converts to Growth at $99/mo unless you cancel before day 7. Cancelling takes two clicks in account settings, with no call or form required.',
+    q: 'What happens after the 8-day trial?',
+    a: "1 day after your search updates, we'll email that your searches refreshed and let you know you'll be billed.",
   },
   {
     q: 'Is the data real-time?',

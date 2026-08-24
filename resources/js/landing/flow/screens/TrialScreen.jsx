@@ -40,7 +40,7 @@ export default function TrialScreen({ onBack, backLabel = 'Back to results' }) {
           Unlock paid tracking
         </h1>
         <p className="mt-3 text-[14.5px] muted">
-          Start on a 7-day trial. Growth includes 150 searches, 50 video bookmarks, 50 search bookmarks, and 50 video
+          Start on an 8-day trial. Growth includes 150 searches, 50 video bookmarks, 50 search bookmarks, and 50 video
           analysis runs. Scale includes 400 searches and unlimited limits across those extras.
         </p>
 
@@ -64,7 +64,7 @@ export default function TrialScreen({ onBack, backLabel = 'Back to results' }) {
               <p className="mt-1 text-[12.5px] faint">{t.tagline}</p>
 
               <p className="mt-3 font-display text-[32px] leading-none font-bold tracking-[-.03em]">$0</p>
-              <p className="mt-2 min-h-[32px] text-[11.5px] leading-[1.35] faint">then ${t.price} after 7 days</p>
+              <p className="mt-2 min-h-[32px] text-[11.5px] leading-[1.35] faint">then ${t.price} after 8 days</p>
 
               <p className="mt-4 text-[12px] faint">
                 {t.searchCreditsLimit} searches · {t.searchBookmarkLimit === -1 ? 'Unlimited' : t.searchBookmarkLimit} search bookmarks
@@ -95,7 +95,7 @@ export default function TrialScreen({ onBack, backLabel = 'Back to results' }) {
           Start {trialTier.name} trial <Arrow />
         </button>
         <p className="mt-4 text-xs faint">
-          Card details are collected up front, and billing starts after 7 days unless you cancel.
+          Card details are collected up front, and billing starts after 8 days unless you cancel.
         </p>
       </div>
     </div>

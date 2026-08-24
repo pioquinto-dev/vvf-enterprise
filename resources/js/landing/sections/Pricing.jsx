@@ -39,7 +39,7 @@ export default function Pricing({ plans = [], onStart, onTrial }) {
                 <div className="plan__p">
                   $0{free && <span>/mo</span>}
                 </div>
-                <p className="plan__s">{free ? '' : `then $${plan.price} after 7 days`}</p>
+                <p className="plan__s">{free ? '' : `then $${plan.price} after 8 days`}</p>
 
                 <ul>
                   {plan.features.map((feature) => (
@@ -70,14 +70,14 @@ export default function Pricing({ plans = [], onStart, onTrial }) {
 
         <div className="trial">
           <div>
-            <h3>Start a 7-day Growth trial</h3>
+            <h3>Start an 8-day Growth trial</h3>
             <p>
-              Try the full Growth plan for 7 days. Card details are collected up front, and billing starts only after the
+              Try the full Growth plan for 8 days. Card details are collected up front, and billing starts only after the
               trial ends unless you cancel.
             </p>
           </div>
           <button type="button" className="btn btn--ink" style={{ flex: 'none' }} onClick={() => onTrial(visiblePlans.find((p) => p.slug === 'basic'))}>
-            Start 7-day trial
+            Start 8-day trial
           </button>
         </div>
       </div>

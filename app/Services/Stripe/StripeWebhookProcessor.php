@@ -14,6 +14,8 @@ use Stripe\Event;
 
 class StripeWebhookProcessor
 {
+    private const TRIAL_DAYS = 8;
+
     public function __construct(
         private readonly BillingService $billing,
         private readonly BrevoLifecycleEmailService $emails,
@@ -199,8 +201,8 @@ class StripeWebhookProcessor
         $trialEnd = $status === 'trialing'
             ? ($this->timestampToCarbon(data_get($payload, 'trial_end'))
                 ?? ($subscription->trial_started_at !== null
-                    ? CarbonImmutable::instance($subscription->trial_started_at)->addDays(7)
-                    : ($periodStart?->addDays(7))))
+                    ? CarbonImmutable::instance($subscription->trial_started_at)->addDays(self::TRIAL_DAYS)
+                    : ($periodStart?->addDays(self::TRIAL_DAYS))))
             : $subscription->trial_ends_at;
         $limits = $this->billing->limitsFor($plan);
         $renewed = $periodEnd !== null

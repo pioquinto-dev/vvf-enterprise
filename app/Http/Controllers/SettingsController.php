@@ -15,6 +15,7 @@ use Inertia\Response;
 class SettingsController extends Controller
 {
     private const ACCOUNT_DELETION_GRACE_DAYS = 30;
+    private const TRIAL_DAYS = 8;
 
     private const DEFAULT_NOTIFICATION_PREFERENCES = [
         'search_finished' => true,
@@ -156,7 +157,7 @@ class SettingsController extends Controller
         $videoAnalysisUsed = max(0, (int) data_get($subscription?->metadata, 'subscription.video_analysis.used', $limits['videoAnalysisUsed'] ?? 0));
         $trialStartedAt = $subscription?->trial_started_at;
         $trialEndsAt = in_array($status, ['trialing', 'trial'], true) && $trialStartedAt !== null
-            ? CarbonImmutable::instance($trialStartedAt)->addDays(7)
+            ? CarbonImmutable::instance($trialStartedAt)->addDays(self::TRIAL_DAYS)
             : null;
         $renewsAt = $status === 'pending'
             ? null
