@@ -250,7 +250,7 @@ function LeftSidebar({ video, canRegenerate = false, regenerating = false, disab
     : null;
 
   return (
-    <aside className="self-start rounded-[18px] border border-[#E7E5DF] bg-white p-[13px] min-[980px]:sticky min-[980px]:top-0">
+    <aside className="self-start rounded-[16px] border border-[#E7E5DF] bg-white p-3 shadow-[0_10px_24px_rgba(42,33,20,0.06)] min-[980px]:sticky min-[980px]:top-0 min-[980px]:rounded-[18px] min-[980px]:p-[13px]">
       <div className="mx-auto w-full max-w-[260px] overflow-hidden rounded-[13px] bg-[#FAF9F6] min-[980px]:max-w-none">
         {playing && embed ? (
           <div className="relative">
@@ -310,7 +310,7 @@ function LeftSidebar({ video, canRegenerate = false, regenerating = false, disab
         </div>
       </div>
 
-      <div className="mt-[11px] flex flex-wrap items-center gap-2 text-[11.5px] text-[#5C5A54]">
+      <div className="mt-[11px] flex flex-wrap items-center gap-2 text-[11px] text-[#5C5A54] min-[640px]:text-[11.5px]">
         <span className="rounded-[7px] bg-[#FFF3CF] px-[9px] py-1 text-[10px] font-extrabold uppercase tracking-[0.05em] text-[#9A6B00]">
           Skincare &amp; Beauty
         </span>
@@ -320,12 +320,12 @@ function LeftSidebar({ video, canRegenerate = false, regenerating = false, disab
 
       <div className="mt-3 grid grid-cols-2 gap-2">
         {metrics.map((item) => (
-          <div key={item.label} className={`rounded-[11px] border px-[11px] py-[9px] ${STAT_CHIP[item.variant]}`}>
+          <div key={item.label} className={`rounded-[11px] border px-[10px] py-[8px] min-[640px]:px-[11px] min-[640px]:py-[9px] ${STAT_CHIP[item.variant]}`}>
             <span className={`inline-flex items-center gap-[5px] whitespace-nowrap text-[9px] font-extrabold uppercase tracking-[0.06em] ${STAT_LABEL[item.variant]}`}>
               <i className="h-[5px] w-[5px] rounded-full bg-current" />
               {item.label}
             </span>
-            <span className="mt-1 block text-[17px] font-extrabold leading-none tracking-[-0.02em] text-[#0B0B0B] [font-variant-numeric:tabular-nums]">
+            <span className="mt-1 block text-[16px] font-extrabold leading-none tracking-[-0.02em] text-[#0B0B0B] [font-variant-numeric:tabular-nums] min-[640px]:text-[17px]">
               {item.value}
             </span>
           </div>
@@ -348,26 +348,27 @@ function LeftSidebar({ video, canRegenerate = false, regenerating = false, disab
 
 function SummaryCard({ summary }) {
   return (
-    <section className="rounded-[14px] border border-[#ddd6ca] bg-[#fbfaf7] px-4 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.65)]">
+    <section className="min-w-0 rounded-[14px] border border-[#ddd6ca] bg-[#fbfaf7] px-3.5 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.65)] min-[640px]:px-4">
       <div className="text-[13px] font-semibold text-[#1f1f1f]">Summary</div>
-      <p className="mt-1 text-[13px] leading-6 text-[#696257]">{summary}</p>
+      <p className="mt-1 break-words text-[12.5px] leading-5.5 text-[#696257] min-[640px]:text-[13px] min-[640px]:leading-6">{summary}</p>
     </section>
   );
 }
 
 function TabRow({ tabs, activeTab, onChange }) {
   return (
-    <div className="flex rounded-[14px] border border-[#ddd6ca] bg-[#fbfaf7] p-1">
+    <div className="no-scrollbar flex snap-x snap-mandatory gap-1 overflow-x-auto rounded-[14px] border border-[#ddd6ca] bg-[#fbfaf7] p-1">
       {tabs.map((tab) => (
         <button
           key={tab.key}
           type="button"
           onClick={() => onChange(tab.key)}
-          className={`flex-1 rounded-[10px] px-3 py-2.5 text-[12px] font-semibold transition ${
-            activeTab === tab.key ? 'bg-[#ffeeb8] text-[#6c5715]' : 'text-[#5f584d] hover:text-[#1f1f1f]'
+          className={`snap-start shrink-0 rounded-[10px] px-3 py-2.5 text-[11.5px] font-semibold whitespace-nowrap transition md:flex-1 md:text-center md:text-[12px] ${
+            activeTab === tab.key ? 'bg-[#ffeeb8] text-[#6c5715] shadow-[inset_0_1px_0_rgba(255,255,255,0.55)]' : 'text-[#5f584d] hover:text-[#1f1f1f]'
           }`}
         >
-          {tab.label}
+          <span className="sm:hidden">{tab.shortLabel ?? tab.label}</span>
+          <span className="hidden sm:inline">{tab.label}</span>
         </button>
       ))}
     </div>
@@ -376,7 +377,7 @@ function TabRow({ tabs, activeTab, onChange }) {
 
 function PanelShell({ icon, title, subtitle, children }) {
   return (
-    <section className="rounded-[16px] border border-[#ddd6ca] bg-[#fffdf9] p-4">
+    <section className="min-w-0 rounded-[16px] border border-[#ddd6ca] bg-[#fffdf9] p-3.5 min-[640px]:p-4">
       <div className="flex items-center gap-3">
         <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#fff0bf] text-[#8c6b10]">{icon}</div>
         <div>
@@ -461,7 +462,7 @@ function WhyTab({ result, video }) {
       <div className="mb-3 text-[10px] font-bold uppercase tracking-[0.1em] text-[#8c8579]">Top outlier drivers</div>
       <div className="space-y-3">
         {drivers.map((item) => (
-          <article key={item.id} className="rounded-[12px] border border-[#ddd6ca] bg-white px-4 py-3">
+          <article key={item.id} className="min-w-0 rounded-[12px] border border-[#ddd6ca] bg-white px-3.5 py-3 min-[640px]:px-4">
             <div className="flex items-center gap-3">
               <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[#fff0bf] text-[10px] font-bold text-[#916e16]">
                 {item.rank}
@@ -471,7 +472,7 @@ function WhyTab({ result, video }) {
                   <h3 className="text-[14px] font-semibold text-[#1a1a1a]">{item.title}</h3>
                   {item.uplift && <span className="rounded-full bg-[#dff4df] px-2 py-0.5 text-[10px] font-semibold text-[#2c8a4d]">{item.uplift}</span>}
                 </div>
-                <p className="mt-1 text-[13px] leading-5 text-[#696257]">{item.body}</p>
+                <p className="mt-1 break-words text-[13px] leading-5 text-[#696257]">{item.body}</p>
               </div>
             </div>
           </article>
@@ -519,12 +520,12 @@ function HookTab({ result }) {
       <div className="mt-5 text-[10px] font-bold uppercase tracking-[0.1em] text-[#8c8579]">Why it works</div>
       <div className="mt-3 space-y-3">
         {reasons.map((item) => (
-          <article key={item.id} className="rounded-[12px] border border-[#ddd6ca] bg-white px-4 py-3">
+          <article key={item.id} className="min-w-0 rounded-[12px] border border-[#ddd6ca] bg-white px-3.5 py-3 min-[640px]:px-4">
             <div className="flex gap-3">
               <span className="mt-1 flex h-5 w-5 items-center justify-center rounded-full bg-[#fff0bf] text-[10px] font-bold text-[#916e16]">-</span>
               <div>
                 <div className="text-[14px] font-semibold text-[#1a1a1a]">{item.title}</div>
-                <p className="mt-1 text-[13px] leading-5 text-[#696257]">{item.body}</p>
+                <p className="mt-1 break-words text-[13px] leading-5 text-[#696257]">{item.body}</p>
               </div>
             </div>
           </article>
@@ -534,9 +535,9 @@ function HookTab({ result }) {
       <div className="mt-5 text-[10px] font-bold uppercase tracking-[0.1em] text-[#8c8579]">Variations to test</div>
       <div className="mt-3 space-y-3">
         {variations.map((item) => (
-          <div key={item.id} className="flex items-center gap-3 rounded-[12px] border border-[#ddd6ca] bg-white px-4 py-3 text-[13px] text-[#5f584d]">
+          <div key={item.id} className="min-w-0 flex items-center gap-3 rounded-[12px] border border-[#ddd6ca] bg-white px-3.5 py-3 text-[13px] text-[#5f584d] min-[640px]:px-4">
             <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[#fff0bf] text-[10px] font-bold text-[#916e16]">{item.label}</span>
-            <span>{item.text}</span>
+            <span className="break-words">{item.text}</span>
           </div>
         ))}
       </div>
@@ -561,9 +562,9 @@ function TranscriptTab({ analysis }) {
     >
       <div className="space-y-1">
         {rows.map((row) => (
-          <div key={row.id} className="grid grid-cols-[44px_minmax(0,1fr)] gap-4 border-b border-dashed border-[#e7dfd1] py-3 last:border-b-0">
+          <div key={row.id} className="grid grid-cols-[40px_minmax(0,1fr)] gap-3 min-[640px]:grid-cols-[44px_minmax(0,1fr)] min-[640px]:gap-4 border-b border-dashed border-[#e7dfd1] py-3 last:border-b-0">
             <div className="text-[12px] font-bold text-[#a07512]">{row.time}</div>
-            <div className="text-[14px] leading-6 text-[#4f4a42]">{row.text}</div>
+            <div className="break-words text-[13px] leading-5.5 text-[#4f4a42] min-[640px]:text-[14px] min-[640px]:leading-6">{row.text}</div>
           </div>
         ))}
       </div>
@@ -590,12 +591,12 @@ function StrategistTab({ result }) {
       <div className="text-[10px] font-bold uppercase tracking-[0.1em] text-[#8c8579]">Recommendations</div>
       <div className="mt-3 space-y-3">
         {recommendations.map((item) => (
-          <article key={item.id} className="rounded-[12px] border border-[#ddd6ca] bg-white px-4 py-3">
+          <article key={item.id} className="min-w-0 rounded-[12px] border border-[#ddd6ca] bg-white px-3.5 py-3 min-[640px]:px-4">
             <div className="flex gap-3">
               <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[#fff0bf] text-[10px] font-bold text-[#916e16]">{item.rank}</span>
               <div>
                 <div className="text-[14px] font-semibold text-[#1a1a1a]">{item.title}</div>
-                {item.body && <p className="mt-1 text-[13px] leading-5 text-[#696257]">{item.body}</p>}
+                {item.body && <p className="mt-1 break-words text-[13px] leading-5 text-[#696257]">{item.body}</p>}
               </div>
             </div>
           </article>
@@ -605,10 +606,10 @@ function StrategistTab({ result }) {
       {blueprint && (
         <>
           <div className="mt-5 text-[10px] font-bold uppercase tracking-[0.1em] text-[#8c8579]">Script to replicate</div>
-          <div className="mt-3 rounded-[14px] border border-dashed border-[#ddc79d] bg-[#fffaf0] px-4 py-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.7)]">
-            <div className="space-y-3 font-mono text-[12.5px] leading-6 text-[#5f584d]">
+          <div className="mt-3 min-w-0 rounded-[14px] border border-dashed border-[#ddc79d] bg-[#fffaf0] px-3.5 py-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.7)] min-[640px]:px-4">
+            <div className="space-y-3 font-mono text-[12px] leading-5.5 text-[#5f584d] min-[640px]:text-[12.5px] min-[640px]:leading-6">
               {blueprintLines.map((line) => (
-                <div key={line.id}>
+                <div key={line.id} className="break-words">
                   {line.label ? (
                     <>
                       <span className="font-semibold uppercase tracking-[0.02em] text-[#4a4338]">{line.label}</span>
@@ -636,10 +637,10 @@ function ActivePanel({ activeTab, analysis, result, video }) {
 }
 
 const DEFAULT_TABS = [
-  { key: 'why', label: 'Why It Went Viral' },
+  { key: 'why', label: 'Why It Went Viral', shortLabel: 'Why Viral' },
   { key: 'hook', label: 'Hook' },
   { key: 'transcript', label: 'Transcript' },
-  { key: 'strategist', label: 'Creative Strategist' },
+  { key: 'strategist', label: 'Creative Strategist', shortLabel: 'Strategist' },
 ];
 
 export default function AnalysisModal({ video, initialAnalysis, tabs = DEFAULT_TABS, open = true, onClose, onAnalysisChange }) {
@@ -726,15 +727,15 @@ export default function AnalysisModal({ video, initialAnalysis, tabs = DEFAULT_T
   const regenerateDisabled = regenerating || analysis?.status === 'processing';
 
   return (
-    <div className="fixed inset-0 z-[120] flex items-center justify-center bg-[rgba(38,33,28,0.42)] px-4 py-6 backdrop-blur-[2px]" onClick={onClose}>
+    <div className="fixed inset-0 z-[120] flex items-center justify-center bg-[rgba(38,33,28,0.42)] px-2 py-3 backdrop-blur-[2px] min-[640px]:px-4 min-[640px]:py-6" onClick={onClose}>
       <div
-        className="max-h-[calc(100vh-3rem)] w-full max-w-[1150px] overflow-y-auto rounded-[26px] border border-[#d9d1c4] bg-[radial-gradient(circle_at_top,#f7f2e9_0%,#f3efe8_32%,#f1ede6_100%)] p-3 shadow-[0_28px_90px_rgba(42,33,20,0.22)]"
+        className="max-h-[calc(100vh-1.5rem)] w-full max-w-[1150px] overflow-y-auto rounded-[22px] border border-[#d9d1c4] bg-[radial-gradient(circle_at_top,#f7f2e9_0%,#f3efe8_32%,#f1ede6_100%)] p-2 shadow-[0_28px_90px_rgba(42,33,20,0.22)] min-[640px]:max-h-[calc(100vh-3rem)] min-[640px]:rounded-[26px] min-[640px]:p-3"
         onClick={(event) => event.stopPropagation()}
         role="dialog"
         aria-modal="true"
         aria-label="Video analysis"
       >
-        <div className="relative rounded-[22px] border border-[#d9d1c4] bg-[#f6f3ec] p-4 md:p-5">
+        <div className="relative rounded-[18px] border border-[#d9d1c4] bg-[#f6f3ec] p-3 min-[640px]:rounded-[22px] min-[640px]:p-4 md:p-5">
           {showErrorModal && (
             <ErrorStateModal
               message={analysis?.error_message}
@@ -763,7 +764,7 @@ export default function AnalysisModal({ video, initialAnalysis, tabs = DEFAULT_T
               onRegenerate={regenerate}
             />
 
-            <div className="space-y-4">
+            <div className="min-w-0 space-y-3 min-[640px]:space-y-4">
               <SummaryCard summary={summary} />
               <TabRow tabs={tabs} activeTab={activeTab} onChange={setActiveTab} />
 

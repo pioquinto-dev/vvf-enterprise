@@ -3358,13 +3358,6 @@ var BrandInlineFlow_exports = /* @__PURE__ */ __exportAll({ default: () => Brand
 * The dashboard's SearchWizard flow is untouched — this is a separate,
 * lighter surface for the brand/product hubs.
 */
-var STEPS$1 = [{
-	key: "keywords",
-	label: "Keywords"
-}, {
-	key: "sources",
-	label: "Sources"
-}];
 var STAGE_LIST = [
 	{
 		key: "start",
@@ -3402,15 +3395,25 @@ function useRunStages(active, done) {
 	return idx;
 }
 function MiniStepper({ current }) {
-	const activeIdx = STEPS$1.findIndex((s) => s.key === current);
+	const steps = current === "sources" ? [{
+		key: "keywords",
+		label: "Keywords"
+	}, {
+		key: "sources",
+		label: "Sources"
+	}] : [{
+		key: "keywords",
+		label: "Keywords"
+	}];
+	const activeIdx = steps.findIndex((s) => s.key === current);
 	if (!(current === "sources" || current === "keywords")) return null;
 	return /* @__PURE__ */ jsx("div", {
 		className: "mini",
 		children: [{
 			key: "subject",
 			label: "Subject"
-		}, ...STEPS$1].map((s, i, arr) => {
-			const stateIdx = i === 0 ? 0 : STEPS$1.findIndex((x) => x.key === s.key) + 1;
+		}, ...steps].map((s, i, arr) => {
+			const stateIdx = i === 0 ? 0 : steps.findIndex((x) => x.key === s.key) + 1;
 			const cur = activeIdx + 1;
 			const cls = stateIdx < cur ? "done" : stateIdx === cur ? "now" : "todo";
 			return /* @__PURE__ */ jsxs("span", {
@@ -3456,6 +3459,7 @@ function BrandInlineFlow({ kind = "brand", placeholder = "Which brand do you wan
 	const kwCount = useMemo(() => keywords.filter((k) => k.selected).length, [keywords]);
 	const searchLeft = billing.searchCreditsRemaining;
 	const searchLimit = billing.searchCreditsLimit;
+	const supportsSources = kind !== "product";
 	const startFlow = async () => {
 		const q = subject.trim().replace(/\s+/g, " ");
 		if (!q) return;
@@ -3567,7 +3571,7 @@ function BrandInlineFlow({ kind = "brand", placeholder = "Which brand do you wan
 			onCreated?.(created);
 		} catch (e) {
 			setError(e.message || "Could not start the search.");
-			setState("sources");
+			setState(supportsSources ? "sources" : "keywords");
 			setSubmitting(false);
 		}
 	};
@@ -3592,7 +3596,7 @@ function BrandInlineFlow({ kind = "brand", placeholder = "Which brand do you wan
 				if (!cancelled && s?.status === "failed") {
 					setError("The search failed to complete.");
 					setSubmitting(false);
-					setState("sources");
+					setState(supportsSources ? "sources" : "keywords");
 					return;
 				}
 			} catch {}
@@ -3603,7 +3607,11 @@ function BrandInlineFlow({ kind = "brand", placeholder = "Which brand do you wan
 			cancelled = true;
 			window.clearTimeout(timer);
 		};
-	}, [state, searchResult?.id]);
+	}, [
+		state,
+		searchResult?.id,
+		supportsSources
+	]);
 	const viewResults = () => {
 		if (searchResult?.url) router.visit(searchResult.url);
 	};
@@ -3933,16 +3941,20 @@ function BrandInlineFlow({ kind = "brand", placeholder = "Which brand do you wan
 						className: "btn btn--g",
 						onClick: collapse,
 						children: "Cancel"
-					}), /* @__PURE__ */ jsxs("button", {
+					}), /* @__PURE__ */ jsx("button", {
 						type: "button",
 						className: "btn btn--y",
-						onClick: () => setState("sources"),
-						disabled: kwCount === 0,
-						children: ["Continue ", /* @__PURE__ */ jsx(Arrow, {})]
+						onClick: () => supportsSources ? setState("sources") : runSearch(),
+						disabled: kwCount === 0 || submitting,
+						children: supportsSources ? /* @__PURE__ */ jsxs(Fragment$1, { children: ["Continue ", /* @__PURE__ */ jsx(Arrow, {})] }) : /* @__PURE__ */ jsxs(Fragment$1, { children: [
+							submitting ? "Starting…" : "Run the search",
+							" ",
+							/* @__PURE__ */ jsx(Arrow, {})
+						] })
 					})]
 				})
 			] }),
-			state === "sources" && /* @__PURE__ */ jsxs("div", { children: [
+			supportsSources && state === "sources" && /* @__PURE__ */ jsxs("div", { children: [
 				/* @__PURE__ */ jsxs("div", {
 					className: "ph",
 					children: [
@@ -4598,14 +4610,10 @@ function SearchListScreen({ kind = "brand", searches = [], moving = [], suggesti
 		website: ""
 	});
 	const [submitting, setSubmitting] = useState(false);
-	const searchLeft = billing.searchCreditsRemaining;
-	const searchLimit = billing.searchCreditsLimit;
-	const subjectSuggestions = useMemo(() => suggestions.slice(0, 5), [suggestions]);
-	const runSearch = (e) => {
-		e.preventDefault();
-		const q = subject.trim().replace(/\s+/g, " ");
-		router.visit(`/search?type=${kind}${q ? `&q=${encodeURIComponent(q)}` : ""}`);
-	};
+	billing.searchCreditsRemaining;
+	billing.searchCreditsLimit;
+	useMemo(() => suggestions.slice(0, 5), [suggestions]);
+	const suggestedToTrack = useMemo(() => suggestions.slice(0, 4), [suggestions]);
 	const filtered = useMemo(() => {
 		const q = query.trim().toLowerCase();
 		const next = searchList.filter((s) => {
@@ -4681,89 +4689,22 @@ function SearchListScreen({ kind = "brand", searches = [], moving = [], suggesti
 		subtitle: copy.subtitle,
 		actions: /* @__PURE__ */ jsx(EntitlementsBar, {}),
 		children: [
-			kind === "brand" ? /* @__PURE__ */ jsx(BrandInlineFlow, {
-				kind: "brand",
+			/* @__PURE__ */ jsx(BrandInlineFlow, {
+				kind,
 				eyebrow: copy.heroEyebrow,
 				placeholder: copy.placeholder,
 				sample: copy.sample,
 				hint: copy.heroHint,
 				onCreated: (created) => setSearchList((current) => [{
 					...created,
-					search_type: "brand"
+					search_type: kind
 				}, ...current])
-			}) : /* @__PURE__ */ jsxs("section", {
-				className: "bhero",
-				children: [
-					/* @__PURE__ */ jsx("p", {
-						className: "bhero__k",
-						children: copy.heroEyebrow
-					}),
-					/* @__PURE__ */ jsxs("form", {
-						className: "sbox",
-						onSubmit: runSearch,
-						children: [/* @__PURE__ */ jsx("textarea", {
-							rows: 2,
-							maxLength: 80,
-							value: subject,
-							onChange: (e) => setSubject(e.target.value),
-							placeholder: copy.placeholder,
-							"aria-label": copy.heroEyebrow
-						}), /* @__PURE__ */ jsxs("div", {
-							className: "sbox__f",
-							children: [/* @__PURE__ */ jsxs("p", {
-								className: "sbox__t",
-								children: [
-									"Try ",
-									/* @__PURE__ */ jsxs("b", { children: [
-										"“",
-										copy.sample,
-										"”"
-									] }),
-									/* @__PURE__ */ jsx("br", {}),
-									copy.heroHint
-								]
-							}), /* @__PURE__ */ jsxs("button", {
-								type: "submit",
-								className: "btn btn--y btn--lg",
-								children: [/* @__PURE__ */ jsx(Search, { className: "h-[15px] w-[15px]" }), " Find outliers"]
-							})]
-						})]
-					}),
-					/* @__PURE__ */ jsxs("div", {
-						className: "bhero__r",
-						children: [
-							subjectSuggestions.length > 0 && /* @__PURE__ */ jsx("span", {
-								className: "bhero__rl",
-								children: "Try searching this"
-							}),
-							subjectSuggestions.map((suggestion) => /* @__PURE__ */ jsxs("button", {
-								type: "button",
-								className: "rchip",
-								onClick: () => setSubject(suggestion.name || ""),
-								children: [
-									/* @__PURE__ */ jsx(Refresh, { className: "h-[13px] w-[13px]" }),
-									" ",
-									suggestion.name
-								]
-							}, suggestion.name)),
-							searchLimit > 0 && /* @__PURE__ */ jsxs("span", {
-								className: "bhero__q",
-								children: [
-									searchLeft,
-									" of ",
-									searchLimit,
-									" searches left this cycle"
-								]
-							})
-						]
-					})
-				]
 			}),
 			moving.length > 0 && /* @__PURE__ */ jsxs("section", {
 				className: "movers",
 				children: [/* @__PURE__ */ jsxs("div", {
 					className: "movers__h",
-					children: [/* @__PURE__ */ jsx("h2", { children: "Moving this week" }), /* @__PURE__ */ jsx("span", {
+					children: [/* @__PURE__ */ jsx("h2", { children: "Breakout videos this week" }), /* @__PURE__ */ jsx("span", {
 						className: "note",
 						children: copy.moversNote
 					})]
@@ -4802,7 +4743,7 @@ function SearchListScreen({ kind = "brand", searches = [], moving = [], suggesti
 					}, i))
 				})]
 			}),
-			suggestions.length > 0 && /* @__PURE__ */ jsxs("section", {
+			suggestedToTrack.length > 0 && /* @__PURE__ */ jsxs("section", {
 				className: "sugg",
 				children: [/* @__PURE__ */ jsxs("div", {
 					className: "movers__h",
@@ -4812,7 +4753,7 @@ function SearchListScreen({ kind = "brand", searches = [], moving = [], suggesti
 					})]
 				}), /* @__PURE__ */ jsx("div", {
 					className: "sugg__g",
-					children: suggestions.map((s) => /* @__PURE__ */ jsxs("div", {
+					children: suggestedToTrack.map((s) => /* @__PURE__ */ jsxs("div", {
 						className: "sg",
 						children: [
 							/* @__PURE__ */ jsx("span", {
@@ -7447,7 +7388,7 @@ function Hero({ onStart }) {
 				})] }),
 				/* @__PURE__ */ jsx("p", {
 					className: "hero__sub",
-					children: "Pick what to look up, type it in, and we scan TikTok for the outlier videos usually breaking out — the creators behind them, and why they popped."
+					children: "Facebook has an ad library. Organic TikTok doesn't. So we built it."
 				}),
 				/* @__PURE__ */ jsxs("form", {
 					className: "box",
@@ -7617,7 +7558,7 @@ var FEATURES = [
 	},
 	{
 		id: "alerts",
-		tag: "Automation",
+		tag: "Coming soon",
 		title: "Virality Alerts",
 		body: "Get pinged the moment a video mentioning your brand crosses a threshold you set. Catch the good ones early, and the bad ones earlier.",
 		bullets: [
@@ -7631,8 +7572,8 @@ var FEATURES = [
 var STEPS = [
 	{
 		n: "01",
-		title: "Name one subject",
-		body: "Your brand, one competitor, or one product. One subject per search keeps every result readable.",
+		title: "Give us a keyword",
+		body: "Enter your brand, a competitor, or a product keyword to start the search.",
 		mockup: {
 			type: "search",
 			label: "Search setup",
@@ -7645,8 +7586,8 @@ var STEPS = [
 	},
 	{
 		n: "02",
-		title: "Widen with keywords",
-		body: "We suggest the terms people actually pair with your subject on TikTok. Tick the ones that fit.",
+		title: "Keep the keywords that fit",
+		body: "We suggest related terms people already use on TikTok. Keep the ones that match what you want to find.",
 		mockup: {
 			type: "keywords",
 			label: "Suggested terms",
@@ -7660,8 +7601,8 @@ var STEPS = [
 	},
 	{
 		n: "03",
-		title: "Get the viral cut",
-		body: "We scan hundreds of videos and hand back the top performers, ranked by views and outlier score.",
+		title: "We show you Breakouts",
+		body: "We scan millions of videos and hand back the Viral Breakouts - videos that outperform their creator's average.",
 		mockup: {
 			type: "results",
 			label: "Top hits",
@@ -7736,7 +7677,7 @@ var PRICING = { monthly: [
 		cta: "Run a free search",
 		features: [
 			"1 free search",
-			"0 video bookmarks",
+			"Unlimited video bookmarks",
 			"0 search bookmarks",
 			"0 video analysis"
 		],
@@ -7744,7 +7685,7 @@ var PRICING = { monthly: [
 		searchCreditsUsed: 0,
 		bookmarkLimit: 0,
 		bookmarksUsed: 0,
-		videoBookmarkLimit: 0,
+		videoBookmarkLimit: -1,
 		videoBookmarkUsed: 0,
 		searchBookmarkLimit: 0,
 		searchBookmarkUsed: 0,
@@ -7755,7 +7696,7 @@ var PRICING = { monthly: [
 	{
 		slug: "basic",
 		name: "Growth",
-		price: 79,
+		price: 99,
 		tagline: "For a single brand.",
 		cta: "Choose Growth",
 		popular: true,
@@ -7765,7 +7706,6 @@ var PRICING = { monthly: [
 			"50 search bookmarks",
 			"50 video analysis",
 			"Weekly + monthly scheduling",
-			"CSV export for reports",
 			"Virality alerts"
 		],
 		searchCreditsLimit: 150,
@@ -7790,8 +7730,7 @@ var PRICING = { monthly: [
 			"400 searches",
 			"Unlimited bookmarks",
 			"Weekly + monthly scheduling",
-			"Virality alerts",
-			"CSV export for reports"
+			"Virality alerts"
 		],
 		searchCreditsLimit: 400,
 		searchCreditsUsed: 0,
@@ -7810,19 +7749,19 @@ var PRICING_PLAN_ORDER = PRICING.monthly.map((plan) => plan.slug ?? plan.name.to
 var FAQS = [
 	{
 		q: "What counts as one search?",
-		a: "One subject — your brand, a single competitor, or a single product — included are any keywords you attach to widen the search. All of those keywords are covered by that one search, so ticking six terms still only spends one."
+		a: "One subject: your brand, a single competitor, or a single product. Included are any keywords you attach to widen the search. All of those keywords are covered by that one search, so ticking six terms still only spends one."
 	},
 	{
 		q: "How long does a search take?",
-		a: "Most finish in under 5 minutes, but can take up to 20 minutes. You can stay on the results page and watch it fill in, or close the tab and we will email you the moment it is ready."
+		a: "Most finish around 5 minutes, but can take up to 20 minutes. You can stay on the results page and watch it fill in, or close the tab and we will email you the moment it is ready."
 	},
 	{
-		q: "Why focus on outliers instead of follower count?",
-		a: "A video with 4 million views from a creator with 4 million followers is great, but a video with 4 million views from a creator with 4 thousand followers is something to pay attention to. That video is the outlier, something that performs better than average - that's what we want to track."
+		q: "Why focus on breakouts?",
+		a: "A video with 4 million views from a creator with 4 million followers is great, but a video with 4 million views from a creator with 4 thousand followers is something to pay attention to. Breakouts are videos that outperform their creator's average. That's what we want to track."
 	},
 	{
-		q: "What happens after the 7 day trial?",
-		a: "The trial converts to Growth at $79/mo unless you cancel before day 7. Cancelling takes two clicks in account settings — no call, no form."
+		q: "What happens after the 8-day trial?",
+		a: "1 day after your search updates, we'll email that your searches refreshed and let you know you'll be billed."
 	},
 	{
 		q: "Is the data real-time?",
@@ -8314,8 +8253,8 @@ function HowItWorks({ onStart }) {
 							className: "eyebrow",
 							children: "How it works"
 						}),
-						/* @__PURE__ */ jsx("h2", { children: "One subject in, a viral cut out" }),
-						/* @__PURE__ */ jsx("p", { children: "No dashboards to configure and no keyword research to do first. Four steps, most of them optional." })
+						/* @__PURE__ */ jsx("h2", { children: "One subject in, Breakout videos out" }),
+						/* @__PURE__ */ jsx("p", { children: "Give us one keyword and we handle the rest." })
 					]
 				}),
 				/* @__PURE__ */ jsx("div", {
@@ -8463,7 +8402,7 @@ function Pricing({ plans = [], onStart, onTrial }) {
 								}),
 								/* @__PURE__ */ jsx("p", {
 									className: "plan__s",
-									children: free ? "" : `then $${plan.price} after 7 days`
+									children: free ? "" : `then $${plan.price} after 8 days`
 								}),
 								/* @__PURE__ */ jsx("ul", { children: plan.features.map((feature) => /* @__PURE__ */ jsxs("li", { children: [/* @__PURE__ */ jsx(Check, { className: "h-[15px] w-[15px]" }), feature] }, feature)) }),
 								free ? /* @__PURE__ */ jsx("button", {
@@ -8483,12 +8422,12 @@ function Pricing({ plans = [], onStart, onTrial }) {
 				}),
 				/* @__PURE__ */ jsxs("div", {
 					className: "trial",
-					children: [/* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsx("h3", { children: "Start a 7-day Growth trial" }), /* @__PURE__ */ jsx("p", { children: "Try the full Growth plan for 7 days. Card details are collected up front, and billing starts only after the trial ends unless you cancel." })] }), /* @__PURE__ */ jsx("button", {
+					children: [/* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsx("h3", { children: "Start an 8-day Growth trial" }), /* @__PURE__ */ jsx("p", { children: "Try the full Growth plan for 8 days. Card details are collected up front, and billing starts only after the trial ends unless you cancel." })] }), /* @__PURE__ */ jsx("button", {
 						type: "button",
 						className: "btn btn--ink",
 						style: { flex: "none" },
 						onClick: () => onTrial(visiblePlans.find((p) => p.slug === "basic")),
-						children: "Start 7-day trial"
+						children: "Start 8-day trial"
 					})]
 				})
 			]
@@ -8916,6 +8855,8 @@ var Plans_exports = /* @__PURE__ */ __exportAll({ default: () => Plans });
 function Plans() {
 	const { billing: billingState = {}, pricingPlans = [] } = usePage().props;
 	const current = String(billingState.currentPlan ?? "free").toLowerCase();
+	const isTrialing = Boolean(billingState.isTrialing);
+	const hasUsedTrial = Boolean(billingState.hasUsedTrial);
 	const orderedPlans = [...pricingPlans].sort((a, b) => {
 		const aKey = a.slug ?? a.name?.toLowerCase();
 		const bKey = b.slug ?? b.name?.toLowerCase();
@@ -8924,6 +8865,23 @@ function Plans() {
 		return (aIndex === -1 ? Number.MAX_SAFE_INTEGER : aIndex) - (bIndex === -1 ? Number.MAX_SAFE_INTEGER : bIndex);
 	});
 	const upgrade = (slug) => billing.checkout(slug);
+	const priceLine = (plan) => {
+		if ((plan.price ?? 0) <= 0) return {
+			amount: "$0",
+			suffix: "/mo",
+			subline: ""
+		};
+		if (!hasUsedTrial || isTrialing) return {
+			amount: "$0",
+			suffix: "/mo",
+			subline: `then $${plan.price} after 8 days`
+		};
+		return {
+			amount: `$${plan.price}`,
+			suffix: "/mo",
+			subline: ""
+		};
+	};
 	return /* @__PURE__ */ jsxs(Fragment$1, { children: [/* @__PURE__ */ jsx(Head, { title: "Plans · Brand Beacon" }), /* @__PURE__ */ jsxs(SettingsShell, {
 		section: "plans",
 		children: [/* @__PURE__ */ jsxs("div", {
@@ -8941,6 +8899,7 @@ function Plans() {
 			children: orderedPlans.map((plan) => {
 				const isCurrent = plan.slug === current;
 				const isFree = plan.slug === "free";
+				const price = priceLine(plan);
 				return /* @__PURE__ */ jsxs("div", {
 					className: `plan${isCurrent ? " plan--on" : ""}`,
 					children: [
@@ -8958,15 +8917,11 @@ function Plans() {
 						}),
 						/* @__PURE__ */ jsxs("div", {
 							className: "plan__p",
-							children: [
-								"$",
-								plan.price,
-								/* @__PURE__ */ jsx("span", { children: "/mo" })
-							]
+							children: [price.amount, price.suffix && /* @__PURE__ */ jsx("span", { children: price.suffix })]
 						}),
 						/* @__PURE__ */ jsx("p", {
 							className: "plan__s",
-							children: isCurrent ? "Your current plan" : plan.price > 0 ? "Billed monthly" : ""
+							children: price.subline || (isCurrent ? "Your current plan" : plan.price > 0 ? "Billed monthly" : "")
 						}),
 						/* @__PURE__ */ jsx("ul", { children: plan.features.map((feature) => /* @__PURE__ */ jsxs("li", { children: [/* @__PURE__ */ jsx(Check, { className: "h-3.5 w-3.5" }), feature] }, feature)) }),
 						isCurrent ? /* @__PURE__ */ jsx("button", {
@@ -9858,7 +9813,7 @@ function LeftSidebar({ video, canRegenerate = false, regenerating = false, disab
 		year: "numeric"
 	}) : null;
 	return /* @__PURE__ */ jsxs("aside", {
-		className: "self-start rounded-[18px] border border-[#E7E5DF] bg-white p-[13px] min-[980px]:sticky min-[980px]:top-0",
+		className: "self-start rounded-[16px] border border-[#E7E5DF] bg-white p-3 shadow-[0_10px_24px_rgba(42,33,20,0.06)] min-[980px]:sticky min-[980px]:top-0 min-[980px]:rounded-[18px] min-[980px]:p-[13px]",
 		children: [
 			/* @__PURE__ */ jsx("div", {
 				className: "mx-auto w-full max-w-[260px] overflow-hidden rounded-[13px] bg-[#FAF9F6] min-[980px]:max-w-none",
@@ -9921,7 +9876,7 @@ function LeftSidebar({ video, canRegenerate = false, regenerating = false, disab
 				})]
 			}),
 			/* @__PURE__ */ jsxs("div", {
-				className: "mt-[11px] flex flex-wrap items-center gap-2 text-[11.5px] text-[#5C5A54]",
+				className: "mt-[11px] flex flex-wrap items-center gap-2 text-[11px] text-[#5C5A54] min-[640px]:text-[11.5px]",
 				children: [
 					/* @__PURE__ */ jsx("span", {
 						className: "rounded-[7px] bg-[#FFF3CF] px-[9px] py-1 text-[10px] font-extrabold uppercase tracking-[0.05em] text-[#9A6B00]",
@@ -9934,12 +9889,12 @@ function LeftSidebar({ video, canRegenerate = false, regenerating = false, disab
 			/* @__PURE__ */ jsx("div", {
 				className: "mt-3 grid grid-cols-2 gap-2",
 				children: metrics.map((item) => /* @__PURE__ */ jsxs("div", {
-					className: `rounded-[11px] border px-[11px] py-[9px] ${STAT_CHIP[item.variant]}`,
+					className: `rounded-[11px] border px-[10px] py-[8px] min-[640px]:px-[11px] min-[640px]:py-[9px] ${STAT_CHIP[item.variant]}`,
 					children: [/* @__PURE__ */ jsxs("span", {
 						className: `inline-flex items-center gap-[5px] whitespace-nowrap text-[9px] font-extrabold uppercase tracking-[0.06em] ${STAT_LABEL[item.variant]}`,
 						children: [/* @__PURE__ */ jsx("i", { className: "h-[5px] w-[5px] rounded-full bg-current" }), item.label]
 					}), /* @__PURE__ */ jsx("span", {
-						className: "mt-1 block text-[17px] font-extrabold leading-none tracking-[-0.02em] text-[#0B0B0B] [font-variant-numeric:tabular-nums]",
+						className: "mt-1 block text-[16px] font-extrabold leading-none tracking-[-0.02em] text-[#0B0B0B] [font-variant-numeric:tabular-nums] min-[640px]:text-[17px]",
 						children: item.value
 					})]
 				}, item.label))
@@ -9958,30 +9913,36 @@ function LeftSidebar({ video, canRegenerate = false, regenerating = false, disab
 }
 function SummaryCard({ summary }) {
 	return /* @__PURE__ */ jsxs("section", {
-		className: "rounded-[14px] border border-[#ddd6ca] bg-[#fbfaf7] px-4 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.65)]",
+		className: "min-w-0 rounded-[14px] border border-[#ddd6ca] bg-[#fbfaf7] px-3.5 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.65)] min-[640px]:px-4",
 		children: [/* @__PURE__ */ jsx("div", {
 			className: "text-[13px] font-semibold text-[#1f1f1f]",
 			children: "Summary"
 		}), /* @__PURE__ */ jsx("p", {
-			className: "mt-1 text-[13px] leading-6 text-[#696257]",
+			className: "mt-1 break-words text-[12.5px] leading-5.5 text-[#696257] min-[640px]:text-[13px] min-[640px]:leading-6",
 			children: summary
 		})]
 	});
 }
 function TabRow({ tabs, activeTab, onChange }) {
 	return /* @__PURE__ */ jsx("div", {
-		className: "flex rounded-[14px] border border-[#ddd6ca] bg-[#fbfaf7] p-1",
-		children: tabs.map((tab) => /* @__PURE__ */ jsx("button", {
+		className: "no-scrollbar flex snap-x snap-mandatory gap-1 overflow-x-auto rounded-[14px] border border-[#ddd6ca] bg-[#fbfaf7] p-1",
+		children: tabs.map((tab) => /* @__PURE__ */ jsxs("button", {
 			type: "button",
 			onClick: () => onChange(tab.key),
-			className: `flex-1 rounded-[10px] px-3 py-2.5 text-[12px] font-semibold transition ${activeTab === tab.key ? "bg-[#ffeeb8] text-[#6c5715]" : "text-[#5f584d] hover:text-[#1f1f1f]"}`,
-			children: tab.label
+			className: `snap-start shrink-0 rounded-[10px] px-3 py-2.5 text-[11.5px] font-semibold whitespace-nowrap transition md:flex-1 md:text-center md:text-[12px] ${activeTab === tab.key ? "bg-[#ffeeb8] text-[#6c5715] shadow-[inset_0_1px_0_rgba(255,255,255,0.55)]" : "text-[#5f584d] hover:text-[#1f1f1f]"}`,
+			children: [/* @__PURE__ */ jsx("span", {
+				className: "sm:hidden",
+				children: tab.shortLabel ?? tab.label
+			}), /* @__PURE__ */ jsx("span", {
+				className: "hidden sm:inline",
+				children: tab.label
+			})]
 		}, tab.key))
 	});
 }
 function PanelShell({ icon, title, subtitle, children }) {
 	return /* @__PURE__ */ jsxs("section", {
-		className: "rounded-[16px] border border-[#ddd6ca] bg-[#fffdf9] p-4",
+		className: "min-w-0 rounded-[16px] border border-[#ddd6ca] bg-[#fffdf9] p-3.5 min-[640px]:p-4",
 		children: [/* @__PURE__ */ jsxs("div", {
 			className: "flex items-center gap-3",
 			children: [/* @__PURE__ */ jsx("div", {
@@ -10083,7 +10044,7 @@ function WhyTab({ result, video }) {
 		}), /* @__PURE__ */ jsx("div", {
 			className: "space-y-3",
 			children: drivers.map((item) => /* @__PURE__ */ jsx("article", {
-				className: "rounded-[12px] border border-[#ddd6ca] bg-white px-4 py-3",
+				className: "min-w-0 rounded-[12px] border border-[#ddd6ca] bg-white px-3.5 py-3 min-[640px]:px-4",
 				children: /* @__PURE__ */ jsxs("div", {
 					className: "flex items-center gap-3",
 					children: [/* @__PURE__ */ jsx("span", {
@@ -10101,7 +10062,7 @@ function WhyTab({ result, video }) {
 								children: item.uplift
 							})]
 						}), /* @__PURE__ */ jsx("p", {
-							className: "mt-1 text-[13px] leading-5 text-[#696257]",
+							className: "mt-1 break-words text-[13px] leading-5 text-[#696257]",
 							children: item.body
 						})]
 					})]
@@ -10150,7 +10111,7 @@ function HookTab({ result }) {
 			/* @__PURE__ */ jsx("div", {
 				className: "mt-3 space-y-3",
 				children: reasons.map((item) => /* @__PURE__ */ jsx("article", {
-					className: "rounded-[12px] border border-[#ddd6ca] bg-white px-4 py-3",
+					className: "min-w-0 rounded-[12px] border border-[#ddd6ca] bg-white px-3.5 py-3 min-[640px]:px-4",
 					children: /* @__PURE__ */ jsxs("div", {
 						className: "flex gap-3",
 						children: [/* @__PURE__ */ jsx("span", {
@@ -10160,7 +10121,7 @@ function HookTab({ result }) {
 							className: "text-[14px] font-semibold text-[#1a1a1a]",
 							children: item.title
 						}), /* @__PURE__ */ jsx("p", {
-							className: "mt-1 text-[13px] leading-5 text-[#696257]",
+							className: "mt-1 break-words text-[13px] leading-5 text-[#696257]",
 							children: item.body
 						})] })]
 					})
@@ -10173,11 +10134,14 @@ function HookTab({ result }) {
 			/* @__PURE__ */ jsx("div", {
 				className: "mt-3 space-y-3",
 				children: variations.map((item) => /* @__PURE__ */ jsxs("div", {
-					className: "flex items-center gap-3 rounded-[12px] border border-[#ddd6ca] bg-white px-4 py-3 text-[13px] text-[#5f584d]",
+					className: "min-w-0 flex items-center gap-3 rounded-[12px] border border-[#ddd6ca] bg-white px-3.5 py-3 text-[13px] text-[#5f584d] min-[640px]:px-4",
 					children: [/* @__PURE__ */ jsx("span", {
 						className: "flex h-5 w-5 items-center justify-center rounded-full bg-[#fff0bf] text-[10px] font-bold text-[#916e16]",
 						children: item.label
-					}), /* @__PURE__ */ jsx("span", { children: item.text })]
+					}), /* @__PURE__ */ jsx("span", {
+						className: "break-words",
+						children: item.text
+					})]
 				}, item.id))
 			})
 		]
@@ -10202,12 +10166,12 @@ function TranscriptTab({ analysis }) {
 		children: /* @__PURE__ */ jsx("div", {
 			className: "space-y-1",
 			children: rows.map((row) => /* @__PURE__ */ jsxs("div", {
-				className: "grid grid-cols-[44px_minmax(0,1fr)] gap-4 border-b border-dashed border-[#e7dfd1] py-3 last:border-b-0",
+				className: "grid grid-cols-[40px_minmax(0,1fr)] gap-3 min-[640px]:grid-cols-[44px_minmax(0,1fr)] min-[640px]:gap-4 border-b border-dashed border-[#e7dfd1] py-3 last:border-b-0",
 				children: [/* @__PURE__ */ jsx("div", {
 					className: "text-[12px] font-bold text-[#a07512]",
 					children: row.time
 				}), /* @__PURE__ */ jsx("div", {
-					className: "text-[14px] leading-6 text-[#4f4a42]",
+					className: "break-words text-[13px] leading-5.5 text-[#4f4a42] min-[640px]:text-[14px] min-[640px]:leading-6",
 					children: row.text
 				})]
 			}, row.id))
@@ -10242,7 +10206,7 @@ function StrategistTab({ result }) {
 			/* @__PURE__ */ jsx("div", {
 				className: "mt-3 space-y-3",
 				children: recommendations.map((item) => /* @__PURE__ */ jsx("article", {
-					className: "rounded-[12px] border border-[#ddd6ca] bg-white px-4 py-3",
+					className: "min-w-0 rounded-[12px] border border-[#ddd6ca] bg-white px-3.5 py-3 min-[640px]:px-4",
 					children: /* @__PURE__ */ jsxs("div", {
 						className: "flex gap-3",
 						children: [/* @__PURE__ */ jsx("span", {
@@ -10252,7 +10216,7 @@ function StrategistTab({ result }) {
 							className: "text-[14px] font-semibold text-[#1a1a1a]",
 							children: item.title
 						}), item.body && /* @__PURE__ */ jsx("p", {
-							className: "mt-1 text-[13px] leading-5 text-[#696257]",
+							className: "mt-1 break-words text-[13px] leading-5 text-[#696257]",
 							children: item.body
 						})] })]
 					})
@@ -10262,20 +10226,23 @@ function StrategistTab({ result }) {
 				className: "mt-5 text-[10px] font-bold uppercase tracking-[0.1em] text-[#8c8579]",
 				children: "Script to replicate"
 			}), /* @__PURE__ */ jsx("div", {
-				className: "mt-3 rounded-[14px] border border-dashed border-[#ddc79d] bg-[#fffaf0] px-4 py-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.7)]",
+				className: "mt-3 min-w-0 rounded-[14px] border border-dashed border-[#ddc79d] bg-[#fffaf0] px-3.5 py-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.7)] min-[640px]:px-4",
 				children: /* @__PURE__ */ jsx("div", {
-					className: "space-y-3 font-mono text-[12.5px] leading-6 text-[#5f584d]",
-					children: blueprintLines.map((line) => /* @__PURE__ */ jsx("div", { children: line.label ? /* @__PURE__ */ jsxs(Fragment$1, { children: [
-						/* @__PURE__ */ jsx("span", {
-							className: "font-semibold uppercase tracking-[0.02em] text-[#4a4338]",
-							children: line.label
-						}),
-						/* @__PURE__ */ jsx("span", {
-							className: "text-[#8f8678]",
-							children: " - "
-						}),
-						/* @__PURE__ */ jsx("span", { children: line.body })
-					] }) : /* @__PURE__ */ jsx("span", { children: line.body }) }, line.id))
+					className: "space-y-3 font-mono text-[12px] leading-5.5 text-[#5f584d] min-[640px]:text-[12.5px] min-[640px]:leading-6",
+					children: blueprintLines.map((line) => /* @__PURE__ */ jsx("div", {
+						className: "break-words",
+						children: line.label ? /* @__PURE__ */ jsxs(Fragment$1, { children: [
+							/* @__PURE__ */ jsx("span", {
+								className: "font-semibold uppercase tracking-[0.02em] text-[#4a4338]",
+								children: line.label
+							}),
+							/* @__PURE__ */ jsx("span", {
+								className: "text-[#8f8678]",
+								children: " - "
+							}),
+							/* @__PURE__ */ jsx("span", { children: line.body })
+						] }) : /* @__PURE__ */ jsx("span", { children: line.body })
+					}, line.id))
 				})
 			})] })
 		]
@@ -10293,7 +10260,8 @@ function ActivePanel({ activeTab, analysis, result, video }) {
 var DEFAULT_TABS = [
 	{
 		key: "why",
-		label: "Why It Went Viral"
+		label: "Why It Went Viral",
+		shortLabel: "Why Viral"
 	},
 	{
 		key: "hook",
@@ -10305,7 +10273,8 @@ var DEFAULT_TABS = [
 	},
 	{
 		key: "strategist",
-		label: "Creative Strategist"
+		label: "Creative Strategist",
+		shortLabel: "Strategist"
 	}
 ];
 function AnalysisModal({ video, initialAnalysis, tabs = DEFAULT_TABS, open = true, onClose, onAnalysisChange }) {
@@ -10375,16 +10344,16 @@ function AnalysisModal({ video, initialAnalysis, tabs = DEFAULT_TABS, open = tru
 	const summary = result.why_it_went_viral || result.evidence_summary || "We are still assembling the summary for this video.";
 	const regenerateDisabled = regenerating || analysis?.status === "processing";
 	return /* @__PURE__ */ jsx("div", {
-		className: "fixed inset-0 z-[120] flex items-center justify-center bg-[rgba(38,33,28,0.42)] px-4 py-6 backdrop-blur-[2px]",
+		className: "fixed inset-0 z-[120] flex items-center justify-center bg-[rgba(38,33,28,0.42)] px-2 py-3 backdrop-blur-[2px] min-[640px]:px-4 min-[640px]:py-6",
 		onClick: onClose,
 		children: /* @__PURE__ */ jsx("div", {
-			className: "max-h-[calc(100vh-3rem)] w-full max-w-[1150px] overflow-y-auto rounded-[26px] border border-[#d9d1c4] bg-[radial-gradient(circle_at_top,#f7f2e9_0%,#f3efe8_32%,#f1ede6_100%)] p-3 shadow-[0_28px_90px_rgba(42,33,20,0.22)]",
+			className: "max-h-[calc(100vh-1.5rem)] w-full max-w-[1150px] overflow-y-auto rounded-[22px] border border-[#d9d1c4] bg-[radial-gradient(circle_at_top,#f7f2e9_0%,#f3efe8_32%,#f1ede6_100%)] p-2 shadow-[0_28px_90px_rgba(42,33,20,0.22)] min-[640px]:max-h-[calc(100vh-3rem)] min-[640px]:rounded-[26px] min-[640px]:p-3",
 			onClick: (event) => event.stopPropagation(),
 			role: "dialog",
 			"aria-modal": "true",
 			"aria-label": "Video analysis",
 			children: /* @__PURE__ */ jsxs("div", {
-				className: "relative rounded-[22px] border border-[#d9d1c4] bg-[#f6f3ec] p-4 md:p-5",
+				className: "relative rounded-[18px] border border-[#d9d1c4] bg-[#f6f3ec] p-3 min-[640px]:rounded-[22px] min-[640px]:p-4 md:p-5",
 				children: [
 					showErrorModal && /* @__PURE__ */ jsx(ErrorStateModal, {
 						message: analysis?.error_message,
@@ -10415,7 +10384,7 @@ function AnalysisModal({ video, initialAnalysis, tabs = DEFAULT_TABS, open = tru
 							disabledRegenerate: regenerateDisabled,
 							onRegenerate: regenerate
 						}), /* @__PURE__ */ jsxs("div", {
-							className: "space-y-4",
+							className: "min-w-0 space-y-3 min-[640px]:space-y-4",
 							children: [
 								/* @__PURE__ */ jsx(SummaryCard, { summary }),
 								/* @__PURE__ */ jsx(TabRow, {
@@ -10656,6 +10625,11 @@ function analysisCtaLabel(analysis) {
 	if (analysis?.status === "failed") return "Retry analysis";
 	return "Analyze video";
 }
+function canUsePaidVideoAnalysis(billing) {
+	if (!billing) return false;
+	const limit = Number(billing.videoAnalysisLimit ?? 0);
+	return Boolean(billing.hasPaidPlan) && limit !== 0;
+}
 /** Render **bold** markers as <b>…</b> without allowing raw HTML. */
 function renderBold(text) {
 	return String(text ?? "").split(/(\*\*[^*]+\*\*)/g).map((part, i) => {
@@ -10883,7 +10857,7 @@ var Icons = {
 		children: /* @__PURE__ */ jsx("path", { d: "M12 5v14M5 12h14" })
 	})
 };
-function DetailScreen({ search, isAuthenticated = false, billing, refreshing = false, bookmarkUpdating = false, onRefresh, onSearchUpdated, onToggleBookmark, onToggleVideoBookmark, bookmarkingVideoId = null, onTogglePause, onDelete }) {
+function DetailScreen({ search, isAuthenticated = false, billing: billing$1, refreshing = false, bookmarkUpdating = false, onRefresh, onSearchUpdated, onToggleBookmark, onToggleVideoBookmark, bookmarkingVideoId = null, onTogglePause, onDelete }) {
 	const insights = search?.insights ?? {};
 	const bullets = search?.insights_bullets ?? [];
 	const [handleEditing, setHandleEditing] = useState(false);
@@ -10892,6 +10866,7 @@ function DetailScreen({ search, isAuthenticated = false, billing, refreshing = f
 	const [menuOpen, setMenuOpen] = useState(false);
 	const [expandedCardId, setExpandedCardId] = useState(null);
 	const [analysisModal, setAnalysisModal] = useState(null);
+	const [upgradeModalOpen, setUpgradeModalOpen] = useState(false);
 	const [visible, setVisible] = useState(PAGE_STEP);
 	const [sortKey, setSortKey] = useState("outlier");
 	const [metric, setMetric] = useState("views");
@@ -10899,6 +10874,7 @@ function DetailScreen({ search, isAuthenticated = false, billing, refreshing = f
 	const [heatmapTooltip, setHeatmapTooltip] = useState(null);
 	const [analysisByVideoId, setAnalysisByVideoId] = useState({});
 	const menuRef = useRef(null);
+	const canAnalyzeMoreOutliers = canUsePaidVideoAnalysis(billing$1);
 	const results = useMemo(() => (search?.results ?? []).map((video) => ({
 		...video,
 		analysis: analysisByVideoId[video.id] ?? video.analysis ?? null
@@ -10991,6 +10967,9 @@ function DetailScreen({ search, isAuthenticated = false, billing, refreshing = f
 		analysis: video.analysis ?? null
 	});
 	const closeAnalysis = () => setAnalysisModal(null);
+	const openUpgradeModal = () => setUpgradeModalOpen(true);
+	const closeUpgradeModal = () => setUpgradeModalOpen(false);
+	const openUpgradeForAnalysis = () => billing.checkout("basic");
 	const updateVideoAnalysis = (videoId, analysis) => {
 		if (!videoId || !analysis) return;
 		setAnalysisByVideoId((current) => current[videoId]?.updated_at === analysis.updated_at && current[videoId]?.status === analysis.status ? current : {
@@ -11021,17 +11000,17 @@ function DetailScreen({ search, isAuthenticated = false, billing, refreshing = f
 						minWidth: 0,
 						flex: 1
 					},
-					children: [/* @__PURE__ */ jsx("h1", {
-						className: "rs-h1",
-						children: search?.name || search?.phrase
-					}), /* @__PURE__ */ jsxs("div", {
-						className: "rs-bmeta",
-						children: [
-							/* @__PURE__ */ jsx("span", {
+					children: [
+						/* @__PURE__ */ jsx("h1", {
+							className: "rs-h1",
+							children: search?.name || search?.phrase
+						}),
+						/* @__PURE__ */ jsxs("div", {
+							className: "rs-bmeta",
+							children: [/* @__PURE__ */ jsx("span", {
 								className: "rs-bbadge",
 								children: (search?.search_type ?? "brand").replace(/^\w/, (c) => c.toUpperCase())
-							}),
-							/* @__PURE__ */ jsxs("span", {
+							}), /* @__PURE__ */ jsxs("span", {
 								className: "rs-handle",
 								children: [/* @__PURE__ */ jsx("span", { children: search?.source_tiktok_handle ? `@${search.source_tiktok_handle.replace(/^@/, "")}` : "no handle set" }), /* @__PURE__ */ jsx("button", {
 									className: "rs-ed",
@@ -11042,17 +11021,26 @@ function DetailScreen({ search, isAuthenticated = false, billing, refreshing = f
 									},
 									children: Icons.Edit
 								})]
-							}),
-							search?.frequency && /* @__PURE__ */ jsxs(Fragment$1, { children: [/* @__PURE__ */ jsx("span", { className: "rs-sep" }), /* @__PURE__ */ jsxs("span", { children: [
-								search.frequency,
-								" · ",
-								search.last_run_at ? `last run ${formatDate$1(search.last_run_at)}` : "not run yet",
-								search.next_run_at ? ` · next refresh ${formatDate$1(search.next_run_at)}` : ""
-							] })] }),
-							/* @__PURE__ */ jsx("span", { className: "rs-sep" }),
-							/* @__PURE__ */ jsx("span", { children: `${STATUS_LABEL[search?.status] ?? "Ready"}` })
-						]
-					})]
+							})]
+						}),
+						/* @__PURE__ */ jsxs("div", {
+							className: "rs-bsub",
+							children: [search?.frequency && /* @__PURE__ */ jsxs("span", {
+								className: "rs-bline",
+								children: [
+									/* @__PURE__ */ jsx("span", {
+										className: "rs-bline__k",
+										children: search.frequency
+									}),
+									/* @__PURE__ */ jsx("span", { children: search.last_run_at ? `last run ${formatDate$1(search.last_run_at)}` : "not run yet" }),
+									search.next_run_at ? /* @__PURE__ */ jsx("span", { children: `next refresh ${formatDate$1(search.next_run_at)}` }) : null
+								]
+							}), /* @__PURE__ */ jsxs("span", {
+								className: `rs-state rs-state--${String(search?.status ?? "ready").toLowerCase()}`,
+								children: [/* @__PURE__ */ jsx("span", { className: "rs-state__dot" }), `${STATUS_LABEL[search?.status] ?? "Ready"}`]
+							})]
+						})
+					]
 				}),
 				/* @__PURE__ */ jsxs("div", {
 					className: "rs-bhead__x",
@@ -11376,8 +11364,9 @@ function DetailScreen({ search, isAuthenticated = false, billing, refreshing = f
 				children: sortedRest.slice(0, visible).map((v) => /* @__PURE__ */ jsx(OutlierCard$1, {
 					video: v,
 					expanded: expandedCardId === v.id,
+					locked: !canAnalyzeMoreOutliers,
 					onToggle: () => setExpandedCardId((cur) => cur === v.id ? null : v.id),
-					onAnalyze: () => openAnalysis(v),
+					onAnalyze: () => canAnalyzeMoreOutliers ? openAnalysis(v) : openUpgradeModal(),
 					onToggleBookmark: () => onToggleVideoBookmark?.(v),
 					bookmarking: bookmarkingVideoId === v.id,
 					isPlaying: videoPlayingId === v.id,
@@ -11689,6 +11678,10 @@ function DetailScreen({ search, isAuthenticated = false, billing, refreshing = f
 			initialAnalysis: analysisModal.analysis,
 			onClose: closeAnalysis,
 			onAnalysisChange: updateVideoAnalysis
+		}),
+		upgradeModalOpen && /* @__PURE__ */ jsx(UpgradeModal, {
+			onClose: closeUpgradeModal,
+			onUpgrade: openUpgradeForAnalysis
 		})
 	] });
 }
@@ -11807,7 +11800,7 @@ function AutoAnalysis({ video }) {
 		}), /* @__PURE__ */ jsx("dl", { children: rows.map(([dt, dd]) => /* @__PURE__ */ jsxs(Fragment, { children: [/* @__PURE__ */ jsx("dt", { children: dt }), /* @__PURE__ */ jsx("dd", { children: dd })] }, dt)) })]
 	});
 }
-function OutlierCard$1({ video, expanded, onToggle, onAnalyze, onToggleBookmark, bookmarking, isPlaying, onTogglePlay }) {
+function OutlierCard$1({ video, expanded, locked = false, onToggle, onAnalyze, onToggleBookmark, bookmarking, isPlaying, onTogglePlay }) {
 	return /* @__PURE__ */ jsxs("article", {
 		className: `rs-oc${expanded ? " analyzed" : ""}`,
 		children: [/* @__PURE__ */ jsx(VideoFrame, {
@@ -11866,7 +11859,7 @@ function OutlierCard$1({ video, expanded, onToggle, onAnalyze, onToggleBookmark,
 						/* @__PURE__ */ jsxs("span", { children: [Icons.Share, compact(video.shares)] })
 					]
 				}),
-				expanded && /* @__PURE__ */ jsx("div", {
+				expanded && !locked && /* @__PURE__ */ jsx("div", {
 					className: "rs-oc__panel",
 					children: /* @__PURE__ */ jsx(AutoAnalysis, { video })
 				}),
@@ -11876,11 +11869,11 @@ function OutlierCard$1({ video, expanded, onToggle, onAnalyze, onToggleBookmark,
 						/* @__PURE__ */ jsxs("button", {
 							className: "rs-btn rs-btn--y rs-btn--sm",
 							onClick: onToggle,
-							children: [Icons.Spark, /* @__PURE__ */ jsx("span", { children: expanded ? "Hide analysis" : "Analyze video" })]
+							children: [Icons.Spark, /* @__PURE__ */ jsx("span", { children: expanded && !locked ? "Hide analysis" : "Analyze video" })]
 						}),
 						/* @__PURE__ */ jsx("button", {
 							className: "rs-ic2",
-							title: "Deep analyze",
+							title: locked ? "Upgrade to analyze" : "Deep analyze",
 							onClick: onAnalyze,
 							children: Icons.ExtLink
 						}),
@@ -11896,6 +11889,55 @@ function OutlierCard$1({ video, expanded, onToggle, onAnalyze, onToggleBookmark,
 				})
 			]
 		})]
+	});
+}
+function UpgradeModal({ onClose, onUpgrade }) {
+	return /* @__PURE__ */ jsx("div", {
+		className: "rs-modalback",
+		onClick: onClose,
+		children: /* @__PURE__ */ jsxs("div", {
+			className: "rs-upgmodal",
+			onClick: (event) => event.stopPropagation(),
+			role: "dialog",
+			"aria-modal": "true",
+			"aria-label": "Upgrade for more video analysis",
+			children: [
+				/* @__PURE__ */ jsx("button", {
+					type: "button",
+					className: "rs-upgmodal__close",
+					onClick: onClose,
+					"aria-label": "Close upgrade prompt",
+					children: /* @__PURE__ */ jsx("svg", {
+						viewBox: "0 0 24 24",
+						fill: "none",
+						stroke: "currentColor",
+						strokeWidth: "2.2",
+						strokeLinecap: "round",
+						children: /* @__PURE__ */ jsx("path", { d: "M6 6l12 12M18 6L6 18" })
+					})
+				}),
+				/* @__PURE__ */ jsxs("div", {
+					className: "rs-upg__eyebrow",
+					children: [Icons.Spark, /* @__PURE__ */ jsx("span", { children: "Video analysis" })]
+				}),
+				/* @__PURE__ */ jsx("h3", { children: "Upgrade to unlock more analysis credits" }),
+				/* @__PURE__ */ jsx("p", { children: "Free searches include the top-video breakdown. Upgrade to Growth or Scale to analyze more outliers." }),
+				/* @__PURE__ */ jsxs("div", {
+					className: "rs-upgmodal__actions",
+					children: [/* @__PURE__ */ jsx("button", {
+						type: "button",
+						className: "rs-btn rs-btn--y",
+						onClick: onUpgrade,
+						children: "Upgrade to Growth"
+					}), /* @__PURE__ */ jsx("button", {
+						type: "button",
+						className: "rs-btn rs-btn--g",
+						onClick: onClose,
+						children: "Maybe later"
+					})]
+				})
+			]
+		})
 	});
 }
 function ScrollPanel({ title, items, max, barColor = "var(--a3)" }) {
@@ -11967,16 +12009,28 @@ var scopedCss = `
 .rs-tbtn:hover{color:var(--ink)}
 .rs-tbtn svg{width:15px;height:15px}
 
-.rs-bhead{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
-.rs-bhead__l{width:50px;height:50px;border-radius:13px;display:grid;place-items:center;color:#fff;font-weight:800;font-size:1.05rem;flex:none;text-shadow:0 1px 3px rgba(0,0,0,.15)}
-.rs-h1{font-size:1.5rem;font-weight:800;letter-spacing:-.034em;color:var(--ink);line-height:1.15}
-.rs-bmeta{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:4px;font-size:.82rem;color:var(--faint-2,#9A968E)}
-.rs-bbadge{font-size:.64rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--amber-ink);background:var(--wash);padding:3px 8px;border-radius:6px}
+.rs-bhead{display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:16px 18px;border:1px solid var(--line);border-radius:18px;background:linear-gradient(180deg,rgba(255,255,255,.96),rgba(250,249,246,.98));box-shadow:0 8px 24px -20px rgba(20,15,0,.24)}
+.rs-bhead__l{width:54px;height:54px;border-radius:15px;display:grid;place-items:center;color:#fff;font-weight:800;font-size:1.05rem;flex:none;text-shadow:0 1px 3px rgba(0,0,0,.15);box-shadow:inset 0 1px 0 rgba(255,255,255,.28),0 12px 24px -16px rgba(154,107,0,.55)}
+.rs-h1{font-size:1.65rem;font-weight:850;letter-spacing:-.04em;color:var(--ink);line-height:1.02;text-wrap:balance}
+.rs-bmeta{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:8px;font-size:.82rem;color:var(--faint-2,#9A968E)}
+.rs-bbadge{font-size:.64rem;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--amber-ink);background:var(--wash);padding:5px 9px;border-radius:999px;border:1px solid #f2e4b8}
 .rs-sep{width:3px;height:3px;border-radius:50%;background:#CFCCC3}
-.rs-handle{display:inline-flex;align-items:center;gap:5px}
+.rs-handle{display:inline-flex;align-items:center;gap:5px;min-width:0;padding:4px 10px;border-radius:999px;background:var(--paper);border:1px solid var(--line);font-weight:600}
+.rs-handle span:first-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:180px}
 .rs-ed{width:22px;height:22px;border-radius:6px;display:grid;place-items:center;color:var(--faint-2,#9A968E);border:0;background:transparent;cursor:pointer;transition:.15s}
 .rs-ed:hover{background:var(--paper);color:var(--ink)} .rs-ed svg{width:13px;height:13px}
 .rs-bhead__x{margin-left:auto;display:flex;gap:8px;flex:none;position:relative}
+.rs-bsub{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:10px;font-size:.79rem;color:var(--muted)}
+.rs-bline{display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+.rs-bline span{display:inline-flex;align-items:center}
+.rs-bline span+span::before{content:'·';margin-right:7px;color:#c1bdb3}
+.rs-bline__k{font-weight:800;color:var(--amber-ink);text-transform:capitalize}
+.rs-state{display:inline-flex;align-items:center;gap:7px;padding:4px 10px;border-radius:999px;background:var(--paper);border:1px solid var(--line);font-weight:700;color:var(--muted)}
+.rs-state__dot{width:7px;height:7px;border-radius:50%;background:currentColor;opacity:.85}
+.rs-state--ready,.rs-state--done,.rs-state--complete{color:var(--ok);background:var(--ok-bg);border-color:color-mix(in srgb,var(--ok) 18%,var(--line))}
+.rs-state--running,.rs-state--queued,.rs-state--pending,.rs-state--scraping{color:var(--amber-ink);background:var(--wash);border-color:#f2e4b8}
+.rs-state--paused{color:#8a6b12;background:#fff6da;border-color:#eddc9a}
+.rs-state--failed{color:#b0431b;background:var(--warn-bg);border-color:color-mix(in srgb,#b0431b 20%,var(--line))}
 .rs-iconbtn{width:42px;height:42px;border-radius:11px;border:1px solid var(--line-2,#DEDBD3);background:var(--white);display:grid;place-items:center;color:var(--muted);cursor:pointer;transition:.15s;position:relative}
 .rs-iconbtn:hover:not(:disabled){border-color:var(--faint-2,#9A968E);color:var(--ink)}
 .rs-iconbtn.on{background:var(--wash);border-color:var(--yellow);color:var(--amber-ink)}
@@ -12087,8 +12141,19 @@ var scopedCss = `
 .rs-oc__st span{display:inline-flex;align-items:center;gap:5px;font-size:.76rem;color:var(--faint-2,#9A968E);font-weight:600;font-variant-numeric:tabular-nums}
 .rs-oc__st svg{width:13px;height:13px;color:var(--faint-2,#9A968E);flex:none}
 .rs-oc__panel{margin-top:10px}
-.rs-oc__an{margin-top:auto;padding-top:11px;display:flex;gap:8px;align-items:center}
-.rs-oc__an .rs-btn{flex:1}
+.rs-modalback{position:fixed;inset:0;z-index:130;display:flex;align-items:center;justify-content:center;padding:16px;background:rgba(20,15,0,.34);backdrop-filter:blur(3px)}
+.rs-upgmodal{position:relative;width:min(100%,420px);border:1px solid #f2e4b8;border-radius:22px;padding:22px;background:linear-gradient(180deg,#fffdf7 0%,#fff7e4 100%);box-shadow:0 28px 90px rgba(42,33,20,.22)}
+.rs-upgmodal__close{position:absolute;top:12px;right:12px;width:34px;height:34px;border-radius:999px;border:1px solid var(--line);background:rgba(255,255,255,.8);display:grid;place-items:center;color:var(--muted);cursor:pointer}
+.rs-upgmodal__close svg{width:14px;height:14px}
+.rs-upg__eyebrow{display:inline-flex;align-items:center;gap:7px;font-size:.67rem;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--amber-ink)}
+.rs-upg__eyebrow svg{width:12px;height:12px}
+.rs-upgmodal h3{margin-top:10px;font-size:1.15rem;font-weight:800;letter-spacing:-.03em;color:var(--ink);max-width:14ch}
+.rs-upgmodal p{margin-top:8px;font-size:.9rem;line-height:1.55;color:var(--muted)}
+.rs-upgmodal__actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:18px}
+.rs-upgmodal__actions .rs-btn{flex:1}
+.rs-oc__an{margin-top:auto;padding-top:11px;display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:8px;align-items:center}
+.rs-oc__an .rs-btn{min-width:0}
+.rs-oc__an .rs-btn span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .rs-loadmore{display:flex;justify-content:center;margin-top:20px}
 
 .rs-acard{background:var(--white);border:1px solid var(--line);border-radius:20px;padding:20px 22px}
@@ -12170,8 +12235,29 @@ var scopedCss = `
   .rs-stt:nth-child(1),.rs-stt:nth-child(2){border-bottom:1px solid var(--line)}
   .rs-winner{grid-template-columns:1fr}.rs-vf--big{max-width:240px;margin:0 auto}
   .rs-two{grid-template-columns:1fr}
+  .rs-bhead{align-items:flex-start}
+  .rs-bhead__x{margin-left:0}
 }
-@media (max-width:560px){.rs-ogrid{grid-template-columns:1fr 1fr}}
+@media (max-width:560px){
+.rs-ogrid{grid-template-columns:1fr 1fr}
+.rs-bhead{padding:14px}
+.rs-h1{font-size:1.4rem}
+.rs-handle span:first-child{max-width:120px}
+.rs-oc__st{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
+.rs-oc__st span{min-width:0;justify-content:center;font-size:.72rem;gap:4px}
+.rs-oc__st svg{width:12px;height:12px}
+.rs-oc__an{gap:6px}
+.rs-oc__an .rs-btn{padding:0 12px;font-size:.78rem}
+.rs-oc__an .rs-btn svg{width:13px;height:13px}
+.rs-ic2{width:34px;height:34px}
+.rs-upgmodal{padding:20px 16px 16px}
+.rs-upgmodal h3{font-size:1.02rem;max-width:none}
+.rs-upgmodal p{font-size:.84rem}
+.rs-upgmodal__actions .rs-btn{width:100%}
+}
+@media (max-width:420px){
+.rs-ogrid{grid-template-columns:1fr}
+}
 `;
 //#endregion
 //#region resources/js/Pages/SavedSearches/Show.jsx
@@ -15034,7 +15120,7 @@ function TrialScreen({ onBack, backLabel = "Back to results" }) {
 				}),
 				/* @__PURE__ */ jsx("p", {
 					className: "mt-3 text-[14.5px] muted",
-					children: "Start on a 7-day trial. Growth includes 150 searches, 50 video bookmarks, 50 search bookmarks, and 50 video analysis runs. Scale includes 400 searches and unlimited limits across those extras."
+					children: "Start on an 8-day trial. Growth includes 150 searches, 50 video bookmarks, 50 search bookmarks, and 50 video analysis runs. Scale includes 400 searches and unlimited limits across those extras."
 				}),
 				/* @__PURE__ */ jsx("div", {
 					className: "mx-auto mt-9 grid max-w-2xl gap-5 text-left sm:grid-cols-2",
@@ -15062,7 +15148,7 @@ function TrialScreen({ onBack, backLabel = "Back to results" }) {
 								children: [
 									"then $",
 									t.price,
-									" after 7 days"
+									" after 8 days"
 								]
 							}),
 							/* @__PURE__ */ jsxs("p", {
@@ -15109,7 +15195,7 @@ function TrialScreen({ onBack, backLabel = "Back to results" }) {
 				}),
 				/* @__PURE__ */ jsx("p", {
 					className: "mt-4 text-xs faint",
-					children: "Card details are collected up front, and billing starts after 7 days unless you cancel."
+					children: "Card details are collected up front, and billing starts after 8 days unless you cancel."
 				})
 			]
 		})]
@@ -15120,7 +15206,7 @@ function TrialScreen({ onBack, backLabel = "Back to results" }) {
 var Trial_exports = /* @__PURE__ */ __exportAll({ default: () => Trial });
 function Trial() {
 	const { billing = {} } = usePage().props;
-	return /* @__PURE__ */ jsxs(Fragment$1, { children: [/* @__PURE__ */ jsx(Head, { title: "Start your trial - Outlier Vault" }), /* @__PURE__ */ jsx(AppLayout, {
+	return /* @__PURE__ */ jsxs(Fragment$1, { children: [/* @__PURE__ */ jsx(Head, { title: "Start your 8-day trial - Outlier Vault" }), /* @__PURE__ */ jsx(AppLayout, {
 		pill: {
 			text: "Trial",
 			tone: "accent"

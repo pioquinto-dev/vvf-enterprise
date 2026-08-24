@@ -2,6 +2,7 @@ import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, router } from '@inertiajs/react';
 
 import { savedSearch as savedSearchApi } from '../../../landing/flow/api.js';
+import { billing as billingApi } from '../../../landing/flow/api.js';
 import AnalysisModal from '../../VideoAnalysis/AnalysisModal.jsx';
 import { playerUrlFor } from './tiktokPlayer.js';
 
@@ -97,6 +98,14 @@ function analysisCtaLabel(analysis) {
   return 'Analyze video';
 }
 
+function canUsePaidVideoAnalysis(billing) {
+  if (!billing) return false;
+
+  const limit = Number(billing.videoAnalysisLimit ?? 0);
+
+  return Boolean(billing.hasPaidPlan) && limit !== 0;
+}
+
 /** Render **bold** markers as <b>…</b> without allowing raw HTML. */
 function renderBold(text) {
   const parts = String(text ?? '').split(/(\*\*[^*]+\*\*)/g);
@@ -180,6 +189,7 @@ export default function DetailScreen({
   const [menuOpen, setMenuOpen] = useState(false);
   const [expandedCardId, setExpandedCardId] = useState(null);
   const [analysisModal, setAnalysisModal] = useState(null);
+  const [upgradeModalOpen, setUpgradeModalOpen] = useState(false);
   const [visible, setVisible] = useState(PAGE_STEP);
   const [sortKey, setSortKey] = useState('outlier');
   const [metric, setMetric] = useState('views');
@@ -187,6 +197,7 @@ export default function DetailScreen({
   const [heatmapTooltip, setHeatmapTooltip] = useState(null);
   const [analysisByVideoId, setAnalysisByVideoId] = useState({});
   const menuRef = useRef(null);
+  const canAnalyzeMoreOutliers = canUsePaidVideoAnalysis(billing);
 
   // The modal polls independently. Keep those live results here so the card
   // that launched it immediately changes from "Analyzing" to "View analysis".
@@ -284,6 +295,9 @@ export default function DetailScreen({
   /* ------------- open analysis modal (existing flow) ------------- */
   const openAnalysis = (video) => setAnalysisModal({ video, analysis: video.analysis ?? null });
   const closeAnalysis = () => setAnalysisModal(null);
+  const openUpgradeModal = () => setUpgradeModalOpen(true);
+  const closeUpgradeModal = () => setUpgradeModalOpen(false);
+  const openUpgradeForAnalysis = () => billingApi.checkout('basic');
   const updateVideoAnalysis = (videoId, analysis) => {
     if (!videoId || !analysis) return;
 
@@ -320,17 +334,19 @@ export default function DetailScreen({
                 {Icons.Edit}
               </button>
             </span>
+          </div>
+          <div className="rs-bsub">
             {search?.frequency && (
-              <>
-                <span className="rs-sep" />
-                <span>
-                  {search.frequency} · {search.last_run_at ? `last run ${formatDate(search.last_run_at)}` : 'not run yet'}
-                  {search.next_run_at ? ` · next refresh ${formatDate(search.next_run_at)}` : ''}
-                </span>
-              </>
+              <span className="rs-bline">
+                <span className="rs-bline__k">{search.frequency}</span>
+                <span>{search.last_run_at ? `last run ${formatDate(search.last_run_at)}` : 'not run yet'}</span>
+                {search.next_run_at ? <span>{`next refresh ${formatDate(search.next_run_at)}`}</span> : null}
+              </span>
             )}
-            <span className="rs-sep" />
-            <span>{`${STATUS_LABEL[search?.status] ?? 'Ready'}`}</span>
+            <span className={`rs-state rs-state--${String(search?.status ?? 'ready').toLowerCase()}`}>
+              <span className="rs-state__dot" />
+              {`${STATUS_LABEL[search?.status] ?? 'Ready'}`}
+            </span>
           </div>
         </div>
         <div className="rs-bhead__x" ref={menuRef}>
@@ -483,8 +499,11 @@ export default function DetailScreen({
                 key={v.id}
                 video={v}
                 expanded={expandedCardId === v.id}
-                onToggle={() => setExpandedCardId((cur) => cur === v.id ? null : v.id)}
-                onAnalyze={() => openAnalysis(v)}
+                locked={!canAnalyzeMoreOutliers}
+                onToggle={() => (!canAnalyzeMoreOutliers
+                  ? openUpgradeModal()
+                  : setExpandedCardId((cur) => cur === v.id ? null : v.id))}
+                onAnalyze={() => (canAnalyzeMoreOutliers ? openAnalysis(v) : openUpgradeModal())}
                 onToggleBookmark={() => onToggleVideoBookmark?.(v)}
                 bookmarking={bookmarkingVideoId === v.id}
                 isPlaying={videoPlayingId === v.id}
@@ -671,6 +690,9 @@ export default function DetailScreen({
           onAnalysisChange={updateVideoAnalysis}
         />
       )}
+      {upgradeModalOpen && (
+        <UpgradeModal onClose={closeUpgradeModal} onUpgrade={openUpgradeForAnalysis} />
+      )}
     </>
   );
 }
@@ -775,7 +797,7 @@ function AutoAnalysis({ video }) {
   );
 }
 
-function OutlierCard({ video, expanded, onToggle, onAnalyze, onToggleBookmark, bookmarking, isPlaying, onTogglePlay }) {
+function OutlierCard({ video, expanded, locked = false, onToggle, onAnalyze, onToggleBookmark, bookmarking, isPlaying, onTogglePlay }) {
   return (
     <article className={`rs-oc${expanded ? ' analyzed' : ''}`}>
       <VideoFrame video={video} isPlaying={isPlaying} onTogglePlay={onTogglePlay} />
@@ -797,16 +819,16 @@ function OutlierCard({ video, expanded, onToggle, onAnalyze, onToggleBookmark, b
           <span>{Icons.Comment}{compact(video.comments)}</span>
           <span>{Icons.Share}{compact(video.shares)}</span>
         </div>
-        {expanded && (
+        {expanded && !locked && (
           <div className="rs-oc__panel">
             <AutoAnalysis video={video} />
           </div>
         )}
         <div className="rs-oc__an">
           <button className="rs-btn rs-btn--y rs-btn--sm" onClick={onToggle}>
-            {Icons.Spark}<span>{expanded ? 'Hide analysis' : 'Analyze video'}</span>
+            {Icons.Spark}<span>{expanded && !locked ? 'Hide analysis' : 'Analyze video'}</span>
           </button>
-          <button className="rs-ic2" title="Deep analyze" onClick={onAnalyze}>{Icons.ExtLink}</button>
+          <button className="rs-ic2" title={locked ? 'Upgrade to analyze' : 'Deep analyze'} onClick={onAnalyze}>{Icons.ExtLink}</button>
           <button
             className={`rs-ic2${video.bookmarked ? ' on' : ''}`}
             title={video.bookmarked ? 'Remove from bookmarks' : 'Save video'}
@@ -819,6 +841,31 @@ function OutlierCard({ video, expanded, onToggle, onAnalyze, onToggleBookmark, b
         </div>
       </div>
     </article>
+  );
+}
+
+function UpgradeModal({ onClose, onUpgrade }) {
+  return (
+    <div className="rs-modalback" onClick={onClose}>
+      <div className="rs-upgmodal" onClick={(event) => event.stopPropagation()} role="dialog" aria-modal="true" aria-label="Upgrade for more video analysis">
+        <button type="button" className="rs-upgmodal__close" onClick={onClose} aria-label="Close upgrade prompt">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
+            <path d="M6 6l12 12M18 6L6 18" />
+          </svg>
+        </button>
+        <div className="rs-upg__eyebrow">{Icons.Spark}<span>Video analysis</span></div>
+        <h3>Upgrade to unlock more analysis credits</h3>
+        <p>Free searches include the top-video breakdown. Upgrade to Growth or Scale to analyze more outliers.</p>
+        <div className="rs-upgmodal__actions">
+          <button type="button" className="rs-btn rs-btn--y" onClick={onUpgrade}>
+            Upgrade to Growth
+          </button>
+          <button type="button" className="rs-btn rs-btn--g" onClick={onClose}>
+            Maybe later
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -867,16 +914,28 @@ const scopedCss = `
 .rs-tbtn:hover{color:var(--ink)}
 .rs-tbtn svg{width:15px;height:15px}
 
-.rs-bhead{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
-.rs-bhead__l{width:50px;height:50px;border-radius:13px;display:grid;place-items:center;color:#fff;font-weight:800;font-size:1.05rem;flex:none;text-shadow:0 1px 3px rgba(0,0,0,.15)}
-.rs-h1{font-size:1.5rem;font-weight:800;letter-spacing:-.034em;color:var(--ink);line-height:1.15}
-.rs-bmeta{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:4px;font-size:.82rem;color:var(--faint-2,#9A968E)}
-.rs-bbadge{font-size:.64rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--amber-ink);background:var(--wash);padding:3px 8px;border-radius:6px}
+.rs-bhead{display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:16px 18px;border:1px solid var(--line);border-radius:18px;background:linear-gradient(180deg,rgba(255,255,255,.96),rgba(250,249,246,.98));box-shadow:0 8px 24px -20px rgba(20,15,0,.24)}
+.rs-bhead__l{width:54px;height:54px;border-radius:15px;display:grid;place-items:center;color:#fff;font-weight:800;font-size:1.05rem;flex:none;text-shadow:0 1px 3px rgba(0,0,0,.15);box-shadow:inset 0 1px 0 rgba(255,255,255,.28),0 12px 24px -16px rgba(154,107,0,.55)}
+.rs-h1{font-size:1.65rem;font-weight:850;letter-spacing:-.04em;color:var(--ink);line-height:1.02;text-wrap:balance}
+.rs-bmeta{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:8px;font-size:.82rem;color:var(--faint-2,#9A968E)}
+.rs-bbadge{font-size:.64rem;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--amber-ink);background:var(--wash);padding:5px 9px;border-radius:999px;border:1px solid #f2e4b8}
 .rs-sep{width:3px;height:3px;border-radius:50%;background:#CFCCC3}
-.rs-handle{display:inline-flex;align-items:center;gap:5px}
+.rs-handle{display:inline-flex;align-items:center;gap:5px;min-width:0;padding:4px 10px;border-radius:999px;background:var(--paper);border:1px solid var(--line);font-weight:600}
+.rs-handle span:first-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:180px}
 .rs-ed{width:22px;height:22px;border-radius:6px;display:grid;place-items:center;color:var(--faint-2,#9A968E);border:0;background:transparent;cursor:pointer;transition:.15s}
 .rs-ed:hover{background:var(--paper);color:var(--ink)} .rs-ed svg{width:13px;height:13px}
 .rs-bhead__x{margin-left:auto;display:flex;gap:8px;flex:none;position:relative}
+.rs-bsub{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:10px;font-size:.79rem;color:var(--muted)}
+.rs-bline{display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+.rs-bline span{display:inline-flex;align-items:center}
+.rs-bline span+span::before{content:'·';margin-right:7px;color:#c1bdb3}
+.rs-bline__k{font-weight:800;color:var(--amber-ink);text-transform:capitalize}
+.rs-state{display:inline-flex;align-items:center;gap:7px;padding:4px 10px;border-radius:999px;background:var(--paper);border:1px solid var(--line);font-weight:700;color:var(--muted)}
+.rs-state__dot{width:7px;height:7px;border-radius:50%;background:currentColor;opacity:.85}
+.rs-state--ready,.rs-state--done,.rs-state--complete{color:var(--ok);background:var(--ok-bg);border-color:color-mix(in srgb,var(--ok) 18%,var(--line))}
+.rs-state--running,.rs-state--queued,.rs-state--pending,.rs-state--scraping{color:var(--amber-ink);background:var(--wash);border-color:#f2e4b8}
+.rs-state--paused{color:#8a6b12;background:#fff6da;border-color:#eddc9a}
+.rs-state--failed{color:#b0431b;background:var(--warn-bg);border-color:color-mix(in srgb,#b0431b 20%,var(--line))}
 .rs-iconbtn{width:42px;height:42px;border-radius:11px;border:1px solid var(--line-2,#DEDBD3);background:var(--white);display:grid;place-items:center;color:var(--muted);cursor:pointer;transition:.15s;position:relative}
 .rs-iconbtn:hover:not(:disabled){border-color:var(--faint-2,#9A968E);color:var(--ink)}
 .rs-iconbtn.on{background:var(--wash);border-color:var(--yellow);color:var(--amber-ink)}
@@ -987,8 +1046,19 @@ const scopedCss = `
 .rs-oc__st span{display:inline-flex;align-items:center;gap:5px;font-size:.76rem;color:var(--faint-2,#9A968E);font-weight:600;font-variant-numeric:tabular-nums}
 .rs-oc__st svg{width:13px;height:13px;color:var(--faint-2,#9A968E);flex:none}
 .rs-oc__panel{margin-top:10px}
-.rs-oc__an{margin-top:auto;padding-top:11px;display:flex;gap:8px;align-items:center}
-.rs-oc__an .rs-btn{flex:1}
+.rs-modalback{position:fixed;inset:0;z-index:130;display:flex;align-items:center;justify-content:center;padding:16px;background:rgba(20,15,0,.34);backdrop-filter:blur(3px)}
+.rs-upgmodal{position:relative;width:min(100%,420px);border:1px solid #f2e4b8;border-radius:22px;padding:22px;background:linear-gradient(180deg,#fffdf7 0%,#fff7e4 100%);box-shadow:0 28px 90px rgba(42,33,20,.22)}
+.rs-upgmodal__close{position:absolute;top:12px;right:12px;width:34px;height:34px;border-radius:999px;border:1px solid var(--line);background:rgba(255,255,255,.8);display:grid;place-items:center;color:var(--muted);cursor:pointer}
+.rs-upgmodal__close svg{width:14px;height:14px}
+.rs-upg__eyebrow{display:inline-flex;align-items:center;gap:7px;font-size:.67rem;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--amber-ink)}
+.rs-upg__eyebrow svg{width:12px;height:12px}
+.rs-upgmodal h3{margin-top:10px;font-size:1.15rem;font-weight:800;letter-spacing:-.03em;color:var(--ink);max-width:14ch}
+.rs-upgmodal p{margin-top:8px;font-size:.9rem;line-height:1.55;color:var(--muted)}
+.rs-upgmodal__actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:18px}
+.rs-upgmodal__actions .rs-btn{flex:1}
+.rs-oc__an{margin-top:auto;padding-top:11px;display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:8px;align-items:center}
+.rs-oc__an .rs-btn{min-width:0}
+.rs-oc__an .rs-btn span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .rs-loadmore{display:flex;justify-content:center;margin-top:20px}
 
 .rs-acard{background:var(--white);border:1px solid var(--line);border-radius:20px;padding:20px 22px}
@@ -1070,6 +1140,27 @@ const scopedCss = `
   .rs-stt:nth-child(1),.rs-stt:nth-child(2){border-bottom:1px solid var(--line)}
   .rs-winner{grid-template-columns:1fr}.rs-vf--big{max-width:240px;margin:0 auto}
   .rs-two{grid-template-columns:1fr}
+  .rs-bhead{align-items:flex-start}
+  .rs-bhead__x{margin-left:0}
 }
-@media (max-width:560px){.rs-ogrid{grid-template-columns:1fr 1fr}}
+@media (max-width:560px){
+.rs-ogrid{grid-template-columns:1fr 1fr}
+.rs-bhead{padding:14px}
+.rs-h1{font-size:1.4rem}
+.rs-handle span:first-child{max-width:120px}
+.rs-oc__st{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
+.rs-oc__st span{min-width:0;justify-content:center;font-size:.72rem;gap:4px}
+.rs-oc__st svg{width:12px;height:12px}
+.rs-oc__an{gap:6px}
+.rs-oc__an .rs-btn{padding:0 12px;font-size:.78rem}
+.rs-oc__an .rs-btn svg{width:13px;height:13px}
+.rs-ic2{width:34px;height:34px}
+.rs-upgmodal{padding:20px 16px 16px}
+.rs-upgmodal h3{font-size:1.02rem;max-width:none}
+.rs-upgmodal p{font-size:.84rem}
+.rs-upgmodal__actions .rs-btn{width:100%}
+}
+@media (max-width:420px){
+.rs-ogrid{grid-template-columns:1fr}
+}
 `;

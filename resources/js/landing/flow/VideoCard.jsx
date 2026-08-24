@@ -204,7 +204,7 @@ export function GridVideo({ video, onToggleBookmark, bookmarking = false }) {
           </span>
         </div>
         <div className="mt-2 truncate text-[12.5px] muted">{video.handle ?? video.creator_name}</div>
-        <div className="mt-2 flex items-center justify-between gap-2">
+        <div className="mt-2 flex flex-col items-start gap-2 min-[420px]:flex-row min-[420px]:items-center min-[420px]:justify-between">
           <a
             href={video.post_url}
             target="_blank"
@@ -217,7 +217,7 @@ export function GridVideo({ video, onToggleBookmark, bookmarking = false }) {
             type="button"
             onClick={() => onToggleBookmark?.(video)}
             disabled={!onToggleBookmark || bookmarking}
-            className="inline-flex items-center gap-1 text-xs font-semibold muted"
+            className="inline-flex items-center gap-1 self-stretch justify-center rounded-full border border-black/[.08] px-3 py-2 text-xs font-semibold muted min-[420px]:self-auto min-[420px]:justify-start dark:border-white/[.12]"
           >
             <Bookmark className="h-3.5 w-3.5" filled={Boolean(video.bookmarked)} />
           </button>
