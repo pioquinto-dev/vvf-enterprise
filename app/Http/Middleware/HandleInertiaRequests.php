@@ -38,11 +38,19 @@ class HandleInertiaRequests extends Middleware
         $impersonation = app(AdminImpersonationService::class)->active($request);
         $limits = $request->user() ? $billing->limitsForUser($request->user()) : null;
         $subscription = $request->user()
-            ? Subscription::query()->where('user_id', $request->user()->id)->first()
+            ? Subscription::query()
+                ->where('user_id', $request->user()->id)
+                ->orderByRaw("case when status = 'active' then 0 when status = 'trialing' then 1 when status = 'pending' then 2 else 3 end")
+                ->orderByDesc('current_period_ends_at')
+                ->first()
             : null;
         $trialEligible = $request->user() === null
             ? true
             : ! ($billing->hasPaidPlan($request->user()) && $subscription?->trial_started_at === null);
+        $isTrialing = in_array((string) ($subscription?->status ?? ''), ['trialing', 'trial'], true);
+        $hasUsedTrial = $subscription?->trial_started_at !== null
+            || $subscription?->trial_completed_at !== null
+            || $subscription?->trial_ends_at !== null;
 
         return [
             ...parent::share($request),
@@ -91,6 +99,8 @@ class HandleInertiaRequests extends Middleware
                 'videoAnalysisLimit' => $limits['videoAnalysisLimit'] ?? 0,
                 'hasPaidPlan' => $billing->hasPaidPlan($request->user()),
                 'trialEligible' => $trialEligible,
+                'isTrialing' => $isTrialing,
+                'hasUsedTrial' => $hasUsedTrial,
             ],
             'pricingPlans' => fn () => $pricing->activePlans(),
         ];

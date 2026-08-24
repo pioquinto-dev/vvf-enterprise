@@ -8,6 +8,8 @@ import { PRICING_PLAN_ORDER } from '../landing/data/dummy.js';
 export default function Plans() {
   const { billing: billingState = {}, pricingPlans = [] } = usePage().props;
   const current = String(billingState.currentPlan ?? 'free').toLowerCase();
+  const isTrialing = Boolean(billingState.isTrialing);
+  const hasUsedTrial = Boolean(billingState.hasUsedTrial);
   const orderedPlans = [...pricingPlans].sort((a, b) => {
     const aKey = a.slug ?? a.name?.toLowerCase();
     const bKey = b.slug ?? b.name?.toLowerCase();
@@ -18,6 +20,17 @@ export default function Plans() {
   });
 
   const upgrade = (slug) => billing.checkout(slug);
+  const priceLine = (plan) => {
+    if ((plan.price ?? 0) <= 0) {
+      return { amount: '$0', suffix: '/mo', subline: '' };
+    }
+
+    if (!hasUsedTrial || isTrialing) {
+      return { amount: '$0', suffix: '/mo', subline: `then $${plan.price} after 8 days` };
+    }
+
+    return { amount: `$${plan.price}`, suffix: '/mo', subline: '' };
+  };
 
   return (
     <>
@@ -35,6 +48,7 @@ export default function Plans() {
           {orderedPlans.map((plan) => {
             const isCurrent = plan.slug === current;
             const isFree = plan.slug === 'free';
+            const price = priceLine(plan);
 
             return (
               <div key={plan.slug} className={`plan${isCurrent ? ' plan--on' : ''}`}>
@@ -42,10 +56,12 @@ export default function Plans() {
                 <div className="plan__n">{plan.name}</div>
                 <p className="plan__t">{plan.tagline}</p>
                 <div className="plan__p">
-                  ${plan.price}
-                  <span>/mo</span>
+                  {price.amount}
+                  {price.suffix && <span>{price.suffix}</span>}
                 </div>
-                <p className="plan__s">{isCurrent ? 'Your current plan' : plan.price > 0 ? 'Billed monthly' : ''}</p>
+                <p className="plan__s">
+                  {price.subline || (isCurrent ? 'Your current plan' : plan.price > 0 ? 'Billed monthly' : '')}
+                </p>
 
                 <ul>
                   {plan.features.map((feature) => (
