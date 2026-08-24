@@ -70,8 +70,8 @@ export default function HowItWorks({ onStart }) {
       <div className="wrap">
         <div className="head head--c">
           <p className="eyebrow">How it works</p>
-          <h2>One subject in, a viral cut out</h2>
-          <p>No dashboards to configure and no keyword research to do first. Four steps, most of them optional.</p>
+          <h2>One subject in, Breakout videos out</h2>
+          <p>Give us one keyword and we handle the rest.</p>
         </div>
 
         <div className="steps">
