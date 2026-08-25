@@ -305,34 +305,6 @@ var Store = ({ className = "h-4 w-4" }) => /* @__PURE__ */ jsxs("svg", {
 		strokeLinecap: "round"
 	})]
 });
-var Target = ({ className = "h-4 w-4" }) => /* @__PURE__ */ jsxs("svg", {
-	viewBox: "0 0 16 16",
-	fill: "none",
-	className,
-	"aria-hidden": "true",
-	children: [
-		/* @__PURE__ */ jsx("circle", {
-			cx: "8",
-			cy: "8",
-			r: "5.6",
-			stroke: "currentColor",
-			strokeWidth: "1.4"
-		}),
-		/* @__PURE__ */ jsx("circle", {
-			cx: "8",
-			cy: "8",
-			r: "2.6",
-			stroke: "currentColor",
-			strokeWidth: "1.4"
-		}),
-		/* @__PURE__ */ jsx("circle", {
-			cx: "8",
-			cy: "8",
-			r: ".9",
-			fill: "currentColor"
-		})
-	]
-});
 var User = ({ className = "h-4 w-4" }) => /* @__PURE__ */ jsxs("svg", {
 	viewBox: "0 0 16 16",
 	fill: "none",
@@ -2916,6 +2888,78 @@ function AppFooter({ width = "max-w-6xl", label = "© 2026 Brand Beacon · TikTo
 	});
 }
 //#endregion
+//#region resources/js/Pages/components/EntitlementsBar.jsx
+var EntitlementsBar_exports = /* @__PURE__ */ __exportAll({ default: () => EntitlementsBar });
+/**
+* Plan and allowance at a glance — the handoff mockup's `.ent` pill, wired to
+* real billing props. One quiet line, not a dashboard.
+*/
+function titleCase$2(slug) {
+	return String(slug || "free").split(/[-_\s]+/).map((word) => word.charAt(0).toUpperCase() + word.slice(1)).join(" ");
+}
+function EntitlementsBar({ variant = "default" }) {
+	const { auth = {}, billing = {} } = usePage().props;
+	if (!(auth.signedIn ?? Boolean(auth.user))) return null;
+	const searchLimit = billing.searchCreditsLimit ?? 0;
+	const searchLeft = billing.searchCreditsRemaining ?? 0;
+	const searchUsed = billing.searchCreditsUsed ?? 0;
+	const bookmarkLimit = billing.searchBookmarkLimit ?? billing.bookmarkLimit ?? 0;
+	const bookmarksUsed = billing.searchBookmarkCount ?? billing.bookmarksUsed ?? billing.bookmarkCount ?? 0;
+	const searchesLow = searchLimit > 0 && searchLeft <= Math.max(1, Math.round(searchLimit * .1));
+	if (variant === "drawer") return /* @__PURE__ */ jsx(Link, {
+		href: "/settings/subscription",
+		className: "ent ent--drawer",
+		"aria-label": "Open subscription settings",
+		children: /* @__PURE__ */ jsxs("span", {
+			className: "ent__line",
+			children: [
+				/* @__PURE__ */ jsx("b", { children: titleCase$2(billing.currentPlan) }),
+				/* @__PURE__ */ jsx("i", {}),
+				/* @__PURE__ */ jsxs("span", {
+					className: searchesLow ? "low" : void 0,
+					children: [
+						/* @__PURE__ */ jsx("b", { children: searchUsed }),
+						searchLimit > 0 && `/${searchLimit}`,
+						" searches"
+					]
+				}),
+				/* @__PURE__ */ jsx("i", {}),
+				/* @__PURE__ */ jsx("span", {
+					className: "ent__cta",
+					children: "View Full Credits"
+				})
+			]
+		})
+	});
+	return /* @__PURE__ */ jsxs(Link, {
+		href: "/settings/subscription",
+		className: "ent",
+		"aria-label": "Open subscription settings",
+		children: [
+			/* @__PURE__ */ jsx("b", { children: titleCase$2(billing.currentPlan) }),
+			/* @__PURE__ */ jsx("i", {}),
+			/* @__PURE__ */ jsxs("span", {
+				className: searchesLow ? "low" : void 0,
+				children: [
+					/* @__PURE__ */ jsx("b", { children: searchUsed }),
+					searchLimit > 0 && `/${searchLimit}`,
+					" searches"
+				]
+			}),
+			/* @__PURE__ */ jsx("i", {}),
+			/* @__PURE__ */ jsxs("span", { children: [
+				/* @__PURE__ */ jsx("b", { children: bookmarksUsed }),
+				bookmarkLimit > 0 && `/${bookmarkLimit}`,
+				" search bookmarks"
+			] }),
+			!billing.hasPaidPlan && /* @__PURE__ */ jsxs(Fragment$1, { children: [/* @__PURE__ */ jsx("i", {}), /* @__PURE__ */ jsx("span", {
+				style: { textDecoration: "underline" },
+				children: "Upgrade"
+			})] })
+		]
+	});
+}
+//#endregion
 //#region resources/js/landing/flow/api.js
 /**
 * Small fetch wrapper for the saved-search endpoints. Inertia handles page
@@ -3279,7 +3323,7 @@ function CompletedAnalysisModal({ item, onClose, onView }) {
 *   toolbar  — full-width row under the header (search / filters / sort)
 *   width    — Tailwind max-width class for the content column
 */
-function AppLayout({ pill, step, title, subtitle, actions, toolbar, mobileDrawerActions = null, width = "max-w-6xl", children }) {
+function AppLayout({ pill, step, title, subtitle, actions, toolbar, width = "max-w-6xl", children }) {
 	const { props, url: currentUrl } = usePage();
 	const { auth = {} } = props;
 	const logout = useForm({});
@@ -3386,9 +3430,9 @@ function AppLayout({ pill, step, title, subtitle, actions, toolbar, mobileDrawer
 								children: /* @__PURE__ */ jsx(Close, {})
 							})]
 						}),
-						mobileDrawerActions && /* @__PURE__ */ jsx("div", {
+						signedIn && /* @__PURE__ */ jsx("div", {
 							className: "bb-drawer__actions",
-							children: mobileDrawerActions
+							children: /* @__PURE__ */ jsx(EntitlementsBar, { variant: "drawer" })
 						}),
 						/* @__PURE__ */ jsx(NavList, {
 							currentUrl,
@@ -4352,51 +4396,127 @@ function BrandInlineFlow({ kind = "brand", placeholder = "Which brand do you wan
 	] });
 }
 //#endregion
-//#region resources/js/Pages/components/EntitlementsBar.jsx
-var EntitlementsBar_exports = /* @__PURE__ */ __exportAll({ default: () => EntitlementsBar });
-/**
-* Plan and allowance at a glance — the handoff mockup's `.ent` pill, wired to
-* real billing props. One quiet line, not a dashboard.
-*/
-function titleCase$2(slug) {
-	return String(slug || "free").split(/[-_\s]+/).map((word) => word.charAt(0).toUpperCase() + word.slice(1)).join(" ");
+//#region resources/js/Pages/SavedSearches/detail/tiktokPlayer.js
+function detectPlatform(video = {}) {
+	if (String(video.social_media_source || "").toLowerCase() === "tiktok") return "tiktok";
+	return [
+		video.embedUrl,
+		video.postUrl,
+		video.videoUrl,
+		video.embed_url,
+		video.post_url,
+		video.video_url
+	].filter(Boolean).map((value) => String(value).toLowerCase()).some((value) => value.includes("tiktok.com")) ? "tiktok" : null;
 }
-function EntitlementsBar() {
-	const { auth = {}, billing = {} } = usePage().props;
-	if (!(auth.signedIn ?? Boolean(auth.user))) return null;
-	const searchLimit = billing.searchCreditsLimit ?? 0;
-	const searchLeft = billing.searchCreditsRemaining ?? 0;
-	const searchUsed = billing.searchCreditsUsed ?? 0;
-	const bookmarkLimit = billing.searchBookmarkLimit ?? billing.bookmarkLimit ?? 0;
-	const bookmarksUsed = billing.searchBookmarkCount ?? billing.bookmarksUsed ?? billing.bookmarkCount ?? 0;
-	const searchesLow = searchLimit > 0 && searchLeft <= Math.max(1, Math.round(searchLimit * .1));
-	return /* @__PURE__ */ jsxs(Link, {
-		href: "/settings/subscription",
-		className: "ent",
-		"aria-label": "Open subscription settings",
-		children: [
-			/* @__PURE__ */ jsx("b", { children: titleCase$2(billing.currentPlan) }),
-			/* @__PURE__ */ jsx("i", {}),
-			/* @__PURE__ */ jsxs("span", {
-				className: searchesLow ? "low" : void 0,
-				children: [
-					/* @__PURE__ */ jsx("b", { children: searchUsed }),
-					searchLimit > 0 && `/${searchLimit}`,
-					" searches"
-				]
-			}),
-			/* @__PURE__ */ jsx("i", {}),
-			/* @__PURE__ */ jsxs("span", { children: [
-				/* @__PURE__ */ jsx("b", { children: bookmarksUsed }),
-				bookmarkLimit > 0 && `/${bookmarkLimit}`,
-				" search bookmarks"
-			] }),
-			!billing.hasPaidPlan && /* @__PURE__ */ jsxs(Fragment$1, { children: [/* @__PURE__ */ jsx("i", {}), /* @__PURE__ */ jsx("span", {
-				style: { textDecoration: "underline" },
-				children: "Upgrade"
-			})] })
-		]
+function buildTikTokPlayerUrl(videoId, autoplay = false) {
+	if (!videoId) return null;
+	const url = new URL(`https://www.tiktok.com/player/v1/${videoId}`);
+	url.searchParams.set("autoplay", autoplay ? "1" : "0");
+	url.searchParams.set("controls", "1");
+	url.searchParams.set("progress_bar", "0");
+	url.searchParams.set("play_button", "1");
+	url.searchParams.set("volume_control", "1");
+	url.searchParams.set("fullscreen_button", "0");
+	url.searchParams.set("timestamp", "0");
+	url.searchParams.set("music_info", "0");
+	url.searchParams.set("description", "0");
+	url.searchParams.set("rel", "0");
+	url.searchParams.set("native_context_menu", "0");
+	url.searchParams.set("closed_caption", "0");
+	url.searchParams.set("muted", "0");
+	return url.toString();
+}
+function withTikTokAutoplay(url, autoplay) {
+	if (!url) return null;
+	try {
+		const next = new URL(url);
+		next.searchParams.set("autoplay", autoplay ? "1" : "0");
+		return next.toString();
+	} catch {
+		return url;
+	}
+}
+function previewImageFor(video = {}) {
+	return video.thumbnailUrl || video.thumbnail_url || video.cover || null;
+}
+function isDashboardPlayable(video = {}) {
+	const platform = detectPlatform(video);
+	const videoId = video.videoId || video.video_id;
+	if (platform === "tiktok") return Boolean(videoId);
+	return Boolean(video.embedUrl || video.embed_url || video.postUrl || video.post_url);
+}
+function playerKindFor(video = {}) {
+	return detectPlatform(video) === "tiktok" ? "tiktok" : "iframe";
+}
+function playerUrlFor(video = {}, autoplay = false) {
+	const platform = detectPlatform(video);
+	const videoId = video.videoId || video.video_id;
+	if (platform === "tiktok" && videoId) return buildTikTokPlayerUrl(videoId, autoplay);
+	if (platform === "tiktok") return null;
+	return video.player_url || video.embedUrl || video.embed_url || null;
+}
+function targetOriginFor(iframe) {
+	try {
+		const origin = new URL(iframe?.src || "").origin;
+		return origin && origin !== "null" ? origin : "*";
+	} catch {
+		return "*";
+	}
+}
+function postTikTokMessage(iframe, type) {
+	if (!iframe?.contentWindow) return;
+	iframe.contentWindow.postMessage({
+		"x-tiktok-player": true,
+		type
+	}, targetOriginFor(iframe));
+}
+function stopAndResetTikTokPlayer(shell) {
+	if (!shell) return;
+	const iframe = shell.querySelector("[data-player-frame]");
+	const poster = shell.querySelector("[data-player-poster]");
+	const overlay = shell.querySelector("[data-player-overlay]");
+	const play = shell.querySelector("[data-player-play]");
+	const close = shell.querySelector("[data-player-close]");
+	const container = shell.querySelector("[data-player-container]");
+	if (shell.dataset.playerKind === "tiktok" && iframe) {
+		postTikTokMessage(iframe, "pause");
+		postTikTokMessage(iframe, "mute");
+	}
+	delete shell.dataset.playerWantsAudible;
+	shell.dataset.playerActive = "false";
+	if (container) container.hidden = true;
+	if (close) close.hidden = true;
+	if (poster) poster.hidden = false;
+	if (overlay) overlay.hidden = false;
+	if (play) play.hidden = false;
+	if (iframe) iframe.src = "about:blank";
+}
+function activateTikTokPlayer(shell) {
+	if (!shell) return;
+	const iframe = shell.querySelector("[data-player-frame]");
+	const poster = shell.querySelector("[data-player-poster]");
+	const overlay = shell.querySelector("[data-player-overlay]");
+	const play = shell.querySelector("[data-player-play]");
+	const close = shell.querySelector("[data-player-close]");
+	const container = shell.querySelector("[data-player-container]");
+	const playerSrc = shell.dataset.playerSrc;
+	if (!iframe || !playerSrc) return;
+	document.querySelectorAll("[data-video-player-shell][data-player-active=\"true\"]").forEach((other) => {
+		if (other !== shell) stopAndResetTikTokPlayer(other);
 	});
+	shell.dataset.playerActive = "true";
+	shell.dataset.playerWantsAudible = "true";
+	if (poster) poster.hidden = true;
+	if (overlay) overlay.hidden = true;
+	if (play) play.hidden = true;
+	if (container) container.hidden = false;
+	if (close) close.hidden = false;
+	const nextSrc = shell.dataset.playerKind === "tiktok" ? withTikTokAutoplay(playerSrc, true) : playerSrc;
+	if (!iframe.src || iframe.src === "about:blank") iframe.src = nextSrc;
+	if (shell.dataset.playerKind === "tiktok") {
+		postTikTokMessage(iframe, "unMute");
+		postTikTokMessage(iframe, "play");
+	}
 }
 //#endregion
 //#region resources/js/Pages/components/VideoCard.jsx
@@ -4421,23 +4541,97 @@ function formatDuration$3(duration) {
 }
 /**
 * One video card (the mockup's `.vc`), wired to a `ViralVideo::toCardArray`
-* payload. The play glyph opens the TikTok post rather than advertising a
-* control that does nothing — the signed CDN `video_url` 403s from a browser.
+* payload. Bookmarks now plays in place like the results flow, using TikTok's
+* player when we have a stable video id and falling back to the saved embed.
 */
 function VideoCard({ video, rank }) {
+	const [broken, setBroken] = useState(false);
+	const [playing, setPlaying] = useState(false);
+	const iframeRef = useRef(null);
+	const shellRef = useRef(null);
 	const multiplier = Number(video.virality_score) > 0 ? `${Math.round(video.virality_score)}x` : null;
 	const duration = formatDuration$3(video.duration);
 	const cover = video.thumbnail_url;
-	const link = video.post_url || video.embed_url;
+	const embed = buildTikTokPlayerUrl(video.video_id, true) ?? video.embed_url ?? null;
+	useEffect(() => {
+		const iframe = iframeRef.current;
+		if (!playing || !iframe || !video?.video_id) return void 0;
+		const unmuteAndPlay = () => {
+			postTikTokMessage(iframe, "unMute");
+			postTikTokMessage(iframe, "play");
+		};
+		const handleReady = (event) => {
+			const payload = event?.data;
+			if (!payload || payload["x-tiktok-player"] !== true || payload.type !== "onPlayerReady") return;
+			if (event.source !== iframe.contentWindow) return;
+			unmuteAndPlay();
+		};
+		iframe.addEventListener("load", unmuteAndPlay);
+		window.addEventListener("message", handleReady);
+		return () => {
+			iframe.removeEventListener("load", unmuteAndPlay);
+			window.removeEventListener("message", handleReady);
+		};
+	}, [playing, video?.video_id]);
+	useEffect(() => {
+		const shell = shellRef.current;
+		if (!shell) return;
+		shell.dataset.playerActive = playing ? "true" : "false";
+	}, [playing]);
+	const closePlayer = () => {
+		setPlaying(false);
+	};
+	const openPlayer = () => {
+		const shell = shellRef.current;
+		document.querySelectorAll("[data-bookmark-video-player=\"true\"][data-player-active=\"true\"]").forEach((node) => {
+			if (node !== shell) {
+				const closeButton = node.querySelector("[data-player-close]");
+				if (closeButton instanceof HTMLButtonElement) closeButton.click();
+			}
+		});
+		setPlaying(true);
+	};
 	return /* @__PURE__ */ jsxs("article", {
+		ref: shellRef,
 		className: "vc",
-		children: [/* @__PURE__ */ jsxs("div", {
+		"data-bookmark-video-player": "true",
+		"data-player-active": "false",
+		children: [/* @__PURE__ */ jsx("div", {
 			className: "vt",
-			children: [
-				cover && /* @__PURE__ */ jsx("img", {
+			children: playing && embed ? /* @__PURE__ */ jsxs(Fragment$1, { children: [/* @__PURE__ */ jsx("div", {
+				className: "tiktok-frame-host",
+				children: /* @__PURE__ */ jsx("iframe", {
+					ref: iframeRef,
+					src: embed,
+					title: video.title || "TikTok video",
+					loading: "lazy",
+					scrolling: "no",
+					allow: "accelerometer; controls; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share",
+					allowFullScreen: true,
+					className: "tracker-embed-frame"
+				})
+			}), /* @__PURE__ */ jsx("button", {
+				type: "button",
+				onClick: closePlayer,
+				"aria-label": "Close player",
+				className: "absolute top-2.5 right-2.5 z-10 flex h-7 w-7 items-center justify-center rounded-full bg-black/60 text-white backdrop-blur-md transition hover:bg-black/80",
+				"data-player-close": true,
+				children: /* @__PURE__ */ jsx("svg", {
+					viewBox: "0 0 24 24",
+					className: "h-3.5 w-3.5",
+					fill: "none",
+					stroke: "currentColor",
+					strokeWidth: "2.5",
+					strokeLinecap: "round",
+					children: /* @__PURE__ */ jsx("path", { d: "M6 6l12 12M18 6L6 18" })
+				})
+			})] }) : /* @__PURE__ */ jsxs(Fragment$1, { children: [
+				cover && !broken && /* @__PURE__ */ jsx("img", {
 					src: cover,
 					alt: "",
-					loading: "lazy"
+					loading: "lazy",
+					referrerPolicy: "no-referrer",
+					onError: () => setBroken(true)
 				}),
 				rank != null && /* @__PURE__ */ jsx("span", {
 					className: "vt__r",
@@ -4451,18 +4645,17 @@ function VideoCard({ video, rank }) {
 					className: "vt__d",
 					children: duration
 				}),
-				link ? /* @__PURE__ */ jsx("a", {
+				embed ? /* @__PURE__ */ jsx("button", {
+					type: "button",
 					className: "vt__p",
-					href: link,
-					target: "_blank",
-					rel: "noreferrer",
-					"aria-label": "Open on TikTok",
+					onClick: openPlayer,
+					"aria-label": video.title ? `Play: ${video.title}` : "Play video",
 					children: /* @__PURE__ */ jsx(Play, {})
 				}) : /* @__PURE__ */ jsx("span", {
 					className: "vt__p",
 					children: /* @__PURE__ */ jsx(Play, {})
 				})
-			]
+			] })
 		}), /* @__PURE__ */ jsxs("div", {
 			className: "vb",
 			children: [
@@ -4531,7 +4724,7 @@ var STATUS = {
 };
 var TYPE_LABEL$1 = {
 	brand: "Brand",
-	competitor: "Competitor",
+	competitor: "Brand",
 	product: "Product"
 };
 function titleCase$1(value) {
@@ -5259,7 +5452,7 @@ function ComingSoon() {
 							}),
 							/* @__PURE__ */ jsx("span", {
 								className: "surface px-4 py-2",
-								children: "Spot brand and competitor momentum"
+								children: "Spot brand and product momentum"
 							}),
 							/* @__PURE__ */ jsx("span", {
 								className: "surface px-4 py-2",
@@ -5481,50 +5674,35 @@ var SearchLauncher_exports = /* @__PURE__ */ __exportAll({ default: () => Search
 * Step one of the search flow — pick a subject.
 *
 * Redesigned to match the flat "Brand Beacon — Start a search" mockup:
-*   - a segmented mode pill (Your brand / A competitor / A product) with a
+*   - a segmented mode pill (Your brand / A product) with a
 *     yellow sliding indicator behind the active tab,
 *   - one unified pill-shaped search bar with the Continue button inline,
 *   - a "Popular" row of fill-in chips that only *populate* the input
 *     (they never fire a search — a search costs a credit).
 */
-var TYPES$1 = [
-	{
-		key: "brand",
-		label: "Your brand",
-		icon: Store,
-		placeholder: "Enter your brand name…",
-		sample: "rhode skin",
-		suggestions: [
-			"rhode skin",
-			"skims",
-			"lip oil"
-		]
-	},
-	{
-		key: "competitor",
-		label: "A competitor",
-		icon: Target,
-		placeholder: "Enter a competitor to watch…",
-		sample: "skims",
-		suggestions: [
-			"skims",
-			"fenty beauty",
-			"gymshark"
-		]
-	},
-	{
-		key: "product",
-		label: "A product",
-		icon: Search,
-		placeholder: "Enter a product to track…",
-		sample: "lip oil",
-		suggestions: [
-			"lip oil",
-			"hair oil",
-			"sunscreen stick"
-		]
-	}
-];
+var TYPES$1 = [{
+	key: "brand",
+	label: "Your brand",
+	icon: Store,
+	placeholder: "Enter your brand name…",
+	sample: "rhode skin",
+	suggestions: [
+		"rhode skin",
+		"skims",
+		"lip oil"
+	]
+}, {
+	key: "product",
+	label: "A product",
+	icon: Search,
+	placeholder: "Enter a product to track…",
+	sample: "lip oil",
+	suggestions: [
+		"lip oil",
+		"hair oil",
+		"sunscreen stick"
+	]
+}];
 function SearchLauncher({ initialType = "brand", initialQuery = "", onSubmit, suggestionsByType = {} }) {
 	const [type, setType] = useState(initialType);
 	const [value, setValue] = useState(initialQuery);
@@ -6416,7 +6594,7 @@ var SearchWizard_exports = /* @__PURE__ */ __exportAll({ default: () => SearchWi
 *
 * The wizard branches by search kind, but every search can now optionally add
 * source context before it runs:
-*   - product / brand / competitor → Subject → Keywords → Sources → run
+*   - product / brand → Subject → Keywords → Sources → run
 * The run/loading screen is *not* a wizard step and has no stepper.
 *
 * Steps advance in local state so keyword work survives a step back, and a
@@ -6650,7 +6828,7 @@ function clearPendingSearch() {
 	if (typeof window === "undefined") return;
 	window.sessionStorage.removeItem(PENDING_SEARCH_KEY);
 }
-function SearchWizard({ initialType = "brand", initialQuery = "", heading = "Start a search", subheading = "Pick one brand, competitor, or product — we widen it with smarter keywords on the next step.", subjectExtra = null, suggestionsByType = {}, onTrackedSearchChange = null }) {
+function SearchWizard({ initialType = "brand", initialQuery = "", heading = "Start a search", subheading = "Pick one brand or product — we widen it with smarter keywords on the next step.", subjectExtra = null, suggestionsByType = {}, onTrackedSearchChange = null }) {
 	const page = usePage();
 	const { auth = {}, billing = {} } = page.props;
 	const isLandingSearchPage = String(page.url || "").startsWith("/search");
@@ -6726,7 +6904,11 @@ function SearchWizard({ initialType = "brand", initialQuery = "", heading = "Sta
 		if (!signedIn) return;
 		const pendingSearch = readPendingSearch();
 		if (!pendingSearch || pendingSearch.started) return;
-		if (!pendingSearch.payload || pendingSearch.type !== "brand" && pendingSearch.type !== "competitor" && pendingSearch.type !== "product") {
+		if (!pendingSearch.payload || ![
+			"brand",
+			"competitor",
+			"product"
+		].includes(pendingSearch.type)) {
 			clearPendingSearch();
 			return;
 		}
@@ -6734,7 +6916,7 @@ function SearchWizard({ initialType = "brand", initialQuery = "", heading = "Sta
 			...pendingSearch,
 			started: true
 		});
-		setType(pendingSearch.type);
+		setType(pendingSearch.type === "competitor" ? "brand" : pendingSearch.type);
 		setPhrase(pendingSearch.phrase ?? "");
 		setPending(pendingSearch.payload);
 		setError(null);
@@ -6791,7 +6973,7 @@ function SearchWizard({ initialType = "brand", initialQuery = "", heading = "Sta
 	const topSub = step === "subject" ? subheading : step === "sources" ? "Step 3 of 3 — optional." : `Step 2 of 3 — add terms to expand on your ${nounOf(type)}. Ticking six terms still spends one search.`;
 	return /* @__PURE__ */ jsxs(Fragment$1, { children: [
 		step !== "running" && /* @__PURE__ */ jsxs("div", {
-			className: "top",
+			className: "top top--wizard",
 			children: [/* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsx("h1", { children: topTitle }), /* @__PURE__ */ jsx("p", { children: topSub })] }), /* @__PURE__ */ jsx(EntitlementsBar, {})]
 		}),
 		step === "running" && searchId ? /* @__PURE__ */ jsx(RunningScreen, {
@@ -6918,7 +7100,7 @@ var STATUS_MAP = {
 };
 var TYPE_LABEL = {
 	brand: "Brand",
-	competitor: "Competitor",
+	competitor: "Brand",
 	product: "Product"
 };
 var titleCase = (v) => String(v || "").split(/[-_\s]+/).filter(Boolean).map((w) => w[0].toUpperCase() + w.slice(1)).join(" ");
@@ -7366,10 +7548,74 @@ function SearchProcessingModal({ searches, onClose }) {
 		})
 	});
 }
+function SearchAccessPromptModal({ prompt, billing, onClose, onUpgrade }) {
+	if (!prompt) return null;
+	const trialEligible = billing?.trialEligible ?? true;
+	const hasUsedTrial = billing?.hasUsedTrial ?? false;
+	const ctaLabel = trialEligible && !hasUsedTrial ? "Start 8-day trial" : "View Growth plan";
+	const body = trialEligible && !hasUsedTrial ? "You already used your free search. Start your 8-day trial to unlock more searches and keep this one moving." : "You already used your free search. Upgrade to Growth to unlock more searches and keep researching.";
+	const detail = prompt?.phrase ? `Your search for ${String.fromCharCode(8220)}${prompt.phrase}${String.fromCharCode(8221)} was not started because this account is out of search credits for the current period.` : "Your search was not started because this account is out of search credits for the current period.";
+	return /* @__PURE__ */ jsx("div", {
+		className: "bb",
+		children: /* @__PURE__ */ jsxs("div", {
+			className: "bb-modal",
+			children: [/* @__PURE__ */ jsx("button", {
+				className: "bb-modal__bg",
+				"aria-label": "Close",
+				onClick: onClose
+			}), /* @__PURE__ */ jsxs("div", {
+				className: "bb-modal__box",
+				children: [
+					/* @__PURE__ */ jsx("h2", { children: "Free search already used" }),
+					/* @__PURE__ */ jsx("p", {
+						className: "sub",
+						children: body
+					}),
+					/* @__PURE__ */ jsx("p", {
+						style: {
+							marginTop: 16,
+							color: "var(--muted)",
+							lineHeight: 1.6
+						},
+						children: detail
+					}),
+					prompt?.message && /* @__PURE__ */ jsx("p", {
+						style: {
+							marginTop: 14,
+							fontWeight: 700,
+							color: "var(--ink)"
+						},
+						children: prompt.message
+					}),
+					/* @__PURE__ */ jsxs("div", {
+						className: "actrow__r",
+						style: {
+							marginTop: 24,
+							justifyContent: "flex-end",
+							flexWrap: "wrap"
+						},
+						children: [/* @__PURE__ */ jsx("button", {
+							type: "button",
+							className: "btn btn--g",
+							onClick: onClose,
+							children: "Maybe later"
+						}), /* @__PURE__ */ jsx("button", {
+							type: "button",
+							className: "btn btn--y",
+							onClick: onUpgrade,
+							children: ctaLabel
+						})]
+					})
+				]
+			})]
+		})
+	});
+}
 function Dashboard() {
-	const { flash = {}, recent = [], stats = null, searchSuggestions = {} } = usePage().props;
+	const { flash = {}, recent = [], stats = null, searchSuggestions = {}, billing = {} } = usePage().props;
 	const [processingModal, setProcessingModal] = useState(null);
 	const [completionModal, setCompletionModal] = useState(null);
+	const [searchAccessPrompt, setSearchAccessPrompt] = useState(null);
 	const [retryingSearchId, setRetryingSearchId] = useState(null);
 	const [recentSearches, setRecentSearches] = useState(recent);
 	const polling = useRef(false);
@@ -7448,6 +7694,10 @@ function Dashboard() {
 		setProcessingModal(flashed);
 	}, [flash.processingSearches]);
 	useEffect(() => {
+		if (!flash.searchAccessPrompt) return;
+		setSearchAccessPrompt(flash.searchAccessPrompt);
+	}, [flash.searchAccessPrompt]);
+	useEffect(() => {
 		if (completionModal) return void 0;
 		let cancelled = false;
 		let timer;
@@ -7489,6 +7739,10 @@ function Dashboard() {
 		} finally {
 			setRetryingSearchId(null);
 		}
+	};
+	const openSearchUpgrade = () => {
+		setSearchAccessPrompt(null);
+		router.visit((billing.trialEligible ?? true) && !(billing.hasUsedTrial ?? false) ? "/trial" : "/plans");
 	};
 	const dashboardExtras = /* @__PURE__ */ jsxs(Fragment$1, { children: [/* @__PURE__ */ jsx(GlanceStrip, { stats }), /* @__PURE__ */ jsx(RecentCard, {
 		searches: recentSearches,
@@ -7622,6 +7876,12 @@ function Dashboard() {
 		/* @__PURE__ */ jsx(SearchProcessingModal, {
 			searches: processingModal,
 			onClose: closeProcessingModal
+		}),
+		/* @__PURE__ */ jsx(SearchAccessPromptModal, {
+			prompt: searchAccessPrompt,
+			billing,
+			onClose: () => setSearchAccessPrompt(null),
+			onUpgrade: openSearchUpgrade
 		})
 	] });
 }
@@ -7753,29 +8013,19 @@ function Nav({ homeHref = "#top" }) {
 }
 //#endregion
 //#region resources/js/landing/sections/Hero.jsx
-var MODES = [
-	{
-		key: "brand",
-		label: "Your brand",
-		icon: Store,
-		prompt: "Which brand do you want to research?",
-		sample: "rhode skin"
-	},
-	{
-		key: "competitor",
-		label: "A competitor",
-		icon: Target,
-		prompt: "Which competitor should we watch?",
-		sample: "skims"
-	},
-	{
-		key: "product",
-		label: "A product",
-		icon: Search,
-		prompt: "Which product do you want to track?",
-		sample: "lip oil"
-	}
-];
+var MODES = [{
+	key: "brand",
+	label: "Your brand",
+	icon: Store,
+	prompt: "Which brand do you want to research?",
+	sample: "rhode skin"
+}, {
+	key: "product",
+	label: "A product",
+	icon: Search,
+	prompt: "Which product do you want to track?",
+	sample: "lip oil"
+}];
 function Hero({ onStart }) {
 	const [type, setType] = useState("brand");
 	const [value, setValue] = useState("");
@@ -7837,7 +8087,7 @@ function Hero({ onStart }) {
 									children: "2"
 								}),
 								"Type your ",
-								type === "product" ? "product" : type === "brand" ? "brand name" : "competitor"
+								type === "product" ? "product" : "brand name"
 							]
 						}),
 						/* @__PURE__ */ jsxs("div", {
@@ -7849,7 +8099,7 @@ function Hero({ onStart }) {
 								value,
 								onChange: (e) => setValue(e.target.value),
 								placeholder: mode.sample,
-								"aria-label": `Type your ${type === "product" ? "product" : type === "brand" ? "brand name" : "competitor"}`
+								"aria-label": `Type your ${type === "product" ? "product" : "brand name"}`
 							}), /* @__PURE__ */ jsxs("button", {
 								type: "submit",
 								className: "btn btn--primary btn--lg btn--pulse",
@@ -7959,12 +8209,12 @@ var FEATURES = [
 		accent: "from-[#3a2b6b] to-[#8b3df0]"
 	},
 	{
-		id: "competitors",
+		id: "tracking",
 		tag: "Monitoring",
-		title: "Competitor Tracking",
-		body: "Point Brand Beacon at a competitor and get a running feed of every video mentioning them - organic creator posts, affiliate content, and paid spark ads alike.",
+		title: "Brand Tracking",
+		body: "Point Brand Beacon at a brand and get a running feed of every video mentioning it - organic creator posts, affiliate content, and paid spark ads alike.",
 		bullets: [
-			"Unlimited competitor bookmarks",
+			"Unlimited video bookmarks",
 			"Weekly change digest",
 			"Share-of-voice trendline"
 		],
@@ -7987,13 +8237,13 @@ var STEPS = [
 	{
 		n: "01",
 		title: "Give us a keyword",
-		body: "Enter your brand, a competitor, or a product keyword to start the search.",
+		body: "Enter your brand or a product keyword to start the search.",
 		mockup: {
 			type: "search",
 			label: "Search setup",
 			lines: [
 				"rhode skin",
-				"competitor",
+				"brand",
 				"1 subject only"
 			]
 		}
@@ -8163,7 +8413,7 @@ var PRICING_PLAN_ORDER = PRICING.monthly.map((plan) => plan.slug ?? plan.name.to
 var FAQS = [
 	{
 		q: "What counts as one search?",
-		a: "One subject: your brand, a single competitor, or a single product. Included are any keywords you attach to widen the search. All of those keywords are covered by that one search, so ticking six terms still only spends one."
+		a: "One subject: your brand or a single product. Included are any keywords you attach to widen the search. All of those keywords are covered by that one search, so ticking six terms still only spends one."
 	},
 	{
 		q: "How long does a search take?",
@@ -8258,7 +8508,7 @@ var OUTLIER_VIDEOS = [
 		image: "/images/landing/discovery-brow-grooming.png"
 	}
 ];
-var COMPETITOR_FEED = [
+var BRAND_FEED = [
 	{
 		title: "\"the serum that survived my wedding weekend\"",
 		meta: "2.1M views · @styledbymia",
@@ -8337,7 +8587,7 @@ function Features() {
 					className: "hl",
 					children: "TikTok"
 				})] }),
-				/* @__PURE__ */ jsx("p", { children: "Three tools built on one index. Find what broke out, watch who is moving, and get pinged when something about you starts climbing." })
+				/* @__PURE__ */ jsx("p", { children: "Three tools built on one index. Find what broke out, watch what is moving, and get pinged when something about you starts climbing." })
 			]
 		}), /* @__PURE__ */ jsxs("div", {
 			className: "feat__grid",
@@ -8413,7 +8663,7 @@ function Features() {
 						})]
 					}),
 					/* @__PURE__ */ jsx("div", {
-						className: `pane${active === "competitors" ? "" : " hide"}`,
+						className: `pane${active === "tracking" ? "" : " hide"}`,
 						children: /* @__PURE__ */ jsxs("div", {
 							className: "comp",
 							children: [
@@ -8442,7 +8692,7 @@ function Features() {
 								}),
 								/* @__PURE__ */ jsx("div", {
 									className: "feed",
-									children: COMPETITOR_FEED.map((item) => /* @__PURE__ */ jsxs("div", {
+									children: BRAND_FEED.map((item) => /* @__PURE__ */ jsxs("div", {
 										className: "feed__row",
 										children: [
 											/* @__PURE__ */ jsx("span", {
@@ -8931,7 +9181,7 @@ var COLS = [
 		h: "Product",
 		links: [
 			"Outlier Vault",
-			"Competitor Tracking",
+			"Brand Tracking",
 			"Creator Shortlists",
 			"Virality Alerts",
 			"Changelog"
@@ -9382,7 +9632,6 @@ var Index_exports = /* @__PURE__ */ __exportAll({ default: () => Index });
 var FILTER_LABELS = {
 	"brand-group": "Brand searches",
 	brand: "Brand searches",
-	competitor: "Competitor searches",
 	product: "Product searches"
 };
 var SORT_OPTIONS = {
@@ -9435,7 +9684,7 @@ function Index({ searches: initialSearches, bookmarkedVideos = [], filterType = 
 	const [submitting, setSubmitting] = useState(false);
 	const menuRef = useRef(null);
 	const title = filterType ? FILTER_LABELS[filterType] ?? "Bookmarks" : "Bookmarks";
-	const searchHref = `/search?type=${filterType === "competitor" ? "competitor" : "brand"}`;
+	const searchHref = `/search?type=${filterType === "product" ? "product" : "brand"}`;
 	useEffect(() => {
 		if (openMenuId === null) return void 0;
 		const onDown = (e) => menuRef.current && !menuRef.current.contains(e.target) && setOpenMenuId(null);
@@ -9624,13 +9873,9 @@ function Index({ searches: initialSearches, bookmarkedVideos = [], filterType = 
 			width: "max-w-[1240px]",
 			title,
 			subtitle: "Everything you have saved — tracked searches and the individual videos you kept.",
-			actions: /* @__PURE__ */ jsx("div", {
-				className: "hidden min-[901px]:block",
-				children: /* @__PURE__ */ jsx(EntitlementsBar, {})
-			}),
-			mobileDrawerActions: /* @__PURE__ */ jsx(EntitlementsBar, {}),
+			actions: /* @__PURE__ */ jsx(EntitlementsBar, {}),
 			children: [showTabs && /* @__PURE__ */ jsxs("div", {
-				className: "tabs",
+				className: "tabs tabs--bookmarks",
 				children: [/* @__PURE__ */ jsxs("button", {
 					type: "button",
 					className: `tab${tab === "searches" ? " is-on" : ""}`,
@@ -9707,10 +9952,6 @@ function Index({ searches: initialSearches, bookmarkedVideos = [], filterType = 
 							/* @__PURE__ */ jsx("option", {
 								value: "brand",
 								children: isBrandCategoryView ? "Own" : "Brand searches"
-							}),
-							/* @__PURE__ */ jsx("option", {
-								value: "competitor",
-								children: "Competitor searches"
 							}),
 							!isBrandCategoryView && /* @__PURE__ */ jsx("option", {
 								value: "product",
@@ -10223,6 +10464,7 @@ function LeftSidebar({ video, canRegenerate = false, regenerating = false, disab
 	const metrics = statCards(video);
 	const [playing, setPlaying] = useState(false);
 	const [thumbBroken, setThumbBroken] = useState(false);
+	const iframeRef = useRef(null);
 	const embed = videoEmbedUrl(video);
 	const hasThumb = Boolean(video.thumbnail_url) && !thumbBroken;
 	const postedAt = video?.uploaded_at ? new Date(video.uploaded_at).toLocaleDateString(void 0, {
@@ -10230,6 +10472,26 @@ function LeftSidebar({ video, canRegenerate = false, regenerating = false, disab
 		day: "numeric",
 		year: "numeric"
 	}) : null;
+	useEffect(() => {
+		const iframe = iframeRef.current;
+		if (!playing || !iframe || !video?.video_id) return void 0;
+		const unmuteAndPlay = () => {
+			postTikTokMessage(iframe, "unMute");
+			postTikTokMessage(iframe, "play");
+		};
+		const handleReady = (event) => {
+			const payload = event?.data;
+			if (!payload || payload["x-tiktok-player"] !== true || payload.type !== "onPlayerReady") return;
+			if (event.source !== iframe.contentWindow) return;
+			unmuteAndPlay();
+		};
+		iframe.addEventListener("load", unmuteAndPlay);
+		window.addEventListener("message", handleReady);
+		return () => {
+			iframe.removeEventListener("load", unmuteAndPlay);
+			window.removeEventListener("message", handleReady);
+		};
+	}, [playing, video?.video_id]);
 	return /* @__PURE__ */ jsxs("aside", {
 		className: "self-start rounded-[16px] border border-[#E7E5DF] bg-white p-3 shadow-[0_10px_24px_rgba(42,33,20,0.06)] min-[980px]:sticky min-[980px]:top-0 min-[980px]:rounded-[18px] min-[980px]:p-[13px]",
 		children: [
@@ -10238,6 +10500,7 @@ function LeftSidebar({ video, canRegenerate = false, regenerating = false, disab
 				children: playing && embed ? /* @__PURE__ */ jsxs("div", {
 					className: "relative",
 					children: [/* @__PURE__ */ jsx("iframe", {
+						ref: iframeRef,
 						src: embed,
 						title: video?.title || "TikTok video",
 						loading: "lazy",
@@ -10826,129 +11089,6 @@ function AnalysisModal({ video, initialAnalysis, tabs = DEFAULT_TABS, open = tru
 			})
 		})
 	});
-}
-//#endregion
-//#region resources/js/Pages/SavedSearches/detail/tiktokPlayer.js
-function detectPlatform(video = {}) {
-	if (String(video.social_media_source || "").toLowerCase() === "tiktok") return "tiktok";
-	return [
-		video.embedUrl,
-		video.postUrl,
-		video.videoUrl,
-		video.embed_url,
-		video.post_url,
-		video.video_url
-	].filter(Boolean).map((value) => String(value).toLowerCase()).some((value) => value.includes("tiktok.com")) ? "tiktok" : null;
-}
-function buildTikTokPlayerUrl(videoId, autoplay = false) {
-	if (!videoId) return null;
-	const url = new URL(`https://www.tiktok.com/player/v1/${videoId}`);
-	url.searchParams.set("autoplay", autoplay ? "1" : "0");
-	url.searchParams.set("controls", "1");
-	url.searchParams.set("progress_bar", "0");
-	url.searchParams.set("play_button", "1");
-	url.searchParams.set("volume_control", "1");
-	url.searchParams.set("fullscreen_button", "0");
-	url.searchParams.set("timestamp", "0");
-	url.searchParams.set("music_info", "0");
-	url.searchParams.set("description", "0");
-	url.searchParams.set("rel", "0");
-	url.searchParams.set("native_context_menu", "0");
-	url.searchParams.set("closed_caption", "0");
-	url.searchParams.set("muted", "0");
-	return url.toString();
-}
-function withTikTokAutoplay(url, autoplay) {
-	if (!url) return null;
-	try {
-		const next = new URL(url);
-		next.searchParams.set("autoplay", autoplay ? "1" : "0");
-		return next.toString();
-	} catch {
-		return url;
-	}
-}
-function previewImageFor(video = {}) {
-	return video.thumbnailUrl || video.thumbnail_url || video.cover || null;
-}
-function isDashboardPlayable(video = {}) {
-	const platform = detectPlatform(video);
-	const videoId = video.videoId || video.video_id;
-	if (platform === "tiktok") return Boolean(videoId);
-	return Boolean(video.embedUrl || video.embed_url || video.postUrl || video.post_url);
-}
-function playerKindFor(video = {}) {
-	return detectPlatform(video) === "tiktok" ? "tiktok" : "iframe";
-}
-function playerUrlFor(video = {}, autoplay = false) {
-	const platform = detectPlatform(video);
-	const videoId = video.videoId || video.video_id;
-	if (platform === "tiktok" && videoId) return buildTikTokPlayerUrl(videoId, autoplay);
-	if (platform === "tiktok") return null;
-	return video.player_url || video.embedUrl || video.embed_url || null;
-}
-function targetOriginFor(iframe) {
-	try {
-		const origin = new URL(iframe?.src || "").origin;
-		return origin && origin !== "null" ? origin : "*";
-	} catch {
-		return "*";
-	}
-}
-function postTikTokMessage(iframe, type) {
-	if (!iframe?.contentWindow) return;
-	iframe.contentWindow.postMessage({
-		"x-tiktok-player": true,
-		type
-	}, targetOriginFor(iframe));
-}
-function stopAndResetTikTokPlayer(shell) {
-	if (!shell) return;
-	const iframe = shell.querySelector("[data-player-frame]");
-	const poster = shell.querySelector("[data-player-poster]");
-	const overlay = shell.querySelector("[data-player-overlay]");
-	const play = shell.querySelector("[data-player-play]");
-	const close = shell.querySelector("[data-player-close]");
-	const container = shell.querySelector("[data-player-container]");
-	if (shell.dataset.playerKind === "tiktok" && iframe) {
-		postTikTokMessage(iframe, "pause");
-		postTikTokMessage(iframe, "mute");
-	}
-	delete shell.dataset.playerWantsAudible;
-	shell.dataset.playerActive = "false";
-	if (container) container.hidden = true;
-	if (close) close.hidden = true;
-	if (poster) poster.hidden = false;
-	if (overlay) overlay.hidden = false;
-	if (play) play.hidden = false;
-	if (iframe) iframe.src = "about:blank";
-}
-function activateTikTokPlayer(shell) {
-	if (!shell) return;
-	const iframe = shell.querySelector("[data-player-frame]");
-	const poster = shell.querySelector("[data-player-poster]");
-	const overlay = shell.querySelector("[data-player-overlay]");
-	const play = shell.querySelector("[data-player-play]");
-	const close = shell.querySelector("[data-player-close]");
-	const container = shell.querySelector("[data-player-container]");
-	const playerSrc = shell.dataset.playerSrc;
-	if (!iframe || !playerSrc) return;
-	document.querySelectorAll("[data-video-player-shell][data-player-active=\"true\"]").forEach((other) => {
-		if (other !== shell) stopAndResetTikTokPlayer(other);
-	});
-	shell.dataset.playerActive = "true";
-	shell.dataset.playerWantsAudible = "true";
-	if (poster) poster.hidden = true;
-	if (overlay) overlay.hidden = true;
-	if (play) play.hidden = true;
-	if (container) container.hidden = false;
-	if (close) close.hidden = false;
-	const nextSrc = shell.dataset.playerKind === "tiktok" ? withTikTokAutoplay(playerSrc, true) : playerSrc;
-	if (!iframe.src || iframe.src === "about:blank") iframe.src = nextSrc;
-	if (shell.dataset.playerKind === "tiktok") {
-		postTikTokMessage(iframe, "unMute");
-		postTikTokMessage(iframe, "play");
-	}
 }
 //#endregion
 //#region resources/js/Pages/SavedSearches/detail/DetailScreen.jsx
@@ -13736,7 +13876,7 @@ var DetailScreenBoundary = class extends Component {
 	}
 };
 /**
-* The single detail view for every saved search — brand, competitor, and
+* The single detail view for every saved search — brand and
 * product all render the same analytics tracker (the one design identity).
 */
 function Show$1({ search: initial, isAuthenticated = false, billing }) {
@@ -15369,26 +15509,17 @@ function AiSummary({ summary, generatedAt }) {
 //#endregion
 //#region resources/js/Pages/Search/Free.jsx
 var Free_exports = /* @__PURE__ */ __exportAll({ default: () => Free });
-var TYPES = [
-	{
-		key: "brand",
-		label: "Your brand",
-		icon: Store,
-		placeholder: "e.g. rhode skin"
-	},
-	{
-		key: "competitor",
-		label: "A competitor",
-		icon: Target,
-		placeholder: "e.g. skims"
-	},
-	{
-		key: "product",
-		label: "A product",
-		icon: Search,
-		placeholder: "e.g. lip oil"
-	}
-];
+var TYPES = [{
+	key: "brand",
+	label: "Your brand",
+	icon: Store,
+	placeholder: "e.g. rhode skin"
+}, {
+	key: "product",
+	label: "A product",
+	icon: Search,
+	placeholder: "e.g. lip oil"
+}];
 var csrfToken = () => document.querySelector("meta[name=\"csrf-token\"]")?.getAttribute("content") ?? "";
 function Stepper({ step }) {
 	return /* @__PURE__ */ jsx("div", {
@@ -15414,7 +15545,7 @@ function Stepper({ step }) {
 }
 function Free({ phrase = "", type = "brand", error = null }) {
 	const [screen, setScreen] = useState(phrase ? "refine" : "subject");
-	const [kind, setKind] = useState(type);
+	const [kind, setKind] = useState(type === "competitor" ? "brand" : type);
 	const [subject, setSubject] = useState(phrase);
 	const [terms, setTerms] = useState([]);
 	const [handle, setHandle] = useState("");
@@ -15501,7 +15632,7 @@ function Free({ phrase = "", type = "brand", error = null }) {
 					phrase: subject,
 					keywords: selected,
 					frequency: "weekly",
-					...kind === "brand" || kind === "competitor" ? { sources: {
+					...kind === "brand" ? { sources: {
 						tiktokHandle: handle.trim().replace(/^@/, ""),
 						website: website.trim()
 					} } : {}
@@ -15526,8 +15657,8 @@ function Free({ phrase = "", type = "brand", error = null }) {
 			children: [
 				/* @__PURE__ */ jsx("style", { children: `
       .free-flow{min-height:calc(100vh - 72px);background:#fff;color:#111;padding:0 22px 64px;font-family:Figtree,ui-sans-serif,system-ui,sans-serif}
-      .ff-shell{max-width:594px;margin:0 auto;padding-top:28px}.fs-stepper{display:flex;align-items:center;justify-content:center;margin:0 0 28px}.fs-step{display:flex;align-items:center;gap:8px;color:#77726b;font-size:11px}.fs-step i{width:23px;height:23px;border:1px solid #ddd8cf;border-radius:50%;display:grid;place-items:center;font-size:11px;font-style:normal}.fs-step.done,.fs-step.now{color:#151515}.fs-step.done i{background:#111;color:#fff;border-color:#111}.fs-step.now i{background:#ffc629;border-color:#ffc629}.fs-step i svg{width:11px;height:11px}.fs-step em{width:27px;height:1px;background:#ddd8cf;margin:0 9px;font-style:normal}.ff-card{border:1px solid #e4e0d8;border-radius:20px;overflow:hidden;background:#fff;box-shadow:0 12px 32px -30px rgba(0,0,0,.3)}.ff-subject{height:66px;padding:0 21px;display:flex;align-items:center;border-bottom:1px solid #e4e0d8}.ff-subject__label,.ff-eyebrow{font-size:10px;font-weight:850;color:#a16d00;letter-spacing:.13em;text-transform:uppercase}.ff-subject strong{margin-left:12px;font-size:15px;letter-spacing:-.03em}.ff-edit{margin-left:auto;width:30px;height:30px;border:1px solid #e4e0d8;border-radius:50%;background:#fff;color:#777;display:grid;place-items:center;cursor:pointer}.ff-edit svg{width:14px;height:14px}.ff-section{padding:23px 21px 24px}.ff-section h1{margin:10px 0 0;font-size:17px;line-height:1.25;letter-spacing:-.035em}.ff-section>p{margin:10px 0 0;font-size:13px;line-height:1.55;color:#625e58}.ff-chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:18px}.ff-chip{height:37px;padding:0 14px;border:1.5px solid #b8b1a2 !important;border-radius:999px;background:#fff;color:#302d29;font:inherit;font-size:12px;font-weight:700;display:inline-flex;align-items:center;gap:8px;cursor:pointer;transition:border-color .15s,background .15s,box-shadow .15s}.ff-chip:hover:not(:disabled){border-color:#8a8271 !important}.ff-chip:disabled{cursor:default}.ff-chip.on{border-color:#ffc629 !important;box-shadow:0 0 0 1.5px #ffc629 inset}.ff-check{width:15px;height:15px;border:1px solid #d9d4ca;border-radius:50%;display:grid;place-items:center}.ff-chip.on .ff-check{background:#ffc629;border-color:#ffc629}.ff-check svg{width:9px;height:9px}.ff-add{border-style:dashed;color:#9d6900}.ff-add svg{width:13px;height:13px}.ff-add-input{height:37px;width:130px;padding:0 12px;border:1px solid #ffc629;border-radius:999px;outline:0;font:inherit;font-size:12px;font-weight:700}.ff-count{margin:14px 0 0!important;font-size:11px!important;color:#756f68!important}.ff-count b{color:#111}.ff-footer{min-height:85px;padding:0 21px;border-top:1px solid #e4e0d8;display:flex;align-items:center;justify-content:space-between;gap:12px}.ff-back,.ff-run{height:41px;padding:0 20px;border-radius:10px;font:inherit;font-size:13px;font-weight:800;cursor:pointer}.ff-back{border:1px solid #ddd8cf;background:#fff;color:#111}.ff-run{border:0;background:#ffc629;color:#1a1400;display:inline-flex;align-items:center;gap:10px;box-shadow:0 1px 2px rgba(20,15,0,.1),0 10px 24px -8px rgba(255,198,41,.72)}.ff-run:hover:not(:disabled){background:#ffd84d;transform:translateY(-1px);box-shadow:0 2px 4px rgba(20,15,0,.1),0 16px 30px -10px rgba(255,198,41,.85)}.ff-run svg{width:15px;height:15px}.ff-run:disabled{opacity:.55;cursor:not-allowed}.ff-subject-form{max-width:520px;margin:66px auto;border:1px solid #e4e0d8;border-radius:20px;padding:26px}.ff-subject-form h1{margin:0;font-size:25px;letter-spacing:-.05em}.ff-modes{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-top:22px}.ff-mode{height:45px;border:1px solid #ddd8cf;border-radius:10px;background:#fff;font:inherit;font-size:12px;font-weight:750;cursor:pointer}.ff-mode.is-on{background:#111;border-color:#111;color:#fff}.ff-mode svg{width:14px;height:14px;vertical-align:-2px;margin-right:5px}.ff-input{width:100%;box-sizing:border-box;height:48px;margin-top:16px;padding:0 13px;border:1px solid #d9d4ca;border-radius:10px;font:inherit;font-weight:650;outline:0}.ff-input:focus{border-color:#ffc629;box-shadow:0 0 0 4px rgba(255,198,41,.2)}
-      .ff-shell{max-width:594px;margin:0 auto;padding-top:28px}.fs-stepper{display:flex;align-items:center;justify-content:center;margin:0 0 28px}.fs-step{display:flex;align-items:center;gap:8px;color:#77726b;font-size:11px}.fs-step i{width:23px;height:23px;border:1px solid #ddd8cf;border-radius:50%;display:grid;place-items:center;font-size:11px;font-style:normal}.fs-step.done,.fs-step.now{color:#151515}.fs-step.done i{background:#111;color:#fff;border-color:#111}.fs-step.now i{background:#ffc629;border-color:#ffc629}.fs-step i svg{width:11px;height:11px}.fs-step em{width:27px;height:1px;background:#ddd8cf;margin:0 9px;font-style:normal}.ff-card{border:1px solid #e4e0d8;border-radius:20px;overflow:hidden;background:#fff;box-shadow:0 12px 32px -30px rgba(0,0,0,.3)}.ff-subject{height:66px;padding:0 21px;display:flex;align-items:center;border-bottom:1px solid #e4e0d8}.ff-subject__label,.ff-eyebrow{font-size:10px;font-weight:850;color:#a16d00;letter-spacing:.13em;text-transform:uppercase}.ff-subject strong{margin-left:12px;font-size:15px;letter-spacing:-.03em}.ff-edit{margin-left:auto;width:30px;height:30px;border:1px solid #e4e0d8;border-radius:50%;background:#fff;color:#777;display:grid;place-items:center;cursor:pointer}.ff-edit svg{width:14px;height:14px}.ff-section{padding:23px 21px 24px}.ff-section--sources{border-top:1px solid #e4e0d8}.ff-section h1{margin:10px 0 0;font-size:17px;line-height:1.25;letter-spacing:-.035em}.ff-section>p{margin:10px 0 0;font-size:13px;line-height:1.55;color:#625e58}.ff-chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:18px}.ff-chip{height:37px;padding:0 14px;border:1.5px solid #b8b1a2 !important;border-radius:999px;background:#fff;color:#302d29;font:inherit;font-size:12px;font-weight:700;display:inline-flex;align-items:center;gap:8px;cursor:pointer;transition:border-color .15s,background .15s,box-shadow .15s}.ff-chip:hover:not(:disabled){border-color:#8a8271 !important}.ff-chip:disabled{cursor:default}.ff-chip.on{border-color:#ffc629 !important;box-shadow:0 0 0 1.5px #ffc629 inset}.ff-check{width:15px;height:15px;border:1px solid #d9d4ca;border-radius:50%;display:grid;place-items:center}.ff-chip.on .ff-check{background:#ffc629;border-color:#ffc629}.ff-check svg{width:9px;height:9px}.ff-add{border-style:dashed;color:#9d6900}.ff-add svg{width:13px;height:13px}.ff-add-input{height:37px;width:130px;padding:0 12px;border:1px solid #ffc629;border-radius:999px;outline:0;font:inherit;font-size:12px;font-weight:700}.ff-count{margin:14px 0 0!important;font-size:11px!important;color:#756f68!important}.ff-count b{color:#111}.ff-source{margin-top:13px;padding:12px;border:1px solid #ddd8cf;border-radius:11px}.ff-source__head{display:flex;align-items:center;justify-content:space-between;font-size:11px;font-weight:800}.ff-source__head span:last-child{font-size:8px;color:#9d6900;letter-spacing:.08em}.ff-source input{box-sizing:border-box;width:100%;height:36px;margin-top:10px;padding:0 11px;border:1px solid #d9d4ca;border-radius:999px;font:inherit;font-size:11px;font-weight:600;outline:0}.ff-source input:focus{border-color:#ffc629}.ff-footer{min-height:85px;padding:0 21px;border-top:1px solid #e4e0d8;display:flex;align-items:center;justify-content:space-between;gap:12px}.ff-back,.ff-run{height:41px;padding:0 20px;border-radius:10px;font:inherit;font-size:13px;font-weight:800;cursor:pointer}.ff-back{border:1px solid #ddd8cf;background:#fff;color:#111}.ff-run{border:0;background:#ffc629;color:#1a1400;display:inline-flex;align-items:center;gap:10px;box-shadow:0 1px 2px rgba(20,15,0,.1),0 10px 24px -8px rgba(255,198,41,.72)}.ff-run:hover:not(:disabled){background:#ffd84d;transform:translateY(-1px);box-shadow:0 2px 4px rgba(20,15,0,.1),0 16px 30px -10px rgba(255,198,41,.85)}.ff-run svg{width:15px;height:15px}.ff-run:disabled{opacity:.55;cursor:not-allowed}.ff-subject-form{max-width:520px;margin:66px auto;border:1px solid #e4e0d8;border-radius:20px;padding:26px}.ff-subject-form h1{margin:0;font-size:25px;letter-spacing:-.05em}.ff-modes{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-top:22px}.ff-mode{height:45px;border:1px solid #ddd8cf;border-radius:10px;background:#fff;font:inherit;font-size:12px;font-weight:750;cursor:pointer}.ff-mode.is-on{background:#111;border-color:#111;color:#fff}.ff-mode svg{width:14px;height:14px;vertical-align:-2px;margin-right:5px}.ff-input{width:100%;box-sizing:border-box;height:48px;margin-top:16px;padding:0 13px;border:1px solid #d9d4ca;border-radius:10px;font:inherit;font-weight:650;outline:0}.ff-input:focus{border-color:#ffc629;box-shadow:0 0 0 4px rgba(255,198,41,.2)}
+      .ff-shell{max-width:594px;margin:0 auto;padding-top:28px}.fs-stepper{display:flex;align-items:center;justify-content:center;margin:0 0 28px}.fs-step{display:flex;align-items:center;gap:8px;color:#77726b;font-size:11px}.fs-step i{width:23px;height:23px;border:1px solid #ddd8cf;border-radius:50%;display:grid;place-items:center;font-size:11px;font-style:normal}.fs-step.done,.fs-step.now{color:#151515}.fs-step.done i{background:#111;color:#fff;border-color:#111}.fs-step.now i{background:#ffc629;border-color:#ffc629}.fs-step i svg{width:11px;height:11px}.fs-step em{width:27px;height:1px;background:#ddd8cf;margin:0 9px;font-style:normal}.ff-card{border:1px solid #e4e0d8;border-radius:20px;overflow:hidden;background:#fff;box-shadow:0 12px 32px -30px rgba(0,0,0,.3)}.ff-subject{height:66px;padding:0 21px;display:flex;align-items:center;border-bottom:1px solid #e4e0d8}.ff-subject__label,.ff-eyebrow{font-size:10px;font-weight:850;color:#a16d00;letter-spacing:.13em;text-transform:uppercase}.ff-subject strong{margin-left:12px;font-size:15px;letter-spacing:-.03em}.ff-edit{margin-left:auto;width:30px;height:30px;border:1px solid #e4e0d8;border-radius:50%;background:#fff;color:#777;display:grid;place-items:center;cursor:pointer}.ff-edit svg{width:14px;height:14px}.ff-section{padding:23px 21px 24px}.ff-section h1{margin:10px 0 0;font-size:17px;line-height:1.25;letter-spacing:-.035em}.ff-section>p{margin:10px 0 0;font-size:13px;line-height:1.55;color:#625e58}.ff-chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:18px}.ff-chip{height:37px;padding:0 14px;border:1.5px solid #b8b1a2 !important;border-radius:999px;background:#fff;color:#302d29;font:inherit;font-size:12px;font-weight:700;display:inline-flex;align-items:center;gap:8px;cursor:pointer;transition:border-color .15s,background .15s,box-shadow .15s}.ff-chip:hover:not(:disabled){border-color:#8a8271 !important}.ff-chip:disabled{cursor:default}.ff-chip.on{border-color:#ffc629 !important;box-shadow:0 0 0 1.5px #ffc629 inset}.ff-check{width:15px;height:15px;border:1px solid #d9d4ca;border-radius:50%;display:grid;place-items:center}.ff-chip.on .ff-check{background:#ffc629;border-color:#ffc629}.ff-check svg{width:9px;height:9px}.ff-add{border-style:dashed;color:#9d6900}.ff-add svg{width:13px;height:13px}.ff-add-input{height:37px;width:130px;padding:0 12px;border:1px solid #ffc629;border-radius:999px;outline:0;font:inherit;font-size:12px;font-weight:700}.ff-count{margin:14px 0 0!important;font-size:11px!important;color:#756f68!important}.ff-count b{color:#111}.ff-footer{min-height:85px;padding:0 21px;border-top:1px solid #e4e0d8;display:flex;align-items:center;justify-content:space-between;gap:12px}.ff-back,.ff-run{height:41px;padding:0 20px;border-radius:10px;font:inherit;font-size:13px;font-weight:800;cursor:pointer}.ff-back{border:1px solid #ddd8cf;background:#fff;color:#111}.ff-run{border:0;background:#ffc629;color:#1a1400;display:inline-flex;align-items:center;gap:10px;box-shadow:0 1px 2px rgba(20,15,0,.1),0 10px 24px -8px rgba(255,198,41,.72)}.ff-run:hover:not(:disabled){background:#ffd84d;transform:translateY(-1px);box-shadow:0 2px 4px rgba(20,15,0,.1),0 16px 30px -10px rgba(255,198,41,.85)}.ff-run svg{width:15px;height:15px}.ff-run:disabled{opacity:.55;cursor:not-allowed}.ff-subject-form{max-width:520px;margin:66px auto;border:1px solid #e4e0d8;border-radius:20px;padding:26px}.ff-subject-form h1{margin:0;font-size:25px;letter-spacing:-.05em}.ff-modes{display:grid;grid-template-columns:repeat(2,1fr);gap:7px;margin-top:22px}.ff-mode{height:45px;border:1px solid #ddd8cf;border-radius:10px;background:#fff;font:inherit;font-size:12px;font-weight:750;cursor:pointer}.ff-mode.is-on{background:#111;border-color:#111;color:#fff}.ff-mode svg{width:14px;height:14px;vertical-align:-2px;margin-right:5px}.ff-input{width:100%;box-sizing:border-box;height:48px;margin-top:16px;padding:0 13px;border:1px solid #d9d4ca;border-radius:10px;font:inherit;font-weight:650;outline:0}.ff-input:focus{border-color:#ffc629;box-shadow:0 0 0 4px rgba(255,198,41,.2)}
+      .ff-shell{max-width:594px;margin:0 auto;padding-top:28px}.fs-stepper{display:flex;align-items:center;justify-content:center;margin:0 0 28px}.fs-step{display:flex;align-items:center;gap:8px;color:#77726b;font-size:11px}.fs-step i{width:23px;height:23px;border:1px solid #ddd8cf;border-radius:50%;display:grid;place-items:center;font-size:11px;font-style:normal}.fs-step.done,.fs-step.now{color:#151515}.fs-step.done i{background:#111;color:#fff;border-color:#111}.fs-step.now i{background:#ffc629;border-color:#ffc629}.fs-step i svg{width:11px;height:11px}.fs-step em{width:27px;height:1px;background:#ddd8cf;margin:0 9px;font-style:normal}.ff-card{border:1px solid #e4e0d8;border-radius:20px;overflow:hidden;background:#fff;box-shadow:0 12px 32px -30px rgba(0,0,0,.3)}.ff-subject{height:66px;padding:0 21px;display:flex;align-items:center;border-bottom:1px solid #e4e0d8}.ff-subject__label,.ff-eyebrow{font-size:10px;font-weight:850;color:#a16d00;letter-spacing:.13em;text-transform:uppercase}.ff-subject strong{margin-left:12px;font-size:15px;letter-spacing:-.03em}.ff-edit{margin-left:auto;width:30px;height:30px;border:1px solid #e4e0d8;border-radius:50%;background:#fff;color:#777;display:grid;place-items:center;cursor:pointer}.ff-edit svg{width:14px;height:14px}.ff-section{padding:23px 21px 24px}.ff-section--sources{border-top:1px solid #e4e0d8}.ff-section h1{margin:10px 0 0;font-size:17px;line-height:1.25;letter-spacing:-.035em}.ff-section>p{margin:10px 0 0;font-size:13px;line-height:1.55;color:#625e58}.ff-chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:18px}.ff-chip{height:37px;padding:0 14px;border:1.5px solid #b8b1a2 !important;border-radius:999px;background:#fff;color:#302d29;font:inherit;font-size:12px;font-weight:700;display:inline-flex;align-items:center;gap:8px;cursor:pointer;transition:border-color .15s,background .15s,box-shadow .15s}.ff-chip:hover:not(:disabled){border-color:#8a8271 !important}.ff-chip:disabled{cursor:default}.ff-chip.on{border-color:#ffc629 !important;box-shadow:0 0 0 1.5px #ffc629 inset}.ff-check{width:15px;height:15px;border:1px solid #d9d4ca;border-radius:50%;display:grid;place-items:center}.ff-chip.on .ff-check{background:#ffc629;border-color:#ffc629}.ff-check svg{width:9px;height:9px}.ff-add{border-style:dashed;color:#9d6900}.ff-add svg{width:13px;height:13px}.ff-add-input{height:37px;width:130px;padding:0 12px;border:1px solid #ffc629;border-radius:999px;outline:0;font:inherit;font-size:12px;font-weight:700}.ff-count{margin:14px 0 0!important;font-size:11px!important;color:#756f68!important}.ff-count b{color:#111}.ff-source{margin-top:13px;padding:12px;border:1px solid #ddd8cf;border-radius:11px}.ff-source__head{display:flex;align-items:center;justify-content:space-between;font-size:11px;font-weight:800}.ff-source__head span:last-child{font-size:8px;color:#9d6900;letter-spacing:.08em}.ff-source input{box-sizing:border-box;width:100%;height:36px;margin-top:10px;padding:0 11px;border:1px solid #d9d4ca;border-radius:999px;font:inherit;font-size:11px;font-weight:600;outline:0}.ff-source input:focus{border-color:#ffc629}.ff-footer{min-height:85px;padding:0 21px;border-top:1px solid #e4e0d8;display:flex;align-items:center;justify-content:space-between;gap:12px}.ff-back,.ff-run{height:41px;padding:0 20px;border-radius:10px;font:inherit;font-size:13px;font-weight:800;cursor:pointer}.ff-back{border:1px solid #ddd8cf;background:#fff;color:#111}.ff-run{border:0;background:#ffc629;color:#1a1400;display:inline-flex;align-items:center;gap:10px;box-shadow:0 1px 2px rgba(20,15,0,.1),0 10px 24px -8px rgba(255,198,41,.72)}.ff-run:hover:not(:disabled){background:#ffd84d;transform:translateY(-1px);box-shadow:0 2px 4px rgba(20,15,0,.1),0 16px 30px -10px rgba(255,198,41,.85)}.ff-run svg{width:15px;height:15px}.ff-run:disabled{opacity:.55;cursor:not-allowed}.ff-subject-form{max-width:520px;margin:66px auto;border:1px solid #e4e0d8;border-radius:20px;padding:26px}.ff-subject-form h1{margin:0;font-size:25px;letter-spacing:-.05em}.ff-modes{display:grid;grid-template-columns:repeat(2,1fr);gap:7px;margin-top:22px}.ff-mode{height:45px;border:1px solid #ddd8cf;border-radius:10px;background:#fff;font:inherit;font-size:12px;font-weight:750;cursor:pointer}.ff-mode.is-on{background:#111;border-color:#111;color:#fff}.ff-mode svg{width:14px;height:14px;vertical-align:-2px;margin-right:5px}.ff-input{width:100%;box-sizing:border-box;height:48px;margin-top:16px;padding:0 13px;border:1px solid #d9d4ca;border-radius:10px;font:inherit;font-weight:650;outline:0}.ff-input:focus{border-color:#ffc629;box-shadow:0 0 0 4px rgba(255,198,41,.2)}
       .free-flow--gate{padding:0;background:#fff}.ff-gate{min-height:calc(100vh - 72px);display:grid;grid-template-columns:1fr 1fr}.ff-gate__copy{padding:clamp(48px,11vh,120px) clamp(29px,5vw,90px);display:flex;align-items:center}.ff-gate__inner{max-width:420px}.ff-gate h1{margin:12px 0 0;font-size:clamp(27px,3vw,38px);line-height:1.08;letter-spacing:-.065em}.ff-gate__copy>div>p{font-size:13px;line-height:1.55;color:#625e58;margin:15px 0 0}.ff-stages{margin-top:35px;display:flex;flex-direction:column;gap:12px}.ff-stage{min-height:34px;padding:0 10px;display:flex;align-items:center;gap:11px;border-radius:9px;font-size:12px;font-weight:650}.ff-stage i{width:15px;height:15px;border-radius:50%;background:#111;color:#fff;display:grid;place-items:center}.ff-stage i svg{width:9px;height:9px}.ff-stage.now{background:#fff5da}.ff-stage.now i{background:transparent;border:1.5px solid #ffc629;border-top-color:transparent;animation:ff-spin .8s linear infinite}.ff-email{display:flex;align-items:center;gap:9px;margin-top:20px;padding:12px;border:1px solid #f1d798;border-radius:10px;background:#fffaf0;color:#9d6900;font-size:11px;font-weight:750}.ff-email svg{width:15px;height:15px}@keyframes ff-spin{to{transform:rotate(360deg)}}.ff-gate__visual{padding:28px 30px;background:#faf9f6;border-left:1px solid #ece8df;display:flex;align-items:center;justify-content:center}.ff-preview{width:min(100%,560px)}.ff-videos{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}.ff-video{height:245px;width:100%;border-radius:10px;object-fit:cover;filter:blur(3px);opacity:.75}.ff-signup{margin-top:24px;padding:23px;border:1px solid #e4e0d8;border-radius:16px;background:#fff;text-align:center;box-shadow:0 20px 35px -30px rgba(0,0,0,.25)}.ff-signup h2{font-size:16px;letter-spacing:-.035em;margin:0}.ff-signup p{font-size:11px!important;line-height:1.55!important;margin:13px auto 0!important;color:#756f68!important}.ff-google{appearance:none;-webkit-appearance:none;height:50px;width:100%;margin-top:18px;border:1px solid #111!important;border-radius:9px;background:#111!important;color:#fff!important;font:inherit;font-size:12px;font-weight:800;display:flex;align-items:center;justify-content:center;gap:9px;cursor:pointer;box-shadow:0 8px 16px -10px rgba(0,0,0,.7);transition:transform .16s,background .16s,box-shadow .16s}.ff-google:hover:not(:disabled){background:#292929!important;box-shadow:0 11px 20px -10px rgba(0,0,0,.65);transform:translateY(-1px)}.ff-google svg{width:19px;height:19px;background:#fff;border-radius:50%;padding:2px}.ff-google:disabled{opacity:.6}.ff-trust{font-size:10px!important;margin-top:12px!important}.ff-error{margin-top:12px!important;color:#aa3820!important;font-weight:700}
       @media(max-width:720px){.ff-gate{grid-template-columns:1fr}.ff-gate__visual{border-left:0;border-top:1px solid #ece8df;padding:35px 22px}.ff-gate__copy{padding:55px 28px}.ff-video{height:150px}}@media(max-width:500px){.free-flow{padding:0 12px 35px}.free-flow--gate{padding:0}.ff-shell{padding-top:20px}.fs-step b{display:none}.fs-step em{width:20px;margin:0 5px}.ff-card{border-radius:16px}.ff-section{padding:20px 17px}.ff-subject{padding:0 17px}.ff-footer{padding:0 17px}.ff-run{padding:0 14px}.ff-modes{grid-template-columns:1fr}.ff-subject-form{margin:32px auto}}
     ` }),
@@ -15667,18 +15798,14 @@ function Free({ phrase = "", type = "brand", error = null }) {
 										})
 									]
 								}),
-								(kind === "brand" || kind === "competitor") && /* @__PURE__ */ jsxs("div", {
+								kind === "brand" && /* @__PURE__ */ jsxs("div", {
 									className: "ff-section ff-section--sources",
 									children: [
 										/* @__PURE__ */ jsx("span", {
 											className: "ff-eyebrow",
 											children: "Optional"
 										}),
-										/* @__PURE__ */ jsxs("h1", { children: [
-											"Add your ",
-											kind === "competitor" ? "competitor" : "brand",
-											"'s TikTok handle or website"
-										] }),
+										/* @__PURE__ */ jsx("h1", { children: "Add your brand's TikTok handle or website" }),
 										/* @__PURE__ */ jsx("p", { children: "Not required. It helps us match videos more accurately and sharpen the results." }),
 										/* @__PURE__ */ jsxs("label", {
 											className: "ff-source",

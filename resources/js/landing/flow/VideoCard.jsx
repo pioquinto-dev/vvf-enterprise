@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Play, Heart, Comment, Trend, Arrow, Bookmark } from '../components/Icons.jsx';
 import { compactNumber, duration, gradientFor, multiplier, relativeTime } from './format.js';
-import { buildTikTokPlayerUrl } from '../../Pages/SavedSearches/detail/tiktokPlayer.js';
+import { buildTikTokPlayerUrl, postTikTokMessage } from '../../Pages/SavedSearches/detail/tiktokPlayer.js';
 
 /*
  * The player source.
@@ -23,10 +23,35 @@ function embedFor(video) {
 export function Thumb({ video, rank, className = '' }) {
   const [broken, setBroken] = useState(false);
   const [playing, setPlaying] = useState(false);
+  const iframeRef = useRef(null);
   const gradient = gradientFor(video.video_id ?? video.id);
   const src = video.thumbnail_url;
   const mult = multiplier(video.score ?? video.virality_score);
   const embed = embedFor(video);
+
+  useEffect(() => {
+    const iframe = iframeRef.current;
+    if (!playing || !iframe || !video?.video_id) return undefined;
+
+    const unmuteAndPlay = () => {
+      postTikTokMessage(iframe, 'unMute');
+      postTikTokMessage(iframe, 'play');
+    };
+
+    const handleReady = (event) => {
+      const payload = event?.data;
+      if (!payload || payload['x-tiktok-player'] !== true || payload.type !== 'onPlayerReady') return;
+      if (event.source !== iframe.contentWindow) return;
+      unmuteAndPlay();
+    };
+
+    iframe.addEventListener('load', unmuteAndPlay);
+    window.addEventListener('message', handleReady);
+    return () => {
+      iframe.removeEventListener('load', unmuteAndPlay);
+      window.removeEventListener('message', handleReady);
+    };
+  }, [playing, video?.video_id]);
 
   return (
     <div
@@ -37,6 +62,7 @@ export function Thumb({ video, rank, className = '' }) {
         <>
           <div className="tiktok-frame-host">
             <iframe
+              ref={iframeRef}
               src={embed}
               title={video.title || 'TikTok video'}
               loading="lazy"

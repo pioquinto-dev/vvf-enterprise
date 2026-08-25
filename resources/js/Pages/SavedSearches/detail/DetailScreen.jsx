@@ -5,7 +5,7 @@ import { savedSearch as savedSearchApi } from '../../../landing/flow/api.js';
 import { billing as billingApi } from '../../../landing/flow/api.js';
 import { trackVideoAnalysis, videoAnalysis } from '../../../landing/flow/api.js';
 import AnalysisModal from '../../VideoAnalysis/AnalysisModal.jsx';
-import { playerUrlFor } from './tiktokPlayer.js';
+import { playerUrlFor, postTikTokMessage } from './tiktokPlayer.js';
 
 /**
  * Search analytics tracker — the redesigned results page.
@@ -1342,10 +1342,36 @@ function VideoFrame({ video, winner = false, isPlaying, onTogglePlay }) {
   const bg = video.thumbnail_url ? undefined : gradientFor(video.id ?? video.handle);
   const playerUrl = playerUrlFor(video, true);
   const [playerReady, setPlayerReady] = useState(false);
+  const iframeRef = useRef(null);
 
   useEffect(() => {
     setPlayerReady(false);
   }, [isPlaying, playerUrl]);
+
+  useEffect(() => {
+    const iframe = iframeRef.current;
+    if (!isPlaying || !iframe || !video?.video_id) return undefined;
+
+    const unmuteAndPlay = () => {
+      postTikTokMessage(iframe, 'unMute');
+      postTikTokMessage(iframe, 'play');
+    };
+
+    const handleReady = (event) => {
+      const payload = event?.data;
+      if (!payload || payload['x-tiktok-player'] !== true || payload.type !== 'onPlayerReady') return;
+      if (event.source !== iframe.contentWindow) return;
+      unmuteAndPlay();
+    };
+
+    iframe.addEventListener('load', unmuteAndPlay);
+    window.addEventListener('message', handleReady);
+
+    return () => {
+      iframe.removeEventListener('load', unmuteAndPlay);
+      window.removeEventListener('message', handleReady);
+    };
+  }, [isPlaying, video?.video_id]);
 
   return (
     <div className={`rs-vf${isPlaying ? ' playing' : ''}${winner ? ' rs-vf--big' : ''}`}>
@@ -1354,6 +1380,7 @@ function VideoFrame({ video, winner = false, isPlaying, onTogglePlay }) {
         : <div className="rs-vf__img" style={{ background: bg }} />)}
       {isPlaying && playerUrl && (
         <iframe
+          ref={iframeRef}
           className="rs-vf__player"
           src={playerUrl}
           title={video.title ? `Video: ${video.title}` : 'Video preview'}

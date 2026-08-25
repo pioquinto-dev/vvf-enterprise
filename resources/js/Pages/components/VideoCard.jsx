@@ -1,4 +1,7 @@
+import { useEffect, useRef, useState } from 'react';
+
 import { Play, Trend, Heart, Comment } from '../../landing/components/Icons.jsx';
+import { buildTikTokPlayerUrl, postTikTokMessage } from '../SavedSearches/detail/tiktokPlayer.js';
 
 function compact(n) {
   const value = Number(n) || 0;
@@ -19,30 +22,122 @@ function formatDuration(duration) {
 
 /**
  * One video card (the mockup's `.vc`), wired to a `ViralVideo::toCardArray`
- * payload. The play glyph opens the TikTok post rather than advertising a
- * control that does nothing — the signed CDN `video_url` 403s from a browser.
+ * payload. Bookmarks now plays in place like the results flow, using TikTok's
+ * player when we have a stable video id and falling back to the saved embed.
  */
 export default function VideoCard({ video, rank }) {
+  const [broken, setBroken] = useState(false);
+  const [playing, setPlaying] = useState(false);
+  const iframeRef = useRef(null);
+  const shellRef = useRef(null);
   const multiplier = Number(video.virality_score) > 0 ? `${Math.round(video.virality_score)}x` : null;
   const duration = formatDuration(video.duration);
   const cover = video.thumbnail_url;
-  const link = video.post_url || video.embed_url;
+  const embed = buildTikTokPlayerUrl(video.video_id, true) ?? video.embed_url ?? null;
+
+  useEffect(() => {
+    const iframe = iframeRef.current;
+    if (!playing || !iframe || !video?.video_id) return undefined;
+
+    const unmuteAndPlay = () => {
+      postTikTokMessage(iframe, 'unMute');
+      postTikTokMessage(iframe, 'play');
+    };
+
+    const handleReady = (event) => {
+      const payload = event?.data;
+      if (!payload || payload['x-tiktok-player'] !== true || payload.type !== 'onPlayerReady') return;
+      if (event.source !== iframe.contentWindow) return;
+      unmuteAndPlay();
+    };
+
+    iframe.addEventListener('load', unmuteAndPlay);
+    window.addEventListener('message', handleReady);
+    return () => {
+      iframe.removeEventListener('load', unmuteAndPlay);
+      window.removeEventListener('message', handleReady);
+    };
+  }, [playing, video?.video_id]);
+
+  useEffect(() => {
+    const shell = shellRef.current;
+    if (!shell) return;
+
+    shell.dataset.playerActive = playing ? 'true' : 'false';
+  }, [playing]);
+
+  const closePlayer = () => {
+    setPlaying(false);
+  };
+
+  const openPlayer = () => {
+    const shell = shellRef.current;
+
+    document.querySelectorAll('[data-bookmark-video-player="true"][data-player-active="true"]').forEach((node) => {
+      if (node !== shell) {
+        const closeButton = node.querySelector('[data-player-close]');
+        if (closeButton instanceof HTMLButtonElement) {
+          closeButton.click();
+        }
+      }
+    });
+
+    setPlaying(true);
+  };
 
   return (
-    <article className="vc">
+    <article ref={shellRef} className="vc" data-bookmark-video-player="true" data-player-active="false">
       <div className="vt">
-        {cover && <img src={cover} alt="" loading="lazy" />}
-        {rank != null && <span className="vt__r">{rank}</span>}
-        {multiplier && <span className="vt__m">{multiplier}</span>}
-        {duration && <span className="vt__d">{duration}</span>}
-        {link ? (
-          <a className="vt__p" href={link} target="_blank" rel="noreferrer" aria-label="Open on TikTok">
-            <Play />
-          </a>
+        {playing && embed ? (
+          <>
+            <div className="tiktok-frame-host">
+              <iframe
+                ref={iframeRef}
+                src={embed}
+                title={video.title || 'TikTok video'}
+                loading="lazy"
+                scrolling="no"
+                allow="accelerometer; controls; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                allowFullScreen
+                className="tracker-embed-frame"
+              />
+            </div>
+            <button
+              type="button"
+              onClick={closePlayer}
+              aria-label="Close player"
+              className="absolute top-2.5 right-2.5 z-10 flex h-7 w-7 items-center justify-center rounded-full bg-black/60 text-white backdrop-blur-md transition hover:bg-black/80"
+              data-player-close
+            >
+              <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                <path d="M6 6l12 12M18 6L6 18" />
+              </svg>
+            </button>
+          </>
         ) : (
-          <span className="vt__p">
-            <Play />
-          </span>
+          <>
+            {cover && !broken && (
+              <img
+                src={cover}
+                alt=""
+                loading="lazy"
+                referrerPolicy="no-referrer"
+                onError={() => setBroken(true)}
+              />
+            )}
+            {rank != null && <span className="vt__r">{rank}</span>}
+            {multiplier && <span className="vt__m">{multiplier}</span>}
+            {duration && <span className="vt__d">{duration}</span>}
+            {embed ? (
+              <button type="button" className="vt__p" onClick={openPlayer} aria-label={video.title ? `Play: ${video.title}` : 'Play video'}>
+                <Play />
+              </button>
+            ) : (
+              <span className="vt__p">
+                <Play />
+              </span>
+            )}
+          </>
         )}
       </div>
       <div className="vb">

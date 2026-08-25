@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { usePage } from '@inertiajs/react';
 
 import { videoAnalysis } from '../../landing/flow/api.js';
+import { postTikTokMessage } from '../SavedSearches/detail/tiktokPlayer.js';
 
 function compactNumber(value) {
   const number = Number(value || 0);
@@ -243,11 +244,36 @@ function LeftSidebar({ video, canRegenerate = false, regenerating = false, disab
   const metrics = statCards(video);
   const [playing, setPlaying] = useState(false);
   const [thumbBroken, setThumbBroken] = useState(false);
+  const iframeRef = useRef(null);
   const embed = videoEmbedUrl(video);
   const hasThumb = Boolean(video.thumbnail_url) && !thumbBroken;
   const postedAt = video?.uploaded_at
     ? new Date(video.uploaded_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
     : null;
+
+  useEffect(() => {
+    const iframe = iframeRef.current;
+    if (!playing || !iframe || !video?.video_id) return undefined;
+
+    const unmuteAndPlay = () => {
+      postTikTokMessage(iframe, 'unMute');
+      postTikTokMessage(iframe, 'play');
+    };
+
+    const handleReady = (event) => {
+      const payload = event?.data;
+      if (!payload || payload['x-tiktok-player'] !== true || payload.type !== 'onPlayerReady') return;
+      if (event.source !== iframe.contentWindow) return;
+      unmuteAndPlay();
+    };
+
+    iframe.addEventListener('load', unmuteAndPlay);
+    window.addEventListener('message', handleReady);
+    return () => {
+      iframe.removeEventListener('load', unmuteAndPlay);
+      window.removeEventListener('message', handleReady);
+    };
+  }, [playing, video?.video_id]);
 
   return (
     <aside className="self-start rounded-[16px] border border-[#E7E5DF] bg-white p-3 shadow-[0_10px_24px_rgba(42,33,20,0.06)] min-[980px]:sticky min-[980px]:top-0 min-[980px]:rounded-[18px] min-[980px]:p-[13px]">
@@ -255,6 +281,7 @@ function LeftSidebar({ video, canRegenerate = false, regenerating = false, disab
         {playing && embed ? (
           <div className="relative">
             <iframe
+              ref={iframeRef}
               src={embed}
               title={video?.title || 'TikTok video'}
               loading="lazy"
