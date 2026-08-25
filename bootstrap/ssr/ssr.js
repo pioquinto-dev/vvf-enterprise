@@ -3514,6 +3514,89 @@ function AppLayout({ pill, step, title, subtitle, actions, toolbar, width = "max
 	});
 }
 //#endregion
+//#region resources/js/Pages/components/UpgradePromptModal.jsx
+var UpgradePromptModal_exports = /* @__PURE__ */ __exportAll({ default: () => UpgradePromptModal });
+function SparkIcon() {
+	return /* @__PURE__ */ jsx("svg", {
+		viewBox: "0 0 24 24",
+		"aria-hidden": "true",
+		children: /* @__PURE__ */ jsx("path", {
+			fill: "currentColor",
+			d: "M12 2l1.8 6.2L20 10l-6.2 1.8L12 18l-1.8-6.2L4 10l6.2-1.8z"
+		})
+	});
+}
+function CloseIcon() {
+	return /* @__PURE__ */ jsx("svg", {
+		viewBox: "0 0 24 24",
+		fill: "none",
+		stroke: "currentColor",
+		strokeWidth: "2.2",
+		strokeLinecap: "round",
+		"aria-hidden": "true",
+		children: /* @__PURE__ */ jsx("path", { d: "M6 6l12 12M18 6L6 18" })
+	});
+}
+function UpgradePromptModal({ open = true, eyebrow = null, title, body, detail = null, emphasis = null, primaryLabel, onPrimary, secondaryLabel = "Maybe later", onSecondary, onClose }) {
+	if (!open) return null;
+	return /* @__PURE__ */ jsx("div", {
+		className: "bb",
+		children: /* @__PURE__ */ jsxs("div", {
+			className: "bb-modal",
+			children: [/* @__PURE__ */ jsx("button", {
+				className: "bb-modal__bg",
+				"aria-label": "Close",
+				onClick: onClose
+			}), /* @__PURE__ */ jsxs("div", {
+				className: "bb-modal__box bb-modal__box--upgrade",
+				role: "dialog",
+				"aria-modal": "true",
+				"aria-label": title,
+				children: [
+					/* @__PURE__ */ jsx("button", {
+						type: "button",
+						className: "bb-modal__close",
+						onClick: onClose,
+						"aria-label": "Close",
+						children: /* @__PURE__ */ jsx(CloseIcon, {})
+					}),
+					eyebrow && /* @__PURE__ */ jsxs("div", {
+						className: "bb-modal__eyebrow",
+						children: [/* @__PURE__ */ jsx(SparkIcon, {}), /* @__PURE__ */ jsx("span", { children: eyebrow })]
+					}),
+					/* @__PURE__ */ jsx("h2", { children: title }),
+					body && /* @__PURE__ */ jsx("p", {
+						className: "sub",
+						children: body
+					}),
+					detail && /* @__PURE__ */ jsx("p", {
+						className: "bb-modal__detail",
+						children: detail
+					}),
+					emphasis && /* @__PURE__ */ jsx("p", {
+						className: "bb-modal__emphasis",
+						children: emphasis
+					}),
+					/* @__PURE__ */ jsxs("div", {
+						className: "bb-modal__actions",
+						children: [/* @__PURE__ */ jsx("button", {
+							type: "button",
+							className: "btn btn--y",
+							onClick: onPrimary,
+							children: primaryLabel
+						}), /* @__PURE__ */ jsx("button", {
+							type: "button",
+							className: "btn btn--g",
+							onClick: onSecondary ?? onClose,
+							children: secondaryLabel
+						})]
+					})
+				]
+			})]
+		})
+	});
+}
+//#endregion
 //#region resources/js/Pages/components/BrandInlineFlow.jsx
 var BrandInlineFlow_exports = /* @__PURE__ */ __exportAll({ default: () => BrandInlineFlow });
 /**
@@ -3631,6 +3714,7 @@ function BrandInlineFlow({ kind = "brand", placeholder = "Which brand do you wan
 	const searchLimit = billing.searchCreditsLimit;
 	const searchCreditsAvailable = !signedIn || searchLimit === -1 || Number(searchLeft ?? 0) > 0;
 	const supportsSources = kind !== "product";
+	const shouldOfferTrial = (billing.trialEligible ?? true) && !(billing.hasUsedTrial ?? false);
 	const startFlow = async () => {
 		const q = subject.trim().replace(/\s+/g, " ");
 		if (!q) return;
@@ -3907,44 +3991,13 @@ function BrandInlineFlow({ kind = "brand", placeholder = "Which brand do you wan
         .done__r{margin-left:auto;display:flex;gap:10px;flex-wrap:wrap}
         .bif__err{margin-top:12px;padding:10px 14px;border-radius:12px;background:#FBEDE6;color:#B0431B;font-size:.85rem;font-weight:600}
       ` }),
-		upgradeModalOpen && /* @__PURE__ */ jsx("div", {
-			className: "bb",
-			children: /* @__PURE__ */ jsxs("div", {
-				className: "bb-modal",
-				children: [/* @__PURE__ */ jsx("button", {
-					className: "bb-modal__bg",
-					"aria-label": "Close",
-					onClick: () => setUpgradeModalOpen(false)
-				}), /* @__PURE__ */ jsxs("div", {
-					className: "bb-modal__box",
-					children: [
-						/* @__PURE__ */ jsx("h2", { children: "Upgrade to unlock more searches" }),
-						/* @__PURE__ */ jsx("p", {
-							className: "sub",
-							children: "You've already used the search credits available on your current plan. Upgrade to Growth or Scale to keep finding new outliers."
-						}),
-						/* @__PURE__ */ jsxs("div", {
-							className: "actrow__r",
-							style: {
-								marginTop: 24,
-								justifyContent: "flex-end",
-								flexWrap: "wrap"
-							},
-							children: [/* @__PURE__ */ jsx("button", {
-								type: "button",
-								className: "btn btn--g",
-								onClick: () => setUpgradeModalOpen(false),
-								children: "Maybe later"
-							}), /* @__PURE__ */ jsx("button", {
-								type: "button",
-								className: "btn btn--y",
-								onClick: () => router.visit("/plans"),
-								children: "Upgrade to Growth"
-							})]
-						})
-					]
-				})]
-			})
+		upgradeModalOpen && /* @__PURE__ */ jsx(UpgradePromptModal, {
+			eyebrow: "Search credits",
+			title: shouldOfferTrial ? "Start your 8-day Growth trial" : "Upgrade to unlock more searches",
+			body: shouldOfferTrial ? "You've already used the search credits on Free. Start your trial to keep finding new outliers." : "You've already used the search credits available on your current plan. Upgrade to Growth or Scale to keep finding new outliers.",
+			primaryLabel: shouldOfferTrial ? "Start 8-day Growth trial" : "Upgrade to Growth",
+			onPrimary: () => router.visit(shouldOfferTrial ? "/trial" : "/plans"),
+			onClose: () => setUpgradeModalOpen(false)
 		}),
 		/* @__PURE__ */ jsxs("section", {
 			className: "bif",
@@ -6768,47 +6821,6 @@ function AuthPromptModal({ type, phrase, onClose }) {
 		})
 	});
 }
-function SearchUpgradeModal({ onClose, onUpgrade }) {
-	return /* @__PURE__ */ jsx("div", {
-		className: "bb",
-		children: /* @__PURE__ */ jsxs("div", {
-			className: "bb-modal",
-			children: [/* @__PURE__ */ jsx("button", {
-				className: "bb-modal__bg",
-				"aria-label": "Close",
-				onClick: onClose
-			}), /* @__PURE__ */ jsxs("div", {
-				className: "bb-modal__box",
-				children: [
-					/* @__PURE__ */ jsx("h2", { children: "Upgrade to unlock more searches" }),
-					/* @__PURE__ */ jsx("p", {
-						className: "sub",
-						children: "You've already used the search credits available on your current plan. Upgrade to Growth or Scale to keep finding new outliers."
-					}),
-					/* @__PURE__ */ jsxs("div", {
-						className: "actrow__r",
-						style: {
-							marginTop: 24,
-							justifyContent: "flex-end",
-							flexWrap: "wrap"
-						},
-						children: [/* @__PURE__ */ jsx("button", {
-							type: "button",
-							className: "btn btn--g",
-							onClick: onClose,
-							children: "Maybe later"
-						}), /* @__PURE__ */ jsx("button", {
-							type: "button",
-							className: "btn btn--y",
-							onClick: onUpgrade,
-							children: "Upgrade to Growth"
-						})]
-					})
-				]
-			})]
-		})
-	});
-}
 function readPendingSearch() {
 	if (typeof window === "undefined") return null;
 	try {
@@ -7048,9 +7060,13 @@ function SearchWizard({ initialType = "brand", initialQuery = "", heading = "Sta
 				setAuthPromptPayload(null);
 			}
 		}),
-		upgradeModalOpen && /* @__PURE__ */ jsx(SearchUpgradeModal, {
-			onClose: () => setUpgradeModalOpen(false),
-			onUpgrade: () => router.visit("/plans")
+		upgradeModalOpen && /* @__PURE__ */ jsx(UpgradePromptModal, {
+			eyebrow: "Search credits",
+			title: (billing.trialEligible ?? true) && !(billing.hasUsedTrial ?? false) ? "Start your 8-day Growth trial" : "Upgrade to unlock more searches",
+			body: (billing.trialEligible ?? true) && !(billing.hasUsedTrial ?? false) ? "You've already used the search credits on Free. Start your trial to keep finding new outliers." : "You've already used the search credits available on your current plan. Upgrade to Growth or Scale to keep finding new outliers.",
+			primaryLabel: (billing.trialEligible ?? true) && !(billing.hasUsedTrial ?? false) ? "Start 8-day Growth trial" : "Upgrade to Growth",
+			onPrimary: () => router.visit((billing.trialEligible ?? true) && !(billing.hasUsedTrial ?? false) ? "/trial" : "/plans"),
+			onClose: () => setUpgradeModalOpen(false)
 		})
 	] });
 }
@@ -7552,63 +7568,13 @@ function SearchAccessPromptModal({ prompt, billing, onClose, onUpgrade }) {
 	if (!prompt) return null;
 	const trialEligible = billing?.trialEligible ?? true;
 	const hasUsedTrial = billing?.hasUsedTrial ?? false;
-	const ctaLabel = trialEligible && !hasUsedTrial ? "Start 8-day trial" : "View Growth plan";
-	const body = trialEligible && !hasUsedTrial ? "You already used your free search. Start your 8-day trial to unlock more searches and keep this one moving." : "You already used your free search. Upgrade to Growth to unlock more searches and keep researching.";
-	const detail = prompt?.phrase ? `Your search for ${String.fromCharCode(8220)}${prompt.phrase}${String.fromCharCode(8221)} was not started because this account is out of search credits for the current period.` : "Your search was not started because this account is out of search credits for the current period.";
-	return /* @__PURE__ */ jsx("div", {
-		className: "bb",
-		children: /* @__PURE__ */ jsxs("div", {
-			className: "bb-modal",
-			children: [/* @__PURE__ */ jsx("button", {
-				className: "bb-modal__bg",
-				"aria-label": "Close",
-				onClick: onClose
-			}), /* @__PURE__ */ jsxs("div", {
-				className: "bb-modal__box",
-				children: [
-					/* @__PURE__ */ jsx("h2", { children: "Free search already used" }),
-					/* @__PURE__ */ jsx("p", {
-						className: "sub",
-						children: body
-					}),
-					/* @__PURE__ */ jsx("p", {
-						style: {
-							marginTop: 16,
-							color: "var(--muted)",
-							lineHeight: 1.6
-						},
-						children: detail
-					}),
-					prompt?.message && /* @__PURE__ */ jsx("p", {
-						style: {
-							marginTop: 14,
-							fontWeight: 700,
-							color: "var(--ink)"
-						},
-						children: prompt.message
-					}),
-					/* @__PURE__ */ jsxs("div", {
-						className: "actrow__r",
-						style: {
-							marginTop: 24,
-							justifyContent: "flex-end",
-							flexWrap: "wrap"
-						},
-						children: [/* @__PURE__ */ jsx("button", {
-							type: "button",
-							className: "btn btn--g",
-							onClick: onClose,
-							children: "Maybe later"
-						}), /* @__PURE__ */ jsx("button", {
-							type: "button",
-							className: "btn btn--y",
-							onClick: onUpgrade,
-							children: ctaLabel
-						})]
-					})
-				]
-			})]
-		})
+	return /* @__PURE__ */ jsx(UpgradePromptModal, {
+		eyebrow: "Search credits",
+		title: "Free search already used",
+		body: trialEligible && !hasUsedTrial ? "You are out of search credits. Start your 8-day trial to unlock more searches." : "You are out of search credits. Upgrade to Growth to keep searching.",
+		primaryLabel: trialEligible && !hasUsedTrial ? "Start 8-day trial" : "View Growth plan",
+		onPrimary: onUpgrade,
+		onClose
 	});
 }
 function Dashboard() {
@@ -12883,6 +12849,8 @@ function DetailScreen({ search, isAuthenticated = false, billing: billing$1, ref
 		}),
 		upgradeModalType && /* @__PURE__ */ jsx(UpgradeModal, {
 			mode: upgradeModalType,
+			trialEligible: billing$1?.trialEligible ?? true,
+			hasUsedTrial: billing$1?.hasUsedTrial ?? false,
 			onClose: closeUpgradeModal,
 			onUpgrade: openUpgradeForAnalysis
 		}),
@@ -12898,9 +12866,30 @@ function VideoFrame({ video, winner = false, isPlaying, onTogglePlay }) {
 	const bg = video.thumbnail_url ? void 0 : gradientFor(video.id ?? video.handle);
 	const playerUrl = playerUrlFor(video, true);
 	const [playerReady, setPlayerReady] = useState(false);
+	const iframeRef = useRef(null);
 	useEffect(() => {
 		setPlayerReady(false);
 	}, [isPlaying, playerUrl]);
+	useEffect(() => {
+		const iframe = iframeRef.current;
+		if (!isPlaying || !iframe || !video?.video_id) return void 0;
+		const unmuteAndPlay = () => {
+			postTikTokMessage(iframe, "unMute");
+			postTikTokMessage(iframe, "play");
+		};
+		const handleReady = (event) => {
+			const payload = event?.data;
+			if (!payload || payload["x-tiktok-player"] !== true || payload.type !== "onPlayerReady") return;
+			if (event.source !== iframe.contentWindow) return;
+			unmuteAndPlay();
+		};
+		iframe.addEventListener("load", unmuteAndPlay);
+		window.addEventListener("message", handleReady);
+		return () => {
+			iframe.removeEventListener("load", unmuteAndPlay);
+			window.removeEventListener("message", handleReady);
+		};
+	}, [isPlaying, video?.video_id]);
 	return /* @__PURE__ */ jsxs("div", {
 		className: `rs-vf${isPlaying ? " playing" : ""}${winner ? " rs-vf--big" : ""}`,
 		children: [
@@ -12914,6 +12903,7 @@ function VideoFrame({ video, winner = false, isPlaying, onTogglePlay }) {
 				style: { background: bg }
 			})),
 			isPlaying && playerUrl && /* @__PURE__ */ jsx("iframe", {
+				ref: iframeRef,
 				className: "rs-vf__player",
 				src: playerUrl,
 				title: video.title ? `Video: ${video.title}` : "Video preview",
@@ -13178,58 +13168,17 @@ function UsageConfirmModal$1({ video, creditsRemaining, creditsRemainingAfterUse
 		})
 	});
 }
-function UpgradeModal({ mode = "analysis", onClose, onUpgrade }) {
+function UpgradeModal({ mode = "analysis", trialEligible = true, hasUsedTrial = false, onClose, onUpgrade }) {
 	const isSearchBookmark = mode === "search-bookmark";
 	const isSearchManagement = mode === "search-management";
-	const eyebrowLabel = isSearchBookmark ? "Search bookmarks" : isSearchManagement ? "Search management" : "Video analysis";
-	const title = isSearchBookmark ? "Upgrade to unlock search bookmarks" : isSearchManagement ? "Upgrade to manage this search" : "Upgrade to unlock more analysis credits";
-	const body = isSearchBookmark ? "Free searches do not include saved search bookmarks. Upgrade to Growth or Scale to save searches to your bookmarks." : isSearchManagement ? "Upgrade to Growth or Scale to pause, resume, or delete tracked searches from your dashboard." : "Free searches include the top-video breakdown. Upgrade to Growth or Scale to analyze more outliers.";
-	return /* @__PURE__ */ jsx("div", {
-		className: "rs-modalback",
-		onClick: onClose,
-		children: /* @__PURE__ */ jsxs("div", {
-			className: "rs-upgmodal",
-			onClick: (event) => event.stopPropagation(),
-			role: "dialog",
-			"aria-modal": "true",
-			"aria-label": title,
-			children: [
-				/* @__PURE__ */ jsx("button", {
-					type: "button",
-					className: "rs-upgmodal__close",
-					onClick: onClose,
-					"aria-label": "Close upgrade prompt",
-					children: /* @__PURE__ */ jsx("svg", {
-						viewBox: "0 0 24 24",
-						fill: "none",
-						stroke: "currentColor",
-						strokeWidth: "2.2",
-						strokeLinecap: "round",
-						children: /* @__PURE__ */ jsx("path", { d: "M6 6l12 12M18 6L6 18" })
-					})
-				}),
-				/* @__PURE__ */ jsxs("div", {
-					className: "rs-upg__eyebrow",
-					children: [Icons.Spark, /* @__PURE__ */ jsx("span", { children: eyebrowLabel })]
-				}),
-				/* @__PURE__ */ jsx("h3", { children: title }),
-				/* @__PURE__ */ jsx("p", { children: body }),
-				/* @__PURE__ */ jsxs("div", {
-					className: "rs-upgmodal__actions",
-					children: [/* @__PURE__ */ jsx("button", {
-						type: "button",
-						className: "rs-btn rs-btn--y",
-						onClick: onUpgrade,
-						children: "Upgrade to Growth"
-					}), /* @__PURE__ */ jsx("button", {
-						type: "button",
-						className: "rs-btn rs-btn--g",
-						onClick: onClose,
-						children: "Maybe later"
-					})]
-				})
-			]
-		})
+	const shouldOfferTrial = trialEligible && !hasUsedTrial;
+	return /* @__PURE__ */ jsx(UpgradePromptModal, {
+		eyebrow: isSearchBookmark ? "Search bookmarks" : isSearchManagement ? "Search management" : "Video analysis",
+		title: isSearchBookmark ? shouldOfferTrial ? "Start your 8-day Growth trial to unlock search bookmarks" : "Upgrade to unlock search bookmarks" : isSearchManagement ? shouldOfferTrial ? "Start your 8-day Growth trial to manage this search" : "Upgrade to manage this search" : shouldOfferTrial ? "Start your 8-day Growth trial to unlock more analysis credits" : "Upgrade to unlock more analysis credits",
+		body: isSearchBookmark ? shouldOfferTrial ? "Free searches do not include saved search bookmarks. Start your 8-day Growth trial to save searches to your bookmarks." : "Free searches do not include saved search bookmarks. Upgrade to Growth or Scale to save searches to your bookmarks." : isSearchManagement ? shouldOfferTrial ? "Start your 8-day Growth trial to pause, resume, or delete tracked searches from your dashboard." : "Upgrade to Growth or Scale to pause, resume, or delete tracked searches from your dashboard." : shouldOfferTrial ? "Free searches include the top-video breakdown. Start your 8-day Growth trial to analyze more outliers." : "Free searches include the top-video breakdown. Upgrade to Growth or Scale to analyze more outliers.",
+		primaryLabel: shouldOfferTrial ? "Start 8-day Growth trial" : "Upgrade to Growth",
+		onPrimary: onUpgrade,
+		onClose
 	});
 }
 function ActionConfirmModal({ action, searchName, onClose, onConfirm }) {
@@ -15545,6 +15494,7 @@ function Stepper({ step }) {
 }
 function Free({ phrase = "", type = "brand", error = null }) {
 	const [screen, setScreen] = useState(phrase ? "refine" : "subject");
+	const [showGateCard, setShowGateCard] = useState(false);
 	const [kind, setKind] = useState(type === "competitor" ? "brand" : type);
 	const [subject, setSubject] = useState(phrase);
 	const [terms, setTerms] = useState([]);
@@ -15593,6 +15543,14 @@ function Free({ phrase = "", type = "brand", error = null }) {
 		screen,
 		subject
 	]);
+	useEffect(() => {
+		if (screen !== "gate") {
+			setShowGateCard(false);
+			return;
+		}
+		const timer = window.setTimeout(() => setShowGateCard(true), 2e3);
+		return () => window.clearTimeout(timer);
+	}, [screen]);
 	const beginRefine = (event) => {
 		event.preventDefault();
 		const clean = subject.trim().replace(/\s+/g, " ");
@@ -15614,8 +15572,10 @@ function Free({ phrase = "", type = "brand", error = null }) {
 			selected: true
 		}]);
 	};
-	const prepareAndSignIn = async () => {
+	const [pendingRoute, setPendingRoute] = useState(null);
+	const stashAndGo = async (destination, tag) => {
 		setSaving(true);
+		setPendingRoute(tag);
 		setMessage(null);
 		try {
 			if (!(await fetch("/search/pending", {
@@ -15638,12 +15598,18 @@ function Free({ phrase = "", type = "brand", error = null }) {
 					} } : {}
 				})
 			})).ok) throw new Error("We could not save your search. Please try again.");
-			window.location.assign("/auth/google");
+			window.location.assign(destination);
 		} catch (caught) {
 			setMessage(caught.message);
 			setSaving(false);
+			setPendingRoute(null);
 		}
 	};
+	const prepareAndSignIn = () => stashAndGo("/auth/google", "google");
+	const goCreateAccount = () => stashAndGo("/register", "register");
+	const goLogin = () => stashAndGo("/login", "login");
+	const initials = (subject || "?").trim().replace(/[^a-zA-Z0-9]/g, "").slice(0, 2).toUpperCase() || "?";
+	const kindLabel = kind === "brand" ? "Brand" : "Product";
 	const stages = [
 		"Pulling videos from TikTok",
 		"Filtering against your keywords",
@@ -15659,8 +15625,8 @@ function Free({ phrase = "", type = "brand", error = null }) {
       .free-flow{min-height:calc(100vh - 72px);background:#fff;color:#111;padding:0 22px 64px;font-family:Figtree,ui-sans-serif,system-ui,sans-serif}
       .ff-shell{max-width:594px;margin:0 auto;padding-top:28px}.fs-stepper{display:flex;align-items:center;justify-content:center;margin:0 0 28px}.fs-step{display:flex;align-items:center;gap:8px;color:#77726b;font-size:11px}.fs-step i{width:23px;height:23px;border:1px solid #ddd8cf;border-radius:50%;display:grid;place-items:center;font-size:11px;font-style:normal}.fs-step.done,.fs-step.now{color:#151515}.fs-step.done i{background:#111;color:#fff;border-color:#111}.fs-step.now i{background:#ffc629;border-color:#ffc629}.fs-step i svg{width:11px;height:11px}.fs-step em{width:27px;height:1px;background:#ddd8cf;margin:0 9px;font-style:normal}.ff-card{border:1px solid #e4e0d8;border-radius:20px;overflow:hidden;background:#fff;box-shadow:0 12px 32px -30px rgba(0,0,0,.3)}.ff-subject{height:66px;padding:0 21px;display:flex;align-items:center;border-bottom:1px solid #e4e0d8}.ff-subject__label,.ff-eyebrow{font-size:10px;font-weight:850;color:#a16d00;letter-spacing:.13em;text-transform:uppercase}.ff-subject strong{margin-left:12px;font-size:15px;letter-spacing:-.03em}.ff-edit{margin-left:auto;width:30px;height:30px;border:1px solid #e4e0d8;border-radius:50%;background:#fff;color:#777;display:grid;place-items:center;cursor:pointer}.ff-edit svg{width:14px;height:14px}.ff-section{padding:23px 21px 24px}.ff-section h1{margin:10px 0 0;font-size:17px;line-height:1.25;letter-spacing:-.035em}.ff-section>p{margin:10px 0 0;font-size:13px;line-height:1.55;color:#625e58}.ff-chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:18px}.ff-chip{height:37px;padding:0 14px;border:1.5px solid #b8b1a2 !important;border-radius:999px;background:#fff;color:#302d29;font:inherit;font-size:12px;font-weight:700;display:inline-flex;align-items:center;gap:8px;cursor:pointer;transition:border-color .15s,background .15s,box-shadow .15s}.ff-chip:hover:not(:disabled){border-color:#8a8271 !important}.ff-chip:disabled{cursor:default}.ff-chip.on{border-color:#ffc629 !important;box-shadow:0 0 0 1.5px #ffc629 inset}.ff-check{width:15px;height:15px;border:1px solid #d9d4ca;border-radius:50%;display:grid;place-items:center}.ff-chip.on .ff-check{background:#ffc629;border-color:#ffc629}.ff-check svg{width:9px;height:9px}.ff-add{border-style:dashed;color:#9d6900}.ff-add svg{width:13px;height:13px}.ff-add-input{height:37px;width:130px;padding:0 12px;border:1px solid #ffc629;border-radius:999px;outline:0;font:inherit;font-size:12px;font-weight:700}.ff-count{margin:14px 0 0!important;font-size:11px!important;color:#756f68!important}.ff-count b{color:#111}.ff-footer{min-height:85px;padding:0 21px;border-top:1px solid #e4e0d8;display:flex;align-items:center;justify-content:space-between;gap:12px}.ff-back,.ff-run{height:41px;padding:0 20px;border-radius:10px;font:inherit;font-size:13px;font-weight:800;cursor:pointer}.ff-back{border:1px solid #ddd8cf;background:#fff;color:#111}.ff-run{border:0;background:#ffc629;color:#1a1400;display:inline-flex;align-items:center;gap:10px;box-shadow:0 1px 2px rgba(20,15,0,.1),0 10px 24px -8px rgba(255,198,41,.72)}.ff-run:hover:not(:disabled){background:#ffd84d;transform:translateY(-1px);box-shadow:0 2px 4px rgba(20,15,0,.1),0 16px 30px -10px rgba(255,198,41,.85)}.ff-run svg{width:15px;height:15px}.ff-run:disabled{opacity:.55;cursor:not-allowed}.ff-subject-form{max-width:520px;margin:66px auto;border:1px solid #e4e0d8;border-radius:20px;padding:26px}.ff-subject-form h1{margin:0;font-size:25px;letter-spacing:-.05em}.ff-modes{display:grid;grid-template-columns:repeat(2,1fr);gap:7px;margin-top:22px}.ff-mode{height:45px;border:1px solid #ddd8cf;border-radius:10px;background:#fff;font:inherit;font-size:12px;font-weight:750;cursor:pointer}.ff-mode.is-on{background:#111;border-color:#111;color:#fff}.ff-mode svg{width:14px;height:14px;vertical-align:-2px;margin-right:5px}.ff-input{width:100%;box-sizing:border-box;height:48px;margin-top:16px;padding:0 13px;border:1px solid #d9d4ca;border-radius:10px;font:inherit;font-weight:650;outline:0}.ff-input:focus{border-color:#ffc629;box-shadow:0 0 0 4px rgba(255,198,41,.2)}
       .ff-shell{max-width:594px;margin:0 auto;padding-top:28px}.fs-stepper{display:flex;align-items:center;justify-content:center;margin:0 0 28px}.fs-step{display:flex;align-items:center;gap:8px;color:#77726b;font-size:11px}.fs-step i{width:23px;height:23px;border:1px solid #ddd8cf;border-radius:50%;display:grid;place-items:center;font-size:11px;font-style:normal}.fs-step.done,.fs-step.now{color:#151515}.fs-step.done i{background:#111;color:#fff;border-color:#111}.fs-step.now i{background:#ffc629;border-color:#ffc629}.fs-step i svg{width:11px;height:11px}.fs-step em{width:27px;height:1px;background:#ddd8cf;margin:0 9px;font-style:normal}.ff-card{border:1px solid #e4e0d8;border-radius:20px;overflow:hidden;background:#fff;box-shadow:0 12px 32px -30px rgba(0,0,0,.3)}.ff-subject{height:66px;padding:0 21px;display:flex;align-items:center;border-bottom:1px solid #e4e0d8}.ff-subject__label,.ff-eyebrow{font-size:10px;font-weight:850;color:#a16d00;letter-spacing:.13em;text-transform:uppercase}.ff-subject strong{margin-left:12px;font-size:15px;letter-spacing:-.03em}.ff-edit{margin-left:auto;width:30px;height:30px;border:1px solid #e4e0d8;border-radius:50%;background:#fff;color:#777;display:grid;place-items:center;cursor:pointer}.ff-edit svg{width:14px;height:14px}.ff-section{padding:23px 21px 24px}.ff-section--sources{border-top:1px solid #e4e0d8}.ff-section h1{margin:10px 0 0;font-size:17px;line-height:1.25;letter-spacing:-.035em}.ff-section>p{margin:10px 0 0;font-size:13px;line-height:1.55;color:#625e58}.ff-chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:18px}.ff-chip{height:37px;padding:0 14px;border:1.5px solid #b8b1a2 !important;border-radius:999px;background:#fff;color:#302d29;font:inherit;font-size:12px;font-weight:700;display:inline-flex;align-items:center;gap:8px;cursor:pointer;transition:border-color .15s,background .15s,box-shadow .15s}.ff-chip:hover:not(:disabled){border-color:#8a8271 !important}.ff-chip:disabled{cursor:default}.ff-chip.on{border-color:#ffc629 !important;box-shadow:0 0 0 1.5px #ffc629 inset}.ff-check{width:15px;height:15px;border:1px solid #d9d4ca;border-radius:50%;display:grid;place-items:center}.ff-chip.on .ff-check{background:#ffc629;border-color:#ffc629}.ff-check svg{width:9px;height:9px}.ff-add{border-style:dashed;color:#9d6900}.ff-add svg{width:13px;height:13px}.ff-add-input{height:37px;width:130px;padding:0 12px;border:1px solid #ffc629;border-radius:999px;outline:0;font:inherit;font-size:12px;font-weight:700}.ff-count{margin:14px 0 0!important;font-size:11px!important;color:#756f68!important}.ff-count b{color:#111}.ff-source{margin-top:13px;padding:12px;border:1px solid #ddd8cf;border-radius:11px}.ff-source__head{display:flex;align-items:center;justify-content:space-between;font-size:11px;font-weight:800}.ff-source__head span:last-child{font-size:8px;color:#9d6900;letter-spacing:.08em}.ff-source input{box-sizing:border-box;width:100%;height:36px;margin-top:10px;padding:0 11px;border:1px solid #d9d4ca;border-radius:999px;font:inherit;font-size:11px;font-weight:600;outline:0}.ff-source input:focus{border-color:#ffc629}.ff-footer{min-height:85px;padding:0 21px;border-top:1px solid #e4e0d8;display:flex;align-items:center;justify-content:space-between;gap:12px}.ff-back,.ff-run{height:41px;padding:0 20px;border-radius:10px;font:inherit;font-size:13px;font-weight:800;cursor:pointer}.ff-back{border:1px solid #ddd8cf;background:#fff;color:#111}.ff-run{border:0;background:#ffc629;color:#1a1400;display:inline-flex;align-items:center;gap:10px;box-shadow:0 1px 2px rgba(20,15,0,.1),0 10px 24px -8px rgba(255,198,41,.72)}.ff-run:hover:not(:disabled){background:#ffd84d;transform:translateY(-1px);box-shadow:0 2px 4px rgba(20,15,0,.1),0 16px 30px -10px rgba(255,198,41,.85)}.ff-run svg{width:15px;height:15px}.ff-run:disabled{opacity:.55;cursor:not-allowed}.ff-subject-form{max-width:520px;margin:66px auto;border:1px solid #e4e0d8;border-radius:20px;padding:26px}.ff-subject-form h1{margin:0;font-size:25px;letter-spacing:-.05em}.ff-modes{display:grid;grid-template-columns:repeat(2,1fr);gap:7px;margin-top:22px}.ff-mode{height:45px;border:1px solid #ddd8cf;border-radius:10px;background:#fff;font:inherit;font-size:12px;font-weight:750;cursor:pointer}.ff-mode.is-on{background:#111;border-color:#111;color:#fff}.ff-mode svg{width:14px;height:14px;vertical-align:-2px;margin-right:5px}.ff-input{width:100%;box-sizing:border-box;height:48px;margin-top:16px;padding:0 13px;border:1px solid #d9d4ca;border-radius:10px;font:inherit;font-weight:650;outline:0}.ff-input:focus{border-color:#ffc629;box-shadow:0 0 0 4px rgba(255,198,41,.2)}
-      .free-flow--gate{padding:0;background:#fff}.ff-gate{min-height:calc(100vh - 72px);display:grid;grid-template-columns:1fr 1fr}.ff-gate__copy{padding:clamp(48px,11vh,120px) clamp(29px,5vw,90px);display:flex;align-items:center}.ff-gate__inner{max-width:420px}.ff-gate h1{margin:12px 0 0;font-size:clamp(27px,3vw,38px);line-height:1.08;letter-spacing:-.065em}.ff-gate__copy>div>p{font-size:13px;line-height:1.55;color:#625e58;margin:15px 0 0}.ff-stages{margin-top:35px;display:flex;flex-direction:column;gap:12px}.ff-stage{min-height:34px;padding:0 10px;display:flex;align-items:center;gap:11px;border-radius:9px;font-size:12px;font-weight:650}.ff-stage i{width:15px;height:15px;border-radius:50%;background:#111;color:#fff;display:grid;place-items:center}.ff-stage i svg{width:9px;height:9px}.ff-stage.now{background:#fff5da}.ff-stage.now i{background:transparent;border:1.5px solid #ffc629;border-top-color:transparent;animation:ff-spin .8s linear infinite}.ff-email{display:flex;align-items:center;gap:9px;margin-top:20px;padding:12px;border:1px solid #f1d798;border-radius:10px;background:#fffaf0;color:#9d6900;font-size:11px;font-weight:750}.ff-email svg{width:15px;height:15px}@keyframes ff-spin{to{transform:rotate(360deg)}}.ff-gate__visual{padding:28px 30px;background:#faf9f6;border-left:1px solid #ece8df;display:flex;align-items:center;justify-content:center}.ff-preview{width:min(100%,560px)}.ff-videos{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}.ff-video{height:245px;width:100%;border-radius:10px;object-fit:cover;filter:blur(3px);opacity:.75}.ff-signup{margin-top:24px;padding:23px;border:1px solid #e4e0d8;border-radius:16px;background:#fff;text-align:center;box-shadow:0 20px 35px -30px rgba(0,0,0,.25)}.ff-signup h2{font-size:16px;letter-spacing:-.035em;margin:0}.ff-signup p{font-size:11px!important;line-height:1.55!important;margin:13px auto 0!important;color:#756f68!important}.ff-google{appearance:none;-webkit-appearance:none;height:50px;width:100%;margin-top:18px;border:1px solid #111!important;border-radius:9px;background:#111!important;color:#fff!important;font:inherit;font-size:12px;font-weight:800;display:flex;align-items:center;justify-content:center;gap:9px;cursor:pointer;box-shadow:0 8px 16px -10px rgba(0,0,0,.7);transition:transform .16s,background .16s,box-shadow .16s}.ff-google:hover:not(:disabled){background:#292929!important;box-shadow:0 11px 20px -10px rgba(0,0,0,.65);transform:translateY(-1px)}.ff-google svg{width:19px;height:19px;background:#fff;border-radius:50%;padding:2px}.ff-google:disabled{opacity:.6}.ff-trust{font-size:10px!important;margin-top:12px!important}.ff-error{margin-top:12px!important;color:#aa3820!important;font-weight:700}
-      @media(max-width:720px){.ff-gate{grid-template-columns:1fr}.ff-gate__visual{border-left:0;border-top:1px solid #ece8df;padding:35px 22px}.ff-gate__copy{padding:55px 28px}.ff-video{height:150px}}@media(max-width:500px){.free-flow{padding:0 12px 35px}.free-flow--gate{padding:0}.ff-shell{padding-top:20px}.fs-step b{display:none}.fs-step em{width:20px;margin:0 5px}.ff-card{border-radius:16px}.ff-section{padding:20px 17px}.ff-subject{padding:0 17px}.ff-footer{padding:0 17px}.ff-run{padding:0 14px}.ff-modes{grid-template-columns:1fr}.ff-subject-form{margin:32px auto}}
+      .free-flow--gate{padding:0;background:#fff}.ff-gate{min-height:calc(100vh - 72px);display:grid;grid-template-columns:1fr 1fr}.ff-gate__copy{padding:clamp(48px,11vh,120px) clamp(29px,5vw,90px);display:flex;align-items:center}.ff-gate__inner{max-width:420px}.ff-gate h1{margin:12px 0 0;font-size:clamp(27px,3vw,38px);line-height:1.08;letter-spacing:-.065em}.ff-gate__copy>div>p{font-size:13px;line-height:1.55;color:#625e58;margin:15px 0 0}.ff-stages{margin-top:35px;display:flex;flex-direction:column;gap:12px}.ff-stage{min-height:34px;padding:0 10px;display:flex;align-items:center;gap:11px;border-radius:9px;font-size:12px;font-weight:650}.ff-stage i{width:15px;height:15px;border-radius:50%;background:#111;color:#fff;display:grid;place-items:center}.ff-stage i svg{width:9px;height:9px}.ff-stage.now{background:#fff5da}.ff-stage.now i{background:transparent;border:1.5px solid #ffc629;border-top-color:transparent;animation:ff-spin .8s linear infinite}.ff-email{display:flex;align-items:center;gap:9px;margin-top:20px;padding:12px;border:1px solid #f1d798;border-radius:10px;background:#fffaf0;color:#9d6900;font-size:11px;font-weight:750}.ff-email svg{width:15px;height:15px}@keyframes ff-spin{to{transform:rotate(360deg)}}.ff-gate__visual{padding:28px 30px;background:#faf9f6;border-left:1px solid #ece8df;display:flex;align-items:center;justify-content:center}.ff-preview{width:min(100%,560px)}.ff-videos{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}.ff-video{height:245px;width:100%;border-radius:10px;object-fit:cover;filter:blur(3px);opacity:.75}.ff-gate__sheet{display:block}.ff-signup{margin-top:24px;padding:23px;border:1px solid #e4e0d8;border-radius:16px;background:#fff;text-align:center;box-shadow:0 20px 35px -30px rgba(0,0,0,.25)}.ff-signup h2{font-size:16px;letter-spacing:-.035em;margin:0}.ff-signup p{font-size:11px!important;line-height:1.55!important;margin:13px auto 0!important;color:#756f68!important}.ff-google{appearance:none;-webkit-appearance:none;height:50px;width:100%;margin-top:18px;border:1px solid #111!important;border-radius:9px;background:#111!important;color:#fff!important;font:inherit;font-size:12px;font-weight:800;display:flex;align-items:center;justify-content:center;gap:9px;cursor:pointer;box-shadow:0 8px 16px -10px rgba(0,0,0,.7);transition:transform .16s,background .16s,box-shadow .16s}.ff-google:hover:not(:disabled){background:#292929!important;box-shadow:0 11px 20px -10px rgba(0,0,0,.65);transform:translateY(-1px)}.ff-google svg{width:19px;height:19px;background:#fff;border-radius:50%;padding:2px}.ff-google:disabled{opacity:.6}.ff-trust{font-size:10px!important;margin-top:12px!important}.ff-error{margin-top:12px!important;color:#aa3820!important;font-weight:700}
+      @media(max-width:720px){.free-flow--gate{padding:0;background:#f7f4ed}.ff-gate{position:relative;display:block;min-height:calc(100vh - 72px);padding:44px 16px 250px;overflow:hidden}.ff-gate__copy{display:flex;justify-content:center;padding:0;text-align:center}.ff-gate__inner{max-width:430px}.ff-gate h1{margin:14px 0 0;font-size:clamp(26px,8vw,36px);line-height:1.04}.ff-gate__copy>div>p{max-width:280px;margin-left:auto;margin-right:auto}.ff-stages{margin:32px auto 0;max-width:none}.ff-stage{text-align:left}.ff-stage i{flex:none}.ff-email{margin:20px auto 0;max-width:none;text-align:left}.ff-email svg{flex:none}.ff-gate__visual{display:none}.ff-gate__sheet{position:fixed;left:0;right:0;bottom:0;z-index:20;display:flex;justify-content:center;padding:0 6px;pointer-events:none}.ff-gate__sheet.is-open .ff-signup{transform:translateY(0);opacity:1}.ff-signup{width:min(100%,560px);margin-top:0;padding:18px 18px 22px;border-bottom:0;border-radius:18px 18px 0 0;box-shadow:0 -12px 40px rgba(0,0,0,.10);transform:translateY(110%);opacity:0;transition:transform .34s ease,opacity .24s ease;pointer-events:auto}.ff-signup::before{content:'';display:block;width:46px;height:4px;border-radius:999px;background:#d7d2c8;margin:0 auto 16px}}@media(max-width:500px){.free-flow{padding:0 12px 35px}.free-flow--gate{padding:0}.ff-shell{padding-top:20px}.fs-step b{display:none}.fs-step em{width:20px;margin:0 5px}.ff-card{border-radius:16px}.ff-section{padding:20px 17px}.ff-subject{padding:0 17px}.ff-footer{padding:0 17px}.ff-run{padding:0 14px}.ff-modes{grid-template-columns:1fr}.ff-subject-form{margin:32px auto}.ff-gate{padding:38px 10px 248px}.ff-signup{padding:16px 14px 20px}}
     ` }),
 				/* @__PURE__ */ jsx("style", { children: `
       .ff-source{display:block}
@@ -15676,6 +15642,24 @@ function Free({ phrase = "", type = "brand", error = null }) {
       .ff-source__head>span:first-child{display:inline-flex;align-items:center;gap:8px}
       .ff-source__ic{width:16px;height:16px;color:#9d6900;flex:none;display:inline-grid;place-items:center}
       .ff-source__ic svg{width:16px;height:16px;display:block}
+      .ff-signup--m5{text-align:left;padding:24px}
+      .ff-signup--m5 h2{font-size:19px;letter-spacing:-.03em}
+      .ff-signup--m5>p{text-align:left!important;margin:8px 0 0!important;font-size:12px!important;color:#5a5651!important}
+      .ff-runchip{display:flex;align-items:center;gap:12px;margin:18px 0 18px;padding:12px 14px;background:#fff8e1;border:1px solid #f1d798;border-radius:12px}
+      .ff-runchip__mono{width:34px;height:34px;flex:none;border-radius:8px;background:#ffe9a3;color:#7a5300;font-weight:800;font-size:12px;display:grid;place-items:center;letter-spacing:.02em}
+      .ff-runchip__body{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px;font-size:12px;text-align:left}
+      .ff-runchip__body b{font-weight:800;color:#181614;letter-spacing:-.02em}
+      .ff-runchip__body em{font-style:normal;color:#75694a;font-size:11px}
+      .ff-runchip__pill{font-size:9.5px;font-weight:800;letter-spacing:.12em;color:#8a5a00;background:#ffdf80;padding:5px 8px;border-radius:6px}
+      .ff-google--outline{background:#fff!important;color:#111!important;border:1px solid #d9d4ca!important;box-shadow:none;margin-top:6px}
+      .ff-google--outline:hover:not(:disabled){background:#faf8f2!important;box-shadow:0 4px 10px -6px rgba(0,0,0,.2)}
+      .ff-google--outline svg{background:transparent;padding:0}
+      .ff-create{appearance:none;-webkit-appearance:none;height:50px;width:100%;margin-top:10px;border:0;border-radius:9px;background:#ffc629;color:#1a1400;font:inherit;font-size:13px;font-weight:800;cursor:pointer;box-shadow:0 8px 18px -10px rgba(255,198,41,.9);transition:transform .16s,background .16s,box-shadow .16s}
+      .ff-create:hover:not(:disabled){background:#ffd84d;transform:translateY(-1px);box-shadow:0 12px 22px -10px rgba(255,198,41,1)}
+      .ff-create:disabled{opacity:.65;cursor:not-allowed}
+      .ff-trust--muted{text-align:center;color:#8b8577!important;margin-top:8px!important}
+      .ff-havelogin{display:block;margin:14px auto 0;background:transparent;border:0;font:inherit;font-size:12px;font-weight:700;color:#111;text-decoration:underline;cursor:pointer;padding:6px}
+      .ff-havelogin:disabled{opacity:.55;cursor:not-allowed}
     ` }),
 				screen === "subject" && /* @__PURE__ */ jsxs("section", {
 					className: "ff-subject-form",
@@ -15926,60 +15910,66 @@ function Free({ phrase = "", type = "brand", error = null }) {
 							]
 						})
 					}), /* @__PURE__ */ jsx("div", {
-						className: "ff-gate__visual",
+						className: `ff-gate__sheet ${showGateCard ? "is-open" : ""}`,
 						children: /* @__PURE__ */ jsxs("div", {
-							className: "ff-preview",
-							children: [/* @__PURE__ */ jsxs("div", {
-								className: "ff-videos",
-								children: [
-									/* @__PURE__ */ jsx("img", {
-										className: "ff-video",
-										src: "/images/landing/discovery-coco-shimmy.png",
-										alt: ""
-									}),
-									/* @__PURE__ */ jsx("img", {
-										className: "ff-video",
-										src: "/images/landing/discovery-buyer-beware.png",
-										alt: ""
-									}),
-									/* @__PURE__ */ jsx("img", {
-										className: "ff-video",
-										src: "/images/landing/discovery-brow-grooming.png",
-										alt: ""
-									})
-								]
-							}), /* @__PURE__ */ jsxs("div", {
-								className: "ff-signup",
-								children: [
-									/* @__PURE__ */ jsx("h2", { children: "Sign in to get your report" }),
-									/* @__PURE__ */ jsx("p", { children: "Your scan is running now. Sign in with Google and we will email your full report the moment it is ready, usually in 5 to 10 minutes." }),
-									message && /* @__PURE__ */ jsx("p", {
-										className: "ff-error",
-										children: message
-									}),
-									/* @__PURE__ */ jsxs("button", {
-										type: "button",
-										className: "ff-google",
-										disabled: saving,
-										onClick: prepareAndSignIn,
-										children: [/* @__PURE__ */ jsx(Google, {}), saving ? "Preparing your search..." : "Sign in with Google"]
-									}),
-									/* @__PURE__ */ jsx("p", {
-										className: "ff-trust",
-										children: "Free · no credit card · we email you when it is ready"
-									}),
-									/* @__PURE__ */ jsxs("p", {
-										className: "ff-trust",
-										children: [
-											"By continuing you agree to our ",
-											/* @__PURE__ */ jsx("u", { children: "Terms" }),
-											" and ",
-											/* @__PURE__ */ jsx("u", { children: "Privacy Policy" }),
-											"."
-										]
-									})
-								]
-							})]
+							className: "ff-signup ff-signup--m5",
+							children: [
+								/* @__PURE__ */ jsx("h2", { children: "Where should we send it?" }),
+								/* @__PURE__ */ jsx("p", { children: "Your search is running. Create an account and we will email you when it lands." }),
+								/* @__PURE__ */ jsxs("div", {
+									className: "ff-runchip",
+									children: [
+										/* @__PURE__ */ jsx("span", {
+											className: "ff-runchip__mono",
+											children: initials
+										}),
+										/* @__PURE__ */ jsxs("span", {
+											className: "ff-runchip__body",
+											children: [/* @__PURE__ */ jsx("b", { children: subject }), /* @__PURE__ */ jsxs("em", { children: [
+												kindLabel,
+												" · ",
+												selected.length,
+												" keyword",
+												selected.length === 1 ? "" : "s",
+												" · weekly"
+											] })]
+										}),
+										/* @__PURE__ */ jsx("span", {
+											className: "ff-runchip__pill",
+											children: "RUNNING"
+										})
+									]
+								}),
+								message && /* @__PURE__ */ jsx("p", {
+									className: "ff-error",
+									children: message
+								}),
+								/* @__PURE__ */ jsxs("button", {
+									type: "button",
+									className: "ff-google ff-google--outline",
+									disabled: saving,
+									onClick: prepareAndSignIn,
+									children: [/* @__PURE__ */ jsx(Google, {}), saving && pendingRoute === "google" ? "Opening Google…" : "Continue with Google"]
+								}),
+								/* @__PURE__ */ jsx("button", {
+									type: "button",
+									className: "ff-create",
+									disabled: saving,
+									onClick: goCreateAccount,
+									children: saving && pendingRoute === "register" ? "Opening sign up…" : "Create account"
+								}),
+								/* @__PURE__ */ jsx("p", {
+									className: "ff-trust ff-trust--muted",
+									children: "Then you can close the tab."
+								}),
+								/* @__PURE__ */ jsx("button", {
+									type: "button",
+									className: "ff-havelogin",
+									disabled: saving,
+									onClick: goLogin,
+									children: saving && pendingRoute === "login" ? "Opening sign in…" : "I already have an account"
+								})
+							]
 						})
 					})]
 				})
@@ -16832,6 +16822,7 @@ createServer((page) => createInertiaApp({
 			"./Pages/components/SearchLauncher.jsx": SearchLauncher_exports,
 			"./Pages/components/SearchListScreen.jsx": SearchListScreen_exports,
 			"./Pages/components/SearchWizard.jsx": SearchWizard_exports,
+			"./Pages/components/UpgradePromptModal.jsx": UpgradePromptModal_exports,
 			"./Pages/components/VideoCard.jsx": VideoCard_exports
 		}))[`./Pages/${name}.jsx`];
 	},

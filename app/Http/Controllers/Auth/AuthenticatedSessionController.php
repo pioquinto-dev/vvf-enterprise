@@ -2,12 +2,14 @@
 
 namespace App\Http\Controllers\Auth;
 
+use App\Http\Controllers\FreeSearchFunnelController;
 use App\Models\PricingPlan;
 use App\Models\User;
 use App\Services\Admin\AdminImpersonationService;
 use App\Services\Admin\UserActivityService;
 use App\Services\Auth\PostAuthenticationRedirector;
 use App\Services\Billing\BillingService;
+use App\Services\CustomKeywordSearch\SavedSearchManager;
 use App\Support\TrialCheckoutIntent;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -23,6 +25,7 @@ class AuthenticatedSessionController extends Controller
     public function __construct(
         private readonly PostAuthenticationRedirector $redirector,
         private readonly BillingService $billing,
+        private readonly SavedSearchManager $searches,
         private readonly AdminImpersonationService $impersonation,
         private readonly UserActivityService $activity,
     ) {}
@@ -62,6 +65,10 @@ class AuthenticatedSessionController extends Controller
 
         if ($checkout = $this->checkoutRedirect($request)) {
             return Inertia::location($checkout);
+        }
+
+        if ($pendingRedirect = $this->pendingFreeSearchRedirect($request)) {
+            return $pendingRedirect;
         }
 
         return redirect()->intended($this->redirector->destination($request));
@@ -118,5 +125,53 @@ class AuthenticatedSessionController extends Controller
         }
 
         return $this->billing->checkout($user, $plan, (bool) ($intent['with_trial'] ?? false));
+    }
+
+    private function pendingFreeSearchRedirect(Request $request): ?RedirectResponse
+    {
+        $pending = FreeSearchFunnelController::pull($request);
+
+        if (! is_array($pending)) {
+            return null;
+        }
+
+        $user = $request->user();
+
+        if (! $user instanceof User) {
+            FreeSearchFunnelController::put($request, $pending);
+
+            return null;
+        }
+
+        try {
+            $this->billing->ensureCanCreateSearch($user);
+            $search = $this->searches->create(
+                user: $user,
+                guestToken: null,
+                type: $pending['type'],
+                phrase: $pending['phrase'],
+                keywords: $pending['keywords'],
+                name: $pending['phrase'],
+                frequency: $pending['frequency'],
+                sources: $pending['sources'] ?? null,
+            );
+
+            $tracked = [[
+                'id' => $search->id,
+                'name' => $search->name,
+                'url' => $search->url(),
+                'status' => $search->status,
+            ]];
+
+            return redirect()->route('dashboard')
+                ->with('tracked_searches', $tracked)
+                ->with('processing_searches', $tracked);
+        } catch (ValidationException $exception) {
+            return redirect()->route('dashboard')->with('search_access_prompt', [
+                'reason' => 'search_credit_exhausted',
+                'phrase' => $pending['phrase'] ?? '',
+                'message' => collect($exception->errors())->flatten()->first() ?? 'We could not start this search.',
+            ]);
+        }
     }
 }

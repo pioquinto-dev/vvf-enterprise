@@ -42,6 +42,7 @@
   "resources/js/Pages/components/SearchLauncher.jsx": [],
   "resources/js/Pages/components/SearchListScreen.jsx": [],
   "resources/js/Pages/components/SearchWizard.jsx": [],
+  "resources/js/Pages/components/UpgradePromptModal.jsx": [],
   "resources/js/Pages/components/VideoCard.jsx": [],
   "resources/js/components/ContactFormCard.jsx": [],
   "resources/js/components/admin/AdminDataTable.jsx": [],

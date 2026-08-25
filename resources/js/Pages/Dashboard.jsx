@@ -330,19 +330,14 @@ function SearchAccessPromptModal({ prompt, billing, onClose, onUpgrade }) {
   const hasUsedTrial = billing?.hasUsedTrial ?? false;
   const ctaLabel = trialEligible && !hasUsedTrial ? 'Start 8-day trial' : 'View Growth plan';
   const body = trialEligible && !hasUsedTrial
-    ? 'You already used your free search. Start your 8-day trial to unlock more searches and keep this one moving.'
-    : 'You already used your free search. Upgrade to Growth to unlock more searches and keep researching.';
-  const detail = prompt?.phrase
-    ? `Your search for ${String.fromCharCode(8220)}${prompt.phrase}${String.fromCharCode(8221)} was not started because this account is out of search credits for the current period.`
-    : 'Your search was not started because this account is out of search credits for the current period.';
+    ? 'You are out of search credits. Start your 8-day trial to unlock more searches.'
+    : 'You are out of search credits. Upgrade to Growth to keep searching.';
 
   return (
     <UpgradePromptModal
       eyebrow="Search credits"
       title="Free search already used"
       body={body}
-      detail={detail}
-      emphasis={prompt?.message ?? null}
       primaryLabel={ctaLabel}
       onPrimary={onUpgrade}
       onClose={onClose}
