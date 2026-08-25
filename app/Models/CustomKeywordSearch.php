@@ -110,7 +110,6 @@ class CustomKeywordSearch extends Model
     {
         return [
             self::TYPE_BRAND,
-            self::TYPE_COMPETITOR,
             self::TYPE_PRODUCT,
         ];
     }

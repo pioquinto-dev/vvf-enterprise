@@ -34,11 +34,11 @@ export const FEATURES = [
     accent: 'from-[#3a2b6b] to-[#8b3df0]',
   },
   {
-    id: 'competitors',
+    id: 'tracking',
     tag: 'Monitoring',
-    title: 'Competitor Tracking',
-    body: 'Point Brand Beacon at a competitor and get a running feed of every video mentioning them - organic creator posts, affiliate content, and paid spark ads alike.',
-    bullets: ['Unlimited competitor bookmarks', 'Weekly change digest', 'Share-of-voice trendline'],
+    title: 'Brand Tracking',
+    body: 'Point Brand Beacon at a brand and get a running feed of every video mentioning it - organic creator posts, affiliate content, and paid spark ads alike.',
+    bullets: ['Unlimited video bookmarks', 'Weekly change digest', 'Share-of-voice trendline'],
     accent: 'from-[#0f3d5c] to-[#2aa7c4]',
   },
   {
@@ -55,11 +55,11 @@ export const STEPS = [
   {
     n: '01',
     title: 'Give us a keyword',
-    body: 'Enter your brand, a competitor, or a product keyword to start the search.',
+    body: 'Enter your brand or a product keyword to start the search.',
     mockup: {
       type: 'search',
       label: 'Search setup',
-      lines: ['rhode skin', 'competitor', '1 subject only'],
+      lines: ['rhode skin', 'brand', '1 subject only'],
     },
   },
   {
@@ -232,7 +232,7 @@ export const PRICING_PLAN_ORDER = PRICING.monthly.map((plan) => plan.slug ?? pla
 export const FAQS = [
 	{
 		q: "What counts as one search?",
-		a: "One subject: your brand, a single competitor, or a single product. Included are any keywords you attach to widen the search. All of those keywords are covered by that one search, so ticking six terms still only spends one."
+		a: "One subject: your brand or a single product. Included are any keywords you attach to widen the search. All of those keywords are covered by that one search, so ticking six terms still only spends one."
 	},
 	{
 		q: "How long does a search take?",
@@ -255,7 +255,7 @@ export const FAQS = [
 export const FOOTER_LINKS = [
   {
     heading: 'Product',
-    links: ['Outlier Vault', 'Competitor Tracking', 'Creator Shortlists', 'Virality Alerts', 'Changelog'],
+    links: ['Outlier Vault', 'Brand Tracking', 'Creator Shortlists', 'Virality Alerts', 'Changelog'],
   },
   {
     heading: 'Company',
@@ -281,14 +281,6 @@ export const SEARCH_TYPES = {
     sectionHeading: 'Add terms to expand on your brand',
     sample: 'rhode skin',
     keywords: ['beauty', 'skincare', 'eye gel', 'serum', 'reviews', 'routine'],
-  },
-  competitor: {
-    key: 'competitor',
-    label: 'Competitor',
-    placeholder: 'Enter one competitor',
-    sectionHeading: 'Add terms to expand on this competitor',
-    sample: 'skims',
-    keywords: ['review', 'dupe', 'haul', 'grwm', 'vs', 'viral'],
   },
   product: {
     key: 'product',

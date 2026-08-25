@@ -5176,7 +5176,7 @@
 .bbh .hero h1 .hl { position: relative; white-space: nowrap; z-index: 1; }
 .bbh .hero h1 .hl::after { content: ''; position: absolute; left: -0.03em; right: -0.03em; bottom: 0.06em; height: 0.28em; background: var(--yellow); z-index: -1; }
 .bbh .hero__sub { margin: 18px auto 0; max-width: 61ch; font-size: 1.06rem; line-height: 1.6; color: var(--muted); }
-.bbh .modes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; margin: 12px 0 20px; padding: 4px; border: 1px solid var(--line); border-radius: 100px; background: var(--paper); }
+.bbh .modes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; margin: 12px 0 20px; padding: 4px; border: 1px solid var(--line); border-radius: 100px; background: var(--paper); }
 .bbh .mode { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 40px; padding: 0 14px; border-radius: 100px; border: 0; background: transparent; cursor: pointer; color: var(--muted); font-size: 0.86rem; font-weight: 600; transition: all 0.2s var(--ease); }
 .bbh .mode svg { width: 15px; height: 15px; }
 .bbh .mode:hover:not([disabled]):not(.is-on) { background: rgba(255, 255, 255, 0.7); color: var(--ink); }

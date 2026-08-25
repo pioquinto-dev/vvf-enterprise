@@ -65,7 +65,7 @@ class AdminListingRepository
                 ['name' => 'date', 'label' => 'Range', 'options' => ['today', '7d', '30d', 'custom']],
             ],
             'searches' => [
-                ['name' => 'type', 'label' => 'Type', 'options' => ['brand', 'competitor', 'product']],
+                ['name' => 'type', 'label' => 'Type', 'options' => ['brand', 'product']],
                 ['name' => 'owner', 'label' => 'Owner', 'options' => $this->ownerOptions()],
                 ['name' => 'date', 'label' => 'Range', 'options' => ['today', '7d', '30d', 'custom']],
             ],

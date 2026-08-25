@@ -10,7 +10,7 @@ const OUTLIER_VIDEOS = [
   { handle: '@cleangirl.ari', mult: '22×', views: '2.8M', image: '/images/landing/discovery-brow-grooming.png' },
 ];
 
-const COMPETITOR_FEED = [
+const BRAND_FEED = [
   {
     title: '"the serum that survived my wedding weekend"',
     meta: '2.1M views · @styledbymia',
@@ -59,7 +59,7 @@ export default function Features() {
           Everything you need to read <span className="hl">TikTok</span>
         </h2>
         <p>
-          Three tools built on one index. Find what broke out, watch who is moving, and get pinged when something about
+          Three tools built on one index. Find what broke out, watch what is moving, and get pinged when something about
           you starts climbing.
         </p>
       </div>
@@ -117,7 +117,7 @@ export default function Features() {
               </div>
             </div>
 
-            <div className={`pane${active === 'competitors' ? '' : ' hide'}`}>
+            <div className={`pane${active === 'tracking' ? '' : ' hide'}`}>
               <div className="comp">
                 <div className="comp__head">
                   <span className="comp__logo">
@@ -137,7 +137,7 @@ export default function Features() {
                 </div>
 
                 <div className="feed">
-                  {COMPETITOR_FEED.map((item) => (
+                  {BRAND_FEED.map((item) => (
                     <div className="feed__row" key={item.title}>
                       <span className="feed__thumb">
                         <img src={item.image} alt="" />

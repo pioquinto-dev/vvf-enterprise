@@ -1,10 +1,9 @@
 import { useRef, useState } from 'react';
 
-import { Arrow, Search, Store, Target } from '../components/Icons.jsx';
+import { Arrow, Search, Store } from '../components/Icons.jsx';
 
 const MODES = [
   { key: 'brand', label: 'Your brand', icon: Store, prompt: 'Which brand do you want to research?', sample: 'rhode skin' },
-  { key: 'competitor', label: 'A competitor', icon: Target, prompt: 'Which competitor should we watch?', sample: 'skims' },
   { key: 'product', label: 'A product', icon: Search, prompt: 'Which product do you want to track?', sample: 'lip oil' },
 ];
 
@@ -59,7 +58,7 @@ export default function Hero({ onStart }) {
 
           <label className="box__label" htmlFor="search-subject">
             <span className="box__step">2</span>
-            Type your {type === 'product' ? 'product' : type === 'brand' ? 'brand name' : 'competitor'}
+            Type your {type === 'product' ? 'product' : 'brand name'}
           </label>
 
           <div className="box__field">
@@ -70,7 +69,7 @@ export default function Hero({ onStart }) {
               value={value}
               onChange={(e) => setValue(e.target.value)}
               placeholder={mode.sample}
-              aria-label={`Type your ${type === 'product' ? 'product' : type === 'brand' ? 'brand name' : 'competitor'}`}
+              aria-label={`Type your ${type === 'product' ? 'product' : 'brand name'}`}
             />
             <button type="submit" className="btn btn--primary btn--lg btn--pulse">
               Find outliers

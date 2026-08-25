@@ -29,9 +29,11 @@ Route::prefix('search')->group(function (): void {
     Route::get('/', function (Request $request) {
         return Inertia::render('Search/Free', [
             'phrase' => trim((string) $request->query('q', '')),
-            'type' => in_array($request->query('type'), ['brand', 'competitor', 'product'], true)
-                ? $request->query('type')
-                : 'brand',
+            'type' => match ((string) $request->query('type')) {
+                'product' => 'product',
+                'competitor' => 'brand',
+                default => 'brand',
+            },
             'error' => $request->session()->pull('free_search_error'),
         ]);
     })->name('search.keywords');

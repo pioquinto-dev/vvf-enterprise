@@ -250,8 +250,10 @@ class SavedSearchController extends Controller
             'recent' => $this->recentSearches($request),
             'stats' => $this->dashboardStats($request),
             'searchSuggestions' => [
-                'brand' => $this->suggestions($this->searches->all($request, [CustomKeywordSearch::TYPE_BRAND], false), [CustomKeywordSearch::TYPE_BRAND]),
-                'competitor' => $this->suggestions($this->searches->all($request, [CustomKeywordSearch::TYPE_COMPETITOR], false), [CustomKeywordSearch::TYPE_COMPETITOR]),
+                'brand' => $this->suggestions(
+                    $this->searches->all($request, [CustomKeywordSearch::TYPE_BRAND, CustomKeywordSearch::TYPE_COMPETITOR], false),
+                    [CustomKeywordSearch::TYPE_BRAND, CustomKeywordSearch::TYPE_COMPETITOR]
+                ),
                 'product' => $this->suggestions($this->searches->all($request, [CustomKeywordSearch::TYPE_PRODUCT], false), [CustomKeywordSearch::TYPE_PRODUCT]),
             ],
         ]);
@@ -293,7 +295,7 @@ class SavedSearchController extends Controller
     }
 
     /**
-     * GET /brands — the dedicated brand + competitor search hub.
+     * GET /brands — the dedicated brand search hub.
      */
     public function brands(Request $request): Response
     {
@@ -739,6 +741,10 @@ class SavedSearchController extends Controller
 
         if ($type === 'brand-group') {
             return $type;
+        }
+
+        if ($type === CustomKeywordSearch::TYPE_COMPETITOR) {
+            return CustomKeywordSearch::TYPE_BRAND;
         }
 
         return in_array($type, CustomKeywordSearch::allowedTypes(), true) ? $type : null;

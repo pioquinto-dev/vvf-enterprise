@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { Logo } from '../components/Icons.jsx';
 
 const COLS = [
-  { h: 'Product', links: ['Outlier Vault', 'Competitor Tracking', 'Creator Shortlists', 'Virality Alerts', 'Changelog'] },
+  { h: 'Product', links: ['Outlier Vault', 'Brand Tracking', 'Creator Shortlists', 'Virality Alerts', 'Changelog'] },
   { h: 'Company', links: ['About', 'Careers', 'Blog', 'Press kit', 'Contact'] },
   { h: 'Resources', links: ['TikTok benchmarks', 'Category reports', 'Help center', 'API docs', 'Status'] },
   { h: 'Legal', links: ['Terms', 'Privacy', 'DPA', 'Security'] },

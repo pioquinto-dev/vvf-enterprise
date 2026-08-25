@@ -11,7 +11,6 @@ import { savedSearch as api, untrackSearch } from '../../landing/flow/api.js';
 const FILTER_LABELS = {
   'brand-group': 'Brand searches',
   brand: 'Brand searches',
-  competitor: 'Competitor searches',
   product: 'Product searches',
 };
 
@@ -73,7 +72,7 @@ export default function Index({
   const menuRef = useRef(null);
 
   const title = filterType ? FILTER_LABELS[filterType] ?? 'Bookmarks' : 'Bookmarks';
-  const searchHref = `/search?type=${filterType === 'competitor' ? 'competitor' : 'brand'}`;
+  const searchHref = `/search?type=${filterType === 'product' ? 'product' : 'brand'}`;
 
   /* close the row menu on outside click / escape */
   useEffect(() => {
@@ -310,7 +309,6 @@ export default function Index({
                 >
                   <option value="all">{isBrandCategoryView ? 'All categories' : 'All types'}</option>
                   <option value="brand">{isBrandCategoryView ? 'Own' : 'Brand searches'}</option>
-                  <option value="competitor">Competitor searches</option>
                   {!isBrandCategoryView && <option value="product">Product searches</option>}
                 </Sel>
               )}

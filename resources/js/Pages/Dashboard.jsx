@@ -28,7 +28,7 @@ const STATUS_MAP = {
   failed:    { label: 'Failed',     cls: 'pill--bad' },
 };
 
-const TYPE_LABEL = { brand: 'Brand', competitor: 'Competitor', product: 'Product' };
+const TYPE_LABEL = { brand: 'Brand', competitor: 'Brand', product: 'Product' };
 const titleCase = (v) => String(v || '').split(/[-_\s]+/).filter(Boolean).map((w) => w[0].toUpperCase() + w.slice(1)).join(' ');
 const formatDate = (iso) => {
   if (!iso) return 'not yet';

@@ -61,7 +61,7 @@ class DetailScreenBoundary extends Component {
 }
 
 /**
- * The single detail view for every saved search — brand, competitor, and
+ * The single detail view for every saved search — brand and
  * product all render the same analytics tracker (the one design identity).
  */
 export default function Show({ search: initial, isAuthenticated = false, billing }) {

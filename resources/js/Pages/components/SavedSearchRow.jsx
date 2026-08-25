@@ -14,7 +14,7 @@ const STATUS = {
   failed: { label: 'Failed', cls: 'pill--bad' },
 };
 
-const TYPE_LABEL = { brand: 'Brand', competitor: 'Competitor', product: 'Product' };
+const TYPE_LABEL = { brand: 'Brand', competitor: 'Brand', product: 'Product' };
 
 function titleCase(value) {
   return String(value || '')

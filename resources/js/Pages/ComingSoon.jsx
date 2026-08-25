@@ -43,7 +43,7 @@ export default function ComingSoon() {
 
                             <div className="mt-8 flex flex-wrap gap-3 text-sm text-ink/62 dark:text-white/62">
                                 <span className="surface px-4 py-2">Track breakout TikTok content</span>
-                                <span className="surface px-4 py-2">Spot brand and competitor momentum</span>
+                                <span className="surface px-4 py-2">Spot brand and product momentum</span>
                                 <span className="surface px-4 py-2">Join the launch list</span>
                             </div>
                         </section>

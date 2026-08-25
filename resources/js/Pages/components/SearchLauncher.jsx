@@ -1,13 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
 import { router } from '@inertiajs/react';
 
-import { Arrow, Search, Store, Target } from '../../landing/components/Icons.jsx';
+import { Arrow, Search, Store } from '../../landing/components/Icons.jsx';
 
 /**
  * Step one of the search flow — pick a subject.
  *
  * Redesigned to match the flat "Brand Beacon — Start a search" mockup:
- *   - a segmented mode pill (Your brand / A competitor / A product) with a
+ *   - a segmented mode pill (Your brand / A product) with a
  *     yellow sliding indicator behind the active tab,
  *   - one unified pill-shaped search bar with the Continue button inline,
  *   - a "Popular" row of fill-in chips that only *populate* the input
@@ -22,14 +22,6 @@ const TYPES = [
         placeholder: 'Enter your brand name…',
         sample: 'rhode skin',
         suggestions: ['rhode skin', 'skims', 'lip oil'],
-    },
-    {
-        key: 'competitor',
-        label: 'A competitor',
-        icon: Target,
-        placeholder: 'Enter a competitor to watch…',
-        sample: 'skims',
-        suggestions: ['skims', 'fenty beauty', 'gymshark'],
     },
     {
         key: 'product',

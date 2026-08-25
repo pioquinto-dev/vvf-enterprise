@@ -14,7 +14,7 @@ import { Check } from '../../landing/components/Icons.jsx';
  *
  * The wizard branches by search kind, but every search can now optionally add
  * source context before it runs:
- *   - product / brand / competitor → Subject → Keywords → Sources → run
+ *   - product / brand → Subject → Keywords → Sources → run
  * The run/loading screen is *not* a wizard step and has no stepper.
  *
  * Steps advance in local state so keyword work survives a step back, and a
@@ -172,7 +172,7 @@ export default function SearchWizard({
     initialType = 'brand',
     initialQuery = '',
     heading = 'Start a search',
-    subheading = 'Pick one brand, competitor, or product — we widen it with smarter keywords on the next step.',
+    subheading = 'Pick one brand or product — we widen it with smarter keywords on the next step.',
     subjectExtra = null,
     suggestionsByType = {},
     onTrackedSearchChange = null,
@@ -261,13 +261,13 @@ export default function SearchWizard({
             return;
         }
 
-        if (!pendingSearch.payload || pendingSearch.type !== 'brand' && pendingSearch.type !== 'competitor' && pendingSearch.type !== 'product') {
+        if (!pendingSearch.payload || !['brand', 'competitor', 'product'].includes(pendingSearch.type)) {
             clearPendingSearch();
             return;
         }
 
         writePendingSearch({ ...pendingSearch, started: true });
-        setType(pendingSearch.type);
+        setType(pendingSearch.type === 'competitor' ? 'brand' : pendingSearch.type);
         setPhrase(pendingSearch.phrase ?? '');
         setPending(pendingSearch.payload);
         setError(null);
