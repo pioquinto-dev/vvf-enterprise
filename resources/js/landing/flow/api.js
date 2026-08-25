@@ -102,6 +102,43 @@ export const videoAnalysis = {
   get: (id) => request(`${API_V1}/videos/${id}/analysis`),
 };
 
+/* ---------------- tracked video analyses (session storage) ---------------- */
+
+const TRACKED_ANALYSES_KEY = 'vvf-tracked-video-analyses';
+
+export function readTrackedVideoAnalyses() {
+  try {
+    const raw = window.sessionStorage.getItem(TRACKED_ANALYSES_KEY);
+    const parsed = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+export function writeTrackedVideoAnalyses(entries) {
+  try {
+    window.sessionStorage.setItem(TRACKED_ANALYSES_KEY, JSON.stringify(entries.slice(0, 25)));
+  } catch {
+    /* storage disabled — tracking is a nicety, not a requirement */
+  }
+}
+
+export function trackVideoAnalysis(entry) {
+  const existing = readTrackedVideoAnalyses().filter((item) => String(item.videoId) !== String(entry.videoId));
+  writeTrackedVideoAnalyses([{ ...entry }, ...existing]);
+}
+
+export function updateTrackedVideoAnalysis(videoId, patch) {
+  writeTrackedVideoAnalyses(
+    readTrackedVideoAnalyses().map((item) => (String(item.videoId) === String(videoId) ? { ...item, ...patch } : item))
+  );
+}
+
+export function untrackVideoAnalysis(videoId) {
+  writeTrackedVideoAnalyses(readTrackedVideoAnalyses().filter((item) => String(item.videoId) !== String(videoId)));
+}
+
 /* ---------------- tracked searches (session storage) ---------------- */
 
 const TRACKED_KEY = 'vvf-tracked-searches';

@@ -191,6 +191,15 @@ class TiktokCdnMediaRepairService
             ];
         }
 
+        if (! $this->shouldRefreshFromApify($video)) {
+            return [
+                'status' => 'skipped',
+                'field_updates' => $this->emptyFieldUpdates(),
+                'changed_fields' => [],
+                'source_url' => $sourceUrl,
+            ];
+        }
+
         $trigger = $this->startRefreshTrigger($video, $sourceUrl);
 
         try {
@@ -435,5 +444,14 @@ class TiktokCdnMediaRepairService
         }
 
         return $fields;
+    }
+
+    private function shouldRefreshFromApify(ViralVideo $video): bool
+    {
+        if ($video->created_at === null) {
+            return true;
+        }
+
+        return $video->created_at->lte(now()->subHours(23));
     }
 }

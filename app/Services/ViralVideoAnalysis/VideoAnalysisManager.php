@@ -22,6 +22,8 @@ class VideoAnalysisManager
         private readonly BillingService $billing,
         private readonly CreativeStrategistGenerator $strategist,
         private readonly UserActivityService $activity,
+        private readonly VideoPreparationProcessor $preparations,
+        private readonly UserVideoAnalysisProcessor $processor,
     ) {}
 
     public function request(User $user, ViralVideo $video, bool $forceRefresh = false): VideoAnalysis
@@ -58,28 +60,16 @@ class VideoAnalysisManager
             ->first();
 
         if ($preparation !== null && ! $preparation->isComplete()) {
-            PrepareVideoAnalysis::dispatchSync($preparation->id);
+            $this->preparations->process($preparation->fresh());
         }
 
         $analysis = $analysis->fresh();
 
         if ($analysis->isProcessing()) {
-            RunVideoAnalysis::dispatchSync($analysis->id);
+            $this->processor->process($analysis->fresh());
         }
 
-        $analysis = $analysis->fresh();
-
-        if ($analysis->isProcessing()) {
-            // A search must not advertise a ready winner while its automatic
-            // analysis is left in limbo. Preserve the search result, but make
-            // the analysis outcome explicit and terminal.
-            $analysis->forceFill([
-                'status' => VideoAnalysis::STATUS_FAILED,
-                'error_message' => 'Automatic winner analysis did not finish before the search completed.',
-            ])->save();
-        }
-
-        return $analysis->refresh();
+        return $analysis->fresh();
     }
 
     private function queue(User $user, ViralVideo $video, bool $forceRefresh, bool $countsTowardQuota): VideoAnalysis

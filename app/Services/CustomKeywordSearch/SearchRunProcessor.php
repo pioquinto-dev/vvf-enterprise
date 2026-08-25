@@ -244,10 +244,11 @@ class SearchRunProcessor
         $attached = $this->persist($search, $run, $trigger, $top, $freshlyScraped);
         $this->fillMissingSourceHandleFromAi($search, $top);
 
-        // A result is not ready to render until its freshly scraped imagery is
-        // durable. This is intentionally synchronous: the running screen must
-        // not send a user to cards backed by short-lived provider URLs.
-        $this->archiveMediaBeforeCompletion($freshlyScraped);
+        // Fresh results can be shown before archival finishes; the repair
+        // command and async archive jobs can catch up afterward if any source
+        // URLs expire or an upload hiccups. Keeping this off the critical path
+        // prevents a long media copy from delaying an otherwise ready search.
+        $this->archiveMediaInBackground($freshlyScraped);
 
         $trigger->update([
             'item_count' => count($rawItems),
@@ -501,14 +502,14 @@ class SearchRunProcessor
      *
      * @param  array<int, string>  $viralVideoIds
      */
-    private function archiveMediaBeforeCompletion(array $viralVideoIds): void
+    private function archiveMediaInBackground(array $viralVideoIds): void
     {
         if ($viralVideoIds === [] || ! config('viral_videos.media.enabled', false)) {
             return;
         }
 
         foreach (array_unique($viralVideoIds) as $viralVideoId) {
-            ArchiveViralVideoMedia::dispatchSync($viralVideoId);
+            ArchiveViralVideoMedia::dispatch($viralVideoId);
         }
     }
 

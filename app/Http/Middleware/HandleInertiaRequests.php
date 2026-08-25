@@ -77,6 +77,8 @@ class HandleInertiaRequests extends Middleware
             ],
             'flash' => [
                 'status' => fn () => $request->session()->get('status'),
+                'trackedSearches' => fn () => $request->session()->get('tracked_searches', []),
+                'processingSearches' => fn () => $request->session()->get('processing_searches', []),
             ],
             'services' => [
                 'apifyConfigured' => filled(config('services.apify.token')),

@@ -29,13 +29,17 @@ class SnapshotRecorder
         $metrics = $this->metrics->for($results);
         $tallies = $this->metrics->tallies($results);
 
-        return CustomKeywordSearchSnapshot::create($metrics + [
-            'custom_keyword_search_id' => $search->id,
-            'custom_keyword_search_run_id' => $run?->id,
-            'captured_at' => now(),
-            'is_reconstructed' => false,
-            'hashtag_counts' => $tallies['hashtags'],
-            'sound_counts' => $tallies['sounds'],
-        ]);
+        return CustomKeywordSearchSnapshot::updateOrCreate(
+            [
+                'custom_keyword_search_id' => $search->id,
+                'custom_keyword_search_run_id' => $run?->id,
+                'is_reconstructed' => false,
+            ],
+            $metrics + [
+                'captured_at' => $run?->completed_at ?? now(),
+                'hashtag_counts' => $tallies['hashtags'],
+                'sound_counts' => $tallies['sounds'],
+            ],
+        );
     }
 }

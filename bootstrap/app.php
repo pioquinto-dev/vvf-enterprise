@@ -50,6 +50,8 @@ return Application::configure(basePath: dirname(__DIR__))
             return '/dashboard';
         });
 
+        $middleware->redirectGuestsTo(fn () => route('landing'));
+
         $middleware->validateCsrfTokens(except: [
             'stripe/webhook',
         ]);

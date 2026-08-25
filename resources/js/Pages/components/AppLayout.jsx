@@ -3,6 +3,7 @@ import { Link, router, useForm, usePage } from '@inertiajs/react';
 
 import AppFooter from './AppFooter.jsx';
 import { Logo, Menu, Close, Search, Library, Store, Exit, Spark, Arrow, Lock } from '../../landing/components/Icons.jsx';
+import { readTrackedVideoAnalyses, untrackVideoAnalysis, videoAnalysis } from '../../landing/flow/api.js';
 
 /* Old AppLayout tones → Brand Beacon pill classes, so pages passing the
    original `pill={{ tone }}` API keep rendering a sensible chip. */
@@ -125,6 +126,45 @@ function AccountBlock({ signedIn, name, email, onSignOut, signingOut, onNavigate
     );
 }
 
+function CompletedAnalysisModal({ item, onClose, onView }) {
+    if (!item) return null;
+
+    return (
+        <div className="bb-drawer is-open">
+            <button className="bb-drawer__bg" aria-label="Close notification" onClick={onClose} />
+            <div
+                className="mx-4 my-auto w-full max-w-[440px] rounded-[24px] border border-[#E8DFC9] bg-[linear-gradient(180deg,#fffdf7_0%,#fff8ea_100%)] p-6 shadow-[0_30px_90px_rgba(42,33,20,0.22)]"
+                style={{ marginInline: 'auto' }}
+                role="dialog"
+                aria-modal="true"
+                aria-label="Video analysis ready"
+            >
+                <div className="inline-flex items-center gap-2 rounded-full bg-[#FFF3CF] px-3 py-1 text-[11px] font-extrabold uppercase tracking-[0.08em] text-[#8C6B10]">
+                    <Spark className="h-3.5 w-3.5" />
+                    Video analysis ready
+                </div>
+                <h2 className="mt-4 text-[24px] font-[850] leading-tight tracking-[-0.03em] text-[var(--ink)]">
+                    Your analysis is done
+                </h2>
+                <p className="mt-3 text-[14px] leading-6 text-[var(--muted)]">
+                    {item.videoLabel || 'Your outlier video'} is ready. Open the search result it belongs to and we&apos;ll jump straight into the finished analysis.
+                </p>
+                <div className="mt-4 rounded-[16px] border border-[var(--line)] bg-white/80 px-4 py-3 text-[13px] font-semibold text-[var(--ink)]">
+                    {item.searchName || item.videoLabel || 'Saved search'}
+                </div>
+                <div className="mt-6 flex flex-wrap gap-3">
+                    <button type="button" className="btn btn--g" onClick={onClose}>
+                        Later
+                    </button>
+                    <button type="button" className="btn btn--y" onClick={onView}>
+                        View analysis
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+}
+
 /* ------------------------------------------------------------------ */
 
 /**
@@ -146,6 +186,7 @@ export default function AppLayout({ pill, step, title, subtitle, actions, toolba
     const { auth = {} } = props;
     const logout = useForm({});
     const [drawerOpen, setDrawerOpen] = useState(false);
+    const [completedAnalysis, setCompletedAnalysis] = useState(null);
 
     const signedIn = auth.signedIn ?? Boolean(auth.user);
     const impersonation = auth.impersonation;
@@ -165,6 +206,51 @@ export default function AppLayout({ pill, step, title, subtitle, actions, toolba
             document.body.style.overflow = '';
         };
     }, [drawerOpen]);
+
+    useEffect(() => {
+        if (!signedIn || completedAnalysis) return undefined;
+
+        let cancelled = false;
+
+        const poll = async () => {
+            const tracked = readTrackedVideoAnalyses().filter((item) => item && item.videoId && item.searchUrl);
+
+            if (tracked.length === 0) return;
+
+            const statuses = await Promise.all(
+                tracked.map(async (item) => {
+                    try {
+                        const payload = await videoAnalysis.get(item.videoId);
+                        return { item, analysis: payload?.analysis ?? null };
+                    } catch {
+                        return { item, analysis: null };
+                    }
+                })
+            );
+
+            if (cancelled) return;
+
+            const ready = statuses.find(({ analysis }) => analysis?.status === 'complete');
+
+            if (ready) {
+                setCompletedAnalysis(ready.item);
+                untrackVideoAnalysis(ready.item.videoId);
+                return;
+            }
+
+            statuses
+                .filter(({ analysis }) => analysis?.status === 'failed')
+                .forEach(({ item }) => untrackVideoAnalysis(item.videoId));
+        };
+
+        poll();
+        const timer = window.setInterval(poll, 4000);
+
+        return () => {
+            cancelled = true;
+            window.clearInterval(timer);
+        };
+    }, [signedIn, completedAnalysis]);
 
     const account = (
         <AccountBlock
@@ -264,6 +350,21 @@ export default function AppLayout({ pill, step, title, subtitle, actions, toolba
                     <AppFooter width={width} />
                 </main>
             </div>
+            <CompletedAnalysisModal
+                item={completedAnalysis}
+                onClose={() => setCompletedAnalysis(null)}
+                onView={() => {
+                    if (!completedAnalysis?.searchUrl || !completedAnalysis?.videoId) {
+                        setCompletedAnalysis(null);
+                        return;
+                    }
+
+                    const joiner = completedAnalysis.searchUrl.includes('?') ? '&' : '?';
+                    const target = `${completedAnalysis.searchUrl}${joiner}analysisVideo=${encodeURIComponent(completedAnalysis.videoId)}&openAnalysis=1`;
+                    setCompletedAnalysis(null);
+                    router.visit(target);
+                }}
+            />
         </div>
     );
 }

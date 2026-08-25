@@ -25,6 +25,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\RateLimiter;
 use Inertia\Inertia;
 use Inertia\Response;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 class SavedSearchController extends Controller
 {
@@ -537,9 +538,14 @@ class SavedSearchController extends Controller
      * GET /results/{search} — detail with the ranked result list. `{search}` is
      * the search's public id (numeric ids still resolve for old links).
      */
-    public function show(Request $request, string $search): Response
+    public function show(Request $request, string $search): Response|RedirectResponse
     {
-        $model = $this->searches->resolveByKey($request, $search);
+        try {
+            $model = $this->searches->resolveByKey($request, $search);
+        } catch (NotFoundHttpException) {
+            return redirect()->route('landing');
+        }
+
         $bookmarkedVideoIds = $this->bookmarks->idsForUser($request->user());
 
         $this->backfillEnrichmentIfMissing($model);
@@ -585,7 +591,11 @@ class SavedSearchController extends Controller
     /** Old /bookmarks/{id} and /bookmark/{id} links redirect to the canonical /results/{public_id}. */
     public function showLegacyRedirect(Request $request, int $id): RedirectResponse
     {
-        return redirect($this->searches->resolve($request, $id)->url());
+        try {
+            return redirect($this->searches->resolve($request, $id)->url());
+        } catch (NotFoundHttpException) {
+            return redirect()->route('landing');
+        }
     }
 
     /** JSON twin of show(), used to refresh the results page in place. */

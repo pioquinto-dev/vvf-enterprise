@@ -133,8 +133,11 @@ class BillingEntitlementService
         $baseline = max($before, $user->videoBookmarks()->count());
         $used = $baseline + 1;
 
+        $metadata = (array) $subscription->metadata;
+        data_set($metadata, 'subscription.viral_video_bookmarks.used', $used);
+
         $subscription->forceFill([
-            'metadata' => data_set((array) $subscription->metadata, 'subscription.viral_video_bookmarks.used', $used),
+            'metadata' => $metadata,
         ])->save();
     }
 
@@ -187,8 +190,11 @@ class BillingEntitlementService
         $before = max(0, (int) data_get($subscription->metadata, 'subscription.video_analysis.used', 0));
         $used = max($before, $this->derivedVideoAnalysisUsed($user));
 
+        $metadata = (array) $subscription->metadata;
+        data_set($metadata, 'subscription.video_analysis.used', $used);
+
         $subscription->forceFill([
-            'metadata' => data_set((array) $subscription->metadata, 'subscription.video_analysis.used', $used),
+            'metadata' => $metadata,
         ])->save();
 
         Log::info('Video analysis credit incremented.', [
@@ -211,8 +217,11 @@ class BillingEntitlementService
 
         $used = max(0, (int) data_get($subscription->metadata, 'subscription.video_analysis.used', 0) - 1);
 
+        $metadata = (array) $subscription->metadata;
+        data_set($metadata, 'subscription.video_analysis.used', $used);
+
         $subscription->forceFill([
-            'metadata' => data_set((array) $subscription->metadata, 'subscription.video_analysis.used', $used),
+            'metadata' => $metadata,
         ])->save();
     }
 
@@ -464,17 +473,37 @@ class BillingEntitlementService
     {
         $query = VideoAnalysis::query()
             ->where('user_id', $user->id)
-            ->where('status', VideoAnalysis::STATUS_COMPLETE)
             ->where('counts_toward_quota', true)
-            ->whereNotNull('analyzed_at');
+            ->where(function ($builder) {
+                $builder
+                    ->where(function ($complete) {
+                        $complete
+                            ->where('status', VideoAnalysis::STATUS_COMPLETE)
+                            ->whereNotNull('analyzed_at');
+                    })
+                    ->orWhere('status', VideoAnalysis::STATUS_PROCESSING);
+            });
 
         if ($this->hasPaidPlan($user)) {
             [$startsAt, $endsAt] = $this->currentBillingWindow($user);
 
             if ($startsAt !== null && $endsAt !== null) {
                 $query
-                    ->where('analyzed_at', '>=', $startsAt)
-                    ->where('analyzed_at', '<', $endsAt);
+                    ->where(function ($window) use ($startsAt, $endsAt) {
+                        $window
+                            ->where(function ($complete) use ($startsAt, $endsAt) {
+                                $complete
+                                    ->where('status', VideoAnalysis::STATUS_COMPLETE)
+                                    ->where('analyzed_at', '>=', $startsAt)
+                                    ->where('analyzed_at', '<', $endsAt);
+                            })
+                            ->orWhere(function ($processing) use ($startsAt, $endsAt) {
+                                $processing
+                                    ->where('status', VideoAnalysis::STATUS_PROCESSING)
+                                    ->where('created_at', '>=', $startsAt)
+                                    ->where('created_at', '<', $endsAt);
+                            });
+                    });
             }
         }
 

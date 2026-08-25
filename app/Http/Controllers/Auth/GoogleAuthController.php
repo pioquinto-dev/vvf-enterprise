@@ -107,7 +107,16 @@ class GoogleAuthController extends Controller
                     sources: $pending['sources'] ?? null,
                 );
 
-                return redirect()->route('search.running', ['id' => $search->id]);
+                $tracked = [[
+                    'id' => $search->id,
+                    'name' => $search->name,
+                    'url' => $search->url(),
+                    'status' => $search->status,
+                ]];
+
+                return redirect()->route('dashboard')
+                    ->with('tracked_searches', $tracked)
+                    ->with('processing_searches', $tracked);
             } catch (\Illuminate\Validation\ValidationException $exception) {
                 FreeSearchFunnelController::put($request, $pending);
 

@@ -1,8 +1,9 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
-import { Link, router } from '@inertiajs/react';
+import { Link, router, usePage } from '@inertiajs/react';
 
 import { savedSearch as savedSearchApi } from '../../../landing/flow/api.js';
 import { billing as billingApi } from '../../../landing/flow/api.js';
+import { trackVideoAnalysis, videoAnalysis } from '../../../landing/flow/api.js';
 import AnalysisModal from '../../VideoAnalysis/AnalysisModal.jsx';
 import { playerUrlFor } from './tiktokPlayer.js';
 
@@ -60,16 +61,122 @@ function chartGeometry(values) {
   const min = Math.min(...points);
   const max = Math.max(...points);
   const span = max - min;
+  const width = 100;
+  const height = 40;
+  const leftPad = 8;
+  const rightPad = 4;
+  const topPad = 4;
+  const bottomPad = 4;
   const coordinates = points.map((value, index) => ({
-    x: points.length === 1 ? 50 : 4 + (88 * index) / (points.length - 1),
-    y: span === 0 ? 20 : 34 - ((value - min) / span) * 28,
+    x: points.length === 1 ? 50 : leftPad + ((width - leftPad - rightPad) * index) / (points.length - 1),
+    y: span === 0 ? height / 2 : (height - bottomPad) - ((value - min) / span) * (height - topPad - bottomPad),
   }));
   const last = coordinates[coordinates.length - 1];
 
   return {
+    min,
+    max,
     points: coordinates.map(({ x, y }) => `${x.toFixed(2)},${y.toFixed(2)}`).join(' '),
     last,
   };
+}
+
+function metricAxisLabel(metric) {
+  if (metric === 'outliers') return 'Outliers';
+  if (metric === 'posts') return 'Posts';
+  if (metric === 'eng') return 'Engagement';
+  if (metric === 'engrate') return 'Engagement rate';
+  return 'Views';
+}
+
+function formatMetricTick(value, metric) {
+  if (metric === 'outliers') return `${Math.round(Number(value || 0))}`;
+  if (metric === 'engrate') return `${Number(value || 0).toFixed(1)}%`;
+  if (metric === 'posts') return `${Math.round(Number(value || 0))}`;
+  return compact(Number(value || 0));
+}
+
+function buildYAxisTicks(values, metric) {
+  const numbers = values
+    .map((value) => Number(value))
+    .filter((value) => Number.isFinite(value));
+
+  if (numbers.length === 0) {
+    return [{ value: 0, label: formatMetricTick(0, metric), offset: 100 }];
+  }
+
+  const max = Math.max(...numbers, 0);
+  const min = Math.min(...numbers, 0);
+
+  if (max === min) {
+    return [
+      { value: max, label: formatMetricTick(max, metric), offset: 0 },
+      { value: 0, label: formatMetricTick(0, metric), offset: 100 },
+    ];
+  }
+
+  return Array.from({ length: 4 }, (_, index) => {
+    const ratio = index / 3;
+    const value = max - ((max - min) * ratio);
+
+    return {
+      value,
+      label: formatMetricTick(value, metric),
+      offset: ratio * 100,
+    };
+  });
+}
+
+function buildXAxisLabels(points = []) {
+  if (points.length === 0) return [];
+  if (points.length === 1) return [{ label: points[0].label, align: 'start' }];
+
+  const labels = [{ label: points[0].label, align: 'start' }];
+  const middleIndex = Math.floor((points.length - 1) / 2);
+
+  if (middleIndex > 0 && middleIndex < points.length - 1) {
+    labels.push({ label: points[middleIndex].label, align: 'center' });
+  }
+
+  labels.push({ label: points[points.length - 1].label, align: 'end' });
+
+  return labels;
+}
+
+function weekKeyFromIso(iso) {
+  if (!iso) return null;
+
+  const date = new Date(iso);
+
+  if (Number.isNaN(date.getTime())) return null;
+
+  const utc = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
+  const day = utc.getUTCDay();
+  const diff = day === 0 ? -6 : 1 - day;
+  utc.setUTCDate(utc.getUTCDate() + diff);
+
+  return utc.toISOString().slice(0, 10);
+}
+
+function formatMetricValue(value, metric) {
+  if (metric === 'outliers') return `${Math.round(Number(value || 0))} outliers`;
+  if (metric === 'engrate') return `${Number(value || 0).toFixed(1)}%`;
+  if (metric === 'posts') return `${Math.round(Number(value || 0))} posts`;
+  if (metric === 'eng') return `${compact(Number(value || 0))} engagements`;
+
+  return `${compact(Number(value || 0))} views`;
+}
+
+function metricExplanation(metric) {
+  if (metric === 'eng') {
+    return 'Shows how much interaction those videos pulled that week, using likes, comments, shares, and saves together.';
+  }
+
+  if (metric === 'outliers') {
+    return 'Shows how many videos from that week truly broke out, not just how many were posted.';
+  }
+
+  return 'Shows the total views pulled by the videos uploaded in that week.';
 }
 
 function heatmapBestTime(heatmap) {
@@ -104,6 +211,17 @@ function canUsePaidVideoAnalysis(billing) {
   const limit = Number(billing.videoAnalysisLimit ?? 0);
 
   return Boolean(billing.hasPaidPlan) && limit !== 0;
+}
+
+function videoAnalysisRemaining(billing, startedThisSession = 0) {
+  if (!billing) return 0;
+
+  const limit = Number(billing.videoAnalysisLimit ?? 0);
+  const used = Number(billing.videoAnalysisUsed ?? 0) + Number(startedThisSession || 0);
+
+  if (limit === -1) return -1;
+
+  return Math.max(0, limit - used);
 }
 
 /** Render **bold** markers as <b>…</b> without allowing raw HTML. */
@@ -180,6 +298,7 @@ export default function DetailScreen({
   onTogglePause,
   onDelete,
 }) {
+  const { url: currentUrl } = usePage();
   const insights = search?.insights ?? {};
   const bullets = search?.insights_bullets ?? [];
 
@@ -189,15 +308,24 @@ export default function DetailScreen({
   const [menuOpen, setMenuOpen] = useState(false);
   const [expandedCardId, setExpandedCardId] = useState(null);
   const [analysisModal, setAnalysisModal] = useState(null);
+  const [confirmAnalysisVideo, setConfirmAnalysisVideo] = useState(null);
   const [upgradeModalOpen, setUpgradeModalOpen] = useState(false);
   const [visible, setVisible] = useState(PAGE_STEP);
   const [sortKey, setSortKey] = useState('outlier');
   const [metric, setMetric] = useState('views');
   const [videoPlayingId, setVideoPlayingId] = useState(null);
   const [heatmapTooltip, setHeatmapTooltip] = useState(null);
+  const [chartTooltip, setChartTooltip] = useState(null);
+  const [selectedWeekKey, setSelectedWeekKey] = useState(null);
   const [analysisByVideoId, setAnalysisByVideoId] = useState({});
+  const [analysisStarting, setAnalysisStarting] = useState(false);
+  const [reservedAnalysisVideoIds, setReservedAnalysisVideoIds] = useState([]);
+  const [analysisNotice, setAnalysisNotice] = useState(null);
   const menuRef = useRef(null);
+  const autoOpenedAnalysisRef = useRef(false);
   const canAnalyzeMoreOutliers = canUsePaidVideoAnalysis(billing);
+  const analysisRemainingNow = videoAnalysisRemaining(billing, reservedAnalysisVideoIds.length);
+  const analysisRemainingAfterUse = analysisRemainingNow === -1 ? 'unlimited' : Math.max(0, analysisRemainingNow - 1);
 
   // The modal polls independently. Keep those live results here so the card
   // that launched it immediately changes from "Analyzing" to "View analysis".
@@ -261,18 +389,62 @@ export default function DetailScreen({
 
   /* ------------- metric tabs ------------- */
   const trend = insights?.trend ?? {};
-  const metricKeys = { views: 'views', posts: 'posts', eng: 'engagement', engrate: 'rate' };
-  const activeSeries = trend?.metrics?.[metricKeys[metric]] ?? null;
+  const weeklyPoints = trend?.points ?? [];
+  const metricKeys = { views: 'views', eng: 'engagement', outliers: 'outliers' };
+  const metricSeriesMap = {
+    views: trend?.metrics?.views ?? null,
+    eng: trend?.metrics?.engagement ?? null,
+    outliers: weeklyPoints.length > 0 ? {
+      label: 'outliers',
+      format: 'count',
+      values: weeklyPoints.map((point) => Number(point?.outliers ?? 0)),
+      current: Number(weeklyPoints[weeklyPoints.length - 1]?.outliers ?? 0),
+      delta: weeklyPoints.length >= 2
+        ? {
+            value: Number(weeklyPoints[weeklyPoints.length - 1]?.outliers ?? 0) - Number(weeklyPoints[0]?.outliers ?? 0),
+            unit: 'absolute',
+            direction: Number(weeklyPoints[weeklyPoints.length - 1]?.outliers ?? 0) > Number(weeklyPoints[0]?.outliers ?? 0) ? 'up' : (Number(weeklyPoints[weeklyPoints.length - 1]?.outliers ?? 0) < Number(weeklyPoints[0]?.outliers ?? 0) ? 'down' : 'flat'),
+          }
+        : null,
+    } : null,
+  };
+  const activeSeries = metricSeriesMap[metricKeys[metric] ? metric : 'views'] ?? metricSeriesMap.views;
   const chartValues = activeSeries?.values ?? [];
   const chart = chartGeometry(chartValues);
   const completedRunCount = search?.runs?.length ?? 0;
-  const analyticsUnlocked = completedRunCount >= 2;
-  const showTrendMetric = analyticsUnlocked && activeSeries !== null;
+  const showTrendMetric = activeSeries !== null;
+  const xAxisLabels = buildXAxisLabels(weeklyPoints);
+  const yAxisTicks = buildYAxisTicks(chartValues, metric);
+  const chartPoints = chart?.points
+    ? chart.points.split(' ').map((pair) => pair.split(',').map(Number))
+    : [];
+  const videosByWeek = useMemo(() => {
+    const grouped = {};
+
+    results.forEach((video) => {
+      const weekKey = weekKeyFromIso(video.uploaded_at);
+
+      if (!weekKey) return;
+
+      if (!grouped[weekKey]) grouped[weekKey] = [];
+      grouped[weekKey].push(video);
+    });
+
+    Object.values(grouped).forEach((videos) => {
+      videos.sort((left, right) => (Number(right.views) || 0) - (Number(left.views) || 0));
+    });
+
+    return grouped;
+  }, [results]);
+  const selectedWeekVideos = selectedWeekKey ? (videosByWeek[selectedWeekKey] ?? []) : [];
+  const comparisonDelta = activeSeries?.delta ?? null;
+  const comparisonLabel = comparisonDelta
+    ? `${comparisonDelta.direction === 'up' ? '↑' : comparisonDelta.direction === 'down' ? '↓' : '→'} ${Math.abs(Number(comparisonDelta.value ?? 0))}${comparisonDelta.unit === 'points' ? ' pts' : comparisonDelta.unit === 'absolute' ? '' : '%'} vs ${weeklyPoints.length || 0} wk ago`
+    : null;
   const metricConfig = {
-    views:   { value: showTrendMetric ? compact(activeSeries.current) : compact(medianViews), label: showTrendMetric ? 'views in latest week' : 'median views per video' },
-    posts:   { value: showTrendMetric ? Number(activeSeries.current ?? 0).toLocaleString() : (videosInRun ?? 0).toLocaleString(), label: showTrendMetric ? 'posts in latest week' : 'videos in this run' },
-    eng:     { value: showTrendMetric ? compact(activeSeries.current) : '—', label: showTrendMetric ? 'engagements in latest week' : 'avg engagements per video' },
-    engrate: { value: showTrendMetric ? `${Number(activeSeries.current ?? 0).toFixed(1)}%` : (avgEng != null ? `${Number(avgEng).toFixed(1)}%` : '—'), label: showTrendMetric ? 'engagement rate in latest week' : 'average engagement rate' },
+    views:    { value: showTrendMetric ? compact(activeSeries?.current) : compact(medianViews), label: '' },
+    eng:      { value: showTrendMetric ? compact(activeSeries?.current) : '—', label: '' },
+    outliers: { value: showTrendMetric ? Number(activeSeries?.current ?? 0).toLocaleString() : outlierCount.toLocaleString(), label: '' },
   };
 
   /* ------------- posting heatmap ------------- */
@@ -295,17 +467,123 @@ export default function DetailScreen({
   /* ------------- open analysis modal (existing flow) ------------- */
   const openAnalysis = (video) => setAnalysisModal({ video, analysis: video.analysis ?? null });
   const closeAnalysis = () => setAnalysisModal(null);
+  const closeConfirmAnalysis = () => {
+    if (analysisStarting) return;
+    setConfirmAnalysisVideo(null);
+  };
   const openUpgradeModal = () => setUpgradeModalOpen(true);
   const closeUpgradeModal = () => setUpgradeModalOpen(false);
   const openUpgradeForAnalysis = () => billingApi.checkout('basic');
+  const videoLabel = (videoId) => {
+    const video = results.find((entry) => String(entry.id) === String(videoId));
+    return video?.handle || video?.username || video?.title || 'This video';
+  };
   const updateVideoAnalysis = (videoId, analysis) => {
     if (!videoId || !analysis) return;
 
-    setAnalysisByVideoId((current) => (
-      current[videoId]?.updated_at === analysis.updated_at && current[videoId]?.status === analysis.status
-        ? current
-        : { ...current, [videoId]: analysis }
-    ));
+    if (analysis.status === 'failed') {
+      setReservedAnalysisVideoIds((current) => current.filter((id) => String(id) !== String(videoId)));
+    }
+
+    setAnalysisByVideoId((current) => {
+      const previous = current[videoId] ?? results.find((entry) => String(entry.id) === String(videoId))?.analysis ?? null;
+
+      if (previous?.updated_at === analysis.updated_at && previous?.status === analysis.status) {
+        return current;
+      }
+
+      if (previous?.status === 'processing' && analysis.status === 'complete') {
+        setAnalysisNotice({
+          tone: 'success',
+          message: `${videoLabel(videoId)} analysis is ready.`,
+        });
+      }
+
+      if (previous?.status === 'processing' && analysis.status === 'failed') {
+        setAnalysisNotice({
+          tone: 'error',
+          message: `${videoLabel(videoId)} analysis could not be completed.`,
+        });
+      }
+
+      return { ...current, [videoId]: analysis };
+    });
+  };
+
+  useEffect(() => {
+    if (!analysisNotice) return undefined;
+
+    const timer = window.setTimeout(() => setAnalysisNotice(null), 5000);
+
+    return () => window.clearTimeout(timer);
+  }, [analysisNotice]);
+
+  useEffect(() => {
+    if (autoOpenedAnalysisRef.current) return;
+
+    const query = currentUrl.split('?')[1] ?? '';
+    const params = new URLSearchParams(query);
+    const targetVideoId = params.get('analysisVideo');
+    const shouldOpen = params.get('openAnalysis') === '1';
+
+    if (!shouldOpen || !targetVideoId) return;
+
+    const targetVideo = results.find((video) => String(video.id) === String(targetVideoId));
+
+    if (!targetVideo) return;
+
+    autoOpenedAnalysisRef.current = true;
+    openAnalysis(targetVideo);
+
+    if (typeof window !== 'undefined') {
+      const next = new URL(window.location.href);
+      next.searchParams.delete('analysisVideo');
+      next.searchParams.delete('openAnalysis');
+      window.history.replaceState({}, '', `${next.pathname}${next.search}${next.hash}`);
+    }
+  }, [currentUrl, results]);
+
+  const launchManualAnalysis = async (video) => {
+    setAnalysisStarting(true);
+    setConfirmAnalysisVideo(null);
+
+    try {
+      const payload = await videoAnalysis.request(video.id);
+      const nextAnalysis = payload?.analysis ?? null;
+
+      if (nextAnalysis) {
+        updateVideoAnalysis(video.id, nextAnalysis);
+      }
+
+      setReservedAnalysisVideoIds((current) => (
+        current.some((id) => String(id) === String(video.id)) ? current : [...current, video.id]
+      ));
+      trackVideoAnalysis({
+        videoId: video.id,
+        searchUrl: search?.url,
+        searchName: search?.name || search?.phrase,
+        videoLabel: video.handle || video.username || video.title || video.caption || 'Outlier video',
+      });
+    } catch (error) {
+      setConfirmAnalysisVideo(video);
+      window.alert(error?.message || 'Could not start this analysis.');
+    } finally {
+      setAnalysisStarting(false);
+    }
+  };
+
+  const handleAnalyzeAction = (video) => {
+    if (!canAnalyzeMoreOutliers) {
+      openUpgradeModal();
+      return;
+    }
+
+    if (video.analysis?.status === 'complete' || video.analysis?.status === 'processing') {
+      openAnalysis(video);
+      return;
+    }
+
+    setConfirmAnalysisVideo(video);
   };
 
   /* ============================ RENDER ============================ */
@@ -503,7 +781,7 @@ export default function DetailScreen({
                 onToggle={() => (!canAnalyzeMoreOutliers
                   ? openUpgradeModal()
                   : setExpandedCardId((cur) => cur === v.id ? null : v.id))}
-                onAnalyze={() => (canAnalyzeMoreOutliers ? openAnalysis(v) : openUpgradeModal())}
+                onAnalyze={() => handleAnalyzeAction(v)}
                 onToggleBookmark={() => onToggleVideoBookmark?.(v)}
                 bookmarking={bookmarkingVideoId === v.id}
                 isPlaying={videoPlayingId === v.id}
@@ -522,42 +800,98 @@ export default function DetailScreen({
       )}
 
       {/* ANALYTICS */}
-      <div className="rs-sh"><h2>Analytics</h2><span className="rs-note">This tracker, across completed search runs.</span></div>
+      <div className="rs-sh"><h2>Analytics</h2><span className="rs-note">Weekly buckets based on when the matched videos were uploaded.</span></div>
       <div className="rs-acard">
         <div className="rs-mtabs">
           {[
-            ['views', 'Views'], ['posts', 'Posts'], ['eng', 'Engagement'], ['engrate', 'Eng rate'],
+            ['views', 'views'], ['eng', 'engagement'], ['outliers', 'outliers'],
           ].map(([key, label]) => (
             <button key={key} className={`rs-mtab${metric === key ? ' on' : ''}`} onClick={() => setMetric(key)}>{label}</button>
           ))}
         </div>
-        <div className="rs-abig">
+        <div className="rs-abig rs-abig--flow">
           <span className="rs-abig__v">{metricConfig[metric].value}</span>
-          <span className="rs-abig__l">{metricConfig[metric].label}</span>
-        </div>
-        <span className="rs-achip"><i />{analyticsUnlocked
-          ? (trend?.has_reconstructed ? 'Includes reconstructed weeks' : 'Recorded refresh history')
-          : `Baseline · Refresh 1 · ${formatDate(search?.last_run_at) || '—'}`}
-        </span>
-        <div className="rs-achart">
-          <svg viewBox="0 0 100 40" preserveAspectRatio="none">
-            {chart && <polyline points={chart.points} fill="none" stroke="#E0A100" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />}
-            {chart && <circle cx={chart.last.x} cy={chart.last.y} r="2.1" fill="#F6C445" stroke="#fff" strokeWidth="1" />}
-          </svg>
-          {!analyticsUnlocked && <span className="rs-achart__dot" />}
-          <span className="rs-achart__now">now</span>
-          {!analyticsUnlocked && (
-            <div className="rs-achart__blur">
-              <div>
-                <b>Week-over-week unlocks at your next refresh</b>
-                <p>Come back after {formatDate(search?.next_run_at) || 'the next scheduled run'} to compare this run against the last. History stays blurred until there are two points to trend.</p>
-              </div>
-            </div>
+          {comparisonLabel && (
+            <span className="rs-abig__delta">
+              {comparisonLabel}
+              <span className="rs-abig__info">
+                <button
+                  type="button"
+                  className="rs-abig__infoBtn"
+                  aria-label={`About ${metric}`}
+                >
+                  i
+                </button>
+                <span className="rs-abig__tooltip" role="tooltip">
+                  {metricExplanation(metric)}
+                </span>
+              </span>
+            </span>
           )}
         </div>
-        <div className="rs-axlabels">
-          <span>Refresh {Math.max(1, completedRunCount)} · {formatDate(search?.last_run_at) || '—'}</span>
-          <span>Next · {formatDate(search?.next_run_at) || '—'}</span>
+        <div className="rs-achart rs-achart--flow">
+          <div className="rs-achart__inner">
+            <div className="rs-achart__grid" aria-hidden>
+              {yAxisTicks.map((tick) => (
+                <span key={`grid-${metric}-${tick.offset}`} style={{ top: `${tick.offset}%` }} />
+              ))}
+            </div>
+            <svg viewBox="0 0 100 40" preserveAspectRatio="none">
+              {chart && (
+                <>
+                  <defs>
+                    <linearGradient id="rs-analytics-fill" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#E6C97A" stopOpacity=".28" />
+                      <stop offset="100%" stopColor="#F2C96B" stopOpacity="0" />
+                    </linearGradient>
+                  </defs>
+                  <polygon points={`${chart.points} 96,40 8,40`} fill="url(#rs-analytics-fill)" />
+                  <polyline points={chart.points} fill="none" stroke="#A87700" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+                </>
+              )}
+            </svg>
+            {chartPoints.map(([x, y], index) => {
+              const point = weeklyPoints[index];
+              const value = chartValues[index] ?? 0;
+              const weekKey = weekKeyFromIso(point?.week_start);
+
+              if (!point || !weekKey) return null;
+
+              const tooltip = {
+                label: point.label,
+                value: formatMetricValue(value, metric),
+                count: videosByWeek[weekKey]?.length ?? 0,
+              };
+
+              return (
+                <button
+                  key={`point-${weekKey}`}
+                  type="button"
+                  className={`rs-achart__point${index === chartPoints.length - 1 ? ' is-latest' : ''}`}
+                  style={{ left: `${x}%`, top: `${(y / 40) * 100}%` }}
+                  aria-label={`${point.label} · ${tooltip.value}`}
+                  onMouseEnter={() => setChartTooltip(tooltip)}
+                  onMouseLeave={() => setChartTooltip(null)}
+                  onFocus={() => setChartTooltip(tooltip)}
+                  onBlur={() => setChartTooltip(null)}
+                  onClick={() => setSelectedWeekKey(weekKey)}
+                />
+              );
+            })}
+            {chartTooltip && (
+              <div className="rs-achart__tooltip" role="status">
+                <strong>{chartTooltip.label}</strong>
+                <span>{chartTooltip.value}</span>
+                <span>{chartTooltip.count} {chartTooltip.count === 1 ? 'video' : 'videos'}</span>
+              </div>
+            )}
+          </div>
+          <div className="rs-axlabels rs-axlabels--flow">
+            <span>12 wk ago</span>
+            <span>8 wk</span>
+            <span>4 wk</span>
+            <span>now</span>
+          </div>
         </div>
       </div>
 
@@ -681,6 +1015,47 @@ export default function DetailScreen({
         </>
       )}
 
+      {selectedWeekKey && (
+        <div className="rs-modalback" onClick={() => setSelectedWeekKey(null)}>
+          <div className="rs-weekmodal" onClick={(event) => event.stopPropagation()}>
+            <div className="rs-weekmodal__head">
+              <div>
+                <h3>{weeklyPoints.find((point) => weekKeyFromIso(point.week_start) === selectedWeekKey)?.label ?? 'Selected week'}</h3>
+                <p>{selectedWeekVideos.length} matched {selectedWeekVideos.length === 1 ? 'video' : 'videos'} uploaded in this week.</p>
+              </div>
+              <button type="button" className="rs-weekmodal__close" onClick={() => setSelectedWeekKey(null)} aria-label="Close">
+                ×
+              </button>
+            </div>
+            <div className="rs-weekmodal__list">
+              {selectedWeekVideos.map((video) => (
+                <button
+                  key={`week-video-${video.id}`}
+                  type="button"
+                  className="rs-weekmodal__row"
+                  onClick={() => {
+                    setSelectedWeekKey(null);
+                    openAnalysis(video);
+                  }}
+                >
+                  <span className="rs-weekmodal__thumb" style={{ background: gradientFor(video.id) }}>
+                    {video.thumbnail_url ? <img src={video.thumbnail_url} alt="" /> : initials(video.handle || video.username || video.title)}
+                  </span>
+                  <span className="rs-weekmodal__body">
+                    <strong>{video.handle || video.username || video.title || 'Video'}</strong>
+                    <span>{video.title || video.caption || 'Open this video from the outlier list.'}</span>
+                    <span>{compact(video.views)} views · uploaded {formatDate(video.uploaded_at) || '—'}</span>
+                  </span>
+                </button>
+              ))}
+              {selectedWeekVideos.length === 0 && (
+                <div className="rs-weekmodal__empty">No videos were available for this week.</div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       {analysisModal && (
         <AnalysisModal
           open
@@ -688,6 +1063,22 @@ export default function DetailScreen({
           initialAnalysis={analysisModal.analysis}
           onClose={closeAnalysis}
           onAnalysisChange={updateVideoAnalysis}
+        />
+      )}
+      {analysisNotice && (
+        <div className={`rs-toast rs-toast--${analysisNotice.tone}`} role="status" aria-live="polite">
+          <span>{analysisNotice.message}</span>
+          <button type="button" onClick={() => setAnalysisNotice(null)} aria-label="Dismiss notification">×</button>
+        </div>
+      )}
+      {confirmAnalysisVideo && (
+        <UsageConfirmModal
+          video={confirmAnalysisVideo}
+          creditsRemaining={analysisRemainingNow}
+          creditsRemainingAfterUse={analysisRemainingAfterUse}
+          busy={analysisStarting}
+          onCancel={closeConfirmAnalysis}
+          onConfirm={() => launchManualAnalysis(confirmAnalysisVideo)}
         />
       )}
       {upgradeModalOpen && (
@@ -798,6 +1189,14 @@ function AutoAnalysis({ video }) {
 }
 
 function OutlierCard({ video, expanded, locked = false, onToggle, onAnalyze, onToggleBookmark, bookmarking, isPlaying, onTogglePlay }) {
+  const primaryLabel = video.analysis?.status === 'processing'
+    ? 'Analyzing video...'
+    : video.analysis?.status === 'complete'
+      ? 'View analysis'
+      : video.analysis?.status === 'failed'
+        ? 'Retry analysis'
+        : 'Analyze video';
+
   return (
     <article className={`rs-oc${expanded ? ' analyzed' : ''}`}>
       <VideoFrame video={video} isPlaying={isPlaying} onTogglePlay={onTogglePlay} />
@@ -825,10 +1224,10 @@ function OutlierCard({ video, expanded, locked = false, onToggle, onAnalyze, onT
           </div>
         )}
         <div className="rs-oc__an">
-          <button className="rs-btn rs-btn--y rs-btn--sm" onClick={onToggle}>
-            {Icons.Spark}<span>{expanded && !locked ? 'Hide analysis' : 'Analyze video'}</span>
+          <button className="rs-btn rs-btn--y rs-btn--sm" onClick={onAnalyze} disabled={video.analysis?.status === 'processing'}>
+            {Icons.Spark}<span>{primaryLabel}</span>
           </button>
-          <button className="rs-ic2" title={locked ? 'Upgrade to analyze' : 'Deep analyze'} onClick={onAnalyze}>{Icons.ExtLink}</button>
+          <button className="rs-ic2" title={expanded && !locked ? 'Hide inline summary' : 'Show inline summary'} onClick={onToggle}>{Icons.ExtLink}</button>
           <button
             className={`rs-ic2${video.bookmarked ? ' on' : ''}`}
             title={video.bookmarked ? 'Remove from bookmarks' : 'Save video'}
@@ -841,6 +1240,33 @@ function OutlierCard({ video, expanded, locked = false, onToggle, onAnalyze, onT
         </div>
       </div>
     </article>
+  );
+}
+
+function UsageConfirmModal({ video, creditsRemaining, creditsRemainingAfterUse, busy = false, onConfirm, onCancel }) {
+  const currentCredits = creditsRemaining === -1 ? 'Unlimited' : creditsRemaining;
+  const afterUseCredits = creditsRemainingAfterUse === 'unlimited' ? 'unlimited' : creditsRemainingAfterUse;
+
+  return (
+    <div className="rs-modalback" onClick={onCancel}>
+      <div className="rs-usage" onClick={(event) => event.stopPropagation()} role="dialog" aria-modal="true" aria-label="Confirm video analysis">
+        <div className="rs-upg__eyebrow">{Icons.Spark}<span>Video analysis</span></div>
+        <h3>Analyze this outlier video?</h3>
+        <p>
+          You currently have <b>{currentCredits}</b> video analysis {currentCredits === 1 ? 'credit' : 'credits'} remaining.
+          This analysis will use <b>1 credit</b> when it completes successfully, leaving you with <b>{afterUseCredits}</b>.
+        </p>
+        <p className="rs-usage__subject">{video?.title || video?.caption || video?.handle || 'Selected video'}</p>
+        <div className="rs-upgmodal__actions">
+          <button type="button" className="rs-btn rs-btn--g" onClick={onCancel} disabled={busy}>
+            Cancel
+          </button>
+          <button type="button" className="rs-btn rs-btn--y" onClick={onConfirm} disabled={busy}>
+            {busy ? 'Starting…' : 'Start analysis'}
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -1047,6 +1473,16 @@ const scopedCss = `
 .rs-oc__st svg{width:13px;height:13px;color:var(--faint-2,#9A968E);flex:none}
 .rs-oc__panel{margin-top:10px}
 .rs-modalback{position:fixed;inset:0;z-index:130;display:flex;align-items:center;justify-content:center;padding:16px;background:rgba(20,15,0,.34);backdrop-filter:blur(3px)}
+.rs-toast{position:fixed;right:18px;bottom:18px;z-index:140;display:flex;align-items:center;gap:12px;max-width:min(420px,calc(100vw - 32px));padding:14px 16px;border-radius:16px;border:1px solid var(--line);background:#fff;box-shadow:0 18px 40px rgba(42,33,20,.18)}
+.rs-toast--success{border-color:#cfe8d4;background:#f6fff7}
+.rs-toast--error{border-color:#f0d6c8;background:#fff8f4}
+.rs-toast span{font-size:.88rem;font-weight:600;color:var(--ink);line-height:1.45}
+.rs-toast button{width:28px;height:28px;flex:none;border:0;border-radius:999px;background:rgba(0,0,0,.05);color:var(--muted);font-size:1rem;cursor:pointer}
+.rs-usage{width:min(100%,460px);border:1px solid #f2e4b8;border-radius:22px;padding:22px;background:linear-gradient(180deg,#fffdf7 0%,#fff8ea 100%);box-shadow:0 28px 90px rgba(42,33,20,.22)}
+.rs-usage h3{margin-top:10px;font-size:1.15rem;font-weight:800;letter-spacing:-.03em;color:var(--ink)}
+.rs-usage p{margin-top:8px;font-size:.9rem;line-height:1.55;color:var(--muted)}
+.rs-usage b{color:var(--ink)}
+.rs-usage__subject{margin-top:14px;padding:12px 14px;border:1px solid var(--line);border-radius:14px;background:rgba(255,255,255,.7);font-weight:700;color:var(--ink)}
 .rs-upgmodal{position:relative;width:min(100%,420px);border:1px solid #f2e4b8;border-radius:22px;padding:22px;background:linear-gradient(180deg,#fffdf7 0%,#fff7e4 100%);box-shadow:0 28px 90px rgba(42,33,20,.22)}
 .rs-upgmodal__close{position:absolute;top:12px;right:12px;width:34px;height:34px;border-radius:999px;border:1px solid var(--line);background:rgba(255,255,255,.8);display:grid;place-items:center;color:var(--muted);cursor:pointer}
 .rs-upgmodal__close svg{width:14px;height:14px}
@@ -1061,23 +1497,49 @@ const scopedCss = `
 .rs-oc__an .rs-btn span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .rs-loadmore{display:flex;justify-content:center;margin-top:20px}
 
-.rs-acard{background:var(--white);border:1px solid var(--line);border-radius:20px;padding:20px 22px}
-.rs-mtabs{display:inline-flex;gap:4px;padding:4px;background:var(--canvas);border:1px solid var(--line);border-radius:100px;margin-bottom:18px}
-.rs-mtab{height:34px;padding:0 15px;border-radius:100px;font-size:.83rem;font-weight:600;color:var(--muted);background:transparent;border:0;cursor:pointer}
-.rs-mtab.on{background:var(--ink);color:#fff}
+.rs-acard{background:linear-gradient(180deg,#FFFEFB 0%,#FFF8EB 100%);border:1px solid #F1E2BE;border-radius:20px;padding:20px 22px;box-shadow:0 18px 38px -30px rgba(117,85,11,.25)}
+.rs-mtabs{display:inline-flex;gap:0;padding:2px;background:#F7F4ED;border:1px solid #DDD3C0;border-radius:9px;margin-bottom:14px;box-shadow:inset 0 1px 0 rgba(255,255,255,.8)}
+.rs-mtab{height:24px;padding:0 12px;border-radius:7px;font-size:.72rem;font-weight:500;color:#6F6554;background:transparent;border:0;cursor:pointer;text-transform:lowercase}
+.rs-mtab.on{background:#fff;color:#1A1400;box-shadow:0 1px 2px rgba(26,20,0,.08)}
 .rs-abig{display:flex;align-items:flex-end;gap:12px}
 .rs-abig__v{font-size:2.2rem;font-weight:900;letter-spacing:-.05em;color:var(--ink);line-height:.9;font-variant-numeric:tabular-nums}
-.rs-abig__l{font-size:.85rem;color:var(--faint-2,#9A968E);padding-bottom:4px}
-.rs-achip{display:inline-flex;align-items:center;gap:6px;height:26px;padding:0 11px;border-radius:100px;background:var(--wash);color:var(--amber-ink);font-size:.74rem;font-weight:700;margin-top:12px}
-.rs-achip i{width:6px;height:6px;border-radius:50%;background:var(--amber-ink)}
-.rs-achart{position:relative;height:150px;margin-top:16px;border-radius:16px;overflow:hidden;border:1px solid var(--line)}
-.rs-achart svg{position:absolute;inset:0;width:100%;height:100%}
-.rs-achart__blur{position:absolute;inset:0;z-index:1;background:rgba(250,249,246,.5);backdrop-filter:blur(3px);display:flex;align-items:center;justify-content:center;text-align:center;padding:16px}
-.rs-achart__blur b{display:block;font-size:.86rem;color:var(--ink);font-weight:800;max-width:320px}
-.rs-achart__blur p{font-size:.78rem;color:var(--faint,#7C7972);margin-top:3px;line-height:1.4;max-width:320px}
-.rs-achart__dot{position:absolute;z-index:2;right:14%;top:34px;width:12px;height:12px;border-radius:50%;background:var(--yellow);border:2.5px solid #fff;box-shadow:0 0 0 3px rgba(255,198,41,.3)}
-.rs-achart__now{position:absolute;z-index:2;right:8%;top:56px;font-size:.72rem;font-weight:800;color:var(--amber-ink)}
-.rs-axlabels{display:flex;justify-content:space-between;margin-top:9px;font-size:.72rem;color:var(--faint-2,#9A968E);font-weight:600}
+.rs-abig__l{font-size:.85rem;color:#8A7445;padding-bottom:4px}
+.rs-abig--flow{align-items:center;gap:10px;margin-bottom:14px}
+.rs-abig__delta{display:inline-flex;align-items:center;gap:6px;font-size:.84rem;font-weight:700;color:#2D8A55;padding-top:6px;white-space:nowrap}
+.rs-abig__info{position:relative;display:inline-flex;align-items:center}
+.rs-abig__infoBtn{width:16px;height:16px;display:grid;place-items:center;border-radius:999px;border:1px solid rgba(45,138,85,.28);background:#fff;color:#2D8A55;font-size:.68rem;font-weight:800;line-height:1;cursor:help}
+.rs-abig__tooltip{position:absolute;left:22px;top:50%;transform:translateY(-50%);width:min(260px,calc(100vw - 80px));padding:8px 10px;border-radius:10px;background:rgba(255,255,255,.98);border:1px solid #D8E8DC;box-shadow:0 16px 30px -24px rgba(0,0,0,.25);font-size:.72rem;font-weight:500;line-height:1.4;color:#34513F;opacity:0;pointer-events:none;transition:opacity .14s ease;white-space:normal;z-index:4}
+.rs-abig__info:hover .rs-abig__tooltip,.rs-abig__info:focus-within .rs-abig__tooltip{opacity:1}
+.rs-achart{position:relative;height:180px;margin-top:2px}
+.rs-achart--flow{border:none;background:transparent;box-shadow:none;padding:0}
+.rs-achart__inner{position:relative;height:150px}
+.rs-achart--flow svg{position:absolute;inset:0;width:100%;height:100%}
+.rs-achart__grid span{position:absolute;left:0;right:0;height:1px;background:rgba(168,119,0,.08)}
+.rs-achart__point{position:absolute;width:14px;height:14px;border-radius:999px;border:2px solid #fff;background:#A87700;box-shadow:0 6px 14px rgba(168,119,0,.14);transform:translate(-50%,-50%);cursor:pointer;transition:transform .14s,box-shadow .14s,background .14s}
+.rs-achart__point:hover,.rs-achart__point:focus-visible{transform:translate(-50%,-50%) scale(1.14);box-shadow:0 10px 20px rgba(168,119,0,.24);outline:none}
+.rs-achart__point.is-latest{background:#C7981A}
+.rs-achart__tooltip{position:absolute;left:0;top:0;display:flex;flex-direction:column;gap:2px;max-width:190px;padding:10px 12px;border-radius:12px;background:rgba(255,255,255,.98);border:1px solid #E7D7AF;box-shadow:0 16px 30px -24px rgba(0,0,0,.25);z-index:3}
+.rs-achart__tooltip strong{font-size:.78rem;color:var(--ink)}
+.rs-achart__tooltip span{font-size:.72rem;color:#7C704D}
+.rs-axlabels{display:flex;justify-content:space-between;gap:12px;margin-top:8px;font-size:.68rem;color:#8A7445;font-weight:500}
+.rs-axlabels--flow{padding-top:2px}
+.rs-axlabels__start{text-align:left}
+.rs-axlabels__center{text-align:center;flex:1}
+.rs-axlabels__end{text-align:right}
+.rs-weekmodal{width:min(100%,760px);max-height:min(80vh,720px);display:flex;flex-direction:column;border-radius:22px;background:#fffdf8;border:1px solid #F1E2BE;box-shadow:0 28px 60px rgba(58,44,14,.18);overflow:hidden}
+.rs-weekmodal__head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;padding:20px 22px;border-bottom:1px solid #F1E2BE;background:linear-gradient(180deg,#FFFDF6 0%,#FFF8EA 100%)}
+.rs-weekmodal__head h3{font-size:1.05rem;font-weight:800;letter-spacing:-.03em;color:var(--ink)}
+.rs-weekmodal__head p{margin-top:4px;font-size:.84rem;color:#7C704D}
+.rs-weekmodal__close{width:34px;height:34px;flex:none;border-radius:999px;border:1px solid #E8D9B3;background:#fff;color:#8A7445;font-size:1.1rem;cursor:pointer}
+.rs-weekmodal__list{padding:14px;overflow:auto;display:flex;flex-direction:column;gap:10px}
+.rs-weekmodal__row{display:grid;grid-template-columns:76px 1fr;gap:14px;align-items:center;padding:10px;border-radius:16px;border:1px solid #EFE3C6;background:#fff;cursor:pointer;text-align:left}
+.rs-weekmodal__row:hover{border-color:#E3C36F;background:#FFF9EC}
+.rs-weekmodal__thumb{width:76px;height:76px;border-radius:14px;overflow:hidden;display:grid;place-items:center;color:#fff;font-size:1rem;font-weight:800}
+.rs-weekmodal__thumb img{width:100%;height:100%;object-fit:cover}
+.rs-weekmodal__body{display:flex;flex-direction:column;gap:5px;min-width:0}
+.rs-weekmodal__body strong{font-size:.88rem;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rs-weekmodal__body span{font-size:.78rem;color:#7C704D;line-height:1.4}
+.rs-weekmodal__empty{padding:24px 12px;text-align:center;font-size:.85rem;color:#7C704D}
 
 .rs-heat{background:var(--white);border:1px solid var(--line);border-radius:20px;padding:20px}
 .rs-heatscroll{overflow-x:auto;padding-bottom:6px}

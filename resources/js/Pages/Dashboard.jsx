@@ -4,7 +4,14 @@ import { Head, Link, router, usePage } from '@inertiajs/react';
 import AppLayout from './components/AppLayout.jsx';
 import SearchWizard from './components/SearchWizard.jsx';
 import { Arrow } from '../landing/components/Icons.jsx';
-import { fetchRecentSearches, savedSearch as savedSearchApi } from '../landing/flow/api.js';
+import {
+  fetchRecentSearches,
+  readTracked,
+  savedSearch as savedSearchApi,
+  trackSearch,
+  untrackSearch,
+  updateTracked,
+} from '../landing/flow/api.js';
 
 const POLL_MS = 10000;
 const ACTIVE_SEARCH_STATUSES = new Set(['pending', 'queued', 'running', 'scraping']);
@@ -29,17 +36,19 @@ const formatDate = (iso) => {
   return Number.isNaN(d.getTime()) ? 'not yet' : d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 };
 
-/* deterministic 6-bar sparkline seeded by the search id, so the chart is
- * visually stable across renders without a backing series */
+/* Keep the placeholder sparkline visually stable, but never invent a
+ * percentage trend from it. The spark is decorative until the API sends a
+ * real series/metric for recent searches.
+ */
 function sparkBars(seed, n = 6) {
   const bars = [];
   let s = Number(seed) || 1;
   for (let i = 0; i < n; i += 1) {
     s = (s * 9301 + 49297) % 233280;
-    const h = 30 + Math.round((s / 233280) * 65);
+    const h = 42 + Math.round((s / 233280) * 38);
     bars.push(h);
   }
-  bars[bars.length - 1] = Math.max(bars[bars.length - 1], 74);
+
   return bars;
 }
 
@@ -50,13 +59,7 @@ function RecentRow({ search, onNavigate, retrying, onRetry }) {
   const freq = titleCase(search.frequency) || 'Weekly';
   const initials = (search.name || search.phrase || '?').slice(0, 2).toUpperCase();
   const bars = sparkBars(search.id, 6);
-  const trend = typeof search.trend === 'number'
-    ? search.trend
-    : (() => {
-        const last = bars[bars.length - 1];
-        const prevAvg = bars.slice(0, -1).reduce((a, b) => a + b, 0) / (bars.length - 1);
-        return prevAvg ? Math.round(((last - prevAvg) / prevAvg) * 100) : 0;
-      })();
+  const trend = typeof search.trend === 'number' ? search.trend : null;
   const canRetry = search.can_retry_initial === true;
 
   return (
@@ -85,8 +88,8 @@ function RecentRow({ search, onNavigate, retrying, onRetry }) {
           <span key={i} className={i === bars.length - 1 ? 'hot' : ''} style={{ height: `${h}%` }} />
         ))}
       </span>
-      <span className={`trend${trend >= 0 ? ' up' : ''}`}>
-        {`${trend >= 0 ? '+' : ''}${trend}%`}
+      <span className={`trend${trend !== null && trend >= 0 ? ' up' : ''}`}>
+        {trend === null ? '—' : `${trend >= 0 ? '+' : ''}${trend}%`}
       </span>
       <span className={`pill ${status.cls}`}>
         <i />
@@ -190,23 +193,87 @@ function RecentCard({ searches, retryingSearchId, onRetry }) {
   );
 }
 
-function FailedSearchModal({ search, retrying, onRetry, onClose }) {
-  if (!search) return null;
+function SearchCompletionModal({ state, onClose, onViewResults, onContactUs }) {
+  if (!state) return null;
+
+  const finished = state.finished ?? [];
+  const failed = state.failed ?? [];
+  const hasFailures = failed.length > 0;
+  const hasFinished = finished.length > 0;
+  const title = hasFailures && hasFinished
+    ? 'Search updates'
+    : hasFailures
+      ? 'Something went wrong'
+      : 'Search ready';
+
+  const body = hasFailures && hasFinished
+    ? 'Some searches finished successfully, and some need your attention.'
+    : hasFailures
+      ? 'One or more searches did not finish correctly.'
+      : finished.length > 1
+        ? `${finished.length} searches have finished running.`
+        : finished[0]?.name
+          ? `Your search for ${String.fromCharCode(8220)}${finished[0].name}${String.fromCharCode(8221)} has finished running.`
+          : 'Your search has finished running.';
+
+  const primarySearch = hasFinished ? finished[0] : null;
 
   return (
     <div className="bb">
       <div className="bb-modal">
-        <button className="bb-modal__bg" aria-label="Close" onClick={onClose} disabled={retrying} />
+        <button className="bb-modal__bg" aria-label="Close" onClick={onClose} />
         <div className="bb-modal__box">
-          <h2>Something went wrong</h2>
-          <p className="sub">Try again or contact support.</p>
-          <div className="actrow__r" style={{ marginTop: 24, justifyContent: 'flex-end' }}>
-            <button type="button" className="btn btn--g" onClick={onClose} disabled={retrying}>
+          <h2>{title}</h2>
+          <p className="sub">{body}</p>
+
+          {(hasFinished || hasFailures) && (
+            <div style={{ marginTop: 18, display: 'grid', gap: 10 }}>
+              {hasFinished && (
+                <div>
+                  <p style={{ fontWeight: 800, color: 'var(--ink)', fontSize: '.82rem' }}>Finished</p>
+                  <div style={{ marginTop: 8, display: 'grid', gap: 8 }}>
+                    {finished.map((search) => (
+                      <div key={`done-${search.id}`} style={{ padding: '10px 12px', borderRadius: 12, background: 'var(--paper)', border: '1px solid var(--line)' }}>
+                        <div style={{ fontWeight: 700, color: 'var(--ink)' }}>{search.name || search.phrase}</div>
+                        <div style={{ fontSize: '.8rem', color: 'var(--muted)', marginTop: 4 }}>
+                          {search.result_count ?? 0} videos ready
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {hasFailures && (
+                <div>
+                  <p style={{ fontWeight: 800, color: 'var(--ink)', fontSize: '.82rem' }}>Needs support</p>
+                  <div style={{ marginTop: 8, display: 'grid', gap: 8 }}>
+                    {failed.map((search) => (
+                      <div key={`failed-${search.id}`} style={{ padding: '10px 12px', borderRadius: 12, background: '#fff7f2', border: '1px solid #f2d1bf' }}>
+                        <div style={{ fontWeight: 700, color: 'var(--ink)' }}>{search.name || search.phrase}</div>
+                        <div style={{ fontSize: '.8rem', color: 'var(--muted)', marginTop: 4 }}>
+                          {search.latest_run_error || 'The search did not finish.'}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          <div className="actrow__r" style={{ marginTop: 24, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+            <button type="button" className="btn btn--g" onClick={onClose}>
               Close
             </button>
-            {search.can_retry_initial && (
-              <button type="button" className="btn btn--y" onClick={onRetry} disabled={retrying}>
-                {retrying ? 'Retrying...' : 'Retry search'}
+            {hasFailures && (
+              <button type="button" className="btn btn--g" onClick={onContactUs}>
+                Contact support
+              </button>
+            )}
+            {primarySearch?.url && (
+              <button type="button" className="btn btn--y" onClick={() => onViewResults(primarySearch)}>
+                View results
               </button>
             )}
           </div>
@@ -216,16 +283,95 @@ function FailedSearchModal({ search, retrying, onRetry, onClose }) {
   );
 }
 
+function SearchProcessingModal({ searches, onClose }) {
+  if (!Array.isArray(searches) || searches.length === 0) return null;
+
+  const first = searches[0];
+  const title = searches.length > 1 ? 'Your searches are processing' : 'Your search is processing';
+  const body = searches.length > 1
+    ? `We started ${searches.length} searches behind the scenes. We’ll update you here when they finish.`
+    : first?.name
+      ? `We started ${String.fromCharCode(8220)}${first.name}${String.fromCharCode(8221)} behind the scenes. We’ll update you here when it finishes.`
+      : 'We started your search behind the scenes. We’ll update you here when it finishes.';
+
+  return (
+    <div className="bb">
+      <div className="bb-modal">
+        <button className="bb-modal__bg" aria-label="Close" onClick={onClose} />
+        <div className="bb-modal__box">
+          <h2>{title}</h2>
+          <p className="sub">{body}</p>
+          <div style={{ marginTop: 18, display: 'grid', gap: 8 }}>
+            {searches.map((search) => (
+              <div key={`processing-${search.id}`} style={{ padding: '10px 12px', borderRadius: 12, background: 'var(--paper)', border: '1px solid var(--line)' }}>
+                <div style={{ fontWeight: 700, color: 'var(--ink)' }}>{search.name || search.phrase}</div>
+                <div style={{ fontSize: '.8rem', color: 'var(--muted)', marginTop: 4 }}>
+                  It will appear in Pick up where you left off while it runs.
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="actrow__r" style={{ marginTop: 24, justifyContent: 'flex-end' }}>
+            <button type="button" className="btn btn--y" onClick={onClose}>
+              Okay
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function Dashboard() {
   const { flash = {}, recent = [], stats = null, searchSuggestions = {} } = usePage().props;
-  const [readyModal, setReadyModal] = useState(null);
-  const [failedModal, setFailedModal] = useState(null);
+  const [processingModal, setProcessingModal] = useState(null);
+  const [completionModal, setCompletionModal] = useState(null);
   const [retryingSearchId, setRetryingSearchId] = useState(null);
   const [recentSearches, setRecentSearches] = useState(recent);
   const polling = useRef(false);
   const recentSearchesRef = useRef(recent);
   const recentStatuses = useRef(new Map(recent.map((s) => [String(s.id), s.status])));
+  const flashedTrackedRef = useRef(false);
+  const flashedProcessingRef = useRef(false);
   const hasActiveRecentSearch = recentSearches.some((s) => ACTIVE_SEARCH_STATUSES.has(s.status));
+
+  const mergeTrackedSearches = (entries = []) => {
+    if (!Array.isArray(entries) || entries.length === 0) return;
+
+    entries.forEach((entry) => {
+      if (entry?.id == null) return;
+      trackSearch(entry);
+    });
+  };
+
+  const markTrackedAsPrompted = (searches, patch) => {
+    searches.forEach((search) => {
+      if (search?.id == null) return;
+      updateTracked(search.id, patch);
+    });
+  };
+
+  const trackedTerminalChanges = (searches) => {
+    const tracked = readTracked();
+    const trackedById = new Map(tracked.map((entry) => [String(entry.id), entry]));
+    const finished = [];
+    const failed = [];
+
+    searches.forEach((search) => {
+      const trackedEntry = trackedById.get(String(search.id));
+      if (!trackedEntry) return;
+
+      if (search.status === 'done' && trackedEntry.completedPromptShown !== true) {
+        finished.push(search);
+      }
+
+      if (search.status === 'failed' && trackedEntry.failedPromptShown !== true) {
+        failed.push(search);
+      }
+    });
+
+    return { finished, failed };
+  };
 
   const applyRecentSearches = (searches, notifyOnTerminal = false) => {
     const previousStatuses = recentStatuses.current;
@@ -235,13 +381,26 @@ export default function Dashboard() {
 
     if (!notifyOnTerminal) return;
 
-    const terminal = searches.find((s) => (
+    const terminalSearches = searches.filter((s) => (
       ACTIVE_SEARCH_STATUSES.has(previousStatuses.get(String(s.id)))
       && (s.status === 'done' || s.status === 'failed')
     ));
 
-    if (terminal?.status === 'done') setReadyModal(terminal);
-    if (terminal?.status === 'failed') setFailedModal(terminal);
+    if (terminalSearches.length === 0) return;
+
+    const trackedChanges = trackedTerminalChanges(terminalSearches);
+
+    if (trackedChanges.finished.length > 0 || trackedChanges.failed.length > 0) {
+      if (trackedChanges.finished.length > 0) {
+        markTrackedAsPrompted(trackedChanges.finished, { completedPromptShown: true });
+      }
+
+      if (trackedChanges.failed.length > 0) {
+        markTrackedAsPrompted(trackedChanges.failed, { failedPromptShown: true });
+      }
+
+      setCompletionModal(trackedChanges);
+    }
   };
 
   const refreshRecent = async (notifyOnTerminal = false) => {
@@ -258,7 +417,31 @@ export default function Dashboard() {
   }, [recent]);
 
   useEffect(() => {
-    if (readyModal || failedModal) return undefined;
+    if (flashedTrackedRef.current) return;
+    flashedTrackedRef.current = true;
+
+    const flashed = Array.isArray(flash.trackedSearches) ? flash.trackedSearches : [];
+
+    if (flashed.length === 0) return;
+
+    mergeTrackedSearches(flashed);
+
+    refreshRecent().catch(() => {});
+  }, [flash.trackedSearches]);
+
+  useEffect(() => {
+    if (flashedProcessingRef.current) return;
+    flashedProcessingRef.current = true;
+
+    const flashed = Array.isArray(flash.processingSearches) ? flash.processingSearches : [];
+
+    if (flashed.length === 0) return;
+
+    setProcessingModal(flashed);
+  }, [flash.processingSearches]);
+
+  useEffect(() => {
+    if (completionModal) return undefined;
 
     let cancelled = false;
     let timer;
@@ -287,21 +470,26 @@ export default function Dashboard() {
       cancelled = true;
       window.clearTimeout(timer);
     };
-  }, [failedModal, hasActiveRecentSearch, readyModal]);
+  }, [completionModal, hasActiveRecentSearch]);
 
-  const closeReadyModal = () => setReadyModal(null);
-  const viewResults = () => {
-    if (!readyModal?.url) return closeReadyModal();
-    router.visit(readyModal.url);
+  const closeCompletionModal = () => setCompletionModal(null);
+  const closeProcessingModal = () => setProcessingModal(null);
+  const viewResults = (search) => {
+    if (!search?.url) return closeCompletionModal();
+    untrackSearch(search.id);
+    router.visit(search.url);
   };
-  const retryFailedSearch = async (failedSearch = failedModal) => {
+  const contactSupport = () => {
+    setCompletionModal(null);
+    router.visit('/contact');
+  };
+  const retryFailedSearch = async (failedSearch) => {
     if (!failedSearch?.can_retry_initial || retryingSearchId !== null) return;
 
     setRetryingSearchId(failedSearch.id);
     try {
       const payload = await savedSearchApi.retry(failedSearch.id);
       if (payload?.search) await refreshRecent();
-      setFailedModal(null);
     } finally {
       setRetryingSearchId(null);
     }
@@ -436,7 +624,7 @@ export default function Dashboard() {
           </div>
         )}
 
-        <SearchWizard
+      <SearchWizard
           subjectExtra={dashboardExtras}
           suggestionsByType={searchSuggestions}
           onTrackedSearchChange={() => {
@@ -445,35 +633,15 @@ export default function Dashboard() {
         />
       </AppLayout>
 
-      {readyModal && (
-        <div className="bb">
-          <div className="bb-modal">
-            <button className="bb-modal__bg" aria-label="Close" onClick={closeReadyModal} />
-            <div className="bb-modal__box">
-              <h2>Search ready</h2>
-              <p className="sub">
-                {readyModal.name
-                  ? `Your search for ${String.fromCharCode(8220)}${readyModal.name}${String.fromCharCode(8221)} has finished running.`
-                  : 'Your search has finished running.'}
-              </p>
-              <div className="actrow__r" style={{ marginTop: 24, justifyContent: 'flex-end' }}>
-                <button type="button" className="btn btn--g" onClick={closeReadyModal}>
-                  Close
-                </button>
-                <button type="button" className="btn btn--y" onClick={viewResults}>
-                  View results
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      <FailedSearchModal
-        search={failedModal}
-        retrying={retryingSearchId === failedModal?.id}
-        onRetry={() => retryFailedSearch()}
-        onClose={() => setFailedModal(null)}
+      <SearchCompletionModal
+        state={completionModal}
+        onClose={closeCompletionModal}
+        onViewResults={viewResults}
+        onContactUs={contactSupport}
+      />
+      <SearchProcessingModal
+        searches={processingModal}
+        onClose={closeProcessingModal}
       />
     </>
   );

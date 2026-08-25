@@ -37,3 +37,15 @@ Schedule::command('brevo:send-trial-ending-emails')
     ->dailyAt('09:00')
     ->withoutOverlapping()
     ->runInBackground();
+
+Schedule::command('viral-videos:repair-tiktok-cdn-media --limit=200 --chunk_by=25')
+    ->dailyAt('10:30')
+    ->timezone('America/New_York')
+    ->withoutOverlapping()
+    ->runInBackground();
+
+Schedule::command('viral-videos:repair-tiktok-cdn-media --limit=200 --chunk_by=25')
+    ->dailyAt('16:30')
+    ->timezone('America/New_York')
+    ->withoutOverlapping()
+    ->runInBackground();

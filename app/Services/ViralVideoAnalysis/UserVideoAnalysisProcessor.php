@@ -119,5 +119,22 @@ class UserVideoAnalysisProcessor
                 'video_id' => $analysis->video_id,
             ]);
         }
+
+        Log::info('Video analysis job finished cleanly.', [
+            'analysis_id' => $analysis->id,
+            'user_id' => $analysis->user_id,
+            'video_id' => $analysis->video_id,
+            'viral_video_id' => $analysis->viral_video_id,
+            'counts_toward_quota' => (bool) $analysis->counts_toward_quota,
+            'status' => $analysis->status,
+        ]);
+
+        AppEventLogger::result('video_analysis.job_finished', [
+            'analysis_id' => $analysis->id,
+            'user_id' => $analysis->user_id,
+            'video_id' => $analysis->video_id,
+            'viral_video_id' => $analysis->viral_video_id,
+            'counts_toward_quota' => (bool) $analysis->counts_toward_quota,
+        ]);
     }
 }

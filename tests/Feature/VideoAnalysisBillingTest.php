@@ -6,10 +6,16 @@ use App\Jobs\PrepareVideoAnalysis;
 use App\Models\PricingPlan;
 use App\Models\Subscription;
 use App\Models\User;
+use App\Models\VideoAnalysis;
+use App\Models\VideoPreparation;
 use App\Models\ViralVideo;
+use App\Services\ViralVideoAnalysis\UserVideoAnalysisProcessor;
+use App\Services\ViralVideoAnalysis\VideoAnalysisManager;
+use App\Services\ViralVideoAnalysis\VideoPreparationProcessor;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Str;
+use Mockery;
 use Tests\TestCase;
 
 class VideoAnalysisBillingTest extends TestCase
@@ -48,6 +54,48 @@ class VideoAnalysisBillingTest extends TestCase
 
         $this->assertSame(0, (int) data_get($user->subscriptions()->first()->fresh()->metadata, 'subscription.video_analysis.used'));
         Queue::assertPushed(PrepareVideoAnalysis::class, 1);
+    }
+
+    public function test_automatic_winner_analysis_completes_without_consuming_credit(): void
+    {
+        Queue::fake();
+
+        $user = $this->paidUserWithVideoAnalysisLimit(limit: 50, used: 0);
+        $video = $this->video();
+
+        $this->mockPreparationAndAnalysisProcessors();
+
+        $analysis = app(VideoAnalysisManager::class)->requestAutomaticWinnerAndWait($user, $video);
+
+        $this->assertSame(VideoAnalysis::STATUS_COMPLETE, $analysis->status);
+        $this->assertFalse((bool) $analysis->counts_toward_quota);
+        $this->assertSame(0, (int) data_get($user->subscriptions()->first()->fresh()->metadata, 'subscription.video_analysis.used'));
+    }
+
+    public function test_retrying_a_failed_free_winner_analysis_stays_free(): void
+    {
+        Queue::fake();
+
+        $user = $this->paidUserWithVideoAnalysisLimit(limit: 50, used: 0);
+        $video = $this->video();
+
+        VideoAnalysis::query()->create([
+            'id' => (string) Str::ulid(),
+            'user_id' => $user->id,
+            'viral_video_id' => $video->id,
+            'video_id' => $video->video_id,
+            'counts_toward_quota' => false,
+            'status' => VideoAnalysis::STATUS_FAILED,
+            'error_message' => 'We could not prepare this video yet. Please try again later.',
+        ]);
+
+        $this->mockPreparationAndAnalysisProcessors();
+
+        $analysis = app(VideoAnalysisManager::class)->requestAutomaticWinnerAndWait($user, $video);
+
+        $this->assertSame(VideoAnalysis::STATUS_COMPLETE, $analysis->status);
+        $this->assertFalse((bool) $analysis->counts_toward_quota);
+        $this->assertSame(0, (int) data_get($user->subscriptions()->first()->fresh()->metadata, 'subscription.video_analysis.used'));
     }
 
     private function paidUserWithVideoAnalysisLimit(int $limit, int $used): User
@@ -116,5 +164,37 @@ class VideoAnalysisBillingTest extends TestCase
             'duration' => 14,
             'virality_score' => 2.5,
         ]);
+    }
+
+    private function mockPreparationAndAnalysisProcessors(): void
+    {
+        $this->mock(VideoPreparationProcessor::class, function (Mockery\MockInterface $mock): void {
+            $mock->shouldReceive('process')
+                ->once()
+                ->with(Mockery::type(VideoPreparation::class))
+                ->andReturnUsing(function (VideoPreparation $preparation): void {
+                    $preparation->forceFill([
+                        'status' => VideoPreparation::STATUS_COMPLETE,
+                        'prepared_at' => now(),
+                        'error_message' => null,
+                    ])->save();
+                });
+        });
+
+        $this->mock(UserVideoAnalysisProcessor::class, function (Mockery\MockInterface $mock): void {
+            $mock->shouldReceive('process')
+                ->once()
+                ->with(Mockery::type(VideoAnalysis::class))
+                ->andReturnUsing(function (VideoAnalysis $analysis): void {
+                    $analysis->forceFill([
+                        'status' => VideoAnalysis::STATUS_COMPLETE,
+                        'transcript' => 'Transcript',
+                        'transcript_segments' => [],
+                        'result' => ['why_it_went_viral' => 'Test'],
+                        'error_message' => null,
+                        'analyzed_at' => now(),
+                    ])->save();
+                });
+        });
     }
 }

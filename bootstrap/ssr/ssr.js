@@ -2916,6 +2916,167 @@ function AppFooter({ width = "max-w-6xl", label = "© 2026 Brand Beacon · TikTo
 	});
 }
 //#endregion
+//#region resources/js/landing/flow/api.js
+/**
+* Small fetch wrapper for the saved-search endpoints. Inertia handles page
+* navigation; these calls are the in-page ones that should not re-render the
+* whole document.
+*/
+function csrfToken$1() {
+	return document.querySelector("meta[name=\"csrf-token\"]")?.getAttribute("content") ?? "";
+}
+var API_V1 = "/api/v1";
+async function request(url, { method = "GET", body } = {}) {
+	const response = await fetch(url, {
+		method,
+		credentials: "same-origin",
+		headers: {
+			Accept: "application/json",
+			"X-Requested-With": "XMLHttpRequest",
+			...body ? { "Content-Type": "application/json" } : {},
+			...method === "GET" ? {} : { "X-CSRF-TOKEN": csrfToken$1() }
+		},
+		...body ? { body: JSON.stringify(body) } : {}
+	});
+	const payload = await response.json().catch(() => null);
+	if (!response.ok) {
+		const error = new Error(payload?.message || `Request failed (${response.status})`);
+		error.status = response.status;
+		error.payload = payload;
+		throw error;
+	}
+	return payload;
+}
+function expandKeywords(phrase, { signal, fresh = false } = {}) {
+	return fetch(`${API_V1}/saved-searches/expand`, {
+		method: "POST",
+		credentials: "same-origin",
+		signal,
+		headers: {
+			Accept: "application/json",
+			"Content-Type": "application/json",
+			"X-Requested-With": "XMLHttpRequest",
+			"X-CSRF-TOKEN": csrfToken$1()
+		},
+		body: JSON.stringify({
+			phrase,
+			...fresh ? { fresh: true } : {}
+		})
+	}).then(async (response) => {
+		const payload = await response.json().catch(() => null);
+		if (!response.ok) throw new Error(payload?.message || "Could not suggest keywords.");
+		return payload;
+	});
+}
+function createSavedSearch({ type, phrase, name, keywords, frequency, sources }) {
+	return request(`${API_V1}/saved-searches`, {
+		method: "POST",
+		body: {
+			type,
+			phrase,
+			name,
+			keywords,
+			frequency,
+			...sources ? { sources } : {}
+		}
+	});
+}
+function fetchNotifications(ids) {
+	return request(`${API_V1}/saved-searches/notifications?${ids.map((id) => `ids[]=${encodeURIComponent(id)}`).join("&")}`);
+}
+function fetchRecentSearches() {
+	return request(`${API_V1}/saved-searches/recent`);
+}
+var savedSearch = {
+	get: (id) => request(`${API_V1}/saved-searches/${id}/json`),
+	bookmark: (id, bookmarked) => request(`${API_V1}/saved-searches/${id}/bookmark`, {
+		method: "PATCH",
+		body: { bookmarked }
+	}),
+	pause: (id) => request(`${API_V1}/saved-searches/${id}/pause`, { method: "PATCH" }),
+	resume: (id) => request(`${API_V1}/saved-searches/${id}/resume`, { method: "PATCH" }),
+	update: (id, body) => request(`${API_V1}/saved-searches/${id}/frequency`, {
+		method: "PATCH",
+		body
+	}),
+	refresh: (id) => request(`${API_V1}/saved-searches/${id}/refresh`, { method: "POST" }),
+	retry: (id) => request(`${API_V1}/saved-searches/${id}/retry`, { method: "POST" }),
+	destroy: (id) => request(`${API_V1}/saved-searches/${id}`, { method: "DELETE" })
+};
+var billing = {
+	checkout: (slug) => {
+		window.location.assign(`/billing/checkout/${encodeURIComponent(slug)}`);
+	},
+	trialCheckout: (slug) => {
+		window.location.assign(`/billing/checkout/${encodeURIComponent(slug)}?trial=1`);
+	}
+};
+var bookmarks = {
+	save: (id) => request(`${API_V1}/videos/${id}/bookmark`, { method: "POST" }),
+	remove: (id) => request(`${API_V1}/videos/${id}/bookmark`, { method: "DELETE" })
+};
+var videoAnalysis = {
+	request: (id, body = {}) => request(`${API_V1}/videos/${id}/analysis`, {
+		method: "POST",
+		body
+	}),
+	get: (id) => request(`${API_V1}/videos/${id}/analysis`)
+};
+var TRACKED_ANALYSES_KEY = "vvf-tracked-video-analyses";
+function readTrackedVideoAnalyses() {
+	try {
+		const raw = window.sessionStorage.getItem(TRACKED_ANALYSES_KEY);
+		const parsed = raw ? JSON.parse(raw) : [];
+		return Array.isArray(parsed) ? parsed : [];
+	} catch {
+		return [];
+	}
+}
+function writeTrackedVideoAnalyses(entries) {
+	try {
+		window.sessionStorage.setItem(TRACKED_ANALYSES_KEY, JSON.stringify(entries.slice(0, 25)));
+	} catch {}
+}
+function trackVideoAnalysis(entry) {
+	const existing = readTrackedVideoAnalyses().filter((item) => String(item.videoId) !== String(entry.videoId));
+	writeTrackedVideoAnalyses([{ ...entry }, ...existing]);
+}
+function untrackVideoAnalysis(videoId) {
+	writeTrackedVideoAnalyses(readTrackedVideoAnalyses().filter((item) => String(item.videoId) !== String(videoId)));
+}
+var TRACKED_KEY = "vvf-tracked-searches";
+function readTracked() {
+	try {
+		const raw = window.sessionStorage.getItem(TRACKED_KEY);
+		const parsed = raw ? JSON.parse(raw) : [];
+		return Array.isArray(parsed) ? parsed : [];
+	} catch {
+		return [];
+	}
+}
+function writeTracked(entries) {
+	try {
+		window.sessionStorage.setItem(TRACKED_KEY, JSON.stringify(entries.slice(0, 10)));
+	} catch {}
+}
+function trackSearch(entry) {
+	const existing = readTracked().filter((t) => String(t.id) !== String(entry.id));
+	writeTracked([{
+		runningPromptShown: false,
+		completedPromptShown: false,
+		...entry
+	}, ...existing]);
+}
+function updateTracked(id, patch) {
+	writeTracked(readTracked().map((t) => String(t.id) === String(id) ? {
+		...t,
+		...patch
+	} : t));
+}
+function untrackSearch(id) {
+	writeTracked(readTracked().filter((t) => String(t.id) !== String(id)));
+}
+//#endregion
 //#region resources/js/Pages/components/AppLayout.jsx
 var AppLayout_exports = /* @__PURE__ */ __exportAll({ default: () => AppLayout });
 var PILL_CLASS = {
@@ -3055,6 +3216,55 @@ function AccountBlock({ signedIn, name, email, onSignOut, signingOut, onNavigate
 		})]
 	});
 }
+function CompletedAnalysisModal({ item, onClose, onView }) {
+	if (!item) return null;
+	return /* @__PURE__ */ jsxs("div", {
+		className: "bb-drawer is-open",
+		children: [/* @__PURE__ */ jsx("button", {
+			className: "bb-drawer__bg",
+			"aria-label": "Close notification",
+			onClick: onClose
+		}), /* @__PURE__ */ jsxs("div", {
+			className: "mx-4 my-auto w-full max-w-[440px] rounded-[24px] border border-[#E8DFC9] bg-[linear-gradient(180deg,#fffdf7_0%,#fff8ea_100%)] p-6 shadow-[0_30px_90px_rgba(42,33,20,0.22)]",
+			style: { marginInline: "auto" },
+			role: "dialog",
+			"aria-modal": "true",
+			"aria-label": "Video analysis ready",
+			children: [
+				/* @__PURE__ */ jsxs("div", {
+					className: "inline-flex items-center gap-2 rounded-full bg-[#FFF3CF] px-3 py-1 text-[11px] font-extrabold uppercase tracking-[0.08em] text-[#8C6B10]",
+					children: [/* @__PURE__ */ jsx(Spark, { className: "h-3.5 w-3.5" }), "Video analysis ready"]
+				}),
+				/* @__PURE__ */ jsx("h2", {
+					className: "mt-4 text-[24px] font-[850] leading-tight tracking-[-0.03em] text-[var(--ink)]",
+					children: "Your analysis is done"
+				}),
+				/* @__PURE__ */ jsxs("p", {
+					className: "mt-3 text-[14px] leading-6 text-[var(--muted)]",
+					children: [item.videoLabel || "Your outlier video", " is ready. Open the search result it belongs to and we'll jump straight into the finished analysis."]
+				}),
+				/* @__PURE__ */ jsx("div", {
+					className: "mt-4 rounded-[16px] border border-[var(--line)] bg-white/80 px-4 py-3 text-[13px] font-semibold text-[var(--ink)]",
+					children: item.searchName || item.videoLabel || "Saved search"
+				}),
+				/* @__PURE__ */ jsxs("div", {
+					className: "mt-6 flex flex-wrap gap-3",
+					children: [/* @__PURE__ */ jsx("button", {
+						type: "button",
+						className: "btn btn--g",
+						onClick: onClose,
+						children: "Later"
+					}), /* @__PURE__ */ jsx("button", {
+						type: "button",
+						className: "btn btn--y",
+						onClick: onView,
+						children: "View analysis"
+					})]
+				})
+			]
+		})]
+	});
+}
 /**
 * Brand Beacon app shell: a fixed 252px sidebar on desktop, a top bar + slide
 * drawer on small screens, and a shared footer under the content.
@@ -3074,6 +3284,7 @@ function AppLayout({ pill, step, title, subtitle, actions, toolbar, width = "max
 	const { auth = {} } = props;
 	const logout = useForm({});
 	const [drawerOpen, setDrawerOpen] = useState(false);
+	const [completedAnalysis, setCompletedAnalysis] = useState(null);
 	const signedIn = auth.signedIn ?? Boolean(auth.user);
 	const impersonation = auth.impersonation;
 	const signOut = () => {
@@ -3088,6 +3299,41 @@ function AppLayout({ pill, step, title, subtitle, actions, toolbar, width = "max
 			document.body.style.overflow = "";
 		};
 	}, [drawerOpen]);
+	useEffect(() => {
+		if (!signedIn || completedAnalysis) return void 0;
+		let cancelled = false;
+		const poll = async () => {
+			const tracked = readTrackedVideoAnalyses().filter((item) => item && item.videoId && item.searchUrl);
+			if (tracked.length === 0) return;
+			const statuses = await Promise.all(tracked.map(async (item) => {
+				try {
+					return {
+						item,
+						analysis: (await videoAnalysis.get(item.videoId))?.analysis ?? null
+					};
+				} catch {
+					return {
+						item,
+						analysis: null
+					};
+				}
+			}));
+			if (cancelled) return;
+			const ready = statuses.find(({ analysis }) => analysis?.status === "complete");
+			if (ready) {
+				setCompletedAnalysis(ready.item);
+				untrackVideoAnalysis(ready.item.videoId);
+				return;
+			}
+			statuses.filter(({ analysis }) => analysis?.status === "failed").forEach(({ item }) => untrackVideoAnalysis(item.videoId));
+		};
+		poll();
+		const timer = window.setInterval(poll, 4e3);
+		return () => {
+			cancelled = true;
+			window.clearInterval(timer);
+		};
+	}, [signedIn, completedAnalysis]);
 	const account = /* @__PURE__ */ jsx(AccountBlock, {
 		signedIn,
 		name: auth.user?.name,
@@ -3201,148 +3447,23 @@ function AppLayout({ pill, step, title, subtitle, actions, toolbar, width = "max
 						})
 					}), /* @__PURE__ */ jsx(AppFooter, { width })]
 				})]
+			}),
+			/* @__PURE__ */ jsx(CompletedAnalysisModal, {
+				item: completedAnalysis,
+				onClose: () => setCompletedAnalysis(null),
+				onView: () => {
+					if (!completedAnalysis?.searchUrl || !completedAnalysis?.videoId) {
+						setCompletedAnalysis(null);
+						return;
+					}
+					const joiner = completedAnalysis.searchUrl.includes("?") ? "&" : "?";
+					const target = `${completedAnalysis.searchUrl}${joiner}analysisVideo=${encodeURIComponent(completedAnalysis.videoId)}&openAnalysis=1`;
+					setCompletedAnalysis(null);
+					router.visit(target);
+				}
 			})
 		]
 	});
-}
-//#endregion
-//#region resources/js/landing/flow/api.js
-/**
-* Small fetch wrapper for the saved-search endpoints. Inertia handles page
-* navigation; these calls are the in-page ones that should not re-render the
-* whole document.
-*/
-function csrfToken$1() {
-	return document.querySelector("meta[name=\"csrf-token\"]")?.getAttribute("content") ?? "";
-}
-var API_V1 = "/api/v1";
-async function request(url, { method = "GET", body } = {}) {
-	const response = await fetch(url, {
-		method,
-		credentials: "same-origin",
-		headers: {
-			Accept: "application/json",
-			"X-Requested-With": "XMLHttpRequest",
-			...body ? { "Content-Type": "application/json" } : {},
-			...method === "GET" ? {} : { "X-CSRF-TOKEN": csrfToken$1() }
-		},
-		...body ? { body: JSON.stringify(body) } : {}
-	});
-	const payload = await response.json().catch(() => null);
-	if (!response.ok) {
-		const error = new Error(payload?.message || `Request failed (${response.status})`);
-		error.status = response.status;
-		error.payload = payload;
-		throw error;
-	}
-	return payload;
-}
-function expandKeywords(phrase, { signal, fresh = false } = {}) {
-	return fetch(`${API_V1}/saved-searches/expand`, {
-		method: "POST",
-		credentials: "same-origin",
-		signal,
-		headers: {
-			Accept: "application/json",
-			"Content-Type": "application/json",
-			"X-Requested-With": "XMLHttpRequest",
-			"X-CSRF-TOKEN": csrfToken$1()
-		},
-		body: JSON.stringify({
-			phrase,
-			...fresh ? { fresh: true } : {}
-		})
-	}).then(async (response) => {
-		const payload = await response.json().catch(() => null);
-		if (!response.ok) throw new Error(payload?.message || "Could not suggest keywords.");
-		return payload;
-	});
-}
-function createSavedSearch({ type, phrase, name, keywords, frequency, sources }) {
-	return request(`${API_V1}/saved-searches`, {
-		method: "POST",
-		body: {
-			type,
-			phrase,
-			name,
-			keywords,
-			frequency,
-			...sources ? { sources } : {}
-		}
-	});
-}
-function fetchNotifications(ids) {
-	return request(`${API_V1}/saved-searches/notifications?${ids.map((id) => `ids[]=${encodeURIComponent(id)}`).join("&")}`);
-}
-function fetchRecentSearches() {
-	return request(`${API_V1}/saved-searches/recent`);
-}
-var savedSearch = {
-	get: (id) => request(`${API_V1}/saved-searches/${id}/json`),
-	bookmark: (id, bookmarked) => request(`${API_V1}/saved-searches/${id}/bookmark`, {
-		method: "PATCH",
-		body: { bookmarked }
-	}),
-	pause: (id) => request(`${API_V1}/saved-searches/${id}/pause`, { method: "PATCH" }),
-	resume: (id) => request(`${API_V1}/saved-searches/${id}/resume`, { method: "PATCH" }),
-	update: (id, body) => request(`${API_V1}/saved-searches/${id}/frequency`, {
-		method: "PATCH",
-		body
-	}),
-	refresh: (id) => request(`${API_V1}/saved-searches/${id}/refresh`, { method: "POST" }),
-	retry: (id) => request(`${API_V1}/saved-searches/${id}/retry`, { method: "POST" }),
-	destroy: (id) => request(`${API_V1}/saved-searches/${id}`, { method: "DELETE" })
-};
-var billing = {
-	checkout: (slug) => {
-		window.location.assign(`/billing/checkout/${encodeURIComponent(slug)}`);
-	},
-	trialCheckout: (slug) => {
-		window.location.assign(`/billing/checkout/${encodeURIComponent(slug)}?trial=1`);
-	}
-};
-var bookmarks = {
-	save: (id) => request(`${API_V1}/videos/${id}/bookmark`, { method: "POST" }),
-	remove: (id) => request(`${API_V1}/videos/${id}/bookmark`, { method: "DELETE" })
-};
-var videoAnalysis = {
-	request: (id, body = {}) => request(`${API_V1}/videos/${id}/analysis`, {
-		method: "POST",
-		body
-	}),
-	get: (id) => request(`${API_V1}/videos/${id}/analysis`)
-};
-var TRACKED_KEY = "vvf-tracked-searches";
-function readTracked() {
-	try {
-		const raw = window.sessionStorage.getItem(TRACKED_KEY);
-		const parsed = raw ? JSON.parse(raw) : [];
-		return Array.isArray(parsed) ? parsed : [];
-	} catch {
-		return [];
-	}
-}
-function writeTracked(entries) {
-	try {
-		window.sessionStorage.setItem(TRACKED_KEY, JSON.stringify(entries.slice(0, 10)));
-	} catch {}
-}
-function trackSearch(entry) {
-	const existing = readTracked().filter((t) => String(t.id) !== String(entry.id));
-	writeTracked([{
-		runningPromptShown: false,
-		completedPromptShown: false,
-		...entry
-	}, ...existing]);
-}
-function updateTracked(id, patch) {
-	writeTracked(readTracked().map((t) => String(t.id) === String(id) ? {
-		...t,
-		...patch
-	} : t));
-}
-function untrackSearch(id) {
-	writeTracked(readTracked().filter((t) => String(t.id) !== String(id)));
 }
 //#endregion
 //#region resources/js/Pages/components/BrandInlineFlow.jsx
@@ -6300,7 +6421,7 @@ function Stepper$1({ kind, current }) {
 		})
 	});
 }
-function UsageConfirmModal$1({ title, body, subject, confirmLabel, busy = false, onConfirm, onCancel }) {
+function UsageConfirmModal$2({ title, body, subject, confirmLabel, busy = false, onConfirm, onCancel }) {
 	return /* @__PURE__ */ jsx("div", {
 		className: "bb",
 		children: /* @__PURE__ */ jsxs("div", {
@@ -6608,7 +6729,7 @@ function SearchWizard({ initialType = "brand", initialQuery = "", heading = "Sta
 			]
 		}),
 		step === "subject" && subjectExtra,
-		confirmPayload && /* @__PURE__ */ jsx(UsageConfirmModal$1, {
+		confirmPayload && /* @__PURE__ */ jsx(UsageConfirmModal$2, {
 			title: "Start this search?",
 			body: `This will use 1 search credit. You will have ${searchRemainingAfterUse} search credits remaining after this run starts. Search credits are not restored later, even if you pause, delete, or rerun the search.`,
 			subject: confirmPayload.payload?.name ?? confirmPayload.payload?.phrase ?? phrase,
@@ -6926,8 +7047,15 @@ function RecentCard({ searches, retryingSearchId, onRetry }) {
 		}, search.id))]
 	})] });
 }
-function FailedSearchModal({ search, retrying, onRetry, onClose }) {
-	if (!search) return null;
+function SearchCompletionModal({ state, onClose, onViewResults, onContactUs }) {
+	if (!state) return null;
+	const finished = state.finished ?? [];
+	const failed = state.failed ?? [];
+	const hasFailures = failed.length > 0;
+	const hasFinished = finished.length > 0;
+	const title = hasFailures && hasFinished ? "Search updates" : hasFailures ? "Something went wrong" : "Search ready";
+	const body = hasFailures && hasFinished ? "Some searches finished successfully, and some need your attention." : hasFailures ? "One or more searches did not finish correctly." : finished.length > 1 ? `${finished.length} searches have finished running.` : finished[0]?.name ? `Your search for ${String.fromCharCode(8220)}${finished[0].name}${String.fromCharCode(8221)} has finished running.` : "Your search has finished running.";
+	const primarySearch = hasFinished ? finished[0] : null;
 	return /* @__PURE__ */ jsx("div", {
 		className: "bb",
 		children: /* @__PURE__ */ jsxs("div", {
@@ -6935,35 +7063,188 @@ function FailedSearchModal({ search, retrying, onRetry, onClose }) {
 			children: [/* @__PURE__ */ jsx("button", {
 				className: "bb-modal__bg",
 				"aria-label": "Close",
-				onClick: onClose,
-				disabled: retrying
+				onClick: onClose
 			}), /* @__PURE__ */ jsxs("div", {
 				className: "bb-modal__box",
 				children: [
-					/* @__PURE__ */ jsx("h2", { children: "Something went wrong" }),
+					/* @__PURE__ */ jsx("h2", { children: title }),
 					/* @__PURE__ */ jsx("p", {
 						className: "sub",
-						children: "Try again or contact support."
+						children: body
+					}),
+					(hasFinished || hasFailures) && /* @__PURE__ */ jsxs("div", {
+						style: {
+							marginTop: 18,
+							display: "grid",
+							gap: 10
+						},
+						children: [hasFinished && /* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsx("p", {
+							style: {
+								fontWeight: 800,
+								color: "var(--ink)",
+								fontSize: ".82rem"
+							},
+							children: "Finished"
+						}), /* @__PURE__ */ jsx("div", {
+							style: {
+								marginTop: 8,
+								display: "grid",
+								gap: 8
+							},
+							children: finished.map((search) => /* @__PURE__ */ jsxs("div", {
+								style: {
+									padding: "10px 12px",
+									borderRadius: 12,
+									background: "var(--paper)",
+									border: "1px solid var(--line)"
+								},
+								children: [/* @__PURE__ */ jsx("div", {
+									style: {
+										fontWeight: 700,
+										color: "var(--ink)"
+									},
+									children: search.name || search.phrase
+								}), /* @__PURE__ */ jsxs("div", {
+									style: {
+										fontSize: ".8rem",
+										color: "var(--muted)",
+										marginTop: 4
+									},
+									children: [search.result_count ?? 0, " videos ready"]
+								})]
+							}, `done-${search.id}`))
+						})] }), hasFailures && /* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsx("p", {
+							style: {
+								fontWeight: 800,
+								color: "var(--ink)",
+								fontSize: ".82rem"
+							},
+							children: "Needs support"
+						}), /* @__PURE__ */ jsx("div", {
+							style: {
+								marginTop: 8,
+								display: "grid",
+								gap: 8
+							},
+							children: failed.map((search) => /* @__PURE__ */ jsxs("div", {
+								style: {
+									padding: "10px 12px",
+									borderRadius: 12,
+									background: "#fff7f2",
+									border: "1px solid #f2d1bf"
+								},
+								children: [/* @__PURE__ */ jsx("div", {
+									style: {
+										fontWeight: 700,
+										color: "var(--ink)"
+									},
+									children: search.name || search.phrase
+								}), /* @__PURE__ */ jsx("div", {
+									style: {
+										fontSize: ".8rem",
+										color: "var(--muted)",
+										marginTop: 4
+									},
+									children: search.latest_run_error || "The search did not finish."
+								})]
+							}, `failed-${search.id}`))
+						})] })]
 					}),
 					/* @__PURE__ */ jsxs("div", {
 						className: "actrow__r",
 						style: {
 							marginTop: 24,
+							justifyContent: "flex-end",
+							flexWrap: "wrap"
+						},
+						children: [
+							/* @__PURE__ */ jsx("button", {
+								type: "button",
+								className: "btn btn--g",
+								onClick: onClose,
+								children: "Close"
+							}),
+							hasFailures && /* @__PURE__ */ jsx("button", {
+								type: "button",
+								className: "btn btn--g",
+								onClick: onContactUs,
+								children: "Contact support"
+							}),
+							primarySearch?.url && /* @__PURE__ */ jsx("button", {
+								type: "button",
+								className: "btn btn--y",
+								onClick: () => onViewResults(primarySearch),
+								children: "View results"
+							})
+						]
+					})
+				]
+			})]
+		})
+	});
+}
+function SearchProcessingModal({ searches, onClose }) {
+	if (!Array.isArray(searches) || searches.length === 0) return null;
+	const first = searches[0];
+	const title = searches.length > 1 ? "Your searches are processing" : "Your search is processing";
+	const body = searches.length > 1 ? `We started ${searches.length} searches behind the scenes. We’ll update you here when they finish.` : first?.name ? `We started ${String.fromCharCode(8220)}${first.name}${String.fromCharCode(8221)} behind the scenes. We’ll update you here when it finishes.` : "We started your search behind the scenes. We’ll update you here when it finishes.";
+	return /* @__PURE__ */ jsx("div", {
+		className: "bb",
+		children: /* @__PURE__ */ jsxs("div", {
+			className: "bb-modal",
+			children: [/* @__PURE__ */ jsx("button", {
+				className: "bb-modal__bg",
+				"aria-label": "Close",
+				onClick: onClose
+			}), /* @__PURE__ */ jsxs("div", {
+				className: "bb-modal__box",
+				children: [
+					/* @__PURE__ */ jsx("h2", { children: title }),
+					/* @__PURE__ */ jsx("p", {
+						className: "sub",
+						children: body
+					}),
+					/* @__PURE__ */ jsx("div", {
+						style: {
+							marginTop: 18,
+							display: "grid",
+							gap: 8
+						},
+						children: searches.map((search) => /* @__PURE__ */ jsxs("div", {
+							style: {
+								padding: "10px 12px",
+								borderRadius: 12,
+								background: "var(--paper)",
+								border: "1px solid var(--line)"
+							},
+							children: [/* @__PURE__ */ jsx("div", {
+								style: {
+									fontWeight: 700,
+									color: "var(--ink)"
+								},
+								children: search.name || search.phrase
+							}), /* @__PURE__ */ jsx("div", {
+								style: {
+									fontSize: ".8rem",
+									color: "var(--muted)",
+									marginTop: 4
+								},
+								children: "It will appear in Pick up where you left off while it runs."
+							})]
+						}, `processing-${search.id}`))
+					}),
+					/* @__PURE__ */ jsx("div", {
+						className: "actrow__r",
+						style: {
+							marginTop: 24,
 							justifyContent: "flex-end"
 						},
-						children: [/* @__PURE__ */ jsx("button", {
-							type: "button",
-							className: "btn btn--g",
-							onClick: onClose,
-							disabled: retrying,
-							children: "Close"
-						}), search.can_retry_initial && /* @__PURE__ */ jsx("button", {
+						children: /* @__PURE__ */ jsx("button", {
 							type: "button",
 							className: "btn btn--y",
-							onClick: onRetry,
-							disabled: retrying,
-							children: retrying ? "Retrying..." : "Retry search"
-						})]
+							onClick: onClose,
+							children: "Okay"
+						})
 					})
 				]
 			})]
@@ -6972,23 +7253,59 @@ function FailedSearchModal({ search, retrying, onRetry, onClose }) {
 }
 function Dashboard() {
 	const { flash = {}, recent = [], stats = null, searchSuggestions = {} } = usePage().props;
-	const [readyModal, setReadyModal] = useState(null);
-	const [failedModal, setFailedModal] = useState(null);
+	const [processingModal, setProcessingModal] = useState(null);
+	const [completionModal, setCompletionModal] = useState(null);
 	const [retryingSearchId, setRetryingSearchId] = useState(null);
 	const [recentSearches, setRecentSearches] = useState(recent);
 	const polling = useRef(false);
 	const recentSearchesRef = useRef(recent);
 	const recentStatuses = useRef(new Map(recent.map((s) => [String(s.id), s.status])));
+	const flashedTrackedRef = useRef(false);
+	const flashedProcessingRef = useRef(false);
 	const hasActiveRecentSearch = recentSearches.some((s) => ACTIVE_SEARCH_STATUSES.has(s.status));
+	const mergeTrackedSearches = (entries = []) => {
+		if (!Array.isArray(entries) || entries.length === 0) return;
+		entries.forEach((entry) => {
+			if (entry?.id == null) return;
+			trackSearch(entry);
+		});
+	};
+	const markTrackedAsPrompted = (searches, patch) => {
+		searches.forEach((search) => {
+			if (search?.id == null) return;
+			updateTracked(search.id, patch);
+		});
+	};
+	const trackedTerminalChanges = (searches) => {
+		const tracked = readTracked();
+		const trackedById = new Map(tracked.map((entry) => [String(entry.id), entry]));
+		const finished = [];
+		const failed = [];
+		searches.forEach((search) => {
+			const trackedEntry = trackedById.get(String(search.id));
+			if (!trackedEntry) return;
+			if (search.status === "done" && trackedEntry.completedPromptShown !== true) finished.push(search);
+			if (search.status === "failed" && trackedEntry.failedPromptShown !== true) failed.push(search);
+		});
+		return {
+			finished,
+			failed
+		};
+	};
 	const applyRecentSearches = (searches, notifyOnTerminal = false) => {
 		const previousStatuses = recentStatuses.current;
 		recentStatuses.current = new Map(searches.map((s) => [String(s.id), s.status]));
 		recentSearchesRef.current = searches;
 		setRecentSearches(searches);
 		if (!notifyOnTerminal) return;
-		const terminal = searches.find((s) => ACTIVE_SEARCH_STATUSES.has(previousStatuses.get(String(s.id))) && (s.status === "done" || s.status === "failed"));
-		if (terminal?.status === "done") setReadyModal(terminal);
-		if (terminal?.status === "failed") setFailedModal(terminal);
+		const terminalSearches = searches.filter((s) => ACTIVE_SEARCH_STATUSES.has(previousStatuses.get(String(s.id))) && (s.status === "done" || s.status === "failed"));
+		if (terminalSearches.length === 0) return;
+		const trackedChanges = trackedTerminalChanges(terminalSearches);
+		if (trackedChanges.finished.length > 0 || trackedChanges.failed.length > 0) {
+			if (trackedChanges.finished.length > 0) markTrackedAsPrompted(trackedChanges.finished, { completedPromptShown: true });
+			if (trackedChanges.failed.length > 0) markTrackedAsPrompted(trackedChanges.failed, { failedPromptShown: true });
+			setCompletionModal(trackedChanges);
+		}
 	};
 	const refreshRecent = async (notifyOnTerminal = false) => {
 		const searches = (await fetchRecentSearches())?.searches ?? [];
@@ -7001,7 +7318,22 @@ function Dashboard() {
 		setRecentSearches(recent);
 	}, [recent]);
 	useEffect(() => {
-		if (readyModal || failedModal) return void 0;
+		if (flashedTrackedRef.current) return;
+		flashedTrackedRef.current = true;
+		const flashed = Array.isArray(flash.trackedSearches) ? flash.trackedSearches : [];
+		if (flashed.length === 0) return;
+		mergeTrackedSearches(flashed);
+		refreshRecent().catch(() => {});
+	}, [flash.trackedSearches]);
+	useEffect(() => {
+		if (flashedProcessingRef.current) return;
+		flashedProcessingRef.current = true;
+		const flashed = Array.isArray(flash.processingSearches) ? flash.processingSearches : [];
+		if (flashed.length === 0) return;
+		setProcessingModal(flashed);
+	}, [flash.processingSearches]);
+	useEffect(() => {
+		if (completionModal) return void 0;
 		let cancelled = false;
 		let timer;
 		const poll = async () => {
@@ -7022,22 +7354,23 @@ function Dashboard() {
 			cancelled = true;
 			window.clearTimeout(timer);
 		};
-	}, [
-		failedModal,
-		hasActiveRecentSearch,
-		readyModal
-	]);
-	const closeReadyModal = () => setReadyModal(null);
-	const viewResults = () => {
-		if (!readyModal?.url) return closeReadyModal();
-		router.visit(readyModal.url);
+	}, [completionModal, hasActiveRecentSearch]);
+	const closeCompletionModal = () => setCompletionModal(null);
+	const closeProcessingModal = () => setProcessingModal(null);
+	const viewResults = (search) => {
+		if (!search?.url) return closeCompletionModal();
+		untrackSearch(search.id);
+		router.visit(search.url);
 	};
-	const retryFailedSearch = async (failedSearch = failedModal) => {
+	const contactSupport = () => {
+		setCompletionModal(null);
+		router.visit("/contact");
+	};
+	const retryFailedSearch = async (failedSearch) => {
 		if (!failedSearch?.can_retry_initial || retryingSearchId !== null) return;
 		setRetryingSearchId(failedSearch.id);
 		try {
 			if ((await savedSearch.retry(failedSearch.id))?.search) await refreshRecent();
-			setFailedModal(null);
 		} finally {
 			setRetryingSearchId(null);
 		}
@@ -7165,49 +7498,15 @@ function Dashboard() {
 				}
 			})]
 		}),
-		readyModal && /* @__PURE__ */ jsx("div", {
-			className: "bb",
-			children: /* @__PURE__ */ jsxs("div", {
-				className: "bb-modal",
-				children: [/* @__PURE__ */ jsx("button", {
-					className: "bb-modal__bg",
-					"aria-label": "Close",
-					onClick: closeReadyModal
-				}), /* @__PURE__ */ jsxs("div", {
-					className: "bb-modal__box",
-					children: [
-						/* @__PURE__ */ jsx("h2", { children: "Search ready" }),
-						/* @__PURE__ */ jsx("p", {
-							className: "sub",
-							children: readyModal.name ? `Your search for ${String.fromCharCode(8220)}${readyModal.name}${String.fromCharCode(8221)} has finished running.` : "Your search has finished running."
-						}),
-						/* @__PURE__ */ jsxs("div", {
-							className: "actrow__r",
-							style: {
-								marginTop: 24,
-								justifyContent: "flex-end"
-							},
-							children: [/* @__PURE__ */ jsx("button", {
-								type: "button",
-								className: "btn btn--g",
-								onClick: closeReadyModal,
-								children: "Close"
-							}), /* @__PURE__ */ jsx("button", {
-								type: "button",
-								className: "btn btn--y",
-								onClick: viewResults,
-								children: "View results"
-							})]
-						})
-					]
-				})]
-			})
+		/* @__PURE__ */ jsx(SearchCompletionModal, {
+			state: completionModal,
+			onClose: closeCompletionModal,
+			onViewResults: viewResults,
+			onContactUs: contactSupport
 		}),
-		/* @__PURE__ */ jsx(FailedSearchModal, {
-			search: failedModal,
-			retrying: retryingSearchId === failedModal?.id,
-			onRetry: () => retryFailedSearch(),
-			onClose: () => setFailedModal(null)
+		/* @__PURE__ */ jsx(SearchProcessingModal, {
+			searches: processingModal,
+			onClose: closeProcessingModal
 		})
 	] });
 }
@@ -10630,6 +10929,13 @@ function canUsePaidVideoAnalysis(billing) {
 	const limit = Number(billing.videoAnalysisLimit ?? 0);
 	return Boolean(billing.hasPaidPlan) && limit !== 0;
 }
+function videoAnalysisRemaining(billing, startedThisSession = 0) {
+	if (!billing) return 0;
+	const limit = Number(billing.videoAnalysisLimit ?? 0);
+	const used = Number(billing.videoAnalysisUsed ?? 0) + Number(startedThisSession || 0);
+	if (limit === -1) return -1;
+	return Math.max(0, limit - used);
+}
 /** Render **bold** markers as <b>…</b> without allowing raw HTML. */
 function renderBold(text) {
 	return String(text ?? "").split(/(\*\*[^*]+\*\*)/g).map((part, i) => {
@@ -10858,6 +11164,7 @@ var Icons = {
 	})
 };
 function DetailScreen({ search, isAuthenticated = false, billing: billing$1, refreshing = false, bookmarkUpdating = false, onRefresh, onSearchUpdated, onToggleBookmark, onToggleVideoBookmark, bookmarkingVideoId = null, onTogglePause, onDelete }) {
+	const { url: currentUrl } = usePage();
 	const insights = search?.insights ?? {};
 	const bullets = search?.insights_bullets ?? [];
 	const [handleEditing, setHandleEditing] = useState(false);
@@ -10866,6 +11173,7 @@ function DetailScreen({ search, isAuthenticated = false, billing: billing$1, ref
 	const [menuOpen, setMenuOpen] = useState(false);
 	const [expandedCardId, setExpandedCardId] = useState(null);
 	const [analysisModal, setAnalysisModal] = useState(null);
+	const [confirmAnalysisVideo, setConfirmAnalysisVideo] = useState(null);
 	const [upgradeModalOpen, setUpgradeModalOpen] = useState(false);
 	const [visible, setVisible] = useState(PAGE_STEP);
 	const [sortKey, setSortKey] = useState("outlier");
@@ -10873,8 +11181,14 @@ function DetailScreen({ search, isAuthenticated = false, billing: billing$1, ref
 	const [videoPlayingId, setVideoPlayingId] = useState(null);
 	const [heatmapTooltip, setHeatmapTooltip] = useState(null);
 	const [analysisByVideoId, setAnalysisByVideoId] = useState({});
+	const [analysisStarting, setAnalysisStarting] = useState(false);
+	const [reservedAnalysisVideoIds, setReservedAnalysisVideoIds] = useState([]);
+	const [analysisNotice, setAnalysisNotice] = useState(null);
 	const menuRef = useRef(null);
+	const autoOpenedAnalysisRef = useRef(false);
 	const canAnalyzeMoreOutliers = canUsePaidVideoAnalysis(billing$1);
+	const analysisRemainingNow = videoAnalysisRemaining(billing$1, reservedAnalysisVideoIds.length);
+	const analysisRemainingAfterUse = analysisRemainingNow === -1 ? "unlimited" : Math.max(0, analysisRemainingNow - 1);
 	const results = useMemo(() => (search?.results ?? []).map((video) => ({
 		...video,
 		analysis: analysisByVideoId[video.id] ?? video.analysis ?? null
@@ -10967,15 +11281,89 @@ function DetailScreen({ search, isAuthenticated = false, billing: billing$1, ref
 		analysis: video.analysis ?? null
 	});
 	const closeAnalysis = () => setAnalysisModal(null);
+	const closeConfirmAnalysis = () => {
+		if (analysisStarting) return;
+		setConfirmAnalysisVideo(null);
+	};
 	const openUpgradeModal = () => setUpgradeModalOpen(true);
 	const closeUpgradeModal = () => setUpgradeModalOpen(false);
 	const openUpgradeForAnalysis = () => billing.checkout("basic");
+	const videoLabel = (videoId) => {
+		const video = results.find((entry) => String(entry.id) === String(videoId));
+		return video?.handle || video?.username || video?.title || "This video";
+	};
 	const updateVideoAnalysis = (videoId, analysis) => {
 		if (!videoId || !analysis) return;
-		setAnalysisByVideoId((current) => current[videoId]?.updated_at === analysis.updated_at && current[videoId]?.status === analysis.status ? current : {
-			...current,
-			[videoId]: analysis
+		if (analysis.status === "failed") setReservedAnalysisVideoIds((current) => current.filter((id) => String(id) !== String(videoId)));
+		setAnalysisByVideoId((current) => {
+			const previous = current[videoId] ?? results.find((entry) => String(entry.id) === String(videoId))?.analysis ?? null;
+			if (previous?.updated_at === analysis.updated_at && previous?.status === analysis.status) return current;
+			if (previous?.status === "processing" && analysis.status === "complete") setAnalysisNotice({
+				tone: "success",
+				message: `${videoLabel(videoId)} analysis is ready.`
+			});
+			if (previous?.status === "processing" && analysis.status === "failed") setAnalysisNotice({
+				tone: "error",
+				message: `${videoLabel(videoId)} analysis could not be completed.`
+			});
+			return {
+				...current,
+				[videoId]: analysis
+			};
 		});
+	};
+	useEffect(() => {
+		if (!analysisNotice) return void 0;
+		const timer = window.setTimeout(() => setAnalysisNotice(null), 5e3);
+		return () => window.clearTimeout(timer);
+	}, [analysisNotice]);
+	useEffect(() => {
+		if (autoOpenedAnalysisRef.current) return;
+		const query = currentUrl.split("?")[1] ?? "";
+		const params = new URLSearchParams(query);
+		const targetVideoId = params.get("analysisVideo");
+		if (!(params.get("openAnalysis") === "1") || !targetVideoId) return;
+		const targetVideo = results.find((video) => String(video.id) === String(targetVideoId));
+		if (!targetVideo) return;
+		autoOpenedAnalysisRef.current = true;
+		openAnalysis(targetVideo);
+		if (typeof window !== "undefined") {
+			const next = new URL(window.location.href);
+			next.searchParams.delete("analysisVideo");
+			next.searchParams.delete("openAnalysis");
+			window.history.replaceState({}, "", `${next.pathname}${next.search}${next.hash}`);
+		}
+	}, [currentUrl, results]);
+	const launchManualAnalysis = async (video) => {
+		setAnalysisStarting(true);
+		setConfirmAnalysisVideo(null);
+		try {
+			const nextAnalysis = (await videoAnalysis.request(video.id))?.analysis ?? null;
+			if (nextAnalysis) updateVideoAnalysis(video.id, nextAnalysis);
+			setReservedAnalysisVideoIds((current) => current.some((id) => String(id) === String(video.id)) ? current : [...current, video.id]);
+			trackVideoAnalysis({
+				videoId: video.id,
+				searchUrl: search?.url,
+				searchName: search?.name || search?.phrase,
+				videoLabel: video.handle || video.username || video.title || video.caption || "Outlier video"
+			});
+		} catch (error) {
+			setConfirmAnalysisVideo(video);
+			window.alert(error?.message || "Could not start this analysis.");
+		} finally {
+			setAnalysisStarting(false);
+		}
+	};
+	const handleAnalyzeAction = (video) => {
+		if (!canAnalyzeMoreOutliers) {
+			openUpgradeModal();
+			return;
+		}
+		if (video.analysis?.status === "complete" || video.analysis?.status === "processing") {
+			openAnalysis(video);
+			return;
+		}
+		setConfirmAnalysisVideo(video);
 	};
 	return /* @__PURE__ */ jsxs(Fragment$1, { children: [
 		/* @__PURE__ */ jsx("style", { children: scopedCss }),
@@ -11366,7 +11754,7 @@ function DetailScreen({ search, isAuthenticated = false, billing: billing$1, ref
 					expanded: expandedCardId === v.id,
 					locked: !canAnalyzeMoreOutliers,
 					onToggle: () => !canAnalyzeMoreOutliers ? openUpgradeModal() : setExpandedCardId((cur) => cur === v.id ? null : v.id),
-					onAnalyze: () => canAnalyzeMoreOutliers ? openAnalysis(v) : openUpgradeModal(),
+					onAnalyze: () => handleAnalyzeAction(v),
 					onToggleBookmark: () => onToggleVideoBookmark?.(v),
 					bookmarking: bookmarkingVideoId === v.id,
 					isPlaying: videoPlayingId === v.id,
@@ -11679,6 +12067,25 @@ function DetailScreen({ search, isAuthenticated = false, billing: billing$1, ref
 			onClose: closeAnalysis,
 			onAnalysisChange: updateVideoAnalysis
 		}),
+		analysisNotice && /* @__PURE__ */ jsxs("div", {
+			className: `rs-toast rs-toast--${analysisNotice.tone}`,
+			role: "status",
+			"aria-live": "polite",
+			children: [/* @__PURE__ */ jsx("span", { children: analysisNotice.message }), /* @__PURE__ */ jsx("button", {
+				type: "button",
+				onClick: () => setAnalysisNotice(null),
+				"aria-label": "Dismiss notification",
+				children: "×"
+			})]
+		}),
+		confirmAnalysisVideo && /* @__PURE__ */ jsx(UsageConfirmModal$1, {
+			video: confirmAnalysisVideo,
+			creditsRemaining: analysisRemainingNow,
+			creditsRemainingAfterUse: analysisRemainingAfterUse,
+			busy: analysisStarting,
+			onCancel: closeConfirmAnalysis,
+			onConfirm: () => launchManualAnalysis(confirmAnalysisVideo)
+		}),
 		upgradeModalOpen && /* @__PURE__ */ jsx(UpgradeModal, {
 			onClose: closeUpgradeModal,
 			onUpgrade: openUpgradeForAnalysis
@@ -11801,6 +12208,7 @@ function AutoAnalysis({ video }) {
 	});
 }
 function OutlierCard$1({ video, expanded, locked = false, onToggle, onAnalyze, onToggleBookmark, bookmarking, isPlaying, onTogglePlay }) {
+	const primaryLabel = video.analysis?.status === "processing" ? "Analyzing video..." : video.analysis?.status === "complete" ? "View analysis" : video.analysis?.status === "failed" ? "Retry analysis" : "Analyze video";
 	return /* @__PURE__ */ jsxs("article", {
 		className: `rs-oc${expanded ? " analyzed" : ""}`,
 		children: [/* @__PURE__ */ jsx(VideoFrame, {
@@ -11868,13 +12276,14 @@ function OutlierCard$1({ video, expanded, locked = false, onToggle, onAnalyze, o
 					children: [
 						/* @__PURE__ */ jsxs("button", {
 							className: "rs-btn rs-btn--y rs-btn--sm",
-							onClick: onToggle,
-							children: [Icons.Spark, /* @__PURE__ */ jsx("span", { children: expanded && !locked ? "Hide analysis" : "Analyze video" })]
+							onClick: onAnalyze,
+							disabled: video.analysis?.status === "processing",
+							children: [Icons.Spark, /* @__PURE__ */ jsx("span", { children: primaryLabel })]
 						}),
 						/* @__PURE__ */ jsx("button", {
 							className: "rs-ic2",
-							title: locked ? "Upgrade to analyze" : "Deep analyze",
-							onClick: onAnalyze,
+							title: expanded && !locked ? "Hide inline summary" : "Show inline summary",
+							onClick: onToggle,
 							children: Icons.ExtLink
 						}),
 						/* @__PURE__ */ jsx("button", {
@@ -11889,6 +12298,59 @@ function OutlierCard$1({ video, expanded, locked = false, onToggle, onAnalyze, o
 				})
 			]
 		})]
+	});
+}
+function UsageConfirmModal$1({ video, creditsRemaining, creditsRemainingAfterUse, busy = false, onConfirm, onCancel }) {
+	const currentCredits = creditsRemaining === -1 ? "Unlimited" : creditsRemaining;
+	const afterUseCredits = creditsRemainingAfterUse === "unlimited" ? "unlimited" : creditsRemainingAfterUse;
+	return /* @__PURE__ */ jsx("div", {
+		className: "rs-modalback",
+		onClick: onCancel,
+		children: /* @__PURE__ */ jsxs("div", {
+			className: "rs-usage",
+			onClick: (event) => event.stopPropagation(),
+			role: "dialog",
+			"aria-modal": "true",
+			"aria-label": "Confirm video analysis",
+			children: [
+				/* @__PURE__ */ jsxs("div", {
+					className: "rs-upg__eyebrow",
+					children: [Icons.Spark, /* @__PURE__ */ jsx("span", { children: "Video analysis" })]
+				}),
+				/* @__PURE__ */ jsx("h3", { children: "Analyze this outlier video?" }),
+				/* @__PURE__ */ jsxs("p", { children: [
+					"You currently have ",
+					/* @__PURE__ */ jsx("b", { children: currentCredits }),
+					" video analysis ",
+					currentCredits === 1 ? "credit" : "credits",
+					" remaining. This analysis will use ",
+					/* @__PURE__ */ jsx("b", { children: "1 credit" }),
+					" when it completes successfully, leaving you with ",
+					/* @__PURE__ */ jsx("b", { children: afterUseCredits }),
+					"."
+				] }),
+				/* @__PURE__ */ jsx("p", {
+					className: "rs-usage__subject",
+					children: video?.title || video?.caption || video?.handle || "Selected video"
+				}),
+				/* @__PURE__ */ jsxs("div", {
+					className: "rs-upgmodal__actions",
+					children: [/* @__PURE__ */ jsx("button", {
+						type: "button",
+						className: "rs-btn rs-btn--g",
+						onClick: onCancel,
+						disabled: busy,
+						children: "Cancel"
+					}), /* @__PURE__ */ jsx("button", {
+						type: "button",
+						className: "rs-btn rs-btn--y",
+						onClick: onConfirm,
+						disabled: busy,
+						children: busy ? "Starting…" : "Start analysis"
+					})]
+				})
+			]
+		})
 	});
 }
 function UpgradeModal({ onClose, onUpgrade }) {
@@ -12142,6 +12604,16 @@ var scopedCss = `
 .rs-oc__st svg{width:13px;height:13px;color:var(--faint-2,#9A968E);flex:none}
 .rs-oc__panel{margin-top:10px}
 .rs-modalback{position:fixed;inset:0;z-index:130;display:flex;align-items:center;justify-content:center;padding:16px;background:rgba(20,15,0,.34);backdrop-filter:blur(3px)}
+.rs-toast{position:fixed;right:18px;bottom:18px;z-index:140;display:flex;align-items:center;gap:12px;max-width:min(420px,calc(100vw - 32px));padding:14px 16px;border-radius:16px;border:1px solid var(--line);background:#fff;box-shadow:0 18px 40px rgba(42,33,20,.18)}
+.rs-toast--success{border-color:#cfe8d4;background:#f6fff7}
+.rs-toast--error{border-color:#f0d6c8;background:#fff8f4}
+.rs-toast span{font-size:.88rem;font-weight:600;color:var(--ink);line-height:1.45}
+.rs-toast button{width:28px;height:28px;flex:none;border:0;border-radius:999px;background:rgba(0,0,0,.05);color:var(--muted);font-size:1rem;cursor:pointer}
+.rs-usage{width:min(100%,460px);border:1px solid #f2e4b8;border-radius:22px;padding:22px;background:linear-gradient(180deg,#fffdf7 0%,#fff8ea 100%);box-shadow:0 28px 90px rgba(42,33,20,.22)}
+.rs-usage h3{margin-top:10px;font-size:1.15rem;font-weight:800;letter-spacing:-.03em;color:var(--ink)}
+.rs-usage p{margin-top:8px;font-size:.9rem;line-height:1.55;color:var(--muted)}
+.rs-usage b{color:var(--ink)}
+.rs-usage__subject{margin-top:14px;padding:12px 14px;border:1px solid var(--line);border-radius:14px;background:rgba(255,255,255,.7);font-weight:700;color:var(--ink)}
 .rs-upgmodal{position:relative;width:min(100%,420px);border:1px solid #f2e4b8;border-radius:22px;padding:22px;background:linear-gradient(180deg,#fffdf7 0%,#fff7e4 100%);box-shadow:0 28px 90px rgba(42,33,20,.22)}
 .rs-upgmodal__close{position:absolute;top:12px;right:12px;width:34px;height:34px;border-radius:999px;border:1px solid var(--line);background:rgba(255,255,255,.8);display:grid;place-items:center;color:var(--muted);cursor:pointer}
 .rs-upgmodal__close svg{width:14px;height:14px}
@@ -14498,7 +14970,7 @@ function Running({ searchId }) {
 					searchId,
 					onBack: () => router.visit("/search"),
 					onDone: () => router.visit(`/results/${searchId}`),
-					onAutoReturn: () => {}
+					onAutoReturn: () => router.visit("/dashboard")
 				})
 			})
 		})]

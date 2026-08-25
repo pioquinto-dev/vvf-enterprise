@@ -6,26 +6,16 @@ use Carbon\CarbonImmutable;
 use Illuminate\Support\Collection;
 
 /**
- * Turns snapshots into the performance chart, the outliers-per-week bars, and
- * the delta chips on the signal tiles.
+ * Turns visible search results into the uploaded-at weekly chart, the
+ * outliers-per-week bars, and the delta chips on the signal tiles.
  *
- * Two sources feed the same series, and the difference matters:
- *
- *  - Recorded points come from `custom_keyword_search_snapshots`. They are what
- *    the search measured at that moment.
- *  - Reconstructed points are derived here by bucketing videos on `uploaded_at`.
- *    They say "these posts went up that week, and here is what they are worth
- *    *today*" — not what the metric read at the time. A video that went viral
- *    last month lands entirely in the week it was posted.
- *
- * A recorded point always wins its week. Reconstruction only fills the gaps, so
- * the chart converges on real measurement as runs accumulate. Every point
- * carries `reconstructed`, and the UI labels the series whenever any point is.
+ * The chart on the results page is intentionally based on when the matched
+ * videos were uploaded, not when the search happened to refresh. That makes
+ * the graph useful on day one and keeps it stable for older completed searches
+ * without forcing another scrape.
  */
 class TrendBuilder
 {
-    private const WEEKS = 12;
-
     public function __construct(private readonly SearchMetrics $metrics) {}
 
     /**
@@ -35,45 +25,37 @@ class TrendBuilder
      */
     public function build(array $results, Collection $snapshots): array
     {
-        $now = CarbonImmutable::now()->utc();
-        $currentWeek = $now->startOfWeek();
-
         // Score every bucket against the whole search's median, not its own, so
         // a quiet week does not manufacture outliers out of its three posts.
         $baseline = app(SearchInsights::class)->medianViews($results);
-
-        $recorded = $this->indexRecordedByWeek($snapshots);
         $cohorts = $this->cohortsByWeek($results);
+        $weeks = array_keys($cohorts);
+        sort($weeks);
 
-        $points = [];
-
-        for ($offset = self::WEEKS - 1; $offset >= 0; $offset--) {
-            $weekStart = $currentWeek->subWeeks($offset);
-            $key = $weekStart->format('o-\WW');
-
-            if (isset($recorded[$key])) {
-                $points[] = $this->pointFromSnapshot($recorded[$key], $weekStart, $offset);
-
-                continue;
-            }
-
-            $points[] = $this->pointFromCohort($cohorts[$key] ?? [], $weekStart, $offset, $baseline);
-        }
-
-        $reconstructedCount = count(array_filter($points, fn (array $p): bool => $p['reconstructed']));
+        $points = array_map(
+            fn (string $weekKey): array => $this->pointFromCohort($cohorts[$weekKey] ?? [], $weekKey, $baseline),
+            $weeks,
+        );
 
         return [
-            'weeks' => self::WEEKS,
+            'weeks' => count($points),
             'points' => $points,
-            'has_reconstructed' => $reconstructedCount > 0,
-            'fully_reconstructed' => $reconstructedCount === count($points),
-            'recorded_count' => count($points) - $reconstructedCount,
+            'has_reconstructed' => false,
+            'fully_reconstructed' => false,
+            'recorded_count' => 0,
+            'x_axis_label' => 'Upload week',
+            'y_axis_labels' => [
+                'views' => 'Views',
+                'posts' => 'Posts',
+                'engagement' => 'Engagement',
+                'rate' => 'Engagement rate',
+            ],
             'metrics' => $this->metricSeries($points),
             'outliers_per_week' => array_map(
                 fn (array $p): array => [
                     'label' => $p['label'],
                     'value' => $p['outliers'],
-                    'reconstructed' => $p['reconstructed'],
+                    'reconstructed' => false,
                 ],
                 array_slice($points, -6),
             ),
@@ -150,27 +132,6 @@ class TrendBuilder
     }
 
     /**
-     * @param  Collection<int, \App\Models\CustomKeywordSearchSnapshot>  $snapshots
-     * @return array<string, \App\Models\CustomKeywordSearchSnapshot>
-     */
-    private function indexRecordedByWeek(Collection $snapshots): array
-    {
-        $indexed = [];
-
-        foreach ($snapshots->where('is_reconstructed', false)->sortBy('captured_at') as $snapshot) {
-            if ($snapshot->captured_at === null) {
-                continue;
-            }
-
-            // Last write wins: the most recent run in a week is that week's
-            // reading, not the first one.
-            $indexed[CarbonImmutable::parse($snapshot->captured_at)->utc()->format('o-\WW')] = $snapshot;
-        }
-
-        return $indexed;
-    }
-
-    /**
      * @param  array<int, array<string, mixed>>  $results
      * @return array<string, array<int, array<string, mixed>>>
      */
@@ -191,43 +152,25 @@ class TrendBuilder
                 continue;
             }
 
-            $cohorts[$moment->startOfWeek()->format('o-\WW')][] = $row;
+            $cohorts[$moment->startOfWeek()->toDateString()][] = $row;
         }
 
         return $cohorts;
     }
 
     /**
-     * @return array<string, mixed>
-     */
-    private function pointFromSnapshot($snapshot, CarbonImmutable $weekStart, int $offset): array
-    {
-        return [
-            'label' => $this->label($offset),
-            'week_start' => $weekStart->toIso8601String(),
-            'reconstructed' => false,
-            'posts' => (int) $snapshot->video_count,
-            'views' => (int) $snapshot->total_views,
-            'engagement' => (int) $snapshot->total_engagement,
-            'engagement_rate' => round((float) $snapshot->avg_engagement_rate, 2),
-            'median_views' => (int) $snapshot->median_views,
-            'outliers' => (int) $snapshot->outlier_count,
-            'top_multiple' => round((float) $snapshot->top_multiple, 2),
-        ];
-    }
-
-    /**
      * @param  array<int, array<string, mixed>>  $cohort
      * @return array<string, mixed>
      */
-    private function pointFromCohort(array $cohort, CarbonImmutable $weekStart, int $offset, int $baseline): array
+    private function pointFromCohort(array $cohort, string $weekKey, int $baseline): array
     {
         $metrics = $this->metrics->for($cohort, $baseline > 0 ? $baseline : null);
+        $weekStart = CarbonImmutable::parse($weekKey, 'UTC')->startOfWeek();
 
         return [
-            'label' => $this->label($offset),
+            'label' => $weekStart->format('M j'),
             'week_start' => $weekStart->toIso8601String(),
-            'reconstructed' => true,
+            'reconstructed' => false,
             'posts' => $metrics['video_count'],
             'views' => $metrics['total_views'],
             'engagement' => $metrics['total_engagement'],
@@ -236,11 +179,6 @@ class TrendBuilder
             'outliers' => $metrics['outlier_count'],
             'top_multiple' => $metrics['top_multiple'],
         ];
-    }
-
-    private function label(int $offset): string
-    {
-        return $offset === 0 ? 'now' : "{$offset}w ago";
     }
 
     /**

@@ -16,7 +16,7 @@ export default function Running({ searchId }) {
                             searchId={searchId}
                             onBack={() => router.visit('/search')}
                             onDone={() => router.visit(`/results/${searchId}`)}
-                            onAutoReturn={() => {}}
+                            onAutoReturn={() => router.visit('/dashboard')}
                         />
                     </div>
                 </main>
