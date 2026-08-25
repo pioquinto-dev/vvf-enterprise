@@ -322,10 +322,49 @@ function SearchProcessingModal({ searches, onClose }) {
   );
 }
 
+function SearchAccessPromptModal({ prompt, billing, onClose, onUpgrade }) {
+  if (!prompt) return null;
+
+  const trialEligible = billing?.trialEligible ?? true;
+  const hasUsedTrial = billing?.hasUsedTrial ?? false;
+  const ctaLabel = trialEligible && !hasUsedTrial ? 'Start 8-day trial' : 'View Growth plan';
+  const body = trialEligible && !hasUsedTrial
+    ? 'You already used your free search. Start your 8-day trial to unlock more searches and keep this one moving.'
+    : 'You already used your free search. Upgrade to Growth to unlock more searches and keep researching.';
+  const detail = prompt?.phrase
+    ? `Your search for ${String.fromCharCode(8220)}${prompt.phrase}${String.fromCharCode(8221)} was not started because this account is out of search credits for the current period.`
+    : 'Your search was not started because this account is out of search credits for the current period.';
+
+  return (
+    <div className="bb">
+      <div className="bb-modal">
+        <button className="bb-modal__bg" aria-label="Close" onClick={onClose} />
+        <div className="bb-modal__box">
+          <h2>Free search already used</h2>
+          <p className="sub">{body}</p>
+          <p style={{ marginTop: 16, color: 'var(--muted)', lineHeight: 1.6 }}>{detail}</p>
+          {prompt?.message && (
+            <p style={{ marginTop: 14, fontWeight: 700, color: 'var(--ink)' }}>{prompt.message}</p>
+          )}
+          <div className="actrow__r" style={{ marginTop: 24, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+            <button type="button" className="btn btn--g" onClick={onClose}>
+              Maybe later
+            </button>
+            <button type="button" className="btn btn--y" onClick={onUpgrade}>
+              {ctaLabel}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function Dashboard() {
-  const { flash = {}, recent = [], stats = null, searchSuggestions = {} } = usePage().props;
+  const { flash = {}, recent = [], stats = null, searchSuggestions = {}, billing = {} } = usePage().props;
   const [processingModal, setProcessingModal] = useState(null);
   const [completionModal, setCompletionModal] = useState(null);
+  const [searchAccessPrompt, setSearchAccessPrompt] = useState(null);
   const [retryingSearchId, setRetryingSearchId] = useState(null);
   const [recentSearches, setRecentSearches] = useState(recent);
   const polling = useRef(false);
@@ -441,6 +480,11 @@ export default function Dashboard() {
   }, [flash.processingSearches]);
 
   useEffect(() => {
+    if (!flash.searchAccessPrompt) return;
+    setSearchAccessPrompt(flash.searchAccessPrompt);
+  }, [flash.searchAccessPrompt]);
+
+  useEffect(() => {
     if (completionModal) return undefined;
 
     let cancelled = false;
@@ -493,6 +537,10 @@ export default function Dashboard() {
     } finally {
       setRetryingSearchId(null);
     }
+  };
+  const openSearchUpgrade = () => {
+    setSearchAccessPrompt(null);
+    router.visit((billing.trialEligible ?? true) && !(billing.hasUsedTrial ?? false) ? '/trial' : '/plans');
   };
 
   const dashboardExtras = (
@@ -642,6 +690,12 @@ export default function Dashboard() {
       <SearchProcessingModal
         searches={processingModal}
         onClose={closeProcessingModal}
+      />
+      <SearchAccessPromptModal
+        prompt={searchAccessPrompt}
+        billing={billing}
+        onClose={() => setSearchAccessPrompt(null)}
+        onUpgrade={openSearchUpgrade}
       />
     </>
   );

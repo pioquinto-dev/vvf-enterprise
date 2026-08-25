@@ -118,15 +118,11 @@ class GoogleAuthController extends Controller
                     ->with('tracked_searches', $tracked)
                     ->with('processing_searches', $tracked);
             } catch (\Illuminate\Validation\ValidationException $exception) {
-                FreeSearchFunnelController::put($request, $pending);
-
-                return redirect()->route('search.keywords', [
-                    'q' => $pending['phrase'] ?? '',
-                    'type' => $pending['type'] ?? 'brand',
-                ])->with(
-                    'free_search_error',
-                    collect($exception->errors())->flatten()->first() ?? 'We could not start this search.',
-                );
+                return redirect()->route('dashboard')->with('search_access_prompt', [
+                    'reason' => 'search_credit_exhausted',
+                    'phrase' => $pending['phrase'] ?? '',
+                    'message' => collect($exception->errors())->flatten()->first() ?? 'We could not start this search.',
+                ]);
             }
         }
 
