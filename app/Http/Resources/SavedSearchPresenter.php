@@ -92,6 +92,12 @@ class SavedSearchPresenter
                         'bookmarked' => in_array($row->viral_video_id, $bookmarkedVideoIds, true),
                         'is_new_breakout' => (bool) $row->is_new_breakout,
                         'source' => $row->source,
+                        // The run that last surfaced this video. The pivot
+                        // row is upserted in place on every re-run, so this
+                        // points at the newest run the video was included
+                        // in — the detail page uses it to bucket cards as
+                        // "new this run" vs "previous run" vs "older".
+                        'search_run_id' => $row->custom_keyword_search_run_id,
                         'analysis' => $analysisByVideoId[$row->viral_video_id] ?? null,
                         // enrichment fields — nullable, populated by SearchEnrichmentService
                         'content_format' => $video?->content_format,
