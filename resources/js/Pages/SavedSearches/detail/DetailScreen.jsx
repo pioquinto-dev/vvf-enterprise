@@ -382,17 +382,25 @@ export default function DetailScreen({
    * The presenter returns `runs` ordered by completed_at ascending, so the
    * newest completed run is the last entry. Every card carries the id of
    * the run that last surfaced it (`search_run_id`); we compare against
-   * the latest and previous ids to bucket cards, and default anything
-   * older (or with a null id) to `old`.
+   * the latest and previous ids to bucket cards as new / previous / older.
+   *
+   * On a first-only run there is no "previous" to promote anything against,
+   * so `previousRunId` is null. In that case (and whenever we simply can't
+   * tell — the runs feed is empty, or the pivot row's `search_run_id` is
+   * null on a legacy row that predates the column) we bucket everything as
+   * `new`: the whole result set was surfaced in the same run and nothing
+   * has been superseded yet. As soon as a second run completes and starts
+   * carrying videos over, the comparison below takes over on its own.
    */
   const runList = search?.runs ?? [];
   const latestRunId = runList.length > 0 ? runList[runList.length - 1]?.id ?? null : null;
   const previousRunId = runList.length > 1 ? runList[runList.length - 2]?.id ?? null : null;
   const bucketForVideo = (video) => {
+    if (previousRunId == null) return 'new';
     const rid = video?.search_run_id;
-    if (rid == null) return 'old';
-    if (latestRunId != null && rid === latestRunId) return 'new';
-    if (previousRunId != null && rid === previousRunId) return 'prev';
+    if (rid == null) return 'new';
+    if (rid === latestRunId) return 'new';
+    if (rid === previousRunId) return 'prev';
     return 'old';
   };
   const runCounts = useMemo(() => rest.reduce((acc, v) => {
