@@ -213,6 +213,23 @@ function canUsePaidVideoAnalysis(billing) {
   return Boolean(billing.hasPaidPlan) && limit !== 0;
 }
 
+function canUseSearchBookmarks(billing) {
+  if (!billing) return false;
+
+  const limit = Number(billing.searchBookmarkLimit ?? billing.bookmarkLimit ?? 0);
+  const used = Number(billing.searchBookmarkCount ?? billing.bookmarksUsed ?? billing.bookmarkCount ?? 0);
+
+  if (limit === -1) return true;
+
+  return Boolean(billing.hasPaidPlan) && limit !== 0 && used < limit;
+}
+
+function canManageSearch(billing) {
+  if (!billing) return false;
+
+  return Boolean(billing.hasPaidPlan);
+}
+
 function videoAnalysisRemaining(billing, startedThisSession = 0) {
   if (!billing) return 0;
 
@@ -309,7 +326,7 @@ export default function DetailScreen({
   const [expandedCardId, setExpandedCardId] = useState(null);
   const [analysisModal, setAnalysisModal] = useState(null);
   const [confirmAnalysisVideo, setConfirmAnalysisVideo] = useState(null);
-  const [upgradeModalOpen, setUpgradeModalOpen] = useState(false);
+  const [upgradeModalType, setUpgradeModalType] = useState(null);
   const [visible, setVisible] = useState(PAGE_STEP);
   const [sortKey, setSortKey] = useState('outlier');
   const [metric, setMetric] = useState('views');
@@ -321,9 +338,15 @@ export default function DetailScreen({
   const [analysisStarting, setAnalysisStarting] = useState(false);
   const [reservedAnalysisVideoIds, setReservedAnalysisVideoIds] = useState([]);
   const [analysisNotice, setAnalysisNotice] = useState(null);
-  const menuRef = useRef(null);
+  const [mobileCards, setMobileCards] = useState(false);
+  const [insightsCollapsed, setInsightsCollapsed] = useState(false);
+  const [confirmAction, setConfirmAction] = useState(null);
+  const menuTopRef = useRef(null);
+  const menuHeaderRef = useRef(null);
   const autoOpenedAnalysisRef = useRef(false);
   const canAnalyzeMoreOutliers = canUsePaidVideoAnalysis(billing);
+  const canBookmarkSearch = canUseSearchBookmarks(billing);
+  const canManageCurrentSearch = canManageSearch(billing);
   const analysisRemainingNow = videoAnalysisRemaining(billing, reservedAnalysisVideoIds.length);
   const analysisRemainingAfterUse = analysisRemainingNow === -1 ? 'unlimited' : Math.max(0, analysisRemainingNow - 1);
 
@@ -338,7 +361,10 @@ export default function DetailScreen({
   useEffect(() => {
     if (!menuOpen) return undefined;
     const onDocClick = (e) => {
-      if (menuRef.current && !menuRef.current.contains(e.target)) menuClose();
+      const inTopMenu = menuTopRef.current?.contains(e.target);
+      const inHeaderMenu = menuHeaderRef.current?.contains(e.target);
+
+      if (!inTopMenu && !inHeaderMenu) menuClose();
     };
     document.addEventListener('click', onDocClick);
     return () => document.removeEventListener('click', onDocClick);
@@ -471,8 +497,8 @@ export default function DetailScreen({
     if (analysisStarting) return;
     setConfirmAnalysisVideo(null);
   };
-  const openUpgradeModal = () => setUpgradeModalOpen(true);
-  const closeUpgradeModal = () => setUpgradeModalOpen(false);
+  const openUpgradeModal = (type = 'analysis') => setUpgradeModalType(type);
+  const closeUpgradeModal = () => setUpgradeModalType(null);
   const openUpgradeForAnalysis = () => billingApi.checkout('basic');
   const videoLabel = (videoId) => {
     const video = results.find((entry) => String(entry.id) === String(videoId));
@@ -517,6 +543,29 @@ export default function DetailScreen({
 
     return () => window.clearTimeout(timer);
   }, [analysisNotice]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return undefined;
+
+    const media = window.matchMedia('(max-width: 560px)');
+    const sync = () => {
+      const nextMobile = media.matches;
+      setMobileCards(nextMobile);
+      setInsightsCollapsed(nextMobile);
+    };
+
+    sync();
+
+    if (typeof media.addEventListener === 'function') {
+      media.addEventListener('change', sync);
+
+      return () => media.removeEventListener('change', sync);
+    }
+
+    media.addListener(sync);
+
+    return () => media.removeListener(sync);
+  }, []);
 
   useEffect(() => {
     if (autoOpenedAnalysisRef.current) return;
@@ -574,7 +623,7 @@ export default function DetailScreen({
 
   const handleAnalyzeAction = (video) => {
     if (!canAnalyzeMoreOutliers) {
-      openUpgradeModal();
+      openUpgradeModal('analysis');
       return;
     }
 
@@ -586,6 +635,47 @@ export default function DetailScreen({
     setConfirmAnalysisVideo(video);
   };
 
+  const handleSearchBookmarkAction = () => {
+    if (!search?.is_watchlisted && !canBookmarkSearch) {
+      openUpgradeModal('search-bookmark');
+      return;
+    }
+
+    onToggleBookmark?.();
+  };
+  const openPauseConfirm = () => {
+    if (!canManageCurrentSearch) {
+      openUpgradeModal('search-management');
+      return;
+    }
+
+    setMenuOpen(false);
+    setConfirmAction(search?.status === 'paused' ? 'resume' : 'pause');
+  };
+  const openDeleteConfirm = () => {
+    if (!canManageCurrentSearch) {
+      openUpgradeModal('search-management');
+      return;
+    }
+
+    setMenuOpen(false);
+    setConfirmAction('delete');
+  };
+  const closeConfirmAction = () => setConfirmAction(null);
+  const submitConfirmAction = async () => {
+    const action = confirmAction;
+    if (!action) return;
+
+    setConfirmAction(null);
+
+    if (action === 'delete') {
+      await onDelete?.();
+      return;
+    }
+
+    await onTogglePause?.();
+  };
+
   /* ============================ RENDER ============================ */
 
   return (
@@ -595,6 +685,23 @@ export default function DetailScreen({
       {/* top bar */}
       <div className="rs-viewbar">
         <Link className="rs-tbtn" href="/bookmarks">{Icons.Back} Back to bookmarks</Link>
+        <div className="rs-viewbar__actions rs-mobileonly" ref={menuTopRef}>
+          <button className={`rs-iconbtn${search?.is_watchlisted ? ' on' : ''}`} title="Bookmark" onClick={handleSearchBookmarkAction} disabled={bookmarkUpdating}>
+            {search?.is_watchlisted ? Icons.Bookmark : Icons.BookmarkO}
+          </button>
+          <button className="rs-iconbtn" title="More" onClick={(e) => { e.stopPropagation(); setMenuOpen((v) => !v); }}>
+            {Icons.Kebab}
+          </button>
+          {menuOpen && (
+            <div className="rs-menu" onClick={(e) => e.stopPropagation()}>
+              <button onClick={() => { setMenuOpen(false); setHandleEditing(true); }}>{Icons.Edit} Edit TikTok handle</button>
+              <button onClick={() => { setMenuOpen(false); onRefresh?.(); }} disabled={refreshing}>{Icons.Refresh} {refreshing ? 'Refreshing…' : 'Refresh now'}</button>
+              <button onClick={openPauseConfirm}>{Icons.Pause} {search?.status === 'paused' ? 'Resume tracking' : 'Pause tracking'}</button>
+              <hr />
+              <button style={{ color: '#B0431B' }} onClick={openDeleteConfirm}>{Icons.Trash} Delete search</button>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* HEADER */}
@@ -627,8 +734,8 @@ export default function DetailScreen({
             </span>
           </div>
         </div>
-        <div className="rs-bhead__x" ref={menuRef}>
-          <button className={`rs-iconbtn${search?.is_watchlisted ? ' on' : ''}`} title="Bookmark" onClick={onToggleBookmark} disabled={bookmarkUpdating}>
+        <div className="rs-bhead__actions rs-desktoponly" ref={menuHeaderRef}>
+          <button className={`rs-iconbtn${search?.is_watchlisted ? ' on' : ''}`} title="Bookmark" onClick={handleSearchBookmarkAction} disabled={bookmarkUpdating}>
             {search?.is_watchlisted ? Icons.Bookmark : Icons.BookmarkO}
           </button>
           <button className="rs-iconbtn" title="More" onClick={(e) => { e.stopPropagation(); setMenuOpen((v) => !v); }}>
@@ -638,9 +745,9 @@ export default function DetailScreen({
             <div className="rs-menu" onClick={(e) => e.stopPropagation()}>
               <button onClick={() => { setMenuOpen(false); setHandleEditing(true); }}>{Icons.Edit} Edit TikTok handle</button>
               <button onClick={() => { setMenuOpen(false); onRefresh?.(); }} disabled={refreshing}>{Icons.Refresh} {refreshing ? 'Refreshing…' : 'Refresh now'}</button>
-              <button onClick={() => { setMenuOpen(false); onTogglePause?.(); }}>{Icons.Pause} {search?.status === 'paused' ? 'Resume tracking' : 'Pause tracking'}</button>
+              <button onClick={openPauseConfirm}>{Icons.Pause} {search?.status === 'paused' ? 'Resume tracking' : 'Pause tracking'}</button>
               <hr />
-              <button style={{ color: '#B0431B' }} onClick={() => { setMenuOpen(false); onDelete?.(); }}>{Icons.Trash} Delete search</button>
+              <button style={{ color: '#B0431B' }} onClick={openDeleteConfirm}>{Icons.Trash} Delete search</button>
             </div>
           )}
         </div>
@@ -666,20 +773,35 @@ export default function DetailScreen({
 
       {/* AI INSIGHTS */}
       {(bullets.length > 0 || search?.ai_summary) && (
-        <div className="rs-ai">
-          <div className="rs-ai__h">
-            {Icons.Spark}
-            <span className="rs-ai__t">Insights</span>
-            <span className="rs-ai__when">{formatDate(search?.ai_summary_generated_at)}</span>
-          </div>
-          {bullets.length > 0 ? (
-            <ul className="rs-ai__list">
-              {bullets.map((line, i) => (
-                <li key={i}>{renderBold(line)}</li>
-              ))}
-            </ul>
-          ) : (
-            <p style={{ fontSize: '.92rem', lineHeight: 1.5, color: 'var(--body)' }}>{search.ai_summary}</p>
+        <div className={`rs-ai${mobileCards ? ' rs-ai--mobile' : ''}${insightsCollapsed ? ' is-collapsed' : ''}`}>
+          <button
+            type="button"
+            className={`rs-ai__toggle${mobileCards ? ' is-mobile' : ''}`}
+            onClick={() => mobileCards && setInsightsCollapsed((current) => !current)}
+            aria-expanded={!insightsCollapsed}
+          >
+            <div className="rs-ai__h">
+              {Icons.Spark}
+              <span className="rs-ai__t">Insights</span>
+              <span className="rs-ai__when">{formatDate(search?.ai_summary_generated_at)}</span>
+            </div>
+            {mobileCards && (
+              <div className="rs-ai__hint">
+                <span>Click to View Insights</span>
+                <span className={`rs-ai__chev${insightsCollapsed ? '' : ' is-open'}`}>{Icons.ChevDown}</span>
+              </div>
+            )}
+          </button>
+          {(!mobileCards || !insightsCollapsed) && (
+            bullets.length > 0 ? (
+              <ul className="rs-ai__list">
+                {bullets.map((line, i) => (
+                  <li key={i}>{renderBold(line)}</li>
+                ))}
+              </ul>
+            ) : (
+              <p style={{ fontSize: '.92rem', lineHeight: 1.5, color: 'var(--body)' }}>{search.ai_summary}</p>
+            )
           )}
         </div>
       )}
@@ -779,7 +901,7 @@ export default function DetailScreen({
                 expanded={expandedCardId === v.id}
                 locked={!canAnalyzeMoreOutliers}
                 onToggle={() => (!canAnalyzeMoreOutliers
-                  ? openUpgradeModal()
+                  ? openUpgradeModal('analysis')
                   : setExpandedCardId((cur) => cur === v.id ? null : v.id))}
                 onAnalyze={() => handleAnalyzeAction(v)}
                 onToggleBookmark={() => onToggleVideoBookmark?.(v)}
@@ -1081,8 +1203,16 @@ export default function DetailScreen({
           onConfirm={() => launchManualAnalysis(confirmAnalysisVideo)}
         />
       )}
-      {upgradeModalOpen && (
-        <UpgradeModal onClose={closeUpgradeModal} onUpgrade={openUpgradeForAnalysis} />
+      {upgradeModalType && (
+        <UpgradeModal mode={upgradeModalType} onClose={closeUpgradeModal} onUpgrade={openUpgradeForAnalysis} />
+      )}
+      {confirmAction && (
+        <ActionConfirmModal
+          action={confirmAction}
+          searchName={search?.name || search?.phrase}
+          onClose={closeConfirmAction}
+          onConfirm={submitConfirmAction}
+        />
       )}
     </>
   );
@@ -1196,6 +1326,7 @@ function OutlierCard({ video, expanded, locked = false, onToggle, onAnalyze, onT
       : video.analysis?.status === 'failed'
         ? 'Retry analysis'
         : 'Analyze video';
+  const mobilePrimaryLabel = primaryLabel === 'Analyze video' ? 'Analyze' : primaryLabel;
 
   return (
     <article className={`rs-oc${expanded ? ' analyzed' : ''}`}>
@@ -1225,7 +1356,9 @@ function OutlierCard({ video, expanded, locked = false, onToggle, onAnalyze, onT
         )}
         <div className="rs-oc__an">
           <button className="rs-btn rs-btn--y rs-btn--sm" onClick={onAnalyze} disabled={video.analysis?.status === 'processing'}>
-            {Icons.Spark}<span>{primaryLabel}</span>
+            <span className="rs-oc__anIcon">{Icons.Spark}</span>
+            <span className="rs-oc__anLabel rs-oc__anLabel--desktop">{primaryLabel}</span>
+            <span className="rs-oc__anLabel rs-oc__anLabel--mobile">{mobilePrimaryLabel}</span>
           </button>
           <button className="rs-ic2" title={expanded && !locked ? 'Hide inline summary' : 'Show inline summary'} onClick={onToggle}>{Icons.ExtLink}</button>
           <button
@@ -1270,24 +1403,86 @@ function UsageConfirmModal({ video, creditsRemaining, creditsRemainingAfterUse, 
   );
 }
 
-function UpgradeModal({ onClose, onUpgrade }) {
+function UpgradeModal({ mode = 'analysis', onClose, onUpgrade }) {
+  const isSearchBookmark = mode === 'search-bookmark';
+  const isSearchManagement = mode === 'search-management';
+  const eyebrowLabel = isSearchBookmark
+    ? 'Search bookmarks'
+    : isSearchManagement
+      ? 'Search management'
+      : 'Video analysis';
+  const title = isSearchBookmark
+    ? 'Upgrade to unlock search bookmarks'
+    : isSearchManagement
+      ? 'Upgrade to manage this search'
+      : 'Upgrade to unlock more analysis credits';
+  const body = isSearchBookmark
+    ? 'Free searches do not include saved search bookmarks. Upgrade to Growth or Scale to save searches to your bookmarks.'
+    : isSearchManagement
+      ? 'Upgrade to Growth or Scale to pause, resume, or delete tracked searches from your dashboard.'
+      : 'Free searches include the top-video breakdown. Upgrade to Growth or Scale to analyze more outliers.';
+
   return (
     <div className="rs-modalback" onClick={onClose}>
-      <div className="rs-upgmodal" onClick={(event) => event.stopPropagation()} role="dialog" aria-modal="true" aria-label="Upgrade for more video analysis">
+      <div className="rs-upgmodal" onClick={(event) => event.stopPropagation()} role="dialog" aria-modal="true" aria-label={title}>
         <button type="button" className="rs-upgmodal__close" onClick={onClose} aria-label="Close upgrade prompt">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
             <path d="M6 6l12 12M18 6L6 18" />
           </svg>
         </button>
-        <div className="rs-upg__eyebrow">{Icons.Spark}<span>Video analysis</span></div>
-        <h3>Upgrade to unlock more analysis credits</h3>
-        <p>Free searches include the top-video breakdown. Upgrade to Growth or Scale to analyze more outliers.</p>
+        <div className="rs-upg__eyebrow">{Icons.Spark}<span>{eyebrowLabel}</span></div>
+        <h3>{title}</h3>
+        <p>{body}</p>
         <div className="rs-upgmodal__actions">
           <button type="button" className="rs-btn rs-btn--y" onClick={onUpgrade}>
             Upgrade to Growth
           </button>
           <button type="button" className="rs-btn rs-btn--g" onClick={onClose}>
             Maybe later
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ActionConfirmModal({ action, searchName, onClose, onConfirm }) {
+  const isDelete = action === 'delete';
+  const isResume = action === 'resume';
+  const title = isDelete
+    ? 'Delete this search?'
+    : isResume
+      ? 'Resume this search?'
+      : 'Pause this search?';
+  const body = isDelete
+    ? 'This will remove the search from your dashboard and bookmarks.'
+    : isResume
+      ? 'This search will start tracking again on its normal schedule.'
+      : 'This search will stop refreshing until you resume it again.';
+  const confirmLabel = isDelete
+    ? 'Delete search'
+    : isResume
+      ? 'Resume tracking'
+      : 'Pause tracking';
+
+  return (
+    <div className="rs-modalback" onClick={onClose}>
+      <div className="rs-upgmodal" onClick={(event) => event.stopPropagation()} role="dialog" aria-modal="true" aria-label={title}>
+        <button type="button" className="rs-upgmodal__close" onClick={onClose} aria-label="Close confirmation">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
+            <path d="M6 6l12 12M18 6L6 18" />
+          </svg>
+        </button>
+        <div className="rs-upg__eyebrow">{isDelete ? Icons.Trash : Icons.Pause}<span>{isDelete ? 'Delete search' : 'Tracking status'}</span></div>
+        <h3>{title}</h3>
+        <p>{body}</p>
+        <p className="rs-usage__subject">{searchName || 'Selected search'}</p>
+        <div className="rs-upgmodal__actions">
+          <button type="button" className={`rs-btn ${isDelete ? 'rs-btn--danger' : 'rs-btn--y'}`} onClick={onConfirm}>
+            {confirmLabel}
+          </button>
+          <button type="button" className="rs-btn rs-btn--g" onClick={onClose}>
+            Cancel
           </button>
         </div>
       </div>
@@ -1335,23 +1530,26 @@ function ScrollPanel({ title, items, max, barColor = 'var(--a3)' }) {
 
 const scopedCss = `
 :root{--a1:#FDF0C8;--a2:#FBDE8E;--a3:#F6C445;--a4:#E0A100;--a5:#B87400}
-.rs-viewbar{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:22px;flex-wrap:wrap}
+.rs-viewbar{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:22px;flex-wrap:wrap;min-width:0;max-width:100%;overflow:visible}
+.rs-viewbar__actions{margin-left:auto;display:flex;align-items:center;justify-content:flex-end;gap:8px;flex:none;position:relative;min-width:0;max-width:100%}
+.rs-mobileonly{display:none}
+.rs-desktoponly{display:flex}
 .rs-tbtn{display:inline-flex;align-items:center;gap:7px;font-size:.85rem;font-weight:700;color:var(--muted)}
 .rs-tbtn:hover{color:var(--ink)}
 .rs-tbtn svg{width:15px;height:15px}
 
-.rs-bhead{display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:16px 18px;border:1px solid var(--line);border-radius:18px;background:linear-gradient(180deg,rgba(255,255,255,.96),rgba(250,249,246,.98));box-shadow:0 8px 24px -20px rgba(20,15,0,.24)}
+.rs-bhead{display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:16px 18px;border:1px solid var(--line);border-radius:18px;background:linear-gradient(180deg,rgba(255,255,255,.96),rgba(250,249,246,.98));box-shadow:0 8px 24px -20px rgba(20,15,0,.24);min-width:0;max-width:100%;overflow-x:hidden}
 .rs-bhead__l{width:54px;height:54px;border-radius:15px;display:grid;place-items:center;color:#fff;font-weight:800;font-size:1.05rem;flex:none;text-shadow:0 1px 3px rgba(0,0,0,.15);box-shadow:inset 0 1px 0 rgba(255,255,255,.28),0 12px 24px -16px rgba(154,107,0,.55)}
+.rs-bhead__actions{margin-left:auto;display:flex;align-items:center;justify-content:flex-end;gap:10px;flex:none;position:relative}
 .rs-h1{font-size:1.65rem;font-weight:850;letter-spacing:-.04em;color:var(--ink);line-height:1.02;text-wrap:balance}
-.rs-bmeta{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:8px;font-size:.82rem;color:var(--faint-2,#9A968E)}
+.rs-bmeta{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:8px;font-size:.82rem;color:var(--faint-2,#9A968E);min-width:0;max-width:100%}
 .rs-bbadge{font-size:.64rem;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--amber-ink);background:var(--wash);padding:5px 9px;border-radius:999px;border:1px solid #f2e4b8}
 .rs-sep{width:3px;height:3px;border-radius:50%;background:#CFCCC3}
 .rs-handle{display:inline-flex;align-items:center;gap:5px;min-width:0;padding:4px 10px;border-radius:999px;background:var(--paper);border:1px solid var(--line);font-weight:600}
 .rs-handle span:first-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:180px}
 .rs-ed{width:22px;height:22px;border-radius:6px;display:grid;place-items:center;color:var(--faint-2,#9A968E);border:0;background:transparent;cursor:pointer;transition:.15s}
 .rs-ed:hover{background:var(--paper);color:var(--ink)} .rs-ed svg{width:13px;height:13px}
-.rs-bhead__x{margin-left:auto;display:flex;gap:8px;flex:none;position:relative}
-.rs-bsub{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:10px;font-size:.79rem;color:var(--muted)}
+.rs-bsub{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:10px;font-size:.79rem;color:var(--muted);min-width:0;max-width:100%}
 .rs-bline{display:flex;align-items:center;gap:7px;flex-wrap:wrap}
 .rs-bline span{display:inline-flex;align-items:center}
 .rs-bline span+span::before{content:'·';margin-right:7px;color:#c1bdb3}
@@ -1367,7 +1565,7 @@ const scopedCss = `
 .rs-iconbtn.on{background:var(--wash);border-color:var(--yellow);color:var(--amber-ink)}
 .rs-iconbtn svg{width:18px;height:18px}
 .rs-iconbtn:disabled{opacity:.5;cursor:not-allowed}
-.rs-menu{position:absolute;top:50px;right:0;width:220px;background:var(--white);border:1px solid var(--line);border-radius:16px;padding:6px;z-index:20;box-shadow:0 8px 24px -8px rgba(0,0,0,.15)}
+.rs-menu{position:absolute;top:50px;right:0;width:220px;background:var(--white);border:1px solid var(--line);border-radius:16px;padding:6px;z-index:80;box-shadow:0 8px 24px -8px rgba(0,0,0,.15)}
 .rs-menu button{display:flex;align-items:center;gap:10px;width:100%;padding:9px 11px;border-radius:11px;font-size:.85rem;font-weight:600;color:var(--body);text-align:left;background:transparent;border:0;cursor:pointer}
 .rs-menu button:hover{background:var(--paper);color:var(--ink)} .rs-menu button svg{width:15px;height:15px;color:var(--faint-2,#9A968E)}
 .rs-menu hr{border:0;border-top:1px solid var(--line);margin:5px 6px}
@@ -1380,14 +1578,22 @@ const scopedCss = `
 .rs-btn--y{background:var(--yellow);color:#1A1400} .rs-btn--y:hover:not(:disabled){background:var(--yellow-hot,#FFD84D)}
 .rs-btn--g{border:1px solid var(--line-2,#DEDBD3);background:var(--white);color:var(--ink)}
 .rs-btn--g:hover:not(:disabled){border-color:var(--faint-2,#9A968E);background:var(--paper)}
+.rs-btn--danger{background:#B0431B;color:#fff}
+.rs-btn--danger:hover:not(:disabled){background:#972f0f}
 .rs-btn--sm{height:34px;padding:0 14px;font-size:.82rem;font-weight:600}
 .rs-btn:disabled{opacity:.55;cursor:not-allowed}
 
-.rs-ai{border:1px solid #F2E4B8;background:var(--wash);border-radius:16px;padding:18px 20px;margin-top:20px}
+.rs-ai{border:1px solid #F2E4B8;background:var(--wash);border-radius:16px;padding:18px 20px;margin-top:20px;min-width:0;max-width:100%;overflow-x:hidden}
+.rs-ai__toggle{width:100%;border:0;background:transparent;padding:0;text-align:left;cursor:default}
+.rs-ai__toggle.is-mobile{cursor:pointer}
 .rs-ai__h{display:flex;align-items:center;gap:9px;margin-bottom:10px}
 .rs-ai__h svg{width:19px;height:19px;color:var(--amber-ink)}
 .rs-ai__t{font-size:.72rem;font-weight:800;letter-spacing:.13em;text-transform:uppercase;color:var(--amber-ink)}
 .rs-ai__when{margin-left:auto;font-size:.75rem;color:var(--faint,#7C7972)}
+.rs-ai__hint{display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:.78rem;font-weight:700;color:var(--amber-ink)}
+.rs-ai__chev{display:inline-flex;align-items:center;justify-content:center;transition:transform .18s ease}
+.rs-ai__chev svg{width:14px;height:14px;color:currentColor}
+.rs-ai__chev.is-open{transform:rotate(180deg)}
 .rs-ai__list{list-style:none;display:flex;flex-direction:column;gap:7px;padding:0;margin:0}
 .rs-ai__list li{position:relative;padding-left:20px;font-size:.9rem;line-height:1.45;color:var(--body)}
 .rs-ai__list li::before{content:'';position:absolute;left:4px;top:9px;width:6px;height:6px;border-radius:50%;background:var(--amber-ink)}
@@ -1398,7 +1604,7 @@ const scopedCss = `
 .rs-sh h2::before{content:'';width:4px;height:16px;border-radius:2px;background:var(--yellow)}
 .rs-note{font-size:.82rem;color:var(--faint-2,#9A968E)}
 
-.rs-stats{display:grid;grid-template-columns:repeat(4,1fr);background:var(--white);border:1px solid var(--line);border-radius:16px;overflow:hidden;margin-top:18px}
+.rs-stats{display:grid;grid-template-columns:repeat(4,1fr);background:var(--white);border:1px solid var(--line);border-radius:16px;overflow:hidden;margin-top:18px;min-width:0;max-width:100%}
 .rs-stt{padding:17px 20px;border-right:1px solid var(--line);display:flex;flex-direction:column;gap:11px}
 .rs-stt:last-child{border-right:none}
 .rs-stt__k{font-size:.73rem;color:var(--faint-2,#9A968E);font-weight:600}
@@ -1408,7 +1614,39 @@ const scopedCss = `
 .rs-stt__d.up{color:var(--ok);font-weight:600} .rs-stt__d svg{width:11px;height:11px}
 .rs-stt.hi .rs-stt__v{color:var(--amber-ink)}
 
-.rs-winner{display:grid;grid-template-columns:262px 1fr;gap:22px;background:var(--white);border:1px solid var(--line);border-radius:20px;padding:20px}
+@media (min-width:561px){
+.rs-viewbar{margin-bottom:18px}
+.rs-viewbar__actions{display:none}
+.rs-bhead{display:grid;grid-template-columns:58px minmax(0,1fr) auto;align-items:start;gap:16px;padding:0 0 16px;border:0;border-radius:0;background:transparent;box-shadow:none;overflow:visible}
+.rs-bhead__l{width:50px;height:50px;border-radius:14px;font-size:1rem;box-shadow:none}
+.rs-bhead__actions .rs-iconbtn{width:46px;height:46px;border-radius:14px;border-color:#E6DFD1;box-shadow:0 2px 6px rgba(36,25,0,.04)}
+.rs-h1{font-size:2rem;line-height:.98}
+.rs-bmeta{margin-top:6px;gap:10px;font-size:.95rem;color:#978D7B}
+.rs-bbadge{font-size:.68rem;padding:4px 10px}
+.rs-handle{padding:0;border:0;background:transparent;border-radius:0;font-weight:500;color:#978D7B}
+.rs-handle span:first-child{max-width:220px}
+.rs-ed{width:18px;height:18px}
+.rs-bsub{margin-top:10px;gap:8px;font-size:.95rem;color:#978D7B}
+.rs-bline{gap:0}
+.rs-bline span+span::before{margin:0 10px 0 9px}
+.rs-bline__k{font-weight:700;color:#B28D28}
+.rs-state{padding:2px 10px;font-size:.72rem;background:#F3FBF4;border-color:#D6EED9}
+.rs-ai{margin-top:12px;padding:18px 22px 16px;border-radius:18px;background:linear-gradient(180deg,#FFF9EA 0%,#FFFCF4 100%);border:1px solid #EBCB7D}
+.rs-ai__h{margin-bottom:12px}
+.rs-ai__h svg{width:16px;height:16px}
+.rs-ai__t{font-size:.84rem;letter-spacing:.15em}
+.rs-ai__when{font-size:.92rem;color:#8F836D}
+.rs-ai__list{gap:10px}
+.rs-ai__list li{padding-left:18px;font-size:1rem;line-height:1.52}
+.rs-ai__list li::before{left:2px;top:11px;width:7px;height:7px}
+.rs-stats{margin-top:18px;border-radius:18px;border-color:#E5DED2;grid-template-columns:repeat(4,minmax(0,1fr))}
+.rs-stt{padding:18px 20px 17px;gap:10px}
+.rs-stt__k{font-size:.9rem;color:#968A75}
+.rs-stt__v{font-size:2.15rem;letter-spacing:-.06em}
+.rs-stt__d{font-size:.95rem;color:#968A75}
+}
+
+.rs-winner{display:grid;grid-template-columns:262px 1fr;gap:22px;background:var(--white);border:1px solid var(--line);border-radius:20px;padding:20px;min-width:0;max-width:100%;overflow-x:hidden}
 .rs-vf{position:relative;width:100%;aspect-ratio:9/16;border-radius:14px;overflow:hidden;background:#1a1a1a}
 .rs-vf--big{max-width:262px}
 .rs-vf__img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
@@ -1495,9 +1733,10 @@ const scopedCss = `
 .rs-oc__an{margin-top:auto;padding-top:11px;display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:8px;align-items:center}
 .rs-oc__an .rs-btn{min-width:0}
 .rs-oc__an .rs-btn span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rs-oc__anLabel--mobile{display:none}
 .rs-loadmore{display:flex;justify-content:center;margin-top:20px}
 
-.rs-acard{background:linear-gradient(180deg,#FFFEFB 0%,#FFF8EB 100%);border:1px solid #F1E2BE;border-radius:20px;padding:20px 22px;box-shadow:0 18px 38px -30px rgba(117,85,11,.25)}
+.rs-acard{background:linear-gradient(180deg,#FFFEFB 0%,#FFF8EB 100%);border:1px solid #F1E2BE;border-radius:20px;padding:20px 22px;box-shadow:0 18px 38px -30px rgba(117,85,11,.25);min-width:0;max-width:100%;overflow-x:hidden}
 .rs-mtabs{display:inline-flex;gap:0;padding:2px;background:#F7F4ED;border:1px solid #DDD3C0;border-radius:9px;margin-bottom:14px;box-shadow:inset 0 1px 0 rgba(255,255,255,.8)}
 .rs-mtab{height:24px;padding:0 12px;border-radius:7px;font-size:.72rem;font-weight:500;color:#6F6554;background:transparent;border:0;cursor:pointer;text-transform:lowercase}
 .rs-mtab.on{background:#fff;color:#1A1400;box-shadow:0 1px 2px rgba(26,20,0,.08)}
@@ -1541,7 +1780,7 @@ const scopedCss = `
 .rs-weekmodal__body span{font-size:.78rem;color:#7C704D;line-height:1.4}
 .rs-weekmodal__empty{padding:24px 12px;text-align:center;font-size:.85rem;color:#7C704D}
 
-.rs-heat{background:var(--white);border:1px solid var(--line);border-radius:20px;padding:20px}
+.rs-heat{background:var(--white);border:1px solid var(--line);border-radius:20px;padding:20px;min-width:0;max-width:100%;overflow:hidden}
 .rs-heatscroll{overflow-x:auto;padding-bottom:6px}
 .rs-heatgrid{display:grid;grid-template-columns:34px repeat(24,1fr);gap:3px;min-width:620px}
 .rs-hh{font-size:.66rem;color:var(--faint-2,#9A968E);font-weight:700;display:flex;align-items:center}
@@ -1556,8 +1795,8 @@ const scopedCss = `
 .rs-insightbox p{font-size:.86rem;color:var(--body);line-height:1.5}
 .rs-insightbox b{color:var(--ink);font-weight:800}
 
-.rs-two{display:grid;grid-template-columns:1fr 1fr;gap:14px}
-.rs-dcard{background:var(--white);border:1px solid var(--line);border-radius:20px;padding:20px}
+.rs-two{display:grid;grid-template-columns:1fr 1fr;gap:14px;min-width:0;max-width:100%}
+.rs-dcard{background:var(--white);border:1px solid var(--line);border-radius:20px;padding:20px;min-width:0;max-width:100%;overflow:hidden}
 .rs-dcard h3{font-size:.95rem;font-weight:800;color:var(--ink);letter-spacing:-.028em}
 .rs-sub{font-size:.78rem;color:var(--faint-2,#9A968E);margin-top:2px}
 .rs-owk{display:flex;align-items:flex-end;gap:12px;height:120px;margin-top:20px}
@@ -1573,7 +1812,7 @@ const scopedCss = `
 .rs-drow__fill{height:100%;border-radius:100px;display:block}
 .rs-drow__c{font-size:.82rem;font-weight:800;color:var(--ink);text-align:right;font-variant-numeric:tabular-nums}
 
-.rs-scrollp{position:relative;background:var(--white);border:1px solid var(--line);border-radius:20px;overflow:hidden}
+.rs-scrollp{position:relative;background:var(--white);border:1px solid var(--line);border-radius:20px;overflow:hidden;min-width:0;max-width:100%}
 .rs-scrollp__hd{display:flex;align-items:center;justify-content:space-between;padding:16px 20px 10px}
 .rs-scrollp__hd h3{font-size:.95rem;font-weight:800;color:var(--ink)}
 .rs-scrollp__cnt{font-size:.75rem;color:var(--faint-2,#9A968E);font-weight:600}
@@ -1603,12 +1842,40 @@ const scopedCss = `
   .rs-winner{grid-template-columns:1fr}.rs-vf--big{max-width:240px;margin:0 auto}
   .rs-two{grid-template-columns:1fr}
   .rs-bhead{align-items:flex-start}
-  .rs-bhead__x{margin-left:0}
 }
 @media (max-width:560px){
+.rs-mobileonly{display:flex}
+.rs-desktoponly{display:none}
 .rs-ogrid{grid-template-columns:1fr 1fr}
-.rs-bhead{padding:14px}
-.rs-h1{font-size:1.4rem}
+.rs-viewbar{margin-bottom:12px}
+.rs-viewbar__actions{gap:6px}
+.rs-bhead{padding:12px 13px;border-radius:15px;gap:10px}
+.rs-bhead__l{width:42px;height:42px;border-radius:12px;font-size:.88rem}
+.rs-h1{font-size:1.15rem;line-height:1.05}
+.rs-bmeta{margin-top:5px;gap:6px;font-size:.72rem}
+.rs-bbadge{padding:4px 8px}
+.rs-bsub{margin-top:6px;gap:6px;font-size:.7rem}
+.rs-bline{gap:5px}
+.rs-bline span+span::before{margin-right:5px}
+.rs-state{padding:3px 8px;font-size:.68rem}
+.rs-iconbtn{width:36px;height:36px;border-radius:10px}
+.rs-iconbtn svg{width:15px;height:15px}
+.rs-ai{margin-top:14px;padding:14px 14px 13px;border-radius:14px}
+.rs-ai__h{margin-bottom:0}
+.rs-ai__h svg{width:16px;height:16px}
+.rs-ai__t{font-size:.65rem}
+.rs-ai__when{font-size:.68rem}
+.rs-ai--mobile .rs-ai__hint{margin-top:6px}
+.rs-ai--mobile:not(.is-collapsed) .rs-ai__hint{margin-bottom:10px}
+.rs-ai__list{gap:6px}
+.rs-ai__list li{padding-left:16px;font-size:.82rem;line-height:1.38}
+.rs-ai__list li::before{left:2px;top:8px;width:5px;height:5px}
+.rs-stats{margin-top:14px;border-radius:14px}
+.rs-stt{padding:12px 12px 11px;gap:6px}
+.rs-stt__k{font-size:.65rem}
+.rs-stt__v{font-size:1.28rem}
+.rs-stt__d{font-size:.67rem;line-height:1.25}
+.rs-stt__d svg{width:10px;height:10px}
 .rs-handle span:first-child{max-width:120px}
 .rs-oc__st{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
 .rs-oc__st span{min-width:0;justify-content:center;font-size:.72rem;gap:4px}
@@ -1616,6 +1883,9 @@ const scopedCss = `
 .rs-oc__an{gap:6px}
 .rs-oc__an .rs-btn{padding:0 12px;font-size:.78rem}
 .rs-oc__an .rs-btn svg{width:13px;height:13px}
+.rs-oc__anIcon{display:none}
+.rs-oc__anLabel--desktop{display:none}
+.rs-oc__anLabel--mobile{display:inline}
 .rs-ic2{width:34px;height:34px}
 .rs-upgmodal{padding:20px 16px 16px}
 .rs-upgmodal h3{font-size:1.02rem;max-width:none}

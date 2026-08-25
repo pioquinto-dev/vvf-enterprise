@@ -119,6 +119,31 @@ function AuthPromptModal({ type, phrase, onClose }) {
     );
 }
 
+function SearchUpgradeModal({ onClose, onUpgrade }) {
+    return (
+        <div className="bb">
+            <div className="bb-modal">
+                <button className="bb-modal__bg" aria-label="Close" onClick={onClose} />
+                <div className="bb-modal__box">
+                    <h2>Upgrade to unlock more searches</h2>
+                    <p className="sub">
+                        You&apos;ve already used the search credits available on your current plan. Upgrade to Growth or Scale to
+                        keep finding new outliers.
+                    </p>
+                    <div className="actrow__r" style={{ marginTop: 24, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+                        <button type="button" className="btn btn--g" onClick={onClose}>
+                            Maybe later
+                        </button>
+                        <button type="button" className="btn btn--y" onClick={onUpgrade}>
+                            Upgrade to Growth
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+}
+
 function readPendingSearch() {
     if (typeof window === 'undefined') return null;
 
@@ -152,7 +177,9 @@ export default function SearchWizard({
     suggestionsByType = {},
     onTrackedSearchChange = null,
 }) {
-    const { auth = {}, billing = {} } = usePage().props;
+    const page = usePage();
+    const { auth = {}, billing = {} } = page.props;
+    const isLandingSearchPage = String(page.url || '').startsWith('/search');
     const resumeId = readRunParam();
 
     const [step, setStep] = useState(resumeId ? 'running' : initialQuery ? 'keywords' : 'subject');
@@ -164,12 +191,15 @@ export default function SearchWizard({
     const [error, setError] = useState(null);
     const [confirmPayload, setConfirmPayload] = useState(null);
     const [authPromptPayload, setAuthPromptPayload] = useState(null);
+    const [upgradeModalOpen, setUpgradeModalOpen] = useState(false);
 
     const kind = kindOf(type);
     const signedIn = auth.signedIn ?? Boolean(auth.user);
     const searchLimit = billing.searchCreditsLimit ?? 0;
+    const searchRemaining = billing.searchCreditsRemaining ?? 0;
     const searchUsed = billing.searchCreditsUsed ?? 0;
     const searchRemainingAfterUse = searchLimit === -1 ? 'unlimited' : Math.max(0, searchLimit - searchUsed - 1);
+    const searchCreditsAvailable = !signedIn || searchLimit === -1 || searchRemaining > 0;
 
     const stampUrl = (id) => {
         if (typeof window === 'undefined') return;
@@ -180,6 +210,11 @@ export default function SearchWizard({
     };
 
     const pickSubject = ({ type: nextType, phrase: nextPhrase }) => {
+        if (!searchCreditsAvailable) {
+            setUpgradeModalOpen(true);
+            return;
+        }
+
         setType(nextType);
         setPhrase(nextPhrase);
         setStep('keywords');
@@ -339,7 +374,19 @@ export default function SearchWizard({
                             nextLabel="Continue"
                             submitting={submitting}
                             error={error}
-                            onBack={() => setStep('subject')}
+                            onBack={() => {
+                                if (isLandingSearchPage || !signedIn) {
+                                    if (typeof window !== 'undefined') {
+                                        window.location.assign('/');
+                                        return;
+                                    }
+
+                                    router.visit('/', { replace: true, preserveState: false, preserveScroll: false });
+                                    return;
+                                }
+
+                                setStep('subject');
+                            }}
                             onSubmit={afterKeywords}
                         />
                     )}
@@ -382,6 +429,13 @@ export default function SearchWizard({
                         clearPendingSearch();
                         setAuthPromptPayload(null);
                     }}
+                />
+            )}
+
+            {upgradeModalOpen && (
+                <SearchUpgradeModal
+                    onClose={() => setUpgradeModalOpen(false)}
+                    onUpgrade={() => router.visit('/plans')}
                 />
             )}
         </>

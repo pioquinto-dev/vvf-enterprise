@@ -6558,7 +6558,9 @@ function clearPendingSearch() {
 	window.sessionStorage.removeItem(PENDING_SEARCH_KEY);
 }
 function SearchWizard({ initialType = "brand", initialQuery = "", heading = "Start a search", subheading = "Pick one brand, competitor, or product — we widen it with smarter keywords on the next step.", subjectExtra = null, suggestionsByType = {}, onTrackedSearchChange = null }) {
-	const { auth = {}, billing = {} } = usePage().props;
+	const page = usePage();
+	const { auth = {}, billing = {} } = page.props;
+	const isLandingSearchPage = String(page.url || "").startsWith("/search");
 	const resumeId = readRunParam();
 	const [step, setStep] = useState(resumeId ? "running" : initialQuery ? "keywords" : "subject");
 	const [type, setType] = useState(initialType);
@@ -6716,7 +6718,21 @@ function SearchWizard({ initialType = "brand", initialQuery = "", heading = "Sta
 					nextLabel: "Continue",
 					submitting,
 					error,
-					onBack: () => setStep("subject"),
+					onBack: () => {
+						if (isLandingSearchPage || !signedIn) {
+							if (typeof window !== "undefined") {
+								window.location.assign("/");
+								return;
+							}
+							router.visit("/", {
+								replace: true,
+								preserveState: false,
+								preserveScroll: false
+							});
+							return;
+						}
+						setStep("subject");
+					},
 					onSubmit: afterKeywords
 				}, `${type}:${phrase}`),
 				step === "sources" && /* @__PURE__ */ jsx(SourcesScreen, {
@@ -6815,10 +6831,9 @@ function sparkBars(seed, n = 6) {
 	let s = Number(seed) || 1;
 	for (let i = 0; i < n; i += 1) {
 		s = (s * 9301 + 49297) % 233280;
-		const h = 30 + Math.round(s / 233280 * 65);
+		const h = 42 + Math.round(s / 233280 * 38);
 		bars.push(h);
 	}
-	bars[bars.length - 1] = Math.max(bars[bars.length - 1], 74);
 	return bars;
 }
 /** Recent row matching the mockup: icon · name/meta · sparkline · trend · pill · videos */
@@ -6831,11 +6846,7 @@ function RecentRow({ search, onNavigate, retrying, onRetry }) {
 	const freq = titleCase(search.frequency) || "Weekly";
 	const initials = (search.name || search.phrase || "?").slice(0, 2).toUpperCase();
 	const bars = sparkBars(search.id, 6);
-	const trend = typeof search.trend === "number" ? search.trend : (() => {
-		const last = bars[bars.length - 1];
-		const prevAvg = bars.slice(0, -1).reduce((a, b) => a + b, 0) / (bars.length - 1);
-		return prevAvg ? Math.round((last - prevAvg) / prevAvg * 100) : 0;
-	})();
+	const trend = typeof search.trend === "number" ? search.trend : null;
 	const canRetry = search.can_retry_initial === true;
 	return /* @__PURE__ */ jsxs("div", {
 		className: "row",
@@ -6879,8 +6890,8 @@ function RecentRow({ search, onNavigate, retrying, onRetry }) {
 				}, i))
 			}),
 			/* @__PURE__ */ jsx("span", {
-				className: `trend${trend >= 0 ? " up" : ""}`,
-				children: `${trend >= 0 ? "+" : ""}${trend}%`
+				className: `trend${trend !== null && trend >= 0 ? " up" : ""}`,
+				children: trend === null ? "—" : `${trend >= 0 ? "+" : ""}${trend}%`
 			}),
 			/* @__PURE__ */ jsxs("span", {
 				className: `pill ${status.cls}`,
@@ -10894,16 +10905,98 @@ function chartGeometry(values) {
 	const points = values.map((value) => Number(value) || 0);
 	if (points.length === 0) return null;
 	const min = Math.min(...points);
-	const span = Math.max(...points) - min;
+	const max = Math.max(...points);
+	const span = max - min;
+	const height = 40;
+	const leftPad = 8;
 	const coordinates = points.map((value, index) => ({
-		x: points.length === 1 ? 50 : 4 + 88 * index / (points.length - 1),
-		y: span === 0 ? 20 : 34 - (value - min) / span * 28
+		x: points.length === 1 ? 50 : leftPad + 88 * index / (points.length - 1),
+		y: span === 0 ? height / 2 : 36 - (value - min) / span * 32
 	}));
 	const last = coordinates[coordinates.length - 1];
 	return {
+		min,
+		max,
 		points: coordinates.map(({ x, y }) => `${x.toFixed(2)},${y.toFixed(2)}`).join(" "),
 		last
 	};
+}
+function formatMetricTick(value, metric) {
+	if (metric === "outliers") return `${Math.round(Number(value || 0))}`;
+	if (metric === "engrate") return `${Number(value || 0).toFixed(1)}%`;
+	if (metric === "posts") return `${Math.round(Number(value || 0))}`;
+	return compact(Number(value || 0));
+}
+function buildYAxisTicks(values, metric) {
+	const numbers = values.map((value) => Number(value)).filter((value) => Number.isFinite(value));
+	if (numbers.length === 0) return [{
+		value: 0,
+		label: formatMetricTick(0, metric),
+		offset: 100
+	}];
+	const max = Math.max(...numbers, 0);
+	const min = Math.min(...numbers, 0);
+	if (max === min) return [{
+		value: max,
+		label: formatMetricTick(max, metric),
+		offset: 0
+	}, {
+		value: 0,
+		label: formatMetricTick(0, metric),
+		offset: 100
+	}];
+	return Array.from({ length: 4 }, (_, index) => {
+		const ratio = index / 3;
+		const value = max - (max - min) * ratio;
+		return {
+			value,
+			label: formatMetricTick(value, metric),
+			offset: ratio * 100
+		};
+	});
+}
+function buildXAxisLabels(points = []) {
+	if (points.length === 0) return [];
+	if (points.length === 1) return [{
+		label: points[0].label,
+		align: "start"
+	}];
+	const labels = [{
+		label: points[0].label,
+		align: "start"
+	}];
+	const middleIndex = Math.floor((points.length - 1) / 2);
+	if (middleIndex > 0 && middleIndex < points.length - 1) labels.push({
+		label: points[middleIndex].label,
+		align: "center"
+	});
+	labels.push({
+		label: points[points.length - 1].label,
+		align: "end"
+	});
+	return labels;
+}
+function weekKeyFromIso(iso) {
+	if (!iso) return null;
+	const date = new Date(iso);
+	if (Number.isNaN(date.getTime())) return null;
+	const utc = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
+	const day = utc.getUTCDay();
+	const diff = day === 0 ? -6 : 1 - day;
+	utc.setUTCDate(utc.getUTCDate() + diff);
+	return utc.toISOString().slice(0, 10);
+}
+function formatMetricValue(value, metric) {
+	if (metric === "outliers") return `${Math.round(Number(value || 0))} outliers`;
+	if (metric === "engrate") return `${Number(value || 0).toFixed(1)}%`;
+	if (metric === "posts") return `${Math.round(Number(value || 0))} posts`;
+	if (metric === "eng") return `${compact(Number(value || 0))} engagements`;
+	return `${compact(Number(value || 0))} views`;
+}
+function metricExplanation(metric) {
+	if (metric === "eng") return "Shows how much interaction those videos pulled that week, using likes, comments, shares, and saves together.";
+	if (metric === "outliers") return "Shows how many videos from that week truly broke out, not just how many were posted.";
+	return "Shows the total views pulled by the videos uploaded in that week.";
 }
 function heatmapBestTime(heatmap) {
 	const peak = heatmap?.peak;
@@ -11180,6 +11273,8 @@ function DetailScreen({ search, isAuthenticated = false, billing: billing$1, ref
 	const [metric, setMetric] = useState("views");
 	const [videoPlayingId, setVideoPlayingId] = useState(null);
 	const [heatmapTooltip, setHeatmapTooltip] = useState(null);
+	const [chartTooltip, setChartTooltip] = useState(null);
+	const [selectedWeekKey, setSelectedWeekKey] = useState(null);
 	const [analysisByVideoId, setAnalysisByVideoId] = useState({});
 	const [analysisStarting, setAnalysisStarting] = useState(false);
 	const [reservedAnalysisVideoIds, setReservedAnalysisVideoIds] = useState([]);
@@ -11237,32 +11332,63 @@ function DetailScreen({ search, isAuthenticated = false, billing: billing$1, ref
 		}
 	};
 	const trend = insights?.trend ?? {};
-	const activeSeries = trend?.metrics?.[{
+	const weeklyPoints = trend?.points ?? [];
+	const metricKeys = {
 		views: "views",
-		posts: "posts",
 		eng: "engagement",
-		engrate: "rate"
-	}[metric]] ?? null;
-	const chart = chartGeometry(activeSeries?.values ?? []);
-	const completedRunCount = search?.runs?.length ?? 0;
-	const analyticsUnlocked = completedRunCount >= 2;
-	const showTrendMetric = analyticsUnlocked && activeSeries !== null;
+		outliers: "outliers"
+	};
+	const metricSeriesMap = {
+		views: trend?.metrics?.views ?? null,
+		eng: trend?.metrics?.engagement ?? null,
+		outliers: weeklyPoints.length > 0 ? {
+			label: "outliers",
+			format: "count",
+			values: weeklyPoints.map((point) => Number(point?.outliers ?? 0)),
+			current: Number(weeklyPoints[weeklyPoints.length - 1]?.outliers ?? 0),
+			delta: weeklyPoints.length >= 2 ? {
+				value: Number(weeklyPoints[weeklyPoints.length - 1]?.outliers ?? 0) - Number(weeklyPoints[0]?.outliers ?? 0),
+				unit: "absolute",
+				direction: Number(weeklyPoints[weeklyPoints.length - 1]?.outliers ?? 0) > Number(weeklyPoints[0]?.outliers ?? 0) ? "up" : Number(weeklyPoints[weeklyPoints.length - 1]?.outliers ?? 0) < Number(weeklyPoints[0]?.outliers ?? 0) ? "down" : "flat"
+			} : null
+		} : null
+	};
+	const activeSeries = metricSeriesMap[metricKeys[metric] ? metric : "views"] ?? metricSeriesMap.views;
+	const chartValues = activeSeries?.values ?? [];
+	const chart = chartGeometry(chartValues);
+	search?.runs?.length;
+	const showTrendMetric = activeSeries !== null;
+	buildXAxisLabels(weeklyPoints);
+	const yAxisTicks = buildYAxisTicks(chartValues, metric);
+	const chartPoints = chart?.points ? chart.points.split(" ").map((pair) => pair.split(",").map(Number)) : [];
+	const videosByWeek = useMemo(() => {
+		const grouped = {};
+		results.forEach((video) => {
+			const weekKey = weekKeyFromIso(video.uploaded_at);
+			if (!weekKey) return;
+			if (!grouped[weekKey]) grouped[weekKey] = [];
+			grouped[weekKey].push(video);
+		});
+		Object.values(grouped).forEach((videos) => {
+			videos.sort((left, right) => (Number(right.views) || 0) - (Number(left.views) || 0));
+		});
+		return grouped;
+	}, [results]);
+	const selectedWeekVideos = selectedWeekKey ? videosByWeek[selectedWeekKey] ?? [] : [];
+	const comparisonDelta = activeSeries?.delta ?? null;
+	const comparisonLabel = comparisonDelta ? `${comparisonDelta.direction === "up" ? "↑" : comparisonDelta.direction === "down" ? "↓" : "→"} ${Math.abs(Number(comparisonDelta.value ?? 0))}${comparisonDelta.unit === "points" ? " pts" : comparisonDelta.unit === "absolute" ? "" : "%"} vs ${weeklyPoints.length || 0} wk ago` : null;
 	const metricConfig = {
 		views: {
-			value: showTrendMetric ? compact(activeSeries.current) : compact(medianViews),
-			label: showTrendMetric ? "views in latest week" : "median views per video"
-		},
-		posts: {
-			value: showTrendMetric ? Number(activeSeries.current ?? 0).toLocaleString() : (videosInRun ?? 0).toLocaleString(),
-			label: showTrendMetric ? "posts in latest week" : "videos in this run"
+			value: showTrendMetric ? compact(activeSeries?.current) : compact(medianViews),
+			label: ""
 		},
 		eng: {
-			value: showTrendMetric ? compact(activeSeries.current) : "—",
-			label: showTrendMetric ? "engagements in latest week" : "avg engagements per video"
+			value: showTrendMetric ? compact(activeSeries?.current) : "—",
+			label: ""
 		},
-		engrate: {
-			value: showTrendMetric ? `${Number(activeSeries.current ?? 0).toFixed(1)}%` : avgEng != null ? `${Number(avgEng).toFixed(1)}%` : "—",
-			label: showTrendMetric ? "engagement rate in latest week" : "average engagement rate"
+		outliers: {
+			value: showTrendMetric ? Number(activeSeries?.current ?? 0).toLocaleString() : outlierCount.toLocaleString(),
+			label: ""
 		}
 	};
 	const heatCells = insights?.heatmap?.cells ?? [];
@@ -11779,7 +11905,7 @@ function DetailScreen({ search, isAuthenticated = false, billing: billing$1, ref
 			className: "rs-sh",
 			children: [/* @__PURE__ */ jsx("h2", { children: "Analytics" }), /* @__PURE__ */ jsx("span", {
 				className: "rs-note",
-				children: "This tracker, across completed search runs."
+				children: "Weekly buckets based on when the matched videos were uploaded."
 			})]
 		}),
 		/* @__PURE__ */ jsxs("div", {
@@ -11788,10 +11914,9 @@ function DetailScreen({ search, isAuthenticated = false, billing: billing$1, ref
 				/* @__PURE__ */ jsx("div", {
 					className: "rs-mtabs",
 					children: [
-						["views", "Views"],
-						["posts", "Posts"],
-						["eng", "Engagement"],
-						["engrate", "Eng rate"]
+						["views", "views"],
+						["eng", "engagement"],
+						["outliers", "outliers"]
 					].map(([key, label]) => /* @__PURE__ */ jsx("button", {
 						className: `rs-mtab${metric === key ? " on" : ""}`,
 						onClick: () => setMetric(key),
@@ -11799,64 +11924,119 @@ function DetailScreen({ search, isAuthenticated = false, billing: billing$1, ref
 					}, key))
 				}),
 				/* @__PURE__ */ jsxs("div", {
-					className: "rs-abig",
+					className: "rs-abig rs-abig--flow",
 					children: [/* @__PURE__ */ jsx("span", {
 						className: "rs-abig__v",
 						children: metricConfig[metric].value
-					}), /* @__PURE__ */ jsx("span", {
-						className: "rs-abig__l",
-						children: metricConfig[metric].label
+					}), comparisonLabel && /* @__PURE__ */ jsxs("span", {
+						className: "rs-abig__delta",
+						children: [comparisonLabel, /* @__PURE__ */ jsxs("span", {
+							className: "rs-abig__info",
+							children: [/* @__PURE__ */ jsx("button", {
+								type: "button",
+								className: "rs-abig__infoBtn",
+								"aria-label": `About ${metric}`,
+								children: "i"
+							}), /* @__PURE__ */ jsx("span", {
+								className: "rs-abig__tooltip",
+								role: "tooltip",
+								children: metricExplanation(metric)
+							})]
+						})]
 					})]
 				}),
-				/* @__PURE__ */ jsxs("span", {
-					className: "rs-achip",
-					children: [/* @__PURE__ */ jsx("i", {}), analyticsUnlocked ? trend?.has_reconstructed ? "Includes reconstructed weeks" : "Recorded refresh history" : `Baseline · Refresh 1 · ${formatDate$1(search?.last_run_at) || "—"}`]
-				}),
 				/* @__PURE__ */ jsxs("div", {
-					className: "rs-achart",
-					children: [
-						/* @__PURE__ */ jsxs("svg", {
-							viewBox: "0 0 100 40",
-							preserveAspectRatio: "none",
-							children: [chart && /* @__PURE__ */ jsx("polyline", {
-								points: chart.points,
-								fill: "none",
-								stroke: "#E0A100",
-								strokeWidth: "1.8",
-								strokeLinecap: "round",
-								strokeLinejoin: "round"
-							}), chart && /* @__PURE__ */ jsx("circle", {
-								cx: chart.last.x,
-								cy: chart.last.y,
-								r: "2.1",
-								fill: "#F6C445",
-								stroke: "#fff",
-								strokeWidth: "1"
-							})]
-						}),
-						!analyticsUnlocked && /* @__PURE__ */ jsx("span", { className: "rs-achart__dot" }),
-						/* @__PURE__ */ jsx("span", {
-							className: "rs-achart__now",
-							children: "now"
-						}),
-						!analyticsUnlocked && /* @__PURE__ */ jsx("div", {
-							className: "rs-achart__blur",
-							children: /* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsx("b", { children: "Week-over-week unlocks at your next refresh" }), /* @__PURE__ */ jsxs("p", { children: [
-								"Come back after ",
-								formatDate$1(search?.next_run_at) || "the next scheduled run",
-								" to compare this run against the last. History stays blurred until there are two points to trend."
-							] })] })
-						})
-					]
-				}),
-				/* @__PURE__ */ jsxs("div", {
-					className: "rs-axlabels",
-					children: [/* @__PURE__ */ jsxs("span", { children: [
-						"Refresh ",
-						Math.max(1, completedRunCount),
-						" · ",
-						formatDate$1(search?.last_run_at) || "—"
-					] }), /* @__PURE__ */ jsxs("span", { children: ["Next · ", formatDate$1(search?.next_run_at) || "—"] })]
+					className: "rs-achart rs-achart--flow",
+					children: [/* @__PURE__ */ jsxs("div", {
+						className: "rs-achart__inner",
+						children: [
+							/* @__PURE__ */ jsx("div", {
+								className: "rs-achart__grid",
+								"aria-hidden": true,
+								children: yAxisTicks.map((tick) => /* @__PURE__ */ jsx("span", { style: { top: `${tick.offset}%` } }, `grid-${metric}-${tick.offset}`))
+							}),
+							/* @__PURE__ */ jsx("svg", {
+								viewBox: "0 0 100 40",
+								preserveAspectRatio: "none",
+								children: chart && /* @__PURE__ */ jsxs(Fragment$1, { children: [
+									/* @__PURE__ */ jsx("defs", { children: /* @__PURE__ */ jsxs("linearGradient", {
+										id: "rs-analytics-fill",
+										x1: "0",
+										y1: "0",
+										x2: "0",
+										y2: "1",
+										children: [/* @__PURE__ */ jsx("stop", {
+											offset: "0%",
+											stopColor: "#E6C97A",
+											stopOpacity: ".28"
+										}), /* @__PURE__ */ jsx("stop", {
+											offset: "100%",
+											stopColor: "#F2C96B",
+											stopOpacity: "0"
+										})]
+									}) }),
+									/* @__PURE__ */ jsx("polygon", {
+										points: `${chart.points} 96,40 8,40`,
+										fill: "url(#rs-analytics-fill)"
+									}),
+									/* @__PURE__ */ jsx("polyline", {
+										points: chart.points,
+										fill: "none",
+										stroke: "#A87700",
+										strokeWidth: "0.85",
+										strokeLinecap: "round",
+										strokeLinejoin: "round"
+									})
+								] })
+							}),
+							chartPoints.map(([x, y], index) => {
+								const point = weeklyPoints[index];
+								const value = chartValues[index] ?? 0;
+								const weekKey = weekKeyFromIso(point?.week_start);
+								if (!point || !weekKey) return null;
+								const tooltip = {
+									label: point.label,
+									value: formatMetricValue(value, metric),
+									count: videosByWeek[weekKey]?.length ?? 0
+								};
+								return /* @__PURE__ */ jsx("button", {
+									type: "button",
+									className: `rs-achart__point${index === chartPoints.length - 1 ? " is-latest" : ""}`,
+									style: {
+										left: `${x}%`,
+										top: `${y / 40 * 100}%`
+									},
+									"aria-label": `${point.label} · ${tooltip.value}`,
+									onMouseEnter: () => setChartTooltip(tooltip),
+									onMouseLeave: () => setChartTooltip(null),
+									onFocus: () => setChartTooltip(tooltip),
+									onBlur: () => setChartTooltip(null),
+									onClick: () => setSelectedWeekKey(weekKey)
+								}, `point-${weekKey}`);
+							}),
+							chartTooltip && /* @__PURE__ */ jsxs("div", {
+								className: "rs-achart__tooltip",
+								role: "status",
+								children: [
+									/* @__PURE__ */ jsx("strong", { children: chartTooltip.label }),
+									/* @__PURE__ */ jsx("span", { children: chartTooltip.value }),
+									/* @__PURE__ */ jsxs("span", { children: [
+										chartTooltip.count,
+										" ",
+										chartTooltip.count === 1 ? "video" : "videos"
+									] })
+								]
+							})
+						]
+					}), /* @__PURE__ */ jsxs("div", {
+						className: "rs-axlabels rs-axlabels--flow",
+						children: [
+							/* @__PURE__ */ jsx("span", { children: "12 wk ago" }),
+							/* @__PURE__ */ jsx("span", { children: "8 wk" }),
+							/* @__PURE__ */ jsx("span", { children: "4 wk" }),
+							/* @__PURE__ */ jsx("span", { children: "now" })
+						]
+					})]
 				})
 			]
 		}),
@@ -12060,6 +12240,61 @@ function DetailScreen({ search, isAuthenticated = false, billing: billing$1, ref
 				barColor: "var(--a4)"
 			})]
 		})] }),
+		selectedWeekKey && /* @__PURE__ */ jsx("div", {
+			className: "rs-modalback",
+			onClick: () => setSelectedWeekKey(null),
+			children: /* @__PURE__ */ jsxs("div", {
+				className: "rs-weekmodal",
+				onClick: (event) => event.stopPropagation(),
+				children: [/* @__PURE__ */ jsxs("div", {
+					className: "rs-weekmodal__head",
+					children: [/* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsx("h3", { children: weeklyPoints.find((point) => weekKeyFromIso(point.week_start) === selectedWeekKey)?.label ?? "Selected week" }), /* @__PURE__ */ jsxs("p", { children: [
+						selectedWeekVideos.length,
+						" matched ",
+						selectedWeekVideos.length === 1 ? "video" : "videos",
+						" uploaded in this week."
+					] })] }), /* @__PURE__ */ jsx("button", {
+						type: "button",
+						className: "rs-weekmodal__close",
+						onClick: () => setSelectedWeekKey(null),
+						"aria-label": "Close",
+						children: "×"
+					})]
+				}), /* @__PURE__ */ jsxs("div", {
+					className: "rs-weekmodal__list",
+					children: [selectedWeekVideos.map((video) => /* @__PURE__ */ jsxs("button", {
+						type: "button",
+						className: "rs-weekmodal__row",
+						onClick: () => {
+							setSelectedWeekKey(null);
+							openAnalysis(video);
+						},
+						children: [/* @__PURE__ */ jsx("span", {
+							className: "rs-weekmodal__thumb",
+							style: { background: gradientFor(video.id) },
+							children: video.thumbnail_url ? /* @__PURE__ */ jsx("img", {
+								src: video.thumbnail_url,
+								alt: ""
+							}) : initials(video.handle || video.username || video.title)
+						}), /* @__PURE__ */ jsxs("span", {
+							className: "rs-weekmodal__body",
+							children: [
+								/* @__PURE__ */ jsx("strong", { children: video.handle || video.username || video.title || "Video" }),
+								/* @__PURE__ */ jsx("span", { children: video.title || video.caption || "Open this video from the outlier list." }),
+								/* @__PURE__ */ jsxs("span", { children: [
+									compact(video.views),
+									" views · uploaded ",
+									formatDate$1(video.uploaded_at) || "—"
+								] })
+							]
+						})]
+					}, `week-video-${video.id}`)), selectedWeekVideos.length === 0 && /* @__PURE__ */ jsx("div", {
+						className: "rs-weekmodal__empty",
+						children: "No videos were available for this week."
+					})]
+				})]
+			})
+		}),
 		analysisModal && /* @__PURE__ */ jsx(AnalysisModal, {
 			open: true,
 			video: analysisModal.video,
@@ -12628,23 +12863,49 @@ var scopedCss = `
 .rs-oc__an .rs-btn span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .rs-loadmore{display:flex;justify-content:center;margin-top:20px}
 
-.rs-acard{background:var(--white);border:1px solid var(--line);border-radius:20px;padding:20px 22px}
-.rs-mtabs{display:inline-flex;gap:4px;padding:4px;background:var(--canvas);border:1px solid var(--line);border-radius:100px;margin-bottom:18px}
-.rs-mtab{height:34px;padding:0 15px;border-radius:100px;font-size:.83rem;font-weight:600;color:var(--muted);background:transparent;border:0;cursor:pointer}
-.rs-mtab.on{background:var(--ink);color:#fff}
+.rs-acard{background:linear-gradient(180deg,#FFFEFB 0%,#FFF8EB 100%);border:1px solid #F1E2BE;border-radius:20px;padding:20px 22px;box-shadow:0 18px 38px -30px rgba(117,85,11,.25)}
+.rs-mtabs{display:inline-flex;gap:0;padding:2px;background:#F7F4ED;border:1px solid #DDD3C0;border-radius:9px;margin-bottom:14px;box-shadow:inset 0 1px 0 rgba(255,255,255,.8)}
+.rs-mtab{height:24px;padding:0 12px;border-radius:7px;font-size:.72rem;font-weight:500;color:#6F6554;background:transparent;border:0;cursor:pointer;text-transform:lowercase}
+.rs-mtab.on{background:#fff;color:#1A1400;box-shadow:0 1px 2px rgba(26,20,0,.08)}
 .rs-abig{display:flex;align-items:flex-end;gap:12px}
 .rs-abig__v{font-size:2.2rem;font-weight:900;letter-spacing:-.05em;color:var(--ink);line-height:.9;font-variant-numeric:tabular-nums}
-.rs-abig__l{font-size:.85rem;color:var(--faint-2,#9A968E);padding-bottom:4px}
-.rs-achip{display:inline-flex;align-items:center;gap:6px;height:26px;padding:0 11px;border-radius:100px;background:var(--wash);color:var(--amber-ink);font-size:.74rem;font-weight:700;margin-top:12px}
-.rs-achip i{width:6px;height:6px;border-radius:50%;background:var(--amber-ink)}
-.rs-achart{position:relative;height:150px;margin-top:16px;border-radius:16px;overflow:hidden;border:1px solid var(--line)}
-.rs-achart svg{position:absolute;inset:0;width:100%;height:100%}
-.rs-achart__blur{position:absolute;inset:0;z-index:1;background:rgba(250,249,246,.5);backdrop-filter:blur(3px);display:flex;align-items:center;justify-content:center;text-align:center;padding:16px}
-.rs-achart__blur b{display:block;font-size:.86rem;color:var(--ink);font-weight:800;max-width:320px}
-.rs-achart__blur p{font-size:.78rem;color:var(--faint,#7C7972);margin-top:3px;line-height:1.4;max-width:320px}
-.rs-achart__dot{position:absolute;z-index:2;right:14%;top:34px;width:12px;height:12px;border-radius:50%;background:var(--yellow);border:2.5px solid #fff;box-shadow:0 0 0 3px rgba(255,198,41,.3)}
-.rs-achart__now{position:absolute;z-index:2;right:8%;top:56px;font-size:.72rem;font-weight:800;color:var(--amber-ink)}
-.rs-axlabels{display:flex;justify-content:space-between;margin-top:9px;font-size:.72rem;color:var(--faint-2,#9A968E);font-weight:600}
+.rs-abig__l{font-size:.85rem;color:#8A7445;padding-bottom:4px}
+.rs-abig--flow{align-items:center;gap:10px;margin-bottom:14px}
+.rs-abig__delta{display:inline-flex;align-items:center;gap:6px;font-size:.84rem;font-weight:700;color:#2D8A55;padding-top:6px;white-space:nowrap}
+.rs-abig__info{position:relative;display:inline-flex;align-items:center}
+.rs-abig__infoBtn{width:16px;height:16px;display:grid;place-items:center;border-radius:999px;border:1px solid rgba(45,138,85,.28);background:#fff;color:#2D8A55;font-size:.68rem;font-weight:800;line-height:1;cursor:help}
+.rs-abig__tooltip{position:absolute;left:22px;top:50%;transform:translateY(-50%);width:min(260px,calc(100vw - 80px));padding:8px 10px;border-radius:10px;background:rgba(255,255,255,.98);border:1px solid #D8E8DC;box-shadow:0 16px 30px -24px rgba(0,0,0,.25);font-size:.72rem;font-weight:500;line-height:1.4;color:#34513F;opacity:0;pointer-events:none;transition:opacity .14s ease;white-space:normal;z-index:4}
+.rs-abig__info:hover .rs-abig__tooltip,.rs-abig__info:focus-within .rs-abig__tooltip{opacity:1}
+.rs-achart{position:relative;height:180px;margin-top:2px}
+.rs-achart--flow{border:none;background:transparent;box-shadow:none;padding:0}
+.rs-achart__inner{position:relative;height:150px}
+.rs-achart--flow svg{position:absolute;inset:0;width:100%;height:100%}
+.rs-achart__grid span{position:absolute;left:0;right:0;height:1px;background:rgba(168,119,0,.08)}
+.rs-achart__point{position:absolute;width:11px;height:11px;border-radius:999px;border:1.5px solid #fff;background:#A87700;box-shadow:0 4px 10px rgba(168,119,0,.12);transform:translate(-50%,-50%);cursor:pointer;transition:transform .14s,box-shadow .14s,background .14s}
+.rs-achart__point:hover,.rs-achart__point:focus-visible{transform:translate(-50%,-50%) scale(1.14);box-shadow:0 10px 20px rgba(168,119,0,.24);outline:none}
+.rs-achart__point.is-latest{background:#C7981A}
+.rs-achart__tooltip{position:absolute;left:0;top:0;display:flex;flex-direction:column;gap:2px;max-width:190px;padding:10px 12px;border-radius:12px;background:rgba(255,255,255,.98);border:1px solid #E7D7AF;box-shadow:0 16px 30px -24px rgba(0,0,0,.25);z-index:3}
+.rs-achart__tooltip strong{font-size:.78rem;color:var(--ink)}
+.rs-achart__tooltip span{font-size:.72rem;color:#7C704D}
+.rs-axlabels{display:flex;justify-content:space-between;gap:12px;margin-top:8px;font-size:.68rem;color:#8A7445;font-weight:500}
+.rs-axlabels--flow{padding-top:2px}
+.rs-axlabels__start{text-align:left}
+.rs-axlabels__center{text-align:center;flex:1}
+.rs-axlabels__end{text-align:right}
+.rs-weekmodal{width:min(100%,760px);max-height:min(80vh,720px);display:flex;flex-direction:column;border-radius:22px;background:#fffdf8;border:1px solid #F1E2BE;box-shadow:0 28px 60px rgba(58,44,14,.18);overflow:hidden}
+.rs-weekmodal__head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;padding:20px 22px;border-bottom:1px solid #F1E2BE;background:linear-gradient(180deg,#FFFDF6 0%,#FFF8EA 100%)}
+.rs-weekmodal__head h3{font-size:1.05rem;font-weight:800;letter-spacing:-.03em;color:var(--ink)}
+.rs-weekmodal__head p{margin-top:4px;font-size:.84rem;color:#7C704D}
+.rs-weekmodal__close{width:34px;height:34px;flex:none;border-radius:999px;border:1px solid #E8D9B3;background:#fff;color:#8A7445;font-size:1.1rem;cursor:pointer}
+.rs-weekmodal__list{padding:14px;overflow:auto;display:flex;flex-direction:column;gap:10px}
+.rs-weekmodal__row{display:grid;grid-template-columns:76px 1fr;gap:14px;align-items:center;padding:10px;border-radius:16px;border:1px solid #EFE3C6;background:#fff;cursor:pointer;text-align:left}
+.rs-weekmodal__row:hover{border-color:#E3C36F;background:#FFF9EC}
+.rs-weekmodal__thumb{width:76px;height:76px;border-radius:14px;overflow:hidden;display:grid;place-items:center;color:#fff;font-size:1rem;font-weight:800}
+.rs-weekmodal__thumb img{width:100%;height:100%;object-fit:cover}
+.rs-weekmodal__body{display:flex;flex-direction:column;gap:5px;min-width:0}
+.rs-weekmodal__body strong{font-size:.88rem;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rs-weekmodal__body span{font-size:.78rem;color:#7C704D;line-height:1.4}
+.rs-weekmodal__empty{padding:24px 12px;text-align:center;font-size:.85rem;color:#7C704D}
 
 .rs-heat{background:var(--white);border:1px solid var(--line);border-radius:20px;padding:20px}
 .rs-heatscroll{overflow-x:auto;padding-bottom:6px}

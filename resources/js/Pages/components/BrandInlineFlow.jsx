@@ -100,6 +100,7 @@ export default function BrandInlineFlow({
   const [error, setError] = useState(null);
   const [searchResult, setSearchResult] = useState(null); // {id, name, url, status, initial_count, top_score}
   const [runDone, setRunDone] = useState(false);
+  const [upgradeModalOpen, setUpgradeModalOpen] = useState(false);
   const runIdxRef = useRef(0);
   const runIdx = useRunStages(state === 'running', runDone);
   runIdxRef.current = runIdx;
@@ -108,12 +109,17 @@ export default function BrandInlineFlow({
   const kwCount = useMemo(() => keywords.filter((k) => k.selected).length, [keywords]);
   const searchLeft = billing.searchCreditsRemaining;
   const searchLimit = billing.searchCreditsLimit;
+  const searchCreditsAvailable = !signedIn || searchLimit === -1 || Number(searchLeft ?? 0) > 0;
   const supportsSources = kind !== 'product';
 
   /* -------- collapsed -> keywords: fetch suggested terms -------- */
   const startFlow = async () => {
     const q = subject.trim().replace(/\s+/g, ' ');
     if (!q) return;
+    if (!searchCreditsAvailable) {
+      setUpgradeModalOpen(true);
+      return;
+    }
 
     setSubject(q);
     setError(null);
@@ -389,6 +395,29 @@ export default function BrandInlineFlow({
         .done__r{margin-left:auto;display:flex;gap:10px;flex-wrap:wrap}
         .bif__err{margin-top:12px;padding:10px 14px;border-radius:12px;background:#FBEDE6;color:#B0431B;font-size:.85rem;font-weight:600}
       `}</style>
+
+      {upgradeModalOpen && (
+        <div className="bb">
+          <div className="bb-modal">
+            <button className="bb-modal__bg" aria-label="Close" onClick={() => setUpgradeModalOpen(false)} />
+            <div className="bb-modal__box">
+              <h2>Upgrade to unlock more searches</h2>
+              <p className="sub">
+                You&apos;ve already used the search credits available on your current plan. Upgrade to Growth or Scale to keep
+                finding new outliers.
+              </p>
+              <div className="actrow__r" style={{ marginTop: 24, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+                <button type="button" className="btn btn--g" onClick={() => setUpgradeModalOpen(false)}>
+                  Maybe later
+                </button>
+                <button type="button" className="btn btn--y" onClick={() => router.visit('/plans')}>
+                  Upgrade to Growth
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       <section className="bif">
         {/* ---------- COLLAPSED ---------- */}
