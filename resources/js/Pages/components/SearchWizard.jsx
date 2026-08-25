@@ -337,7 +337,7 @@ export default function SearchWizard({
     return (
         <>
             {step !== 'running' && (
-                <div className="top">
+                <div className="top top--wizard">
                     <div>
                         <h1>{topTitle}</h1>
                         <p>{topSub}</p>

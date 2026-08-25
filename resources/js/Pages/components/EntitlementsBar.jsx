@@ -12,7 +12,7 @@ function titleCase(slug) {
         .join(' ');
 }
 
-export default function EntitlementsBar() {
+export default function EntitlementsBar({ variant = 'default' }) {
     const { auth = {}, billing = {} } = usePage().props;
     const signedIn = auth.signedIn ?? Boolean(auth.user);
 
@@ -26,6 +26,23 @@ export default function EntitlementsBar() {
 
     // Warn only when it is nearly gone — a quiet bar that cries wolf gets ignored.
     const searchesLow = searchLimit > 0 && searchLeft <= Math.max(1, Math.round(searchLimit * 0.1));
+
+    if (variant === 'drawer') {
+        return (
+            <Link href="/settings/subscription" className="ent ent--drawer" aria-label="Open subscription settings">
+                <span className="ent__line">
+                    <b>{titleCase(billing.currentPlan)}</b>
+                    <i />
+                    <span className={searchesLow ? 'low' : undefined}>
+                        <b>{searchUsed}</b>
+                        {searchLimit > 0 && `/${searchLimit}`} searches
+                    </span>
+                    <i />
+                    <span className="ent__cta">View Full Credits</span>
+                </span>
+            </Link>
+        );
+    }
 
     return (
         <Link href="/settings/subscription" className="ent" aria-label="Open subscription settings">

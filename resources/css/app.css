@@ -2859,6 +2859,13 @@
     font-size: 0.78rem;
     color: var(--muted);
 }
+.bb .ent__line {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: nowrap;
+    min-width: 0;
+}
 .bb .ent b {
     color: var(--ink);
     font-weight: 700;
@@ -2877,9 +2884,21 @@
     text-decoration: underline;
     text-underline-offset: 3px;
 }
+.bb .ent__cta {
+    font-weight: 700;
+    color: var(--amber-ink);
+    white-space: nowrap;
+}
 .bb .ent .low {
     color: var(--warn);
     font-weight: 600;
+}
+.bb .ent--drawer {
+    overflow-x: auto;
+    white-space: nowrap;
+}
+.bb .ent--drawer::-webkit-scrollbar {
+    display: none;
 }
 
 /* ---------------- primitives ---------------- */
@@ -3283,6 +3302,18 @@
     overflow-y: auto;
     animation: bbDrawerIn 0.22s var(--ease);
 }
+.bb-drawer__actions {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding-top: 2px;
+}
+.bb-drawer__actions .ent {
+    width: 100%;
+    margin-left: 0;
+    border-radius: var(--r-lg);
+    justify-content: flex-start;
+}
 @keyframes bbDrawerIn {
     from {
         transform: translateX(16px);
@@ -3315,6 +3346,12 @@
     /* Credits pill spans the page on phones, like the desktop header bar. */
     .bb .top__actions {
         width: 100%;
+    }
+    .bb .top__actions .ent {
+        display: none;
+    }
+    .bb .top--wizard > .ent {
+        display: none;
     }
     .bb .ent {
         width: 100%;
@@ -4156,6 +4193,9 @@
     width: fit-content;
     max-width: 100%;
     overflow-x: auto;
+}
+.bb .tabs--bookmarks {
+    margin-top: -8px;
 }
 .bb .tab {
     height: 38px;

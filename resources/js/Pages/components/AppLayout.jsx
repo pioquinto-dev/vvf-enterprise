@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link, router, useForm, usePage } from '@inertiajs/react';
 
 import AppFooter from './AppFooter.jsx';
+import EntitlementsBar from './EntitlementsBar.jsx';
 import { Logo, Menu, Close, Search, Library, Store, Exit, Spark, Arrow, Lock } from '../../landing/components/Icons.jsx';
 import { readTrackedVideoAnalyses, untrackVideoAnalysis, videoAnalysis } from '../../landing/flow/api.js';
 
@@ -181,7 +182,16 @@ function CompletedAnalysisModal({ item, onClose, onView }) {
  *   toolbar  — full-width row under the header (search / filters / sort)
  *   width    — Tailwind max-width class for the content column
  */
-export default function AppLayout({ pill, step, title, subtitle, actions, toolbar, width = 'max-w-6xl', children }) {
+export default function AppLayout({
+    pill,
+    step,
+    title,
+    subtitle,
+    actions,
+    toolbar,
+    width = 'max-w-6xl',
+    children,
+}) {
     const { props, url: currentUrl } = usePage();
     const { auth = {} } = props;
     const logout = useForm({});
@@ -300,6 +310,11 @@ export default function AppLayout({ pill, step, title, subtitle, actions, toolba
                             <Close />
                         </button>
                     </div>
+                    {signedIn && (
+                        <div className="bb-drawer__actions">
+                            <EntitlementsBar variant="drawer" />
+                        </div>
+                    )}
                     <NavList currentUrl={currentUrl} onNavigate={closeDrawer} />
                     <div className="side__sp" />
                     <AffiliateCard />

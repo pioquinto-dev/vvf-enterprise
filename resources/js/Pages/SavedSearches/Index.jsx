@@ -264,9 +264,14 @@ export default function Index({
     <>
       <Head title={`${title} · Brand Beacon`} />
 
-      <AppLayout width="max-w-[1240px]" title={title} subtitle="Everything you have saved — tracked searches and the individual videos you kept." actions={<EntitlementsBar />}>
+      <AppLayout
+        width="max-w-[1240px]"
+        title={title}
+        subtitle="Everything you have saved — tracked searches and the individual videos you kept."
+        actions={<EntitlementsBar />}
+      >
         {showTabs && (
-          <div className="tabs">
+          <div className="tabs tabs--bookmarks">
             <button type="button" className={`tab${tab === 'searches' ? ' is-on' : ''}`} onClick={() => setTab('searches')}>
               <Bookmark className="h-[15px] w-[15px]" /> Bookmarked searches <span className="tab__c">{searches.length}</span>
             </button>
