@@ -846,7 +846,7 @@ export default function DetailScreen({
                     </linearGradient>
                   </defs>
                   <polygon points={`${chart.points} 96,40 8,40`} fill="url(#rs-analytics-fill)" />
-                  <polyline points={chart.points} fill="none" stroke="#A87700" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+                  <polyline points={chart.points} fill="none" stroke="#A87700" strokeWidth="0.85" strokeLinecap="round" strokeLinejoin="round" />
                 </>
               )}
             </svg>
@@ -1515,7 +1515,7 @@ const scopedCss = `
 .rs-achart__inner{position:relative;height:150px}
 .rs-achart--flow svg{position:absolute;inset:0;width:100%;height:100%}
 .rs-achart__grid span{position:absolute;left:0;right:0;height:1px;background:rgba(168,119,0,.08)}
-.rs-achart__point{position:absolute;width:14px;height:14px;border-radius:999px;border:2px solid #fff;background:#A87700;box-shadow:0 6px 14px rgba(168,119,0,.14);transform:translate(-50%,-50%);cursor:pointer;transition:transform .14s,box-shadow .14s,background .14s}
+.rs-achart__point{position:absolute;width:11px;height:11px;border-radius:999px;border:1.5px solid #fff;background:#A87700;box-shadow:0 4px 10px rgba(168,119,0,.12);transform:translate(-50%,-50%);cursor:pointer;transition:transform .14s,box-shadow .14s,background .14s}
 .rs-achart__point:hover,.rs-achart__point:focus-visible{transform:translate(-50%,-50%) scale(1.14);box-shadow:0 10px 20px rgba(168,119,0,.24);outline:none}
 .rs-achart__point.is-latest{background:#C7981A}
 .rs-achart__tooltip{position:absolute;left:0;top:0;display:flex;flex-direction:column;gap:2px;max-width:190px;padding:10px 12px;border-radius:12px;background:rgba(255,255,255,.98);border:1px solid #E7D7AF;box-shadow:0 16px 30px -24px rgba(0,0,0,.25);z-index:3}

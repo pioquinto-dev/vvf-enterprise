@@ -16,6 +16,8 @@ use Illuminate\Support\Collection;
  */
 class TrendBuilder
 {
+    private const LOOKBACK_DAYS = 90;
+
     public function __construct(private readonly SearchMetrics $metrics) {}
 
     /**
@@ -29,8 +31,7 @@ class TrendBuilder
         // a quiet week does not manufacture outliers out of its three posts.
         $baseline = app(SearchInsights::class)->medianViews($results);
         $cohorts = $this->cohortsByWeek($results);
-        $weeks = array_keys($cohorts);
-        sort($weeks);
+        $weeks = $this->lookbackWeeks();
 
         $points = array_map(
             fn (string $weekKey): array => $this->pointFromCohort($cohorts[$weekKey] ?? [], $weekKey, $baseline),
@@ -138,6 +139,9 @@ class TrendBuilder
     private function cohortsByWeek(array $results): array
     {
         $cohorts = [];
+        $windowStart = CarbonImmutable::now('UTC')
+            ->subDays(self::LOOKBACK_DAYS - 1)
+            ->startOfDay();
 
         foreach ($results as $row) {
             $uploadedAt = $row['uploaded_at'] ?? null;
@@ -149,6 +153,10 @@ class TrendBuilder
             try {
                 $moment = CarbonImmutable::parse($uploadedAt)->utc();
             } catch (\Throwable) {
+                continue;
+            }
+
+            if ($moment->lt($windowStart)) {
                 continue;
             }
 
@@ -242,5 +250,23 @@ class TrendBuilder
             'direction' => $value > 0 ? 'up' : ($value < 0 ? 'down' : 'flat'),
             'reconstructed' => $reconstructed,
         ];
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function lookbackWeeks(): array
+    {
+        $start = CarbonImmutable::now('UTC')
+            ->subDays(self::LOOKBACK_DAYS - 1)
+            ->startOfWeek();
+        $end = CarbonImmutable::now('UTC')->startOfWeek();
+        $weeks = [];
+
+        for ($cursor = $start; $cursor->lte($end); $cursor = $cursor->addWeek()) {
+            $weeks[] = $cursor->toDateString();
+        }
+
+        return $weeks;
     }
 }
