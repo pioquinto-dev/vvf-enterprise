@@ -3,6 +3,7 @@ import { router, usePage } from '@inertiajs/react';
 
 import SearchLauncher from './SearchLauncher.jsx';
 import EntitlementsBar from './EntitlementsBar.jsx';
+import UpgradePromptModal from './UpgradePromptModal.jsx';
 import KeywordsScreen from '../../landing/flow/screens/KeywordsScreen.jsx';
 import SourcesScreen from '../../landing/flow/screens/SourcesScreen.jsx';
 import RunningScreen from '../../landing/flow/screens/RunningScreen.jsx';
@@ -111,31 +112,6 @@ function AuthPromptModal({ type, phrase, onClose }) {
                         </button>
                         <button type="button" className="btn btn--y" onClick={() => goTo('/register')}>
                             Create account
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    );
-}
-
-function SearchUpgradeModal({ onClose, onUpgrade }) {
-    return (
-        <div className="bb">
-            <div className="bb-modal">
-                <button className="bb-modal__bg" aria-label="Close" onClick={onClose} />
-                <div className="bb-modal__box">
-                    <h2>Upgrade to unlock more searches</h2>
-                    <p className="sub">
-                        You&apos;ve already used the search credits available on your current plan. Upgrade to Growth or Scale to
-                        keep finding new outliers.
-                    </p>
-                    <div className="actrow__r" style={{ marginTop: 24, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
-                        <button type="button" className="btn btn--g" onClick={onClose}>
-                            Maybe later
-                        </button>
-                        <button type="button" className="btn btn--y" onClick={onUpgrade}>
-                            Upgrade to Growth
                         </button>
                     </div>
                 </div>
@@ -433,9 +409,15 @@ export default function SearchWizard({
             )}
 
             {upgradeModalOpen && (
-                <SearchUpgradeModal
+                <UpgradePromptModal
+                    eyebrow="Search credits"
+                    title={(billing.trialEligible ?? true) && !(billing.hasUsedTrial ?? false) ? 'Start your 8-day Growth trial' : 'Upgrade to unlock more searches'}
+                    body={(billing.trialEligible ?? true) && !(billing.hasUsedTrial ?? false)
+                        ? "You've already used the search credits on Free. Start your trial to keep finding new outliers."
+                        : "You've already used the search credits available on your current plan. Upgrade to Growth or Scale to keep finding new outliers."}
+                    primaryLabel={(billing.trialEligible ?? true) && !(billing.hasUsedTrial ?? false) ? 'Start 8-day Growth trial' : 'Upgrade to Growth'}
+                    onPrimary={() => router.visit((billing.trialEligible ?? true) && !(billing.hasUsedTrial ?? false) ? '/trial' : '/plans')}
                     onClose={() => setUpgradeModalOpen(false)}
-                    onUpgrade={() => router.visit('/plans')}
                 />
             )}
         </>

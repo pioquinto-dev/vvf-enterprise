@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { router, usePage } from '@inertiajs/react';
 
 import { Arrow, Check, Close, Search, Plus, Refresh } from '../../landing/components/Icons.jsx';
+import UpgradePromptModal from './UpgradePromptModal.jsx';
 import {
   createSavedSearch,
   expandKeywords,
@@ -111,6 +112,7 @@ export default function BrandInlineFlow({
   const searchLimit = billing.searchCreditsLimit;
   const searchCreditsAvailable = !signedIn || searchLimit === -1 || Number(searchLeft ?? 0) > 0;
   const supportsSources = kind !== 'product';
+  const shouldOfferTrial = (billing.trialEligible ?? true) && !(billing.hasUsedTrial ?? false);
 
   /* -------- collapsed -> keywords: fetch suggested terms -------- */
   const startFlow = async () => {
@@ -397,26 +399,16 @@ export default function BrandInlineFlow({
       `}</style>
 
       {upgradeModalOpen && (
-        <div className="bb">
-          <div className="bb-modal">
-            <button className="bb-modal__bg" aria-label="Close" onClick={() => setUpgradeModalOpen(false)} />
-            <div className="bb-modal__box">
-              <h2>Upgrade to unlock more searches</h2>
-              <p className="sub">
-                You&apos;ve already used the search credits available on your current plan. Upgrade to Growth or Scale to keep
-                finding new outliers.
-              </p>
-              <div className="actrow__r" style={{ marginTop: 24, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
-                <button type="button" className="btn btn--g" onClick={() => setUpgradeModalOpen(false)}>
-                  Maybe later
-                </button>
-                <button type="button" className="btn btn--y" onClick={() => router.visit('/plans')}>
-                  Upgrade to Growth
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
+        <UpgradePromptModal
+          eyebrow="Search credits"
+          title={shouldOfferTrial ? 'Start your 8-day Growth trial' : 'Upgrade to unlock more searches'}
+          body={shouldOfferTrial
+            ? "You've already used the search credits on Free. Start your trial to keep finding new outliers."
+            : "You've already used the search credits available on your current plan. Upgrade to Growth or Scale to keep finding new outliers."}
+          primaryLabel={shouldOfferTrial ? 'Start 8-day Growth trial' : 'Upgrade to Growth'}
+          onPrimary={() => router.visit(shouldOfferTrial ? '/trial' : '/plans')}
+          onClose={() => setUpgradeModalOpen(false)}
+        />
       )}
 
       <section className="bif">

@@ -3,6 +3,7 @@ import { Head, Link, router, usePage } from '@inertiajs/react';
 
 import AppLayout from './components/AppLayout.jsx';
 import SearchWizard from './components/SearchWizard.jsx';
+import UpgradePromptModal from './components/UpgradePromptModal.jsx';
 import { Arrow } from '../landing/components/Icons.jsx';
 import {
   fetchRecentSearches,
@@ -336,27 +337,16 @@ function SearchAccessPromptModal({ prompt, billing, onClose, onUpgrade }) {
     : 'Your search was not started because this account is out of search credits for the current period.';
 
   return (
-    <div className="bb">
-      <div className="bb-modal">
-        <button className="bb-modal__bg" aria-label="Close" onClick={onClose} />
-        <div className="bb-modal__box">
-          <h2>Free search already used</h2>
-          <p className="sub">{body}</p>
-          <p style={{ marginTop: 16, color: 'var(--muted)', lineHeight: 1.6 }}>{detail}</p>
-          {prompt?.message && (
-            <p style={{ marginTop: 14, fontWeight: 700, color: 'var(--ink)' }}>{prompt.message}</p>
-          )}
-          <div className="actrow__r" style={{ marginTop: 24, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
-            <button type="button" className="btn btn--g" onClick={onClose}>
-              Maybe later
-            </button>
-            <button type="button" className="btn btn--y" onClick={onUpgrade}>
-              {ctaLabel}
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
+    <UpgradePromptModal
+      eyebrow="Search credits"
+      title="Free search already used"
+      body={body}
+      detail={detail}
+      emphasis={prompt?.message ?? null}
+      primaryLabel={ctaLabel}
+      onPrimary={onUpgrade}
+      onClose={onClose}
+    />
   );
 }
 

@@ -5,6 +5,7 @@ import { savedSearch as savedSearchApi } from '../../../landing/flow/api.js';
 import { billing as billingApi } from '../../../landing/flow/api.js';
 import { trackVideoAnalysis, videoAnalysis } from '../../../landing/flow/api.js';
 import AnalysisModal from '../../VideoAnalysis/AnalysisModal.jsx';
+import UpgradePromptModal from '../../components/UpgradePromptModal.jsx';
 import { playerUrlFor, postTikTokMessage } from './tiktokPlayer.js';
 
 /**
@@ -1322,7 +1323,13 @@ export default function DetailScreen({
         />
       )}
       {upgradeModalType && (
-        <UpgradeModal mode={upgradeModalType} onClose={closeUpgradeModal} onUpgrade={openUpgradeForAnalysis} />
+        <UpgradeModal
+          mode={upgradeModalType}
+          trialEligible={billing?.trialEligible ?? true}
+          hasUsedTrial={billing?.hasUsedTrial ?? false}
+          onClose={closeUpgradeModal}
+          onUpgrade={openUpgradeForAnalysis}
+        />
       )}
       {confirmAction && (
         <ActionConfirmModal
@@ -1556,46 +1563,48 @@ function UsageConfirmModal({ video, creditsRemaining, creditsRemainingAfterUse, 
   );
 }
 
-function UpgradeModal({ mode = 'analysis', onClose, onUpgrade }) {
+function UpgradeModal({ mode = 'analysis', trialEligible = true, hasUsedTrial = false, onClose, onUpgrade }) {
   const isSearchBookmark = mode === 'search-bookmark';
   const isSearchManagement = mode === 'search-management';
+  const shouldOfferTrial = trialEligible && !hasUsedTrial;
   const eyebrowLabel = isSearchBookmark
     ? 'Search bookmarks'
     : isSearchManagement
       ? 'Search management'
       : 'Video analysis';
   const title = isSearchBookmark
-    ? 'Upgrade to unlock search bookmarks'
+    ? shouldOfferTrial
+      ? 'Start your 8-day Growth trial to unlock search bookmarks'
+      : 'Upgrade to unlock search bookmarks'
     : isSearchManagement
-      ? 'Upgrade to manage this search'
-      : 'Upgrade to unlock more analysis credits';
+      ? shouldOfferTrial
+        ? 'Start your 8-day Growth trial to manage this search'
+        : 'Upgrade to manage this search'
+      : shouldOfferTrial
+        ? 'Start your 8-day Growth trial to unlock more analysis credits'
+        : 'Upgrade to unlock more analysis credits';
   const body = isSearchBookmark
-    ? 'Free searches do not include saved search bookmarks. Upgrade to Growth or Scale to save searches to your bookmarks.'
+    ? shouldOfferTrial
+      ? 'Free searches do not include saved search bookmarks. Start your 8-day Growth trial to save searches to your bookmarks.'
+      : 'Free searches do not include saved search bookmarks. Upgrade to Growth or Scale to save searches to your bookmarks.'
     : isSearchManagement
-      ? 'Upgrade to Growth or Scale to pause, resume, or delete tracked searches from your dashboard.'
-      : 'Free searches include the top-video breakdown. Upgrade to Growth or Scale to analyze more outliers.';
+      ? shouldOfferTrial
+        ? 'Start your 8-day Growth trial to pause, resume, or delete tracked searches from your dashboard.'
+        : 'Upgrade to Growth or Scale to pause, resume, or delete tracked searches from your dashboard.'
+      : shouldOfferTrial
+        ? 'Free searches include the top-video breakdown. Start your 8-day Growth trial to analyze more outliers.'
+        : 'Free searches include the top-video breakdown. Upgrade to Growth or Scale to analyze more outliers.';
+  const ctaLabel = shouldOfferTrial ? 'Start 8-day Growth trial' : 'Upgrade to Growth';
 
   return (
-    <div className="rs-modalback" onClick={onClose}>
-      <div className="rs-upgmodal" onClick={(event) => event.stopPropagation()} role="dialog" aria-modal="true" aria-label={title}>
-        <button type="button" className="rs-upgmodal__close" onClick={onClose} aria-label="Close upgrade prompt">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
-            <path d="M6 6l12 12M18 6L6 18" />
-          </svg>
-        </button>
-        <div className="rs-upg__eyebrow">{Icons.Spark}<span>{eyebrowLabel}</span></div>
-        <h3>{title}</h3>
-        <p>{body}</p>
-        <div className="rs-upgmodal__actions">
-          <button type="button" className="rs-btn rs-btn--y" onClick={onUpgrade}>
-            Upgrade to Growth
-          </button>
-          <button type="button" className="rs-btn rs-btn--g" onClick={onClose}>
-            Maybe later
-          </button>
-        </div>
-      </div>
-    </div>
+    <UpgradePromptModal
+      eyebrow={eyebrowLabel}
+      title={title}
+      body={body}
+      primaryLabel={ctaLabel}
+      onPrimary={onUpgrade}
+      onClose={onClose}
+    />
   );
 }
 
