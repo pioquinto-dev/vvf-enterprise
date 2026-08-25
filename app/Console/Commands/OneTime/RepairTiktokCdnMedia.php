@@ -2,8 +2,12 @@
 
 namespace App\Console\Commands\OneTime;
 
+use App\Jobs\RepairTiktokCdnMediaRecord;
+use App\Support\AppEventLogger;
 use App\Services\Media\TiktokCdnMediaRepairService;
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Str;
 
 class RepairTiktokCdnMedia extends Command
 {
@@ -11,9 +15,11 @@ class RepairTiktokCdnMedia extends Command
         {--dry-run : Preview affected rows and planned updates without saving changes}
         {--limit=100 : Maximum number of records to process in this run}
         {--chunk_by=25 : Number of records to load and process per chunk}
-        {--batch_count= : Maximum number of chunks to process in this run}';
+        {--batch_count= : Maximum number of chunks to process in this run}
+        {--queue= : Queue name for dispatched repair jobs}
+        {--sync : Process records inline instead of dispatching queue jobs}';
 
-    protected $description = 'Re-scrape viral_videos rows still using TikTok CDN media URLs, archive image fields to object storage, convert HEIC images before storage via Imagick when available, and refresh stats.';
+    protected $description = 'Repair viral_videos rows still using TikTok CDN media URLs by dispatching repair jobs or, optionally, running inline.';
 
     public function handle(TiktokCdnMediaRepairService $service): int
     {
@@ -62,6 +68,60 @@ class RepairTiktokCdnMedia extends Command
         }
 
         $this->newLine();
+
+        if (! (bool) $this->option('sync')) {
+            $ids = $service->selectAffectedVideoIds(
+                limit: $limit,
+                chunkBy: $chunkBy,
+                batchCount: $batchCount,
+            );
+
+            if ($ids === []) {
+                $this->info('No affected records selected for dispatch.');
+
+                return self::SUCCESS;
+            }
+
+            $batchKey = (string) Str::ulid();
+            $prefix = 'repair-tiktok-cdn-media:'.$batchKey;
+            $ttl = now()->addDay();
+
+            Cache::put("{$prefix}:total", count($ids), $ttl);
+            Cache::put("{$prefix}:processed", 0, $ttl);
+            Cache::put("{$prefix}:updated", 0, $ttl);
+            Cache::put("{$prefix}:skipped", 0, $ttl);
+            Cache::put("{$prefix}:failed", 0, $ttl);
+            Cache::forget("{$prefix}:final_logged");
+
+            $queue = trim((string) ($this->option('queue') ?: ''));
+
+            foreach ($ids as $viralVideoId) {
+                $job = new RepairTiktokCdnMediaRecord($viralVideoId, $batchKey);
+
+                if ($queue !== '') {
+                    $job->onQueue($queue);
+                }
+
+                dispatch($job);
+            }
+
+            AppEventLogger::result('media.repair.tiktok_cdn.batch_dispatched', [
+                'batch_key' => $batchKey,
+                'selected_records' => count($ids),
+                'queue' => $queue !== '' ? $queue : null,
+                'limit' => $limit,
+                'chunk_by' => $chunkBy,
+                'batch_count' => $batchCount,
+            ]);
+
+            $this->info('Repair jobs dispatched.');
+            $this->line('Batch key: '.$batchKey);
+            $this->line('Queued records: '.count($ids));
+            $this->line('Queue: '.($queue !== '' ? $queue : 'default'));
+            $this->line('Watch operations/errors logs for media.repair.tiktok_cdn.* events.');
+
+            return self::SUCCESS;
+        }
 
         $result = $service->repair(
             dryRun: false,

@@ -52,6 +52,36 @@ class TiktokCdnMediaRepairService
     }
 
     /**
+     * @return list<string>
+     */
+    public function selectAffectedVideoIds(
+        int $limit = 100,
+        int $chunkBy = 25,
+        ?int $batchCount = null,
+    ): array {
+        $summary = $this->summarizeAffected();
+        $limit = max(1, $limit);
+        $chunkBy = max(1, $chunkBy);
+        $maxChunks = $batchCount === null ? null : max(1, $batchCount);
+        $selectedRecords = min(
+            $summary['affected_records'],
+            $limit,
+            $maxChunks === null ? $limit : $chunkBy * $maxChunks,
+        );
+
+        if ($selectedRecords <= 0) {
+            return [];
+        }
+
+        return $this->affectedQuery()
+            ->orderBy('id')
+            ->limit($selectedRecords)
+            ->pluck('id')
+            ->map(static fn ($id): string => (string) $id)
+            ->all();
+    }
+
+    /**
      * @return array{
      *   affected_records: int,
      *   selected_records: int,
@@ -261,6 +291,54 @@ class TiktokCdnMediaRepairService
             'changed_fields' => $changedFields,
             'source_url' => $sourceUrl,
         ];
+    }
+
+    /**
+     * @return array{
+     *   status: 'updated'|'skipped'|'failed',
+     *   field_updates: array<string, int>,
+     *   changed_fields: array<int, string>,
+     *   source_url: string,
+     *   video_id: string,
+     *   viral_video_id: string,
+     *   message?: string
+     * }
+     */
+    public function repairVideoById(string $viralVideoId, bool $dryRun = false): array
+    {
+        /** @var ViralVideo|null $video */
+        $video = ViralVideo::query()->find($viralVideoId);
+
+        if ($video === null) {
+            return [
+                'status' => 'failed',
+                'field_updates' => $this->emptyFieldUpdates(),
+                'changed_fields' => [],
+                'source_url' => '',
+                'video_id' => '',
+                'viral_video_id' => $viralVideoId,
+                'message' => 'Viral video record could not be found.',
+            ];
+        }
+
+        try {
+            $result = $this->repairVideo($video, $dryRun);
+
+            return array_merge($result, [
+                'video_id' => (string) $video->video_id,
+                'viral_video_id' => (string) $video->id,
+            ]);
+        } catch (\Throwable $e) {
+            return [
+                'status' => 'failed',
+                'field_updates' => $this->emptyFieldUpdates(),
+                'changed_fields' => [],
+                'source_url' => '',
+                'video_id' => (string) $video->video_id,
+                'viral_video_id' => (string) $video->id,
+                'message' => $e->getMessage(),
+            ];
+        }
     }
 
     /**
