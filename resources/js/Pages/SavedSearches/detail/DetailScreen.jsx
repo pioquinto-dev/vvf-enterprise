@@ -893,10 +893,6 @@ export default function DetailScreen({
         <>
           <div className="rs-sh"><h2>Outlier videos</h2><span className="rs-note">Their posts that beat the search median, ranked by outlier score.</span></div>
           <div className={`rs-winner rs-winner--run-${winnerBucket}`}>
-            {/* Winner top ribbon — same three tokens as the outlier bar, but
-                stretched across the whole hero card so the run bucket reads
-                before the eye reaches the video. */}
-            <span className={`rs-winner__rbar rs-winner__rbar--${winnerBucket}`} aria-hidden />
             <VideoFrame video={winner} winner isPlaying={videoPlayingId === winner.id} onTogglePlay={() => setVideoPlayingId((v) => v === winner.id ? null : winner.id)} />
             <div className="rs-wdet">
               <div className="rs-wcreator">
@@ -952,33 +948,8 @@ export default function DetailScreen({
           <div className="rs-sh">
             <h2>More outliers</h2>
             <span className="rs-sh__actions">
-              {/* Legend behind an ⓘ — colors decode on hover / focus so the
-                  header stays uncluttered when the reader already knows what
-                  they mean. */}
-              <span className="rs-runinfo" tabIndex={0} aria-label="What the accent colors mean">
-                <span className="rs-runinfo__btn" aria-hidden>i</span>
-                <span className="rs-runinfo__tip" role="tooltip">
-                  <div className="rs-runinfo__title">Accent color meaning</div>
-                  <div className="rs-runinfo__row">
-                    <span className="rs-runinfo__sw rs-runinfo__sw--new" />
-                    <span>New this run</span>
-                    <span className="rs-runinfo__hint">{runLabels.latest}</span>
-                  </div>
-                  <div className="rs-runinfo__row">
-                    <span className="rs-runinfo__sw rs-runinfo__sw--prev" />
-                    <span>Previous run</span>
-                    <span className="rs-runinfo__hint">{runLabels.previous}</span>
-                  </div>
-                  <div className="rs-runinfo__row">
-                    <span className="rs-runinfo__sw rs-runinfo__sw--old" />
-                    <span>Older</span>
-                    <span className="rs-runinfo__hint">3rd run+</span>
-                  </div>
-                </span>
-              </span>
-              <span className="rs-runfilter" data-bucket={runFilter}>
+              <span className="rs-runfilter">
                 <span className="rs-runfilter__pre">Show:</span>
-                <span className="rs-runfilter__dot" aria-hidden />
                 <select
                   value={runFilter}
                   onChange={(e) => setRunFilter(e.target.value)}
@@ -1479,18 +1450,9 @@ function OutlierCard({ video, runBucket = 'old', expanded, locked = false, onTog
         ? 'Retry analysis'
         : 'Analyze video';
   const mobilePrimaryLabel = primaryLabel === 'Analyze video' ? 'Analyze' : primaryLabel;
-  const runBucketTitle = runBucket === 'new'
-    ? 'New this run'
-    : runBucket === 'prev'
-      ? 'From the previous run'
-      : 'From an older run';
-
   return (
     <article className={`rs-oc rs-oc--run-${runBucket}${expanded ? ' analyzed' : ''}`}>
       <VideoFrame video={video} isPlaying={isPlaying} onTogglePlay={onTogglePlay} />
-      {/* Thin accent bar under the player — colour meaning is decoded by the
-          ⓘ tooltip on the section header. */}
-      <span className={`rs-oc__rbar rs-oc__rbar--${runBucket}`} aria-label={runBucketTitle} title={runBucketTitle} />
       <div className="rs-oc__b">
         <div className="rs-oc__cr">
           <span className="rs-av" style={{ background: gradientFor(video.handle ?? video.id), width: 26, height: 26, borderRadius: '50%', flex: 'none' }} />
@@ -1808,22 +1770,12 @@ const scopedCss = `
 .rs-stt__d{font-size:.95rem;color:#968A75}
 }
 
-.rs-winner{position:relative;display:grid;grid-template-columns:262px 1fr;gap:22px;background:var(--white);border:1px solid var(--line);border-radius:20px;padding:20px;min-width:0;max-width:100%;overflow:hidden;--run-new:#2E9E63;--run-prev:#E0B13A;--run-old:#BFB8AC}
-/* Full-width run ribbon across the top of the winner card. Sits above the
-   video and detail columns so users see it before the eye lands anywhere
-   else in the section. */
-.rs-winner__rbar{position:absolute;top:0;left:0;right:0;height:5px;background:var(--run-old)}
-.rs-winner__rbar--new{background:var(--run-new)}
-.rs-winner__rbar--prev{background:var(--run-prev)}
-.rs-winner__rbar--old{background:var(--run-old)}
-/* Run pill in the winner detail column — colored dot + label, tinted with a
-   soft matching background so the pill reads as part of the accent family
-   without shouting. */
+.rs-winner{position:relative;display:grid;grid-template-columns:262px 1fr;gap:22px;background:var(--white);border:1px solid var(--line);border-radius:20px;padding:20px;min-width:0;max-width:100%;overflow:hidden}
+/* Run pill in the winner detail column — text remains so the active search
+   run context stays visible without relying on accent colors. */
 .rs-runpill{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;font-size:.72rem;font-weight:700;letter-spacing:.01em;white-space:nowrap;border:1px solid transparent;flex:none}
 .rs-runpill__dot{width:8px;height:8px;border-radius:50%;flex:none;background:currentColor}
-.rs-runpill--new{color:#1B6A44;background:rgba(46,158,99,.12);border-color:rgba(46,158,99,.32)}
-.rs-runpill--prev{color:#7A5A0F;background:rgba(224,177,58,.14);border-color:rgba(224,177,58,.38)}
-.rs-runpill--old{color:#6B6A62;background:rgba(191,184,172,.20);border-color:rgba(155,150,141,.35)}
+.rs-runpill--new,.rs-runpill--prev,.rs-runpill--old{color:var(--ink);background:var(--paper);border-color:var(--line)}
 .rs-vf{position:relative;width:100%;aspect-ratio:9/16;border-radius:14px;overflow:hidden;background:#1a1a1a}
 .rs-vf--big{max-width:262px}
 .rs-vf__img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
@@ -1880,61 +1832,24 @@ const scopedCss = `
 .rs-sortsel option{text-indent:0}
 .rs-sortsel svg{position:absolute;right:12px;width:15px;height:15px;color:var(--faint-2,#9A968E);pointer-events:none}
 .rs-sortsel__pre{position:absolute;left:14px;font-size:.83rem;color:var(--faint-2,#9A968E);pointer-events:none;z-index:1}
-/* Run bucketing — three accent tokens shared by the filter dot, the info
-   tooltip swatches and the bar under each card. Change the values here and
-   the whole feature retunes at once. */
-.rs-sh{--run-new:#2E9E63;--run-prev:#E0B13A;--run-old:#BFB8AC}
-.rs-oc{--run-new:#2E9E63;--run-prev:#E0B13A;--run-old:#BFB8AC}
 .rs-sh__actions{display:inline-flex;align-items:center;gap:10px;flex-wrap:wrap}
 .rs-runfilter{position:relative;display:inline-flex;align-items:center}
 /* Same trick as .rs-sortsel: use text-indent to push the trigger value past
-   the "Show:" prefix + colored dot, but keep padding-left small so the
-   popup's option rows don't inherit the offset. */
-.rs-runfilter select{appearance:none;height:38px;padding:0 34px 0 14px;text-indent:48px;border:1px solid var(--line-2,#DEDBD3);border-radius:100px;background:var(--white);font-size:.83rem;font-weight:600;color:var(--ink);cursor:pointer}
+   the "Show:" prefix while keeping the popup options aligned normally. */
+.rs-runfilter select{appearance:none;height:38px;padding:0 34px 0 14px;text-indent:32px;border:1px solid var(--line-2,#DEDBD3);border-radius:100px;background:var(--white);font-size:.83rem;font-weight:600;color:var(--ink);cursor:pointer}
 .rs-runfilter option{text-indent:0}
 .rs-runfilter svg{position:absolute;right:12px;width:15px;height:15px;color:var(--faint-2,#9A968E);pointer-events:none}
 .rs-runfilter__pre{position:absolute;left:14px;font-size:.83rem;color:var(--faint-2,#9A968E);pointer-events:none;z-index:1}
-.rs-runfilter__dot{position:absolute;left:46px;top:50%;transform:translateY(-50%);width:9px;height:9px;border-radius:50%;background:var(--run-new);pointer-events:none;z-index:1}
-.rs-runfilter[data-bucket="prev"] .rs-runfilter__dot{background:var(--run-prev)}
-.rs-runfilter[data-bucket="old"] .rs-runfilter__dot{background:var(--run-old)}
-.rs-runfilter[data-bucket="all"] .rs-runfilter__dot{background:conic-gradient(var(--run-new) 0 33%,var(--run-prev) 33% 66%,var(--run-old) 66% 100%)}
-.rs-runinfo{position:relative;display:inline-flex;align-items:center;outline:0}
-.rs-runinfo__btn{width:20px;height:20px;display:grid;place-items:center;border-radius:999px;border:1px solid var(--line-2,#DEDBD3);background:var(--white);color:var(--faint-2,#9A968E);font-family:Georgia,'Times New Roman',serif;font-style:italic;font-size:.74rem;font-weight:700;line-height:1;cursor:help;transition:.15s}
-.rs-runinfo:hover .rs-runinfo__btn,.rs-runinfo:focus .rs-runinfo__btn,.rs-runinfo:focus-within .rs-runinfo__btn{color:var(--ink);border-color:var(--faint-2,#9A968E)}
-/* Header sits above the card grid so the tooltip can overlap the first row
-   of outlier cards without being clipped by their own stacking context. */
-.rs-sh{position:relative;z-index:20}
-.rs-runinfo__tip{position:absolute;top:calc(100% + 10px);left:0;transform:translateY(-2px);min-width:250px;padding:10px 12px;border-radius:12px;background:var(--white);border:1px solid var(--line);box-shadow:0 20px 40px -18px rgba(0,0,0,.28);opacity:0;pointer-events:none;transition:opacity .15s ease, transform .15s ease;z-index:30;white-space:nowrap}
-.rs-runinfo:hover .rs-runinfo__tip,.rs-runinfo:focus .rs-runinfo__tip,.rs-runinfo:focus-within .rs-runinfo__tip{opacity:1;transform:translateY(0);pointer-events:auto}
-.rs-runinfo__tip::before{content:'';position:absolute;top:-5px;left:8px;transform:rotate(45deg);width:9px;height:9px;background:var(--white);border-left:1px solid var(--line);border-top:1px solid var(--line)}
-.rs-runinfo__title{font-size:.66rem;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--faint-2,#9A968E);margin-bottom:6px}
-.rs-runinfo__row{display:flex;align-items:center;gap:8px;padding:3px 0;font-size:.78rem;color:var(--ink)}
-.rs-runinfo__sw{width:22px;height:4px;border-radius:2px;flex:none}
-.rs-runinfo__sw--new{background:var(--run-new)}
-.rs-runinfo__sw--prev{background:var(--run-prev)}
-.rs-runinfo__sw--old{background:var(--run-old)}
-.rs-runinfo__hint{color:var(--faint-2,#9A968E);font-size:.7rem;margin-left:auto}
 .rs-runempty{padding:22px;border:1px dashed var(--line);border-radius:14px;background:var(--paper,rgba(250,249,246,.6));font-size:.85rem;color:var(--faint-2,#9A968E);text-align:center}
 .rs-runempty__reset{border:0;background:transparent;color:var(--ink);font-weight:700;text-decoration:underline;cursor:pointer;padding:0;margin-left:4px}
 .rs-ogrid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
-/* Run accent bar under the video player. Sits between VideoFrame and the
-   card body, full-bleed because .rs-oc has overflow:hidden. */
-.rs-oc__rbar{display:block;height:4px;width:100%;background:var(--run-old)}
-.rs-oc__rbar--new{background:var(--run-new)}
-.rs-oc__rbar--prev{background:var(--run-prev)}
-.rs-oc__rbar--old{background:var(--run-old)}
-/* Mobile: the "More outliers" header reflows into a 2x2 grid — title + info
-   on top, Show + Sort dropdowns underneath filling the row. display:contents
-   dissolves the .rs-sh__actions wrapper so its children participate in the
-   parent grid directly, one line of CSS moves each item to its cell. */
+/* Mobile: the "More outliers" header reflows into two controls under the
+   title so the run filter remains easy to reach on smaller screens. */
 @media (max-width: 640px){
-  .rs-sh{display:grid;grid-template-columns:1fr auto;grid-template-areas:"title info" "filter sort";align-items:center;gap:10px 12px;margin:28px 0 14px}
+  .rs-sh{display:grid;grid-template-columns:1fr 1fr;grid-template-areas:"title title" "filter sort";align-items:center;gap:10px 12px;margin:28px 0 14px}
   .rs-sh h2{grid-area:title;margin:0}
   .rs-sh .rs-note{grid-column:1 / -1;grid-row:3;margin:0}
   .rs-sh__actions{display:contents}
-  .rs-runinfo{grid-area:info;justify-self:end}
-  .rs-runinfo__tip{left:auto;right:0}
-  .rs-runinfo__tip::before{left:auto;right:8px}
   .rs-runfilter{grid-area:filter;min-width:0}
   .rs-runfilter select{width:100%}
   .rs-sortsel{grid-area:sort;min-width:0}

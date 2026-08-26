@@ -15616,6 +15616,66 @@ function Free({ phrase = "", type = "brand", error = null }) {
 		"Scoring outliers vs creator baseline",
 		"Ranking your top breakouts"
 	];
+	const gateCard = /* @__PURE__ */ jsxs("div", {
+		className: "ff-signup ff-signup--m5",
+		children: [
+			/* @__PURE__ */ jsx("h2", { children: "Where should we send it?" }),
+			/* @__PURE__ */ jsx("p", { children: "Your search is running. Create an account and we will email you when it lands." }),
+			/* @__PURE__ */ jsxs("div", {
+				className: "ff-runchip",
+				children: [
+					/* @__PURE__ */ jsx("span", {
+						className: "ff-runchip__mono",
+						children: initials
+					}),
+					/* @__PURE__ */ jsxs("span", {
+						className: "ff-runchip__body",
+						children: [/* @__PURE__ */ jsx("b", { children: subject }), /* @__PURE__ */ jsxs("em", { children: [
+							kindLabel,
+							" · ",
+							selected.length,
+							" keyword",
+							selected.length === 1 ? "" : "s",
+							" · weekly"
+						] })]
+					}),
+					/* @__PURE__ */ jsx("span", {
+						className: "ff-runchip__pill",
+						children: "RUNNING"
+					})
+				]
+			}),
+			message && /* @__PURE__ */ jsx("p", {
+				className: "ff-error",
+				children: message
+			}),
+			/* @__PURE__ */ jsxs("button", {
+				type: "button",
+				className: "ff-google ff-google--outline",
+				disabled: saving,
+				onClick: prepareAndSignIn,
+				children: [/* @__PURE__ */ jsx(Google, {}), saving && pendingRoute === "google" ? "Opening Google…" : "Continue with Google"]
+			}),
+			/* @__PURE__ */ jsx("button", {
+				type: "button",
+				className: "ff-create",
+				disabled: saving,
+				onClick: goCreateAccount,
+				children: saving && pendingRoute === "register" ? "Opening sign up…" : "Create account"
+			}),
+			/* @__PURE__ */ jsx("p", {
+				className: "ff-trust ff-trust--muted",
+				children: "Then you can close the tab."
+			}),
+			/* @__PURE__ */ jsx("button", {
+				type: "button",
+				className: "ff-havelogin",
+				disabled: saving,
+				onClick: goLogin,
+				children: saving && pendingRoute === "login" ? "Opening sign in…" : "I already have an account"
+			})
+		]
+	});
 	return /* @__PURE__ */ jsxs(Fragment$1, { children: [/* @__PURE__ */ jsx(Head, { title: "Free TikTok search · Brand Beacon" }), /* @__PURE__ */ jsxs("div", {
 		className: "bbh",
 		children: [/* @__PURE__ */ jsx(Nav, { homeHref: "/" }), /* @__PURE__ */ jsxs("main", {
@@ -15625,8 +15685,8 @@ function Free({ phrase = "", type = "brand", error = null }) {
       .free-flow{min-height:calc(100vh - 72px);background:#fff;color:#111;padding:0 22px 64px;font-family:Figtree,ui-sans-serif,system-ui,sans-serif}
       .ff-shell{max-width:594px;margin:0 auto;padding-top:28px}.fs-stepper{display:flex;align-items:center;justify-content:center;margin:0 0 28px}.fs-step{display:flex;align-items:center;gap:8px;color:#77726b;font-size:11px}.fs-step i{width:23px;height:23px;border:1px solid #ddd8cf;border-radius:50%;display:grid;place-items:center;font-size:11px;font-style:normal}.fs-step.done,.fs-step.now{color:#151515}.fs-step.done i{background:#111;color:#fff;border-color:#111}.fs-step.now i{background:#ffc629;border-color:#ffc629}.fs-step i svg{width:11px;height:11px}.fs-step em{width:27px;height:1px;background:#ddd8cf;margin:0 9px;font-style:normal}.ff-card{border:1px solid #e4e0d8;border-radius:20px;overflow:hidden;background:#fff;box-shadow:0 12px 32px -30px rgba(0,0,0,.3)}.ff-subject{height:66px;padding:0 21px;display:flex;align-items:center;border-bottom:1px solid #e4e0d8}.ff-subject__label,.ff-eyebrow{font-size:10px;font-weight:850;color:#a16d00;letter-spacing:.13em;text-transform:uppercase}.ff-subject strong{margin-left:12px;font-size:15px;letter-spacing:-.03em}.ff-edit{margin-left:auto;width:30px;height:30px;border:1px solid #e4e0d8;border-radius:50%;background:#fff;color:#777;display:grid;place-items:center;cursor:pointer}.ff-edit svg{width:14px;height:14px}.ff-section{padding:23px 21px 24px}.ff-section h1{margin:10px 0 0;font-size:17px;line-height:1.25;letter-spacing:-.035em}.ff-section>p{margin:10px 0 0;font-size:13px;line-height:1.55;color:#625e58}.ff-chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:18px}.ff-chip{height:37px;padding:0 14px;border:1.5px solid #b8b1a2 !important;border-radius:999px;background:#fff;color:#302d29;font:inherit;font-size:12px;font-weight:700;display:inline-flex;align-items:center;gap:8px;cursor:pointer;transition:border-color .15s,background .15s,box-shadow .15s}.ff-chip:hover:not(:disabled){border-color:#8a8271 !important}.ff-chip:disabled{cursor:default}.ff-chip.on{border-color:#ffc629 !important;box-shadow:0 0 0 1.5px #ffc629 inset}.ff-check{width:15px;height:15px;border:1px solid #d9d4ca;border-radius:50%;display:grid;place-items:center}.ff-chip.on .ff-check{background:#ffc629;border-color:#ffc629}.ff-check svg{width:9px;height:9px}.ff-add{border-style:dashed;color:#9d6900}.ff-add svg{width:13px;height:13px}.ff-add-input{height:37px;width:130px;padding:0 12px;border:1px solid #ffc629;border-radius:999px;outline:0;font:inherit;font-size:12px;font-weight:700}.ff-count{margin:14px 0 0!important;font-size:11px!important;color:#756f68!important}.ff-count b{color:#111}.ff-footer{min-height:85px;padding:0 21px;border-top:1px solid #e4e0d8;display:flex;align-items:center;justify-content:space-between;gap:12px}.ff-back,.ff-run{height:41px;padding:0 20px;border-radius:10px;font:inherit;font-size:13px;font-weight:800;cursor:pointer}.ff-back{border:1px solid #ddd8cf;background:#fff;color:#111}.ff-run{border:0;background:#ffc629;color:#1a1400;display:inline-flex;align-items:center;gap:10px;box-shadow:0 1px 2px rgba(20,15,0,.1),0 10px 24px -8px rgba(255,198,41,.72)}.ff-run:hover:not(:disabled){background:#ffd84d;transform:translateY(-1px);box-shadow:0 2px 4px rgba(20,15,0,.1),0 16px 30px -10px rgba(255,198,41,.85)}.ff-run svg{width:15px;height:15px}.ff-run:disabled{opacity:.55;cursor:not-allowed}.ff-subject-form{max-width:520px;margin:66px auto;border:1px solid #e4e0d8;border-radius:20px;padding:26px}.ff-subject-form h1{margin:0;font-size:25px;letter-spacing:-.05em}.ff-modes{display:grid;grid-template-columns:repeat(2,1fr);gap:7px;margin-top:22px}.ff-mode{height:45px;border:1px solid #ddd8cf;border-radius:10px;background:#fff;font:inherit;font-size:12px;font-weight:750;cursor:pointer}.ff-mode.is-on{background:#111;border-color:#111;color:#fff}.ff-mode svg{width:14px;height:14px;vertical-align:-2px;margin-right:5px}.ff-input{width:100%;box-sizing:border-box;height:48px;margin-top:16px;padding:0 13px;border:1px solid #d9d4ca;border-radius:10px;font:inherit;font-weight:650;outline:0}.ff-input:focus{border-color:#ffc629;box-shadow:0 0 0 4px rgba(255,198,41,.2)}
       .ff-shell{max-width:594px;margin:0 auto;padding-top:28px}.fs-stepper{display:flex;align-items:center;justify-content:center;margin:0 0 28px}.fs-step{display:flex;align-items:center;gap:8px;color:#77726b;font-size:11px}.fs-step i{width:23px;height:23px;border:1px solid #ddd8cf;border-radius:50%;display:grid;place-items:center;font-size:11px;font-style:normal}.fs-step.done,.fs-step.now{color:#151515}.fs-step.done i{background:#111;color:#fff;border-color:#111}.fs-step.now i{background:#ffc629;border-color:#ffc629}.fs-step i svg{width:11px;height:11px}.fs-step em{width:27px;height:1px;background:#ddd8cf;margin:0 9px;font-style:normal}.ff-card{border:1px solid #e4e0d8;border-radius:20px;overflow:hidden;background:#fff;box-shadow:0 12px 32px -30px rgba(0,0,0,.3)}.ff-subject{height:66px;padding:0 21px;display:flex;align-items:center;border-bottom:1px solid #e4e0d8}.ff-subject__label,.ff-eyebrow{font-size:10px;font-weight:850;color:#a16d00;letter-spacing:.13em;text-transform:uppercase}.ff-subject strong{margin-left:12px;font-size:15px;letter-spacing:-.03em}.ff-edit{margin-left:auto;width:30px;height:30px;border:1px solid #e4e0d8;border-radius:50%;background:#fff;color:#777;display:grid;place-items:center;cursor:pointer}.ff-edit svg{width:14px;height:14px}.ff-section{padding:23px 21px 24px}.ff-section--sources{border-top:1px solid #e4e0d8}.ff-section h1{margin:10px 0 0;font-size:17px;line-height:1.25;letter-spacing:-.035em}.ff-section>p{margin:10px 0 0;font-size:13px;line-height:1.55;color:#625e58}.ff-chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:18px}.ff-chip{height:37px;padding:0 14px;border:1.5px solid #b8b1a2 !important;border-radius:999px;background:#fff;color:#302d29;font:inherit;font-size:12px;font-weight:700;display:inline-flex;align-items:center;gap:8px;cursor:pointer;transition:border-color .15s,background .15s,box-shadow .15s}.ff-chip:hover:not(:disabled){border-color:#8a8271 !important}.ff-chip:disabled{cursor:default}.ff-chip.on{border-color:#ffc629 !important;box-shadow:0 0 0 1.5px #ffc629 inset}.ff-check{width:15px;height:15px;border:1px solid #d9d4ca;border-radius:50%;display:grid;place-items:center}.ff-chip.on .ff-check{background:#ffc629;border-color:#ffc629}.ff-check svg{width:9px;height:9px}.ff-add{border-style:dashed;color:#9d6900}.ff-add svg{width:13px;height:13px}.ff-add-input{height:37px;width:130px;padding:0 12px;border:1px solid #ffc629;border-radius:999px;outline:0;font:inherit;font-size:12px;font-weight:700}.ff-count{margin:14px 0 0!important;font-size:11px!important;color:#756f68!important}.ff-count b{color:#111}.ff-source{margin-top:13px;padding:12px;border:1px solid #ddd8cf;border-radius:11px}.ff-source__head{display:flex;align-items:center;justify-content:space-between;font-size:11px;font-weight:800}.ff-source__head span:last-child{font-size:8px;color:#9d6900;letter-spacing:.08em}.ff-source input{box-sizing:border-box;width:100%;height:36px;margin-top:10px;padding:0 11px;border:1px solid #d9d4ca;border-radius:999px;font:inherit;font-size:11px;font-weight:600;outline:0}.ff-source input:focus{border-color:#ffc629}.ff-footer{min-height:85px;padding:0 21px;border-top:1px solid #e4e0d8;display:flex;align-items:center;justify-content:space-between;gap:12px}.ff-back,.ff-run{height:41px;padding:0 20px;border-radius:10px;font:inherit;font-size:13px;font-weight:800;cursor:pointer}.ff-back{border:1px solid #ddd8cf;background:#fff;color:#111}.ff-run{border:0;background:#ffc629;color:#1a1400;display:inline-flex;align-items:center;gap:10px;box-shadow:0 1px 2px rgba(20,15,0,.1),0 10px 24px -8px rgba(255,198,41,.72)}.ff-run:hover:not(:disabled){background:#ffd84d;transform:translateY(-1px);box-shadow:0 2px 4px rgba(20,15,0,.1),0 16px 30px -10px rgba(255,198,41,.85)}.ff-run svg{width:15px;height:15px}.ff-run:disabled{opacity:.55;cursor:not-allowed}.ff-subject-form{max-width:520px;margin:66px auto;border:1px solid #e4e0d8;border-radius:20px;padding:26px}.ff-subject-form h1{margin:0;font-size:25px;letter-spacing:-.05em}.ff-modes{display:grid;grid-template-columns:repeat(2,1fr);gap:7px;margin-top:22px}.ff-mode{height:45px;border:1px solid #ddd8cf;border-radius:10px;background:#fff;font:inherit;font-size:12px;font-weight:750;cursor:pointer}.ff-mode.is-on{background:#111;border-color:#111;color:#fff}.ff-mode svg{width:14px;height:14px;vertical-align:-2px;margin-right:5px}.ff-input{width:100%;box-sizing:border-box;height:48px;margin-top:16px;padding:0 13px;border:1px solid #d9d4ca;border-radius:10px;font:inherit;font-weight:650;outline:0}.ff-input:focus{border-color:#ffc629;box-shadow:0 0 0 4px rgba(255,198,41,.2)}
-      .free-flow--gate{padding:0;background:#fff}.ff-gate{min-height:calc(100vh - 72px);display:grid;grid-template-columns:1fr 1fr}.ff-gate__copy{padding:clamp(48px,11vh,120px) clamp(29px,5vw,90px);display:flex;align-items:center}.ff-gate__inner{max-width:420px}.ff-gate h1{margin:12px 0 0;font-size:clamp(27px,3vw,38px);line-height:1.08;letter-spacing:-.065em}.ff-gate__copy>div>p{font-size:13px;line-height:1.55;color:#625e58;margin:15px 0 0}.ff-stages{margin-top:35px;display:flex;flex-direction:column;gap:12px}.ff-stage{min-height:34px;padding:0 10px;display:flex;align-items:center;gap:11px;border-radius:9px;font-size:12px;font-weight:650}.ff-stage i{width:15px;height:15px;border-radius:50%;background:#111;color:#fff;display:grid;place-items:center}.ff-stage i svg{width:9px;height:9px}.ff-stage.now{background:#fff5da}.ff-stage.now i{background:transparent;border:1.5px solid #ffc629;border-top-color:transparent;animation:ff-spin .8s linear infinite}.ff-email{display:flex;align-items:center;gap:9px;margin-top:20px;padding:12px;border:1px solid #f1d798;border-radius:10px;background:#fffaf0;color:#9d6900;font-size:11px;font-weight:750}.ff-email svg{width:15px;height:15px}@keyframes ff-spin{to{transform:rotate(360deg)}}.ff-gate__visual{padding:28px 30px;background:#faf9f6;border-left:1px solid #ece8df;display:flex;align-items:center;justify-content:center}.ff-preview{width:min(100%,560px)}.ff-videos{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}.ff-video{height:245px;width:100%;border-radius:10px;object-fit:cover;filter:blur(3px);opacity:.75}.ff-gate__sheet{display:block}.ff-signup{margin-top:24px;padding:23px;border:1px solid #e4e0d8;border-radius:16px;background:#fff;text-align:center;box-shadow:0 20px 35px -30px rgba(0,0,0,.25)}.ff-signup h2{font-size:16px;letter-spacing:-.035em;margin:0}.ff-signup p{font-size:11px!important;line-height:1.55!important;margin:13px auto 0!important;color:#756f68!important}.ff-google{appearance:none;-webkit-appearance:none;height:50px;width:100%;margin-top:18px;border:1px solid #111!important;border-radius:9px;background:#111!important;color:#fff!important;font:inherit;font-size:12px;font-weight:800;display:flex;align-items:center;justify-content:center;gap:9px;cursor:pointer;box-shadow:0 8px 16px -10px rgba(0,0,0,.7);transition:transform .16s,background .16s,box-shadow .16s}.ff-google:hover:not(:disabled){background:#292929!important;box-shadow:0 11px 20px -10px rgba(0,0,0,.65);transform:translateY(-1px)}.ff-google svg{width:19px;height:19px;background:#fff;border-radius:50%;padding:2px}.ff-google:disabled{opacity:.6}.ff-trust{font-size:10px!important;margin-top:12px!important}.ff-error{margin-top:12px!important;color:#aa3820!important;font-weight:700}
-      @media(max-width:720px){.free-flow--gate{padding:0;background:#f7f4ed}.ff-gate{position:relative;display:block;min-height:calc(100vh - 72px);padding:44px 16px 250px;overflow:hidden}.ff-gate__copy{display:flex;justify-content:center;padding:0;text-align:center}.ff-gate__inner{max-width:430px}.ff-gate h1{margin:14px 0 0;font-size:clamp(26px,8vw,36px);line-height:1.04}.ff-gate__copy>div>p{max-width:280px;margin-left:auto;margin-right:auto}.ff-stages{margin:32px auto 0;max-width:none}.ff-stage{text-align:left}.ff-stage i{flex:none}.ff-email{margin:20px auto 0;max-width:none;text-align:left}.ff-email svg{flex:none}.ff-gate__visual{display:none}.ff-gate__sheet{position:fixed;left:0;right:0;bottom:0;z-index:20;display:flex;justify-content:center;padding:0 6px;pointer-events:none}.ff-gate__sheet.is-open .ff-signup{transform:translateY(0);opacity:1}.ff-signup{width:min(100%,560px);margin-top:0;padding:18px 18px 22px;border-bottom:0;border-radius:18px 18px 0 0;box-shadow:0 -12px 40px rgba(0,0,0,.10);transform:translateY(110%);opacity:0;transition:transform .34s ease,opacity .24s ease;pointer-events:auto}.ff-signup::before{content:'';display:block;width:46px;height:4px;border-radius:999px;background:#d7d2c8;margin:0 auto 16px}}@media(max-width:500px){.free-flow{padding:0 12px 35px}.free-flow--gate{padding:0}.ff-shell{padding-top:20px}.fs-step b{display:none}.fs-step em{width:20px;margin:0 5px}.ff-card{border-radius:16px}.ff-section{padding:20px 17px}.ff-subject{padding:0 17px}.ff-footer{padding:0 17px}.ff-run{padding:0 14px}.ff-modes{grid-template-columns:1fr}.ff-subject-form{margin:32px auto}.ff-gate{padding:38px 10px 248px}.ff-signup{padding:16px 14px 20px}}
+      .free-flow--gate{padding:0;background:#fff}.ff-gate{min-height:calc(100vh - 72px);display:grid;grid-template-columns:1fr 1fr}.ff-gate__copy{padding:clamp(48px,11vh,120px) clamp(29px,5vw,90px);display:flex;align-items:center}.ff-gate__inner{max-width:420px}.ff-gate h1{margin:12px 0 0;font-size:clamp(27px,3vw,38px);line-height:1.08;letter-spacing:-.065em}.ff-gate__copy>div>p{font-size:13px;line-height:1.55;color:#625e58;margin:15px 0 0}.ff-stages{margin-top:35px;display:flex;flex-direction:column;gap:12px}.ff-stage{min-height:34px;padding:0 10px;display:flex;align-items:center;gap:11px;border-radius:9px;font-size:12px;font-weight:650}.ff-stage i{width:15px;height:15px;border-radius:50%;background:#111;color:#fff;display:grid;place-items:center}.ff-stage i svg{width:9px;height:9px}.ff-stage.now{background:#fff5da}.ff-stage.now i{background:transparent;border:1.5px solid #ffc629;border-top-color:transparent;animation:ff-spin .8s linear infinite}.ff-email{display:flex;align-items:center;gap:9px;margin-top:20px;padding:12px;border:1px solid #f1d798;border-radius:10px;background:#fffaf0;color:#9d6900;font-size:11px;font-weight:750}.ff-email svg{width:15px;height:15px}@keyframes ff-spin{to{transform:rotate(360deg)}}.ff-gate__visual{padding:28px 30px;background:#faf9f6;border-left:1px solid #ece8df;display:flex;align-items:center;justify-content:center}.ff-preview{width:min(100%,560px)}.ff-videos{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}.ff-video{height:200px;width:100%;border-radius:10px;object-fit:cover;filter:blur(3px);opacity:.75}.ff-gate__sheet--desktop{display:block}.ff-gate__sheet--mobile{display:none}.ff-signup{margin:18px auto 0;padding:23px;border:1px solid #e4e0d8;border-radius:16px;background:#fff;text-align:center;box-shadow:0 20px 35px -30px rgba(0,0,0,.25);max-width:100%}.ff-signup h2{font-size:16px;letter-spacing:-.035em;margin:0}.ff-signup p{font-size:11px!important;line-height:1.55!important;margin:13px auto 0!important;color:#756f68!important}.ff-google{appearance:none;-webkit-appearance:none;height:50px;width:100%;margin-top:18px;border:1px solid #111!important;border-radius:9px;background:#111!important;color:#fff!important;font:inherit;font-size:12px;font-weight:800;display:flex;align-items:center;justify-content:center;gap:9px;cursor:pointer;box-shadow:0 8px 16px -10px rgba(0,0,0,.7);transition:transform .16s,background .16s,box-shadow .16s}.ff-google:hover:not(:disabled){background:#292929!important;box-shadow:0 11px 20px -10px rgba(0,0,0,.65);transform:translateY(-1px)}.ff-google svg{width:19px;height:19px;background:#fff;border-radius:50%;padding:2px}.ff-google:disabled{opacity:.6}.ff-trust{font-size:10px!important;margin-top:12px!important}.ff-error{margin-top:12px!important;color:#aa3820!important;font-weight:700}
+      @media(max-width:720px){.free-flow--gate{padding:0;background:#f7f4ed}.ff-gate{position:relative;display:block;min-height:calc(100vh - 72px);padding:44px 16px 250px;overflow:hidden}.ff-gate__copy{display:flex;justify-content:center;padding:0;text-align:center}.ff-gate__inner{max-width:430px}.ff-gate h1{margin:14px 0 0;font-size:clamp(26px,8vw,36px);line-height:1.04}.ff-gate__copy>div>p{max-width:280px;margin-left:auto;margin-right:auto}.ff-stages{margin:32px auto 0;max-width:none}.ff-stage{text-align:left}.ff-stage i{flex:none}.ff-email{margin:20px auto 0;max-width:none;text-align:left}.ff-email svg{flex:none}.ff-gate__visual{display:none}.ff-gate__sheet--desktop{display:none}.ff-gate__sheet--mobile{position:fixed;left:0;right:0;bottom:0;z-index:20;display:flex;justify-content:center;padding:0 6px;pointer-events:none}.ff-gate__sheet--mobile.is-open .ff-signup{transform:translateY(0);opacity:1}.ff-signup{width:min(100%,560px);margin-top:0;padding:18px 18px 22px;border-bottom:0;border-radius:18px 18px 0 0;box-shadow:0 -12px 40px rgba(0,0,0,.10);transform:translateY(110%);opacity:0;transition:transform .34s ease,opacity .24s ease;pointer-events:auto}.ff-signup::before{content:'';display:block;width:46px;height:4px;border-radius:999px;background:#d7d2c8;margin:0 auto 16px}}@media(max-width:500px){.free-flow{padding:0 12px 35px}.free-flow--gate{padding:0}.ff-shell{padding-top:20px}.fs-step b{display:none}.fs-step em{width:20px;margin:0 5px}.ff-card{border-radius:16px}.ff-section{padding:20px 17px}.ff-subject{padding:0 17px}.ff-footer{padding:0 17px}.ff-run{padding:0 14px}.ff-modes{grid-template-columns:1fr}.ff-subject-form{margin:32px auto}.ff-gate{padding:38px 10px 248px}.ff-signup{padding:16px 14px 20px}}
     ` }),
 				/* @__PURE__ */ jsx("style", { children: `
       .ff-source{display:block}
@@ -15868,110 +15928,83 @@ function Free({ phrase = "", type = "brand", error = null }) {
 				}),
 				screen === "gate" && /* @__PURE__ */ jsxs("section", {
 					className: "ff-gate",
-					children: [/* @__PURE__ */ jsx("div", {
-						className: "ff-gate__copy",
-						children: /* @__PURE__ */ jsxs("div", {
-							className: "ff-gate__inner",
-							children: [
-								/* @__PURE__ */ jsx("span", {
-									className: "ff-eyebrow",
-									children: "Scanning TikTok"
-								}),
-								/* @__PURE__ */ jsxs("h1", { children: [
-									"Building your report",
-									/* @__PURE__ */ jsx("br", {}),
-									"for ",
-									subject
-								] }),
-								/* @__PURE__ */ jsx("p", { children: "This is a deep scan, so it takes about 5 to 10 minutes. We are pulling videos, scoring them against each creator's baseline, and ranking the breakouts. You do not need to wait around." }),
-								/* @__PURE__ */ jsx("div", {
-									className: "ff-stages",
-									children: stages.map((label, index) => /* @__PURE__ */ jsxs("div", {
-										className: `ff-stage ${index === stages.length - 1 ? "now" : ""}`,
-										children: [/* @__PURE__ */ jsx("i", { children: index < stages.length - 1 && /* @__PURE__ */ jsx(Check, {}) }), label]
-									}, label))
-								}),
-								/* @__PURE__ */ jsxs("div", {
-									className: "ff-email",
-									children: [/* @__PURE__ */ jsxs("svg", {
-										viewBox: "0 0 24 24",
-										fill: "none",
-										stroke: "currentColor",
-										strokeWidth: "2",
-										children: [/* @__PURE__ */ jsx("rect", {
-											x: "3",
-											y: "5",
-											width: "18",
-											height: "14",
-											rx: "2"
-										}), /* @__PURE__ */ jsx("path", { d: "m3 7 9 6 9-6" })]
-									}), "We will email your report the moment it is done."]
-								})
-							]
-						})
-					}), /* @__PURE__ */ jsx("div", {
-						className: `ff-gate__sheet ${showGateCard ? "is-open" : ""}`,
-						children: /* @__PURE__ */ jsxs("div", {
-							className: "ff-signup ff-signup--m5",
-							children: [
-								/* @__PURE__ */ jsx("h2", { children: "Where should we send it?" }),
-								/* @__PURE__ */ jsx("p", { children: "Your search is running. Create an account and we will email you when it lands." }),
-								/* @__PURE__ */ jsxs("div", {
-									className: "ff-runchip",
+					children: [
+						/* @__PURE__ */ jsx("div", {
+							className: "ff-gate__copy",
+							children: /* @__PURE__ */ jsxs("div", {
+								className: "ff-gate__inner",
+								children: [
+									/* @__PURE__ */ jsx("span", {
+										className: "ff-eyebrow",
+										children: "Scanning TikTok"
+									}),
+									/* @__PURE__ */ jsxs("h1", { children: [
+										"Building your report",
+										/* @__PURE__ */ jsx("br", {}),
+										"for ",
+										subject
+									] }),
+									/* @__PURE__ */ jsx("p", { children: "This is a deep scan, so it takes about 5 to 10 minutes. We are pulling videos, scoring them against each creator's baseline, and ranking the breakouts. You do not need to wait around." }),
+									/* @__PURE__ */ jsx("div", {
+										className: "ff-stages",
+										children: stages.map((label, index) => /* @__PURE__ */ jsxs("div", {
+											className: `ff-stage ${index === stages.length - 1 ? "now" : ""}`,
+											children: [/* @__PURE__ */ jsx("i", { children: index < stages.length - 1 && /* @__PURE__ */ jsx(Check, {}) }), label]
+										}, label))
+									}),
+									/* @__PURE__ */ jsxs("div", {
+										className: "ff-email",
+										children: [/* @__PURE__ */ jsxs("svg", {
+											viewBox: "0 0 24 24",
+											fill: "none",
+											stroke: "currentColor",
+											strokeWidth: "2",
+											children: [/* @__PURE__ */ jsx("rect", {
+												x: "3",
+												y: "5",
+												width: "18",
+												height: "14",
+												rx: "2"
+											}), /* @__PURE__ */ jsx("path", { d: "m3 7 9 6 9-6" })]
+										}), "We will email your report the moment it is done."]
+									})
+								]
+							})
+						}),
+						/* @__PURE__ */ jsx("div", {
+							className: "ff-gate__visual",
+							children: /* @__PURE__ */ jsxs("div", {
+								className: "ff-preview",
+								children: [/* @__PURE__ */ jsxs("div", {
+									className: "ff-videos",
 									children: [
-										/* @__PURE__ */ jsx("span", {
-											className: "ff-runchip__mono",
-											children: initials
+										/* @__PURE__ */ jsx("img", {
+											className: "ff-video",
+											src: "/images/landing/discovery-coco-shimmy.png",
+											alt: ""
 										}),
-										/* @__PURE__ */ jsxs("span", {
-											className: "ff-runchip__body",
-											children: [/* @__PURE__ */ jsx("b", { children: subject }), /* @__PURE__ */ jsxs("em", { children: [
-												kindLabel,
-												" · ",
-												selected.length,
-												" keyword",
-												selected.length === 1 ? "" : "s",
-												" · weekly"
-											] })]
+										/* @__PURE__ */ jsx("img", {
+											className: "ff-video",
+											src: "/images/landing/discovery-buyer-beware.png",
+											alt: ""
 										}),
-										/* @__PURE__ */ jsx("span", {
-											className: "ff-runchip__pill",
-											children: "RUNNING"
+										/* @__PURE__ */ jsx("img", {
+											className: "ff-video",
+											src: "/images/landing/discovery-brow-grooming.png",
+											alt: ""
 										})
 									]
-								}),
-								message && /* @__PURE__ */ jsx("p", {
-									className: "ff-error",
-									children: message
-								}),
-								/* @__PURE__ */ jsxs("button", {
-									type: "button",
-									className: "ff-google ff-google--outline",
-									disabled: saving,
-									onClick: prepareAndSignIn,
-									children: [/* @__PURE__ */ jsx(Google, {}), saving && pendingRoute === "google" ? "Opening Google…" : "Continue with Google"]
-								}),
-								/* @__PURE__ */ jsx("button", {
-									type: "button",
-									className: "ff-create",
-									disabled: saving,
-									onClick: goCreateAccount,
-									children: saving && pendingRoute === "register" ? "Opening sign up…" : "Create account"
-								}),
-								/* @__PURE__ */ jsx("p", {
-									className: "ff-trust ff-trust--muted",
-									children: "Then you can close the tab."
-								}),
-								/* @__PURE__ */ jsx("button", {
-									type: "button",
-									className: "ff-havelogin",
-									disabled: saving,
-									onClick: goLogin,
-									children: saving && pendingRoute === "login" ? "Opening sign in…" : "I already have an account"
-								})
-							]
+								}), /* @__PURE__ */ jsx("div", {
+									className: "ff-gate__sheet--desktop",
+									children: gateCard
+								})]
+							})
+						}),
+						/* @__PURE__ */ jsx("div", {
+							className: `ff-gate__sheet--mobile ${showGateCard ? "is-open" : ""}`,
+							children: gateCard
 						})
-					})]
+					]
 				})
 			]
 		})]
