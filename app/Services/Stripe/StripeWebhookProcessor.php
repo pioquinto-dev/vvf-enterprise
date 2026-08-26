@@ -204,9 +204,28 @@ class StripeWebhookProcessor
                     ? CarbonImmutable::instance($subscription->trial_started_at)->addDays(self::TRIAL_DAYS)
                     : ($periodStart?->addDays(self::TRIAL_DAYS))))
             : $subscription->trial_ends_at;
+        $billingCycle = (string) data_get($payload, 'metadata.billing_cycle', data_get($subscription->metadata, 'settings.billing_cycle', 'monthly'));
         $limits = $this->billing->limitsFor($plan);
         $renewed = $periodEnd !== null
             && ($previousPeriodEnd === null || $periodEnd->greaterThan(CarbonImmutable::instance($previousPeriodEnd)));
+        $windowStart = $periodStart;
+        $windowEnd = $periodEnd;
+
+        if ($billingCycle === 'annual' && $periodStart !== null && $periodEnd !== null) {
+            $storedWindowStart = data_get($subscription->metadata, 'subscription.search_limits.window_starts_at');
+            $storedWindowEnd = data_get($subscription->metadata, 'subscription.search_limits.window_ends_at');
+            $windowStart = is_string($storedWindowStart) ? CarbonImmutable::parse($storedWindowStart) : $periodStart;
+            $windowEnd = is_string($storedWindowEnd) ? CarbonImmutable::parse($storedWindowEnd) : $periodStart->addMonth();
+
+            if ($windowEnd->greaterThan($periodEnd)) {
+                $windowEnd = $periodEnd;
+            }
+
+            if ($renewed) {
+                $windowStart = $periodStart;
+                $windowEnd = $periodStart->addMonth()->lessThan($periodEnd) ? $periodStart->addMonth() : $periodEnd;
+            }
+        }
 
         $searchUsed = $renewed ? 0 : (int) data_get($subscription->metadata, 'subscription.search_limits.used', 0);
         $videoBookmarksUsed = $renewed ? 0 : $this->billing->videoBookmarkCount($user);
@@ -235,12 +254,15 @@ class StripeWebhookProcessor
                 'settings' => [
                     'cta' => (string) data_get($plan->metadata, 'settings.cta', 'Choose plan'),
                     'popular' => (bool) data_get($plan->metadata, 'settings.popular', false),
+                    'billing_cycle' => $billingCycle === 'annual' ? 'annual' : 'monthly',
                 ],
                 'subscription' => [
                     'trialEnabled' => (bool) ($limits['trialEnabled'] ?? false),
                     'search_limits' => [
                         'used' => max(0, $searchUsed),
                         'limit' => (int) ($limits['searchLimit'] ?? 0),
+                        'window_starts_at' => $windowStart?->toIso8601String(),
+                        'window_ends_at' => $windowEnd?->toIso8601String(),
                     ],
                     'viral_video_bookmarks' => [
                         'used' => max(0, $videoBookmarksUsed),
@@ -272,7 +294,7 @@ class StripeWebhookProcessor
             $user->forceFill([
                 'current_plan_slug' => $plan->slug,
                 'monthly_credits_remaining' => $renewed
-                    ? $this->billing->searchCreditsRemaining($user) + ((int) ($limits['searchLimit'] ?? 0))
+                    ? max(0, (int) ($limits['searchLimit'] ?? 0))
                     : $user->monthly_credits_remaining,
                 'plan_renews_at' => $periodEnd,
             ])->save();

@@ -14,6 +14,14 @@ function ratio(used, limit) {
   return Math.min(100, Math.max(0, (used / limit) * 100));
 }
 
+function formatUsage(used, limit) {
+  if (limit === -1) {
+    return `${used} / Unlimited`;
+  }
+
+  return `${used} / ${limit || 0}`;
+}
+
 export default function Subscription({ subscription }) {
   const limits = subscription?.limits ?? {};
   const searchLimit = limits.searchCreditsLimit ?? 0;
@@ -30,6 +38,7 @@ export default function Subscription({ subscription }) {
   const active = status === 'active';
   const price = subscription?.price ?? 0;
   const interval = subscription?.interval ?? 'month';
+  const billingCycle = subscription?.billingCycle ?? 'monthly';
   const isTrialing = status === 'trialing' || status === 'trial';
   const trialEnds = formatDate(subscription?.trialEndsAt);
   const renews = formatDate(subscription?.renewsAt);
@@ -66,7 +75,7 @@ export default function Subscription({ subscription }) {
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '.84rem', marginBottom: 8 }}>
                   <span className="muted">Searches used</span>
                   <span style={{ fontWeight: 700, color: 'var(--ink)' }}>
-                    {searchUsed} / {searchLimit || 0}
+                    {formatUsage(searchUsed, searchLimit)}
                   </span>
                 </div>
                 <div className="meter">
@@ -84,7 +93,7 @@ export default function Subscription({ subscription }) {
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '.84rem', marginBottom: 8 }}>
                   <span className="muted">Video bookmarks used</span>
                   <span style={{ fontWeight: 700, color: 'var(--ink)' }}>
-                    {videoBookmarkUsed} {videoBookmarksUnlimited ? '' : `/ ${videoBookmarkLimit || 0}`}
+                    {formatUsage(videoBookmarkUsed, videoBookmarkLimit)}
                   </span>
                 </div>
                 <div className="meter">
@@ -96,7 +105,7 @@ export default function Subscription({ subscription }) {
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '.84rem', marginBottom: 8 }}>
                   <span className="muted">Search bookmarks used</span>
                   <span style={{ fontWeight: 700, color: 'var(--ink)' }}>
-                    {searchBookmarkUsed} {searchBookmarksUnlimited ? '' : `/ ${searchBookmarkLimit || 0}`}
+                    {formatUsage(searchBookmarkUsed, searchBookmarkLimit)}
                   </span>
                 </div>
                 <div className="meter">
@@ -108,7 +117,7 @@ export default function Subscription({ subscription }) {
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '.84rem', marginBottom: 8 }}>
                   <span className="muted">Video analysis used</span>
                   <span style={{ fontWeight: 700, color: 'var(--ink)' }}>
-                    {videoAnalysisUsed} {analysisUnlimited ? '' : `/ ${videoAnalysisLimit || 0}`}
+                    {formatUsage(videoAnalysisUsed, videoAnalysisLimit)}
                   </span>
                 </div>
                 <div className="meter">
@@ -137,7 +146,7 @@ export default function Subscription({ subscription }) {
                   <div className="rowf" key={i}>
                     <div>
                       <p className="rowf__t">{formatDate(inv.date) ?? inv.date}</p>
-                      <p className="rowf__d">{planName} · {interval}ly</p>
+                      <p className="rowf__d">{planName} · {billingCycle === 'annual' ? 'annual' : 'monthly'}</p>
                     </div>
                     <span style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
                       <b style={{ fontSize: '.88rem', color: 'var(--ink)' }}>{inv.amount}</b>

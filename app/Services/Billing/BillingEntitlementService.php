@@ -22,8 +22,13 @@ class BillingEntitlementService
         $this->refreshCreditsIfNeeded($user);
 
         $limits = $this->limitsForUser($user);
+        $searchLimit = (int) ($limits['searchCreditsLimit'] ?? 0);
 
-        if (($limits['searchCreditsLimit'] ?? 0) <= 0) {
+        if ($searchLimit === -1) {
+            return;
+        }
+
+        if ($searchLimit <= 0) {
             throw ValidationException::withMessages([
                 'billing' => 'This plan does not include any search credits.',
             ]);
@@ -41,6 +46,10 @@ class BillingEntitlementService
         $this->initializeFreeCreditsIfNeeded($user);
         $this->refreshCreditsIfNeeded($user);
 
+        if ((int) ($this->limitsForUser($user)['searchCreditsLimit'] ?? 0) === -1) {
+            return;
+        }
+
         // The column is unsigned, so a raw decrement at zero is a database
         // error rather than a clamp. Floor it here.
         $user->forceFill([
@@ -56,6 +65,10 @@ class BillingEntitlementService
         $this->refreshCreditsIfNeeded($user);
 
         $limit = (int) ($this->limitsForUser($user)['searchCreditsLimit'] ?? 0);
+
+        if ($limit === -1) {
+            return;
+        }
 
         $user->forceFill([
             'monthly_credits_remaining' => min(
@@ -231,7 +244,7 @@ class BillingEntitlementService
             return false;
         }
 
-        return in_array($user->current_plan_slug, ['basic', 'premium'], true)
+        return $user->current_plan_slug !== 'free'
             && ($user->plan_renews_at === null || $user->plan_renews_at->isFuture());
     }
 
@@ -341,6 +354,10 @@ class BillingEntitlementService
             return 0;
         }
 
+        if ($this->baseSearchCreditLimitForUser($user) === -1) {
+            return -1;
+        }
+
         return max(0, (int) $user->monthly_credits_remaining);
     }
 
@@ -365,9 +382,13 @@ class BillingEntitlementService
             }
         }
 
-        $limits = $this->limitsForUser($user);
+        $searchLimit = $this->baseSearchCreditLimitForUser($user);
 
-        return max(0, ((int) ($limits['searchCreditsLimit'] ?? 0)) - $this->searchCreditsRemaining($user));
+        if ($searchLimit === -1) {
+            return 0;
+        }
+
+        return max(0, $searchLimit - max(0, (int) $user->monthly_credits_remaining));
     }
 
     public function bookmarksUsed(?User $user): int
@@ -407,8 +428,12 @@ class BillingEntitlementService
         $searchBookmarksUsed = $this->searchBookmarkCount($user);
         $videoAnalysisUsed = $this->derivedVideoAnalysisUsed($user);
 
+        $cycle = $this->billingCycleFor($subscription);
+        $periodStart = $subscription->current_period_starts_at ? CarbonImmutable::instance($subscription->current_period_starts_at) : null;
+        $periodEnd = $subscription->current_period_ends_at ? CarbonImmutable::instance($subscription->current_period_ends_at) : null;
+
         $subscription->forceFill([
-            'metadata' => $this->subscriptionMetadata($plan, $searchCreditsUsed, $videoBookmarksUsed, $searchBookmarksUsed, $videoAnalysisUsed),
+            'metadata' => $this->subscriptionMetadata($plan, $searchCreditsUsed, $videoBookmarksUsed, $searchBookmarksUsed, $videoAnalysisUsed, $cycle, $periodStart, $periodEnd, $subscription->metadata ?? []),
         ])->save();
     }
 
@@ -479,7 +504,11 @@ class BillingEntitlementService
             }
         }
 
-        return max(0, ((int) ($limits['searchCreditsLimit'] ?? 0)) - $this->searchCreditsRemaining($user));
+        if ((int) ($limits['searchCreditsLimit'] ?? 0) === -1) {
+            return 0;
+        }
+
+        return max(0, ((int) ($limits['searchCreditsLimit'] ?? 0)) - max(0, (int) $user->monthly_credits_remaining));
     }
 
     private function derivedVideoAnalysisUsed(User $user): int
@@ -546,11 +575,21 @@ class BillingEntitlementService
      */
     public function remainingSearchCreditsFrom(array $limits, int $used): int
     {
+        if ((int) ($limits['searchCreditsLimit'] ?? 0) === -1) {
+            return -1;
+        }
+
         return max(0, ((int) ($limits['searchCreditsLimit'] ?? 0)) - max(0, $used));
     }
 
     private function refreshCreditsIfNeeded(User $user): void
     {
+        if ($this->hasPaidPlan($user)) {
+            $this->refreshPaidCreditsIfNeeded($user);
+
+            return;
+        }
+
         if ($user->plan_renews_at === null || $user->plan_renews_at->isFuture()) {
             return;
         }
@@ -571,8 +610,72 @@ class BillingEntitlementService
         $limits = $this->limitsFor($plan);
 
         $user->forceFill([
-            'monthly_credits_remaining' => $this->remainingSearchCreditsFrom($limits, 0),
+            'monthly_credits_remaining' => max(0, $this->remainingSearchCreditsFrom($limits, 0)),
             'plan_renews_at' => $endsAt,
+        ])->save();
+
+        $this->syncSubscriptionUsage($user, $plan);
+    }
+
+    private function refreshPaidCreditsIfNeeded(User $user): void
+    {
+        $subscription = $this->activeSubscriptionFor($user);
+
+        if ($subscription === null) {
+            return;
+        }
+
+        $windowEnd = data_get($subscription->metadata, 'subscription.search_limits.window_ends_at');
+        $windowStart = data_get($subscription->metadata, 'subscription.search_limits.window_starts_at');
+
+        if (! is_string($windowEnd) || ! is_string($windowStart)) {
+            return;
+        }
+
+        $currentEnd = CarbonImmutable::parse($windowEnd);
+        $currentStart = CarbonImmutable::parse($windowStart);
+
+        if ($currentEnd->isFuture()) {
+            return;
+        }
+
+        $periodEnd = $subscription->current_period_ends_at ? CarbonImmutable::instance($subscription->current_period_ends_at) : null;
+
+        if ($periodEnd === null) {
+            return;
+        }
+
+        $plan = $subscription->plan ?? PricingPlan::query()->find($subscription->plan_id);
+
+        if ($plan === null) {
+            return;
+        }
+
+        $billingCycle = $this->billingCycleFor($subscription);
+        $nextStart = $currentStart;
+        $nextEnd = $currentEnd;
+
+        while ($nextEnd->lessThanOrEqualTo(CarbonImmutable::now()) && $nextEnd->lessThan($periodEnd)) {
+            $nextStart = $nextEnd;
+            $candidateEnd = $billingCycle === 'annual' ? $nextStart->addMonth() : $periodEnd;
+            $nextEnd = $candidateEnd->lessThan($periodEnd) ? $candidateEnd : $periodEnd;
+        }
+
+        $limits = $this->limitsFor($plan);
+        $metadata = (array) $subscription->metadata;
+
+        data_set($metadata, 'settings.billing_cycle', $billingCycle);
+        data_set($metadata, 'subscription.search_limits.used', 0);
+        data_set($metadata, 'subscription.search_limits.limit', (int) ($limits['searchLimit'] ?? 0));
+        data_set($metadata, 'subscription.search_limits.window_starts_at', $nextStart->toIso8601String());
+        data_set($metadata, 'subscription.search_limits.window_ends_at', $nextEnd->toIso8601String());
+
+        $subscription->forceFill([
+            'metadata' => $metadata,
+        ])->save();
+
+        $user->forceFill([
+            'monthly_credits_remaining' => max(0, $this->remainingSearchCreditsFrom($limits, 0)),
         ])->save();
 
         $this->syncSubscriptionUsage($user, $plan);
@@ -602,21 +705,50 @@ class BillingEntitlementService
         ])->save();
     }
 
-    private function subscriptionMetadata(PricingPlan $plan, int $searchCreditsUsed, int $videoBookmarksUsed, int $searchBookmarksUsed, int $videoAnalysisUsed): array
+    private function baseSearchCreditLimitForUser(User $user): int
+    {
+        $plan = PricingPlan::query()->where('slug', $user->current_plan_slug)->first();
+
+        if ($plan === null) {
+            return $user->current_plan_slug === 'free' ? 1 : 0;
+        }
+
+        return (int) data_get($plan->metadata, 'subscription.search_limits.limit', data_get($plan->metadata, 'searchCreditsLimit', 0));
+    }
+
+    private function subscriptionMetadata(PricingPlan $plan, int $searchCreditsUsed, int $videoBookmarksUsed, int $searchBookmarksUsed, int $videoAnalysisUsed, string $billingCycle = 'monthly', ?CarbonImmutable $periodStart = null, ?CarbonImmutable $periodEnd = null, array $existingMetadata = []): array
     {
         $limits = $this->limitsFor($plan);
+        $windowStart = data_get($existingMetadata, 'subscription.search_limits.window_starts_at');
+        $windowEnd = data_get($existingMetadata, 'subscription.search_limits.window_ends_at');
+
+        if (! is_string($windowStart) || ! is_string($windowEnd)) {
+            $windowStartAt = $periodStart;
+            $windowEndAt = $periodEnd;
+
+            if ($billingCycle === 'annual' && $periodStart !== null && $periodEnd !== null) {
+                $candidateEnd = $periodStart->addMonth();
+                $windowEndAt = $candidateEnd->lessThan($periodEnd) ? $candidateEnd : $periodEnd;
+            }
+
+            $windowStart = $windowStartAt?->toIso8601String();
+            $windowEnd = $windowEndAt?->toIso8601String();
+        }
 
         return [
             'plan_slug' => $plan->slug,
             'settings' => [
                 'cta' => (string) data_get($plan->metadata, 'settings.cta', 'Choose plan'),
                 'popular' => (bool) data_get($plan->metadata, 'settings.popular', false),
+                'billing_cycle' => $billingCycle,
             ],
             'subscription' => [
                 'trialEnabled' => (bool) ($limits['trialEnabled'] ?? false),
                 'search_limits' => [
                     'used' => max(0, $searchCreditsUsed),
                     'limit' => (int) ($limits['searchLimit'] ?? 0),
+                    'window_starts_at' => $windowStart,
+                    'window_ends_at' => $windowEnd,
                 ],
                 'viral_video_bookmarks' => [
                     'used' => max(0, $videoBookmarksUsed),
@@ -644,12 +776,29 @@ class BillingEntitlementService
             ->first();
     }
 
+    private function billingCycleFor(Subscription $subscription): string
+    {
+        $cycle = (string) data_get($subscription->metadata, 'settings.billing_cycle', 'monthly');
+
+        return $cycle === 'annual' ? 'annual' : 'monthly';
+    }
+
     /**
      * @return array{0: ?CarbonImmutable, 1: ?CarbonImmutable}
      */
     private function currentBillingWindow(User $user): array
     {
         $subscription = $this->activeSubscriptionFor($user);
+        $windowStart = data_get($subscription?->metadata, 'subscription.search_limits.window_starts_at');
+        $windowEnd = data_get($subscription?->metadata, 'subscription.search_limits.window_ends_at');
+
+        if (is_string($windowStart) && is_string($windowEnd)) {
+            return [
+                CarbonImmutable::parse($windowStart),
+                CarbonImmutable::parse($windowEnd),
+            ];
+        }
+
         $startsAt = $subscription?->current_period_starts_at;
         $endsAt = $subscription?->current_period_ends_at ?? $user->plan_renews_at;
 

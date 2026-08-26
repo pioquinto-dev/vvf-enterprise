@@ -152,7 +152,10 @@ class SettingsController extends Controller
         $limits = $this->billing->limitsForUser($user);
         $fallbackPlan = PricingPlan::query()->where('slug', $user->current_plan_slug)->first();
         $plan = $subscription?->status === 'pending' ? $fallbackPlan : ($subscription?->plan ?? $fallbackPlan);
-        $price = $plan?->amount ?? ($plan?->price_cents !== null ? ((int) $plan->price_cents / 100) : null);
+        $billingCycle = (string) data_get($subscription?->metadata, 'settings.billing_cycle', 'monthly');
+        $price = $billingCycle === 'annual'
+            ? ($plan?->annual_amount ?? null)
+            : ($plan?->amount ?? ($plan?->price_cents !== null ? ((int) $plan->price_cents / 100) : null));
         $status = $subscription?->status === 'pending' ? ($user->current_plan_slug === 'free' ? 'free' : 'active') : ($subscription?->status ?? 'free');
         $videoAnalysisUsed = max(0, (int) data_get($subscription?->metadata, 'subscription.video_analysis.used', $limits['videoAnalysisUsed'] ?? 0));
         $trialStartedAt = $subscription?->trial_started_at;
@@ -162,13 +165,15 @@ class SettingsController extends Controller
         $renewsAt = $status === 'pending'
             ? null
             : ($trialEndsAt ?? $subscription?->current_period_ends_at ?? $user->plan_renews_at);
+        $planSlug = $plan?->slug ?? ($user->current_plan_slug ?? 'free');
 
         return [
             'status' => $status,
-            'planName' => $plan?->name ?? ucfirst((string) ($user->current_plan_slug ?? 'free')),
-            'planSlug' => $plan?->slug ?? ($user->current_plan_slug ?? 'free'),
+            'planName' => $this->formatPlanDisplayName($planSlug, $plan?->name),
+            'planSlug' => $planSlug,
             'price' => $price !== null ? number_format((float) $price, 2, '.', '') : null,
-            'interval' => $plan?->interval ?? 'month',
+            'interval' => $billingCycle === 'annual' ? 'year' : ($plan?->interval ?? 'month'),
+            'billingCycle' => $billingCycle === 'annual' ? 'annual' : 'monthly',
             'startedAt' => $subscription?->status === 'pending' ? null : $subscription?->current_period_starts_at?->toIso8601String(),
             'trialStartedAt' => $trialStartedAt?->toIso8601String(),
             'trialEndsAt' => $trialEndsAt?->toIso8601String(),
@@ -186,6 +191,17 @@ class SettingsController extends Controller
                 'bookmarksUsed' => $this->billing->searchBookmarkCount($user),
             ],
         ];
+    }
+
+    private function formatPlanDisplayName(string $planSlug, ?string $fallbackName = null): string
+    {
+        return match ($planSlug) {
+            'basic' => 'Basic',
+            'basic-annual' => 'Basic (Annual)',
+            'premium' => 'Premium',
+            'premium-annual' => 'Premium (Annual)',
+            default => $fallbackName ?? ucfirst($planSlug),
+        };
     }
 
     private function accountDeletionPayload($user): array

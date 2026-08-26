@@ -23,6 +23,8 @@ use Throwable;
 
 class GoogleAuthController extends Controller
 {
+    private const CHECKOUT_PLAN_SLUGS = ['basic', 'basic-annual', 'premium', 'premium-annual'];
+
     public function __construct(
         private readonly PostAuthenticationRedirector $redirector,
         private readonly BrevoLifecycleEmailService $emails,
@@ -143,7 +145,7 @@ class GoogleAuthController extends Controller
     {
         $intent = TrialCheckoutIntent::pull($request);
 
-        if (! is_array($intent) || ! in_array($intent['plan_slug'] ?? null, ['basic', 'premium'], true)) {
+        if (! is_array($intent) || ! in_array($intent['plan_slug'] ?? null, self::CHECKOUT_PLAN_SLUGS, true)) {
             return null;
         }
 
@@ -154,9 +156,10 @@ class GoogleAuthController extends Controller
         }
 
         $withTrial = (bool) ($intent['with_trial'] ?? false);
+        $cycle = ($intent['cycle'] ?? 'monthly') === 'annual' ? 'annual' : 'monthly';
 
         try {
-            return redirect()->away($this->billing->checkout($user, $plan, $withTrial));
+            return redirect()->away($this->billing->checkout($user, $plan, $withTrial, $cycle));
         } catch (\Illuminate\Validation\ValidationException $exception) {
             if ($withTrial && $exception->errors()['trial'] ?? false) {
                 return redirect()->route('plans')->with('trial_access_prompt', [
@@ -165,7 +168,7 @@ class GoogleAuthController extends Controller
                 ]);
             }
 
-            throw $exception;
+            return redirect()->route('plans')->with('status', collect($exception->errors())->flatten()->first() ?? 'Checkout could not be started.');
         }
     }
 }

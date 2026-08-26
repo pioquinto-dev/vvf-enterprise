@@ -1,8 +1,11 @@
+import { useMemo, useState } from 'react';
 import { Check } from '../components/Icons.jsx';
 import { PRICING, PRICING_PLAN_ORDER } from '../data/dummy.js';
 
 export default function Pricing({ plans = [], onStart, onTrial }) {
-  const visiblePlans = (plans.length > 0 ? [...plans] : [...PRICING.monthly]).sort((a, b) => {
+  const [billingCycle, setBillingCycle] = useState('monthly');
+  const allPlans = plans.length > 0 ? [...plans] : [...PRICING.monthly, ...PRICING.annual];
+  const sortedPlans = allPlans.sort((a, b) => {
     const aKey = a.slug ?? a.name?.toLowerCase();
     const bKey = b.slug ?? b.name?.toLowerCase();
     const aIndex = PRICING_PLAN_ORDER.indexOf(aKey);
@@ -10,6 +13,18 @@ export default function Pricing({ plans = [], onStart, onTrial }) {
 
     return (aIndex === -1 ? Number.MAX_SAFE_INTEGER : aIndex) - (bIndex === -1 ? Number.MAX_SAFE_INTEGER : bIndex);
   });
+  const visiblePlans = useMemo(
+    () => sortedPlans.filter((plan) => plan.slug === 'free' || (plan.duration ?? 'monthly') === billingCycle),
+    [billingCycle, sortedPlans],
+  );
+  const paidPlans = useMemo(() => visiblePlans.filter((plan) => plan.price > 0), [visiblePlans]);
+  const annualBanner = useMemo(() => {
+    const percents = paidPlans
+      .map((plan) => Number(plan.annualSavingsPercent ?? 0))
+      .filter((value) => value > 0);
+
+    return percents.length > 0 ? Math.max(...percents) : 0;
+  }, [paidPlans]);
 
   return (
     <section className="sec--pad" id="pricing">
@@ -19,11 +34,11 @@ export default function Pricing({ plans = [], onStart, onTrial }) {
           <h2>Simple, per-search pricing</h2>
           <p>Start with one free search. Upgrade when you want tracking on a schedule.</p>
           <div className="toggle">
-            <button className="is-on" type="button">
+            <button className={billingCycle === 'monthly' ? 'is-on' : ''} type="button" onClick={() => setBillingCycle('monthly')}>
               Monthly
             </button>
-            <button type="button" disabled>
-              Annual · save 20%
+            <button className={billingCycle === 'annual' ? 'is-on' : ''} type="button" onClick={() => setBillingCycle('annual')}>
+              Annual{annualBanner > 0 ? ` · save up to ${annualBanner}%` : ''}
             </button>
           </div>
         </div>
@@ -38,9 +53,15 @@ export default function Pricing({ plans = [], onStart, onTrial }) {
                 <p className="plan__t">{plan.tagline}</p>
                 <div className="plan__p">
                   {free ? '$0' : `$${plan.price}`}
-                  <span>/mo</span>
+                  <span>{free ? '/mo' : billingCycle === 'annual' ? '/yr' : '/mo'}</span>
                 </div>
-                <p className="plan__s">{free ? '' : '$0 for 8 days'}</p>
+                <p className="plan__s">
+                  {free
+                    ? ''
+                    : billingCycle === 'annual'
+                      ? `Save ${plan.annualSavingsPercent}% with annual billing`
+                      : '$0 for 8 days'}
+                </p>
 
                 <ul>
                   {plan.features.map((feature) => (
@@ -59,7 +80,7 @@ export default function Pricing({ plans = [], onStart, onTrial }) {
                   <button
                     type="button"
                     className={`btn btn--wide ${plan.popular ? 'btn--primary' : 'btn--ghost'}`}
-                    onClick={() => onTrial(plan)}
+                    onClick={() => onTrial(plan, billingCycle)}
                   >
                     Try free for 8 days
                   </button>
@@ -77,7 +98,12 @@ export default function Pricing({ plans = [], onStart, onTrial }) {
               trial ends unless you cancel.
             </p>
           </div>
-          <button type="button" className="btn btn--ink" style={{ flex: 'none' }} onClick={() => onTrial(visiblePlans.find((p) => p.slug === 'basic'))}>
+          <button
+            type="button"
+            className="btn btn--ink"
+            style={{ flex: 'none' }}
+            onClick={() => onTrial(visiblePlans.find((p) => p.planType === 'growth'), billingCycle)}
+          >
             Start 8-day trial
           </button>
         </div>

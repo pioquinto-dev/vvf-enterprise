@@ -30,6 +30,8 @@ class PricingPlanViewService
                     'amount',
                     'annual_amount',
                     'saved_amount',
+                    'duration',
+                    'plan_type',
                 ])
                 ->map(function (PricingPlan $plan): array {
                     $cta = (string) data_get($plan->metadata, 'settings.cta', 'Choose plan');
@@ -38,22 +40,31 @@ class PricingPlanViewService
                     $videoBookmarkLimit = (int) data_get($plan->metadata, 'subscription.viral_video_bookmarks.limit', 0);
                     $searchBookmarkLimit = (int) data_get($plan->metadata, 'subscription.search_bookmarks.limit', 0);
                     $videoAnalysisLimit = (int) data_get($plan->metadata, 'subscription.video_analysis.limit', 0);
+                    $annualSavingsPercent = (int) data_get(
+                        $plan->metadata,
+                        'settings.annualSavingsPercent',
+                        ($plan->amount ?? 0) > 0 && ($plan->annual_amount ?? 0) > 0
+                            ? round((1 - ((float) $plan->annual_amount / (((float) $plan->amount) * 12))) * 100)
+                            : 0
+                    );
 
-                    if ($plan->slug === 'basic') {
+                    if ($plan->plan_type === 'growth') {
                         $cta = 'Choose Growth';
                     }
 
-                    if ($plan->slug === 'premium') {
+                    if ($plan->plan_type === 'scale') {
                         $cta = 'Choose Scale';
                     }
 
                     return [
                         'id' => $plan->id,
                         'slug' => $plan->slug,
+                        'planType' => $plan->plan_type,
+                        'duration' => $plan->duration ?? 'monthly',
                         'name' => $plan->name,
                         'price' => (float) $plan->amount,
-                        'annualPrice' => (float) $plan->annual_amount,
                         'savedAmount' => (float) $plan->saved_amount,
+                        'annualSavingsPercent' => $annualSavingsPercent,
                         'tagline' => $plan->description,
                         'cta' => $cta,
                         'features' => $plan->features ?? [],

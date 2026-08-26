@@ -3048,11 +3048,16 @@ var savedSearch = {
 	destroy: (id) => request(`${API_V1}/saved-searches/${id}`, { method: "DELETE" })
 };
 var billing = {
-	checkout: (slug) => {
-		window.location.assign(`/billing/checkout/${encodeURIComponent(slug)}`);
+	checkout: (slug, cycle = "monthly") => {
+		const params = new URLSearchParams();
+		if (cycle === "annual") params.set("cycle", "annual");
+		const suffix = params.toString() ? `?${params.toString()}` : "";
+		window.location.assign(`/billing/checkout/${encodeURIComponent(slug)}${suffix}`);
 	},
-	trialCheckout: (slug) => {
-		window.location.assign(`/billing/checkout/${encodeURIComponent(slug)}?trial=1`);
+	trialCheckout: (slug, cycle = "monthly") => {
+		const params = new URLSearchParams({ trial: "1" });
+		if (cycle === "annual") params.set("cycle", "annual");
+		window.location.assign(`/billing/checkout/${encodeURIComponent(slug)}?${params.toString()}`);
 	}
 };
 var bookmarks = {
@@ -8242,16 +8247,6 @@ var STEPS = [
 				"6 days"
 			]
 		}
-	},
-	{
-		n: "04",
-		title: "Track it weekly",
-		body: "Save the search and Brand Beacon re-runs it on a schedule, emailing you only what is new.",
-		mockup: {
-			type: "alerts",
-			label: "Weekly alert",
-			lines: ["3 new outliers found", "Delivered every Monday"]
-		}
 	}
 ];
 var TESTIMONIALS = [
@@ -8298,71 +8293,135 @@ var TESTIMONIALS = [
 		avatar: "/images/landing/testimonials/alex-kerrigan.png"
 	}
 ];
-var PRICING = { monthly: [
-	{
-		slug: "free",
-		name: "Free",
-		price: 0,
-		tagline: "One search, no card.",
-		cta: "Run a free search",
+var PRICING = {
+	monthly: [
+		{
+			slug: "free",
+			name: "Free",
+			price: 0,
+			tagline: "One search, no card.",
+			cta: "Run a free search",
+			features: [
+				"1 free search",
+				"Unlimited video bookmarks",
+				"0 search bookmarks",
+				"0 video analysis"
+			],
+			searchCreditsLimit: 1,
+			searchCreditsUsed: 0,
+			bookmarkLimit: 0,
+			bookmarksUsed: 0,
+			videoBookmarkLimit: -1,
+			videoBookmarkUsed: 0,
+			searchBookmarkLimit: 0,
+			searchBookmarkUsed: 0,
+			videoAnalysisLimit: 0,
+			videoAnalysisUsed: 0,
+			trialEnabled: true
+		},
+		{
+			slug: "basic",
+			planType: "growth",
+			duration: "monthly",
+			name: "Growth",
+			price: 99,
+			annualSavingsPercent: 40,
+			tagline: "For a single brand.",
+			cta: "Choose Growth",
+			popular: true,
+			features: [
+				"100 searches",
+				"100 viral breakout video analysis",
+				"Weekly + monthly scheduling",
+				"Virality alerts",
+				"Unlimited bookmarks"
+			],
+			searchCreditsLimit: 100,
+			searchCreditsUsed: 0,
+			bookmarkLimit: -1,
+			bookmarksUsed: 0,
+			videoBookmarkLimit: -1,
+			videoBookmarkUsed: 0,
+			searchBookmarkLimit: -1,
+			searchBookmarkUsed: 0,
+			videoAnalysisLimit: 100,
+			videoAnalysisUsed: 0,
+			trialEnabled: true
+		},
+		{
+			slug: "premium",
+			planType: "scale",
+			duration: "monthly",
+			name: "Scale",
+			price: 199,
+			annualSavingsPercent: 45,
+			tagline: "For brand and agency teams.",
+			cta: "Choose Scale",
+			features: [
+				"Unlimited searches",
+				"Unlimited viral breakout video analysis",
+				"Unlimited bookmarks",
+				"Weekly + monthly scheduling",
+				"Virality alerts"
+			],
+			searchCreditsLimit: -1,
+			searchCreditsUsed: 0,
+			bookmarkLimit: -1,
+			bookmarksUsed: 0,
+			videoBookmarkLimit: -1,
+			videoBookmarkUsed: 0,
+			searchBookmarkLimit: -1,
+			searchBookmarkUsed: 0,
+			videoAnalysisLimit: -1,
+			videoAnalysisUsed: 0,
+			trialEnabled: true
+		}
+	],
+	annual: [{
+		slug: "basic-annual",
+		planType: "growth",
+		duration: "annual",
+		name: "Growth",
+		price: 699,
+		annualSavingsPercent: 40,
+		tagline: "For a single brand.",
+		cta: "Choose Growth Annual",
+		popular: true,
 		features: [
-			"1 free search",
-			"Unlimited video bookmarks",
-			"0 search bookmarks",
-			"0 video analysis"
+			"100 searches",
+			"100 viral breakout video analysis",
+			"Weekly + monthly scheduling",
+			"Virality alerts",
+			"Unlimited bookmarks"
 		],
-		searchCreditsLimit: 1,
+		searchCreditsLimit: 100,
 		searchCreditsUsed: 0,
-		bookmarkLimit: 0,
+		bookmarkLimit: -1,
 		bookmarksUsed: 0,
 		videoBookmarkLimit: -1,
 		videoBookmarkUsed: 0,
-		searchBookmarkLimit: 0,
+		searchBookmarkLimit: -1,
 		searchBookmarkUsed: 0,
-		videoAnalysisLimit: 0,
+		videoAnalysisLimit: 100,
 		videoAnalysisUsed: 0,
 		trialEnabled: true
-	},
-	{
-		slug: "basic",
-		name: "Growth",
-		price: 99,
-		tagline: "For a single brand.",
-		cta: "Choose Growth",
-		popular: true,
-		features: [
-			"150 searches",
-			"50 video bookmarks",
-			"50 search bookmarks",
-			"50 video analysis",
-			"Weekly + monthly scheduling",
-			"Virality alerts"
-		],
-		searchCreditsLimit: 150,
-		searchCreditsUsed: 0,
-		bookmarkLimit: 50,
-		bookmarksUsed: 0,
-		videoBookmarkLimit: 50,
-		videoBookmarkUsed: 0,
-		searchBookmarkLimit: 50,
-		searchBookmarkUsed: 0,
-		videoAnalysisLimit: 50,
-		videoAnalysisUsed: 0,
-		trialEnabled: true
-	},
-	{
-		slug: "premium",
+	}, {
+		slug: "premium-annual",
+		planType: "scale",
+		duration: "annual",
 		name: "Scale",
-		price: 199,
+		price: 1299,
+		annualSavingsPercent: 45,
 		tagline: "For brand and agency teams.",
-		cta: "Choose Scale",
+		cta: "Choose Scale Annual",
 		features: [
-			"400 searches",
-			"Unlimited bookmarks",
+			"Unlimited searches",
+			"Unlimited viral breakout video analysis",
 			"Weekly + monthly scheduling",
-			"Virality alerts"
+			"Virality alerts",
+			"Unlimited bookmarks"
 		],
-		searchCreditsLimit: 400,
+		searchCreditsLimit: -1,
 		searchCreditsUsed: 0,
 		bookmarkLimit: -1,
 		bookmarksUsed: 0,
@@ -8373,9 +8432,15 @@ var PRICING = { monthly: [
 		videoAnalysisLimit: -1,
 		videoAnalysisUsed: 0,
 		trialEnabled: true
-	}
-] };
-var PRICING_PLAN_ORDER = PRICING.monthly.map((plan) => plan.slug ?? plan.name.toLowerCase());
+	}]
+};
+var PRICING_PLAN_ORDER = [
+	"free",
+	"basic",
+	"basic-annual",
+	"premium",
+	"premium-annual"
+];
 var FAQS = [
 	{
 		q: "What counts as one search?",
@@ -8514,28 +8579,6 @@ var ALERTS = [
 		channel: "Slack"
 	}
 ];
-var PREVIEW_BARS = [
-	{
-		label: "20×+",
-		fill: 21,
-		n: 11
-	},
-	{
-		label: "10–20×",
-		fill: 40,
-		n: 21
-	},
-	{
-		label: "5–10×",
-		fill: 65,
-		n: 34
-	},
-	{
-		label: "3–5×",
-		fill: 100,
-		n: 52
-	}
-];
 function Features() {
 	const [active, setActive] = useState(FEATURES[0].id);
 	const current = FEATURES.find((f) => f.id === active) ?? FEATURES[0];
@@ -8602,31 +8645,9 @@ function Features() {
 							children: [/* @__PURE__ */ jsx("i", {}), "Live preview"]
 						})]
 					}),
-					/* @__PURE__ */ jsxs("div", {
+					/* @__PURE__ */ jsx("div", {
 						className: `pane${active === "outliers" ? "" : " hide"}`,
-						children: [/* @__PURE__ */ jsx(VideoGrid, { videos: OUTLIER_VIDEOS }), /* @__PURE__ */ jsx("div", {
-							className: "bars",
-							children: PREVIEW_BARS.map((bar) => /* @__PURE__ */ jsxs("div", {
-								className: "bar",
-								children: [
-									/* @__PURE__ */ jsx("span", {
-										className: "bar__l",
-										children: bar.label
-									}),
-									/* @__PURE__ */ jsx("span", {
-										className: "bar__t",
-										children: /* @__PURE__ */ jsx("span", {
-											className: "bar__f",
-											style: { width: `${bar.fill}%` }
-										})
-									}),
-									/* @__PURE__ */ jsx("span", {
-										className: "bar__n",
-										children: bar.n
-									})
-								]
-							}, bar.label))
-						})]
+						children: /* @__PURE__ */ jsx(VideoGrid, { videos: OUTLIER_VIDEOS })
 					}),
 					/* @__PURE__ */ jsx("div", {
 						className: `pane${active === "tracking" ? "" : " hide"}`,
@@ -8971,13 +8992,20 @@ function Testimonials() {
 //#endregion
 //#region resources/js/landing/sections/Pricing.jsx
 function Pricing({ plans = [], onStart, onTrial }) {
-	const visiblePlans = (plans.length > 0 ? [...plans] : [...PRICING.monthly]).sort((a, b) => {
+	const [billingCycle, setBillingCycle] = useState("monthly");
+	const sortedPlans = (plans.length > 0 ? [...plans] : [...PRICING.monthly, ...PRICING.annual]).sort((a, b) => {
 		const aKey = a.slug ?? a.name?.toLowerCase();
 		const bKey = b.slug ?? b.name?.toLowerCase();
 		const aIndex = PRICING_PLAN_ORDER.indexOf(aKey);
 		const bIndex = PRICING_PLAN_ORDER.indexOf(bKey);
 		return (aIndex === -1 ? Number.MAX_SAFE_INTEGER : aIndex) - (bIndex === -1 ? Number.MAX_SAFE_INTEGER : bIndex);
 	});
+	const visiblePlans = useMemo(() => sortedPlans.filter((plan) => plan.slug === "free" || (plan.duration ?? "monthly") === billingCycle), [billingCycle, sortedPlans]);
+	const paidPlans = useMemo(() => visiblePlans.filter((plan) => plan.price > 0), [visiblePlans]);
+	const annualBanner = useMemo(() => {
+		const percents = paidPlans.map((plan) => Number(plan.annualSavingsPercent ?? 0)).filter((value) => value > 0);
+		return percents.length > 0 ? Math.max(...percents) : 0;
+	}, [paidPlans]);
 	return /* @__PURE__ */ jsx("section", {
 		className: "sec--pad",
 		id: "pricing",
@@ -8996,13 +9024,15 @@ function Pricing({ plans = [], onStart, onTrial }) {
 						/* @__PURE__ */ jsxs("div", {
 							className: "toggle",
 							children: [/* @__PURE__ */ jsx("button", {
-								className: "is-on",
+								className: billingCycle === "monthly" ? "is-on" : "",
 								type: "button",
+								onClick: () => setBillingCycle("monthly"),
 								children: "Monthly"
-							}), /* @__PURE__ */ jsx("button", {
+							}), /* @__PURE__ */ jsxs("button", {
+								className: billingCycle === "annual" ? "is-on" : "",
 								type: "button",
-								disabled: true,
-								children: "Annual · save 20%"
+								onClick: () => setBillingCycle("annual"),
+								children: ["Annual", annualBanner > 0 ? ` · save up to ${annualBanner}%` : ""]
 							})]
 						})
 					]
@@ -9028,11 +9058,11 @@ function Pricing({ plans = [], onStart, onTrial }) {
 								}),
 								/* @__PURE__ */ jsxs("div", {
 									className: "plan__p",
-									children: ["$0", free && /* @__PURE__ */ jsx("span", { children: "/mo" })]
+									children: [free ? "$0" : `$${plan.price}`, /* @__PURE__ */ jsx("span", { children: free ? "/mo" : billingCycle === "annual" ? "/yr" : "/mo" })]
 								}),
 								/* @__PURE__ */ jsx("p", {
 									className: "plan__s",
-									children: free ? "" : `then $${plan.price} after 8 days`
+									children: free ? "" : billingCycle === "annual" ? `Save ${plan.annualSavingsPercent}% with annual billing` : "$0 for 8 days"
 								}),
 								/* @__PURE__ */ jsx("ul", { children: plan.features.map((feature) => /* @__PURE__ */ jsxs("li", { children: [/* @__PURE__ */ jsx(Check, { className: "h-[15px] w-[15px]" }), feature] }, feature)) }),
 								free ? /* @__PURE__ */ jsx("button", {
@@ -9043,8 +9073,8 @@ function Pricing({ plans = [], onStart, onTrial }) {
 								}) : /* @__PURE__ */ jsx("button", {
 									type: "button",
 									className: `btn btn--wide ${plan.popular ? "btn--primary" : "btn--ghost"}`,
-									onClick: () => onTrial(plan),
-									children: plan.cta
+									onClick: () => onTrial(plan, billingCycle),
+									children: "Try free for 8 days"
 								})
 							]
 						}, plan.slug);
@@ -9056,7 +9086,7 @@ function Pricing({ plans = [], onStart, onTrial }) {
 						type: "button",
 						className: "btn btn--ink",
 						style: { flex: "none" },
-						onClick: () => onTrial(visiblePlans.find((p) => p.slug === "basic")),
+						onClick: () => onTrial(visiblePlans.find((p) => p.planType === "growth"), billingCycle),
 						children: "Start 8-day trial"
 					})]
 				})
@@ -9278,7 +9308,7 @@ function Landing() {
 			q: phrase
 		});
 	};
-	const startTrial = (plan) => window.location.assign(`/login?redirect=trial_checkout&plan=${encodeURIComponent(plan?.slug ?? "basic")}&trial=1`);
+	const startTrial = (plan, cycle = "monthly") => window.location.assign(`/login?redirect=trial_checkout&plan=${encodeURIComponent(plan?.slug ?? "basic")}&trial=1&cycle=${encodeURIComponent(cycle)}`);
 	return /* @__PURE__ */ jsxs(Fragment$1, { children: [/* @__PURE__ */ jsx(Head, { title: "Brand Beacon — TikTok viral intelligence for brands" }), /* @__PURE__ */ jsxs("div", {
 		className: "bbh",
 		children: [
@@ -9483,10 +9513,11 @@ function SettingsShell({ section, children }) {
 //#region resources/js/Pages/Plans.jsx
 var Plans_exports = /* @__PURE__ */ __exportAll({ default: () => Plans });
 function Plans() {
-	const { billing: billingState = {}, pricingPlans = [] } = usePage().props;
+	const { billing: billingState = {}, pricingPlans = [], flash = {} } = usePage().props;
 	const current = String(billingState.currentPlan ?? "free").toLowerCase();
 	const isTrialing = Boolean(billingState.isTrialing);
 	const hasUsedTrial = Boolean(billingState.hasUsedTrial);
+	const [trialPromptOpen, setTrialPromptOpen] = useState(Boolean(flash.trialAccessPrompt));
 	const orderedPlans = [...pricingPlans].sort((a, b) => {
 		const aKey = a.slug ?? a.name?.toLowerCase();
 		const bKey = b.slug ?? b.name?.toLowerCase();
@@ -9494,91 +9525,135 @@ function Plans() {
 		const bIndex = PRICING_PLAN_ORDER.indexOf(bKey);
 		return (aIndex === -1 ? Number.MAX_SAFE_INTEGER : aIndex) - (bIndex === -1 ? Number.MAX_SAFE_INTEGER : bIndex);
 	});
-	const upgrade = (slug) => billing.checkout(slug);
+	const currentPlan = orderedPlans.find((plan) => plan.slug === current);
+	const [billingCycle, setBillingCycle] = useState((currentPlan?.duration ?? "monthly") === "annual" ? "annual" : "monthly");
+	const visiblePlans = orderedPlans.filter((plan) => plan.slug === "free" || (plan.duration ?? "monthly") === billingCycle);
+	const annualBanner = useMemo(() => {
+		const percents = orderedPlans.filter((plan) => (plan.duration ?? "monthly") === "annual").map((plan) => Number(plan.annualSavingsPercent ?? 0)).filter((value) => value > 0);
+		return percents.length > 0 ? Math.max(...percents) : 0;
+	}, [orderedPlans]);
+	const upgrade = (slug, cycle = billingCycle) => billing.checkout(slug, cycle);
+	const promptPlanSlug = flash.trialAccessPrompt?.plan_slug ?? visiblePlans.find((plan) => plan.planType === "growth")?.slug ?? "basic";
+	useEffect(() => {
+		setTrialPromptOpen(Boolean(flash.trialAccessPrompt));
+	}, [flash.trialAccessPrompt]);
 	const priceLine = (plan) => {
+		const annual = billingCycle === "annual";
 		if ((plan.price ?? 0) <= 0) return {
 			amount: "$0",
 			suffix: "/mo",
 			subline: ""
 		};
 		if (!hasUsedTrial || isTrialing) return {
-			amount: "$0",
-			suffix: "/mo",
-			subline: `then $${plan.price} after 8 days`
+			amount: `$${plan.price}`,
+			suffix: annual ? "/yr" : "/mo",
+			subline: annual ? `Save ${plan.annualSavingsPercent}% with annual billing` : "$0 for 8 days"
 		};
 		return {
 			amount: `$${plan.price}`,
-			suffix: "/mo",
-			subline: ""
+			suffix: annual ? "/yr" : "/mo",
+			subline: annual ? `Save ${plan.annualSavingsPercent}% with annual billing` : ""
 		};
 	};
 	return /* @__PURE__ */ jsxs(Fragment$1, { children: [/* @__PURE__ */ jsx(Head, { title: "Plans · Brand Beacon" }), /* @__PURE__ */ jsxs(SettingsShell, {
 		section: "plans",
-		children: [/* @__PURE__ */ jsxs("div", {
-			style: { marginBottom: 18 },
-			children: [/* @__PURE__ */ jsx("h2", { children: "Plans" }), /* @__PURE__ */ jsx("p", {
-				className: "muted",
-				style: {
-					fontSize: ".86rem",
-					marginTop: 6
-				},
-				children: "Start with one free search. Upgrade when you want tracking on a schedule."
-			})]
-		}), /* @__PURE__ */ jsx("div", {
-			className: "plans",
-			children: orderedPlans.map((plan) => {
-				const isCurrent = plan.slug === current;
-				const isFree = plan.slug === "free";
-				const price = priceLine(plan);
-				return /* @__PURE__ */ jsxs("div", {
-					className: `plan${isCurrent ? " plan--on" : ""}`,
-					children: [
-						isCurrent && /* @__PURE__ */ jsx("span", {
-							className: "plan__tag",
-							children: "Current plan"
-						}),
-						/* @__PURE__ */ jsx("div", {
-							className: "plan__n",
-							children: plan.name
-						}),
-						/* @__PURE__ */ jsx("p", {
-							className: "plan__t",
-							children: plan.tagline
-						}),
-						/* @__PURE__ */ jsxs("div", {
-							className: "plan__p",
-							children: [price.amount, price.suffix && /* @__PURE__ */ jsx("span", { children: price.suffix })]
-						}),
-						/* @__PURE__ */ jsx("p", {
-							className: "plan__s",
-							children: price.subline || (isCurrent ? "Your current plan" : plan.price > 0 ? "Billed monthly" : "")
-						}),
-						/* @__PURE__ */ jsx("ul", { children: plan.features.map((feature) => /* @__PURE__ */ jsxs("li", { children: [/* @__PURE__ */ jsx(Check, { className: "h-3.5 w-3.5" }), feature] }, feature)) }),
-						isCurrent ? /* @__PURE__ */ jsx("button", {
+		children: [
+			/* @__PURE__ */ jsx(UpgradePromptModal, {
+				open: trialPromptOpen,
+				eyebrow: "Trial already used",
+				title: "Your 8-day trial has already been used",
+				body: "This account already finished its free trial, so the next step is a paid upgrade.",
+				detail: "You can still unlock scheduled tracking, bookmarks, and video analysis right away.",
+				primaryLabel: "Upgrade to Growth",
+				onPrimary: () => upgrade(promptPlanSlug),
+				secondaryLabel: "Maybe later",
+				onSecondary: () => setTrialPromptOpen(false),
+				onClose: () => setTrialPromptOpen(false)
+			}),
+			/* @__PURE__ */ jsxs("div", {
+				style: { marginBottom: 18 },
+				children: [
+					/* @__PURE__ */ jsx("h2", { children: "Plans" }),
+					/* @__PURE__ */ jsx("p", {
+						className: "muted",
+						style: {
+							fontSize: ".86rem",
+							marginTop: 6
+						},
+						children: "Start with one free search. Upgrade when you want tracking on a schedule."
+					}),
+					/* @__PURE__ */ jsxs("div", {
+						className: "toggle",
+						style: { marginTop: 16 },
+						children: [/* @__PURE__ */ jsx("button", {
+							className: billingCycle === "monthly" ? "is-on" : "",
 							type: "button",
-							className: "btn btn--g btn--w",
-							disabled: true,
-							children: "Current plan"
-						}) : isFree ? /* @__PURE__ */ jsx("button", {
+							onClick: () => setBillingCycle("monthly"),
+							children: "Monthly"
+						}), /* @__PURE__ */ jsxs("button", {
+							className: billingCycle === "annual" ? "is-on" : "",
 							type: "button",
-							className: "btn btn--g btn--w",
-							disabled: true,
-							children: "Free plan unavailable"
-						}) : /* @__PURE__ */ jsxs("button", {
-							type: "button",
-							className: "btn btn--y btn--w",
-							onClick: () => upgrade(plan.slug),
-							children: [
-								"Upgrade to ",
-								plan.name,
-								" ",
-								/* @__PURE__ */ jsx(Arrow, {})
-							]
-						})
-					]
-				}, plan.slug);
+							onClick: () => setBillingCycle("annual"),
+							children: ["Annual", annualBanner > 0 ? ` · save up to ${annualBanner}%` : ""]
+						})]
+					})
+				]
+			}),
+			/* @__PURE__ */ jsx("div", {
+				className: "plans",
+				children: visiblePlans.map((plan) => {
+					const isCurrent = plan.slug === current;
+					const isFree = plan.slug === "free";
+					const price = priceLine(plan);
+					return /* @__PURE__ */ jsxs("div", {
+						className: `plan${isCurrent ? " plan--on" : ""}`,
+						children: [
+							isCurrent && /* @__PURE__ */ jsx("span", {
+								className: "plan__tag",
+								children: "Current plan"
+							}),
+							/* @__PURE__ */ jsx("div", {
+								className: "plan__n",
+								children: plan.name
+							}),
+							/* @__PURE__ */ jsx("p", {
+								className: "plan__t",
+								children: plan.tagline
+							}),
+							/* @__PURE__ */ jsxs("div", {
+								className: "plan__p",
+								children: [price.amount, price.suffix && /* @__PURE__ */ jsx("span", { children: price.suffix })]
+							}),
+							/* @__PURE__ */ jsx("p", {
+								className: "plan__s",
+								children: price.subline || (isCurrent ? "Your current plan" : plan.price > 0 ? "Billed monthly" : "")
+							}),
+							/* @__PURE__ */ jsx("ul", { children: plan.features.map((feature) => /* @__PURE__ */ jsxs("li", { children: [/* @__PURE__ */ jsx(Check, { className: "h-3.5 w-3.5" }), feature] }, feature)) }),
+							isCurrent ? /* @__PURE__ */ jsx("button", {
+								type: "button",
+								className: "btn btn--g btn--w",
+								disabled: true,
+								children: "Current plan"
+							}) : isFree ? /* @__PURE__ */ jsx("button", {
+								type: "button",
+								className: "btn btn--g btn--w",
+								disabled: true,
+								children: "Free plan unavailable"
+							}) : /* @__PURE__ */ jsxs("button", {
+								type: "button",
+								className: "btn btn--y btn--w",
+								onClick: () => upgrade(plan.slug, billingCycle),
+								children: [
+									!hasUsedTrial && !isTrialing ? "Try free for 8 days" : `Upgrade to ${plan.name}`,
+									" ",
+									/* @__PURE__ */ jsx(Arrow, {})
+								]
+							})
+						]
+					}, plan.slug);
+				})
 			})
-		})]
+		]
 	})] });
 }
 //#endregion
@@ -11481,7 +11556,7 @@ var Icons = {
 		children: /* @__PURE__ */ jsx("path", { d: "M12 5v14M5 12h14" })
 	})
 };
-function DetailScreen({ search, isAuthenticated = false, billing: billing$1, refreshing = false, bookmarkUpdating = false, onRefresh, onSearchUpdated, onToggleBookmark, onToggleVideoBookmark, bookmarkingVideoId = null, onTogglePause, onDelete }) {
+function DetailScreen({ search, isAuthenticated = false, billing: billing$2, refreshing = false, bookmarkUpdating = false, onRefresh, onSearchUpdated, onToggleBookmark, onToggleVideoBookmark, bookmarkingVideoId = null, onTogglePause, onDelete }) {
 	const { url: currentUrl } = usePage();
 	const insights = search?.insights ?? {};
 	const bullets = search?.insights_bullets ?? [];
@@ -11511,10 +11586,10 @@ function DetailScreen({ search, isAuthenticated = false, billing: billing$1, ref
 	const menuTopRef = useRef(null);
 	const menuHeaderRef = useRef(null);
 	const autoOpenedAnalysisRef = useRef(false);
-	const canAnalyzeMoreOutliers = canUsePaidVideoAnalysis(billing$1);
-	const canBookmarkSearch = canUseSearchBookmarks(billing$1);
-	const canManageCurrentSearch = canManageSearch(billing$1);
-	const analysisRemainingNow = videoAnalysisRemaining(billing$1, reservedAnalysisVideoIds.length);
+	const canAnalyzeMoreOutliers = canUsePaidVideoAnalysis(billing$2);
+	const canBookmarkSearch = canUseSearchBookmarks(billing$2);
+	const canManageCurrentSearch = canManageSearch(billing$2);
+	const analysisRemainingNow = videoAnalysisRemaining(billing$2, reservedAnalysisVideoIds.length);
 	const analysisRemainingAfterUse = analysisRemainingNow === -1 ? "unlimited" : Math.max(0, analysisRemainingNow - 1);
 	const results = useMemo(() => (search?.results ?? []).map((video) => ({
 		...video,
@@ -12155,92 +12230,85 @@ function DetailScreen({ search, isAuthenticated = false, billing: billing$1, ref
 				})]
 			}), /* @__PURE__ */ jsxs("div", {
 				className: `rs-winner rs-winner--run-${winnerBucket}`,
-				children: [
-					/* @__PURE__ */ jsx("span", {
-						className: `rs-winner__rbar rs-winner__rbar--${winnerBucket}`,
-						"aria-hidden": true
-					}),
-					/* @__PURE__ */ jsx(VideoFrame, {
-						video: winner,
-						winner: true,
-						isPlaying: videoPlayingId === winner.id,
-						onTogglePlay: () => setVideoPlayingId((v) => v === winner.id ? null : winner.id)
-					}),
-					/* @__PURE__ */ jsxs("div", {
-						className: "rs-wdet",
-						children: [
-							/* @__PURE__ */ jsxs("div", {
-								className: "rs-wcreator",
-								children: [
-									/* @__PURE__ */ jsx("span", {
-										className: "rs-av",
-										style: { background: gradientFor(winner.handle ?? winner.id) }
-									}),
-									/* @__PURE__ */ jsxs("div", {
-										style: {
-											flex: 1,
-											minWidth: 0
-										},
-										children: [/* @__PURE__ */ jsx("div", {
-											className: "rs-wc__n",
-											children: winner.handle || winner.username || "—"
-										}), /* @__PURE__ */ jsxs("div", {
-											className: "rs-wc__s",
-											children: [winner.posted_at ? formatDate$1(winner.posted_at) : "", " on TikTok"]
-										})]
-									}),
-									/* @__PURE__ */ jsxs("span", {
-										className: `rs-runpill rs-runpill--${winnerBucket}`,
-										title: winnerBucketHint,
-										children: [/* @__PURE__ */ jsx("span", {
-											className: "rs-runpill__dot",
-											"aria-hidden": true
-										}), winnerBucketLabel]
-									}),
-									winner.tiktok_url && /* @__PURE__ */ jsx("a", {
-										href: winner.tiktok_url,
-										target: "_blank",
-										rel: "noopener",
-										className: "rs-ic2",
-										title: "Open in TikTok",
-										children: Icons.ExtLink
-									})
-								]
-							}),
-							/* @__PURE__ */ jsx("p", {
-								className: "rs-wcap",
-								children: winner.title || winner.caption
-							}),
-							/* @__PURE__ */ jsxs("div", {
-								className: "rs-wmets",
-								children: [
-									/* @__PURE__ */ jsxs("span", { children: [Icons.Eye, /* @__PURE__ */ jsx("b", { children: compact(winner.views) })] }),
-									/* @__PURE__ */ jsxs("span", { children: [Icons.Heart, /* @__PURE__ */ jsx("b", { children: compact(winner.likes) })] }),
-									/* @__PURE__ */ jsxs("span", { children: [Icons.Comment, /* @__PURE__ */ jsx("b", { children: compact(winner.comments) })] }),
-									/* @__PURE__ */ jsxs("span", { children: [Icons.Share, /* @__PURE__ */ jsx("b", { children: compact(winner.shares) })] })
-								]
-							}),
-							/* @__PURE__ */ jsx(VideoTags, { video: winner }),
-							/* @__PURE__ */ jsx(AutoAnalysis, { video: winner }),
-							/* @__PURE__ */ jsxs("div", {
-								className: "rs-wact",
-								children: [/* @__PURE__ */ jsxs("button", {
-									className: "rs-btn rs-btn--y",
-									onClick: () => openAnalysis(winner),
-									"aria-busy": winner.analysis?.status === "processing",
-									children: [Icons.Spark, /* @__PURE__ */ jsx("span", { children: analysisCtaLabel(winner.analysis) })]
-								}), /* @__PURE__ */ jsx("button", {
-									className: `rs-ic2${winner.bookmarked ? " on" : ""}`,
-									onClick: () => onToggleVideoBookmark?.(winner),
-									disabled: bookmarkingVideoId === winner.id,
-									title: winner.bookmarked ? "Remove from bookmarks" : "Save video",
-									"aria-label": winner.bookmarked ? "Remove from bookmarks" : "Save video",
-									children: winner.bookmarked ? Icons.Bookmark : Icons.BookmarkO
-								})]
-							})
-						]
-					})
-				]
+				children: [/* @__PURE__ */ jsx(VideoFrame, {
+					video: winner,
+					winner: true,
+					isPlaying: videoPlayingId === winner.id,
+					onTogglePlay: () => setVideoPlayingId((v) => v === winner.id ? null : winner.id)
+				}), /* @__PURE__ */ jsxs("div", {
+					className: "rs-wdet",
+					children: [
+						/* @__PURE__ */ jsxs("div", {
+							className: "rs-wcreator",
+							children: [
+								/* @__PURE__ */ jsx("span", {
+									className: "rs-av",
+									style: { background: gradientFor(winner.handle ?? winner.id) }
+								}),
+								/* @__PURE__ */ jsxs("div", {
+									style: {
+										flex: 1,
+										minWidth: 0
+									},
+									children: [/* @__PURE__ */ jsx("div", {
+										className: "rs-wc__n",
+										children: winner.handle || winner.username || "—"
+									}), /* @__PURE__ */ jsxs("div", {
+										className: "rs-wc__s",
+										children: [winner.posted_at ? formatDate$1(winner.posted_at) : "", " on TikTok"]
+									})]
+								}),
+								/* @__PURE__ */ jsxs("span", {
+									className: `rs-runpill rs-runpill--${winnerBucket}`,
+									title: winnerBucketHint,
+									children: [/* @__PURE__ */ jsx("span", {
+										className: "rs-runpill__dot",
+										"aria-hidden": true
+									}), winnerBucketLabel]
+								}),
+								winner.tiktok_url && /* @__PURE__ */ jsx("a", {
+									href: winner.tiktok_url,
+									target: "_blank",
+									rel: "noopener",
+									className: "rs-ic2",
+									title: "Open in TikTok",
+									children: Icons.ExtLink
+								})
+							]
+						}),
+						/* @__PURE__ */ jsx("p", {
+							className: "rs-wcap",
+							children: winner.title || winner.caption
+						}),
+						/* @__PURE__ */ jsxs("div", {
+							className: "rs-wmets",
+							children: [
+								/* @__PURE__ */ jsxs("span", { children: [Icons.Eye, /* @__PURE__ */ jsx("b", { children: compact(winner.views) })] }),
+								/* @__PURE__ */ jsxs("span", { children: [Icons.Heart, /* @__PURE__ */ jsx("b", { children: compact(winner.likes) })] }),
+								/* @__PURE__ */ jsxs("span", { children: [Icons.Comment, /* @__PURE__ */ jsx("b", { children: compact(winner.comments) })] }),
+								/* @__PURE__ */ jsxs("span", { children: [Icons.Share, /* @__PURE__ */ jsx("b", { children: compact(winner.shares) })] })
+							]
+						}),
+						/* @__PURE__ */ jsx(VideoTags, { video: winner }),
+						/* @__PURE__ */ jsx(AutoAnalysis, { video: winner }),
+						/* @__PURE__ */ jsxs("div", {
+							className: "rs-wact",
+							children: [/* @__PURE__ */ jsxs("button", {
+								className: "rs-btn rs-btn--y",
+								onClick: () => openAnalysis(winner),
+								"aria-busy": winner.analysis?.status === "processing",
+								children: [Icons.Spark, /* @__PURE__ */ jsx("span", { children: analysisCtaLabel(winner.analysis) })]
+							}), /* @__PURE__ */ jsx("button", {
+								className: `rs-ic2${winner.bookmarked ? " on" : ""}`,
+								onClick: () => onToggleVideoBookmark?.(winner),
+								disabled: bookmarkingVideoId === winner.id,
+								title: winner.bookmarked ? "Remove from bookmarks" : "Save video",
+								"aria-label": winner.bookmarked ? "Remove from bookmarks" : "Save video",
+								children: winner.bookmarked ? Icons.Bookmark : Icons.BookmarkO
+							})]
+						})
+					]
+				})]
 			})] });
 		})(),
 		rest.length > 0 && /* @__PURE__ */ jsxs(Fragment$1, { children: [
@@ -12248,142 +12316,82 @@ function DetailScreen({ search, isAuthenticated = false, billing: billing$1, ref
 				className: "rs-sh",
 				children: [/* @__PURE__ */ jsx("h2", { children: "More outliers" }), /* @__PURE__ */ jsxs("span", {
 					className: "rs-sh__actions",
-					children: [
-						/* @__PURE__ */ jsxs("span", {
-							className: "rs-runinfo",
-							tabIndex: 0,
-							"aria-label": "What the accent colors mean",
-							children: [/* @__PURE__ */ jsx("span", {
-								className: "rs-runinfo__btn",
-								"aria-hidden": true,
-								children: "i"
-							}), /* @__PURE__ */ jsxs("span", {
-								className: "rs-runinfo__tip",
-								role: "tooltip",
+					children: [/* @__PURE__ */ jsxs("span", {
+						className: "rs-runfilter",
+						children: [
+							/* @__PURE__ */ jsx("span", {
+								className: "rs-runfilter__pre",
+								children: "Show:"
+							}),
+							/* @__PURE__ */ jsxs("select", {
+								value: runFilter,
+								onChange: (e) => setRunFilter(e.target.value),
+								"aria-label": "Filter by search run",
 								children: [
-									/* @__PURE__ */ jsx("div", {
-										className: "rs-runinfo__title",
-										children: "Accent color meaning"
-									}),
-									/* @__PURE__ */ jsxs("div", {
-										className: "rs-runinfo__row",
+									/* @__PURE__ */ jsxs("option", {
+										value: "all",
 										children: [
-											/* @__PURE__ */ jsx("span", { className: "rs-runinfo__sw rs-runinfo__sw--new" }),
-											/* @__PURE__ */ jsx("span", { children: "New this run" }),
-											/* @__PURE__ */ jsx("span", {
-												className: "rs-runinfo__hint",
-												children: runLabels.latest
-											})
+											"All runs (",
+											rest.length,
+											")"
 										]
 									}),
-									/* @__PURE__ */ jsxs("div", {
-										className: "rs-runinfo__row",
+									/* @__PURE__ */ jsxs("option", {
+										value: "new",
 										children: [
-											/* @__PURE__ */ jsx("span", { className: "rs-runinfo__sw rs-runinfo__sw--prev" }),
-											/* @__PURE__ */ jsx("span", { children: "Previous run" }),
-											/* @__PURE__ */ jsx("span", {
-												className: "rs-runinfo__hint",
-												children: runLabels.previous
-											})
+											"New this run (",
+											runCounts.new,
+											")"
 										]
 									}),
-									/* @__PURE__ */ jsxs("div", {
-										className: "rs-runinfo__row",
+									/* @__PURE__ */ jsxs("option", {
+										value: "prev",
 										children: [
-											/* @__PURE__ */ jsx("span", { className: "rs-runinfo__sw rs-runinfo__sw--old" }),
-											/* @__PURE__ */ jsx("span", { children: "Older" }),
-											/* @__PURE__ */ jsx("span", {
-												className: "rs-runinfo__hint",
-												children: "3rd run+"
-											})
+											"Previous run (",
+											runCounts.prev,
+											")"
+										]
+									}),
+									/* @__PURE__ */ jsxs("option", {
+										value: "old",
+										children: [
+											"Older (",
+											runCounts.old,
+											")"
 										]
 									})
 								]
-							})]
-						}),
-						/* @__PURE__ */ jsxs("span", {
-							className: "rs-runfilter",
-							"data-bucket": runFilter,
-							children: [
-								/* @__PURE__ */ jsx("span", {
-									className: "rs-runfilter__pre",
-									children: "Show:"
-								}),
-								/* @__PURE__ */ jsx("span", {
-									className: "rs-runfilter__dot",
-									"aria-hidden": true
-								}),
-								/* @__PURE__ */ jsxs("select", {
-									value: runFilter,
-									onChange: (e) => setRunFilter(e.target.value),
-									"aria-label": "Filter by search run",
-									children: [
-										/* @__PURE__ */ jsxs("option", {
-											value: "all",
-											children: [
-												"All runs (",
-												rest.length,
-												")"
-											]
-										}),
-										/* @__PURE__ */ jsxs("option", {
-											value: "new",
-											children: [
-												"New this run (",
-												runCounts.new,
-												")"
-											]
-										}),
-										/* @__PURE__ */ jsxs("option", {
-											value: "prev",
-											children: [
-												"Previous run (",
-												runCounts.prev,
-												")"
-											]
-										}),
-										/* @__PURE__ */ jsxs("option", {
-											value: "old",
-											children: [
-												"Older (",
-												runCounts.old,
-												")"
-											]
-										})
-									]
-								}),
-								Icons.ChevDown
-							]
-						}),
-						/* @__PURE__ */ jsxs("span", {
-							className: "rs-sortsel",
-							children: [
-								/* @__PURE__ */ jsx("span", {
-									className: "rs-sortsel__pre",
-									children: "Sort:"
-								}),
-								/* @__PURE__ */ jsxs("select", {
-									value: sortKey,
-									onChange: (e) => setSortKey(e.target.value),
-									children: [
-										/* @__PURE__ */ jsx("option", {
-											value: "outlier",
-											children: "Outlier score"
-										}),
-										/* @__PURE__ */ jsx("option", {
-											value: "views",
-											children: "Views"
-										}),
-										/* @__PURE__ */ jsx("option", {
-											value: "date",
-											children: "Date posted"
-										})
-									]
-								}),
-								Icons.ChevDown
-							]
-						})
-					]
+							}),
+							Icons.ChevDown
+						]
+					}), /* @__PURE__ */ jsxs("span", {
+						className: "rs-sortsel",
+						children: [
+							/* @__PURE__ */ jsx("span", {
+								className: "rs-sortsel__pre",
+								children: "Sort:"
+							}),
+							/* @__PURE__ */ jsxs("select", {
+								value: sortKey,
+								onChange: (e) => setSortKey(e.target.value),
+								children: [
+									/* @__PURE__ */ jsx("option", {
+										value: "outlier",
+										children: "Outlier score"
+									}),
+									/* @__PURE__ */ jsx("option", {
+										value: "views",
+										children: "Views"
+									}),
+									/* @__PURE__ */ jsx("option", {
+										value: "date",
+										children: "Date posted"
+									})
+								]
+							}),
+							Icons.ChevDown
+						]
+					})]
 				})]
 			}),
 			sortedRest.length === 0 ? /* @__PURE__ */ jsxs("div", {
@@ -12849,8 +12857,8 @@ function DetailScreen({ search, isAuthenticated = false, billing: billing$1, ref
 		}),
 		upgradeModalType && /* @__PURE__ */ jsx(UpgradeModal, {
 			mode: upgradeModalType,
-			trialEligible: billing$1?.trialEligible ?? true,
-			hasUsedTrial: billing$1?.hasUsedTrial ?? false,
+			trialEligible: billing$2?.trialEligible ?? true,
+			hasUsedTrial: billing$2?.hasUsedTrial ?? false,
 			onClose: closeUpgradeModal,
 			onUpgrade: openUpgradeForAnalysis
 		}),
@@ -13002,117 +13010,108 @@ function AutoAnalysis({ video }) {
 function OutlierCard$1({ video, runBucket = "old", expanded, locked = false, onToggle, onAnalyze, onToggleBookmark, bookmarking, isPlaying, onTogglePlay }) {
 	const primaryLabel = video.analysis?.status === "processing" ? "Analyzing video..." : video.analysis?.status === "complete" ? "View analysis" : video.analysis?.status === "failed" ? "Retry analysis" : "Analyze video";
 	const mobilePrimaryLabel = primaryLabel === "Analyze video" ? "Analyze" : primaryLabel;
-	const runBucketTitle = runBucket === "new" ? "New this run" : runBucket === "prev" ? "From the previous run" : "From an older run";
 	return /* @__PURE__ */ jsxs("article", {
 		className: `rs-oc rs-oc--run-${runBucket}${expanded ? " analyzed" : ""}`,
-		children: [
-			/* @__PURE__ */ jsx(VideoFrame, {
-				video,
-				isPlaying,
-				onTogglePlay
-			}),
-			/* @__PURE__ */ jsx("span", {
-				className: `rs-oc__rbar rs-oc__rbar--${runBucket}`,
-				"aria-label": runBucketTitle,
-				title: runBucketTitle
-			}),
-			/* @__PURE__ */ jsxs("div", {
-				className: "rs-oc__b",
-				children: [
-					/* @__PURE__ */ jsxs("div", {
-						className: "rs-oc__cr",
-						children: [
-							/* @__PURE__ */ jsx("span", {
-								className: "rs-av",
-								style: {
-									background: gradientFor(video.handle ?? video.id),
-									width: 26,
-									height: 26,
-									borderRadius: "50%",
-									flex: "none"
-								}
-							}),
-							/* @__PURE__ */ jsxs("div", {
-								style: {
-									flex: 1,
-									minWidth: 0
-								},
-								children: [/* @__PURE__ */ jsx("div", {
-									className: "rs-oc__h",
-									children: video.handle || video.username || "—"
-								}), /* @__PURE__ */ jsx("div", {
-									className: "rs-oc__s",
-									children: video.posted_at ? formatDate$1(video.posted_at) : ""
-								})]
-							}),
-							video.tiktok_url && /* @__PURE__ */ jsx("a", {
-								href: video.tiktok_url,
-								target: "_blank",
-								rel: "noopener",
-								className: "rs-ic2",
-								title: "Open in TikTok",
-								children: Icons.ExtLink
-							})
-						]
-					}),
-					/* @__PURE__ */ jsx("p", {
-						className: "rs-oc__c",
-						children: video.title || video.caption
-					}),
-					/* @__PURE__ */ jsxs("div", {
-						className: "rs-oc__st",
-						children: [
-							/* @__PURE__ */ jsxs("span", { children: [Icons.Eye, compact(video.views)] }),
-							/* @__PURE__ */ jsxs("span", { children: [Icons.Heart, compact(video.likes)] }),
-							/* @__PURE__ */ jsxs("span", { children: [Icons.Comment, compact(video.comments)] }),
-							/* @__PURE__ */ jsxs("span", { children: [Icons.Share, compact(video.shares)] })
-						]
-					}),
-					expanded && !locked && /* @__PURE__ */ jsx("div", {
-						className: "rs-oc__panel",
-						children: /* @__PURE__ */ jsx(AutoAnalysis, { video })
-					}),
-					/* @__PURE__ */ jsxs("div", {
-						className: "rs-oc__an",
-						children: [
-							/* @__PURE__ */ jsxs("button", {
-								className: "rs-btn rs-btn--y rs-btn--sm",
-								onClick: onAnalyze,
-								disabled: video.analysis?.status === "processing",
-								children: [
-									/* @__PURE__ */ jsx("span", {
-										className: "rs-oc__anIcon",
-										children: Icons.Spark
-									}),
-									/* @__PURE__ */ jsx("span", {
-										className: "rs-oc__anLabel rs-oc__anLabel--desktop",
-										children: primaryLabel
-									}),
-									/* @__PURE__ */ jsx("span", {
-										className: "rs-oc__anLabel rs-oc__anLabel--mobile",
-										children: mobilePrimaryLabel
-									})
-								]
-							}),
-							/* @__PURE__ */ jsx("button", {
-								className: "rs-ic2",
-								title: expanded && !locked ? "Hide inline summary" : "Show inline summary",
-								onClick: onToggle,
-								children: Icons.ExtLink
-							}),
-							/* @__PURE__ */ jsx("button", {
-								className: `rs-ic2${video.bookmarked ? " on" : ""}`,
-								title: video.bookmarked ? "Remove from bookmarks" : "Save video",
-								"aria-label": video.bookmarked ? "Remove from bookmarks" : "Save video",
-								onClick: onToggleBookmark,
-								disabled: bookmarking,
-								children: video.bookmarked ? Icons.Bookmark : Icons.BookmarkO
-							})
-						]
-					})
-				]
-			})
-		]
+		children: [/* @__PURE__ */ jsx(VideoFrame, {
+			video,
+			isPlaying,
+			onTogglePlay
+		}), /* @__PURE__ */ jsxs("div", {
+			className: "rs-oc__b",
+			children: [
+				/* @__PURE__ */ jsxs("div", {
+					className: "rs-oc__cr",
+					children: [
+						/* @__PURE__ */ jsx("span", {
+							className: "rs-av",
+							style: {
+								background: gradientFor(video.handle ?? video.id),
+								width: 26,
+								height: 26,
+								borderRadius: "50%",
+								flex: "none"
+							}
+						}),
+						/* @__PURE__ */ jsxs("div", {
+							style: {
+								flex: 1,
+								minWidth: 0
+							},
+							children: [/* @__PURE__ */ jsx("div", {
+								className: "rs-oc__h",
+								children: video.handle || video.username || "—"
+							}), /* @__PURE__ */ jsx("div", {
+								className: "rs-oc__s",
+								children: video.posted_at ? formatDate$1(video.posted_at) : ""
+							})]
+						}),
+						video.tiktok_url && /* @__PURE__ */ jsx("a", {
+							href: video.tiktok_url,
+							target: "_blank",
+							rel: "noopener",
+							className: "rs-ic2",
+							title: "Open in TikTok",
+							children: Icons.ExtLink
+						})
+					]
+				}),
+				/* @__PURE__ */ jsx("p", {
+					className: "rs-oc__c",
+					children: video.title || video.caption
+				}),
+				/* @__PURE__ */ jsxs("div", {
+					className: "rs-oc__st",
+					children: [
+						/* @__PURE__ */ jsxs("span", { children: [Icons.Eye, compact(video.views)] }),
+						/* @__PURE__ */ jsxs("span", { children: [Icons.Heart, compact(video.likes)] }),
+						/* @__PURE__ */ jsxs("span", { children: [Icons.Comment, compact(video.comments)] }),
+						/* @__PURE__ */ jsxs("span", { children: [Icons.Share, compact(video.shares)] })
+					]
+				}),
+				expanded && !locked && /* @__PURE__ */ jsx("div", {
+					className: "rs-oc__panel",
+					children: /* @__PURE__ */ jsx(AutoAnalysis, { video })
+				}),
+				/* @__PURE__ */ jsxs("div", {
+					className: "rs-oc__an",
+					children: [
+						/* @__PURE__ */ jsxs("button", {
+							className: "rs-btn rs-btn--y rs-btn--sm",
+							onClick: onAnalyze,
+							disabled: video.analysis?.status === "processing",
+							children: [
+								/* @__PURE__ */ jsx("span", {
+									className: "rs-oc__anIcon",
+									children: Icons.Spark
+								}),
+								/* @__PURE__ */ jsx("span", {
+									className: "rs-oc__anLabel rs-oc__anLabel--desktop",
+									children: primaryLabel
+								}),
+								/* @__PURE__ */ jsx("span", {
+									className: "rs-oc__anLabel rs-oc__anLabel--mobile",
+									children: mobilePrimaryLabel
+								})
+							]
+						}),
+						/* @__PURE__ */ jsx("button", {
+							className: "rs-ic2",
+							title: expanded && !locked ? "Hide inline summary" : "Show inline summary",
+							onClick: onToggle,
+							children: Icons.ExtLink
+						}),
+						/* @__PURE__ */ jsx("button", {
+							className: `rs-ic2${video.bookmarked ? " on" : ""}`,
+							title: video.bookmarked ? "Remove from bookmarks" : "Save video",
+							"aria-label": video.bookmarked ? "Remove from bookmarks" : "Save video",
+							onClick: onToggleBookmark,
+							disabled: bookmarking,
+							children: video.bookmarked ? Icons.Bookmark : Icons.BookmarkO
+						})
+					]
+				})
+			]
+		})]
 	});
 }
 function UsageConfirmModal$1({ video, creditsRemaining, creditsRemainingAfterUse, busy = false, onConfirm, onCancel }) {
@@ -13419,22 +13418,12 @@ var scopedCss = `
 .rs-stt__d{font-size:.95rem;color:#968A75}
 }
 
-.rs-winner{position:relative;display:grid;grid-template-columns:262px 1fr;gap:22px;background:var(--white);border:1px solid var(--line);border-radius:20px;padding:20px;min-width:0;max-width:100%;overflow:hidden;--run-new:#2E9E63;--run-prev:#E0B13A;--run-old:#BFB8AC}
-/* Full-width run ribbon across the top of the winner card. Sits above the
-   video and detail columns so users see it before the eye lands anywhere
-   else in the section. */
-.rs-winner__rbar{position:absolute;top:0;left:0;right:0;height:5px;background:var(--run-old)}
-.rs-winner__rbar--new{background:var(--run-new)}
-.rs-winner__rbar--prev{background:var(--run-prev)}
-.rs-winner__rbar--old{background:var(--run-old)}
-/* Run pill in the winner detail column — colored dot + label, tinted with a
-   soft matching background so the pill reads as part of the accent family
-   without shouting. */
+.rs-winner{position:relative;display:grid;grid-template-columns:262px 1fr;gap:22px;background:var(--white);border:1px solid var(--line);border-radius:20px;padding:20px;min-width:0;max-width:100%;overflow:hidden}
+/* Run pill in the winner detail column — text remains so the active search
+   run context stays visible without relying on accent colors. */
 .rs-runpill{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;font-size:.72rem;font-weight:700;letter-spacing:.01em;white-space:nowrap;border:1px solid transparent;flex:none}
 .rs-runpill__dot{width:8px;height:8px;border-radius:50%;flex:none;background:currentColor}
-.rs-runpill--new{color:#1B6A44;background:rgba(46,158,99,.12);border-color:rgba(46,158,99,.32)}
-.rs-runpill--prev{color:#7A5A0F;background:rgba(224,177,58,.14);border-color:rgba(224,177,58,.38)}
-.rs-runpill--old{color:#6B6A62;background:rgba(191,184,172,.20);border-color:rgba(155,150,141,.35)}
+.rs-runpill--new,.rs-runpill--prev,.rs-runpill--old{color:var(--ink);background:var(--paper);border-color:var(--line)}
 .rs-vf{position:relative;width:100%;aspect-ratio:9/16;border-radius:14px;overflow:hidden;background:#1a1a1a}
 .rs-vf--big{max-width:262px}
 .rs-vf__img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
@@ -13491,61 +13480,24 @@ var scopedCss = `
 .rs-sortsel option{text-indent:0}
 .rs-sortsel svg{position:absolute;right:12px;width:15px;height:15px;color:var(--faint-2,#9A968E);pointer-events:none}
 .rs-sortsel__pre{position:absolute;left:14px;font-size:.83rem;color:var(--faint-2,#9A968E);pointer-events:none;z-index:1}
-/* Run bucketing — three accent tokens shared by the filter dot, the info
-   tooltip swatches and the bar under each card. Change the values here and
-   the whole feature retunes at once. */
-.rs-sh{--run-new:#2E9E63;--run-prev:#E0B13A;--run-old:#BFB8AC}
-.rs-oc{--run-new:#2E9E63;--run-prev:#E0B13A;--run-old:#BFB8AC}
 .rs-sh__actions{display:inline-flex;align-items:center;gap:10px;flex-wrap:wrap}
 .rs-runfilter{position:relative;display:inline-flex;align-items:center}
 /* Same trick as .rs-sortsel: use text-indent to push the trigger value past
-   the "Show:" prefix + colored dot, but keep padding-left small so the
-   popup's option rows don't inherit the offset. */
-.rs-runfilter select{appearance:none;height:38px;padding:0 34px 0 14px;text-indent:48px;border:1px solid var(--line-2,#DEDBD3);border-radius:100px;background:var(--white);font-size:.83rem;font-weight:600;color:var(--ink);cursor:pointer}
+   the "Show:" prefix while keeping the popup options aligned normally. */
+.rs-runfilter select{appearance:none;height:38px;padding:0 34px 0 14px;text-indent:32px;border:1px solid var(--line-2,#DEDBD3);border-radius:100px;background:var(--white);font-size:.83rem;font-weight:600;color:var(--ink);cursor:pointer}
 .rs-runfilter option{text-indent:0}
 .rs-runfilter svg{position:absolute;right:12px;width:15px;height:15px;color:var(--faint-2,#9A968E);pointer-events:none}
 .rs-runfilter__pre{position:absolute;left:14px;font-size:.83rem;color:var(--faint-2,#9A968E);pointer-events:none;z-index:1}
-.rs-runfilter__dot{position:absolute;left:46px;top:50%;transform:translateY(-50%);width:9px;height:9px;border-radius:50%;background:var(--run-new);pointer-events:none;z-index:1}
-.rs-runfilter[data-bucket="prev"] .rs-runfilter__dot{background:var(--run-prev)}
-.rs-runfilter[data-bucket="old"] .rs-runfilter__dot{background:var(--run-old)}
-.rs-runfilter[data-bucket="all"] .rs-runfilter__dot{background:conic-gradient(var(--run-new) 0 33%,var(--run-prev) 33% 66%,var(--run-old) 66% 100%)}
-.rs-runinfo{position:relative;display:inline-flex;align-items:center;outline:0}
-.rs-runinfo__btn{width:20px;height:20px;display:grid;place-items:center;border-radius:999px;border:1px solid var(--line-2,#DEDBD3);background:var(--white);color:var(--faint-2,#9A968E);font-family:Georgia,'Times New Roman',serif;font-style:italic;font-size:.74rem;font-weight:700;line-height:1;cursor:help;transition:.15s}
-.rs-runinfo:hover .rs-runinfo__btn,.rs-runinfo:focus .rs-runinfo__btn,.rs-runinfo:focus-within .rs-runinfo__btn{color:var(--ink);border-color:var(--faint-2,#9A968E)}
-/* Header sits above the card grid so the tooltip can overlap the first row
-   of outlier cards without being clipped by their own stacking context. */
-.rs-sh{position:relative;z-index:20}
-.rs-runinfo__tip{position:absolute;top:calc(100% + 10px);left:0;transform:translateY(-2px);min-width:250px;padding:10px 12px;border-radius:12px;background:var(--white);border:1px solid var(--line);box-shadow:0 20px 40px -18px rgba(0,0,0,.28);opacity:0;pointer-events:none;transition:opacity .15s ease, transform .15s ease;z-index:30;white-space:nowrap}
-.rs-runinfo:hover .rs-runinfo__tip,.rs-runinfo:focus .rs-runinfo__tip,.rs-runinfo:focus-within .rs-runinfo__tip{opacity:1;transform:translateY(0);pointer-events:auto}
-.rs-runinfo__tip::before{content:'';position:absolute;top:-5px;left:8px;transform:rotate(45deg);width:9px;height:9px;background:var(--white);border-left:1px solid var(--line);border-top:1px solid var(--line)}
-.rs-runinfo__title{font-size:.66rem;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--faint-2,#9A968E);margin-bottom:6px}
-.rs-runinfo__row{display:flex;align-items:center;gap:8px;padding:3px 0;font-size:.78rem;color:var(--ink)}
-.rs-runinfo__sw{width:22px;height:4px;border-radius:2px;flex:none}
-.rs-runinfo__sw--new{background:var(--run-new)}
-.rs-runinfo__sw--prev{background:var(--run-prev)}
-.rs-runinfo__sw--old{background:var(--run-old)}
-.rs-runinfo__hint{color:var(--faint-2,#9A968E);font-size:.7rem;margin-left:auto}
 .rs-runempty{padding:22px;border:1px dashed var(--line);border-radius:14px;background:var(--paper,rgba(250,249,246,.6));font-size:.85rem;color:var(--faint-2,#9A968E);text-align:center}
 .rs-runempty__reset{border:0;background:transparent;color:var(--ink);font-weight:700;text-decoration:underline;cursor:pointer;padding:0;margin-left:4px}
 .rs-ogrid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
-/* Run accent bar under the video player. Sits between VideoFrame and the
-   card body, full-bleed because .rs-oc has overflow:hidden. */
-.rs-oc__rbar{display:block;height:4px;width:100%;background:var(--run-old)}
-.rs-oc__rbar--new{background:var(--run-new)}
-.rs-oc__rbar--prev{background:var(--run-prev)}
-.rs-oc__rbar--old{background:var(--run-old)}
-/* Mobile: the "More outliers" header reflows into a 2x2 grid — title + info
-   on top, Show + Sort dropdowns underneath filling the row. display:contents
-   dissolves the .rs-sh__actions wrapper so its children participate in the
-   parent grid directly, one line of CSS moves each item to its cell. */
+/* Mobile: the "More outliers" header reflows into two controls under the
+   title so the run filter remains easy to reach on smaller screens. */
 @media (max-width: 640px){
-  .rs-sh{display:grid;grid-template-columns:1fr auto;grid-template-areas:"title info" "filter sort";align-items:center;gap:10px 12px;margin:28px 0 14px}
+  .rs-sh{display:grid;grid-template-columns:1fr 1fr;grid-template-areas:"title title" "filter sort";align-items:center;gap:10px 12px;margin:28px 0 14px}
   .rs-sh h2{grid-area:title;margin:0}
   .rs-sh .rs-note{grid-column:1 / -1;grid-row:3;margin:0}
   .rs-sh__actions{display:contents}
-  .rs-runinfo{grid-area:info;justify-self:end}
-  .rs-runinfo__tip{left:auto;right:0}
-  .rs-runinfo__tip::before{left:auto;right:8px}
   .rs-runfilter{grid-area:filter;min-width:0}
   .rs-runfilter select{width:100%}
   .rs-sortsel{grid-area:sort;min-width:0}
@@ -16408,6 +16360,7 @@ function Subscription({ subscription }) {
 	const active = status === "active";
 	const price = subscription?.price ?? 0;
 	const interval = subscription?.interval ?? "month";
+	const billingCycle = subscription?.billingCycle ?? "monthly";
 	const isTrialing = status === "trialing" || status === "trial";
 	const trialEnds = formatDate(subscription?.trialEndsAt);
 	const renews = formatDate(subscription?.renewsAt);
@@ -16602,8 +16555,7 @@ function Subscription({ subscription }) {
 							children: [
 								planName,
 								" · ",
-								interval,
-								"ly"
+								billingCycle === "annual" ? "annual" : "monthly"
 							]
 						})] }), /* @__PURE__ */ jsxs("span", {
 							style: {
@@ -16633,20 +16585,25 @@ function Subscription({ subscription }) {
 //#region resources/js/landing/flow/screens/TrialScreen.jsx
 function TrialScreen({ onBack, backLabel = "Back to results" }) {
 	const { pricingPlans = [], auth = {} } = usePage().props;
-	const tiers = (pricingPlans.length > 0 ? [...pricingPlans] : [...PRICING.monthly]).sort((a, b) => {
+	const [billingCycle, setBillingCycle] = useState("monthly");
+	const tiers = (pricingPlans.length > 0 ? [...pricingPlans] : [...PRICING.monthly, ...PRICING.annual]).sort((a, b) => {
 		const aKey = a.slug ?? a.name?.toLowerCase();
 		const bKey = b.slug ?? b.name?.toLowerCase();
 		const aIndex = PRICING_PLAN_ORDER.indexOf(aKey);
 		const bIndex = PRICING_PLAN_ORDER.indexOf(bKey);
 		return (aIndex === -1 ? Number.MAX_SAFE_INTEGER : aIndex) - (bIndex === -1 ? Number.MAX_SAFE_INTEGER : bIndex);
-	}).filter((t) => t.price > 0);
+	}).filter((t) => t.price > 0 && (t.duration ?? "monthly") === billingCycle);
 	const trialTier = tiers.find((t) => t.popular) || tiers[0];
-	const startCheckout = (slug) => {
+	const annualBanner = useMemo(() => {
+		const percents = tiers.map((plan) => Number(plan.annualSavingsPercent ?? 0)).filter((value) => value > 0);
+		return percents.length > 0 ? Math.max(...percents) : 0;
+	}, [tiers]);
+	const startCheckout = (slug, cycle = billingCycle) => {
 		if (!auth.signedIn) {
-			window.location.assign(`/login?redirect=trial_checkout&plan=${encodeURIComponent(slug)}&trial=1`);
+			window.location.assign(`/login?redirect=trial_checkout&plan=${encodeURIComponent(slug)}&trial=1&cycle=${encodeURIComponent(cycle)}`);
 			return;
 		}
-		billing.trialCheckout(slug);
+		billing.trialCheckout(slug, cycle);
 	};
 	return /* @__PURE__ */ jsxs("div", {
 		className: "animate-fade-up",
@@ -16671,7 +16628,21 @@ function TrialScreen({ onBack, backLabel = "Back to results" }) {
 				}),
 				/* @__PURE__ */ jsx("p", {
 					className: "mt-3 text-[14.5px] muted",
-					children: "Start on an 8-day trial. Growth includes 150 searches, 50 video bookmarks, 50 search bookmarks, and 50 video analysis runs. Scale includes 400 searches and unlimited limits across those extras."
+					children: "Start on an 8-day trial. Growth includes 100 searches, 100 viral breakout video analyses, weekly + monthly scheduling, virality alerts, and unlimited bookmarks. Scale lifts those limits with unlimited searches and unlimited viral breakout video analysis."
+				}),
+				/* @__PURE__ */ jsxs("div", {
+					className: "toggle mx-auto mt-6",
+					children: [/* @__PURE__ */ jsx("button", {
+						className: billingCycle === "monthly" ? "is-on" : "",
+						type: "button",
+						onClick: () => setBillingCycle("monthly"),
+						children: "Monthly"
+					}), /* @__PURE__ */ jsxs("button", {
+						className: billingCycle === "annual" ? "is-on" : "",
+						type: "button",
+						onClick: () => setBillingCycle("annual"),
+						children: ["Annual", annualBanner > 0 ? ` · save up to ${annualBanner}%` : ""]
+					})]
 				}),
 				/* @__PURE__ */ jsx("div", {
 					className: "mx-auto mt-9 grid max-w-2xl gap-5 text-left sm:grid-cols-2",
@@ -16690,23 +16661,20 @@ function TrialScreen({ onBack, backLabel = "Back to results" }) {
 								className: "mt-1 text-[12.5px] faint",
 								children: t.tagline
 							}),
-							/* @__PURE__ */ jsx("p", {
-								className: "mt-3 font-display text-[32px] leading-none font-bold tracking-[-.03em]",
-								children: "$0"
-							}),
 							/* @__PURE__ */ jsxs("p", {
+								className: "mt-3 font-display text-[32px] leading-none font-bold tracking-[-.03em]",
+								children: ["$", t.price]
+							}),
+							/* @__PURE__ */ jsx("p", {
 								className: "mt-2 min-h-[32px] text-[11.5px] leading-[1.35] faint",
-								children: [
-									"then $",
-									t.price,
-									" after 8 days"
-								]
+								children: billingCycle === "annual" ? `Save ${t.annualSavingsPercent}% with annual billing` : "$0 for 8 days"
 							}),
 							/* @__PURE__ */ jsxs("p", {
 								className: "mt-4 text-[12px] faint",
 								children: [
-									t.searchCreditsLimit,
-									" searches · ",
+									t.searchCreditsLimit === -1 ? "Unlimited" : t.searchCreditsLimit,
+									" searches",
+									" · ",
 									t.searchBookmarkLimit === -1 ? "Unlimited" : t.searchBookmarkLimit,
 									" search bookmarks"
 								]
@@ -16722,27 +16690,17 @@ function TrialScreen({ onBack, backLabel = "Back to results" }) {
 								}, f))
 							}),
 							/* @__PURE__ */ jsxs("button", {
-								onClick: () => startCheckout(t.slug),
+								onClick: () => startCheckout(t.slug, billingCycle),
 								className: `mt-6 h-11 w-full text-sm ${t.popular ? "btn-accent" : "btn-ghost"}`,
-								children: [
-									"Start ",
-									t.name,
-									" trial ",
-									/* @__PURE__ */ jsx(Arrow, {})
-								]
+								children: ["Try free for 8 days ", /* @__PURE__ */ jsx(Arrow, {})]
 							})
 						]
 					}, t.name))
 				}),
 				/* @__PURE__ */ jsxs("button", {
-					onClick: () => startCheckout(trialTier.slug),
+					onClick: () => startCheckout(trialTier.slug, billingCycle),
 					className: "btn-accent mx-auto mt-9 h-[52px] px-8 text-[15px]",
-					children: [
-						"Start ",
-						trialTier.name,
-						" trial ",
-						/* @__PURE__ */ jsx(Arrow, {})
-					]
+					children: ["Try free for 8 days ", /* @__PURE__ */ jsx(Arrow, {})]
 				}),
 				/* @__PURE__ */ jsx("p", {
 					className: "mt-4 text-xs faint",
@@ -16756,17 +16714,19 @@ function TrialScreen({ onBack, backLabel = "Back to results" }) {
 //#region resources/js/Pages/Trial.jsx
 var Trial_exports = /* @__PURE__ */ __exportAll({ default: () => Trial });
 function Trial() {
-	const { billing = {} } = usePage().props;
+	const { billing: billing$1 = {} } = usePage().props;
+	const [trialPromptOpen, setTrialPromptOpen] = useState(Boolean(billing$1.hasUsedTrial) && !billing$1.hasPaidPlan);
+	const canOfferTrial = billing$1.trialEligible ?? true;
 	return /* @__PURE__ */ jsxs(Fragment$1, { children: [/* @__PURE__ */ jsx(Head, { title: "Start your 8-day trial - Outlier Vault" }), /* @__PURE__ */ jsx(AppLayout, {
 		pill: {
 			text: "Trial",
 			tone: "accent"
 		},
 		width: "max-w-4xl",
-		children: billing.trialEligible ?? true ? /* @__PURE__ */ jsx(TrialScreen, {
+		children: canOfferTrial ? /* @__PURE__ */ jsx(TrialScreen, {
 			backLabel: "Back to home",
 			onBack: () => router.visit("/")
-		}) : /* @__PURE__ */ jsxs("div", {
+		}) : /* @__PURE__ */ jsxs(Fragment$1, { children: [/* @__PURE__ */ jsxs("div", {
 			className: "surface p-8 text-center",
 			children: [
 				/* @__PURE__ */ jsx("h1", {
@@ -16775,15 +16735,26 @@ function Trial() {
 				}),
 				/* @__PURE__ */ jsx("p", {
 					className: "mt-3 text-[14px] muted",
-					children: "This account is already on a paid plan without trial access, so trial offers are hidden."
+					children: "This account already used its 8-day trial, so the next step is a paid upgrade."
 				}),
 				/* @__PURE__ */ jsx("button", {
 					onClick: () => router.visit("/plans"),
 					className: "btn-accent mx-auto mt-6 h-11 px-5 text-[13px]",
-					children: "Back to plans"
+					children: "View plans"
 				})
 			]
-		})
+		}), /* @__PURE__ */ jsx(UpgradePromptModal, {
+			open: trialPromptOpen,
+			eyebrow: "Trial already used",
+			title: "Your 8-day trial has already been used",
+			body: "This account already finished its free trial, so the next step is a paid upgrade.",
+			detail: "Upgrade to Growth to turn scheduled tracking, bookmarks, and analysis back on.",
+			primaryLabel: "Upgrade to Growth",
+			onPrimary: () => billing.checkout("basic"),
+			secondaryLabel: "Maybe later",
+			onSecondary: () => setTrialPromptOpen(false),
+			onClose: () => setTrialPromptOpen(false)
+		})] })
 	})] });
 }
 //#endregion

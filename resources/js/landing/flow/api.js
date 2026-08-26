@@ -84,11 +84,16 @@ export const savedSearch = {
 };
 
 export const billing = {
-  checkout: (slug) => {
-    window.location.assign(`/billing/checkout/${encodeURIComponent(slug)}`);
+  checkout: (slug, cycle = 'monthly') => {
+    const params = new URLSearchParams();
+    if (cycle === 'annual') params.set('cycle', 'annual');
+    const suffix = params.toString() ? `?${params.toString()}` : '';
+    window.location.assign(`/billing/checkout/${encodeURIComponent(slug)}${suffix}`);
   },
-  trialCheckout: (slug) => {
-    window.location.assign(`/billing/checkout/${encodeURIComponent(slug)}?trial=1`);
+  trialCheckout: (slug, cycle = 'monthly') => {
+    const params = new URLSearchParams({ trial: '1' });
+    if (cycle === 'annual') params.set('cycle', 'annual');
+    window.location.assign(`/billing/checkout/${encodeURIComponent(slug)}?${params.toString()}`);
   },
 };
 

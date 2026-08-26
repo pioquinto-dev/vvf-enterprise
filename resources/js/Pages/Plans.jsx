@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Head, usePage } from '@inertiajs/react';
 
 import SettingsShell from './Settings/SettingsShell.jsx';
@@ -21,24 +21,46 @@ export default function Plans() {
 
     return (aIndex === -1 ? Number.MAX_SAFE_INTEGER : aIndex) - (bIndex === -1 ? Number.MAX_SAFE_INTEGER : bIndex);
   });
+  const currentPlan = orderedPlans.find((plan) => plan.slug === current);
+  const [billingCycle, setBillingCycle] = useState((currentPlan?.duration ?? 'monthly') === 'annual' ? 'annual' : 'monthly');
+  const visiblePlans = orderedPlans.filter((plan) => plan.slug === 'free' || (plan.duration ?? 'monthly') === billingCycle);
+  const annualBanner = useMemo(() => {
+    const percents = orderedPlans
+      .filter((plan) => (plan.duration ?? 'monthly') === 'annual')
+      .map((plan) => Number(plan.annualSavingsPercent ?? 0))
+      .filter((value) => value > 0);
 
-  const upgrade = (slug) => billing.checkout(slug);
-  const promptPlanSlug = flash.trialAccessPrompt?.plan_slug ?? 'basic';
+    return percents.length > 0 ? Math.max(...percents) : 0;
+  }, [orderedPlans]);
+
+  const upgrade = (slug, cycle = billingCycle) => billing.checkout(slug, cycle);
+  const promptPlanSlug =
+    flash.trialAccessPrompt?.plan_slug ?? visiblePlans.find((plan) => plan.planType === 'growth')?.slug ?? 'basic';
 
   useEffect(() => {
     setTrialPromptOpen(Boolean(flash.trialAccessPrompt));
   }, [flash.trialAccessPrompt]);
 
   const priceLine = (plan) => {
+    const annual = billingCycle === 'annual';
+
     if ((plan.price ?? 0) <= 0) {
       return { amount: '$0', suffix: '/mo', subline: '' };
     }
 
     if (!hasUsedTrial || isTrialing) {
-      return { amount: `$${plan.price}`, suffix: '/mo', subline: '$0 for 8 days' };
+      return {
+        amount: `$${plan.price}`,
+        suffix: annual ? '/yr' : '/mo',
+        subline: annual ? `Save ${plan.annualSavingsPercent}% with annual billing` : '$0 for 8 days',
+      };
     }
 
-    return { amount: `$${plan.price}`, suffix: '/mo', subline: '' };
+    return {
+      amount: `$${plan.price}`,
+      suffix: annual ? '/yr' : '/mo',
+      subline: annual ? `Save ${plan.annualSavingsPercent}% with annual billing` : '',
+    };
   };
 
   return (
@@ -64,10 +86,18 @@ export default function Plans() {
           <p className="muted" style={{ fontSize: '.86rem', marginTop: 6 }}>
             Start with one free search. Upgrade when you want tracking on a schedule.
           </p>
+          <div className="toggle" style={{ marginTop: 16 }}>
+            <button className={billingCycle === 'monthly' ? 'is-on' : ''} type="button" onClick={() => setBillingCycle('monthly')}>
+              Monthly
+            </button>
+            <button className={billingCycle === 'annual' ? 'is-on' : ''} type="button" onClick={() => setBillingCycle('annual')}>
+              Annual{annualBanner > 0 ? ` · save up to ${annualBanner}%` : ''}
+            </button>
+          </div>
         </div>
 
         <div className="plans">
-          {orderedPlans.map((plan) => {
+          {visiblePlans.map((plan) => {
             const isCurrent = plan.slug === current;
             const isFree = plan.slug === 'free';
             const price = priceLine(plan);
@@ -103,8 +133,11 @@ export default function Plans() {
                     Free plan unavailable
                   </button>
                 ) : (
-                  <button type="button" className="btn btn--y btn--w" onClick={() => upgrade(plan.slug)}>
-                    Upgrade to {plan.name} <Arrow />
+                  <button type="button" className="btn btn--y btn--w" onClick={() => upgrade(plan.slug, billingCycle)}>
+                    {!hasUsedTrial && !isTrialing
+                      ? 'Try free for 8 days'
+                      : `Upgrade to ${plan.name}`}{' '}
+                    <Arrow />
                   </button>
                 )}
               </div>

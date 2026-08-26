@@ -26,6 +26,8 @@ use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
 
 class RegisteredUserController extends Controller
 {
+    private const CHECKOUT_PLAN_SLUGS = ['basic', 'basic-annual', 'premium', 'premium-annual'];
+
     public function __construct(
         private readonly PostAuthenticationRedirector $redirector,
         private readonly BillingService $billing,
@@ -89,9 +91,10 @@ class RegisteredUserController extends Controller
 
         $plan = (string) $request->query('plan', 'basic');
         $withTrial = $request->boolean('trial');
+        $cycle = (string) $request->query('cycle', 'monthly');
 
-        if (in_array($plan, ['basic', 'premium'], true)) {
-            TrialCheckoutIntent::store($request, $plan, $withTrial);
+        if (in_array($plan, self::CHECKOUT_PLAN_SLUGS, true)) {
+            TrialCheckoutIntent::store($request, $plan, $withTrial, $cycle);
         }
     }
 
@@ -99,7 +102,7 @@ class RegisteredUserController extends Controller
     {
         $intent = TrialCheckoutIntent::pull($request);
 
-        if (! is_array($intent) || ! in_array($intent['plan_slug'] ?? null, ['basic', 'premium'], true)) {
+        if (! is_array($intent) || ! in_array($intent['plan_slug'] ?? null, self::CHECKOUT_PLAN_SLUGS, true)) {
             return null;
         }
 
@@ -116,9 +119,10 @@ class RegisteredUserController extends Controller
         }
 
         $withTrial = (bool) ($intent['with_trial'] ?? false);
+        $cycle = ($intent['cycle'] ?? 'monthly') === 'annual' ? 'annual' : 'monthly';
 
         try {
-            return Inertia::location($this->billing->checkout($user, $plan, $withTrial));
+            return Inertia::location($this->billing->checkout($user, $plan, $withTrial, $cycle));
         } catch (\Illuminate\Validation\ValidationException $exception) {
             if ($withTrial && $exception->errors()['trial'] ?? false) {
                 return redirect()->route('plans')->with('trial_access_prompt', [
@@ -127,7 +131,7 @@ class RegisteredUserController extends Controller
                 ]);
             }
 
-            throw $exception;
+            return redirect()->route('plans')->with('status', collect($exception->errors())->flatten()->first() ?? 'Checkout could not be started.');
         }
     }
 

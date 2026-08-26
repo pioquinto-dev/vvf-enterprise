@@ -348,9 +348,9 @@ export default function ResultsScreen({
           <div>
             <p className="font-display text-[17px] font-bold text-white">Want another search, or weekly tracking?</p>
             <p className="mt-1.5 text-[13.5px] text-white/60">
-              Free includes 1 search and no bookmarks or video analysis. Growth includes 150 searches, 50 video
-              bookmarks, 50 search bookmarks, and 50 video analysis runs. Scale includes 400 searches and unlimited
-              limits across those extras.
+              Free includes 1 search and no search bookmarks or video analysis. Growth includes 100 searches, 100 viral
+              breakout video analyses, weekly + monthly scheduling, virality alerts, and unlimited bookmarks. Scale
+              expands that to unlimited searches and unlimited viral breakout video analysis.
             </p>
           </div>
           <button onClick={onStartTrial} className="btn-accent h-[52px] shrink-0 px-6 text-[15px]">

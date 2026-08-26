@@ -26,8 +26,8 @@ export default function Landing() {
     router.get('/search', { type, q: phrase });
   };
 
-  const startTrial = (plan) =>
-    window.location.assign(`/login?redirect=trial_checkout&plan=${encodeURIComponent(plan?.slug ?? 'basic')}&trial=1`);
+  const startTrial = (plan, cycle = 'monthly') =>
+    window.location.assign(`/login?redirect=trial_checkout&plan=${encodeURIComponent(plan?.slug ?? 'basic')}&trial=1&cycle=${encodeURIComponent(cycle)}`);
 
   return (
     <>

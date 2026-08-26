@@ -26,9 +26,9 @@ class BillingService
         private readonly ?UserActivityService $activity = null,
     ) {}
 
-    public function checkout(User $user, PricingPlan $plan, bool $withTrial = false): string
+    public function checkout(User $user, PricingPlan $plan, bool $withTrial = false, string $cycle = 'monthly'): string
     {
-        if (! $plan->is_active || $plan->archived_at !== null || blank($plan->stripe_price_id)) {
+        if (! $plan->is_active || $plan->archived_at !== null) {
             throw ValidationException::withMessages([
                 'plan' => 'This plan is not purchasable yet.',
             ]);
@@ -40,13 +40,24 @@ class BillingService
             ]);
         }
 
+        $billingCycle = $this->billingCycleForPlan($plan, $cycle);
+        $priceId = $this->stripePriceIdFor($plan);
+
+        if (blank($priceId)) {
+            throw ValidationException::withMessages([
+                'plan' => $billingCycle === 'annual'
+                    ? 'Annual checkout is not configured for this plan yet.'
+                    : 'This plan is not purchasable yet.',
+            ]);
+        }
+
         $customerId = $this->ensureCustomer($user);
 
         $session = $this->stripe->createCheckoutSession([
             'mode' => 'subscription',
             'customer' => $customerId,
             'line_items' => [[
-                'price' => $plan->stripe_price_id,
+                'price' => $priceId,
                 'quantity' => 1,
             ]],
             'success_url' => route('billing.success').'?session_id={CHECKOUT_SESSION_ID}',
@@ -55,8 +66,15 @@ class BillingService
                 'plan_slug' => $plan->slug,
                 'user_id' => (string) $user->id,
                 'trial_days' => $withTrial ? (string) self::TRIAL_DAYS : '0',
+                'billing_cycle' => $billingCycle,
             ],
-            ...($withTrial ? ['subscription_data' => ['trial_period_days' => self::TRIAL_DAYS]] : []),
+            'subscription_data' => array_filter([
+                'trial_period_days' => $withTrial ? self::TRIAL_DAYS : null,
+                'metadata' => [
+                    'plan_slug' => $plan->slug,
+                    'billing_cycle' => $billingCycle,
+                ],
+            ]),
         ]);
 
         AppEventLogger::result('billing.checkout.session_created', [
@@ -64,6 +82,7 @@ class BillingService
             'plan_id' => $plan->id,
             'plan_slug' => $plan->slug,
             'with_trial' => $withTrial,
+            'billing_cycle' => $billingCycle,
             'stripe_customer_id' => $customerId,
             'stripe_checkout_session_id' => (string) ($session->id ?? ''),
         ]);
@@ -100,8 +119,9 @@ class BillingService
         $customerId = (string) ($session->customer ?? '');
         $now = CarbonImmutable::now();
         $trialDays = max(0, (int) ($session->metadata->trial_days ?? 0));
+        $billingCycle = (string) ($session->metadata->billing_cycle ?? 'monthly');
         $trialEndsAt = $trialDays > 0 ? $now->addDays($trialDays) : null;
-        $endsAt = $trialEndsAt ?? $now->addMonths(max(1, (int) $plan->interval_count));
+        $endsAt = $trialEndsAt ?? $now->addMonths($this->renewalMonthsFor($plan, $billingCycle));
         $status = $trialEndsAt !== null ? 'trialing' : 'active';
 
         $limits = $this->limitsFor($plan);
@@ -113,7 +133,7 @@ class BillingService
         $user->forceFill([
             'stripe_customer_id' => $customerId !== '' ? $customerId : $user->stripe_customer_id,
             'current_plan_slug' => $plan->slug,
-            'monthly_credits_remaining' => $this->remainingSearchCreditsFrom($limits, $searchCreditsUsed),
+            'monthly_credits_remaining' => max(0, $this->remainingSearchCreditsFrom($limits, $searchCreditsUsed)),
             'plan_renews_at' => $endsAt,
         ])->save();
 
@@ -129,7 +149,7 @@ class BillingService
             'current_period_ends_at' => $endsAt,
             'trial_started_at' => $trialEndsAt !== null ? $now : null,
             'trial_ends_at' => $trialEndsAt,
-            'metadata' => $this->subscriptionMetadata($plan, $searchCreditsUsed, $videoBookmarksUsed, $searchBookmarksUsed, $videoAnalysisUsed),
+            'metadata' => $this->subscriptionMetadata($plan, $searchCreditsUsed, $videoBookmarksUsed, $searchBookmarksUsed, $videoAnalysisUsed, $billingCycle, $now, $endsAt),
         ]);
 
         $this->utmAttributionService->createSubscriptionAttribution($user, $subscriptionId);
@@ -143,6 +163,7 @@ class BillingService
             'user_id' => $user->id,
             'plan_id' => $plan->id,
             'plan_slug' => $plan->slug,
+            'billing_cycle' => $billingCycle,
             'stripe_checkout_session_id' => $sessionId,
             'stripe_subscription_id' => $subscriptionId,
             'stripe_customer_id' => $customerId,
@@ -346,21 +367,25 @@ class BillingService
         ]);
     }
 
-    private function subscriptionMetadata(PricingPlan $plan, int $searchCreditsUsed, int $videoBookmarksUsed, int $searchBookmarksUsed, int $videoAnalysisUsed): array
+    private function subscriptionMetadata(PricingPlan $plan, int $searchCreditsUsed, int $videoBookmarksUsed, int $searchBookmarksUsed, int $videoAnalysisUsed, string $billingCycle = 'monthly', ?CarbonImmutable $periodStart = null, ?CarbonImmutable $periodEnd = null): array
     {
         $limits = $this->limitsFor($plan);
+        $window = $this->creditWindowFor($billingCycle, $periodStart, $periodEnd);
 
         return [
             'plan_slug' => $plan->slug,
             'settings' => [
                 'cta' => (string) data_get($plan->metadata, 'settings.cta', 'Choose plan'),
                 'popular' => (bool) data_get($plan->metadata, 'settings.popular', false),
+                'billing_cycle' => $billingCycle,
             ],
             'subscription' => [
                 'trialEnabled' => (bool) ($limits['trialEnabled'] ?? false),
                 'search_limits' => [
                     'used' => max(0, $searchCreditsUsed),
                     'limit' => (int) ($limits['searchLimit'] ?? 0),
+                    'window_starts_at' => $window['starts_at']?->toIso8601String(),
+                    'window_ends_at' => $window['ends_at']?->toIso8601String(),
                 ],
                 'viral_video_bookmarks' => [
                     'used' => max(0, $videoBookmarksUsed),
@@ -381,5 +406,47 @@ class BillingService
     private function remainingSearchCreditsFrom(array $limits, int $used): int
     {
         return $this->entitlements->remainingSearchCreditsFrom($limits, $used);
+    }
+
+    private function stripePriceIdFor(PricingPlan $plan): ?string
+    {
+        return blank($plan->stripe_price_id) ? null : (string) $plan->stripe_price_id;
+    }
+
+    private function renewalMonthsFor(PricingPlan $plan, string $billingCycle): int
+    {
+        return max(1, (int) $plan->interval_count);
+    }
+
+    private function billingCycleForPlan(PricingPlan $plan, string $requestedCycle): string
+    {
+        $planCycle = (string) ($plan->duration ?: '');
+
+        if ($planCycle === 'annual' || $plan->interval === 'year' || $plan->interval_count > 1) {
+            return 'annual';
+        }
+
+        return $requestedCycle === 'annual' ? 'annual' : 'monthly';
+    }
+
+    /**
+     * @return array{starts_at: ?CarbonImmutable, ends_at: ?CarbonImmutable}
+     */
+    private function creditWindowFor(string $billingCycle, ?CarbonImmutable $periodStart, ?CarbonImmutable $periodEnd): array
+    {
+        if ($periodStart === null || $periodEnd === null) {
+            return ['starts_at' => $periodStart, 'ends_at' => $periodEnd];
+        }
+
+        if ($billingCycle !== 'annual') {
+            return ['starts_at' => $periodStart, 'ends_at' => $periodEnd];
+        }
+
+        $monthlyEnd = $periodStart->addMonth();
+
+        return [
+            'starts_at' => $periodStart,
+            'ends_at' => $monthlyEnd->lessThan($periodEnd) ? $monthlyEnd : $periodEnd,
+        ];
     }
 }
