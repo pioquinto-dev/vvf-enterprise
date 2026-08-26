@@ -30,7 +30,7 @@ class AdminRecordController extends Controller
 
     public function store(Request $request, string $resource): RedirectResponse
     {
-        if ($resource !== 'plans') {
+        if (! in_array($resource, ['plans', 'keyword-index'], true)) {
             throw new NotFoundHttpException('This resource does not support creation.');
         }
 

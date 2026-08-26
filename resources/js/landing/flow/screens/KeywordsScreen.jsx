@@ -35,6 +35,7 @@ function SkeletonChips() {
 export default function KeywordsScreen({
   phrase,
   noun = 'brand',
+  searchType = 'brand',
   nextLabel = 'Run search',
   onBack,
   onSubmit,
@@ -80,7 +81,7 @@ export default function KeywordsScreen({
 
     const controller = new AbortController();
 
-    expandKeywords(phrase, { signal: controller.signal })
+    expandKeywords(phrase, { signal: controller.signal, type: searchType })
       .then((payload) => {
         const keywords = Array.isArray(payload?.keywords) ? payload.keywords : [phrase];
         setExpansionSource(payload?.source ?? null);
@@ -97,7 +98,7 @@ export default function KeywordsScreen({
   const regenerate = () => {
     setRegenerating(true);
 
-    expandKeywords(phrase, { fresh: true })
+    expandKeywords(phrase, { fresh: true, type: searchType })
       .then((payload) => {
         const keywords = Array.isArray(payload?.keywords) ? payload.keywords : [phrase];
         setExpansionSource(payload?.source ?? null);

@@ -48,6 +48,7 @@ class SavedSearchController extends Controller
         $validated = $request->validate([
             'phrase' => ['required', 'string', 'max:'.config('custom_keyword_search.limits.max_phrase_length', 120)],
             'fresh' => ['nullable', 'boolean'],
+            'type' => ['nullable', 'in:brand,product'],
         ]);
 
         // Expansion hits OpenAI on a cache miss, so keep it from being hammered.
@@ -64,6 +65,8 @@ class SavedSearchController extends Controller
         return response()->json($this->expansion->expand(
             $validated['phrase'],
             (bool) ($validated['fresh'] ?? false),
+            true,
+            (string) ($validated['type'] ?? 'brand'),
         ));
     }
 
@@ -445,7 +448,7 @@ class SavedSearchController extends Controller
         if (count($out) < $target) {
             $expandedBySearch = $searches
                 ->take(5)
-                ->map(fn (CustomKeywordSearch $search): array => array_values((array) ($this->expansion->expand((string) $search->phrase, allowAi: false)['keywords'] ?? [])))
+                ->map(fn (CustomKeywordSearch $search): array => array_values((array) ($this->expansion->expand((string) $search->phrase, allowAi: false, type: (string) $search->search_type)['keywords'] ?? [])))
                 ->filter(fn (array $keywords): bool => $keywords !== [])
                 ->values();
 

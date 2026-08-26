@@ -1,6 +1,7 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import { Arrow, Search, Store } from '../components/Icons.jsx';
+import { fetchKeywordSuggestions } from '../flow/api.js';
 
 const MODES = [
   { key: 'brand', label: 'Your brand', icon: Store, prompt: 'Which brand do you want to research?', sample: 'rhode skin' },
@@ -10,10 +11,38 @@ const MODES = [
 export default function Hero({ onStart }) {
   const [type, setType] = useState('brand');
   const [value, setValue] = useState('');
+  const [subjectSuggestions, setSubjectSuggestions] = useState([]);
+  const [activeSuggestion, setActiveSuggestion] = useState(-1);
+  const [showSuggestions, setShowSuggestions] = useState(false);
   const inputRef = useRef(null);
+  const fieldRef = useRef(null);
 
   const mode = MODES.find((m) => m.key === type) ?? MODES[0];
   const query = value.trim().replace(/\s+/g, ' ');
+  const visibleSuggestions = subjectSuggestions.filter((suggestion) => suggestion.label?.trim());
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    fetchKeywordSuggestions(type, value.trim(), { signal: controller.signal })
+      .then((payload) => setSubjectSuggestions(Array.isArray(payload?.suggestions) ? payload.suggestions : []))
+      .catch(() => {});
+
+    return () => controller.abort();
+  }, [type, value]);
+
+  useEffect(() => {
+    const close = (event) => {
+      if (!fieldRef.current?.contains(event.target)) {
+        setShowSuggestions(false);
+        setActiveSuggestion(-1);
+      }
+    };
+
+    document.addEventListener('mousedown', close);
+
+    return () => document.removeEventListener('mousedown', close);
+  }, []);
 
   const submit = (e) => {
     e?.preventDefault();
@@ -22,6 +51,13 @@ export default function Hero({ onStart }) {
       return;
     }
     onStart(type, query);
+  };
+
+  const applySuggestion = (label) => {
+    setValue(label);
+    setShowSuggestions(false);
+    setActiveSuggestion(-1);
+    window.requestAnimationFrame(() => inputRef.current?.focus());
   };
 
   return (
@@ -61,16 +97,73 @@ export default function Hero({ onStart }) {
             Type your {type === 'product' ? 'product' : 'brand name'}
           </label>
 
-          <div className="box__field">
+          <div className="box__field" ref={fieldRef}>
             <input
               ref={inputRef}
               id="search-subject"
               maxLength={80}
               value={value}
-              onChange={(e) => setValue(e.target.value)}
+              autoComplete="off"
+              onChange={(e) => {
+                setValue(e.target.value);
+                setShowSuggestions(true);
+              }}
+              onFocus={() => setShowSuggestions(true)}
+              onKeyDown={(event) => {
+                if (!visibleSuggestions.length) return;
+
+                if (event.key === 'ArrowDown') {
+                  event.preventDefault();
+                  setShowSuggestions(true);
+                  setActiveSuggestion((current) => (current + 1) % visibleSuggestions.length);
+                }
+
+                if (event.key === 'ArrowUp') {
+                  event.preventDefault();
+                  setShowSuggestions(true);
+                  setActiveSuggestion((current) => (current <= 0 ? visibleSuggestions.length - 1 : current - 1));
+                }
+
+                if (event.key === 'Enter' && activeSuggestion >= 0 && visibleSuggestions[activeSuggestion]) {
+                  event.preventDefault();
+                  applySuggestion(visibleSuggestions[activeSuggestion].label);
+                }
+
+                if (event.key === 'Escape') {
+                  setShowSuggestions(false);
+                  setActiveSuggestion(-1);
+                }
+              }}
               placeholder={mode.sample}
               aria-label={`Type your ${type === 'product' ? 'product' : 'brand name'}`}
+              aria-expanded={showSuggestions && visibleSuggestions.length > 0}
+              aria-haspopup="listbox"
             />
+            {showSuggestions && visibleSuggestions.length > 0 && (
+              <div className="hero-suggest" role="listbox" aria-label={`${type} suggestions`}>
+                <div className="hero-suggest__head">
+                  <span>Suggested {type === 'brand' ? 'brands' : 'products'}</span>
+                  <span>{visibleSuggestions.length}</span>
+                </div>
+                <div className="hero-suggest__list">
+                  {visibleSuggestions.map((suggestion, index) => (
+                    <button
+                      key={`${suggestion.type}-${suggestion.id}`}
+                      type="button"
+                      className={`hero-suggest__item${index === activeSuggestion ? ' is-active' : ''}`}
+                      onMouseEnter={() => setActiveSuggestion(index)}
+                      onMouseDown={(event) => event.preventDefault()}
+                      onClick={() => applySuggestion(suggestion.label)}
+                    >
+                      <span className="hero-suggest__text">
+                        <strong>{suggestion.label}</strong>
+                        {suggestion.sector && <em>{suggestion.sector}</em>}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
             <button type="submit" className="btn btn--primary btn--lg btn--pulse">
               Find outliers
               <Arrow className="btn__arrow h-[15px] w-[15px]" />

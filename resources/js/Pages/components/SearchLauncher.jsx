@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { router } from '@inertiajs/react';
 
 import { Arrow, Search, Store } from '../../landing/components/Icons.jsx';
+import { fetchKeywordSuggestions } from '../../landing/flow/api.js';
 
 /**
  * Step one of the search flow — pick a subject.
@@ -42,7 +43,11 @@ export default function SearchLauncher({
 }) {
     const [type, setType] = useState(initialType);
     const [value, setValue] = useState(initialQuery);
+    const [liveSuggestions, setLiveSuggestions] = useState([]);
+    const [activeSuggestion, setActiveSuggestion] = useState(-1);
+    const [showSuggestions, setShowSuggestions] = useState(false);
     const inputRef = useRef(null);
+    const fieldRef = useRef(null);
 
     const segRef = useRef(null);
     const [indStyle, setIndStyle] = useState({ width: 0, transform: 'translateX(0px)' });
@@ -55,6 +60,33 @@ export default function SearchLauncher({
     const chips = dynamic.length > 0 ? dynamic : baseConfig.suggestions;
 
     const query = value.trim().replace(/\s+/g, ' ');
+
+    useEffect(() => {
+        const controller = new AbortController();
+        const term = value.trim();
+
+        fetchKeywordSuggestions(type, term, { signal: controller.signal })
+            .then((payload) => {
+                setLiveSuggestions(Array.isArray(payload?.suggestions) ? payload.suggestions : []);
+                setActiveSuggestion(-1);
+            })
+            .catch(() => {});
+
+        return () => controller.abort();
+    }, [type, value]);
+
+    useEffect(() => {
+        const close = (event) => {
+            if (!fieldRef.current?.contains(event.target)) {
+                setShowSuggestions(false);
+                setActiveSuggestion(-1);
+            }
+        };
+
+        document.addEventListener('mousedown', close);
+
+        return () => document.removeEventListener('mousedown', close);
+    }, []);
 
     /* position the yellow slider under the active segment */
     useEffect(() => {
@@ -85,6 +117,15 @@ export default function SearchLauncher({
             return;
         }
         router.visit(`/search?type=${type}&q=${encodeURIComponent(query)}`);
+    };
+
+    const visibleSuggestions = liveSuggestions.filter((suggestion) => suggestion.label?.trim());
+
+    const applySuggestion = (label) => {
+        setValue(label);
+        setShowSuggestions(false);
+        setActiveSuggestion(-1);
+        window.requestAnimationFrame(() => inputRef.current?.focus());
     };
 
     return (
@@ -125,21 +166,82 @@ export default function SearchLauncher({
                 })}
             </div>
 
-            <form className="bar" onSubmit={submit}>
+            <form className="bar" onSubmit={submit} ref={fieldRef}>
                 <svg className="bar__q" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
                     <circle cx="11" cy="11" r="7" />
                     <path d="m20 20-3.5-3.5" />
                 </svg>
-                <input
-                    ref={inputRef}
-                    id="dashboard-search-subject"
-                    type="text"
-                    autoComplete="off"
-                    value={value}
-                    onChange={(e) => setValue(e.target.value)}
-                    placeholder={baseConfig.placeholder}
-                    aria-label={baseConfig.placeholder}
-                />
+                <div className="bar__field">
+                    <input
+                        ref={inputRef}
+                        id="dashboard-search-subject"
+                        type="text"
+                        autoComplete="off"
+                        value={value}
+                        onChange={(e) => {
+                            setValue(e.target.value);
+                            setShowSuggestions(true);
+                        }}
+                        onFocus={() => setShowSuggestions(true)}
+                        onKeyDown={(event) => {
+                            if (!visibleSuggestions.length) {
+                                return;
+                            }
+
+                            if (event.key === 'ArrowDown') {
+                                event.preventDefault();
+                                setShowSuggestions(true);
+                                setActiveSuggestion((current) => (current + 1) % visibleSuggestions.length);
+                            }
+
+                            if (event.key === 'ArrowUp') {
+                                event.preventDefault();
+                                setShowSuggestions(true);
+                                setActiveSuggestion((current) => (current <= 0 ? visibleSuggestions.length - 1 : current - 1));
+                            }
+
+                            if (event.key === 'Enter' && activeSuggestion >= 0 && visibleSuggestions[activeSuggestion]) {
+                                event.preventDefault();
+                                applySuggestion(visibleSuggestions[activeSuggestion].label);
+                            }
+
+                            if (event.key === 'Escape') {
+                                setShowSuggestions(false);
+                                setActiveSuggestion(-1);
+                            }
+                        }}
+                        placeholder={baseConfig.placeholder}
+                        aria-label={baseConfig.placeholder}
+                        aria-expanded={showSuggestions && visibleSuggestions.length > 0}
+                        aria-haspopup="listbox"
+                    />
+
+                    {showSuggestions && visibleSuggestions.length > 0 && (
+                        <div className="hero-suggest" role="listbox" aria-label={`${type} suggestions`}>
+                            <div className="hero-suggest__head">
+                                <span>Suggested {type === 'brand' ? 'brands' : 'products'}</span>
+                                <span>{visibleSuggestions.length}</span>
+                            </div>
+                            <div className="hero-suggest__list">
+                                {visibleSuggestions.map((suggestion, index) => (
+                                    <button
+                                        key={`${suggestion.type}-${suggestion.id}`}
+                                        type="button"
+                                        className={`hero-suggest__item${index === activeSuggestion ? ' is-active' : ''}`}
+                                        onMouseEnter={() => setActiveSuggestion(index)}
+                                        onMouseDown={(event) => event.preventDefault()}
+                                        onClick={() => applySuggestion(suggestion.label)}
+                                    >
+                                        <span className="hero-suggest__text">
+                                            <strong>{suggestion.label}</strong>
+                                            {suggestion.sector && <em>{suggestion.sector}</em>}
+                                        </span>
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+                </div>
                 <button type="submit" className="btn btn--y" disabled={!query}>
                     Continue
                     <span className="btn__a">

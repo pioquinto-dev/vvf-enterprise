@@ -49,6 +49,15 @@ export default function Listing({
                             New plan
                         </button>
                     )}
+                    {resource === 'keyword-index' && (
+                        <button
+                            type="button"
+                            onClick={() => setCreating(true)}
+                            className="inline-flex h-8 items-center rounded-md bg-[var(--yellow)] px-3.5 text-[12.5px] font-semibold text-[#1a1400] transition hover:brightness-105"
+                        >
+                            New keyword
+                        </button>
+                    )}
                     <span className="inline-flex items-center gap-1.5 rounded-md border border-[var(--line)] bg-white px-2 py-1 text-[11.5px] text-[var(--muted)]">
                         <span className="font-semibold text-[var(--ink)]">{total.toLocaleString()}</span>
                         {total === 1 ? 'record' : 'records'}

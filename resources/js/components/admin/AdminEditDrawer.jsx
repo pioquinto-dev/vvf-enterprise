@@ -139,7 +139,7 @@ export default function AdminEditDrawer({ open, resource, title, fields = [], ro
                             disabled={form.processing}
                             className="h-8 rounded-md bg-[var(--yellow)] px-3.5 text-[12.5px] font-semibold text-[#1a1400] transition hover:brightness-105 disabled:opacity-50"
                         >
-                            {form.processing ? (mode === 'create' ? 'Creating...' : 'Saving...') : mode === 'create' ? 'Create plan' : 'Save changes'}
+                            {form.processing ? (mode === 'create' ? 'Creating...' : 'Saving...') : mode === 'create' ? `Create ${resource === 'keyword-index' ? 'keyword' : 'plan'}` : 'Save changes'}
                         </button>
                     </footer>
                 </form>

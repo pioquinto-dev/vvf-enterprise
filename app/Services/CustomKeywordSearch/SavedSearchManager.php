@@ -8,6 +8,7 @@ use App\Models\CustomKeywordSearchRun;
 use App\Models\User;
 use App\Services\Admin\UserActivityService;
 use App\Services\Billing\BillingService;
+use App\Services\IndexedKeywordService;
 use Closure;
 use Illuminate\Validation\ValidationException;
 
@@ -22,6 +23,7 @@ class SavedSearchManager
         private readonly SearchRunProcessor $processor,
         private readonly BillingService $billing,
         private readonly UserActivityService $activity,
+        private readonly IndexedKeywordService $indexedKeywords,
     ) {}
 
     /**
@@ -126,6 +128,7 @@ class SavedSearchManager
 
         $this->queueRun($search, $user !== null);
         $this->recordSearch($user, $search);
+        $this->indexedKeywords->learnFromSearch($type, $phrase, $keywords);
 
         return $search;
     }

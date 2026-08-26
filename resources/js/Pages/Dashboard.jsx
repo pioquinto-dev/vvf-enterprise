@@ -545,7 +545,7 @@ export default function Dashboard() {
 
       {/* Scoped styles that layer the flat mockup on top of the existing shell */}
       <style>{`
-        .hero{background:var(--white);border:1px solid var(--line);border-radius:20px;padding:24px 26px 26px}
+        .hero{position:relative;z-index:3;background:var(--white);border:1px solid var(--line);border-radius:20px;padding:24px 26px 26px}
         .hero__head{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:18px}
         .hero__head h2{font-size:1.1rem;font-weight:800;letter-spacing:-.028em;color:var(--ink)}
         .prog{display:flex;align-items:center;gap:9px;font-size:.75rem;font-weight:700;color:var(--faint-2,#9A968E)}
@@ -562,15 +562,25 @@ export default function Dashboard() {
         .seg__b[aria-selected="true"]{color:#1A1400}
         .seg__b[aria-selected="true"] svg{opacity:1}
 
-        .bar{display:flex;align-items:center;gap:10px;padding:7px 7px 7px 18px;background:var(--white);border:1.5px solid var(--line-2,#DEDBD3);border-radius:100px;transition:border-color .18s,box-shadow .18s}
+        .bar{position:relative;display:flex;align-items:center;gap:10px;padding:7px 7px 7px 18px;background:var(--white);border:1.5px solid var(--line-2,#DEDBD3);border-radius:100px;transition:border-color .18s,box-shadow .18s}
         .bar:focus-within{border-color:var(--yellow);box-shadow:0 0 0 4px rgba(255,198,41,.24)}
         .bar__q{width:19px;height:19px;color:var(--faint-2,#9A968E);flex:none}
-        .bar input{flex:1 1 auto;min-width:0;height:48px;border:0;outline:0;background:transparent;font:inherit;font-size:1.06rem;font-weight:600;letter-spacing:-.015em;color:var(--ink)}
+        .bar__field{position:relative;flex:1 1 auto;min-width:0}
+        .bar input{width:100%;min-width:0;height:48px;border:0;outline:0;background:transparent;font:inherit;font-size:1.06rem;font-weight:600;letter-spacing:-.015em;color:var(--ink)}
         .bar input::placeholder{color:var(--faint-2,#9A968E);font-weight:500}
         .bar .btn--y{flex:none;height:48px;padding:0 18px;border-radius:100px;font-size:.88rem;font-weight:700;display:inline-flex;align-items:center;gap:6px}
         .bar .btn--y[disabled]{opacity:.55;cursor:not-allowed}
         .btn__a{display:inline-flex;transition:transform .2s}
         .bar .btn--y:hover .btn__a{transform:translateX(3px)}
+        .hero-suggest{position:absolute;top:calc(100% + 10px);left:-6px;right:0;z-index:20;overflow:hidden;border:1px solid #eadfca;border-radius:18px;background:rgba(255,255,255,.97);box-shadow:0 24px 48px -24px rgba(33,26,12,.3),0 8px 18px -12px rgba(33,26,12,.14);backdrop-filter:blur(10px)}
+        .hero-suggest__head{display:flex;align-items:center;justify-content:space-between;padding:11px 14px 10px;background:linear-gradient(180deg,#fff8e3 0%,#fffdf7 100%);border-bottom:1px solid #f0e5cf;font-size:.7rem;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:#9d6900}
+        .hero-suggest__list{max-height:320px;overflow-y:auto;padding:6px}
+        .hero-suggest__item{width:100%;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:11px 12px;border:0;border-radius:14px;background:transparent;text-align:left;cursor:pointer;transition:background .15s,transform .15s}
+        .hero-suggest__item:hover,.hero-suggest__item.is-active{background:#fff7df}
+        .hero-suggest__item.is-active{transform:translateX(2px)}
+        .hero-suggest__text{display:flex;min-width:0;flex-direction:column;gap:3px}
+        .hero-suggest__text strong{font-size:.93rem;font-weight:700;letter-spacing:-.02em;color:var(--ink)}
+        .hero-suggest__text em{font-style:normal;font-size:.74rem;font-weight:600;color:var(--faint-2,#9A968E)}
 
         .hero__foot{display:flex;align-items:center;flex-wrap:wrap;gap:10px 14px;margin-top:15px}
         .hero__hint{font-size:.81rem;color:var(--faint-2,#9A968E);margin-right:auto}
@@ -634,6 +644,11 @@ export default function Dashboard() {
           .bar input{height:44px;font-size:.96rem}
           .bar .btn--y{height:42px;padding:0 13px;font-size:.78rem;gap:4px}
           .bar .btn--y .btn__a svg{width:12px;height:12px}
+          .hero-suggest{left:-2px;right:-2px;top:calc(100% + 8px);border-radius:16px}
+          .hero-suggest__head{padding:10px 12px 9px;font-size:.64rem}
+          .hero-suggest__list{padding:5px}
+          .hero-suggest__item{padding:10px}
+          .hero-suggest__text strong{font-size:.87rem}
           .hero__foot{gap:8px 10px;margin-top:12px}
           .hero__hint,.pop__l,.chip{font-size:.74rem}
           .chip{height:28px;padding:0 11px}

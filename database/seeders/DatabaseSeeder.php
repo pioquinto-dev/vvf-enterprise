@@ -19,6 +19,8 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
+        $this->call(IndexedKeywordSeeder::class);
+
         if (PricingPlan::query()->count() === 0) {
             PricingPlanTable::seedDefaults();
         }

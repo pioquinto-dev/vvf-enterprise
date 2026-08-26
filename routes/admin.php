@@ -5,6 +5,7 @@ use App\Http\Controllers\Admin\AdminDashboardController;
 use App\Http\Controllers\Admin\AdminImpersonationController;
 use App\Http\Controllers\Admin\AdminRecordController;
 use App\Http\Controllers\Admin\AdminSessionController;
+use App\Http\Controllers\Admin\Content\KeywordIndexController;
 use App\Http\Controllers\Admin\Content\PlanController;
 use App\Http\Controllers\Admin\Content\SearchController;
 use App\Http\Controllers\Admin\Content\ViralVideoController;
@@ -36,7 +37,7 @@ Route::prefix('x/admin')
              * reaching the mutator.
              */
             Route::prefix('records/{resource}/{id}')
-                ->where(['resource' => 'viral-videos|searches|plans|subscription|users'])
+                ->where(['resource' => 'viral-videos|searches|plans|subscription|users|keyword-index'])
                 ->group(function (): void {
                     Route::patch('/', [AdminRecordController::class, 'update'])->name('records.update');
                     Route::patch('/archive', [AdminRecordController::class, 'archive'])->name('records.archive');
@@ -52,6 +53,10 @@ Route::prefix('x/admin')
                 Route::get('/', [SearchController::class, 'index'])->name('searches.index');
             });
 
+            Route::prefix('keyword-index')->group(function (): void {
+                Route::get('/', [KeywordIndexController::class, 'index'])->name('keyword-index.index');
+            });
+
             Route::prefix('inquiries')->group(function (): void {
                 Route::get('/', [InquiryController::class, 'index'])->name('inquiries.index');
             });
@@ -60,7 +65,9 @@ Route::prefix('x/admin')
                 Route::get('/', [PlanController::class, 'index'])->name('plans.index');
             });
 
-            Route::post('/records/plans', [AdminRecordController::class, 'store'])->name('records.store');
+            Route::post('/records/{resource}', [AdminRecordController::class, 'store'])
+                ->where(['resource' => 'plans|keyword-index'])
+                ->name('records.store');
 
             Route::prefix('subscription')->group(function (): void {
                 Route::get('/', [SubscriptionController::class, 'index'])->name('subscription.index');

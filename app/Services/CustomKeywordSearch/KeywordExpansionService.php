@@ -2,6 +2,7 @@
 
 namespace App\Services\CustomKeywordSearch;
 
+use App\Services\IndexedKeywordService;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -13,12 +14,15 @@ use Throwable;
  */
 class KeywordExpansionService
 {
-    public function __construct(private readonly KeywordNormalizer $normalizer) {}
+    public function __construct(
+        private readonly KeywordNormalizer $normalizer,
+        private readonly IndexedKeywordService $indexedKeywords,
+    ) {}
 
     /**
      * @return array{phrase: string, keywords: array<int, string>, source: string}
      */
-    public function expand(string $phrase, bool $fresh = false, bool $allowAi = true): array
+    public function expand(string $phrase, bool $fresh = false, bool $allowAi = true, string $type = 'brand'): array
     {
         $phrase = $this->normalizer->keyword($phrase);
 
@@ -26,7 +30,7 @@ class KeywordExpansionService
             return ['phrase' => '', 'keywords' => [], 'source' => 'empty'];
         }
 
-        $cacheKey = 'cks:expand:'.sha1(mb_strtolower($phrase));
+        $cacheKey = 'cks:expand:'.sha1(mb_strtolower($type.'|'.$phrase));
         $ttl = (int) config('custom_keyword_search.expansion.cache_seconds', 86400);
         $cached = Cache::get($cacheKey);
 
@@ -35,10 +39,10 @@ class KeywordExpansionService
         }
 
         if (! $allowAi || ! $this->canUseAi()) {
-            return $this->templatePayload($phrase, $cacheKey, $ttl, $cached);
+            return $this->templatePayload($phrase, $cacheKey, $ttl, $cached, $type);
         }
 
-        $resolver = function () use ($phrase): array {
+        $resolver = function () use ($phrase, $type): array {
             $suggestions = $this->fromOpenAi($phrase);
             $source = 'ai';
 
@@ -49,7 +53,7 @@ class KeywordExpansionService
 
             return [
                 'phrase' => $phrase,
-                'keywords' => $this->normalizer->keywordSet($phrase, $suggestions),
+                'keywords' => $this->mergeWithIndexedSuggestions($phrase, $type, $suggestions),
                 'source' => $source,
             ];
         };
@@ -59,7 +63,7 @@ class KeywordExpansionService
         $hasLock = Cache::add($lockKey, true, $lockSeconds);
 
         if (! $hasLock) {
-            return $this->templatePayload($phrase, $cacheKey, $ttl, $cached);
+            return $this->templatePayload($phrase, $cacheKey, $ttl, $cached, $type);
         }
 
         try {
@@ -81,7 +85,7 @@ class KeywordExpansionService
      * @param  array{phrase: string, keywords: array<int, string>, source: string}|mixed  $cached
      * @return array{phrase: string, keywords: array<int, string>, source: string}
      */
-    private function templatePayload(string $phrase, string $cacheKey, int $ttl, mixed $cached = null): array
+    private function templatePayload(string $phrase, string $cacheKey, int $ttl, mixed $cached = null, string $type = 'brand'): array
     {
         if (is_array($cached)) {
             return $cached;
@@ -89,7 +93,7 @@ class KeywordExpansionService
 
         $payload = [
             'phrase' => $phrase,
-            'keywords' => $this->normalizer->keywordSet($phrase, $this->fromTemplates($phrase)),
+            'keywords' => $this->mergeWithIndexedSuggestions($phrase, $type, $this->fromTemplates($phrase)),
             'source' => 'fallback',
         ];
 
@@ -345,5 +349,16 @@ class KeywordExpansionService
         $matches = array_intersect($a, $b);
 
         return count($matches) / max(1, min(count($a), count($b)));
+    }
+
+    /**
+     * @param  array<int, string>  $suggestions
+     * @return array<int, string>
+     */
+    private function mergeWithIndexedSuggestions(string $phrase, string $type, array $suggestions): array
+    {
+        $indexed = $this->indexedKeywords->relatedTerms($type, $phrase, 6);
+
+        return $this->normalizer->keywordSet($phrase, array_merge($indexed, $suggestions));
     }
 }

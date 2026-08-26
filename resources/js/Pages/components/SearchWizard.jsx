@@ -299,7 +299,7 @@ export default function SearchWizard({
                     onAutoReturn={leaveRunningScreen}
                 />
             ) : (
-                <div className="card">
+                <div className="card card--search-wizard">
                     {step === 'subject' && (
                         <SearchLauncher
                             initialType={type}
@@ -315,6 +315,7 @@ export default function SearchWizard({
                             key={`${type}:${phrase}`}
                             phrase={phrase}
                             noun={nounOf(type)}
+                            searchType={type}
                             nextLabel="Continue"
                             submitting={submitting}
                             error={error}

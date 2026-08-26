@@ -3,6 +3,7 @@
 namespace App\Repositories\Admin\Listings;
 
 use App\Models\CustomKeywordSearch;
+use App\Models\IndexedKeyword;
 use App\Models\Inquiry;
 use App\Models\PricingPlan;
 use App\Models\Subscription;
@@ -33,6 +34,7 @@ class AdminListingRepository
             'subscription' => 'Subscription',
             'users' => 'Users',
             'admin-users' => 'Admin Users',
+            'keyword-index' => 'Keyword Index',
             default => 'Admin',
         };
     }
@@ -50,6 +52,7 @@ class AdminListingRepository
             'subscription' => ['search', 'status', 'plan'],
             'users' => ['search', 'status', 'plan'],
             'admin-users' => ['search', 'role', 'status'],
+            'keyword-index' => ['search', 'type', 'status'],
             default => ['search'],
         };
     }
@@ -84,6 +87,10 @@ class AdminListingRepository
             ],
             'admin-users' => [
                 ['name' => 'role', 'label' => 'Role', 'options' => ['root']],
+            ],
+            'keyword-index' => [
+                ['name' => 'type', 'label' => 'Type', 'options' => ['brand', 'product']],
+                ['name' => 'status', 'label' => 'Status', 'options' => ['live', 'archived', 'deleted']],
             ],
             default => [],
         };
@@ -140,6 +147,13 @@ class AdminListingRepository
                 ['key' => 'role', 'label' => 'Role'],
                 ['key' => 'status', 'label' => 'Status'],
             ],
+            'keyword-index' => [
+                ['key' => 'keyword', 'label' => 'Keyword'],
+                ['key' => 'type', 'label' => 'Type'],
+                ['key' => 'sector', 'label' => 'Sector'],
+                ['key' => 'source', 'label' => 'Source'],
+                ['key' => 'status', 'label' => 'Status'],
+            ],
             default => [],
         };
     }
@@ -158,6 +172,7 @@ class AdminListingRepository
             'plans' => PricingPlan::query()->withTrashed(),
             'subscription' => Subscription::query()->withTrashed()->with(['user', 'plan']),
             'users' => User::query()->withTrashed(),
+            'keyword-index' => IndexedKeyword::query()->withTrashed(),
             default => null,
         };
     }
@@ -191,6 +206,11 @@ class AdminListingRepository
             'users' => $query->where(
                 fn (Builder $inner) => $inner->where('name', 'like', $like)->orWhere('email', 'like', $like),
             ),
+            'keyword-index' => $query->where(
+                fn (Builder $inner) => $inner->where('label', 'like', $like)
+                    ->orWhere('sector', 'like', $like)
+                    ->orWhere('source', 'like', $like),
+            ),
             default => null,
         };
     }
@@ -214,6 +234,12 @@ class AdminListingRepository
 
         if ($name === 'type' && $resource === 'searches') {
             $query->where('search_type', $value);
+
+            return;
+        }
+
+        if ($name === 'type' && $resource === 'keyword-index') {
+            $query->where('keyword_type', $value);
 
             return;
         }
@@ -309,6 +335,11 @@ class AdminListingRepository
                 default => null,
             },
             'subscription' => $query->where('status', $value),
+            'keyword-index' => match ($value) {
+                'archived' => $query->whereNotNull('archived_at'),
+                'live' => $query->whereNull('archived_at'),
+                default => null,
+            },
             default => null,
         };
     }
@@ -377,6 +408,14 @@ class AdminListingRepository
                 'credits' => (string) ($record->monthly_credits_remaining ?? 0),
                 'status' => $record->trashed() ? 'deleted' : 'active',
                 'joined_at' => $record->created_at?->format('M j, Y') ?? '-',
+            ],
+            'keyword-index' => [
+                'id' => $record->id,
+                'keyword' => $record->label,
+                'type' => $record->keyword_type,
+                'sector' => $record->sector ?: '-',
+                'source' => str_replace('_', ' ', $record->source ?: 'manual'),
+                'status' => $record->trashed() ? 'deleted' : ($record->archived_at !== null ? 'archived' : 'live'),
             ],
             default => [],
         };
@@ -669,6 +708,7 @@ class AdminListingRepository
             'inquiries' => ['preview' => true, 'edit' => false, 'archive' => false, 'delete' => false],
             'subscription' => ['edit' => true, 'archive' => false, 'delete' => true],
             'users' => ['edit' => true, 'archive' => false, 'delete' => true, 'impersonate' => true],
+            'keyword-index' => ['edit' => true, 'archive' => true, 'delete' => true],
             default => ['preview' => false, 'edit' => false, 'archive' => false, 'delete' => false],
         };
     }
@@ -738,6 +778,14 @@ class AdminListingRepository
                 ['name' => 'email_verified', 'label' => 'Email verified', 'type' => 'toggle', 'help' => 'Stored as a timestamp; turning this off clears the verification date.'],
                 ['name' => 'free_search_used', 'label' => 'Free search used', 'type' => 'toggle', 'help' => 'Turning this off gives the account its one free search back.'],
                 ['name' => 'password', 'label' => 'Set new password', 'type' => 'password', 'help' => 'Leave blank to keep the current password.', 'rules' => ['nullable', 'string', 'min:8']],
+            ],
+            'keyword-index' => [
+                ['name' => 'label', 'label' => 'Keyword', 'type' => 'text', 'rules' => ['required', 'string', 'max:120']],
+                ['name' => 'keyword_type', 'label' => 'Type', 'type' => 'select', 'options' => ['brand', 'product']],
+                ['name' => 'sector', 'label' => 'Sector', 'type' => 'text'],
+                ['name' => 'source', 'label' => 'Source', 'type' => 'text'],
+                ['name' => 'usage_count', 'label' => 'Usage count', 'type' => 'number'],
+                ['name' => 'archived', 'label' => 'Archived', 'type' => 'toggle', 'help' => 'Keeps the keyword in admin history while hiding it from live suggestions.'],
             ],
             default => [],
         };
@@ -809,6 +857,14 @@ class AdminListingRepository
                 // Never round-trips the hash - the field is write-only.
                 'password' => '',
             ],
+            'keyword-index' => [
+                'label' => $record->label,
+                'keyword_type' => $record->keyword_type,
+                'sector' => $record->sector,
+                'source' => $record->source,
+                'usage_count' => (int) $record->usage_count,
+                'archived' => $record->archived_at !== null,
+            ],
             default => [],
         };
     }
@@ -846,6 +902,14 @@ class AdminListingRepository
                 'is_active' => true,
                 'archived' => false,
             ],
+            'keyword-index' => [
+                'label' => '',
+                'keyword_type' => 'brand',
+                'sector' => '',
+                'source' => 'manual',
+                'usage_count' => 0,
+                'archived' => false,
+            ],
             default => [],
         };
     }
@@ -860,6 +924,7 @@ class AdminListingRepository
             'subscription' => 'No subscriptions match the current filters yet.',
             'users' => 'No users match the current filters yet.',
             'admin-users' => 'No admin users match the current filters yet.',
+            'keyword-index' => 'No indexed keywords match the current filters yet.',
             default => 'No records match the current filters yet.',
         };
     }

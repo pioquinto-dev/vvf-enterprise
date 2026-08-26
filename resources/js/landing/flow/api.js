@@ -9,10 +9,11 @@ function csrfToken() {
 
 const API_V1 = '/api/v1';
 
-async function request(url, { method = 'GET', body } = {}) {
+async function request(url, { method = 'GET', body, signal } = {}) {
   const response = await fetch(url, {
     method,
     credentials: 'same-origin',
+    signal,
     headers: {
       Accept: 'application/json',
       'X-Requested-With': 'XMLHttpRequest',
@@ -34,7 +35,7 @@ async function request(url, { method = 'GET', body } = {}) {
   return payload;
 }
 
-export function expandKeywords(phrase, { signal, fresh = false } = {}) {
+export function expandKeywords(phrase, { signal, fresh = false, type = 'brand' } = {}) {
   return fetch(`${API_V1}/saved-searches/expand`, {
     method: 'POST',
     credentials: 'same-origin',
@@ -45,12 +46,20 @@ export function expandKeywords(phrase, { signal, fresh = false } = {}) {
       'X-Requested-With': 'XMLHttpRequest',
       'X-CSRF-TOKEN': csrfToken(),
     },
-    body: JSON.stringify({ phrase, ...(fresh ? { fresh: true } : {}) }),
+    body: JSON.stringify({ phrase, type, ...(fresh ? { fresh: true } : {}) }),
   }).then(async (response) => {
     const payload = await response.json().catch(() => null);
     if (!response.ok) throw new Error(payload?.message || 'Could not suggest keywords.');
     return payload;
   });
+}
+
+export function fetchKeywordSuggestions(type, q, { signal } = {}) {
+  const params = new URLSearchParams();
+  params.set('type', type);
+  if (q) params.set('q', q);
+
+  return request(`${API_V1}/keyword-index/suggestions?${params.toString()}`, { signal });
 }
 
 export function createSavedSearch({ type, phrase, name, keywords, frequency, sources }) {

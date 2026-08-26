@@ -6,6 +6,7 @@ import UpgradePromptModal from './UpgradePromptModal.jsx';
 import {
   createSavedSearch,
   expandKeywords,
+  fetchKeywordSuggestions,
   fetchNotifications,
   trackSearch,
 } from '../../landing/flow/api.js';
@@ -90,6 +91,9 @@ export default function BrandInlineFlow({
 
   const [state, setState] = useState('collapsed'); // collapsed|keywords|sources|running|done
   const [subject, setSubject] = useState('');
+  const [subjectSuggestions, setSubjectSuggestions] = useState([]);
+  const [activeSuggestion, setActiveSuggestion] = useState(-1);
+  const [showSuggestions, setShowSuggestions] = useState(false);
   const [keywords, setKeywords] = useState([]); // [{label, selected, source: 'ai'|'yours'}]
   const [frequency, setFrequency] = useState('weekly');
   const [tiktokHandle, setTiktokHandle] = useState('');
@@ -107,12 +111,36 @@ export default function BrandInlineFlow({
   runIdxRef.current = runIdx;
 
   const inputRef = useRef(null);
+  const subjectFieldRef = useRef(null);
   const kwCount = useMemo(() => keywords.filter((k) => k.selected).length, [keywords]);
   const searchLeft = billing.searchCreditsRemaining;
   const searchLimit = billing.searchCreditsLimit;
   const searchCreditsAvailable = !signedIn || searchLimit === -1 || Number(searchLeft ?? 0) > 0;
   const supportsSources = kind !== 'product';
   const shouldOfferTrial = (billing.trialEligible ?? true) && !(billing.hasUsedTrial ?? false);
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    fetchKeywordSuggestions(kind, subject.trim(), { signal: controller.signal })
+      .then((payload) => setSubjectSuggestions(Array.isArray(payload?.suggestions) ? payload.suggestions : []))
+      .catch(() => {});
+
+    return () => controller.abort();
+  }, [kind, subject]);
+
+  useEffect(() => {
+    const close = (event) => {
+      if (!subjectFieldRef.current?.contains(event.target)) {
+        setShowSuggestions(false);
+        setActiveSuggestion(-1);
+      }
+    };
+
+    document.addEventListener('mousedown', close);
+
+    return () => document.removeEventListener('mousedown', close);
+  }, []);
 
   /* -------- collapsed -> keywords: fetch suggested terms -------- */
   const startFlow = async () => {
@@ -129,7 +157,7 @@ export default function BrandInlineFlow({
     setExpanding(true);
 
     try {
-      const payload = await expandKeywords(q);
+      const payload = await expandKeywords(q, { type: kind });
       const seed = [
         ...(payload?.keywords ?? []).slice(0, 6).map((label) => ({ label, selected: true, source: 'ai' })),
       ];
@@ -178,7 +206,7 @@ export default function BrandInlineFlow({
     if (!subject) return;
     setExpanding(true);
     try {
-      const payload = await expandKeywords(subject, { fresh: true });
+      const payload = await expandKeywords(subject, { fresh: true, type: kind });
       const fresh = (payload?.keywords ?? []).slice(0, 6);
       // keep the user's own additions, replace AI batch
       setKeywords((current) => [
@@ -280,6 +308,14 @@ export default function BrandInlineFlow({
   const pFillWidth = state === 'running'
     ? `${8 + (runIdx / STAGE_LIST.length) * 88}%`
     : runDone ? '100%' : '8%';
+  const visibleSuggestions = subjectSuggestions.filter((suggestion) => suggestion.label?.trim());
+
+  const applySuggestion = (label) => {
+    setSubject(label);
+    setShowSuggestions(false);
+    setActiveSuggestion(-1);
+    window.requestAnimationFrame(() => inputRef.current?.focus());
+  };
 
   return (
     <>
@@ -287,14 +323,24 @@ export default function BrandInlineFlow({
         .bif{background:var(--white);border:1px solid var(--line);border-radius:20px;padding:26px 28px;margin-bottom:44px}
         .bif__ey{display:flex;align-items:center;gap:10px;margin-bottom:18px;font-size:.72rem;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--amber-ink)}
         .bif__ey::before{content:'';width:22px;height:2px;background:var(--yellow)}
-        .bif__bar{display:flex;align-items:center;gap:14px;padding:9px 9px 9px 22px;background:var(--white);border:1.5px solid var(--line-2,#DEDBD3);border-radius:100px;transition:border-color .18s,box-shadow .18s,background .18s}
-        .bif__entry{display:flex;align-items:center;gap:14px;flex:1 1 auto;min-width:0;white-space:nowrap}
+        .bif__bar{position:relative;display:flex;align-items:center;gap:14px;padding:9px 9px 9px 22px;background:var(--white);border:1.5px solid var(--line-2,#DEDBD3);border-radius:100px;transition:border-color .18s,box-shadow .18s,background .18s}
+        .bif__entry{position:relative;display:flex;align-items:center;gap:14px;flex:1 1 auto;min-width:0;white-space:nowrap}
+        .bif__field{position:relative;flex:1 1 auto;min-width:0}
         .bif__bar:hover{border-color:var(--faint-2,#9A968E)}
         .bif__bar:focus-within{border-color:var(--yellow);box-shadow:0 0 0 5px rgba(255,198,41,.22);background:#FFFDF6}
         .bif__bar svg.q{width:22px;height:22px;color:var(--faint-2,#9A968E);flex:none;transition:color .18s}
         .bif__bar:focus-within svg.q{color:var(--amber-ink)}
         .bif__bar input{flex:1 1 auto;min-width:0;width:100%;height:54px;line-height:54px;border:0;outline:0;background:transparent;font:inherit;font-size:1.14rem;font-weight:600;letter-spacing:-.02em;color:var(--ink);padding:0 4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
         .bif__bar input::placeholder{color:var(--faint-2,#9A968E);font-weight:500;letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+        .bif__suggest{position:absolute;top:calc(100% + 12px);left:-8px;right:-4px;z-index:20;overflow:hidden;border:1px solid #eadfca;border-radius:18px;background:rgba(255,255,255,.98);box-shadow:0 24px 48px -24px rgba(33,26,12,.3),0 8px 18px -12px rgba(33,26,12,.14);backdrop-filter:blur(10px)}
+        .bif__suggest-head{display:flex;align-items:center;justify-content:space-between;padding:11px 14px 10px;background:linear-gradient(180deg,#fff8e3 0%,#fffdf7 100%);border-bottom:1px solid #f0e5cf;font-size:.68rem;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:#9d6900}
+        .bif__suggest-list{max-height:300px;overflow-y:auto;padding:6px}
+        .bif__suggest-item{width:100%;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:11px 12px;border:0;border-radius:14px;background:transparent;text-align:left;cursor:pointer;transition:background .15s,transform .15s}
+        .bif__suggest-item:hover,.bif__suggest-item.is-active{background:#fff7df}
+        .bif__suggest-item.is-active{transform:translateX(2px)}
+        .bif__suggest-copy{display:flex;min-width:0;flex-direction:column;gap:3px}
+        .bif__suggest-copy strong{font-size:.92rem;font-weight:700;letter-spacing:-.02em;color:var(--ink)}
+        .bif__suggest-copy em{font-style:normal;font-size:.74rem;font-weight:600;color:var(--faint-2,#9A968E)}
         .bif__cta{flex:none;display:inline-flex;align-items:center;gap:9px;height:54px;padding:0 26px;border-radius:100px;font-size:.96rem;font-weight:800;letter-spacing:-.015em;color:#1A1400;background:var(--yellow);border:0;cursor:pointer;box-shadow:0 1px 0 rgba(0,0,0,.04),0 4px 12px -6px rgba(255,198,41,.5);transition:background .18s,box-shadow .18s,transform .18s}
         .bif__cta svg{width:16px;height:16px;flex:none}
         .bif__cta:hover:not(:disabled){background:var(--yellow-hot,#FFD84D);box-shadow:0 1px 0 rgba(0,0,0,.05),0 6px 18px -6px rgba(255,198,41,.75);transform:translateY(-1px)}
@@ -308,6 +354,10 @@ export default function BrandInlineFlow({
           .bif__entry{width:100%;gap:10px}
           .bif__bar input{width:100%;height:44px;font-size:1.02rem;padding:0 6px}
           .bif__cta{width:100%;justify-content:center;height:48px}
+          .bif__suggest{left:-2px;right:-2px;top:calc(100% + 8px);border-radius:16px}
+          .bif__suggest-head{padding:10px 12px 9px;font-size:.62rem}
+          .bif__suggest-item{padding:10px}
+          .bif__suggest-copy strong{font-size:.86rem}
         }
         .flowbar{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
         .flowbar__head{display:flex;align-items:center;gap:14px;width:100%}
@@ -418,6 +468,7 @@ export default function BrandInlineFlow({
             <p className="bif__ey">{eyebrow}</p>
             <form
               className="bif__bar"
+              ref={subjectFieldRef}
               onSubmit={(e) => { e.preventDefault(); startFlow(); }}
             >
               <div className="bif__entry">
@@ -425,15 +476,76 @@ export default function BrandInlineFlow({
                   <circle cx="11" cy="11" r="7" />
                   <path d="m20 20-3.5-3.5" />
                 </svg>
-                <input
-                  ref={inputRef}
-                  type="text"
-                  autoComplete="off"
-                  value={subject}
-                  onChange={(e) => setSubject(e.target.value)}
-                  placeholder={placeholder}
-                  aria-label={eyebrow}
-                />
+                <div className="bif__field">
+                  <input
+                    ref={inputRef}
+                    type="text"
+                    autoComplete="off"
+                    value={subject}
+                    onChange={(e) => {
+                      setSubject(e.target.value);
+                      setShowSuggestions(true);
+                    }}
+                    onFocus={() => setShowSuggestions(true)}
+                    onKeyDown={(event) => {
+                      if (!visibleSuggestions.length) {
+                        return;
+                      }
+
+                      if (event.key === 'ArrowDown') {
+                        event.preventDefault();
+                        setShowSuggestions(true);
+                        setActiveSuggestion((current) => (current + 1) % visibleSuggestions.length);
+                      }
+
+                      if (event.key === 'ArrowUp') {
+                        event.preventDefault();
+                        setShowSuggestions(true);
+                        setActiveSuggestion((current) => (current <= 0 ? visibleSuggestions.length - 1 : current - 1));
+                      }
+
+                      if (event.key === 'Enter' && activeSuggestion >= 0 && visibleSuggestions[activeSuggestion]) {
+                        event.preventDefault();
+                        applySuggestion(visibleSuggestions[activeSuggestion].label);
+                      }
+
+                      if (event.key === 'Escape') {
+                        setShowSuggestions(false);
+                        setActiveSuggestion(-1);
+                      }
+                    }}
+                    placeholder={placeholder}
+                    aria-label={eyebrow}
+                    aria-expanded={showSuggestions && visibleSuggestions.length > 0}
+                    aria-haspopup="listbox"
+                  />
+
+                  {showSuggestions && visibleSuggestions.length > 0 && (
+                    <div className="bif__suggest" role="listbox" aria-label={`${kind} suggestions`}>
+                      <div className="bif__suggest-head">
+                        <span>Suggested {kind === 'brand' ? 'brands' : 'products'}</span>
+                        <span>{visibleSuggestions.length}</span>
+                      </div>
+                      <div className="bif__suggest-list">
+                        {visibleSuggestions.map((suggestion, index) => (
+                          <button
+                            key={`${suggestion.type}-${suggestion.id}`}
+                            type="button"
+                            className={`bif__suggest-item${index === activeSuggestion ? ' is-active' : ''}`}
+                            onMouseEnter={() => setActiveSuggestion(index)}
+                            onMouseDown={(event) => event.preventDefault()}
+                            onClick={() => applySuggestion(suggestion.label)}
+                          >
+                            <span className="bif__suggest-copy">
+                              <strong>{suggestion.label}</strong>
+                              {suggestion.sector && <em>{suggestion.sector}</em>}
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
               <button type="submit" className="bif__cta" disabled={!subject.trim()}>
                 <Search className="h-4 w-4" /> Find outliers

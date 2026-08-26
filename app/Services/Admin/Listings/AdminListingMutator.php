@@ -3,6 +3,7 @@
 namespace App\Services\Admin\Listings;
 
 use App\Models\CustomKeywordSearch;
+use App\Models\IndexedKeyword;
 use App\Models\PricingPlan;
 use App\Models\Subscription;
 use App\Models\User;
@@ -33,6 +34,7 @@ class AdminListingMutator
             'plans' => PricingPlan::withTrashed()->find($id),
             'subscription' => Subscription::withTrashed()->with('user')->find($id),
             'users' => User::withTrashed()->find($id),
+            'keyword-index' => IndexedKeyword::withTrashed()->find($id),
             default => null,
         };
     }
@@ -47,6 +49,7 @@ class AdminListingMutator
             'plans' => $this->updatePlan($record, $input),
             'subscription' => $this->updateSubscription($record, $input),
             'users' => $this->updateUser($record, $input),
+            'keyword-index' => $this->updateIndexedKeyword($record, $input),
             default => throw ValidationException::withMessages(['resource' => 'This resource cannot be edited.']),
         };
     }
@@ -58,13 +61,14 @@ class AdminListingMutator
     {
         return match ($resource) {
             'plans' => $this->createPlan($input),
+            'keyword-index' => $this->createIndexedKeyword($input),
             default => throw ValidationException::withMessages(['resource' => 'This resource cannot be created.']),
         };
     }
 
     public function archive(Model $record, bool $archived): void
     {
-        if (! in_array($record::class, [ViralVideo::class, PricingPlan::class], true)) {
+        if (! in_array($record::class, [ViralVideo::class, PricingPlan::class, IndexedKeyword::class], true)) {
             throw ValidationException::withMessages(['archive' => 'This resource cannot be archived.']);
         }
 
@@ -282,5 +286,51 @@ class AdminListingMutator
         }
 
         $user->save();
+    }
+
+    /**
+     * @param  array<string, mixed>  $input
+     */
+    private function updateIndexedKeyword(IndexedKeyword $keyword, array $input): void
+    {
+        foreach (['label', 'keyword_type', 'sector', 'source'] as $field) {
+            if (array_key_exists($field, $input) && $input[$field] !== null) {
+                $keyword->{$field} = $input[$field] === '' ? null : (string) $input[$field];
+            }
+        }
+
+        if (array_key_exists('usage_count', $input) && $input['usage_count'] !== null) {
+            $keyword->usage_count = max(0, (int) $input['usage_count']);
+        }
+
+        if (array_key_exists('archived', $input)) {
+            $keyword->archived_at = $input['archived'] ? ($keyword->archived_at ?? now()) : null;
+        }
+
+        if ($keyword->label !== null) {
+            $keyword->normalized_label = app(\App\Services\CustomKeywordSearch\KeywordNormalizer::class)->keyword((string) $keyword->label);
+        }
+
+        $keyword->save();
+    }
+
+    /**
+     * @param  array<string, mixed>  $input
+     */
+    private function createIndexedKeyword(array $input): IndexedKeyword
+    {
+        $label = trim((string) ($input['label'] ?? ''));
+        $normalizer = app(\App\Services\CustomKeywordSearch\KeywordNormalizer::class);
+
+        return IndexedKeyword::query()->create([
+            'label' => $label,
+            'normalized_label' => $normalizer->keyword($label),
+            'keyword_type' => (string) ($input['keyword_type'] ?? IndexedKeyword::TYPE_BRAND),
+            'sector' => blank($input['sector'] ?? null) ? null : (string) $input['sector'],
+            'source' => blank($input['source'] ?? null) ? 'manual' : (string) $input['source'],
+            'usage_count' => max(0, (int) ($input['usage_count'] ?? 0)),
+            'archived_at' => ($input['archived'] ?? false) ? now() : null,
+            'last_seen_at' => now(),
+        ]);
     }
 }

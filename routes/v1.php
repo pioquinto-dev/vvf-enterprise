@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\KeywordIndexSuggestionController;
 use App\Http\Controllers\SavedSearchController;
 use App\Http\Controllers\VideoAnalysisController;
 use App\Http\Controllers\VideoBookmarkController;
@@ -19,6 +20,8 @@ Route::prefix('saved-searches')->group(function (): void {
     Route::post('/{id}/retry', [SavedSearchController::class, 'retryInitial'])->whereNumber('id')->name('api.v1.saved-searches.retry');
     Route::delete('/{id}', [SavedSearchController::class, 'destroy'])->whereNumber('id')->middleware('paid')->name('api.v1.saved-searches.destroy');
 });
+
+Route::get('/keyword-index/suggestions', KeywordIndexSuggestionController::class)->name('api.v1.keyword-index.suggestions');
 
 Route::prefix('videos')->group(function (): void {
     Route::post('/{id}/bookmark', [VideoBookmarkController::class, 'store'])->name('api.v1.videos.bookmark');
