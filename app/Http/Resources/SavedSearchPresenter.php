@@ -4,8 +4,10 @@ namespace App\Http\Resources;
 
 use App\Models\CustomKeywordSearch;
 use App\Models\CustomKeywordSearchRun;
+use App\Models\CustomKeywordSearchVideo;
 use App\Models\User;
 use App\Models\VideoAnalysis;
+use App\Models\ViralVideo;
 use App\Services\CustomKeywordSearch\SearchInsights;
 use App\Services\CustomKeywordSearch\TrendBuilder;
 
@@ -57,10 +59,40 @@ class SavedSearchPresenter
      */
     public static function card(CustomKeywordSearch $search): array
     {
+        $latestRun = $search->relationLoaded('latestRun') ? $search->latestRun : $search->latestRun()->first();
+        $resultCount = $search->videos_count ?? $search->videos()->count();
+
         return self::summary($search) + [
+            'videos_scanned' => (int) data_get($latestRun?->raw_summary, 'received', $resultCount),
+            'latest_outlier_count' => self::latestOutlierCount($search, $latestRun),
             'top_score' => $search->videos_max_viral_score !== null ? (float) $search->videos_max_viral_score : null,
+            'average_video_views' => self::averageVideoViews($search),
             'outlier_count' => (int) ($search->outlier_count ?? 0),
         ];
+    }
+
+    private static function latestOutlierCount(CustomKeywordSearch $search, ?CustomKeywordSearchRun $latestRun): int
+    {
+        if ($latestRun === null) {
+            return 0;
+        }
+
+        return CustomKeywordSearchVideo::query()
+            ->where('custom_keyword_search_id', $search->id)
+            ->where('custom_keyword_search_run_id', $latestRun->id)
+            ->where('is_new_breakout', true)
+            ->count();
+    }
+
+    private static function averageVideoViews(CustomKeywordSearch $search): int
+    {
+        return (int) round(
+            ViralVideo::query()
+                ->visible()
+                ->join('custom_keyword_search_videos', 'custom_keyword_search_videos.viral_video_id', '=', 'viral_videos.id')
+                ->where('custom_keyword_search_videos.custom_keyword_search_id', $search->id)
+                ->avg('viral_videos.views') ?? 0
+        );
     }
 
     /**

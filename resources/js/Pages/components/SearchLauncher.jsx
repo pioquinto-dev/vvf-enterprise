@@ -38,6 +38,7 @@ export default function SearchLauncher({
     initialQuery = '',
     onSubmit,
     suggestionsByType = {},
+    showProgress = true,
 }) {
     const [type, setType] = useState(initialType);
     const [value, setValue] = useState(initialQuery);
@@ -90,14 +91,16 @@ export default function SearchLauncher({
         <div className="hero">
             <div className="hero__head">
                 <h2>What do you want to scan?</h2>
-                <div className="prog">
-                    <span className="seg3">
-                        <span className="on" />
-                        <span />
-                        <span />
-                    </span>{' '}
-                    <b>Step 1</b>&nbsp;of 3<span className="prog__detail"> · Subject</span>
-                </div>
+                {showProgress && (
+                    <div className="prog">
+                        <span className="seg3">
+                            <span className="on" />
+                            <span />
+                            <span />
+                        </span>{' '}
+                        <b>Step 1</b>&nbsp;of 3<span className="prog__detail"> · Subject</span>
+                    </div>
+                )}
             </div>
 
             <div className="seg" ref={segRef} role="tablist" aria-label="What to research">

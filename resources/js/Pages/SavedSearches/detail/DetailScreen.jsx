@@ -1822,24 +1822,42 @@ const scopedCss = `
 .rs-ic2:disabled{opacity:.5;cursor:not-allowed}
 .rs-ic2 svg{width:15px;height:15px}
 
-.rs-sortsel{position:relative;display:inline-flex;align-items:center}
-/* text-indent (not padding-left) pushes the trigger's visible value past the
-   "Sort:" prefix span. Padding-left stays small so <option> rows in the popup
-   don't inherit a huge left gap — Chromium uses the select's padding-left as
-   the option row's minimum indent, so any big value there re-appears in the
-   popup no matter what padding we set on option. */
-.rs-sortsel select{appearance:none;height:38px;padding:0 34px 0 14px;text-indent:30px;border:1px solid var(--line-2,#DEDBD3);border-radius:100px;background:var(--white);font-size:.83rem;font-weight:600;color:var(--ink);cursor:pointer}
-.rs-sortsel option{text-indent:0}
-.rs-sortsel svg{position:absolute;right:12px;width:15px;height:15px;color:var(--faint-2,#9A968E);pointer-events:none}
-.rs-sortsel__pre{position:absolute;left:14px;font-size:.83rem;color:var(--faint-2,#9A968E);pointer-events:none;z-index:1}
-.rs-sh__actions{display:inline-flex;align-items:center;gap:10px;flex-wrap:wrap}
-.rs-runfilter{position:relative;display:inline-flex;align-items:center}
-/* Same trick as .rs-sortsel: use text-indent to push the trigger value past
-   the "Show:" prefix while keeping the popup options aligned normally. */
-.rs-runfilter select{appearance:none;height:38px;padding:0 34px 0 14px;text-indent:32px;border:1px solid var(--line-2,#DEDBD3);border-radius:100px;background:var(--white);font-size:.83rem;font-weight:600;color:var(--ink);cursor:pointer}
-.rs-runfilter option{text-indent:0}
-.rs-runfilter svg{position:absolute;right:12px;width:15px;height:15px;color:var(--faint-2,#9A968E);pointer-events:none}
-.rs-runfilter__pre{position:absolute;left:14px;font-size:.83rem;color:var(--faint-2,#9A968E);pointer-events:none;z-index:1}
+.rs-sh__actions{display:inline-flex;align-items:center;gap:12px;flex-wrap:wrap}
+.rs-sortsel,.rs-runfilter{position:relative;display:inline-flex;align-items:center;min-width:0}
+.rs-sortsel select,.rs-runfilter select{
+  appearance:none;
+  min-width:0;
+  height:42px;
+  padding:0 38px 0 70px;
+  border:1px solid var(--line-2,#DEDBD3);
+  border-radius:999px;
+  background:linear-gradient(180deg,#fff 0%,#fdfbf6 100%);
+  font-size:.84rem;
+  font-weight:700;
+  color:var(--ink);
+  cursor:pointer;
+  box-shadow:0 1px 2px rgba(20,15,0,.04);
+  transition:border-color .16s ease,box-shadow .16s ease,background .16s ease,color .16s ease;
+}
+.rs-runfilter select{padding-left:74px}
+.rs-sortsel select:hover,.rs-runfilter select:hover{border-color:#c7c1b6;background:#fff}
+.rs-sortsel select:focus,.rs-runfilter select:focus{
+  outline:none;
+  border-color:#e2bf5a;
+  box-shadow:0 0 0 4px rgba(255,198,41,.16);
+}
+.rs-sortsel svg,.rs-runfilter svg{position:absolute;right:14px;width:14px;height:14px;color:var(--faint-2,#9A968E);pointer-events:none}
+.rs-sortsel__pre,.rs-runfilter__pre{
+  position:absolute;
+  left:14px;
+  top:50%;
+  transform:translateY(-50%);
+  font-size:.78rem;
+  font-weight:700;
+  color:var(--faint-2,#9A968E);
+  pointer-events:none;
+  z-index:1;
+}
 .rs-runempty{padding:22px;border:1px dashed var(--line);border-radius:14px;background:var(--paper,rgba(250,249,246,.6));font-size:.85rem;color:var(--faint-2,#9A968E);text-align:center}
 .rs-runempty__reset{border:0;background:transparent;color:var(--ink);font-weight:700;text-decoration:underline;cursor:pointer;padding:0;margin-left:4px}
 .rs-ogrid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}

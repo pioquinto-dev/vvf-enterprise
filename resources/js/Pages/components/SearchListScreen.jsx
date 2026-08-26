@@ -56,6 +56,9 @@ function BrandCard({ search, onOpen, onEdit }) {
   const status = STATUS[search.status] ?? { label: 'Ready', cls: 'pill--off' };
   const initials = (search.name || search.phrase || '?').slice(0, 2).toUpperCase();
   const topScore = Number(search.top_score) > 0 ? `${Math.round(search.top_score)}x` : '—';
+  const videosScanned = search.videos_scanned != null ? compact(search.videos_scanned) : '0';
+  const latestOutliers = search.latest_outlier_count != null ? compact(search.latest_outlier_count) : '0';
+  const averageVideoViews = Number(search.average_video_views) > 0 ? compact(search.average_video_views) : '—';
 
   return (
     <div
@@ -84,19 +87,20 @@ function BrandCard({ search, onOpen, onEdit }) {
       </div>
       <div className="bcard__mid">
         <div>
-          <span className="bcard__v">{search.outlier_count ?? 0}</span>
-          <span className="bcard__l">outliers/wk</span>
+          <span className="bcard__v">{videosScanned}</span>
+          <span className="bcard__l">videos scanned</span>
+        </div>
+        <div>
+          <span className="bcard__v">{latestOutliers}</span>
+          <span className="bcard__l">new outliers</span>
         </div>
         <div>
           <span className="bcard__v">{topScore}</span>
-          <span className="bcard__l">top score</span>
+          <span className="bcard__l">top outlier video</span>
         </div>
         <div>
-          <span className="bcard__v">{search.result_count ?? 0}</span>
-          <span className="bcard__l">videos</span>
-        </div>
-        <div className="bcard__sp">
-          {(search.result_count ?? 0) === 0 && <span className="bcard__flat">no runs yet</span>}
+          <span className="bcard__v">{averageVideoViews}</span>
+          <span className="bcard__l">avg video views</span>
         </div>
       </div>
       <div className="bcard__foot">

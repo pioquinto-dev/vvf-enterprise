@@ -8,7 +8,6 @@ import KeywordsScreen from '../../landing/flow/screens/KeywordsScreen.jsx';
 import SourcesScreen from '../../landing/flow/screens/SourcesScreen.jsx';
 import RunningScreen from '../../landing/flow/screens/RunningScreen.jsx';
 import { createSavedSearch, trackSearch } from '../../landing/flow/api.js';
-import { Check } from '../../landing/components/Icons.jsx';
 
 /**
  * The whole in-app search flow on one page (Dashboard and /search share it).
@@ -31,35 +30,6 @@ function readRunParam() {
     if (typeof window === 'undefined') return null;
     const id = new URLSearchParams(window.location.search).get('run');
     return id && /^\d+$/.test(id) ? Number(id) : null;
-}
-
-/**
- * The card-header stepper. Sources is the optional last step for every search;
- * there is no "Results" step — the visitor is already signed in by the time
- * they run.
- */
-function Stepper({ kind, current }) {
-    const steps = [
-        { k: 'subject', l: 'Subject' },
-        { k: 'keywords', l: 'Keywords' },
-        { k: 'sources', l: 'Sources' },
-    ];
-    const idx = steps.findIndex((s) => s.k === current);
-
-    return (
-        <div className="step">
-            {steps.map((s, i) => {
-                const state = i < idx ? 'done' : i === idx ? 'now' : 'todo';
-                return (
-                    <span key={s.k} className="step__i">
-                        {i > 0 && <span className="step__r" />}
-                        <span className={`step__n ${state}`}>{state === 'done' ? <Check /> : i + 1}</span>
-                        <span className={`step__l ${state}`}>{s.l}</span>
-                    </span>
-                );
-            })}
-        </div>
-    );
 }
 
 function UsageConfirmModal({ title, body, subject, confirmLabel, busy = false, onConfirm, onCancel }) {
@@ -155,7 +125,6 @@ export default function SearchWizard({
 }) {
     const page = usePage();
     const { auth = {}, billing = {} } = page.props;
-    const isLandingSearchPage = String(page.url || '').startsWith('/search');
     const resumeId = readRunParam();
 
     const [step, setStep] = useState(resumeId ? 'running' : initialQuery ? 'keywords' : 'subject');
@@ -331,14 +300,13 @@ export default function SearchWizard({
                 />
             ) : (
                 <div className="card">
-                    <Stepper kind={kind} current={step} />
-
                     {step === 'subject' && (
                         <SearchLauncher
                             initialType={type}
                             initialQuery={phrase}
                             onSubmit={pickSubject}
                             suggestionsByType={suggestionsByType}
+                            showProgress={false}
                         />
                     )}
 
@@ -351,7 +319,7 @@ export default function SearchWizard({
                             submitting={submitting}
                             error={error}
                             onBack={() => {
-                                if (isLandingSearchPage || !signedIn) {
+                                if (!signedIn) {
                                     if (typeof window !== 'undefined') {
                                         window.location.assign('/');
                                         return;

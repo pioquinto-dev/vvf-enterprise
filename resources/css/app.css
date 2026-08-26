@@ -4783,6 +4783,7 @@
 }
 .bb .bcard {
     display: block;
+    min-width: 0;
     background: var(--white);
     border: 1px solid var(--line);
     border-radius: var(--r-xl);
@@ -4849,10 +4850,13 @@
 }
 .bb .bcard__mid {
     display: grid;
-    grid-template-columns: repeat(3, auto) 1fr;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
     align-items: end;
     gap: 12px;
     margin-top: 16px;
+}
+.bb .bcard__mid > div {
+    min-width: 0;
 }
 .bb .bcard__v {
     display: block;
@@ -4869,7 +4873,9 @@
     color: var(--faint);
     text-transform: uppercase;
     letter-spacing: 0.04em;
-    white-space: nowrap;
+    line-height: 1.35;
+    white-space: normal;
+    overflow-wrap: anywhere;
 }
 .bb .bcard__sp {
     display: flex;
