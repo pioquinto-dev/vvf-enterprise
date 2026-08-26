@@ -63,8 +63,8 @@ export default function TrialScreen({ onBack, backLabel = 'Back to results' }) {
               <p className="font-display text-[16px] font-bold">{t.name}</p>
               <p className="mt-1 text-[12.5px] faint">{t.tagline}</p>
 
-              <p className="mt-3 font-display text-[32px] leading-none font-bold tracking-[-.03em]">$0</p>
-              <p className="mt-2 min-h-[32px] text-[11.5px] leading-[1.35] faint">then ${t.price} after 8 days</p>
+              <p className="mt-3 font-display text-[32px] leading-none font-bold tracking-[-.03em]">${t.price}</p>
+              <p className="mt-2 min-h-[32px] text-[11.5px] leading-[1.35] faint">$0 for 8 days</p>
 
               <p className="mt-4 text-[12px] faint">
                 {t.searchCreditsLimit} searches · {t.searchBookmarkLimit === -1 ? 'Unlimited' : t.searchBookmarkLimit} search bookmarks
@@ -85,7 +85,7 @@ export default function TrialScreen({ onBack, backLabel = 'Back to results' }) {
                 onClick={() => startCheckout(t.slug)}
                 className={`mt-6 h-11 w-full text-sm ${t.popular ? 'btn-accent' : 'btn-ghost'}`}
               >
-                Start {t.name} trial <Arrow />
+                Try free for 8 days <Arrow />
               </button>
             </div>
           ))}

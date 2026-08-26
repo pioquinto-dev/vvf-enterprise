@@ -44,13 +44,11 @@ class HandleInertiaRequests extends Middleware
                 ->orderByDesc('current_period_ends_at')
                 ->first()
             : null;
+        $isTrialing = in_array((string) ($subscription?->status ?? ''), ['trialing', 'trial'], true);
+        $hasUsedTrial = $billing->hasUsedTrial($request->user());
         $trialEligible = $request->user() === null
             ? true
-            : ! ($billing->hasPaidPlan($request->user()) && $subscription?->trial_started_at === null);
-        $isTrialing = in_array((string) ($subscription?->status ?? ''), ['trialing', 'trial'], true);
-        $hasUsedTrial = $subscription?->trial_started_at !== null
-            || $subscription?->trial_completed_at !== null
-            || $subscription?->trial_ends_at !== null;
+            : ! $billing->hasPaidPlan($request->user()) && ! $hasUsedTrial;
 
         return [
             ...parent::share($request),
@@ -80,6 +78,7 @@ class HandleInertiaRequests extends Middleware
                 'trackedSearches' => fn () => $request->session()->get('tracked_searches', []),
                 'processingSearches' => fn () => $request->session()->get('processing_searches', []),
                 'searchAccessPrompt' => fn () => $request->session()->get('search_access_prompt'),
+                'trialAccessPrompt' => fn () => $request->session()->get('trial_access_prompt'),
             ],
             'services' => [
                 'apifyConfigured' => filled(config('services.apify.token')),

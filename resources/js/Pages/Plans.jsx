@@ -1,15 +1,18 @@
+import { useEffect, useState } from 'react';
 import { Head, usePage } from '@inertiajs/react';
 
 import SettingsShell from './Settings/SettingsShell.jsx';
 import { billing } from '../landing/flow/api.js';
 import { Check, Arrow } from '../landing/components/Icons.jsx';
 import { PRICING_PLAN_ORDER } from '../landing/data/dummy.js';
+import UpgradePromptModal from './components/UpgradePromptModal.jsx';
 
 export default function Plans() {
-  const { billing: billingState = {}, pricingPlans = [] } = usePage().props;
+  const { billing: billingState = {}, pricingPlans = [], flash = {} } = usePage().props;
   const current = String(billingState.currentPlan ?? 'free').toLowerCase();
   const isTrialing = Boolean(billingState.isTrialing);
   const hasUsedTrial = Boolean(billingState.hasUsedTrial);
+  const [trialPromptOpen, setTrialPromptOpen] = useState(Boolean(flash.trialAccessPrompt));
   const orderedPlans = [...pricingPlans].sort((a, b) => {
     const aKey = a.slug ?? a.name?.toLowerCase();
     const bKey = b.slug ?? b.name?.toLowerCase();
@@ -20,13 +23,19 @@ export default function Plans() {
   });
 
   const upgrade = (slug) => billing.checkout(slug);
+  const promptPlanSlug = flash.trialAccessPrompt?.plan_slug ?? 'basic';
+
+  useEffect(() => {
+    setTrialPromptOpen(Boolean(flash.trialAccessPrompt));
+  }, [flash.trialAccessPrompt]);
+
   const priceLine = (plan) => {
     if ((plan.price ?? 0) <= 0) {
       return { amount: '$0', suffix: '/mo', subline: '' };
     }
 
     if (!hasUsedTrial || isTrialing) {
-      return { amount: '$0', suffix: '/mo', subline: `then $${plan.price} after 8 days` };
+      return { amount: `$${plan.price}`, suffix: '/mo', subline: '$0 for 8 days' };
     }
 
     return { amount: `$${plan.price}`, suffix: '/mo', subline: '' };
@@ -37,6 +46,19 @@ export default function Plans() {
       <Head title="Plans · Brand Beacon" />
 
       <SettingsShell section="plans">
+        <UpgradePromptModal
+          open={trialPromptOpen}
+          eyebrow="Trial already used"
+          title="Your 8-day trial has already been used"
+          body="This account already finished its free trial, so the next step is a paid upgrade."
+          detail="You can still unlock scheduled tracking, bookmarks, and video analysis right away."
+          primaryLabel="Upgrade to Growth"
+          onPrimary={() => upgrade(promptPlanSlug)}
+          secondaryLabel="Maybe later"
+          onSecondary={() => setTrialPromptOpen(false)}
+          onClose={() => setTrialPromptOpen(false)}
+        />
+
         <div style={{ marginBottom: 18 }}>
           <h2>Plans</h2>
           <p className="muted" style={{ fontSize: '.86rem', marginTop: 6 }}>

@@ -7,6 +7,7 @@ use App\Services\Billing\BillingService;
 use App\Support\TrialCheckoutIntent;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 
 class BillingController extends Controller
 {
@@ -30,7 +31,18 @@ class BillingController extends Controller
             ->whereIn('slug', ['basic', 'premium'])
             ->firstOrFail();
 
-        return redirect()->away($this->billing->checkout($user, $plan, $withTrial));
+        try {
+            return redirect()->away($this->billing->checkout($user, $plan, $withTrial));
+        } catch (ValidationException $exception) {
+            if ($withTrial && $exception->errors()['trial'] ?? false) {
+                return redirect()->route('plans')->with('trial_access_prompt', [
+                    'reason' => 'already_used',
+                    'plan_slug' => $slug,
+                ]);
+            }
+
+            throw $exception;
+        }
     }
 
     public function success(Request $request): RedirectResponse

@@ -82,16 +82,6 @@ export const STEPS = [
       stats: ['4.2M', '18x', '6 days'],
     },
   },
-  {
-    n: '04',
-    title: 'Track it weekly',
-    body: 'Save the search and Brand Beacon re-runs it on a schedule, emailing you only what is new.',
-    mockup: {
-      type: 'alerts',
-      label: 'Weekly alert',
-      lines: ['3 new outliers found', 'Delivered every Monday'],
-    },
-  },
 ];
 
 export const STATS = [

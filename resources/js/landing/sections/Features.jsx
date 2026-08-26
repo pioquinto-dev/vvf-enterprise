@@ -40,13 +40,6 @@ const ALERTS = [
   { title: 'A critical review hit 500K views, worth a look', meta: 'yesterday', channel: 'Slack' },
 ];
 
-const PREVIEW_BARS = [
-  { label: '20×+', fill: 21, n: 11 },
-  { label: '10–20×', fill: 40, n: 21 },
-  { label: '5–10×', fill: 65, n: 34 },
-  { label: '3–5×', fill: 100, n: 52 },
-];
-
 export default function Features() {
   const [active, setActive] = useState(FEATURES[0].id);
   const current = FEATURES.find((f) => f.id === active) ?? FEATURES[0];
@@ -104,17 +97,6 @@ export default function Features() {
 
             <div className={`pane${active === 'outliers' ? '' : ' hide'}`}>
               <VideoGrid videos={OUTLIER_VIDEOS} />
-              <div className="bars">
-                {PREVIEW_BARS.map((bar) => (
-                  <div className="bar" key={bar.label}>
-                    <span className="bar__l">{bar.label}</span>
-                    <span className="bar__t">
-                      <span className="bar__f" style={{ width: `${bar.fill}%` }} />
-                    </span>
-                    <span className="bar__n">{bar.n}</span>
-                  </div>
-                ))}
-              </div>
             </div>
 
             <div className={`pane${active === 'tracking' ? '' : ' hide'}`}>

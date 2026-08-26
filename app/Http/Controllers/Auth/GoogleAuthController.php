@@ -9,6 +9,7 @@ use App\Services\Auth\PostAuthenticationRedirector;
 use App\Services\Brevo\BrevoLifecycleEmailService;
 use App\Services\Billing\BillingService;
 use App\Services\CustomKeywordSearch\SavedSearchManager;
+use App\Support\TrialCheckoutIntent;
 use Carbon\CarbonImmutable;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\RedirectResponse;
@@ -93,6 +94,10 @@ class GoogleAuthController extends Controller
         $this->activity->record($user, 'engagement', 'logged_in', 'Logged in.');
         $request->session()->regenerate();
 
+        if ($checkoutRedirect = $this->checkoutRedirect($request, $user)) {
+            return $checkoutRedirect;
+        }
+
         if ($pending = FreeSearchFunnelController::pull($request)) {
             try {
                 $this->billing->ensureCanCreateSearch($user);
@@ -132,5 +137,35 @@ class GoogleAuthController extends Controller
     private function redirectUrl(Request $request): string
     {
         return $request->getSchemeAndHttpHost().'/auth/google/callback';
+    }
+
+    private function checkoutRedirect(Request $request, User $user): ?RedirectResponse
+    {
+        $intent = TrialCheckoutIntent::pull($request);
+
+        if (! is_array($intent) || ! in_array($intent['plan_slug'] ?? null, ['basic', 'premium'], true)) {
+            return null;
+        }
+
+        $plan = \App\Models\PricingPlan::query()->where('slug', $intent['plan_slug'])->first();
+
+        if ($plan === null) {
+            return null;
+        }
+
+        $withTrial = (bool) ($intent['with_trial'] ?? false);
+
+        try {
+            return redirect()->away($this->billing->checkout($user, $plan, $withTrial));
+        } catch (\Illuminate\Validation\ValidationException $exception) {
+            if ($withTrial && $exception->errors()['trial'] ?? false) {
+                return redirect()->route('plans')->with('trial_access_prompt', [
+                    'reason' => 'already_used',
+                    'plan_slug' => $plan->slug,
+                ]);
+            }
+
+            throw $exception;
+        }
     }
 }

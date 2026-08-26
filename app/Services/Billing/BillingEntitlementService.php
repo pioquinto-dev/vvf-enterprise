@@ -235,6 +235,19 @@ class BillingEntitlementService
             && ($user->plan_renews_at === null || $user->plan_renews_at->isFuture());
     }
 
+    public function hasUsedTrial(?User $user): bool
+    {
+        if ($user === null) {
+            return false;
+        }
+
+        $subscription = $this->activeSubscriptionFor($user);
+
+        return $subscription?->trial_started_at !== null
+            || $subscription?->trial_completed_at !== null
+            || $subscription?->trial_ends_at !== null;
+    }
+
     public function bookmarkLimit(?User $user): int
     {
         return $this->searchBookmarkLimit($user);

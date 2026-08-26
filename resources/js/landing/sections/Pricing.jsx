@@ -37,9 +37,10 @@ export default function Pricing({ plans = [], onStart, onTrial }) {
                 <div className="plan__n">{plan.name}</div>
                 <p className="plan__t">{plan.tagline}</p>
                 <div className="plan__p">
-                  $0{free && <span>/mo</span>}
+                  {free ? '$0' : `$${plan.price}`}
+                  <span>/mo</span>
                 </div>
-                <p className="plan__s">{free ? '' : `then $${plan.price} after 8 days`}</p>
+                <p className="plan__s">{free ? '' : '$0 for 8 days'}</p>
 
                 <ul>
                   {plan.features.map((feature) => (
@@ -60,7 +61,7 @@ export default function Pricing({ plans = [], onStart, onTrial }) {
                     className={`btn btn--wide ${plan.popular ? 'btn--primary' : 'btn--ghost'}`}
                     onClick={() => onTrial(plan)}
                   >
-                    {plan.cta}
+                    Try free for 8 days
                   </button>
                 )}
               </div>

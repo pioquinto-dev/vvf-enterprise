@@ -63,8 +63,8 @@ class AuthenticatedSessionController extends Controller
             $this->activity->record($user, 'engagement', 'logged_in', 'Logged in.');
         }
 
-        if ($checkout = $this->checkoutRedirect($request)) {
-            return Inertia::location($checkout);
+        if ($checkoutRedirect = $this->checkoutRedirect($request)) {
+            return $checkoutRedirect;
         }
 
         if ($pendingRedirect = $this->pendingFreeSearchRedirect($request)) {
@@ -104,7 +104,7 @@ class AuthenticatedSessionController extends Controller
         }
     }
 
-    private function checkoutRedirect(Request $request): ?string
+    private function checkoutRedirect(Request $request): RedirectResponse|SymfonyResponse|null
     {
         $intent = TrialCheckoutIntent::pull($request);
 
@@ -124,7 +124,20 @@ class AuthenticatedSessionController extends Controller
             return null;
         }
 
-        return $this->billing->checkout($user, $plan, (bool) ($intent['with_trial'] ?? false));
+        $withTrial = (bool) ($intent['with_trial'] ?? false);
+
+        try {
+            return Inertia::location($this->billing->checkout($user, $plan, $withTrial));
+        } catch (ValidationException $exception) {
+            if ($withTrial && $exception->errors()['trial'] ?? false) {
+                return redirect()->route('plans')->with('trial_access_prompt', [
+                    'reason' => 'already_used',
+                    'plan_slug' => $plan->slug,
+                ]);
+            }
+
+            throw $exception;
+        }
     }
 
     private function pendingFreeSearchRedirect(Request $request): ?RedirectResponse

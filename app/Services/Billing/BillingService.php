@@ -34,6 +34,12 @@ class BillingService
             ]);
         }
 
+        if ($withTrial && ! $this->canStartTrial($user)) {
+            throw ValidationException::withMessages([
+                'trial' => 'This account has already used its trial. Upgrade to continue with a paid plan.',
+            ]);
+        }
+
         $customerId = $this->ensureCustomer($user);
 
         $session = $this->stripe->createCheckoutSession([
@@ -202,6 +208,18 @@ class BillingService
     public function hasPaidPlan(?User $user): bool
     {
         return $this->entitlements->hasPaidPlan($user);
+    }
+
+    public function hasUsedTrial(?User $user): bool
+    {
+        return $this->entitlements->hasUsedTrial($user);
+    }
+
+    public function canStartTrial(?User $user): bool
+    {
+        return $user !== null
+            && ! $this->hasPaidPlan($user)
+            && ! $this->hasUsedTrial($user);
     }
 
     public function bookmarkLimit(?User $user): int
