@@ -141,13 +141,14 @@ class IndexedKeywordService
      */
     private function trendingSuggestions(string $type, int $limit, ?int $userId = null): array
     {
-        $personalized = $this->personalizedSuggestions($type, $limit, $userId);
+        $excludedLabels = $this->searchedLabels($type, $userId);
+        $personalized = $this->personalizedSuggestions($type, $limit, $userId, $excludedLabels);
 
         if ($personalized->count() >= $limit) {
             return $personalized->take($limit)->values()->all();
         }
 
-        $trending = $this->trendingSearches($type, $limit, $personalized);
+        $trending = $this->trendingSearches($type, $limit, $personalized, $excludedLabels);
 
         if ($trending->count() >= $limit) {
             return $trending->values()->all();
@@ -157,6 +158,8 @@ class IndexedKeywordService
             ->pluck('label')
             ->filter()
             ->map(fn (string $label): string => $this->normalizer->keyword($label))
+            ->merge($excludedLabels)
+            ->unique()
             ->all();
 
         $fallback = IndexedKeyword::query()
@@ -180,7 +183,7 @@ class IndexedKeywordService
     /**
      * @return Collection<int, array<string, mixed>>
      */
-    private function personalizedSuggestions(string $type, int $limit, ?int $userId = null): Collection
+    private function personalizedSuggestions(string $type, int $limit, ?int $userId = null, array $excludedLabels = []): Collection
     {
         if ($userId === null) {
             return collect();
@@ -211,22 +214,10 @@ class IndexedKeywordService
         $suggestions = collect();
 
         foreach ($searches as $search) {
-            $phrase = $this->normalizer->keyword((string) $search->phrase);
-
-            if ($phrase !== '') {
-                $suggestions->push([
-                    'id' => 'personal-search-'.$search->id,
-                    'label' => $search->phrase,
-                    'type' => $type,
-                    'sector' => $keywordsByLabel->get($phrase)?->sector,
-                    'usageCount' => 1,
-                ]);
-            }
-
             foreach ($this->relatedTerms($type, (string) $search->phrase, 2) as $index => $related) {
                 $normalized = $this->normalizer->keyword($related);
 
-                if ($normalized === '') {
+                if ($normalized === '' || in_array($normalized, $excludedLabels, true)) {
                     continue;
                 }
 
@@ -249,7 +240,7 @@ class IndexedKeywordService
     /**
      * @return Collection<int, array<string, mixed>>
      */
-    private function trendingSearches(string $type, int $limit, ?Collection $seeded = null): Collection
+    private function trendingSearches(string $type, int $limit, ?Collection $seeded = null, array $excludedLabels = []): Collection
     {
         $searchTypes = $type === IndexedKeyword::TYPE_BRAND
             ? [CustomKeywordSearch::TYPE_BRAND, CustomKeywordSearch::TYPE_COMPETITOR]
@@ -265,6 +256,8 @@ class IndexedKeywordService
             ->pluck('label')
             ->filter()
             ->map(fn (string $label): string => $this->normalizer->keyword($label))
+            ->merge($excludedLabels)
+            ->unique()
             ->all();
 
         $trending = CustomKeywordSearch::query()
@@ -296,6 +289,30 @@ class IndexedKeywordService
             ->concat($trending)
             ->take($limit)
             ->values();
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function searchedLabels(string $type, ?int $userId = null): array
+    {
+        if ($userId === null) {
+            return [];
+        }
+
+        $searchTypes = $type === IndexedKeyword::TYPE_BRAND
+            ? [CustomKeywordSearch::TYPE_BRAND, CustomKeywordSearch::TYPE_COMPETITOR]
+            : [CustomKeywordSearch::TYPE_PRODUCT];
+
+        return CustomKeywordSearch::query()
+            ->where('user_id', $userId)
+            ->whereIn('search_type', $searchTypes)
+            ->pluck('phrase')
+            ->map(fn (?string $phrase): string => $this->normalizer->keyword((string) $phrase))
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
     }
 
     /**

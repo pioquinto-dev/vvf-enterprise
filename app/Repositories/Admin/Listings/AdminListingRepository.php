@@ -179,37 +179,38 @@ class AdminListingRepository
 
     public function applySearch(string $resource, Builder $query, string $term): void
     {
-        $like = '%'.$term.'%';
+        $normalized = mb_strtolower($term);
+        $like = '%'.$normalized.'%';
 
         match ($resource) {
             'viral-videos' => $query->where(
-                fn (Builder $inner) => $inner->where('title', 'like', $like)
-                    ->orWhere('username', 'like', $like)
-                    ->orWhere('name', 'like', $like),
+                fn (Builder $inner) => $inner->whereRaw('LOWER(title) like ?', [$like])
+                    ->orWhereRaw('LOWER(username) like ?', [$like])
+                    ->orWhereRaw('LOWER(name) like ?', [$like]),
             ),
             'searches' => $query->where(
-                fn (Builder $inner) => $inner->where('name', 'like', $like)->orWhere('phrase', 'like', $like),
+                fn (Builder $inner) => $inner->whereRaw('LOWER(name) like ?', [$like])->orWhereRaw('LOWER(phrase) like ?', [$like]),
             ),
             'inquiries' => $query->where(
-                fn (Builder $inner) => $inner->where('name', 'like', $like)
-                    ->orWhere('email', 'like', $like)
-                    ->orWhere('subject', 'like', $like)
-                    ->orWhere('message', 'like', $like),
+                fn (Builder $inner) => $inner->whereRaw('LOWER(name) like ?', [$like])
+                    ->orWhereRaw('LOWER(email) like ?', [$like])
+                    ->orWhereRaw('LOWER(subject) like ?', [$like])
+                    ->orWhereRaw('LOWER(message) like ?', [$like]),
             ),
             'plans' => $query->where(
-                fn (Builder $inner) => $inner->where('name', 'like', $like)->orWhere('slug', 'like', $like),
+                fn (Builder $inner) => $inner->whereRaw('LOWER(name) like ?', [$like])->orWhereRaw('LOWER(slug) like ?', [$like]),
             ),
             'subscription' => $query->whereHas(
                 'user',
-                fn (Builder $inner) => $inner->where('name', 'like', $like)->orWhere('email', 'like', $like),
+                fn (Builder $inner) => $inner->whereRaw('LOWER(name) like ?', [$like])->orWhereRaw('LOWER(email) like ?', [$like]),
             ),
             'users' => $query->where(
-                fn (Builder $inner) => $inner->where('name', 'like', $like)->orWhere('email', 'like', $like),
+                fn (Builder $inner) => $inner->whereRaw('LOWER(name) like ?', [$like])->orWhereRaw('LOWER(email) like ?', [$like]),
             ),
             'keyword-index' => $query->where(
-                fn (Builder $inner) => $inner->where('label', 'like', $like)
-                    ->orWhere('sector', 'like', $like)
-                    ->orWhere('source', 'like', $like),
+                fn (Builder $inner) => $inner->whereRaw('LOWER(label) like ?', [$like])
+                    ->orWhereRaw('LOWER(sector) like ?', [$like])
+                    ->orWhereRaw('LOWER(source) like ?', [$like]),
             ),
             default => null,
         };

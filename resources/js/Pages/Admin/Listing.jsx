@@ -67,7 +67,7 @@ export default function Listing({
         >
             <AdminInsightsStrip insights={insights} />
 
-            <section className="overflow-hidden rounded-xl border border-[var(--line)] bg-white shadow-[0_1px_2px_rgba(20,15,0,.04),0_16px_36px_-28px_rgba(20,15,0,.18)]">
+            <section className="overflow-visible rounded-xl border border-[var(--line)] bg-white shadow-[0_1px_2px_rgba(20,15,0,.04),0_16px_36px_-28px_rgba(20,15,0,.18)]">
                 {rows.length > 0 ? (
                     <AdminDataTable
                         columns={columns}
