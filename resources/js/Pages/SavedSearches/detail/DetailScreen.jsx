@@ -55,6 +55,76 @@ function formatDate(iso) {
   return Number.isNaN(d.getTime()) ? null : d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 }
 
+/*
+ * Plot box for the Analytics chart, in viewBox units.
+ *
+ * `topPad` is deliberately generous. Every week that matched videos is
+ * annotated with an avatar pin that hangs *above* its data point, so the line
+ * has to sit lower or the pins clip out of the top of the card. The side pads
+ * are symmetric for the same reason horizontally.
+ */
+const CHART_BOX = { width: 100, height: 40, leftPad: 8, rightPad: 8, topPad: 13, bottomPad: 4 };
+
+const round = (n) => Math.round(n * 100) / 100;
+
+/*
+ * Smooth the trend line with a monotone cubic (Fritsch-Carlson) instead of
+ * joining the points with straight segments.
+ *
+ * Monotone rather than a plain Catmull-Rom spline because this data is mostly
+ * flat runs punctuated by spikes: an unconstrained spline overshoots on the way
+ * into a spike and dips the curve — and therefore the area fill — below weeks
+ * that were genuinely zero. Clamping the tangents keeps the curve inside the
+ * values it connects, so the line only ever rises where the data rises.
+ */
+function smoothPath(coordinates) {
+  const n = coordinates.length;
+
+  if (n === 0) return '';
+
+  const move = `M${round(coordinates[0].x)},${round(coordinates[0].y)}`;
+
+  if (n === 1) return move;
+  if (n === 2) return `${move} L${round(coordinates[1].x)},${round(coordinates[1].y)}`;
+
+  // Secant slope of each interval.
+  const dx = [];
+  const slope = [];
+  for (let i = 0; i < n - 1; i += 1) {
+    dx[i] = coordinates[i + 1].x - coordinates[i].x;
+    slope[i] = dx[i] === 0 ? 0 : (coordinates[i + 1].y - coordinates[i].y) / dx[i];
+  }
+
+  // Tangent at each point: the weighted harmonic mean of its two neighbouring
+  // secants, forced flat wherever they disagree in sign (a local peak or
+  // trough) so the curve turns over exactly at the data point.
+  const tangent = new Array(n);
+  tangent[0] = slope[0];
+  tangent[n - 1] = slope[n - 2];
+  for (let i = 1; i < n - 1; i += 1) {
+    if (slope[i - 1] * slope[i] <= 0) {
+      tangent[i] = 0;
+      continue;
+    }
+
+    const w1 = 2 * dx[i] + dx[i - 1];
+    const w2 = dx[i] + 2 * dx[i - 1];
+    tangent[i] = (w1 + w2) / (w1 / slope[i - 1] + w2 / slope[i]);
+  }
+
+  let d = move;
+  for (let i = 0; i < n - 1; i += 1) {
+    const reach = dx[i] / 3;
+    const from = coordinates[i];
+    const to = coordinates[i + 1];
+    d += ` C${round(from.x + reach)},${round(from.y + tangent[i] * reach)}`
+      + ` ${round(to.x - reach)},${round(to.y - tangent[i + 1] * reach)}`
+      + ` ${round(to.x)},${round(to.y)}`;
+  }
+
+  return d;
+}
+
 function chartGeometry(values) {
   const points = values.map((value) => Number(value) || 0);
   if (points.length === 0) return null;
@@ -62,22 +132,22 @@ function chartGeometry(values) {
   const min = Math.min(...points);
   const max = Math.max(...points);
   const span = max - min;
-  const width = 100;
-  const height = 40;
-  const leftPad = 8;
-  const rightPad = 4;
-  const topPad = 4;
-  const bottomPad = 4;
+  const { width, height, leftPad, rightPad, topPad, bottomPad } = CHART_BOX;
   const coordinates = points.map((value, index) => ({
     x: points.length === 1 ? 50 : leftPad + ((width - leftPad - rightPad) * index) / (points.length - 1),
     y: span === 0 ? height / 2 : (height - bottomPad) - ((value - min) / span) * (height - topPad - bottomPad),
   }));
   const last = coordinates[coordinates.length - 1];
+  const first = coordinates[0];
+  const linePath = smoothPath(coordinates);
 
   return {
     min,
     max,
     points: coordinates.map(({ x, y }) => `${x.toFixed(2)},${y.toFixed(2)}`).join(' '),
+    linePath,
+    // Same curve, dropped to the baseline at both ends and closed.
+    areaPath: linePath ? `${linePath} L${round(last.x)},${height} L${round(first.x)},${height} Z` : '',
     last,
   };
 }
@@ -296,6 +366,7 @@ const Icons = {
   ExtLink:   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M7 17 17 7M8 7h9v9" /></svg>,
   UpTrend:   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"><path d="M3 17l6-6 4 4 8-8" /><path d="M21 3h-5m5 0v5" /></svg>,
   ChevDown:  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6" /></svg>,
+  ChevRight: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"><path d="m9 5 7 7-7 7" /></svg>,
   Music:     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18V5l12-2v13" /><circle cx="6" cy="18" r="3" /><circle cx="18" cy="16" r="3" /></svg>,
   Plus:      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round"><path d="M12 5v14M5 12h14" /></svg>,
 };
@@ -509,6 +580,7 @@ export default function DetailScreen({
     return grouped;
   }, [results]);
   const selectedWeekVideos = selectedWeekKey ? (videosByWeek[selectedWeekKey] ?? []) : [];
+  const selectedWeekViews = selectedWeekVideos.reduce((sum, video) => sum + (Number(video.views) || 0), 0);
   const comparisonDelta = activeSeries?.delta ?? null;
   const comparisonLabel = comparisonDelta
     ? `${comparisonDelta.direction === 'up' ? '↑' : comparisonDelta.direction === 'down' ? '↓' : '→'} ${Math.abs(Number(comparisonDelta.value ?? 0))}${comparisonDelta.unit === 'points' ? ' pts' : comparisonDelta.unit === 'absolute' ? '' : '%'} vs ${weeklyPoints.length || 0} wk ago`
@@ -1057,8 +1129,19 @@ export default function DetailScreen({
                       <stop offset="100%" stopColor="#F2C96B" stopOpacity="0" />
                     </linearGradient>
                   </defs>
-                  <polygon points={`${chart.points} 96,40 8,40`} fill="url(#rs-analytics-fill)" />
-                  <polyline points={chart.points} fill="none" stroke="#A87700" strokeWidth="0.85" strokeLinecap="round" strokeLinejoin="round" />
+                  <path d={chart.areaPath} fill="url(#rs-analytics-fill)" />
+                  {/* The viewBox is stretched to fill the card, so the stroke
+                      has to opt out of that scaling or it renders as a wedge
+                      that is far heavier horizontally than vertically. */}
+                  <path
+                    d={chart.linePath}
+                    fill="none"
+                    stroke="#A87700"
+                    strokeWidth="2.25"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    vectorEffect="non-scaling-stroke"
+                  />
                 </>
               )}
             </svg>
@@ -1069,29 +1152,53 @@ export default function DetailScreen({
 
               if (!point || !weekKey) return null;
 
+              const weekVideos = videosByWeek[weekKey] ?? [];
+              const isLatest = index === chartPoints.length - 1;
+              const topPct = (y / CHART_BOX.height) * 100;
               const tooltip = {
                 label: point.label,
                 value: formatMetricValue(value, metric),
-                count: videosByWeek[weekKey]?.length ?? 0,
+                count: weekVideos.length,
+                x,
+                y: topPct,
               };
 
+              // A week with nothing matched keeps the plain dot: there are no
+              // creators to annotate it with and nothing to open on click.
+              if (weekVideos.length === 0) {
+                return (
+                  <span
+                    key={`point-${weekKey}`}
+                    className={`rs-achart__point${isLatest ? ' is-latest' : ''}`}
+                    style={{ left: `${x}%`, top: `${topPct}%` }}
+                    aria-hidden
+                  />
+                );
+              }
+
               return (
-                <button
+                <WeekMarker
                   key={`point-${weekKey}`}
-                  type="button"
-                  className={`rs-achart__point${index === chartPoints.length - 1 ? ' is-latest' : ''}`}
-                  style={{ left: `${x}%`, top: `${(y / 40) * 100}%` }}
-                  aria-label={`${point.label} · ${tooltip.value}`}
-                  onMouseEnter={() => setChartTooltip(tooltip)}
-                  onMouseLeave={() => setChartTooltip(null)}
-                  onFocus={() => setChartTooltip(tooltip)}
-                  onBlur={() => setChartTooltip(null)}
-                  onClick={() => setSelectedWeekKey(weekKey)}
+                  videos={weekVideos}
+                  label={point.label}
+                  valueLabel={tooltip.value}
+                  isLatest={isLatest}
+                  style={{ left: `${x}%`, top: `${topPct}%` }}
+                  onSelect={() => setSelectedWeekKey(weekKey)}
+                  onPeek={() => setChartTooltip(tooltip)}
+                  onPeekEnd={() => setChartTooltip(null)}
                 />
               );
             })}
             {chartTooltip && (
-              <div className="rs-achart__tooltip" role="status">
+              <div
+                className="rs-achart__tooltip"
+                role="status"
+                style={{
+                  left: `${Math.min(Math.max(Number(chartTooltip.x ?? 50), 14), 86)}%`,
+                  top: `${Number(chartTooltip.y ?? 0)}%`,
+                }}
+              >
                 <strong>{chartTooltip.label}</strong>
                 <span>{chartTooltip.value}</span>
                 <span>{chartTooltip.count} {chartTooltip.count === 1 ? 'video' : 'videos'}</span>
@@ -1233,33 +1340,76 @@ export default function DetailScreen({
             <div className="rs-weekmodal__head">
               <div>
                 <h3>{weeklyPoints.find((point) => weekKeyFromIso(point.week_start) === selectedWeekKey)?.label ?? 'Selected week'}</h3>
-                <p>{selectedWeekVideos.length} matched {selectedWeekVideos.length === 1 ? 'video' : 'videos'} uploaded in this week.</p>
+                <p>
+                  {selectedWeekVideos.length} matched {selectedWeekVideos.length === 1 ? 'video' : 'videos'} uploaded in this week
+                  {selectedWeekViews > 0 ? ` · ${compact(selectedWeekViews)} views` : ''}
+                </p>
+                {selectedWeekVideos.length > 0 && (
+                  <span className="rs-weekmodal__cue">
+                    {Icons.Play} Click a video to watch it and open the breakdown
+                  </span>
+                )}
               </div>
               <button type="button" className="rs-weekmodal__close" onClick={() => setSelectedWeekKey(null)} aria-label="Close">
                 ×
               </button>
             </div>
             <div className="rs-weekmodal__list">
-              {selectedWeekVideos.map((video) => (
-                <button
-                  key={`week-video-${video.id}`}
-                  type="button"
-                  className="rs-weekmodal__row"
-                  onClick={() => {
-                    setSelectedWeekKey(null);
-                    openAnalysis(video);
-                  }}
-                >
-                  <span className="rs-weekmodal__thumb" style={{ background: gradientFor(video.id) }}>
-                    {video.thumbnail_url ? <img src={video.thumbnail_url} alt="" /> : initials(video.handle || video.username || video.title)}
-                  </span>
-                  <span className="rs-weekmodal__body">
-                    <strong>{video.handle || video.username || video.title || 'Video'}</strong>
-                    <span>{video.title || video.caption || 'Open this video from the outlier list.'}</span>
-                    <span>{compact(video.views)} views · uploaded {formatDate(video.uploaded_at) || '—'}</span>
-                  </span>
-                </button>
-              ))}
+              {selectedWeekVideos.map((video) => {
+                const multiple = Number(video.outlier_multiple ?? video.multiple ?? video.score ?? 0);
+                // The row is the whole target — clicking it closes the week
+                // list and hands the video to the breakdown modal.
+                const openBreakdown = () => {
+                  setSelectedWeekKey(null);
+                  openAnalysis(video);
+                };
+
+                return (
+                  <div
+                    key={`week-video-${video.id}`}
+                    role="button"
+                    tabIndex={0}
+                    className="rs-weekmodal__row"
+                    onClick={openBreakdown}
+                    onKeyDown={(event) => {
+                      if (event.key !== 'Enter' && event.key !== ' ') return;
+                      event.preventDefault();
+                      openBreakdown();
+                    }}
+                  >
+                    <span className="rs-weekmodal__thumb" style={{ background: gradientFor(video.id) }}>
+                      <VideoFace video={video} prefer="thumb" className="rs-weekmodal__face" />
+                      <span className="rs-weekmodal__play" aria-hidden><i>{Icons.Play}</i></span>
+                    </span>
+                    <span className="rs-weekmodal__body">
+                      <strong>
+                        <span className="rs-weekmodal__handle">{video.handle || video.username || video.title || 'Video'}</span>
+                        {multiple >= 3 && <em className="rs-weekmodal__ol">{compact(multiple)}× outlier</em>}
+                      </strong>
+                      <span className="rs-weekmodal__cap">{video.title || video.caption || 'Open this video from the outlier list.'}</span>
+                      <span className="rs-weekmodal__meta">{compact(video.views)} views · uploaded {formatDate(video.uploaded_at) || '—'}</span>
+                    </span>
+                    <span className="rs-weekmodal__acts">
+                      <span className="rs-weekmodal__go">Watch {Icons.ChevRight}</span>
+                      {onToggleVideoBookmark && (
+                        <button
+                          type="button"
+                          className={`rs-weekmodal__bm${video.bookmarked ? ' is-on' : ''}`}
+                          aria-pressed={Boolean(video.bookmarked)}
+                          aria-label={video.bookmarked ? 'Remove bookmark' : 'Bookmark video'}
+                          disabled={bookmarkingVideoId === video.id}
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            onToggleVideoBookmark(video);
+                          }}
+                        >
+                          {video.bookmarked ? Icons.Bookmark : Icons.BookmarkO}
+                        </button>
+                      )}
+                    </span>
+                  </div>
+                );
+              })}
               {selectedWeekVideos.length === 0 && (
                 <div className="rs-weekmodal__empty">No videos were available for this week.</div>
               )}
@@ -1268,15 +1418,27 @@ export default function DetailScreen({
         </div>
       )}
 
-      {analysisModal && (
-        <AnalysisModal
-          open
-          video={analysisModal.video}
-          initialAnalysis={analysisModal.analysis}
-          onClose={closeAnalysis}
-          onAnalysisChange={updateVideoAnalysis}
-        />
-      )}
+      {analysisModal && (() => {
+        // The modal opens with a snapshot of the row. Re-resolve it against the
+        // live results so Save state and analysis status stay current while it
+        // is open — otherwise bookmarking inside the modal never reflects back.
+        const live = results.find((row) => String(row.id) === String(analysisModal.video.id)) ?? analysisModal.video;
+
+        return (
+          <AnalysisModal
+            open
+            video={live}
+            initialAnalysis={analysisModal.analysis}
+            onClose={closeAnalysis}
+            onAnalysisChange={updateVideoAnalysis}
+            onAnalyze={() => handleAnalyzeAction(live)}
+            analyzeBusy={analysisStarting}
+            saved={Boolean(live.bookmarked)}
+            saving={bookmarkingVideoId === live.id}
+            onToggleSave={onToggleVideoBookmark ? () => onToggleVideoBookmark(live) : undefined}
+          />
+        );
+      })()}
       {analysisNotice && (
         <div className={`rs-toast rs-toast--${analysisNotice.tone}`} role="status" aria-live="polite">
           <span>{analysisNotice.message}</span>
@@ -1652,6 +1814,73 @@ function ScrollPanel({ title, items, max, barColor = 'var(--a3)' }) {
 
 /* -------------------- scoped CSS (mockup ported verbatim, `rs-` prefixed) -------------------- */
 
+/*
+ * The face a creator wears on the chart and in the week list.
+ *
+ * `prefer` picks the lead source: a chart pin annotates the *creator*, a week
+ * row previews the *video*. Either way, a missing URL and a URL that fails to
+ * load land in the same place — the gradient + initials placeholder — because
+ * TikTok CDN links expire and a 404 would otherwise leave a blank circle.
+ */
+function VideoFace({ video, className, prefer = 'avatar' }) {
+  const [failed, setFailed] = useState(false);
+  const src = prefer === 'thumb'
+    ? (video?.thumbnail_url || video?.cover || video?.avatar || null)
+    : (video?.avatar || video?.thumbnail_url || video?.cover || null);
+
+  useEffect(() => { setFailed(false); }, [src]);
+
+  if (src && !failed) {
+    return (
+      <img
+        className={className}
+        src={src}
+        alt=""
+        referrerPolicy="no-referrer"
+        loading="lazy"
+        onError={() => setFailed(true)}
+      />
+    );
+  }
+
+  return (
+    <span className={`${className} rs-face__ph`} style={{ background: gradientFor(video?.id) }}>
+      {initials(video?.handle || video?.username || video?.creator_name || video?.title)}
+    </span>
+  );
+}
+
+/*
+ * One annotated data point. The week's best-performing video fronts the pin,
+ * with up to two more peeking out behind it and a +N badge for the remainder,
+ * so the chart reads as "who posted, and when" before anything is clicked.
+ * Clicking opens that week's video list.
+ */
+function WeekMarker({ videos, label, valueLabel, isLatest, style, onSelect, onPeek, onPeekEnd }) {
+  const [lead, second, third] = videos;
+  const overflow = videos.length - 3;
+
+  return (
+    <button
+      type="button"
+      className={`rs-mk${isLatest ? ' is-latest' : ''}`}
+      style={style}
+      aria-label={`${label} · ${valueLabel} · ${videos.length} ${videos.length === 1 ? 'video' : 'videos'}`}
+      onClick={onSelect}
+      onMouseEnter={onPeek}
+      onMouseLeave={onPeekEnd}
+      onFocus={onPeek}
+      onBlur={onPeekEnd}
+    >
+      {second && <VideoFace video={second} className="rs-mk__stack rs-mk__stack--l" />}
+      {third && <VideoFace video={third} className="rs-mk__stack rs-mk__stack--r" />}
+      <span className="rs-mk__pin"><VideoFace video={lead} className="rs-mk__face" /></span>
+      {overflow > 0 && <span className="rs-mk__n rs-mk__n--more">+{overflow}</span>}
+      {videos.length > 1 && <span className="rs-mk__n rs-mk__n--all">{videos.length}</span>}
+    </button>
+  );
+}
+
 const scopedCss = `
 :root{--a1:#FDF0C8;--a2:#FBDE8E;--a3:#F6C445;--a4:#E0A100;--a5:#B87400}
 .rs-viewbar{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:22px;flex-wrap:wrap;min-width:0;max-width:100%;overflow:visible}
@@ -1924,15 +2153,38 @@ const scopedCss = `
 .rs-abig__infoBtn{width:16px;height:16px;display:grid;place-items:center;border-radius:999px;border:1px solid rgba(45,138,85,.28);background:#fff;color:#2D8A55;font-size:.68rem;font-weight:800;line-height:1;cursor:help}
 .rs-abig__tooltip{position:absolute;left:22px;top:50%;transform:translateY(-50%);width:min(260px,calc(100vw - 80px));padding:8px 10px;border-radius:10px;background:rgba(255,255,255,.98);border:1px solid #D8E8DC;box-shadow:0 16px 30px -24px rgba(0,0,0,.25);font-size:.72rem;font-weight:500;line-height:1.4;color:#34513F;opacity:0;pointer-events:none;transition:opacity .14s ease;white-space:normal;z-index:4}
 .rs-abig__info:hover .rs-abig__tooltip,.rs-abig__info:focus-within .rs-abig__tooltip{opacity:1}
-.rs-achart{position:relative;height:180px;margin-top:2px}
+.rs-achart{position:relative;height:236px;margin-top:2px}
 .rs-achart--flow{border:none;background:transparent;box-shadow:none;padding:0}
-.rs-achart__inner{position:relative;height:150px}
+.rs-achart__inner{position:relative;height:200px}
 .rs-achart--flow svg{position:absolute;inset:0;width:100%;height:100%}
 .rs-achart__grid span{position:absolute;left:0;right:0;height:1px;background:rgba(168,119,0,.08)}
-.rs-achart__point{position:absolute;width:11px;height:11px;border-radius:999px;border:1.5px solid #fff;background:#A87700;box-shadow:0 4px 10px rgba(168,119,0,.12);transform:translate(-50%,-50%);cursor:pointer;transition:transform .14s,box-shadow .14s,background .14s}
-.rs-achart__point:hover,.rs-achart__point:focus-visible{transform:translate(-50%,-50%) scale(1.14);box-shadow:0 10px 20px rgba(168,119,0,.24);outline:none}
-.rs-achart__point.is-latest{background:#C7981A}
-.rs-achart__tooltip{position:absolute;left:0;top:0;display:flex;flex-direction:column;gap:2px;max-width:190px;padding:10px 12px;border-radius:12px;background:rgba(255,255,255,.98);border:1px solid #E7D7AF;box-shadow:0 16px 30px -24px rgba(0,0,0,.25);z-index:3}
+/* A week with no matched videos keeps a plain, inert dot. */
+.rs-achart__point{position:absolute;display:block;width:9px;height:9px;border-radius:999px;border:1.5px solid #fff;background:#CBB68A;box-shadow:0 4px 10px rgba(168,119,0,.12);transform:translate(-50%,-50%)}
+.rs-achart__point.is-latest{background:#A87700}
+
+/* Annotated data points: an avatar pin for every week that matched videos. */
+.rs-mk{position:absolute;z-index:3;width:40px;height:40px;padding:0;border:0;background:none;cursor:pointer;transform:translate(-50%,-100%);transition:transform .17s cubic-bezier(.22,.61,.36,1)}
+.rs-mk:hover,.rs-mk:focus-visible{transform:translate(-50%,-100%) translateY(-4px);outline:none;z-index:4}
+.rs-mk__stack{position:absolute;left:50%;top:4px;box-sizing:border-box;width:24px;height:24px;border-radius:999px;border:1.5px solid #fff;background:#F7F4ED;object-fit:cover;z-index:1;transition:border-color .17s}
+.rs-mk__stack--l{transform:translate(-50%,0) translateX(-9px)}
+.rs-mk__stack--r{transform:translate(-50%,0) translateX(9px)}
+.rs-mk__pin{position:absolute;left:50%;top:0;z-index:2;box-sizing:border-box;width:32px;height:32px;padding:3px;background:#fff;border:1px solid #EFE3C6;border-radius:999px;transform:translateX(-50%);box-shadow:0 8px 16px -10px rgba(117,85,11,.55);transition:border-color .17s,background .17s}
+.rs-mk__pin::before,.rs-mk__pin::after{content:'';position:absolute;left:50%;transform:translateX(-50%);border-left:6px solid transparent;border-right:6px solid transparent}
+.rs-mk__pin::before{bottom:-8px;border-top:8px solid #EFE3C6;z-index:0;transition:border-top-color .17s}
+.rs-mk__pin::after{bottom:-6px;border-top:7px solid #fff;z-index:1;transition:border-top-color .17s}
+.rs-mk__face{position:relative;z-index:2;box-sizing:border-box;width:100%;height:100%;border-radius:999px;object-fit:cover;background:#F7F4ED}
+/* Shared initials placeholder for any face whose image is absent or broken.
+   It carries its own type size so an unstyled parent can never let the initials
+   inherit body text and spill out of a 20px circle; larger faces override. */
+.rs-face__ph{display:grid;place-items:center;overflow:hidden;color:#fff;font-size:.55rem;font-weight:800;letter-spacing:-.02em;line-height:1}
+.rs-mk__stack.rs-face__ph{font-size:.46rem}
+.rs-mk:hover .rs-mk__pin,.rs-mk:focus-visible .rs-mk__pin{border-color:#C7981A;background:#FFF6E1}
+.rs-mk:hover .rs-mk__pin::before,.rs-mk:focus-visible .rs-mk__pin::before{border-top-color:#C7981A}
+.rs-mk:hover .rs-mk__pin::after,.rs-mk:focus-visible .rs-mk__pin::after{border-top-color:#FFF6E1}
+.rs-mk:hover .rs-mk__stack,.rs-mk:focus-visible .rs-mk__stack{border-color:#FFF6E1}
+.rs-mk__n{position:absolute;top:-5px;right:-3px;z-index:4;min-width:17px;height:17px;padding:0 4px;border-radius:9px;background:#F2C96B;border:1.5px solid #fff;font-size:.58rem;font-weight:800;color:#1A1400;line-height:14px;text-align:center;font-variant-numeric:tabular-nums}
+.rs-mk__n--all{display:none}
+.rs-achart__tooltip{position:absolute;display:flex;flex-direction:column;gap:2px;width:max-content;max-width:190px;padding:9px 12px;border-radius:12px;background:rgba(255,255,255,.98);border:1px solid #E7D7AF;box-shadow:0 16px 30px -24px rgba(0,0,0,.25);z-index:5;transform:translate(-50%,20px);pointer-events:none}
 .rs-achart__tooltip strong{font-size:.78rem;color:var(--ink)}
 .rs-achart__tooltip span{font-size:.72rem;color:#7C704D}
 .rs-axlabels{display:flex;justify-content:space-between;gap:12px;margin-top:8px;font-size:.68rem;color:#8A7445;font-weight:500}
@@ -1946,13 +2198,32 @@ const scopedCss = `
 .rs-weekmodal__head p{margin-top:4px;font-size:.84rem;color:#7C704D}
 .rs-weekmodal__close{width:34px;height:34px;flex:none;border-radius:999px;border:1px solid #E8D9B3;background:#fff;color:#8A7445;font-size:1.1rem;cursor:pointer}
 .rs-weekmodal__list{padding:14px;overflow:auto;display:flex;flex-direction:column;gap:10px}
-.rs-weekmodal__row{display:grid;grid-template-columns:76px 1fr;gap:14px;align-items:center;padding:10px;border-radius:16px;border:1px solid #EFE3C6;background:#fff;cursor:pointer;text-align:left}
-.rs-weekmodal__row:hover{border-color:#E3C36F;background:#FFF9EC}
-.rs-weekmodal__thumb{width:76px;height:76px;border-radius:14px;overflow:hidden;display:grid;place-items:center;color:#fff;font-size:1rem;font-weight:800}
-.rs-weekmodal__thumb img{width:100%;height:100%;object-fit:cover}
-.rs-weekmodal__body{display:flex;flex-direction:column;gap:5px;min-width:0}
-.rs-weekmodal__body strong{font-size:.88rem;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.rs-weekmodal__body span{font-size:.78rem;color:#7C704D;line-height:1.4}
+.rs-weekmodal__cue{display:inline-flex;align-items:center;gap:6px;margin-top:10px;padding:4px 9px;border-radius:7px;border:1px solid #F0DFB4;background:#fff;font-size:.72rem;font-weight:700;color:#A87700}
+.rs-weekmodal__cue svg{width:11px;height:11px}
+.rs-weekmodal__row{display:grid;grid-template-columns:52px minmax(0,1fr) auto;gap:12px;align-items:center;padding:9px;border-radius:16px;border:1px solid #EFE3C6;background:#fff;cursor:pointer;text-align:left;transition:border-color .16s,background .16s,transform .16s}
+.rs-weekmodal__row:hover,.rs-weekmodal__row:focus-visible{border-color:#E3C36F;background:#FFF9EC;transform:translateY(-1px);outline:none}
+.rs-weekmodal__thumb{position:relative;width:52px;height:70px;border-radius:10px;overflow:hidden;display:grid;place-items:center;color:#fff;font-size:.9rem;font-weight:800}
+.rs-weekmodal__thumb img,.rs-weekmodal__face{width:100%;height:100%;object-fit:cover}
+.rs-weekmodal__face.rs-face__ph{font-size:.9rem}
+.rs-weekmodal__play{position:absolute;inset:0;display:grid;place-items:center;background:rgba(20,15,0,.34);opacity:0;transition:opacity .16s}
+.rs-weekmodal__row:hover .rs-weekmodal__play,.rs-weekmodal__row:focus-visible .rs-weekmodal__play{opacity:1}
+.rs-weekmodal__play i{width:24px;height:24px;border-radius:999px;background:#fff;display:grid;place-items:center}
+.rs-weekmodal__play svg{width:10px;height:10px;color:var(--ink)}
+.rs-weekmodal__body{display:flex;flex-direction:column;gap:3px;min-width:0}
+.rs-weekmodal__body strong{display:flex;align-items:center;gap:7px;min-width:0;font-size:.88rem;color:var(--ink)}
+.rs-weekmodal__handle{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rs-weekmodal__ol{flex:none;font-style:normal;font-size:.62rem;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:#A87700;background:#FFF6E1;border:1px solid #F2E4BE;padding:2px 6px;border-radius:5px}
+.rs-weekmodal__cap{font-size:.8rem;color:#5C5A54;line-height:1.4;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.rs-weekmodal__meta{font-size:.76rem;color:#7C704D;line-height:1.4;font-variant-numeric:tabular-nums}
+.rs-weekmodal__acts{display:flex;align-items:center;gap:8px;flex:none}
+.rs-weekmodal__go{display:inline-flex;align-items:center;gap:4px;font-size:.76rem;font-weight:700;color:#A87700;white-space:nowrap;opacity:.55;transition:opacity .16s}
+.rs-weekmodal__row:hover .rs-weekmodal__go,.rs-weekmodal__row:focus-visible .rs-weekmodal__go{opacity:1}
+.rs-weekmodal__go svg{width:11px;height:11px}
+.rs-weekmodal__bm{width:34px;height:34px;flex:none;display:grid;place-items:center;border-radius:9px;border:1px solid #EFE3C6;background:#fff;color:#8A7445;cursor:pointer;transition:border-color .16s,background .16s,color .16s}
+.rs-weekmodal__bm svg{width:15px;height:15px}
+.rs-weekmodal__bm:hover{border-color:#E3C36F;color:var(--ink)}
+.rs-weekmodal__bm.is-on{background:#F2C96B;border-color:#F2C96B;color:#1A1400}
+.rs-weekmodal__bm:disabled{opacity:.5;cursor:default}
 .rs-weekmodal__empty{padding:24px 12px;text-align:center;font-size:.85rem;color:#7C704D}
 
 .rs-heat{background:var(--white);border:1px solid var(--line);border-radius:20px;padding:20px;min-width:0;max-width:100%;overflow:hidden}
@@ -2069,5 +2340,24 @@ const scopedCss = `
 }
 @media (max-width:420px){
 .rs-ogrid{grid-template-columns:1fr}
+}
+/* Narrow screens: smaller pins so neighbouring weeks stop colliding, and the
+   week rows drop the "Watch" cue in favour of the thumbnail affordance. */
+@media (max-width:560px){
+.rs-achart{height:206px}
+.rs-achart__inner{height:172px}
+.rs-mk{width:28px;height:34px}
+.rs-mk__pin{width:26px;height:26px;padding:2.5px}
+.rs-mk__pin::before{bottom:-7px;border-left-width:5px;border-right-width:5px;border-top-width:7px}
+.rs-mk__pin::after{bottom:-5px;border-left-width:5px;border-right-width:5px;border-top-width:6px}
+/* No room to fan three faces out at this width, so the pin carries the lead
+   creator and the badge switches to the plain video count. */
+.rs-mk__stack{display:none}
+.rs-mk__n{top:-6px;right:-6px;min-width:16px;height:16px;line-height:13px;font-size:.55rem}
+.rs-mk__n--more{display:none}
+.rs-mk__n--all{display:block}
+.rs-weekmodal__go{display:none}
+.rs-weekmodal__row{gap:10px;grid-template-columns:46px minmax(0,1fr) auto}
+.rs-weekmodal__thumb{width:46px;height:62px}
 }
 `;

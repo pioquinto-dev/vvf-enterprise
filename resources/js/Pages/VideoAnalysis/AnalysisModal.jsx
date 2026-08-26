@@ -26,10 +26,33 @@ function formatTimestamp(ms) {
 
 function formatDuration(seconds) {
   const total = Number(seconds || 0);
-  if (!Number.isFinite(total) || total <= 0) return '0:14';
+  // No runtime on record: render nothing rather than inventing one.
+  if (!Number.isFinite(total) || total <= 0) return null;
   const minutes = Math.floor(total / 60);
   const remainder = String(Math.round(total % 60)).padStart(2, '0');
   return `${minutes}:${remainder}`;
+}
+
+function initials(name) {
+  const source = String(name || '').replace(/^@/, '').trim();
+  return source.slice(0, 2).toUpperCase() || '?';
+}
+
+/*
+ * How far past the baseline this video landed. The search pipeline writes
+ * `outlier_multiple`; the older keys are kept so a video handed in from another
+ * screen still resolves. Null means "we do not know" — never a stand-in number.
+ */
+function outlierMultiple(video) {
+  const value = Number(video?.outlier_multiple ?? video?.multiple ?? video?.score ?? video?.virality_score ?? 0);
+  return Number.isFinite(value) && value > 0 ? value : null;
+}
+
+/* The creator's own median, which is what the multiple is measured against. */
+function baselineMedian(video) {
+  const multiple = outlierMultiple(video);
+  const views = Number(video?.views ?? 0);
+  return multiple && views > 0 ? Math.round(views / multiple) : null;
 }
 
 function usePolling(videoId, initial, open) {
@@ -61,24 +84,23 @@ function usePolling(videoId, initial, open) {
   return [analysis, setAnalysis];
 }
 
-// Chip variants mirror .bbchip--score / --views / --mut from the design handoff.
-const STAT_CHIP = {
-  score: 'border-[#d8c9a6] bg-[#FFF3CF]',
-  views: 'border-[#e0c5b6] bg-[#FEF0E7]',
-  mut: 'border-[#E7E5DF] bg-[#FAF9F6]',
-};
-const STAT_LABEL = {
-  score: 'text-[#9A6B00]',
-  views: 'text-[#C2410C]',
-  mut: 'text-[#5C5A54]',
-};
-
+/*
+ * The four numbers that make the comparison legible: what this video did, the
+ * creator's own median it is measured against, how hard it engaged, and the
+ * resulting multiple. Anything we cannot compute renders as an em dash — the
+ * old placeholder values (18x, 12.2%) read as real data and were not.
+ */
 function statCards(video) {
+  const views = Number(video?.views ?? 0);
+  const rate = Number(video?.engagement_rate ?? 0);
+  const median = baselineMedian(video);
+  const multiple = outlierMultiple(video);
+
   return [
-    { label: 'Outlier', value: `${formatMetric(video.virality_score || 18)}x`, variant: 'score' },
-    { label: 'Views', value: compactNumber(video.views), variant: 'views' },
-    { label: 'Eng rate', value: video.engagement_rate ? `${formatMetric(video.engagement_rate)}%` : '12.2%', variant: 'mut' },
-    { label: 'Shares', value: compactNumber(video.shares), variant: 'mut' },
+    { label: 'Views', value: views > 0 ? compactNumber(views) : '—' },
+    { label: 'Median', value: median ? compactNumber(median) : '—' },
+    { label: 'Engaged', value: rate > 0 ? `${formatMetric(rate)}%` : '—' },
+    { label: 'Baseline', value: multiple ? `${formatMetric(multiple)}x` : '—', good: true },
   ];
 }
 
@@ -240,10 +262,62 @@ function RegenerateButton({ regenerating, disabled, onClick, fullWidth = false }
   );
 }
 
-function LeftSidebar({ video, canRegenerate = false, regenerating = false, disabledRegenerate = false, onRegenerate }) {
+/* Primary CTA: idle → running → ready, mirroring the analysis lifecycle. */
+function AnalyzeButton({ state, onClick }) {
+  const running = state === 'running';
+  const ready = state === 'ready';
+  const base = 'flex h-10 w-full items-center justify-center gap-2 rounded-[11px] px-3.5 text-[13px] font-bold transition';
+
+  if (ready) {
+    return (
+      <div className={`${base} cursor-default border border-[#E7E5DF] bg-white text-[#0B0B0B]`}>
+        <svg viewBox="0 0 24 24" className="h-[15px] w-[15px]" fill="none" stroke="#1F7A4D" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M4 12.5l5.5 5.5L20 7" />
+        </svg>
+        Analysis ready
+      </div>
+    );
+  }
+
+  if (running) {
+    return (
+      <div className={`${base} cursor-default bg-[#FFF8E6] text-[#9A6B00]`}>
+        <span className="h-[14px] w-[14px] animate-spin rounded-full border-2 border-[rgba(154,107,0,.3)] border-t-[#9A6B00]" />
+        Analyzing…
+      </div>
+    );
+  }
+
+  return (
+    <button type="button" onClick={onClick} className={`${base} bg-[#FFC629] text-[#1A1400] hover:bg-[#FFD84D]`}>
+      <svg viewBox="0 0 24 24" className="h-[15px] w-[15px]" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+        <circle cx="11" cy="11" r="7" />
+        <path d="m20 20-3.5-3.5" />
+      </svg>
+      Analyze video
+    </button>
+  );
+}
+
+function LeftSidebar({
+  video,
+  canRegenerate = false,
+  regenerating = false,
+  disabledRegenerate = false,
+  onRegenerate,
+  analyzeState = 'idle',
+  onAnalyze,
+  saved = false,
+  saving = false,
+  onToggleSave,
+}) {
   const metrics = statCards(video);
+  const multiple = outlierMultiple(video);
+  const followers = Number(video?.followers ?? 0);
+  const runtime = formatDuration(video.duration);
   const [playing, setPlaying] = useState(false);
   const [thumbBroken, setThumbBroken] = useState(false);
+  const [avatarBroken, setAvatarBroken] = useState(false);
   const iframeRef = useRef(null);
   const embed = videoEmbedUrl(video);
   const hasThumb = Boolean(video.thumbnail_url) && !thumbBroken;
@@ -313,6 +387,11 @@ function LeftSidebar({ video, canRegenerate = false, regenerating = false, disab
             ) : (
               <div className="aspect-[9/13] w-full bg-[linear-gradient(165deg,#cfb396,#a98069)]" />
             )}
+            {multiple && (
+              <span className="absolute bottom-[9px] left-[9px] z-[2] rounded-[8px] bg-[rgba(11,11,11,0.82)] px-[9px] py-1 text-[12px] font-extrabold tracking-[-0.01em] text-[#FFC629] backdrop-blur-[2px]">
+                {formatMetric(multiple)}x
+              </span>
+            )}
             {embed && (
               <button
                 type="button"
@@ -330,55 +409,157 @@ function LeftSidebar({ video, canRegenerate = false, regenerating = false, disab
       </div>
 
       <div className="mt-3 flex items-center gap-[9px]">
-        <span className="h-[30px] w-[30px] flex-shrink-0 rounded-full bg-[linear-gradient(150deg,#ffd27a,#ff9a5a_55%,#c0607a)]" />
+        <span className="h-[30px] w-[30px] flex-shrink-0 overflow-hidden rounded-full bg-[linear-gradient(150deg,#ffd27a,#ff9a5a_55%,#c0607a)]">
+          {video.avatar && !avatarBroken ? (
+            <img
+              src={video.avatar}
+              alt=""
+              referrerPolicy="no-referrer"
+              onError={() => setAvatarBroken(true)}
+              className="h-full w-full object-cover"
+            />
+          ) : (
+            <span className="flex h-full w-full items-center justify-center text-[10px] font-extrabold text-white">
+              {initials(video.handle ?? video.username ?? video.creator_name)}
+            </span>
+          )}
+        </span>
         <div className="min-w-0">
           <div className="truncate text-[13px] font-bold text-[#0B0B0B]">{video.handle ?? video.creator_name ?? '@creator'}</div>
-          <div className="text-[11.5px] text-[#5C5A54]">{compactNumber(video.followers ?? video.views)} followers</div>
+          {followers > 0 && <div className="text-[11.5px] text-[#5C5A54]">{compactNumber(followers)} followers</div>}
         </div>
       </div>
 
       <div className="mt-[11px] flex flex-wrap items-center gap-2 text-[11px] text-[#5C5A54] min-[640px]:text-[11.5px]">
-        <span className="rounded-[7px] bg-[#FFF3CF] px-[9px] py-1 text-[10px] font-extrabold uppercase tracking-[0.05em] text-[#9A6B00]">
-          Skincare &amp; Beauty
-        </span>
-        {postedAt && <span>{postedAt}</span>}
-        <span>{formatDuration(video.duration)}</span>
+        {video.content_format && (
+          <span className="rounded-[7px] bg-[#FFF3CF] px-[9px] py-1 text-[10px] font-extrabold uppercase tracking-[0.05em] text-[#9A6B00]">
+            {video.content_format}
+          </span>
+        )}
+        {(postedAt || runtime) && (
+          <span>{[postedAt, runtime].filter(Boolean).join(' · ')}</span>
+        )}
       </div>
 
-      <div className="mt-3 grid grid-cols-2 gap-2">
+      <div className="mt-3.5 grid grid-cols-4 overflow-hidden rounded-[13px] border border-[#E7E5DF] bg-white">
         {metrics.map((item) => (
-          <div key={item.label} className={`rounded-[11px] border px-[10px] py-[8px] min-[640px]:px-[11px] min-[640px]:py-[9px] ${STAT_CHIP[item.variant]}`}>
-            <span className={`inline-flex items-center gap-[5px] whitespace-nowrap text-[9px] font-extrabold uppercase tracking-[0.06em] ${STAT_LABEL[item.variant]}`}>
-              <i className="h-[5px] w-[5px] rounded-full bg-current" />
-              {item.label}
-            </span>
-            <span className="mt-1 block text-[16px] font-extrabold leading-none tracking-[-0.02em] text-[#0B0B0B] [font-variant-numeric:tabular-nums] min-[640px]:text-[17px]">
+          <div key={item.label} className="min-w-0 border-r border-[#E7E5DF] px-[7px] py-[10px] text-center last:border-r-0 min-[640px]:px-[8px]">
+            <span className={`block text-[15px] font-extrabold leading-[1.1] tracking-[-0.03em] [font-variant-numeric:tabular-nums] ${item.good ? 'text-[#1F7A4D]' : 'text-[#0B0B0B]'} min-[640px]:text-[16.5px]`}>
               {item.value}
+            </span>
+            <span className="mt-[3px] block whitespace-nowrap text-[8.5px] font-extrabold uppercase tracking-[0.02em] text-[#74716A]">
+              {item.label}
             </span>
           </div>
         ))}
       </div>
 
-      {canRegenerate && (
-        <div className="mt-3">
+      <div className="mt-3.5 flex flex-col gap-[7px] border-t border-[#E7E5DF] pt-3.5">
+        <AnalyzeButton state={analyzeState} onClick={onAnalyze} />
+
+        <div className="grid grid-cols-[minmax(0,1fr)_40px] gap-[7px]">
+          {onToggleSave ? (
+            <button
+              type="button"
+              onClick={onToggleSave}
+              disabled={saving}
+              aria-pressed={saved}
+              className={`flex h-10 items-center justify-center gap-2 rounded-[11px] border px-2.5 text-[13px] font-bold transition disabled:opacity-60 ${
+                saved
+                  ? 'border-[#FFC629] bg-[#FFF8E6] text-[#5C4200]'
+                  : 'border-[#E7E5DF] bg-white text-[#0B0B0B] hover:bg-[#FAF9F6]'
+              }`}
+            >
+              <svg viewBox="0 0 24 24" className="h-[15px] w-[15px]" fill={saved ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinejoin="round">
+                <path d="M6 3h12v18l-6-4.5L6 21z" />
+              </svg>
+              {saved ? 'Saved' : 'Save'}
+            </button>
+          ) : (
+            <span />
+          )}
+
+          <a
+            href={video.post_url || video.postUrl || '#'}
+            target="_blank"
+            rel="noreferrer noopener"
+            aria-disabled={!(video.post_url || video.postUrl)}
+            title="Open on TikTok"
+            aria-label="Open on TikTok"
+            className={`flex h-10 items-center justify-center rounded-[11px] border border-[#E7E5DF] bg-white text-[#0B0B0B] transition hover:bg-[#FAF9F6] ${
+              video.post_url || video.postUrl ? '' : 'pointer-events-none opacity-40'
+            }`}
+          >
+            <svg viewBox="0 0 24 24" className="h-[15px] w-[15px]" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5" />
+            </svg>
+          </a>
+        </div>
+
+        {canRegenerate && (
           <RegenerateButton
             regenerating={regenerating}
             disabled={disabledRegenerate}
             onClick={onRegenerate}
             fullWidth
           />
-        </div>
-      )}
+        )}
+      </div>
     </aside>
   );
 }
 
-function SummaryCard({ summary }) {
+/*
+ * Right-column lead. The caption is the headline because it is the thing the
+ * viewer actually saw, and the callout heads off the one number people misread:
+ * the multiple is against this creator's own median, not the category's.
+ *
+ * This replaced a "Summary" card whose only content, before an analysis exists,
+ * was a placeholder sentence about assembling one.
+ */
+function VideoHeadline({ video, calloutDismissed, onDismissCallout }) {
+  const caption = String(video?.title || video?.caption || '').trim();
+  const multiple = outlierMultiple(video);
+  const median = baselineMedian(video);
+  const showCallout = !calloutDismissed && Boolean(multiple && median);
+
+  if (!caption && !showCallout) return null;
+
   return (
-    <section className="min-w-0 rounded-[14px] border border-[#ddd6ca] bg-[#fbfaf7] px-3.5 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.65)] min-[640px]:px-4">
-      <div className="text-[13px] font-semibold text-[#1f1f1f]">Summary</div>
-      <p className="mt-1 break-words text-[12.5px] leading-5.5 text-[#696257] min-[640px]:text-[13px] min-[640px]:leading-6">{summary}</p>
-    </section>
+    <>
+      {caption && (
+        <p className="min-w-0 break-words px-0.5 pt-0.5 pr-10 text-[15.5px] font-extrabold leading-[1.4] tracking-[-0.01em] text-[#0B0B0B] min-[640px]:text-[16.5px]">
+          &ldquo;{caption}&rdquo;
+        </p>
+      )}
+
+      {showCallout && (
+        <div className="flex min-w-0 items-start gap-2.5 rounded-[13px] border border-[#F2E4BE] bg-[#FFF8E6] px-3.5 py-3">
+          <span aria-hidden className="mt-px flex-none text-[#9A6B00]">
+            <svg viewBox="0 0 24 24" className="h-[17px] w-[17px]" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+              <circle cx="12" cy="12" r="9" />
+              <path d="M12 8h.01M11 12h1v4h1" />
+            </svg>
+          </span>
+          <p className="min-w-0 flex-1 break-words text-[13px] leading-[1.45] text-[#5C5A54]">
+            <b className="font-bold text-[#0B0B0B]">
+              {formatMetric(multiple)}x is against their own median of {compactNumber(median)},
+            </b>{' '}
+            not the category.
+          </p>
+          <button
+            type="button"
+            onClick={onDismissCallout}
+            aria-label="Dismiss"
+            className="flex h-[22px] w-[22px] flex-none items-center justify-center rounded-[6px] text-[#74716A] transition hover:bg-[rgba(154,107,0,0.08)] hover:text-[#0B0B0B]"
+          >
+            <svg viewBox="0 0 24 24" className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
+              <path d="M6 6l12 12M18 6L6 18" />
+            </svg>
+          </button>
+        </div>
+      )}
+    </>
   );
 }
 
@@ -423,7 +604,12 @@ function ProcessingState({ status, error }) {
       ? error || 'This analysis could not be completed.'
       : status === 'processing'
         ? 'We are preparing the transcript, shared diagnostics, and creator-facing guidance.'
-        : 'Analysis has not started yet.';
+        : (
+            <>
+              Analysis hasn&rsquo;t started yet. Run <b className="font-bold text-[#1a1a1a]">Analyze video</b> to break down
+              what carried this past the search median — and get a playbook you can hand to your creators.
+            </>
+          );
 
   return (
     <section className="rounded-[16px] border border-[#ddd6ca] bg-[#fffdf9] p-5">
@@ -472,12 +658,13 @@ function ErrorStateModal({ message, retrying, onRetry, onDismiss }) {
 
 function WhyTab({ result, video }) {
   const drivers = whyDrivers(result);
-  const baseline = Number(video?.virality_score);
-  const subtitle = Number.isFinite(baseline) && baseline > 0 ? `${Math.round(baseline)}x baseline` : 'Outlier drivers';
+  // Same source as the sidebar chips, so the panel and the numbers agree.
+  const baseline = outlierMultiple(video);
+  const subtitle = baseline ? `${formatMetric(baseline)}x baseline` : 'Outlier drivers';
 
   return (
     <PanelShell
-      title="Why It Went Viral"
+      title="Analysis"
       subtitle={subtitle}
       icon={
         <svg viewBox="0 0 24 24" className="h-4 w-4 stroke-current" fill="none" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -575,12 +762,14 @@ function HookTab({ result }) {
 function TranscriptTab({ analysis }) {
   const rows = transcriptRows(analysis);
   const segments = Array.isArray(analysis?.transcript_segments) ? analysis.transcript_segments : [];
-  const duration = segments.length > 0 ? formatDuration((segments.at(-1)?.end_ms || 14000) / 1000) : '0:14';
+  // Only claim a runtime when the segments actually carry one.
+  const lastEnd = Number(segments.at(-1)?.end_ms);
+  const duration = Number.isFinite(lastEnd) && lastEnd > 0 ? formatDuration(lastEnd / 1000) : null;
 
   return (
     <PanelShell
       title="Transcript"
-      subtitle={`auto-generated - ${duration}`}
+      subtitle={duration ? `auto-generated - ${duration}` : 'auto-generated'}
       icon={
         <svg viewBox="0 0 24 24" className="h-4 w-4 stroke-current" fill="none" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <path d="M7 4h10a2 2 0 0 1 2 2v12l-4-2-4 2-4-2-4 2V6a2 2 0 0 1 2-2h2" />
@@ -664,17 +853,33 @@ function ActivePanel({ activeTab, analysis, result, video }) {
 }
 
 const DEFAULT_TABS = [
-  { key: 'why', label: 'Why It Went Viral', shortLabel: 'Why Viral' },
+  { key: 'why', label: 'Analysis' },
   { key: 'hook', label: 'Hook' },
   { key: 'transcript', label: 'Transcript' },
   { key: 'strategist', label: 'Creative Strategist', shortLabel: 'Strategist' },
 ];
 
-export default function AnalysisModal({ video, initialAnalysis, tabs = DEFAULT_TABS, open = true, onClose, onAnalysisChange }) {
+export default function AnalysisModal({
+  video,
+  initialAnalysis,
+  tabs = DEFAULT_TABS,
+  open = true,
+  onClose,
+  onAnalysisChange,
+  // Supplied by the results page so the CTA goes through its credit check and
+  // confirm step. Without it the modal starts the analysis itself, which is the
+  // right behaviour on the standalone /video-analysis page.
+  onAnalyze,
+  analyzeBusy = false,
+  saved = false,
+  saving = false,
+  onToggleSave,
+}) {
   const [activeTab, setActiveTab] = useState(tabs[0]?.key ?? 'why');
   const [analysis, setAnalysis] = usePolling(video.id, initialAnalysis, open);
   const [regenerating, setRegenerating] = useState(false);
   const [showErrorModal, setShowErrorModal] = useState(false);
+  const [calloutDismissed, setCalloutDismissed] = useState(false);
   const canRegenerate = Boolean(usePage().props?.features?.videoAnalysisRefresh);
 
   // Keep the parent (and therefore the Analyze/View CTA) in sync with the
@@ -745,13 +950,28 @@ export default function AnalysisModal({ video, initialAnalysis, tabs = DEFAULT_T
 
   useEffect(() => {
     setActiveTab(tabs[0]?.key ?? 'why');
+    setCalloutDismissed(false);
   }, [tabs, video?.id]);
 
   if (!open || !video) return null;
 
   const result = analysis?.result ?? {};
-  const summary = result.why_it_went_viral || result.evidence_summary || 'We are still assembling the summary for this video.';
   const regenerateDisabled = regenerating || analysis?.status === 'processing';
+  const status = analysis?.status;
+  const analyzeState = status === 'complete'
+    ? 'ready'
+    : (analyzeBusy || regenerating || status === 'processing' || status === 'queued' || status === 'pending')
+      ? 'running'
+      : 'idle';
+
+  const startAnalysis = () => {
+    if (onAnalyze) {
+      onAnalyze();
+      return;
+    }
+
+    retryAnalysis();
+  };
 
   return (
     <div className="fixed inset-0 z-[120] flex items-center justify-center bg-[rgba(38,33,28,0.42)] px-2 py-3 backdrop-blur-[2px] min-[640px]:px-4 min-[640px]:py-6" onClick={onClose}>
@@ -789,10 +1009,19 @@ export default function AnalysisModal({ video, initialAnalysis, tabs = DEFAULT_T
               regenerating={regenerating}
               disabledRegenerate={regenerateDisabled}
               onRegenerate={regenerate}
+              analyzeState={analyzeState}
+              onAnalyze={startAnalysis}
+              saved={saved}
+              saving={saving}
+              onToggleSave={onToggleSave}
             />
 
             <div className="min-w-0 space-y-3 min-[640px]:space-y-4">
-              <SummaryCard summary={summary} />
+              <VideoHeadline
+                video={video}
+                calloutDismissed={calloutDismissed}
+                onDismissCallout={() => setCalloutDismissed(true)}
+              />
               <TabRow tabs={tabs} activeTab={activeTab} onChange={setActiveTab} />
 
               {analysis?.status !== 'complete' ? (
