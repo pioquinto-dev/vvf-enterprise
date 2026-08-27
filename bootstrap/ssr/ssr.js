@@ -476,6 +476,13 @@ var NAV_GROUPS = [
 				icon: "SE"
 			},
 			{
+				key: "keyword-index",
+				label: "Keyword Index",
+				href: "/x/admin/keyword-index",
+				description: "Brands and products",
+				icon: "KI"
+			},
+			{
 				key: "inquiries",
 				label: "Inquiries",
 				href: "/x/admin/inquiries",
@@ -1026,7 +1033,7 @@ function niceMax(value) {
 	const magnitude = 10 ** Math.floor(Math.log10(value));
 	return Math.ceil(value / magnitude) * magnitude;
 }
-function smoothPath(coords, baseline) {
+function smoothPath$1(coords, baseline) {
 	if (coords.length < 3) return coords.map(([x, y], index) => `${index === 0 ? "M" : "L"}${x},${y}`).join(" ");
 	let path = `M${coords[0][0]},${coords[0][1]}`;
 	for (let index = 0; index < coords.length - 1; index += 1) {
@@ -1144,7 +1151,7 @@ function AdminTrendChart({ points = [] }) {
 					visible.map((series) => {
 						const coords = points.map((point, index) => [xFor(index), yFor(point[series.key] ?? 0)]);
 						return /* @__PURE__ */ jsx("path", {
-							d: smoothPath(coords, baseline),
+							d: smoothPath$1(coords, baseline),
 							fill: "none",
 							stroke: series.color,
 							strokeWidth: "1.8",
@@ -1708,7 +1715,7 @@ function statusTone(value) {
 		};
 	}
 }
-function initials$2(value) {
+function initials$3(value) {
 	return String(value).split(/\s+/).slice(0, 2).map((word) => word.charAt(0)).join("").toUpperCase();
 }
 function renderCell(column, row, index) {
@@ -1733,7 +1740,7 @@ function renderCell(column, row, index) {
 		className: "flex items-center gap-2.5",
 		children: [/* @__PURE__ */ jsx("span", {
 			className: "flex h-6 w-6 shrink-0 items-center justify-center rounded bg-[var(--wash)] text-[10px] font-semibold text-[var(--amber-ink)]",
-			children: initials$2(text)
+			children: initials$3(text)
 		}), /* @__PURE__ */ jsx("span", {
 			className: "truncate text-[13px] font-medium text-[var(--ink)]",
 			children: text
@@ -1927,7 +1934,7 @@ function AdminEditDrawer({ open, resource, title, fields = [], row, createValues
 						type: "submit",
 						disabled: form.processing,
 						className: "h-8 rounded-md bg-[var(--yellow)] px-3.5 text-[12.5px] font-semibold text-[#1a1400] transition hover:brightness-105 disabled:opacity-50",
-						children: form.processing ? mode === "create" ? "Creating..." : "Saving..." : mode === "create" ? "Create plan" : "Save changes"
+						children: form.processing ? mode === "create" ? "Creating..." : "Saving..." : mode === "create" ? `Create ${resource === "keyword-index" ? "keyword" : "plan"}` : "Save changes"
 					})]
 				})]
 			})]
@@ -2341,23 +2348,32 @@ function Listing({ resource, title, search, searchPlaceholder, filters = [], col
 		toolbar,
 		actions: /* @__PURE__ */ jsxs("div", {
 			className: "flex items-center gap-2",
-			children: [resource === "plans" && /* @__PURE__ */ jsx("button", {
-				type: "button",
-				onClick: () => setCreating(true),
-				className: "inline-flex h-8 items-center rounded-md bg-[var(--yellow)] px-3.5 text-[12.5px] font-semibold text-[#1a1400] transition hover:brightness-105",
-				children: "New plan"
-			}), /* @__PURE__ */ jsxs("span", {
-				className: "inline-flex items-center gap-1.5 rounded-md border border-[var(--line)] bg-white px-2 py-1 text-[11.5px] text-[var(--muted)]",
-				children: [/* @__PURE__ */ jsx("span", {
-					className: "font-semibold text-[var(--ink)]",
-					children: total.toLocaleString()
-				}), total === 1 ? "record" : "records"]
-			})]
+			children: [
+				resource === "plans" && /* @__PURE__ */ jsx("button", {
+					type: "button",
+					onClick: () => setCreating(true),
+					className: "inline-flex h-8 items-center rounded-md bg-[var(--yellow)] px-3.5 text-[12.5px] font-semibold text-[#1a1400] transition hover:brightness-105",
+					children: "New plan"
+				}),
+				resource === "keyword-index" && /* @__PURE__ */ jsx("button", {
+					type: "button",
+					onClick: () => setCreating(true),
+					className: "inline-flex h-8 items-center rounded-md bg-[var(--yellow)] px-3.5 text-[12.5px] font-semibold text-[#1a1400] transition hover:brightness-105",
+					children: "New keyword"
+				}),
+				/* @__PURE__ */ jsxs("span", {
+					className: "inline-flex items-center gap-1.5 rounded-md border border-[var(--line)] bg-white px-2 py-1 text-[11.5px] text-[var(--muted)]",
+					children: [/* @__PURE__ */ jsx("span", {
+						className: "font-semibold text-[var(--ink)]",
+						children: total.toLocaleString()
+					}), total === 1 ? "record" : "records"]
+				})
+			]
 		}),
 		children: [
 			/* @__PURE__ */ jsx(AdminInsightsStrip, { insights }),
 			/* @__PURE__ */ jsxs("section", {
-				className: "overflow-hidden rounded-xl border border-[var(--line)] bg-white shadow-[0_1px_2px_rgba(20,15,0,.04),0_16px_36px_-28px_rgba(20,15,0,.18)]",
+				className: "overflow-visible rounded-xl border border-[var(--line)] bg-white shadow-[0_1px_2px_rgba(20,15,0,.04),0_16px_36px_-28px_rgba(20,15,0,.18)]",
 				children: [rows.length > 0 ? /* @__PURE__ */ jsx(AdminDataTable, {
 					columns,
 					rows,
@@ -2905,6 +2921,7 @@ function EntitlementsBar({ variant = "default" }) {
 	const searchUsed = billing.searchCreditsUsed ?? 0;
 	const bookmarkLimit = billing.searchBookmarkLimit ?? billing.bookmarkLimit ?? 0;
 	const bookmarksUsed = billing.searchBookmarkCount ?? billing.bookmarksUsed ?? billing.bookmarkCount ?? 0;
+	const showBookmarkCounter = bookmarkLimit !== -1;
 	const searchesLow = searchLimit > 0 && searchLeft <= Math.max(1, Math.round(searchLimit * .1));
 	if (variant === "drawer") return /* @__PURE__ */ jsx(Link, {
 		href: "/settings/subscription",
@@ -2946,12 +2963,11 @@ function EntitlementsBar({ variant = "default" }) {
 					" searches"
 				]
 			}),
-			/* @__PURE__ */ jsx("i", {}),
-			/* @__PURE__ */ jsxs("span", { children: [
+			showBookmarkCounter && /* @__PURE__ */ jsxs(Fragment$1, { children: [/* @__PURE__ */ jsx("i", {}), /* @__PURE__ */ jsxs("span", { children: [
 				/* @__PURE__ */ jsx("b", { children: bookmarksUsed }),
 				bookmarkLimit > 0 && `/${bookmarkLimit}`,
 				" search bookmarks"
-			] }),
+			] })] }),
 			!billing.hasPaidPlan && /* @__PURE__ */ jsxs(Fragment$1, { children: [/* @__PURE__ */ jsx("i", {}), /* @__PURE__ */ jsx("span", {
 				style: { textDecoration: "underline" },
 				children: "Upgrade"
@@ -2970,10 +2986,11 @@ function csrfToken$1() {
 	return document.querySelector("meta[name=\"csrf-token\"]")?.getAttribute("content") ?? "";
 }
 var API_V1 = "/api/v1";
-async function request(url, { method = "GET", body } = {}) {
+async function request(url, { method = "GET", body, signal } = {}) {
 	const response = await fetch(url, {
 		method,
 		credentials: "same-origin",
+		signal,
 		headers: {
 			Accept: "application/json",
 			"X-Requested-With": "XMLHttpRequest",
@@ -2991,7 +3008,7 @@ async function request(url, { method = "GET", body } = {}) {
 	}
 	return payload;
 }
-function expandKeywords(phrase, { signal, fresh = false } = {}) {
+function expandKeywords(phrase, { signal, fresh = false, type = "brand" } = {}) {
 	return fetch(`${API_V1}/saved-searches/expand`, {
 		method: "POST",
 		credentials: "same-origin",
@@ -3004,6 +3021,7 @@ function expandKeywords(phrase, { signal, fresh = false } = {}) {
 		},
 		body: JSON.stringify({
 			phrase,
+			type,
 			...fresh ? { fresh: true } : {}
 		})
 	}).then(async (response) => {
@@ -3011,6 +3029,12 @@ function expandKeywords(phrase, { signal, fresh = false } = {}) {
 		if (!response.ok) throw new Error(payload?.message || "Could not suggest keywords.");
 		return payload;
 	});
+}
+function fetchKeywordSuggestions(type, q, { signal } = {}) {
+	const params = new URLSearchParams();
+	params.set("type", type);
+	if (q) params.set("q", q);
+	return request(`${API_V1}/keyword-index/suggestions?${params.toString()}`, { signal });
 }
 function createSavedSearch({ type, phrase, name, keywords, frequency, sources }) {
 	return request(`${API_V1}/saved-searches`, {
@@ -3149,7 +3173,7 @@ var NAV$1 = [
 		match: "/dashboard"
 	},
 	{
-		label: "Bookmarks",
+		label: "Library",
 		href: "/bookmarks",
 		icon: Library,
 		match: "/bookmarks"
@@ -3172,7 +3196,7 @@ function isActive(currentUrl, item) {
 	if (item.exact) return currentUrl === item.exact;
 	return path.startsWith(item.match);
 }
-function initials$1(name, email) {
+function initials$2(name, email) {
 	return (name || email || "?").trim().slice(0, 1).toUpperCase();
 }
 function Brand({ onNavigate }) {
@@ -3240,7 +3264,7 @@ function AccountBlock({ signedIn, name, email, onSignOut, signingOut, onNavigate
 			className: "acct__l",
 			children: [/* @__PURE__ */ jsx("span", {
 				className: "avat",
-				children: initials$1(name, email)
+				children: initials$2(name, email)
 			}), /* @__PURE__ */ jsxs("span", {
 				style: {
 					minWidth: 0,
@@ -3698,6 +3722,9 @@ function BrandInlineFlow({ kind = "brand", placeholder = "Which brand do you wan
 	const signedIn = auth.signedIn ?? Boolean(auth.user);
 	const [state, setState] = useState("collapsed");
 	const [subject, setSubject] = useState("");
+	const [subjectSuggestions, setSubjectSuggestions] = useState([]);
+	const [activeSuggestion, setActiveSuggestion] = useState(-1);
+	const [showSuggestions, setShowSuggestions] = useState(false);
 	const [keywords, setKeywords] = useState([]);
 	const [frequency, setFrequency] = useState("weekly");
 	const [tiktokHandle, setTiktokHandle] = useState("");
@@ -3714,12 +3741,28 @@ function BrandInlineFlow({ kind = "brand", placeholder = "Which brand do you wan
 	const runIdx = useRunStages(state === "running", runDone);
 	runIdxRef.current = runIdx;
 	const inputRef = useRef(null);
+	const subjectFieldRef = useRef(null);
 	const kwCount = useMemo(() => keywords.filter((k) => k.selected).length, [keywords]);
 	const searchLeft = billing.searchCreditsRemaining;
 	const searchLimit = billing.searchCreditsLimit;
 	const searchCreditsAvailable = !signedIn || searchLimit === -1 || Number(searchLeft ?? 0) > 0;
 	const supportsSources = kind !== "product";
 	const shouldOfferTrial = (billing.trialEligible ?? true) && !(billing.hasUsedTrial ?? false);
+	useEffect(() => {
+		const controller = new AbortController();
+		fetchKeywordSuggestions(kind, subject.trim(), { signal: controller.signal }).then((payload) => setSubjectSuggestions(Array.isArray(payload?.suggestions) ? payload.suggestions : [])).catch(() => {});
+		return () => controller.abort();
+	}, [kind, subject]);
+	useEffect(() => {
+		const close = (event) => {
+			if (!subjectFieldRef.current?.contains(event.target)) {
+				setShowSuggestions(false);
+				setActiveSuggestion(-1);
+			}
+		};
+		document.addEventListener("mousedown", close);
+		return () => document.removeEventListener("mousedown", close);
+	}, []);
 	const startFlow = async () => {
 		const q = subject.trim().replace(/\s+/g, " ");
 		if (!q) return;
@@ -3732,7 +3775,7 @@ function BrandInlineFlow({ kind = "brand", placeholder = "Which brand do you wan
 		setState("keywords");
 		setExpanding(true);
 		try {
-			const seed = [...((await expandKeywords(q))?.keywords ?? []).slice(0, 6).map((label) => ({
+			const seed = [...((await expandKeywords(q, { type: kind }))?.keywords ?? []).slice(0, 6).map((label) => ({
 				label,
 				selected: true,
 				source: "ai"
@@ -3788,7 +3831,10 @@ function BrandInlineFlow({ kind = "brand", placeholder = "Which brand do you wan
 		if (!subject) return;
 		setExpanding(true);
 		try {
-			const fresh = ((await expandKeywords(subject, { fresh: true }))?.keywords ?? []).slice(0, 6);
+			const fresh = ((await expandKeywords(subject, {
+				fresh: true,
+				type: kind
+			}))?.keywords ?? []).slice(0, 6);
 			setKeywords((current) => [...fresh.map((label) => ({
 				label,
 				selected: true,
@@ -3881,19 +3927,36 @@ function BrandInlineFlow({ kind = "brand", placeholder = "Which brand do you wan
 	};
 	const showFlowBar = state !== "collapsed";
 	const pFillWidth = state === "running" ? `${8 + runIdx / STAGE_LIST.length * 88}%` : runDone ? "100%" : "8%";
+	const visibleSuggestions = subjectSuggestions.filter((suggestion) => suggestion.label?.trim());
+	const applySuggestion = (label) => {
+		setSubject(label);
+		setShowSuggestions(false);
+		setActiveSuggestion(-1);
+		window.requestAnimationFrame(() => inputRef.current?.focus());
+	};
 	return /* @__PURE__ */ jsxs(Fragment$1, { children: [
 		/* @__PURE__ */ jsx("style", { children: `
         .bif{background:var(--white);border:1px solid var(--line);border-radius:20px;padding:26px 28px;margin-bottom:44px}
         .bif__ey{display:flex;align-items:center;gap:10px;margin-bottom:18px;font-size:.72rem;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--amber-ink)}
         .bif__ey::before{content:'';width:22px;height:2px;background:var(--yellow)}
-        .bif__bar{display:flex;align-items:center;gap:14px;padding:9px 9px 9px 22px;background:var(--white);border:1.5px solid var(--line-2,#DEDBD3);border-radius:100px;transition:border-color .18s,box-shadow .18s,background .18s}
-        .bif__entry{display:flex;align-items:center;gap:14px;flex:1 1 auto;min-width:0;white-space:nowrap}
+        .bif__bar{position:relative;display:flex;align-items:center;gap:14px;padding:9px 9px 9px 22px;background:var(--white);border:1.5px solid var(--line-2,#DEDBD3);border-radius:100px;transition:border-color .18s,box-shadow .18s,background .18s}
+        .bif__entry{position:relative;display:flex;align-items:center;gap:14px;flex:1 1 auto;min-width:0;white-space:nowrap}
+        .bif__field{position:relative;flex:1 1 auto;min-width:0}
         .bif__bar:hover{border-color:var(--faint-2,#9A968E)}
         .bif__bar:focus-within{border-color:var(--yellow);box-shadow:0 0 0 5px rgba(255,198,41,.22);background:#FFFDF6}
         .bif__bar svg.q{width:22px;height:22px;color:var(--faint-2,#9A968E);flex:none;transition:color .18s}
         .bif__bar:focus-within svg.q{color:var(--amber-ink)}
         .bif__bar input{flex:1 1 auto;min-width:0;width:100%;height:54px;line-height:54px;border:0;outline:0;background:transparent;font:inherit;font-size:1.14rem;font-weight:600;letter-spacing:-.02em;color:var(--ink);padding:0 4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
         .bif__bar input::placeholder{color:var(--faint-2,#9A968E);font-weight:500;letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+        .bif__suggest{position:absolute;top:calc(100% + 12px);left:-8px;right:-4px;z-index:20;overflow:hidden;border:1px solid #eadfca;border-radius:18px;background:rgba(255,255,255,.98);box-shadow:0 24px 48px -24px rgba(33,26,12,.3),0 8px 18px -12px rgba(33,26,12,.14);backdrop-filter:blur(10px)}
+        .bif__suggest-head{display:flex;align-items:center;justify-content:space-between;padding:11px 14px 10px;background:linear-gradient(180deg,#fff8e3 0%,#fffdf7 100%);border-bottom:1px solid #f0e5cf;font-size:.68rem;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:#9d6900}
+        .bif__suggest-list{max-height:300px;overflow-y:auto;padding:6px}
+        .bif__suggest-item{width:100%;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:11px 12px;border:0;border-radius:14px;background:transparent;text-align:left;cursor:pointer;transition:background .15s,transform .15s}
+        .bif__suggest-item:hover,.bif__suggest-item.is-active{background:#fff7df}
+        .bif__suggest-item.is-active{transform:translateX(2px)}
+        .bif__suggest-copy{display:flex;min-width:0;flex-direction:column;gap:3px}
+        .bif__suggest-copy strong{font-size:.92rem;font-weight:700;letter-spacing:-.02em;color:var(--ink)}
+        .bif__suggest-copy em{font-style:normal;font-size:.74rem;font-weight:600;color:var(--faint-2,#9A968E)}
         .bif__cta{flex:none;display:inline-flex;align-items:center;gap:9px;height:54px;padding:0 26px;border-radius:100px;font-size:.96rem;font-weight:800;letter-spacing:-.015em;color:#1A1400;background:var(--yellow);border:0;cursor:pointer;box-shadow:0 1px 0 rgba(0,0,0,.04),0 4px 12px -6px rgba(255,198,41,.5);transition:background .18s,box-shadow .18s,transform .18s}
         .bif__cta svg{width:16px;height:16px;flex:none}
         .bif__cta:hover:not(:disabled){background:var(--yellow-hot,#FFD84D);box-shadow:0 1px 0 rgba(0,0,0,.05),0 6px 18px -6px rgba(255,198,41,.75);transform:translateY(-1px)}
@@ -3907,6 +3970,10 @@ function BrandInlineFlow({ kind = "brand", placeholder = "Which brand do you wan
           .bif__entry{width:100%;gap:10px}
           .bif__bar input{width:100%;height:44px;font-size:1.02rem;padding:0 6px}
           .bif__cta{width:100%;justify-content:center;height:48px}
+          .bif__suggest{left:-2px;right:-2px;top:calc(100% + 8px);border-radius:16px}
+          .bif__suggest-head{padding:10px 12px 9px;font-size:.62rem}
+          .bif__suggest-item{padding:10px}
+          .bif__suggest-copy strong{font-size:.86rem}
         }
         .flowbar{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
         .flowbar__head{display:flex;align-items:center;gap:14px;width:100%}
@@ -4014,6 +4081,7 @@ function BrandInlineFlow({ kind = "brand", placeholder = "Which brand do you wan
 					}),
 					/* @__PURE__ */ jsxs("form", {
 						className: "bif__bar",
+						ref: subjectFieldRef,
 						onSubmit: (e) => {
 							e.preventDefault();
 							startFlow();
@@ -4032,14 +4100,65 @@ function BrandInlineFlow({ kind = "brand", placeholder = "Which brand do you wan
 									cy: "11",
 									r: "7"
 								}), /* @__PURE__ */ jsx("path", { d: "m20 20-3.5-3.5" })]
-							}), /* @__PURE__ */ jsx("input", {
-								ref: inputRef,
-								type: "text",
-								autoComplete: "off",
-								value: subject,
-								onChange: (e) => setSubject(e.target.value),
-								placeholder,
-								"aria-label": eyebrow
+							}), /* @__PURE__ */ jsxs("div", {
+								className: "bif__field",
+								children: [/* @__PURE__ */ jsx("input", {
+									ref: inputRef,
+									type: "text",
+									autoComplete: "off",
+									value: subject,
+									onChange: (e) => {
+										setSubject(e.target.value);
+										setShowSuggestions(true);
+									},
+									onFocus: () => setShowSuggestions(true),
+									onKeyDown: (event) => {
+										if (!visibleSuggestions.length) return;
+										if (event.key === "ArrowDown") {
+											event.preventDefault();
+											setShowSuggestions(true);
+											setActiveSuggestion((current) => (current + 1) % visibleSuggestions.length);
+										}
+										if (event.key === "ArrowUp") {
+											event.preventDefault();
+											setShowSuggestions(true);
+											setActiveSuggestion((current) => current <= 0 ? visibleSuggestions.length - 1 : current - 1);
+										}
+										if (event.key === "Enter" && activeSuggestion >= 0 && visibleSuggestions[activeSuggestion]) {
+											event.preventDefault();
+											applySuggestion(visibleSuggestions[activeSuggestion].label);
+										}
+										if (event.key === "Escape") {
+											setShowSuggestions(false);
+											setActiveSuggestion(-1);
+										}
+									},
+									placeholder,
+									"aria-label": eyebrow,
+									"aria-expanded": showSuggestions && visibleSuggestions.length > 0,
+									"aria-haspopup": "listbox"
+								}), showSuggestions && visibleSuggestions.length > 0 && /* @__PURE__ */ jsxs("div", {
+									className: "bif__suggest",
+									role: "listbox",
+									"aria-label": `${kind} suggestions`,
+									children: [/* @__PURE__ */ jsxs("div", {
+										className: "bif__suggest-head",
+										children: [/* @__PURE__ */ jsxs("span", { children: ["Suggested ", kind === "brand" ? "brands" : "products"] }), /* @__PURE__ */ jsx("span", { children: visibleSuggestions.length })]
+									}), /* @__PURE__ */ jsx("div", {
+										className: "bif__suggest-list",
+										children: visibleSuggestions.map((suggestion, index) => /* @__PURE__ */ jsx("button", {
+											type: "button",
+											className: `bif__suggest-item${index === activeSuggestion ? " is-active" : ""}`,
+											onMouseEnter: () => setActiveSuggestion(index),
+											onMouseDown: (event) => event.preventDefault(),
+											onClick: () => applySuggestion(suggestion.label),
+											children: /* @__PURE__ */ jsxs("span", {
+												className: "bif__suggest-copy",
+												children: [/* @__PURE__ */ jsx("strong", { children: suggestion.label }), suggestion.sector && /* @__PURE__ */ jsx("em", { children: suggestion.sector })]
+											})
+										}, `${suggestion.type}-${suggestion.id}`))
+									})]
+								})]
 							})]
 						}), /* @__PURE__ */ jsxs("button", {
 							type: "submit",
@@ -4933,6 +5052,9 @@ function BrandCard({ search, onOpen, onEdit }) {
 	};
 	const initials = (search.name || search.phrase || "?").slice(0, 2).toUpperCase();
 	const topScore = Number(search.top_score) > 0 ? `${Math.round(search.top_score)}x` : "—";
+	const videosScanned = search.videos_scanned != null ? compact$1(search.videos_scanned) : "0";
+	const latestOutliers = search.latest_outlier_count != null ? compact$1(search.latest_outlier_count) : "0";
+	const averageVideoViews = Number(search.average_video_views) > 0 ? compact$1(search.average_video_views) : "—";
 	return /* @__PURE__ */ jsxs("div", {
 		className: "bcard",
 		role: "button",
@@ -4974,32 +5096,32 @@ function BrandCard({ search, onOpen, onEdit }) {
 				children: [
 					/* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsx("span", {
 						className: "bcard__v",
-						children: search.outlier_count ?? 0
+						children: videosScanned
 					}), /* @__PURE__ */ jsx("span", {
 						className: "bcard__l",
-						children: "outliers/wk"
+						children: "videos scanned"
+					})] }),
+					/* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsx("span", {
+						className: "bcard__v",
+						children: latestOutliers
+					}), /* @__PURE__ */ jsx("span", {
+						className: "bcard__l",
+						children: "new outliers"
 					})] }),
 					/* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsx("span", {
 						className: "bcard__v",
 						children: topScore
 					}), /* @__PURE__ */ jsx("span", {
 						className: "bcard__l",
-						children: "top score"
+						children: "top outlier video"
 					})] }),
 					/* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsx("span", {
 						className: "bcard__v",
-						children: search.result_count ?? 0
+						children: averageVideoViews
 					}), /* @__PURE__ */ jsx("span", {
 						className: "bcard__l",
-						children: "videos"
-					})] }),
-					/* @__PURE__ */ jsx("div", {
-						className: "bcard__sp",
-						children: (search.result_count ?? 0) === 0 && /* @__PURE__ */ jsx("span", {
-							className: "bcard__flat",
-							children: "no runs yet"
-						})
-					})
+						children: "avg video views"
+					})] })
 				]
 			}),
 			/* @__PURE__ */ jsxs("div", {
@@ -5761,10 +5883,14 @@ var TYPES$1 = [{
 		"sunscreen stick"
 	]
 }];
-function SearchLauncher({ initialType = "brand", initialQuery = "", onSubmit, suggestionsByType = {} }) {
+function SearchLauncher({ initialType = "brand", initialQuery = "", onSubmit, suggestionsByType = {}, showProgress = true }) {
 	const [type, setType] = useState(initialType);
 	const [value, setValue] = useState(initialQuery);
+	const [liveSuggestions, setLiveSuggestions] = useState([]);
+	const [activeSuggestion, setActiveSuggestion] = useState(-1);
+	const [showSuggestions, setShowSuggestions] = useState(false);
 	const inputRef = useRef(null);
+	const fieldRef = useRef(null);
 	const segRef = useRef(null);
 	const [indStyle, setIndStyle] = useState({
 		width: 0,
@@ -5774,6 +5900,25 @@ function SearchLauncher({ initialType = "brand", initialQuery = "", onSubmit, su
 	const dynamic = (suggestionsByType?.[type] ?? []).map((s) => typeof s === "string" ? s : s?.name).filter(Boolean).slice(0, 3);
 	const chips = dynamic.length > 0 ? dynamic : baseConfig.suggestions;
 	const query = value.trim().replace(/\s+/g, " ");
+	useEffect(() => {
+		const controller = new AbortController();
+		const term = value.trim();
+		fetchKeywordSuggestions(type, term, { signal: controller.signal }).then((payload) => {
+			setLiveSuggestions(Array.isArray(payload?.suggestions) ? payload.suggestions : []);
+			setActiveSuggestion(-1);
+		}).catch(() => {});
+		return () => controller.abort();
+	}, [type, value]);
+	useEffect(() => {
+		const close = (event) => {
+			if (!fieldRef.current?.contains(event.target)) {
+				setShowSuggestions(false);
+				setActiveSuggestion(-1);
+			}
+		};
+		document.addEventListener("mousedown", close);
+		return () => document.removeEventListener("mousedown", close);
+	}, []);
 	useEffect(() => {
 		const seg = segRef.current;
 		if (!seg) return void 0;
@@ -5802,12 +5947,19 @@ function SearchLauncher({ initialType = "brand", initialQuery = "", onSubmit, su
 		}
 		router.visit(`/search?type=${type}&q=${encodeURIComponent(query)}`);
 	};
+	const visibleSuggestions = liveSuggestions.filter((suggestion) => suggestion.label?.trim());
+	const applySuggestion = (label) => {
+		setValue(label);
+		setShowSuggestions(false);
+		setActiveSuggestion(-1);
+		window.requestAnimationFrame(() => inputRef.current?.focus());
+	};
 	return /* @__PURE__ */ jsxs("div", {
 		className: "hero",
 		children: [
 			/* @__PURE__ */ jsxs("div", {
 				className: "hero__head",
-				children: [/* @__PURE__ */ jsx("h2", { children: "What do you want to scan?" }), /* @__PURE__ */ jsxs("div", {
+				children: [/* @__PURE__ */ jsx("h2", { children: "What do you want to scan?" }), showProgress && /* @__PURE__ */ jsxs("div", {
 					className: "prog",
 					children: [
 						/* @__PURE__ */ jsxs("span", {
@@ -5854,6 +6006,7 @@ function SearchLauncher({ initialType = "brand", initialQuery = "", onSubmit, su
 			/* @__PURE__ */ jsxs("form", {
 				className: "bar",
 				onSubmit: submit,
+				ref: fieldRef,
 				children: [
 					/* @__PURE__ */ jsxs("svg", {
 						className: "bar__q",
@@ -5868,15 +6021,66 @@ function SearchLauncher({ initialType = "brand", initialQuery = "", onSubmit, su
 							r: "7"
 						}), /* @__PURE__ */ jsx("path", { d: "m20 20-3.5-3.5" })]
 					}),
-					/* @__PURE__ */ jsx("input", {
-						ref: inputRef,
-						id: "dashboard-search-subject",
-						type: "text",
-						autoComplete: "off",
-						value,
-						onChange: (e) => setValue(e.target.value),
-						placeholder: baseConfig.placeholder,
-						"aria-label": baseConfig.placeholder
+					/* @__PURE__ */ jsxs("div", {
+						className: "bar__field",
+						children: [/* @__PURE__ */ jsx("input", {
+							ref: inputRef,
+							id: "dashboard-search-subject",
+							type: "text",
+							autoComplete: "off",
+							value,
+							onChange: (e) => {
+								setValue(e.target.value);
+								setShowSuggestions(true);
+							},
+							onFocus: () => setShowSuggestions(true),
+							onKeyDown: (event) => {
+								if (!visibleSuggestions.length) return;
+								if (event.key === "ArrowDown") {
+									event.preventDefault();
+									setShowSuggestions(true);
+									setActiveSuggestion((current) => (current + 1) % visibleSuggestions.length);
+								}
+								if (event.key === "ArrowUp") {
+									event.preventDefault();
+									setShowSuggestions(true);
+									setActiveSuggestion((current) => current <= 0 ? visibleSuggestions.length - 1 : current - 1);
+								}
+								if (event.key === "Enter" && activeSuggestion >= 0 && visibleSuggestions[activeSuggestion]) {
+									event.preventDefault();
+									applySuggestion(visibleSuggestions[activeSuggestion].label);
+								}
+								if (event.key === "Escape") {
+									setShowSuggestions(false);
+									setActiveSuggestion(-1);
+								}
+							},
+							placeholder: baseConfig.placeholder,
+							"aria-label": baseConfig.placeholder,
+							"aria-expanded": showSuggestions && visibleSuggestions.length > 0,
+							"aria-haspopup": "listbox"
+						}), showSuggestions && visibleSuggestions.length > 0 && /* @__PURE__ */ jsxs("div", {
+							className: "hero-suggest",
+							role: "listbox",
+							"aria-label": `${type} suggestions`,
+							children: [/* @__PURE__ */ jsxs("div", {
+								className: "hero-suggest__head",
+								children: [/* @__PURE__ */ jsxs("span", { children: ["Suggested ", type === "brand" ? "brands" : "products"] }), /* @__PURE__ */ jsx("span", { children: visibleSuggestions.length })]
+							}), /* @__PURE__ */ jsx("div", {
+								className: "hero-suggest__list",
+								children: visibleSuggestions.map((suggestion, index) => /* @__PURE__ */ jsx("button", {
+									type: "button",
+									className: `hero-suggest__item${index === activeSuggestion ? " is-active" : ""}`,
+									onMouseEnter: () => setActiveSuggestion(index),
+									onMouseDown: (event) => event.preventDefault(),
+									onClick: () => applySuggestion(suggestion.label),
+									children: /* @__PURE__ */ jsxs("span", {
+										className: "hero-suggest__text",
+										children: [/* @__PURE__ */ jsx("strong", { children: suggestion.label }), suggestion.sector && /* @__PURE__ */ jsx("em", { children: suggestion.sector })]
+									})
+								}, `${suggestion.type}-${suggestion.id}`))
+							})]
+						})]
 					}),
 					/* @__PURE__ */ jsxs("button", {
 						type: "submit",
@@ -5963,7 +6167,7 @@ function SkeletonChips() {
 * results locally, so "1 search covers everything you select" is literally true.
 * The subject itself is changed by stepping Back, so there is no edit control here.
 */
-function KeywordsScreen({ phrase, noun = "brand", nextLabel = "Run search", onBack, onSubmit, submitting = false, error = null }) {
+function KeywordsScreen({ phrase, noun = "brand", searchType = "brand", nextLabel = "Run search", onBack, onSubmit, submitting = false, error = null }) {
 	const [terms, setTerms] = useState([]);
 	const [loading, setLoading] = useState(true);
 	const [regenerating, setRegenerating] = useState(false);
@@ -6003,7 +6207,10 @@ function KeywordsScreen({ phrase, noun = "brand", nextLabel = "Run search", onBa
 		if (requested.current) return void 0;
 		requested.current = true;
 		const controller = new AbortController();
-		expandKeywords(phrase, { signal: controller.signal }).then((payload) => {
+		expandKeywords(phrase, {
+			signal: controller.signal,
+			type: searchType
+		}).then((payload) => {
 			const keywords = Array.isArray(payload?.keywords) ? payload.keywords : [phrase];
 			setExpansionSource(payload?.source ?? null);
 			setTerms(applyExpansion(keywords, phrase));
@@ -6018,7 +6225,10 @@ function KeywordsScreen({ phrase, noun = "brand", nextLabel = "Run search", onBa
 	}, [phrase]);
 	const regenerate = () => {
 		setRegenerating(true);
-		expandKeywords(phrase, { fresh: true }).then((payload) => {
+		expandKeywords(phrase, {
+			fresh: true,
+			type: searchType
+		}).then((payload) => {
 			const keywords = Array.isArray(payload?.keywords) ? payload.keywords : [phrase];
 			setExpansionSource(payload?.source ?? null);
 			setTerms((prev) => applyExpansion(keywords, phrase, prev));
@@ -6667,48 +6877,6 @@ function readRunParam() {
 	const id = new URLSearchParams(window.location.search).get("run");
 	return id && /^\d+$/.test(id) ? Number(id) : null;
 }
-/**
-* The card-header stepper. Sources is the optional last step for every search;
-* there is no "Results" step — the visitor is already signed in by the time
-* they run.
-*/
-function Stepper$1({ kind, current }) {
-	const steps = [
-		{
-			k: "subject",
-			l: "Subject"
-		},
-		{
-			k: "keywords",
-			l: "Keywords"
-		},
-		{
-			k: "sources",
-			l: "Sources"
-		}
-	];
-	const idx = steps.findIndex((s) => s.k === current);
-	return /* @__PURE__ */ jsx("div", {
-		className: "step",
-		children: steps.map((s, i) => {
-			const state = i < idx ? "done" : i === idx ? "now" : "todo";
-			return /* @__PURE__ */ jsxs("span", {
-				className: "step__i",
-				children: [
-					i > 0 && /* @__PURE__ */ jsx("span", { className: "step__r" }),
-					/* @__PURE__ */ jsx("span", {
-						className: `step__n ${state}`,
-						children: state === "done" ? /* @__PURE__ */ jsx(Check, {}) : i + 1
-					}),
-					/* @__PURE__ */ jsx("span", {
-						className: `step__l ${state}`,
-						children: s.l
-					})
-				]
-			}, s.k);
-		})
-	});
-}
 function UsageConfirmModal$2({ title, body, subject, confirmLabel, busy = false, onConfirm, onCancel }) {
 	return /* @__PURE__ */ jsx("div", {
 		className: "bb",
@@ -6846,9 +7014,7 @@ function clearPendingSearch() {
 	window.sessionStorage.removeItem(PENDING_SEARCH_KEY);
 }
 function SearchWizard({ initialType = "brand", initialQuery = "", heading = "Start a search", subheading = "Pick one brand or product — we widen it with smarter keywords on the next step.", subjectExtra = null, suggestionsByType = {}, onTrackedSearchChange = null }) {
-	const page = usePage();
-	const { auth = {}, billing = {} } = page.props;
-	const isLandingSearchPage = String(page.url || "").startsWith("/search");
+	const { auth = {}, billing = {} } = usePage().props;
 	const resumeId = readRunParam();
 	const [step, setStep] = useState(resumeId ? "running" : initialQuery ? "keywords" : "subject");
 	const [type, setType] = useState(initialType);
@@ -6999,26 +7165,24 @@ function SearchWizard({ initialType = "brand", initialQuery = "", heading = "Sta
 			onDone,
 			onAutoReturn: leaveRunningScreen
 		}) : /* @__PURE__ */ jsxs("div", {
-			className: "card",
+			className: "card card--search-wizard",
 			children: [
-				/* @__PURE__ */ jsx(Stepper$1, {
-					kind,
-					current: step
-				}),
 				step === "subject" && /* @__PURE__ */ jsx(SearchLauncher, {
 					initialType: type,
 					initialQuery: phrase,
 					onSubmit: pickSubject,
-					suggestionsByType
+					suggestionsByType,
+					showProgress: false
 				}),
 				step === "keywords" && phrase && /* @__PURE__ */ jsx(KeywordsScreen, {
 					phrase,
 					noun: nounOf(type),
+					searchType: type,
 					nextLabel: "Continue",
 					submitting,
 					error,
 					onBack: () => {
-						if (isLandingSearchPage || !signedIn) {
+						if (!signedIn) {
 							if (typeof window !== "undefined") {
 								window.location.assign("/");
 								return;
@@ -7723,7 +7887,7 @@ function Dashboard() {
 	return /* @__PURE__ */ jsxs(Fragment$1, { children: [
 		/* @__PURE__ */ jsx(Head, { title: "Dashboard · Brand Beacon" }),
 		/* @__PURE__ */ jsx("style", { children: `
-        .hero{background:var(--white);border:1px solid var(--line);border-radius:20px;padding:24px 26px 26px}
+        .hero{position:relative;z-index:3;background:var(--white);border:1px solid var(--line);border-radius:20px;padding:24px 26px 26px}
         .hero__head{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:18px}
         .hero__head h2{font-size:1.1rem;font-weight:800;letter-spacing:-.028em;color:var(--ink)}
         .prog{display:flex;align-items:center;gap:9px;font-size:.75rem;font-weight:700;color:var(--faint-2,#9A968E)}
@@ -7740,15 +7904,25 @@ function Dashboard() {
         .seg__b[aria-selected="true"]{color:#1A1400}
         .seg__b[aria-selected="true"] svg{opacity:1}
 
-        .bar{display:flex;align-items:center;gap:10px;padding:7px 7px 7px 18px;background:var(--white);border:1.5px solid var(--line-2,#DEDBD3);border-radius:100px;transition:border-color .18s,box-shadow .18s}
+        .bar{position:relative;display:flex;align-items:center;gap:10px;padding:7px 7px 7px 18px;background:var(--white);border:1.5px solid var(--line-2,#DEDBD3);border-radius:100px;transition:border-color .18s,box-shadow .18s}
         .bar:focus-within{border-color:var(--yellow);box-shadow:0 0 0 4px rgba(255,198,41,.24)}
         .bar__q{width:19px;height:19px;color:var(--faint-2,#9A968E);flex:none}
-        .bar input{flex:1 1 auto;min-width:0;height:48px;border:0;outline:0;background:transparent;font:inherit;font-size:1.06rem;font-weight:600;letter-spacing:-.015em;color:var(--ink)}
+        .bar__field{position:relative;flex:1 1 auto;min-width:0}
+        .bar input{width:100%;min-width:0;height:48px;border:0;outline:0;background:transparent;font:inherit;font-size:1.06rem;font-weight:600;letter-spacing:-.015em;color:var(--ink)}
         .bar input::placeholder{color:var(--faint-2,#9A968E);font-weight:500}
         .bar .btn--y{flex:none;height:48px;padding:0 18px;border-radius:100px;font-size:.88rem;font-weight:700;display:inline-flex;align-items:center;gap:6px}
         .bar .btn--y[disabled]{opacity:.55;cursor:not-allowed}
         .btn__a{display:inline-flex;transition:transform .2s}
         .bar .btn--y:hover .btn__a{transform:translateX(3px)}
+        .hero-suggest{position:absolute;top:calc(100% + 10px);left:-6px;right:0;z-index:20;overflow:hidden;border:1px solid #eadfca;border-radius:18px;background:rgba(255,255,255,.97);box-shadow:0 24px 48px -24px rgba(33,26,12,.3),0 8px 18px -12px rgba(33,26,12,.14);backdrop-filter:blur(10px)}
+        .hero-suggest__head{display:flex;align-items:center;justify-content:space-between;padding:11px 14px 10px;background:linear-gradient(180deg,#fff8e3 0%,#fffdf7 100%);border-bottom:1px solid #f0e5cf;font-size:.7rem;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:#9d6900}
+        .hero-suggest__list{max-height:320px;overflow-y:auto;padding:6px}
+        .hero-suggest__item{width:100%;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:11px 12px;border:0;border-radius:14px;background:transparent;text-align:left;cursor:pointer;transition:background .15s,transform .15s}
+        .hero-suggest__item:hover,.hero-suggest__item.is-active{background:#fff7df}
+        .hero-suggest__item.is-active{transform:translateX(2px)}
+        .hero-suggest__text{display:flex;min-width:0;flex-direction:column;gap:3px}
+        .hero-suggest__text strong{font-size:.93rem;font-weight:700;letter-spacing:-.02em;color:var(--ink)}
+        .hero-suggest__text em{font-style:normal;font-size:.74rem;font-weight:600;color:var(--faint-2,#9A968E)}
 
         .hero__foot{display:flex;align-items:center;flex-wrap:wrap;gap:10px 14px;margin-top:15px}
         .hero__hint{font-size:.81rem;color:var(--faint-2,#9A968E);margin-right:auto}
@@ -7812,6 +7986,11 @@ function Dashboard() {
           .bar input{height:44px;font-size:.96rem}
           .bar .btn--y{height:42px;padding:0 13px;font-size:.78rem;gap:4px}
           .bar .btn--y .btn__a svg{width:12px;height:12px}
+          .hero-suggest{left:-2px;right:-2px;top:calc(100% + 8px);border-radius:16px}
+          .hero-suggest__head{padding:10px 12px 9px;font-size:.64rem}
+          .hero-suggest__list{padding:5px}
+          .hero-suggest__item{padding:10px}
+          .hero-suggest__text strong{font-size:.87rem}
           .hero__foot{gap:8px 10px;margin-top:12px}
           .hero__hint,.pop__l,.chip{font-size:.74rem}
           .chip{height:28px;padding:0 11px}
@@ -8000,9 +8179,29 @@ var MODES = [{
 function Hero({ onStart }) {
 	const [type, setType] = useState("brand");
 	const [value, setValue] = useState("");
+	const [subjectSuggestions, setSubjectSuggestions] = useState([]);
+	const [activeSuggestion, setActiveSuggestion] = useState(-1);
+	const [showSuggestions, setShowSuggestions] = useState(false);
 	const inputRef = useRef(null);
+	const fieldRef = useRef(null);
 	const mode = MODES.find((m) => m.key === type) ?? MODES[0];
 	const query = value.trim().replace(/\s+/g, " ");
+	const visibleSuggestions = subjectSuggestions.filter((suggestion) => suggestion.label?.trim());
+	useEffect(() => {
+		const controller = new AbortController();
+		fetchKeywordSuggestions(type, value.trim(), { signal: controller.signal }).then((payload) => setSubjectSuggestions(Array.isArray(payload?.suggestions) ? payload.suggestions : [])).catch(() => {});
+		return () => controller.abort();
+	}, [type, value]);
+	useEffect(() => {
+		const close = (event) => {
+			if (!fieldRef.current?.contains(event.target)) {
+				setShowSuggestions(false);
+				setActiveSuggestion(-1);
+			}
+		};
+		document.addEventListener("mousedown", close);
+		return () => document.removeEventListener("mousedown", close);
+	}, []);
 	const submit = (e) => {
 		e?.preventDefault();
 		if (!query) {
@@ -8010,6 +8209,12 @@ function Hero({ onStart }) {
 			return;
 		}
 		onStart(type, query);
+	};
+	const applySuggestion = (label) => {
+		setValue(label);
+		setShowSuggestions(false);
+		setActiveSuggestion(-1);
+		window.requestAnimationFrame(() => inputRef.current?.focus());
 	};
 	return /* @__PURE__ */ jsx("section", {
 		className: "hero",
@@ -8063,19 +8268,73 @@ function Hero({ onStart }) {
 						}),
 						/* @__PURE__ */ jsxs("div", {
 							className: "box__field",
-							children: [/* @__PURE__ */ jsx("input", {
-								ref: inputRef,
-								id: "search-subject",
-								maxLength: 80,
-								value,
-								onChange: (e) => setValue(e.target.value),
-								placeholder: mode.sample,
-								"aria-label": `Type your ${type === "product" ? "product" : "brand name"}`
-							}), /* @__PURE__ */ jsxs("button", {
-								type: "submit",
-								className: "btn btn--primary btn--lg btn--pulse",
-								children: ["Find outliers", /* @__PURE__ */ jsx(Arrow, { className: "btn__arrow h-[15px] w-[15px]" })]
-							})]
+							ref: fieldRef,
+							children: [
+								/* @__PURE__ */ jsx("input", {
+									ref: inputRef,
+									id: "search-subject",
+									maxLength: 80,
+									value,
+									autoComplete: "off",
+									onChange: (e) => {
+										setValue(e.target.value);
+										setShowSuggestions(true);
+									},
+									onFocus: () => setShowSuggestions(true),
+									onKeyDown: (event) => {
+										if (!visibleSuggestions.length) return;
+										if (event.key === "ArrowDown") {
+											event.preventDefault();
+											setShowSuggestions(true);
+											setActiveSuggestion((current) => (current + 1) % visibleSuggestions.length);
+										}
+										if (event.key === "ArrowUp") {
+											event.preventDefault();
+											setShowSuggestions(true);
+											setActiveSuggestion((current) => current <= 0 ? visibleSuggestions.length - 1 : current - 1);
+										}
+										if (event.key === "Enter" && activeSuggestion >= 0 && visibleSuggestions[activeSuggestion]) {
+											event.preventDefault();
+											applySuggestion(visibleSuggestions[activeSuggestion].label);
+										}
+										if (event.key === "Escape") {
+											setShowSuggestions(false);
+											setActiveSuggestion(-1);
+										}
+									},
+									placeholder: mode.sample,
+									"aria-label": `Type your ${type === "product" ? "product" : "brand name"}`,
+									"aria-expanded": showSuggestions && visibleSuggestions.length > 0,
+									"aria-haspopup": "listbox"
+								}),
+								showSuggestions && visibleSuggestions.length > 0 && /* @__PURE__ */ jsxs("div", {
+									className: "hero-suggest",
+									role: "listbox",
+									"aria-label": `${type} suggestions`,
+									children: [/* @__PURE__ */ jsxs("div", {
+										className: "hero-suggest__head",
+										children: [/* @__PURE__ */ jsxs("span", { children: ["Suggested ", type === "brand" ? "brands" : "products"] }), /* @__PURE__ */ jsx("span", { children: visibleSuggestions.length })]
+									}), /* @__PURE__ */ jsx("div", {
+										className: "hero-suggest__list",
+										children: visibleSuggestions.map((suggestion, index) => /* @__PURE__ */ jsx("button", {
+											type: "button",
+											className: `hero-suggest__item${index === activeSuggestion ? " is-active" : ""}`,
+											onMouseEnter: () => setActiveSuggestion(index),
+											onMouseDown: (event) => event.preventDefault(),
+											onClick: () => applySuggestion(suggestion.label),
+											children: /* @__PURE__ */ jsxs("span", {
+												className: "hero-suggest__text",
+												children: [/* @__PURE__ */ jsx("strong", { children: suggestion.label }), suggestion.sector && /* @__PURE__ */ jsx("em", { children: suggestion.sector })]
+											})
+										}, `${suggestion.type}-${suggestion.id}`))
+									})]
+								}),
+								/* @__PURE__ */ jsxs("button", {
+									type: "submit",
+									className: "btn btn--primary btn--lg btn--pulse",
+									children: ["Find outliers", /* @__PURE__ */ jsx(Arrow, { className: "btn__arrow h-[15px] w-[15px]" })]
+								})
+							]
 						}),
 						/* @__PURE__ */ jsxs("div", {
 							className: "box__foot",
@@ -9686,6 +9945,27 @@ var VIDEO_SORT = {
 	views: "Views",
 	recent: "Most recent"
 };
+var ANALYSIS_STATUS_LABELS = {
+	complete: "Ready",
+	processing: "Processing",
+	failed: "Failed",
+	idle: "Queued"
+};
+var ANALYSIS_SORT = {
+	recent: "Most recent",
+	oldest: "Oldest first"
+};
+function formatAnalysisDate(value) {
+	if (!value) return "Waiting for analysis";
+	const date = new Date(value);
+	if (Number.isNaN(date.getTime())) return "Waiting for analysis";
+	return date.toLocaleString([], {
+		month: "short",
+		day: "numeric",
+		hour: "numeric",
+		minute: "2-digit"
+	});
+}
 function compareDates(a, b) {
 	return (b ? new Date(b).getTime() : 0) - (a ? new Date(a).getTime() : 0);
 }
@@ -9700,7 +9980,7 @@ function Sel({ value, onChange, ariaLabel, children }) {
 		}), /* @__PURE__ */ jsx(Chevron, {})]
 	});
 }
-function Index({ searches: initialSearches, bookmarkedVideos = [], filterType = null, watchlistedOnly: bookmarkedOnly = true }) {
+function Index({ searches: initialSearches, bookmarkedVideos = [], analysisHistory = [], filterType = null, watchlistedOnly: bookmarkedOnly = true }) {
 	const isBrandCategoryView = filterType === "brand-group";
 	const showTabs = bookmarkedOnly && !filterType;
 	const [searches, setSearches] = useState(initialSearches);
@@ -9712,6 +9992,9 @@ function Index({ searches: initialSearches, bookmarkedVideos = [], filterType = 
 	const [sortBy, setSortBy] = useState("recent_refresh");
 	const [videoQuery, setVideoQuery] = useState("");
 	const [videoSort, setVideoSort] = useState("score");
+	const [analysisQuery, setAnalysisQuery] = useState("");
+	const [analysisStatus, setAnalysisStatus] = useState("all");
+	const [analysisSort, setAnalysisSort] = useState("recent");
 	const [modalState, setModalState] = useState({
 		type: null,
 		search: null
@@ -9724,7 +10007,7 @@ function Index({ searches: initialSearches, bookmarkedVideos = [], filterType = 
 	});
 	const [submitting, setSubmitting] = useState(false);
 	const menuRef = useRef(null);
-	const title = filterType ? FILTER_LABELS[filterType] ?? "Bookmarks" : "Bookmarks";
+	const title = filterType ? FILTER_LABELS[filterType] ?? "Library" : "Library";
 	const searchHref = `/search?type=${filterType === "product" ? "product" : "brand"}`;
 	useEffect(() => {
 		if (openMenuId === null) return void 0;
@@ -9784,6 +10067,26 @@ function Index({ searches: initialSearches, bookmarkedVideos = [], filterType = 
 		bookmarkedVideos,
 		videoQuery,
 		videoSort
+	]);
+	const filteredAnalyses = useMemo(() => {
+		const q = analysisQuery.trim().toLowerCase();
+		const next = analysisHistory.filter((entry) => {
+			const searchNames = Array.isArray(entry.searches) ? entry.searches.map((search) => search?.name ?? "") : [];
+			const matchesQuery = q === "" || entry.video?.title?.toLowerCase().includes(q) || entry.video?.handle?.toLowerCase().includes(q) || entry.video?.creator_name?.toLowerCase().includes(q) || searchNames.some((name) => name.toLowerCase().includes(q));
+			const matchesStatus = analysisStatus === "all" || entry.status === analysisStatus;
+			return matchesQuery && matchesStatus;
+		});
+		next.sort((left, right) => {
+			const leftTime = new Date(left.analyzed_at ?? left.updated_at ?? 0).getTime();
+			const rightTime = new Date(right.analyzed_at ?? right.updated_at ?? 0).getTime();
+			return analysisSort === "oldest" ? leftTime - rightTime : rightTime - leftTime;
+		});
+		return next;
+	}, [
+		analysisHistory,
+		analysisQuery,
+		analysisSort,
+		analysisStatus
 	]);
 	const openModal = (type, search) => {
 		setOpenMenuId(null);
@@ -9913,35 +10216,51 @@ function Index({ searches: initialSearches, bookmarkedVideos = [], filterType = 
 		/* @__PURE__ */ jsxs(AppLayout, {
 			width: "max-w-[1240px]",
 			title,
-			subtitle: "Everything you have saved — tracked searches and the individual videos you kept.",
+			subtitle: "Everything you have saved and analyzed — tracked searches, bookmarked videos, and your analysis log.",
 			actions: /* @__PURE__ */ jsx(EntitlementsBar, {}),
 			children: [showTabs && /* @__PURE__ */ jsxs("div", {
 				className: "tabs tabs--bookmarks",
-				children: [/* @__PURE__ */ jsxs("button", {
-					type: "button",
-					className: `tab${tab === "searches" ? " is-on" : ""}`,
-					onClick: () => setTab("searches"),
-					children: [
-						/* @__PURE__ */ jsx(Bookmark, { className: "h-[15px] w-[15px]" }),
-						" Bookmarked searches ",
-						/* @__PURE__ */ jsx("span", {
-							className: "tab__c",
-							children: searches.length
-						})
-					]
-				}), /* @__PURE__ */ jsxs("button", {
-					type: "button",
-					className: `tab${tab === "videos" ? " is-on" : ""}`,
-					onClick: () => setTab("videos"),
-					children: [
-						/* @__PURE__ */ jsx(Play, { className: "h-[15px] w-[15px]" }),
-						" Bookmarked videos ",
-						/* @__PURE__ */ jsx("span", {
-							className: "tab__c",
-							children: bookmarkedVideos.length
-						})
-					]
-				})]
+				children: [
+					/* @__PURE__ */ jsxs("button", {
+						type: "button",
+						className: `tab${tab === "searches" ? " is-on" : ""}`,
+						onClick: () => setTab("searches"),
+						children: [
+							/* @__PURE__ */ jsx(Bookmark, { className: "h-[15px] w-[15px]" }),
+							" Bookmarked searches ",
+							/* @__PURE__ */ jsx("span", {
+								className: "tab__c",
+								children: searches.length
+							})
+						]
+					}),
+					/* @__PURE__ */ jsxs("button", {
+						type: "button",
+						className: `tab${tab === "videos" ? " is-on" : ""}`,
+						onClick: () => setTab("videos"),
+						children: [
+							/* @__PURE__ */ jsx(Play, { className: "h-[15px] w-[15px]" }),
+							" Bookmarked videos ",
+							/* @__PURE__ */ jsx("span", {
+								className: "tab__c",
+								children: bookmarkedVideos.length
+							})
+						]
+					}),
+					/* @__PURE__ */ jsxs("button", {
+						type: "button",
+						className: `tab${tab === "analysis" ? " is-on" : ""}`,
+						onClick: () => setTab("analysis"),
+						children: [
+							/* @__PURE__ */ jsx(Search, { className: "h-[15px] w-[15px]" }),
+							" Analysis history ",
+							/* @__PURE__ */ jsx("span", {
+								className: "tab__c",
+								children: analysisHistory.length
+							})
+						]
+					})
+				]
 			}), tab === "searches" || !showTabs ? /* @__PURE__ */ jsxs(Fragment$1, { children: [/* @__PURE__ */ jsxs("div", {
 				className: "tools",
 				children: [
@@ -10045,7 +10364,7 @@ function Index({ searches: initialSearches, bookmarkedVideos = [], filterType = 
 					onNavigate: () => router.visit(s.url),
 					actions: rowActions(s)
 				}, s.id))
-			})] }) : /* @__PURE__ */ jsxs(Fragment$1, { children: [/* @__PURE__ */ jsxs("div", {
+			})] }) : tab === "videos" ? /* @__PURE__ */ jsxs(Fragment$1, { children: [/* @__PURE__ */ jsxs("div", {
 				className: "tools",
 				children: [/* @__PURE__ */ jsxs("label", {
 					className: "srch",
@@ -10084,6 +10403,157 @@ function Index({ searches: initialSearches, bookmarkedVideos = [], filterType = 
 			}) : /* @__PURE__ */ jsx("div", {
 				className: "vgrid",
 				children: filteredVideos.map((v) => /* @__PURE__ */ jsx(VideoCard, { video: v }, v.id))
+			})] }) : /* @__PURE__ */ jsxs(Fragment$1, { children: [/* @__PURE__ */ jsxs("div", {
+				className: "tools",
+				children: [
+					/* @__PURE__ */ jsxs("label", {
+						className: "srch",
+						children: [/* @__PURE__ */ jsx(Search, { className: "h-4 w-4" }), /* @__PURE__ */ jsx("input", {
+							value: analysisQuery,
+							onChange: (e) => setAnalysisQuery(e.target.value),
+							placeholder: "Search analysis history",
+							"aria-label": "Search analysis history"
+						})]
+					}),
+					/* @__PURE__ */ jsxs(Sel, {
+						value: analysisStatus,
+						onChange: (e) => setAnalysisStatus(e.target.value),
+						ariaLabel: "Filter analyses",
+						children: [
+							/* @__PURE__ */ jsx("option", {
+								value: "all",
+								children: "All statuses"
+							}),
+							/* @__PURE__ */ jsx("option", {
+								value: "complete",
+								children: "Ready"
+							}),
+							/* @__PURE__ */ jsx("option", {
+								value: "processing",
+								children: "Processing"
+							}),
+							/* @__PURE__ */ jsx("option", {
+								value: "failed",
+								children: "Failed"
+							}),
+							/* @__PURE__ */ jsx("option", {
+								value: "idle",
+								children: "Queued"
+							})
+						]
+					}),
+					/* @__PURE__ */ jsx(Sel, {
+						value: analysisSort,
+						onChange: (e) => setAnalysisSort(e.target.value),
+						ariaLabel: "Sort analyses",
+						children: Object.entries(ANALYSIS_SORT).map(([value, label]) => /* @__PURE__ */ jsx("option", {
+							value,
+							children: label
+						}, value))
+					})
+				]
+			}), filteredAnalyses.length === 0 ? /* @__PURE__ */ jsxs("div", {
+				className: "empty",
+				children: [
+					/* @__PURE__ */ jsx("div", {
+						className: "empty__i",
+						children: /* @__PURE__ */ jsx(Search, { className: "h-6 w-6" })
+					}),
+					/* @__PURE__ */ jsx("h2", { children: analysisHistory.length === 0 ? "No analyses yet" : "No analyses matched" }),
+					/* @__PURE__ */ jsx("p", {
+						className: "muted",
+						style: {
+							maxWidth: 420,
+							margin: "10px auto 0"
+						},
+						children: analysisHistory.length === 0 ? "Analyze a video from any search result and it will show up here as a running history log." : "Try a different search term or status filter."
+					})
+				]
+			}) : /* @__PURE__ */ jsx("div", {
+				className: "rows",
+				children: filteredAnalyses.map((entry) => {
+					const statusLabel = ANALYSIS_STATUS_LABELS[entry.status] ?? "Unknown";
+					const searchNames = Array.isArray(entry.searches) ? entry.searches.map((search) => search.name).filter(Boolean) : [];
+					const href = entry.status === "complete" ? entry.analysis_url : entry.search_url ? `${entry.search_url}${entry.search_url.includes("?") ? "&" : "?"}analysisVideo=${encodeURIComponent(entry.video?.id ?? "")}&openAnalysis=1` : entry.analysis_url;
+					return /* @__PURE__ */ jsxs(Link, {
+						href,
+						className: "row",
+						style: {
+							alignItems: "stretch",
+							textDecoration: "none"
+						},
+						children: [/* @__PURE__ */ jsx("div", {
+							style: {
+								width: 88,
+								minWidth: 88,
+								borderRadius: 18,
+								overflow: "hidden",
+								background: "var(--panel)",
+								border: "1px solid var(--line)"
+							},
+							children: entry.video?.thumbnail_url ? /* @__PURE__ */ jsx("img", {
+								src: entry.video.thumbnail_url,
+								alt: entry.video?.title ?? "Video thumbnail",
+								style: {
+									width: "100%",
+									height: "100%",
+									minHeight: 88,
+									objectFit: "cover"
+								}
+							}) : /* @__PURE__ */ jsx("div", {
+								style: {
+									minHeight: 88,
+									display: "grid",
+									placeItems: "center",
+									color: "var(--muted)"
+								},
+								children: /* @__PURE__ */ jsx(Play, { className: "h-5 w-5" })
+							})
+						}), /* @__PURE__ */ jsxs("div", {
+							style: {
+								flex: 1,
+								minWidth: 0
+							},
+							children: [
+								/* @__PURE__ */ jsxs("div", {
+									className: "row__t",
+									style: {
+										marginBottom: 6,
+										gap: 10,
+										alignItems: "center",
+										flexWrap: "wrap"
+									},
+									children: [/* @__PURE__ */ jsx("span", { children: entry.video?.title || entry.video?.handle || "Analyzed video" }), /* @__PURE__ */ jsxs("span", {
+										className: `pill ${entry.status === "complete" ? "pill--ok" : entry.status === "failed" ? "pill--bad" : "pill--run"}`,
+										children: [/* @__PURE__ */ jsx("i", {}), statusLabel]
+									})]
+								}),
+								/* @__PURE__ */ jsxs("div", {
+									className: "row__m",
+									children: [entry.video?.handle || entry.video?.creator_name || "Unknown creator", searchNames.length > 0 ? ` • ${searchNames.join(", ")}` : ""]
+								}),
+								/* @__PURE__ */ jsxs("div", {
+									className: "row__m",
+									style: { marginTop: 6 },
+									children: [
+										entry.status === "complete" ? "Analyzed" : entry.status === "failed" ? "Last updated" : "Started",
+										" ",
+										formatAnalysisDate(entry.analyzed_at ?? entry.updated_at),
+										!entry.counts_toward_quota ? " • Auto analysis" : ""
+									]
+								}),
+								entry.error_message && /* @__PURE__ */ jsx("div", {
+									className: "row__m",
+									style: {
+										marginTop: 6,
+										color: "var(--warn)"
+									},
+									children: entry.error_message
+								})
+							]
+						})]
+					}, entry.id);
+				})
 			})] })]
 		}),
 		modalState.type && modalState.search && /* @__PURE__ */ jsx("div", {
@@ -10338,8 +10808,20 @@ function formatTimestamp(ms) {
 }
 function formatDuration$2(seconds) {
 	const total = Number(seconds || 0);
-	if (!Number.isFinite(total) || total <= 0) return "0:14";
+	if (!Number.isFinite(total) || total <= 0) return null;
 	return `${Math.floor(total / 60)}:${String(Math.round(total % 60)).padStart(2, "0")}`;
+}
+function initials$1(name) {
+	return String(name || "").replace(/^@/, "").trim().slice(0, 2).toUpperCase() || "?";
+}
+function outlierMultiple(video) {
+	const value = Number(video?.outlier_multiple ?? video?.multiple ?? video?.score ?? video?.virality_score ?? 0);
+	return Number.isFinite(value) && value > 0 ? value : null;
+}
+function baselineMedian(video) {
+	const multiple = outlierMultiple(video);
+	const views = Number(video?.views ?? 0);
+	return multiple && views > 0 ? Math.round(views / multiple) : null;
 }
 function usePolling(videoId, initial, open) {
 	const [analysis, setAnalysis] = useState(initial);
@@ -10366,37 +10848,28 @@ function usePolling(videoId, initial, open) {
 	]);
 	return [analysis, setAnalysis];
 }
-var STAT_CHIP = {
-	score: "border-[#d8c9a6] bg-[#FFF3CF]",
-	views: "border-[#e0c5b6] bg-[#FEF0E7]",
-	mut: "border-[#E7E5DF] bg-[#FAF9F6]"
-};
-var STAT_LABEL = {
-	score: "text-[#9A6B00]",
-	views: "text-[#C2410C]",
-	mut: "text-[#5C5A54]"
-};
 function statCards(video) {
+	const views = Number(video?.views ?? 0);
+	const rate = Number(video?.engagement_rate ?? 0);
+	const median = baselineMedian(video);
+	const multiple = outlierMultiple(video);
 	return [
 		{
-			label: "Outlier",
-			value: `${formatMetric(video.virality_score || 18)}x`,
-			variant: "score"
-		},
-		{
 			label: "Views",
-			value: compactNumber$1(video.views),
-			variant: "views"
+			value: views > 0 ? compactNumber$1(views) : "—"
 		},
 		{
-			label: "Eng rate",
-			value: video.engagement_rate ? `${formatMetric(video.engagement_rate)}%` : "12.2%",
-			variant: "mut"
+			label: "Median",
+			value: median ? compactNumber$1(median) : "—"
 		},
 		{
-			label: "Shares",
-			value: compactNumber$1(video.shares),
-			variant: "mut"
+			label: "Engaged",
+			value: rate > 0 ? `${formatMetric(rate)}%` : "—"
+		},
+		{
+			label: "Baseline",
+			value: multiple ? `${formatMetric(multiple)}x` : "—",
+			good: true
 		}
 	];
 }
@@ -10501,10 +10974,54 @@ function RegenerateButton({ regenerating, disabled, onClick, fullWidth = false }
 		}), regenerating ? "Regenerating…" : "Regenerate"]
 	});
 }
-function LeftSidebar({ video, canRegenerate = false, regenerating = false, disabledRegenerate = false, onRegenerate }) {
+function AnalyzeButton$1({ state, onClick }) {
+	const running = state === "running";
+	const ready = state === "ready";
+	const base = "flex h-10 w-full items-center justify-center gap-2 rounded-[11px] px-3.5 text-[13px] font-bold transition";
+	if (ready) return /* @__PURE__ */ jsxs("div", {
+		className: `${base} cursor-default border border-[#E7E5DF] bg-white text-[#0B0B0B]`,
+		children: [/* @__PURE__ */ jsx("svg", {
+			viewBox: "0 0 24 24",
+			className: "h-[15px] w-[15px]",
+			fill: "none",
+			stroke: "#1F7A4D",
+			strokeWidth: "2.4",
+			strokeLinecap: "round",
+			strokeLinejoin: "round",
+			children: /* @__PURE__ */ jsx("path", { d: "M4 12.5l5.5 5.5L20 7" })
+		}), "Analysis ready"]
+	});
+	if (running) return /* @__PURE__ */ jsxs("div", {
+		className: `${base} cursor-default bg-[#FFF8E6] text-[#9A6B00]`,
+		children: [/* @__PURE__ */ jsx("span", { className: "h-[14px] w-[14px] animate-spin rounded-full border-2 border-[rgba(154,107,0,.3)] border-t-[#9A6B00]" }), "Analyzing…"]
+	});
+	return /* @__PURE__ */ jsxs("button", {
+		type: "button",
+		onClick,
+		className: `${base} bg-[#FFC629] text-[#1A1400] hover:bg-[#FFD84D]`,
+		children: [/* @__PURE__ */ jsxs("svg", {
+			viewBox: "0 0 24 24",
+			className: "h-[15px] w-[15px]",
+			fill: "none",
+			stroke: "currentColor",
+			strokeWidth: "2",
+			strokeLinecap: "round",
+			children: [/* @__PURE__ */ jsx("circle", {
+				cx: "11",
+				cy: "11",
+				r: "7"
+			}), /* @__PURE__ */ jsx("path", { d: "m20 20-3.5-3.5" })]
+		}), "Analyze video"]
+	});
+}
+function LeftSidebar({ video, canRegenerate = false, regenerating = false, disabledRegenerate = false, onRegenerate, analyzeState = "idle", onAnalyze, saved = false, saving = false, onToggleSave }) {
 	const metrics = statCards(video);
+	const multiple = outlierMultiple(video);
+	const followers = Number(video?.followers ?? 0);
+	const runtime = formatDuration$2(video.duration);
 	const [playing, setPlaying] = useState(false);
 	const [thumbBroken, setThumbBroken] = useState(false);
+	const [avatarBroken, setAvatarBroken] = useState(false);
 	const iframeRef = useRef(null);
 	const embed = videoEmbedUrl(video);
 	const hasThumb = Boolean(video.thumbnail_url) && !thumbBroken;
@@ -10565,85 +11082,198 @@ function LeftSidebar({ video, canRegenerate = false, regenerating = false, disab
 					})]
 				}) : /* @__PURE__ */ jsxs("div", {
 					className: "relative",
-					children: [hasThumb ? /* @__PURE__ */ jsx("img", {
-						src: video.thumbnail_url,
-						alt: "",
-						referrerPolicy: "no-referrer",
-						onError: () => setThumbBroken(true),
-						className: "aspect-[9/13] w-full object-cover"
-					}) : /* @__PURE__ */ jsx("div", { className: "aspect-[9/13] w-full bg-[linear-gradient(165deg,#cfb396,#a98069)]" }), embed && /* @__PURE__ */ jsx("button", {
-						type: "button",
-						onClick: () => setPlaying(true),
-						className: "absolute left-1/2 top-1/2 flex h-10 w-10 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-white/92 text-[#343434] shadow-[0_8px_30px_rgba(0,0,0,0.18)] transition hover:bg-white",
-						"aria-label": video?.title ? `Play: ${video.title}` : "Play video",
-						children: /* @__PURE__ */ jsx("svg", {
-							viewBox: "0 0 24 24",
-							className: "ml-0.5 h-4 w-4 fill-current",
-							children: /* @__PURE__ */ jsx("path", { d: "M8 6.5v11l9-5.5-9-5.5z" })
+					children: [
+						hasThumb ? /* @__PURE__ */ jsx("img", {
+							src: video.thumbnail_url,
+							alt: "",
+							referrerPolicy: "no-referrer",
+							onError: () => setThumbBroken(true),
+							className: "aspect-[9/13] w-full object-cover"
+						}) : /* @__PURE__ */ jsx("div", { className: "aspect-[9/13] w-full bg-[linear-gradient(165deg,#cfb396,#a98069)]" }),
+						multiple && /* @__PURE__ */ jsxs("span", {
+							className: "absolute bottom-[9px] left-[9px] z-[2] rounded-[8px] bg-[rgba(11,11,11,0.82)] px-[9px] py-1 text-[12px] font-extrabold tracking-[-0.01em] text-[#FFC629] backdrop-blur-[2px]",
+							children: [formatMetric(multiple), "x"]
+						}),
+						embed && /* @__PURE__ */ jsx("button", {
+							type: "button",
+							onClick: () => setPlaying(true),
+							className: "absolute left-1/2 top-1/2 flex h-10 w-10 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-white/92 text-[#343434] shadow-[0_8px_30px_rgba(0,0,0,0.18)] transition hover:bg-white",
+							"aria-label": video?.title ? `Play: ${video.title}` : "Play video",
+							children: /* @__PURE__ */ jsx("svg", {
+								viewBox: "0 0 24 24",
+								className: "ml-0.5 h-4 w-4 fill-current",
+								children: /* @__PURE__ */ jsx("path", { d: "M8 6.5v11l9-5.5-9-5.5z" })
+							})
 						})
-					})]
+					]
 				})
 			}),
 			/* @__PURE__ */ jsxs("div", {
 				className: "mt-3 flex items-center gap-[9px]",
-				children: [/* @__PURE__ */ jsx("span", { className: "h-[30px] w-[30px] flex-shrink-0 rounded-full bg-[linear-gradient(150deg,#ffd27a,#ff9a5a_55%,#c0607a)]" }), /* @__PURE__ */ jsxs("div", {
+				children: [/* @__PURE__ */ jsx("span", {
+					className: "h-[30px] w-[30px] flex-shrink-0 overflow-hidden rounded-full bg-[linear-gradient(150deg,#ffd27a,#ff9a5a_55%,#c0607a)]",
+					children: video.avatar && !avatarBroken ? /* @__PURE__ */ jsx("img", {
+						src: video.avatar,
+						alt: "",
+						referrerPolicy: "no-referrer",
+						onError: () => setAvatarBroken(true),
+						className: "h-full w-full object-cover"
+					}) : /* @__PURE__ */ jsx("span", {
+						className: "flex h-full w-full items-center justify-center text-[10px] font-extrabold text-white",
+						children: initials$1(video.handle ?? video.username ?? video.creator_name)
+					})
+				}), /* @__PURE__ */ jsxs("div", {
 					className: "min-w-0",
 					children: [/* @__PURE__ */ jsx("div", {
 						className: "truncate text-[13px] font-bold text-[#0B0B0B]",
 						children: video.handle ?? video.creator_name ?? "@creator"
-					}), /* @__PURE__ */ jsxs("div", {
+					}), followers > 0 && /* @__PURE__ */ jsxs("div", {
 						className: "text-[11.5px] text-[#5C5A54]",
-						children: [compactNumber$1(video.followers ?? video.views), " followers"]
+						children: [compactNumber$1(followers), " followers"]
 					})]
 				})]
 			}),
 			/* @__PURE__ */ jsxs("div", {
 				className: "mt-[11px] flex flex-wrap items-center gap-2 text-[11px] text-[#5C5A54] min-[640px]:text-[11.5px]",
-				children: [
-					/* @__PURE__ */ jsx("span", {
-						className: "rounded-[7px] bg-[#FFF3CF] px-[9px] py-1 text-[10px] font-extrabold uppercase tracking-[0.05em] text-[#9A6B00]",
-						children: "Skincare & Beauty"
-					}),
-					postedAt && /* @__PURE__ */ jsx("span", { children: postedAt }),
-					/* @__PURE__ */ jsx("span", { children: formatDuration$2(video.duration) })
-				]
+				children: [video.content_format && /* @__PURE__ */ jsx("span", {
+					className: "rounded-[7px] bg-[#FFF3CF] px-[9px] py-1 text-[10px] font-extrabold uppercase tracking-[0.05em] text-[#9A6B00]",
+					children: video.content_format
+				}), (postedAt || runtime) && /* @__PURE__ */ jsx("span", { children: [postedAt, runtime].filter(Boolean).join(" · ") })]
 			}),
 			/* @__PURE__ */ jsx("div", {
-				className: "mt-3 grid grid-cols-2 gap-2",
+				className: "mt-3.5 grid grid-cols-4 overflow-hidden rounded-[13px] border border-[#E7E5DF] bg-white",
 				children: metrics.map((item) => /* @__PURE__ */ jsxs("div", {
-					className: `rounded-[11px] border px-[10px] py-[8px] min-[640px]:px-[11px] min-[640px]:py-[9px] ${STAT_CHIP[item.variant]}`,
-					children: [/* @__PURE__ */ jsxs("span", {
-						className: `inline-flex items-center gap-[5px] whitespace-nowrap text-[9px] font-extrabold uppercase tracking-[0.06em] ${STAT_LABEL[item.variant]}`,
-						children: [/* @__PURE__ */ jsx("i", { className: "h-[5px] w-[5px] rounded-full bg-current" }), item.label]
-					}), /* @__PURE__ */ jsx("span", {
-						className: "mt-1 block text-[16px] font-extrabold leading-none tracking-[-0.02em] text-[#0B0B0B] [font-variant-numeric:tabular-nums] min-[640px]:text-[17px]",
+					className: "min-w-0 border-r border-[#E7E5DF] px-[7px] py-[10px] text-center last:border-r-0 min-[640px]:px-[8px]",
+					children: [/* @__PURE__ */ jsx("span", {
+						className: `block text-[15px] font-extrabold leading-[1.1] tracking-[-0.03em] [font-variant-numeric:tabular-nums] ${item.good ? "text-[#1F7A4D]" : "text-[#0B0B0B]"} min-[640px]:text-[16.5px]`,
 						children: item.value
+					}), /* @__PURE__ */ jsx("span", {
+						className: "mt-[3px] block whitespace-nowrap text-[8.5px] font-extrabold uppercase tracking-[0.02em] text-[#74716A]",
+						children: item.label
 					})]
 				}, item.label))
 			}),
-			canRegenerate && /* @__PURE__ */ jsx("div", {
-				className: "mt-3",
-				children: /* @__PURE__ */ jsx(RegenerateButton, {
-					regenerating,
-					disabled: disabledRegenerate,
-					onClick: onRegenerate,
-					fullWidth: true
-				})
+			/* @__PURE__ */ jsxs("div", {
+				className: "mt-3.5 flex flex-col gap-[7px] border-t border-[#E7E5DF] pt-3.5",
+				children: [
+					/* @__PURE__ */ jsx(AnalyzeButton$1, {
+						state: analyzeState,
+						onClick: onAnalyze
+					}),
+					/* @__PURE__ */ jsxs("div", {
+						className: "grid grid-cols-[minmax(0,1fr)_40px] gap-[7px]",
+						children: [onToggleSave ? /* @__PURE__ */ jsxs("button", {
+							type: "button",
+							onClick: onToggleSave,
+							disabled: saving,
+							"aria-pressed": saved,
+							className: `flex h-10 items-center justify-center gap-2 rounded-[11px] border px-2.5 text-[13px] font-bold transition disabled:opacity-60 ${saved ? "border-[#FFC629] bg-[#FFF8E6] text-[#5C4200]" : "border-[#E7E5DF] bg-white text-[#0B0B0B] hover:bg-[#FAF9F6]"}`,
+							children: [/* @__PURE__ */ jsx("svg", {
+								viewBox: "0 0 24 24",
+								className: "h-[15px] w-[15px]",
+								fill: saved ? "currentColor" : "none",
+								stroke: "currentColor",
+								strokeWidth: "2",
+								strokeLinejoin: "round",
+								children: /* @__PURE__ */ jsx("path", { d: "M6 3h12v18l-6-4.5L6 21z" })
+							}), saved ? "Saved" : "Save"]
+						}) : /* @__PURE__ */ jsx("span", {}), /* @__PURE__ */ jsx("a", {
+							href: video.post_url || video.postUrl || "#",
+							target: "_blank",
+							rel: "noreferrer noopener",
+							"aria-disabled": !(video.post_url || video.postUrl),
+							title: "Open on TikTok",
+							"aria-label": "Open on TikTok",
+							className: `flex h-10 items-center justify-center rounded-[11px] border border-[#E7E5DF] bg-white text-[#0B0B0B] transition hover:bg-[#FAF9F6] ${video.post_url || video.postUrl ? "" : "pointer-events-none opacity-40"}`,
+							children: /* @__PURE__ */ jsx("svg", {
+								viewBox: "0 0 24 24",
+								className: "h-[15px] w-[15px]",
+								fill: "none",
+								stroke: "currentColor",
+								strokeWidth: "2",
+								strokeLinecap: "round",
+								strokeLinejoin: "round",
+								children: /* @__PURE__ */ jsx("path", { d: "M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5" })
+							})
+						})]
+					}),
+					canRegenerate && /* @__PURE__ */ jsx(RegenerateButton, {
+						regenerating,
+						disabled: disabledRegenerate,
+						onClick: onRegenerate,
+						fullWidth: true
+					})
+				]
 			})
 		]
 	});
 }
-function SummaryCard({ summary }) {
-	return /* @__PURE__ */ jsxs("section", {
-		className: "min-w-0 rounded-[14px] border border-[#ddd6ca] bg-[#fbfaf7] px-3.5 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.65)] min-[640px]:px-4",
-		children: [/* @__PURE__ */ jsx("div", {
-			className: "text-[13px] font-semibold text-[#1f1f1f]",
-			children: "Summary"
-		}), /* @__PURE__ */ jsx("p", {
-			className: "mt-1 break-words text-[12.5px] leading-5.5 text-[#696257] min-[640px]:text-[13px] min-[640px]:leading-6",
-			children: summary
-		})]
-	});
+function VideoHeadline({ video, calloutDismissed, onDismissCallout }) {
+	const caption = String(video?.title || video?.caption || "").trim();
+	const multiple = outlierMultiple(video);
+	const median = baselineMedian(video);
+	const showCallout = !calloutDismissed && Boolean(multiple && median);
+	if (!caption && !showCallout) return null;
+	return /* @__PURE__ */ jsxs(Fragment$1, { children: [caption && /* @__PURE__ */ jsxs("p", {
+		className: "min-w-0 break-words px-0.5 pt-0.5 pr-10 text-[15.5px] font-extrabold leading-[1.4] tracking-[-0.01em] text-[#0B0B0B] min-[640px]:text-[16.5px]",
+		children: [
+			"“",
+			caption,
+			"”"
+		]
+	}), showCallout && /* @__PURE__ */ jsxs("div", {
+		className: "flex min-w-0 items-start gap-2.5 rounded-[13px] border border-[#F2E4BE] bg-[#FFF8E6] px-3.5 py-3",
+		children: [
+			/* @__PURE__ */ jsx("span", {
+				"aria-hidden": true,
+				className: "mt-px flex-none text-[#9A6B00]",
+				children: /* @__PURE__ */ jsxs("svg", {
+					viewBox: "0 0 24 24",
+					className: "h-[17px] w-[17px]",
+					fill: "none",
+					stroke: "currentColor",
+					strokeWidth: "2",
+					strokeLinecap: "round",
+					children: [/* @__PURE__ */ jsx("circle", {
+						cx: "12",
+						cy: "12",
+						r: "9"
+					}), /* @__PURE__ */ jsx("path", { d: "M12 8h.01M11 12h1v4h1" })]
+				})
+			}),
+			/* @__PURE__ */ jsxs("p", {
+				className: "min-w-0 flex-1 break-words text-[13px] leading-[1.45] text-[#5C5A54]",
+				children: [
+					/* @__PURE__ */ jsxs("b", {
+						className: "font-bold text-[#0B0B0B]",
+						children: [
+							formatMetric(multiple),
+							"x is against their own median of ",
+							compactNumber$1(median),
+							","
+						]
+					}),
+					" ",
+					"not the category."
+				]
+			}),
+			/* @__PURE__ */ jsx("button", {
+				type: "button",
+				onClick: onDismissCallout,
+				"aria-label": "Dismiss",
+				className: "flex h-[22px] w-[22px] flex-none items-center justify-center rounded-[6px] text-[#74716A] transition hover:bg-[rgba(154,107,0,0.08)] hover:text-[#0B0B0B]",
+				children: /* @__PURE__ */ jsx("svg", {
+					viewBox: "0 0 24 24",
+					className: "h-3 w-3",
+					fill: "none",
+					stroke: "currentColor",
+					strokeWidth: "2.2",
+					strokeLinecap: "round",
+					children: /* @__PURE__ */ jsx("path", { d: "M6 6l12 12M18 6L6 18" })
+				})
+			})
+		]
+	})] });
 }
 function TabRow({ tabs, activeTab, onChange }) {
 	return /* @__PURE__ */ jsx("div", {
@@ -10691,7 +11321,14 @@ function ProcessingState({ status, error }) {
 			children: status || "idle"
 		}), /* @__PURE__ */ jsx("p", {
 			className: "mt-2 text-[14px] leading-6 text-[#696257]",
-			children: status === "failed" ? error || "This analysis could not be completed." : status === "processing" ? "We are preparing the transcript, shared diagnostics, and creator-facing guidance." : "Analysis has not started yet."
+			children: status === "failed" ? error || "This analysis could not be completed." : status === "processing" ? "We are preparing the transcript, shared diagnostics, and creator-facing guidance." : /* @__PURE__ */ jsxs(Fragment$1, { children: [
+				"Analysis hasn’t started yet. Run ",
+				/* @__PURE__ */ jsx("b", {
+					className: "font-bold text-[#1a1a1a]",
+					children: "Analyze video"
+				}),
+				" to break down what carried this past the search median — and get a playbook you can hand to your creators."
+			] })
 		})]
 	});
 }
@@ -10746,10 +11383,10 @@ function ErrorStateModal({ message, retrying, onRetry, onDismiss }) {
 }
 function WhyTab({ result, video }) {
 	const drivers = whyDrivers(result);
-	const baseline = Number(video?.virality_score);
-	const subtitle = Number.isFinite(baseline) && baseline > 0 ? `${Math.round(baseline)}x baseline` : "Outlier drivers";
+	const baseline = outlierMultiple(video);
+	const subtitle = baseline ? `${formatMetric(baseline)}x baseline` : "Outlier drivers";
 	return /* @__PURE__ */ jsxs(PanelShell, {
-		title: "Why It Went Viral",
+		title: "Analysis",
 		subtitle,
 		icon: /* @__PURE__ */ jsxs("svg", {
 			viewBox: "0 0 24 24",
@@ -10872,10 +11509,11 @@ function HookTab({ result }) {
 function TranscriptTab({ analysis }) {
 	const rows = transcriptRows(analysis);
 	const segments = Array.isArray(analysis?.transcript_segments) ? analysis.transcript_segments : [];
-	const duration = segments.length > 0 ? formatDuration$2((segments.at(-1)?.end_ms || 14e3) / 1e3) : "0:14";
+	const lastEnd = Number(segments.at(-1)?.end_ms);
+	const duration = Number.isFinite(lastEnd) && lastEnd > 0 ? formatDuration$2(lastEnd / 1e3) : null;
 	return /* @__PURE__ */ jsx(PanelShell, {
 		title: "Transcript",
-		subtitle: `auto-generated - ${duration}`,
+		subtitle: duration ? `auto-generated - ${duration}` : "auto-generated",
 		icon: /* @__PURE__ */ jsx("svg", {
 			viewBox: "0 0 24 24",
 			className: "h-4 w-4 stroke-current",
@@ -10982,8 +11620,7 @@ function ActivePanel({ activeTab, analysis, result, video }) {
 var DEFAULT_TABS = [
 	{
 		key: "why",
-		label: "Why It Went Viral",
-		shortLabel: "Why Viral"
+		label: "Analysis"
 	},
 	{
 		key: "hook",
@@ -10999,11 +11636,12 @@ var DEFAULT_TABS = [
 		shortLabel: "Strategist"
 	}
 ];
-function AnalysisModal({ video, initialAnalysis, tabs = DEFAULT_TABS, open = true, onClose, onAnalysisChange }) {
+function AnalysisModal({ video, initialAnalysis, tabs = DEFAULT_TABS, open = true, onClose, onAnalysisChange, onAnalyze, analyzeBusy = false, saved = false, saving = false, onToggleSave }) {
 	const [activeTab, setActiveTab] = useState(tabs[0]?.key ?? "why");
 	const [analysis, setAnalysis] = usePolling(video.id, initialAnalysis, open);
 	const [regenerating, setRegenerating] = useState(false);
 	const [showErrorModal, setShowErrorModal] = useState(false);
+	const [calloutDismissed, setCalloutDismissed] = useState(false);
 	const canRegenerate = Boolean(usePage().props?.features?.videoAnalysisRefresh);
 	const onAnalysisChangeRef = useRef(onAnalysisChange);
 	onAnalysisChangeRef.current = onAnalysisChange;
@@ -11060,11 +11698,20 @@ function AnalysisModal({ video, initialAnalysis, tabs = DEFAULT_TABS, open = tru
 	}, [open, onClose]);
 	useEffect(() => {
 		setActiveTab(tabs[0]?.key ?? "why");
+		setCalloutDismissed(false);
 	}, [tabs, video?.id]);
 	if (!open || !video) return null;
 	const result = analysis?.result ?? {};
-	const summary = result.why_it_went_viral || result.evidence_summary || "We are still assembling the summary for this video.";
 	const regenerateDisabled = regenerating || analysis?.status === "processing";
+	const status = analysis?.status;
+	const analyzeState = status === "complete" ? "ready" : analyzeBusy || regenerating || status === "processing" || status === "queued" || status === "pending" ? "running" : "idle";
+	const startAnalysis = () => {
+		if (onAnalyze) {
+			onAnalyze();
+			return;
+		}
+		retryAnalysis();
+	};
 	return /* @__PURE__ */ jsx("div", {
 		className: "fixed inset-0 z-[120] flex items-center justify-center bg-[rgba(38,33,28,0.42)] px-2 py-3 backdrop-blur-[2px] min-[640px]:px-4 min-[640px]:py-6",
 		onClick: onClose,
@@ -11104,11 +11751,20 @@ function AnalysisModal({ video, initialAnalysis, tabs = DEFAULT_TABS, open = tru
 							canRegenerate,
 							regenerating,
 							disabledRegenerate: regenerateDisabled,
-							onRegenerate: regenerate
+							onRegenerate: regenerate,
+							analyzeState,
+							onAnalyze: startAnalysis,
+							saved,
+							saving,
+							onToggleSave
 						}), /* @__PURE__ */ jsxs("div", {
 							className: "min-w-0 space-y-3 min-[640px]:space-y-4",
 							children: [
-								/* @__PURE__ */ jsx(SummaryCard, { summary }),
+								/* @__PURE__ */ jsx(VideoHeadline, {
+									video,
+									calloutDismissed,
+									onDismissCallout: () => setCalloutDismissed(true)
+								}),
 								/* @__PURE__ */ jsx(TabRow, {
 									tabs,
 									activeTab,
@@ -11190,23 +11846,68 @@ function formatDate$1(iso) {
 		day: "numeric"
 	});
 }
+var CHART_BOX = {
+	width: 100,
+	height: 40,
+	leftPad: 8,
+	rightPad: 8,
+	topPad: 13,
+	bottomPad: 4
+};
+var round = (n) => Math.round(n * 100) / 100;
+function smoothPath(coordinates) {
+	const n = coordinates.length;
+	if (n === 0) return "";
+	const move = `M${round(coordinates[0].x)},${round(coordinates[0].y)}`;
+	if (n === 1) return move;
+	if (n === 2) return `${move} L${round(coordinates[1].x)},${round(coordinates[1].y)}`;
+	const dx = [];
+	const slope = [];
+	for (let i = 0; i < n - 1; i += 1) {
+		dx[i] = coordinates[i + 1].x - coordinates[i].x;
+		slope[i] = dx[i] === 0 ? 0 : (coordinates[i + 1].y - coordinates[i].y) / dx[i];
+	}
+	const tangent = new Array(n);
+	tangent[0] = slope[0];
+	tangent[n - 1] = slope[n - 2];
+	for (let i = 1; i < n - 1; i += 1) {
+		if (slope[i - 1] * slope[i] <= 0) {
+			tangent[i] = 0;
+			continue;
+		}
+		const w1 = 2 * dx[i] + dx[i - 1];
+		const w2 = dx[i] + 2 * dx[i - 1];
+		tangent[i] = (w1 + w2) / (w1 / slope[i - 1] + w2 / slope[i]);
+	}
+	let d = move;
+	for (let i = 0; i < n - 1; i += 1) {
+		const reach = dx[i] / 3;
+		const from = coordinates[i];
+		const to = coordinates[i + 1];
+		d += ` C${round(from.x + reach)},${round(from.y + tangent[i] * reach)} ${round(to.x - reach)},${round(to.y - tangent[i + 1] * reach)} ${round(to.x)},${round(to.y)}`;
+	}
+	return d;
+}
 function chartGeometry(values) {
 	const points = values.map((value) => Number(value) || 0);
 	if (points.length === 0) return null;
 	const min = Math.min(...points);
 	const max = Math.max(...points);
 	const span = max - min;
-	const height = 40;
-	const leftPad = 8;
+	const { width, height, leftPad, rightPad, topPad, bottomPad } = CHART_BOX;
 	const coordinates = points.map((value, index) => ({
-		x: points.length === 1 ? 50 : leftPad + 88 * index / (points.length - 1),
-		y: span === 0 ? height / 2 : 36 - (value - min) / span * 32
+		x: points.length === 1 ? 50 : leftPad + (width - leftPad - rightPad) * index / (points.length - 1),
+		y: span === 0 ? height / 2 : height - bottomPad - (value - min) / span * (height - topPad - bottomPad)
 	}));
 	const last = coordinates[coordinates.length - 1];
+	const first = coordinates[0];
+	const linePath = smoothPath(coordinates);
 	return {
 		min,
 		max,
 		points: coordinates.map(({ x, y }) => `${x.toFixed(2)},${y.toFixed(2)}`).join(" "),
+		linePath,
+		areaPath: linePath ? `${linePath} L${round(last.x)},${height} L${round(first.x)},${height} Z` : "",
 		last
 	};
 }
@@ -11526,6 +12227,15 @@ var Icons = {
 		strokeLinejoin: "round",
 		children: /* @__PURE__ */ jsx("path", { d: "m6 9 6 6 6-6" })
 	}),
+	ChevRight: /* @__PURE__ */ jsx("svg", {
+		viewBox: "0 0 24 24",
+		fill: "none",
+		stroke: "currentColor",
+		strokeWidth: "2.6",
+		strokeLinecap: "round",
+		strokeLinejoin: "round",
+		children: /* @__PURE__ */ jsx("path", { d: "m9 5 7 7-7 7" })
+	}),
 	Music: /* @__PURE__ */ jsxs("svg", {
 		viewBox: "0 0 24 24",
 		fill: "none",
@@ -11717,6 +12427,7 @@ function DetailScreen({ search, isAuthenticated = false, billing: billing$2, ref
 		return grouped;
 	}, [results]);
 	const selectedWeekVideos = selectedWeekKey ? videosByWeek[selectedWeekKey] ?? [] : [];
+	const selectedWeekViews = selectedWeekVideos.reduce((sum, video) => sum + (Number(video.views) || 0), 0);
 	const comparisonDelta = activeSeries?.delta ?? null;
 	const comparisonLabel = comparisonDelta ? `${comparisonDelta.direction === "up" ? "↑" : comparisonDelta.direction === "down" ? "↓" : "→"} ${Math.abs(Number(comparisonDelta.value ?? 0))}${comparisonDelta.unit === "points" ? " pts" : comparisonDelta.unit === "absolute" ? "" : "%"} vs ${weeklyPoints.length || 0} wk ago` : null;
 	const metricConfig = {
@@ -12509,17 +13220,18 @@ function DetailScreen({ search, isAuthenticated = false, billing: billing$2, ref
 											stopOpacity: "0"
 										})]
 									}) }),
-									/* @__PURE__ */ jsx("polygon", {
-										points: `${chart.points} 96,40 8,40`,
+									/* @__PURE__ */ jsx("path", {
+										d: chart.areaPath,
 										fill: "url(#rs-analytics-fill)"
 									}),
-									/* @__PURE__ */ jsx("polyline", {
-										points: chart.points,
+									/* @__PURE__ */ jsx("path", {
+										d: chart.linePath,
 										fill: "none",
 										stroke: "#A87700",
-										strokeWidth: "0.85",
+										strokeWidth: "2.25",
 										strokeLinecap: "round",
-										strokeLinejoin: "round"
+										strokeLinejoin: "round",
+										vectorEffect: "non-scaling-stroke"
 									})
 								] })
 							}),
@@ -12528,29 +13240,45 @@ function DetailScreen({ search, isAuthenticated = false, billing: billing$2, ref
 								const value = chartValues[index] ?? 0;
 								const weekKey = weekKeyFromIso(point?.week_start);
 								if (!point || !weekKey) return null;
+								const weekVideos = videosByWeek[weekKey] ?? [];
+								const isLatest = index === chartPoints.length - 1;
+								const topPct = y / CHART_BOX.height * 100;
 								const tooltip = {
 									label: point.label,
 									value: formatMetricValue(value, metric),
-									count: videosByWeek[weekKey]?.length ?? 0
+									count: weekVideos.length,
+									x,
+									y: topPct
 								};
-								return /* @__PURE__ */ jsx("button", {
-									type: "button",
-									className: `rs-achart__point${index === chartPoints.length - 1 ? " is-latest" : ""}`,
+								if (weekVideos.length === 0) return /* @__PURE__ */ jsx("span", {
+									className: `rs-achart__point${isLatest ? " is-latest" : ""}`,
 									style: {
 										left: `${x}%`,
-										top: `${y / 40 * 100}%`
+										top: `${topPct}%`
 									},
-									"aria-label": `${point.label} · ${tooltip.value}`,
-									onMouseEnter: () => setChartTooltip(tooltip),
-									onMouseLeave: () => setChartTooltip(null),
-									onFocus: () => setChartTooltip(tooltip),
-									onBlur: () => setChartTooltip(null),
-									onClick: () => setSelectedWeekKey(weekKey)
+									"aria-hidden": true
+								}, `point-${weekKey}`);
+								return /* @__PURE__ */ jsx(WeekMarker, {
+									videos: weekVideos,
+									label: point.label,
+									valueLabel: tooltip.value,
+									isLatest,
+									style: {
+										left: `${x}%`,
+										top: `${topPct}%`
+									},
+									onSelect: () => setSelectedWeekKey(weekKey),
+									onPeek: () => setChartTooltip(tooltip),
+									onPeekEnd: () => setChartTooltip(null)
 								}, `point-${weekKey}`);
 							}),
 							chartTooltip && /* @__PURE__ */ jsxs("div", {
 								className: "rs-achart__tooltip",
 								role: "status",
+								style: {
+									left: `${Math.min(Math.max(Number(chartTooltip.x ?? 50), 14), 86)}%`,
+									top: `${Number(chartTooltip.y ?? 0)}%`
+								},
 								children: [
 									/* @__PURE__ */ jsx("strong", { children: chartTooltip.label }),
 									/* @__PURE__ */ jsx("span", { children: chartTooltip.value }),
@@ -12782,12 +13510,20 @@ function DetailScreen({ search, isAuthenticated = false, billing: billing$2, ref
 				onClick: (event) => event.stopPropagation(),
 				children: [/* @__PURE__ */ jsxs("div", {
 					className: "rs-weekmodal__head",
-					children: [/* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsx("h3", { children: weeklyPoints.find((point) => weekKeyFromIso(point.week_start) === selectedWeekKey)?.label ?? "Selected week" }), /* @__PURE__ */ jsxs("p", { children: [
-						selectedWeekVideos.length,
-						" matched ",
-						selectedWeekVideos.length === 1 ? "video" : "videos",
-						" uploaded in this week."
-					] })] }), /* @__PURE__ */ jsx("button", {
+					children: [/* @__PURE__ */ jsxs("div", { children: [
+						/* @__PURE__ */ jsx("h3", { children: weeklyPoints.find((point) => weekKeyFromIso(point.week_start) === selectedWeekKey)?.label ?? "Selected week" }),
+						/* @__PURE__ */ jsxs("p", { children: [
+							selectedWeekVideos.length,
+							" matched ",
+							selectedWeekVideos.length === 1 ? "video" : "videos",
+							" uploaded in this week",
+							selectedWeekViews > 0 ? ` · ${compact(selectedWeekViews)} views` : ""
+						] }),
+						selectedWeekVideos.length > 0 && /* @__PURE__ */ jsxs("span", {
+							className: "rs-weekmodal__cue",
+							children: [Icons.Play, " Click a video to watch it and open the breakdown"]
+						})
+					] }), /* @__PURE__ */ jsx("button", {
 						type: "button",
 						className: "rs-weekmodal__close",
 						onClick: () => setSelectedWeekKey(null),
@@ -12796,46 +13532,102 @@ function DetailScreen({ search, isAuthenticated = false, billing: billing$2, ref
 					})]
 				}), /* @__PURE__ */ jsxs("div", {
 					className: "rs-weekmodal__list",
-					children: [selectedWeekVideos.map((video) => /* @__PURE__ */ jsxs("button", {
-						type: "button",
-						className: "rs-weekmodal__row",
-						onClick: () => {
+					children: [selectedWeekVideos.map((video) => {
+						const multiple = Number(video.outlier_multiple ?? video.multiple ?? video.score ?? 0);
+						const openBreakdown = () => {
 							setSelectedWeekKey(null);
 							openAnalysis(video);
-						},
-						children: [/* @__PURE__ */ jsx("span", {
-							className: "rs-weekmodal__thumb",
-							style: { background: gradientFor(video.id) },
-							children: video.thumbnail_url ? /* @__PURE__ */ jsx("img", {
-								src: video.thumbnail_url,
-								alt: ""
-							}) : initials(video.handle || video.username || video.title)
-						}), /* @__PURE__ */ jsxs("span", {
-							className: "rs-weekmodal__body",
+						};
+						return /* @__PURE__ */ jsxs("div", {
+							role: "button",
+							tabIndex: 0,
+							className: "rs-weekmodal__row",
+							onClick: openBreakdown,
+							onKeyDown: (event) => {
+								if (event.key !== "Enter" && event.key !== " ") return;
+								event.preventDefault();
+								openBreakdown();
+							},
 							children: [
-								/* @__PURE__ */ jsx("strong", { children: video.handle || video.username || video.title || "Video" }),
-								/* @__PURE__ */ jsx("span", { children: video.title || video.caption || "Open this video from the outlier list." }),
-								/* @__PURE__ */ jsxs("span", { children: [
-									compact(video.views),
-									" views · uploaded ",
-									formatDate$1(video.uploaded_at) || "—"
-								] })
+								/* @__PURE__ */ jsxs("span", {
+									className: "rs-weekmodal__thumb",
+									style: { background: gradientFor(video.id) },
+									children: [/* @__PURE__ */ jsx(VideoFace, {
+										video,
+										prefer: "thumb",
+										className: "rs-weekmodal__face"
+									}), /* @__PURE__ */ jsx("span", {
+										className: "rs-weekmodal__play",
+										"aria-hidden": true,
+										children: /* @__PURE__ */ jsx("i", { children: Icons.Play })
+									})]
+								}),
+								/* @__PURE__ */ jsxs("span", {
+									className: "rs-weekmodal__body",
+									children: [
+										/* @__PURE__ */ jsxs("strong", { children: [/* @__PURE__ */ jsx("span", {
+											className: "rs-weekmodal__handle",
+											children: video.handle || video.username || video.title || "Video"
+										}), multiple >= 3 && /* @__PURE__ */ jsxs("em", {
+											className: "rs-weekmodal__ol",
+											children: [compact(multiple), "× outlier"]
+										})] }),
+										/* @__PURE__ */ jsx("span", {
+											className: "rs-weekmodal__cap",
+											children: video.title || video.caption || "Open this video from the outlier list."
+										}),
+										/* @__PURE__ */ jsxs("span", {
+											className: "rs-weekmodal__meta",
+											children: [
+												compact(video.views),
+												" views · uploaded ",
+												formatDate$1(video.uploaded_at) || "—"
+											]
+										})
+									]
+								}),
+								/* @__PURE__ */ jsxs("span", {
+									className: "rs-weekmodal__acts",
+									children: [/* @__PURE__ */ jsxs("span", {
+										className: "rs-weekmodal__go",
+										children: ["Watch ", Icons.ChevRight]
+									}), onToggleVideoBookmark && /* @__PURE__ */ jsx("button", {
+										type: "button",
+										className: `rs-weekmodal__bm${video.bookmarked ? " is-on" : ""}`,
+										"aria-pressed": Boolean(video.bookmarked),
+										"aria-label": video.bookmarked ? "Remove bookmark" : "Bookmark video",
+										disabled: bookmarkingVideoId === video.id,
+										onClick: (event) => {
+											event.stopPropagation();
+											onToggleVideoBookmark(video);
+										},
+										children: video.bookmarked ? Icons.Bookmark : Icons.BookmarkO
+									})]
+								})
 							]
-						})]
-					}, `week-video-${video.id}`)), selectedWeekVideos.length === 0 && /* @__PURE__ */ jsx("div", {
+						}, `week-video-${video.id}`);
+					}), selectedWeekVideos.length === 0 && /* @__PURE__ */ jsx("div", {
 						className: "rs-weekmodal__empty",
 						children: "No videos were available for this week."
 					})]
 				})]
 			})
 		}),
-		analysisModal && /* @__PURE__ */ jsx(AnalysisModal, {
-			open: true,
-			video: analysisModal.video,
-			initialAnalysis: analysisModal.analysis,
-			onClose: closeAnalysis,
-			onAnalysisChange: updateVideoAnalysis
-		}),
+		analysisModal && (() => {
+			const live = results.find((row) => String(row.id) === String(analysisModal.video.id)) ?? analysisModal.video;
+			return /* @__PURE__ */ jsx(AnalysisModal, {
+				open: true,
+				video: live,
+				initialAnalysis: analysisModal.analysis,
+				onClose: closeAnalysis,
+				onAnalysisChange: updateVideoAnalysis,
+				onAnalyze: () => handleAnalyzeAction(live),
+				analyzeBusy: analysisStarting,
+				saved: Boolean(live.bookmarked),
+				saving: bookmarkingVideoId === live.id,
+				onToggleSave: onToggleVideoBookmark ? () => onToggleVideoBookmark(live) : void 0
+			});
+		})(),
 		analysisNotice && /* @__PURE__ */ jsxs("div", {
 			className: `rs-toast rs-toast--${analysisNotice.tone}`,
 			role: "status",
@@ -13300,6 +14092,66 @@ function ScrollPanel({ title, items, max, barColor = "var(--a3)" }) {
 		]
 	});
 }
+function VideoFace({ video, className, prefer = "avatar" }) {
+	const [failed, setFailed] = useState(false);
+	const src = prefer === "thumb" ? video?.thumbnail_url || video?.cover || video?.avatar || null : video?.avatar || video?.thumbnail_url || video?.cover || null;
+	useEffect(() => {
+		setFailed(false);
+	}, [src]);
+	if (src && !failed) return /* @__PURE__ */ jsx("img", {
+		className,
+		src,
+		alt: "",
+		referrerPolicy: "no-referrer",
+		loading: "lazy",
+		onError: () => setFailed(true)
+	});
+	return /* @__PURE__ */ jsx("span", {
+		className: `${className} rs-face__ph`,
+		style: { background: gradientFor(video?.id) },
+		children: initials(video?.handle || video?.username || video?.creator_name || video?.title)
+	});
+}
+function WeekMarker({ videos, label, valueLabel, isLatest, style, onSelect, onPeek, onPeekEnd }) {
+	const [lead, second, third] = videos;
+	const overflow = videos.length - 3;
+	return /* @__PURE__ */ jsxs("button", {
+		type: "button",
+		className: `rs-mk${isLatest ? " is-latest" : ""}`,
+		style,
+		"aria-label": `${label} · ${valueLabel} · ${videos.length} ${videos.length === 1 ? "video" : "videos"}`,
+		onClick: onSelect,
+		onMouseEnter: onPeek,
+		onMouseLeave: onPeekEnd,
+		onFocus: onPeek,
+		onBlur: onPeekEnd,
+		children: [
+			second && /* @__PURE__ */ jsx(VideoFace, {
+				video: second,
+				className: "rs-mk__stack rs-mk__stack--l"
+			}),
+			third && /* @__PURE__ */ jsx(VideoFace, {
+				video: third,
+				className: "rs-mk__stack rs-mk__stack--r"
+			}),
+			/* @__PURE__ */ jsx("span", {
+				className: "rs-mk__pin",
+				children: /* @__PURE__ */ jsx(VideoFace, {
+					video: lead,
+					className: "rs-mk__face"
+				})
+			}),
+			overflow > 0 && /* @__PURE__ */ jsxs("span", {
+				className: "rs-mk__n rs-mk__n--more",
+				children: ["+", overflow]
+			}),
+			videos.length > 1 && /* @__PURE__ */ jsx("span", {
+				className: "rs-mk__n rs-mk__n--all",
+				children: videos.length
+			})
+		]
+	});
+}
 var scopedCss = `
 :root{--a1:#FDF0C8;--a2:#FBDE8E;--a3:#F6C445;--a4:#E0A100;--a5:#B87400}
 .rs-viewbar{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:22px;flex-wrap:wrap;min-width:0;max-width:100%;overflow:visible}
@@ -13470,24 +14322,42 @@ var scopedCss = `
 .rs-ic2:disabled{opacity:.5;cursor:not-allowed}
 .rs-ic2 svg{width:15px;height:15px}
 
-.rs-sortsel{position:relative;display:inline-flex;align-items:center}
-/* text-indent (not padding-left) pushes the trigger's visible value past the
-   "Sort:" prefix span. Padding-left stays small so <option> rows in the popup
-   don't inherit a huge left gap — Chromium uses the select's padding-left as
-   the option row's minimum indent, so any big value there re-appears in the
-   popup no matter what padding we set on option. */
-.rs-sortsel select{appearance:none;height:38px;padding:0 34px 0 14px;text-indent:30px;border:1px solid var(--line-2,#DEDBD3);border-radius:100px;background:var(--white);font-size:.83rem;font-weight:600;color:var(--ink);cursor:pointer}
-.rs-sortsel option{text-indent:0}
-.rs-sortsel svg{position:absolute;right:12px;width:15px;height:15px;color:var(--faint-2,#9A968E);pointer-events:none}
-.rs-sortsel__pre{position:absolute;left:14px;font-size:.83rem;color:var(--faint-2,#9A968E);pointer-events:none;z-index:1}
-.rs-sh__actions{display:inline-flex;align-items:center;gap:10px;flex-wrap:wrap}
-.rs-runfilter{position:relative;display:inline-flex;align-items:center}
-/* Same trick as .rs-sortsel: use text-indent to push the trigger value past
-   the "Show:" prefix while keeping the popup options aligned normally. */
-.rs-runfilter select{appearance:none;height:38px;padding:0 34px 0 14px;text-indent:32px;border:1px solid var(--line-2,#DEDBD3);border-radius:100px;background:var(--white);font-size:.83rem;font-weight:600;color:var(--ink);cursor:pointer}
-.rs-runfilter option{text-indent:0}
-.rs-runfilter svg{position:absolute;right:12px;width:15px;height:15px;color:var(--faint-2,#9A968E);pointer-events:none}
-.rs-runfilter__pre{position:absolute;left:14px;font-size:.83rem;color:var(--faint-2,#9A968E);pointer-events:none;z-index:1}
+.rs-sh__actions{display:inline-flex;align-items:center;gap:12px;flex-wrap:wrap}
+.rs-sortsel,.rs-runfilter{position:relative;display:inline-flex;align-items:center;min-width:0}
+.rs-sortsel select,.rs-runfilter select{
+  appearance:none;
+  min-width:0;
+  height:42px;
+  padding:0 38px 0 70px;
+  border:1px solid var(--line-2,#DEDBD3);
+  border-radius:999px;
+  background:linear-gradient(180deg,#fff 0%,#fdfbf6 100%);
+  font-size:.84rem;
+  font-weight:700;
+  color:var(--ink);
+  cursor:pointer;
+  box-shadow:0 1px 2px rgba(20,15,0,.04);
+  transition:border-color .16s ease,box-shadow .16s ease,background .16s ease,color .16s ease;
+}
+.rs-runfilter select{padding-left:74px}
+.rs-sortsel select:hover,.rs-runfilter select:hover{border-color:#c7c1b6;background:#fff}
+.rs-sortsel select:focus,.rs-runfilter select:focus{
+  outline:none;
+  border-color:#e2bf5a;
+  box-shadow:0 0 0 4px rgba(255,198,41,.16);
+}
+.rs-sortsel svg,.rs-runfilter svg{position:absolute;right:14px;width:14px;height:14px;color:var(--faint-2,#9A968E);pointer-events:none}
+.rs-sortsel__pre,.rs-runfilter__pre{
+  position:absolute;
+  left:14px;
+  top:50%;
+  transform:translateY(-50%);
+  font-size:.78rem;
+  font-weight:700;
+  color:var(--faint-2,#9A968E);
+  pointer-events:none;
+  z-index:1;
+}
 .rs-runempty{padding:22px;border:1px dashed var(--line);border-radius:14px;background:var(--paper,rgba(250,249,246,.6));font-size:.85rem;color:var(--faint-2,#9A968E);text-align:center}
 .rs-runempty__reset{border:0;background:transparent;color:var(--ink);font-weight:700;text-decoration:underline;cursor:pointer;padding:0;margin-left:4px}
 .rs-ogrid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
@@ -13554,15 +14424,38 @@ var scopedCss = `
 .rs-abig__infoBtn{width:16px;height:16px;display:grid;place-items:center;border-radius:999px;border:1px solid rgba(45,138,85,.28);background:#fff;color:#2D8A55;font-size:.68rem;font-weight:800;line-height:1;cursor:help}
 .rs-abig__tooltip{position:absolute;left:22px;top:50%;transform:translateY(-50%);width:min(260px,calc(100vw - 80px));padding:8px 10px;border-radius:10px;background:rgba(255,255,255,.98);border:1px solid #D8E8DC;box-shadow:0 16px 30px -24px rgba(0,0,0,.25);font-size:.72rem;font-weight:500;line-height:1.4;color:#34513F;opacity:0;pointer-events:none;transition:opacity .14s ease;white-space:normal;z-index:4}
 .rs-abig__info:hover .rs-abig__tooltip,.rs-abig__info:focus-within .rs-abig__tooltip{opacity:1}
-.rs-achart{position:relative;height:180px;margin-top:2px}
+.rs-achart{position:relative;height:236px;margin-top:2px}
 .rs-achart--flow{border:none;background:transparent;box-shadow:none;padding:0}
-.rs-achart__inner{position:relative;height:150px}
+.rs-achart__inner{position:relative;height:200px}
 .rs-achart--flow svg{position:absolute;inset:0;width:100%;height:100%}
 .rs-achart__grid span{position:absolute;left:0;right:0;height:1px;background:rgba(168,119,0,.08)}
-.rs-achart__point{position:absolute;width:11px;height:11px;border-radius:999px;border:1.5px solid #fff;background:#A87700;box-shadow:0 4px 10px rgba(168,119,0,.12);transform:translate(-50%,-50%);cursor:pointer;transition:transform .14s,box-shadow .14s,background .14s}
-.rs-achart__point:hover,.rs-achart__point:focus-visible{transform:translate(-50%,-50%) scale(1.14);box-shadow:0 10px 20px rgba(168,119,0,.24);outline:none}
-.rs-achart__point.is-latest{background:#C7981A}
-.rs-achart__tooltip{position:absolute;left:0;top:0;display:flex;flex-direction:column;gap:2px;max-width:190px;padding:10px 12px;border-radius:12px;background:rgba(255,255,255,.98);border:1px solid #E7D7AF;box-shadow:0 16px 30px -24px rgba(0,0,0,.25);z-index:3}
+/* A week with no matched videos keeps a plain, inert dot. */
+.rs-achart__point{position:absolute;display:block;width:9px;height:9px;border-radius:999px;border:1.5px solid #fff;background:#CBB68A;box-shadow:0 4px 10px rgba(168,119,0,.12);transform:translate(-50%,-50%)}
+.rs-achart__point.is-latest{background:#A87700}
+
+/* Annotated data points: an avatar pin for every week that matched videos. */
+.rs-mk{position:absolute;z-index:3;width:40px;height:40px;padding:0;border:0;background:none;cursor:pointer;transform:translate(-50%,-100%);transition:transform .17s cubic-bezier(.22,.61,.36,1)}
+.rs-mk:hover,.rs-mk:focus-visible{transform:translate(-50%,-100%) translateY(-4px);outline:none;z-index:4}
+.rs-mk__stack{position:absolute;left:50%;top:4px;box-sizing:border-box;width:24px;height:24px;border-radius:999px;border:1.5px solid #fff;background:#F7F4ED;object-fit:cover;z-index:1;transition:border-color .17s}
+.rs-mk__stack--l{transform:translate(-50%,0) translateX(-9px)}
+.rs-mk__stack--r{transform:translate(-50%,0) translateX(9px)}
+.rs-mk__pin{position:absolute;left:50%;top:0;z-index:2;box-sizing:border-box;width:32px;height:32px;padding:3px;background:#fff;border:1px solid #EFE3C6;border-radius:999px;transform:translateX(-50%);box-shadow:0 8px 16px -10px rgba(117,85,11,.55);transition:border-color .17s,background .17s}
+.rs-mk__pin::before,.rs-mk__pin::after{content:'';position:absolute;left:50%;transform:translateX(-50%);border-left:6px solid transparent;border-right:6px solid transparent}
+.rs-mk__pin::before{bottom:-8px;border-top:8px solid #EFE3C6;z-index:0;transition:border-top-color .17s}
+.rs-mk__pin::after{bottom:-6px;border-top:7px solid #fff;z-index:1;transition:border-top-color .17s}
+.rs-mk__face{position:relative;z-index:2;box-sizing:border-box;width:100%;height:100%;border-radius:999px;object-fit:cover;background:#F7F4ED}
+/* Shared initials placeholder for any face whose image is absent or broken.
+   It carries its own type size so an unstyled parent can never let the initials
+   inherit body text and spill out of a 20px circle; larger faces override. */
+.rs-face__ph{display:grid;place-items:center;overflow:hidden;color:#fff;font-size:.55rem;font-weight:800;letter-spacing:-.02em;line-height:1}
+.rs-mk__stack.rs-face__ph{font-size:.46rem}
+.rs-mk:hover .rs-mk__pin,.rs-mk:focus-visible .rs-mk__pin{border-color:#C7981A;background:#FFF6E1}
+.rs-mk:hover .rs-mk__pin::before,.rs-mk:focus-visible .rs-mk__pin::before{border-top-color:#C7981A}
+.rs-mk:hover .rs-mk__pin::after,.rs-mk:focus-visible .rs-mk__pin::after{border-top-color:#FFF6E1}
+.rs-mk:hover .rs-mk__stack,.rs-mk:focus-visible .rs-mk__stack{border-color:#FFF6E1}
+.rs-mk__n{position:absolute;top:-5px;right:-3px;z-index:4;min-width:17px;height:17px;padding:0 4px;border-radius:9px;background:#F2C96B;border:1.5px solid #fff;font-size:.58rem;font-weight:800;color:#1A1400;line-height:14px;text-align:center;font-variant-numeric:tabular-nums}
+.rs-mk__n--all{display:none}
+.rs-achart__tooltip{position:absolute;display:flex;flex-direction:column;gap:2px;width:max-content;max-width:190px;padding:9px 12px;border-radius:12px;background:rgba(255,255,255,.98);border:1px solid #E7D7AF;box-shadow:0 16px 30px -24px rgba(0,0,0,.25);z-index:5;transform:translate(-50%,20px);pointer-events:none}
 .rs-achart__tooltip strong{font-size:.78rem;color:var(--ink)}
 .rs-achart__tooltip span{font-size:.72rem;color:#7C704D}
 .rs-axlabels{display:flex;justify-content:space-between;gap:12px;margin-top:8px;font-size:.68rem;color:#8A7445;font-weight:500}
@@ -13576,13 +14469,32 @@ var scopedCss = `
 .rs-weekmodal__head p{margin-top:4px;font-size:.84rem;color:#7C704D}
 .rs-weekmodal__close{width:34px;height:34px;flex:none;border-radius:999px;border:1px solid #E8D9B3;background:#fff;color:#8A7445;font-size:1.1rem;cursor:pointer}
 .rs-weekmodal__list{padding:14px;overflow:auto;display:flex;flex-direction:column;gap:10px}
-.rs-weekmodal__row{display:grid;grid-template-columns:76px 1fr;gap:14px;align-items:center;padding:10px;border-radius:16px;border:1px solid #EFE3C6;background:#fff;cursor:pointer;text-align:left}
-.rs-weekmodal__row:hover{border-color:#E3C36F;background:#FFF9EC}
-.rs-weekmodal__thumb{width:76px;height:76px;border-radius:14px;overflow:hidden;display:grid;place-items:center;color:#fff;font-size:1rem;font-weight:800}
-.rs-weekmodal__thumb img{width:100%;height:100%;object-fit:cover}
-.rs-weekmodal__body{display:flex;flex-direction:column;gap:5px;min-width:0}
-.rs-weekmodal__body strong{font-size:.88rem;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.rs-weekmodal__body span{font-size:.78rem;color:#7C704D;line-height:1.4}
+.rs-weekmodal__cue{display:inline-flex;align-items:center;gap:6px;margin-top:10px;padding:4px 9px;border-radius:7px;border:1px solid #F0DFB4;background:#fff;font-size:.72rem;font-weight:700;color:#A87700}
+.rs-weekmodal__cue svg{width:11px;height:11px}
+.rs-weekmodal__row{display:grid;grid-template-columns:52px minmax(0,1fr) auto;gap:12px;align-items:center;padding:9px;border-radius:16px;border:1px solid #EFE3C6;background:#fff;cursor:pointer;text-align:left;transition:border-color .16s,background .16s,transform .16s}
+.rs-weekmodal__row:hover,.rs-weekmodal__row:focus-visible{border-color:#E3C36F;background:#FFF9EC;transform:translateY(-1px);outline:none}
+.rs-weekmodal__thumb{position:relative;width:52px;height:70px;border-radius:10px;overflow:hidden;display:grid;place-items:center;color:#fff;font-size:.9rem;font-weight:800}
+.rs-weekmodal__thumb img,.rs-weekmodal__face{width:100%;height:100%;object-fit:cover}
+.rs-weekmodal__face.rs-face__ph{font-size:.9rem}
+.rs-weekmodal__play{position:absolute;inset:0;display:grid;place-items:center;background:rgba(20,15,0,.34);opacity:0;transition:opacity .16s}
+.rs-weekmodal__row:hover .rs-weekmodal__play,.rs-weekmodal__row:focus-visible .rs-weekmodal__play{opacity:1}
+.rs-weekmodal__play i{width:24px;height:24px;border-radius:999px;background:#fff;display:grid;place-items:center}
+.rs-weekmodal__play svg{width:10px;height:10px;color:var(--ink)}
+.rs-weekmodal__body{display:flex;flex-direction:column;gap:3px;min-width:0}
+.rs-weekmodal__body strong{display:flex;align-items:center;gap:7px;min-width:0;font-size:.88rem;color:var(--ink)}
+.rs-weekmodal__handle{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rs-weekmodal__ol{flex:none;font-style:normal;font-size:.62rem;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:#A87700;background:#FFF6E1;border:1px solid #F2E4BE;padding:2px 6px;border-radius:5px}
+.rs-weekmodal__cap{font-size:.8rem;color:#5C5A54;line-height:1.4;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.rs-weekmodal__meta{font-size:.76rem;color:#7C704D;line-height:1.4;font-variant-numeric:tabular-nums}
+.rs-weekmodal__acts{display:flex;align-items:center;gap:8px;flex:none}
+.rs-weekmodal__go{display:inline-flex;align-items:center;gap:4px;font-size:.76rem;font-weight:700;color:#A87700;white-space:nowrap;opacity:.55;transition:opacity .16s}
+.rs-weekmodal__row:hover .rs-weekmodal__go,.rs-weekmodal__row:focus-visible .rs-weekmodal__go{opacity:1}
+.rs-weekmodal__go svg{width:11px;height:11px}
+.rs-weekmodal__bm{width:34px;height:34px;flex:none;display:grid;place-items:center;border-radius:9px;border:1px solid #EFE3C6;background:#fff;color:#8A7445;cursor:pointer;transition:border-color .16s,background .16s,color .16s}
+.rs-weekmodal__bm svg{width:15px;height:15px}
+.rs-weekmodal__bm:hover{border-color:#E3C36F;color:var(--ink)}
+.rs-weekmodal__bm.is-on{background:#F2C96B;border-color:#F2C96B;color:#1A1400}
+.rs-weekmodal__bm:disabled{opacity:.5;cursor:default}
 .rs-weekmodal__empty{padding:24px 12px;text-align:center;font-size:.85rem;color:#7C704D}
 
 .rs-heat{background:var(--white);border:1px solid var(--line);border-radius:20px;padding:20px;min-width:0;max-width:100%;overflow:hidden}
@@ -13699,6 +14611,25 @@ var scopedCss = `
 }
 @media (max-width:420px){
 .rs-ogrid{grid-template-columns:1fr}
+}
+/* Narrow screens: smaller pins so neighbouring weeks stop colliding, and the
+   week rows drop the "Watch" cue in favour of the thumbnail affordance. */
+@media (max-width:560px){
+.rs-achart{height:206px}
+.rs-achart__inner{height:172px}
+.rs-mk{width:28px;height:34px}
+.rs-mk__pin{width:26px;height:26px;padding:2.5px}
+.rs-mk__pin::before{bottom:-7px;border-left-width:5px;border-right-width:5px;border-top-width:7px}
+.rs-mk__pin::after{bottom:-5px;border-left-width:5px;border-right-width:5px;border-top-width:6px}
+/* No room to fan three faces out at this width, so the pin carries the lead
+   creator and the badge switches to the plain video count. */
+.rs-mk__stack{display:none}
+.rs-mk__n{top:-6px;right:-6px;min-width:16px;height:16px;line-height:13px;font-size:.55rem}
+.rs-mk__n--more{display:none}
+.rs-mk__n--all{display:block}
+.rs-weekmodal__go{display:none}
+.rs-weekmodal__row{gap:10px;grid-template-columns:46px minmax(0,1fr) auto}
+.rs-weekmodal__thumb{width:46px;height:62px}
 }
 `;
 //#endregion
@@ -15450,6 +16381,9 @@ function Free({ phrase = "", type = "brand", error = null }) {
 	const [kind, setKind] = useState(type === "competitor" ? "brand" : type);
 	const [subject, setSubject] = useState(phrase);
 	const [terms, setTerms] = useState([]);
+	const [subjectSuggestions, setSubjectSuggestions] = useState([]);
+	const [activeSuggestion, setActiveSuggestion] = useState(-1);
+	const [showSuggestions, setShowSuggestions] = useState(false);
 	const [handle, setHandle] = useState("");
 	const [website, setWebsite] = useState("");
 	const [draft, setDraft] = useState("");
@@ -15458,6 +16392,7 @@ function Free({ phrase = "", type = "brand", error = null }) {
 	const [saving, setSaving] = useState(false);
 	const [message, setMessage] = useState(error);
 	const requested = useRef("");
+	const subjectFieldRef = useRef(null);
 	const config = TYPES.find((item) => item.key === kind) ?? TYPES[0];
 	const selected = terms.filter((term) => term.selected).map((term) => term.value);
 	useEffect(() => {
@@ -15465,7 +16400,7 @@ function Free({ phrase = "", type = "brand", error = null }) {
 		let active = true;
 		requested.current = `${kind}:${subject}`;
 		setLoading(true);
-		expandKeywords(subject).then((payload) => {
+		expandKeywords(subject, { type: kind }).then((payload) => {
 			if (!active) return;
 			const seen = /* @__PURE__ */ new Set([subject.toLowerCase()]);
 			const suggestions = (Array.isArray(payload?.keywords) ? payload.keywords : []).filter((value) => {
@@ -15495,6 +16430,21 @@ function Free({ phrase = "", type = "brand", error = null }) {
 		screen,
 		subject
 	]);
+	useEffect(() => {
+		const controller = new AbortController();
+		fetchKeywordSuggestions(kind, subject.trim(), { signal: controller.signal }).then((payload) => setSubjectSuggestions(Array.isArray(payload?.suggestions) ? payload.suggestions : [])).catch(() => {});
+		return () => controller.abort();
+	}, [kind, subject]);
+	useEffect(() => {
+		const close = (event) => {
+			if (!subjectFieldRef.current?.contains(event.target)) {
+				setShowSuggestions(false);
+				setActiveSuggestion(-1);
+			}
+		};
+		document.addEventListener("mousedown", close);
+		return () => document.removeEventListener("mousedown", close);
+	}, []);
 	useEffect(() => {
 		if (screen !== "gate") {
 			setShowGateCard(false);
@@ -15568,6 +16518,12 @@ function Free({ phrase = "", type = "brand", error = null }) {
 		"Scoring outliers vs creator baseline",
 		"Ranking your top breakouts"
 	];
+	const visibleSuggestions = subjectSuggestions.filter((suggestion) => suggestion.label?.trim());
+	const applySuggestion = (label) => {
+		setSubject(label);
+		setShowSuggestions(false);
+		setActiveSuggestion(-1);
+	};
 	const gateCard = /* @__PURE__ */ jsxs("div", {
 		className: "ff-signup ff-signup--m5",
 		children: [
@@ -15636,9 +16592,19 @@ function Free({ phrase = "", type = "brand", error = null }) {
 				/* @__PURE__ */ jsx("style", { children: `
       .free-flow{min-height:calc(100vh - 72px);background:#fff;color:#111;padding:0 22px 64px;font-family:Figtree,ui-sans-serif,system-ui,sans-serif}
       .ff-shell{max-width:594px;margin:0 auto;padding-top:28px}.fs-stepper{display:flex;align-items:center;justify-content:center;margin:0 0 28px}.fs-step{display:flex;align-items:center;gap:8px;color:#77726b;font-size:11px}.fs-step i{width:23px;height:23px;border:1px solid #ddd8cf;border-radius:50%;display:grid;place-items:center;font-size:11px;font-style:normal}.fs-step.done,.fs-step.now{color:#151515}.fs-step.done i{background:#111;color:#fff;border-color:#111}.fs-step.now i{background:#ffc629;border-color:#ffc629}.fs-step i svg{width:11px;height:11px}.fs-step em{width:27px;height:1px;background:#ddd8cf;margin:0 9px;font-style:normal}.ff-card{border:1px solid #e4e0d8;border-radius:20px;overflow:hidden;background:#fff;box-shadow:0 12px 32px -30px rgba(0,0,0,.3)}.ff-subject{height:66px;padding:0 21px;display:flex;align-items:center;border-bottom:1px solid #e4e0d8}.ff-subject__label,.ff-eyebrow{font-size:10px;font-weight:850;color:#a16d00;letter-spacing:.13em;text-transform:uppercase}.ff-subject strong{margin-left:12px;font-size:15px;letter-spacing:-.03em}.ff-edit{margin-left:auto;width:30px;height:30px;border:1px solid #e4e0d8;border-radius:50%;background:#fff;color:#777;display:grid;place-items:center;cursor:pointer}.ff-edit svg{width:14px;height:14px}.ff-section{padding:23px 21px 24px}.ff-section h1{margin:10px 0 0;font-size:17px;line-height:1.25;letter-spacing:-.035em}.ff-section>p{margin:10px 0 0;font-size:13px;line-height:1.55;color:#625e58}.ff-chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:18px}.ff-chip{height:37px;padding:0 14px;border:1.5px solid #b8b1a2 !important;border-radius:999px;background:#fff;color:#302d29;font:inherit;font-size:12px;font-weight:700;display:inline-flex;align-items:center;gap:8px;cursor:pointer;transition:border-color .15s,background .15s,box-shadow .15s}.ff-chip:hover:not(:disabled){border-color:#8a8271 !important}.ff-chip:disabled{cursor:default}.ff-chip.on{border-color:#ffc629 !important;box-shadow:0 0 0 1.5px #ffc629 inset}.ff-check{width:15px;height:15px;border:1px solid #d9d4ca;border-radius:50%;display:grid;place-items:center}.ff-chip.on .ff-check{background:#ffc629;border-color:#ffc629}.ff-check svg{width:9px;height:9px}.ff-add{border-style:dashed;color:#9d6900}.ff-add svg{width:13px;height:13px}.ff-add-input{height:37px;width:130px;padding:0 12px;border:1px solid #ffc629;border-radius:999px;outline:0;font:inherit;font-size:12px;font-weight:700}.ff-count{margin:14px 0 0!important;font-size:11px!important;color:#756f68!important}.ff-count b{color:#111}.ff-footer{min-height:85px;padding:0 21px;border-top:1px solid #e4e0d8;display:flex;align-items:center;justify-content:space-between;gap:12px}.ff-back,.ff-run{height:41px;padding:0 20px;border-radius:10px;font:inherit;font-size:13px;font-weight:800;cursor:pointer}.ff-back{border:1px solid #ddd8cf;background:#fff;color:#111}.ff-run{border:0;background:#ffc629;color:#1a1400;display:inline-flex;align-items:center;gap:10px;box-shadow:0 1px 2px rgba(20,15,0,.1),0 10px 24px -8px rgba(255,198,41,.72)}.ff-run:hover:not(:disabled){background:#ffd84d;transform:translateY(-1px);box-shadow:0 2px 4px rgba(20,15,0,.1),0 16px 30px -10px rgba(255,198,41,.85)}.ff-run svg{width:15px;height:15px}.ff-run:disabled{opacity:.55;cursor:not-allowed}.ff-subject-form{max-width:520px;margin:66px auto;border:1px solid #e4e0d8;border-radius:20px;padding:26px}.ff-subject-form h1{margin:0;font-size:25px;letter-spacing:-.05em}.ff-modes{display:grid;grid-template-columns:repeat(2,1fr);gap:7px;margin-top:22px}.ff-mode{height:45px;border:1px solid #ddd8cf;border-radius:10px;background:#fff;font:inherit;font-size:12px;font-weight:750;cursor:pointer}.ff-mode.is-on{background:#111;border-color:#111;color:#fff}.ff-mode svg{width:14px;height:14px;vertical-align:-2px;margin-right:5px}.ff-input{width:100%;box-sizing:border-box;height:48px;margin-top:16px;padding:0 13px;border:1px solid #d9d4ca;border-radius:10px;font:inherit;font-weight:650;outline:0}.ff-input:focus{border-color:#ffc629;box-shadow:0 0 0 4px rgba(255,198,41,.2)}
+      .ff-subject-field{position:relative;margin-top:16px}
+      .ff-subject-suggest{position:absolute;top:calc(100% + 10px);left:0;right:0;z-index:20;overflow:hidden;border:1px solid #eadfca;border-radius:18px;background:rgba(255,255,255,.98);box-shadow:0 24px 48px -24px rgba(33,26,12,.3),0 8px 18px -12px rgba(33,26,12,.14);backdrop-filter:blur(10px)}
+      .ff-subject-suggest__head{display:flex;align-items:center;justify-content:space-between;padding:11px 14px 10px;background:linear-gradient(180deg,#fff8e3 0%,#fffdf7 100%);border-bottom:1px solid #f0e5cf;font-size:.68rem;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:#9d6900}
+      .ff-subject-suggest__list{max-height:300px;overflow-y:auto;padding:6px}
+      .ff-subject-suggest__item{width:100%;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:11px 12px;border:0;border-radius:14px;background:transparent;text-align:left;cursor:pointer;transition:background .15s,transform .15s}
+      .ff-subject-suggest__item:hover,.ff-subject-suggest__item.is-active{background:#fff7df}
+      .ff-subject-suggest__item.is-active{transform:translateX(2px)}
+      .ff-subject-suggest__copy{display:flex;min-width:0;flex-direction:column;gap:3px}
+      .ff-subject-suggest__copy strong{font-size:.92rem;font-weight:700;letter-spacing:-.02em;color:#181614}
+      .ff-subject-suggest__copy em{font-style:normal;font-size:.74rem;font-weight:600;color:#8b8577}
       .ff-shell{max-width:594px;margin:0 auto;padding-top:28px}.fs-stepper{display:flex;align-items:center;justify-content:center;margin:0 0 28px}.fs-step{display:flex;align-items:center;gap:8px;color:#77726b;font-size:11px}.fs-step i{width:23px;height:23px;border:1px solid #ddd8cf;border-radius:50%;display:grid;place-items:center;font-size:11px;font-style:normal}.fs-step.done,.fs-step.now{color:#151515}.fs-step.done i{background:#111;color:#fff;border-color:#111}.fs-step.now i{background:#ffc629;border-color:#ffc629}.fs-step i svg{width:11px;height:11px}.fs-step em{width:27px;height:1px;background:#ddd8cf;margin:0 9px;font-style:normal}.ff-card{border:1px solid #e4e0d8;border-radius:20px;overflow:hidden;background:#fff;box-shadow:0 12px 32px -30px rgba(0,0,0,.3)}.ff-subject{height:66px;padding:0 21px;display:flex;align-items:center;border-bottom:1px solid #e4e0d8}.ff-subject__label,.ff-eyebrow{font-size:10px;font-weight:850;color:#a16d00;letter-spacing:.13em;text-transform:uppercase}.ff-subject strong{margin-left:12px;font-size:15px;letter-spacing:-.03em}.ff-edit{margin-left:auto;width:30px;height:30px;border:1px solid #e4e0d8;border-radius:50%;background:#fff;color:#777;display:grid;place-items:center;cursor:pointer}.ff-edit svg{width:14px;height:14px}.ff-section{padding:23px 21px 24px}.ff-section--sources{border-top:1px solid #e4e0d8}.ff-section h1{margin:10px 0 0;font-size:17px;line-height:1.25;letter-spacing:-.035em}.ff-section>p{margin:10px 0 0;font-size:13px;line-height:1.55;color:#625e58}.ff-chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:18px}.ff-chip{height:37px;padding:0 14px;border:1.5px solid #b8b1a2 !important;border-radius:999px;background:#fff;color:#302d29;font:inherit;font-size:12px;font-weight:700;display:inline-flex;align-items:center;gap:8px;cursor:pointer;transition:border-color .15s,background .15s,box-shadow .15s}.ff-chip:hover:not(:disabled){border-color:#8a8271 !important}.ff-chip:disabled{cursor:default}.ff-chip.on{border-color:#ffc629 !important;box-shadow:0 0 0 1.5px #ffc629 inset}.ff-check{width:15px;height:15px;border:1px solid #d9d4ca;border-radius:50%;display:grid;place-items:center}.ff-chip.on .ff-check{background:#ffc629;border-color:#ffc629}.ff-check svg{width:9px;height:9px}.ff-add{border-style:dashed;color:#9d6900}.ff-add svg{width:13px;height:13px}.ff-add-input{height:37px;width:130px;padding:0 12px;border:1px solid #ffc629;border-radius:999px;outline:0;font:inherit;font-size:12px;font-weight:700}.ff-count{margin:14px 0 0!important;font-size:11px!important;color:#756f68!important}.ff-count b{color:#111}.ff-source{margin-top:13px;padding:12px;border:1px solid #ddd8cf;border-radius:11px}.ff-source__head{display:flex;align-items:center;justify-content:space-between;font-size:11px;font-weight:800}.ff-source__head span:last-child{font-size:8px;color:#9d6900;letter-spacing:.08em}.ff-source input{box-sizing:border-box;width:100%;height:36px;margin-top:10px;padding:0 11px;border:1px solid #d9d4ca;border-radius:999px;font:inherit;font-size:11px;font-weight:600;outline:0}.ff-source input:focus{border-color:#ffc629}.ff-footer{min-height:85px;padding:0 21px;border-top:1px solid #e4e0d8;display:flex;align-items:center;justify-content:space-between;gap:12px}.ff-back,.ff-run{height:41px;padding:0 20px;border-radius:10px;font:inherit;font-size:13px;font-weight:800;cursor:pointer}.ff-back{border:1px solid #ddd8cf;background:#fff;color:#111}.ff-run{border:0;background:#ffc629;color:#1a1400;display:inline-flex;align-items:center;gap:10px;box-shadow:0 1px 2px rgba(20,15,0,.1),0 10px 24px -8px rgba(255,198,41,.72)}.ff-run:hover:not(:disabled){background:#ffd84d;transform:translateY(-1px);box-shadow:0 2px 4px rgba(20,15,0,.1),0 16px 30px -10px rgba(255,198,41,.85)}.ff-run svg{width:15px;height:15px}.ff-run:disabled{opacity:.55;cursor:not-allowed}.ff-subject-form{max-width:520px;margin:66px auto;border:1px solid #e4e0d8;border-radius:20px;padding:26px}.ff-subject-form h1{margin:0;font-size:25px;letter-spacing:-.05em}.ff-modes{display:grid;grid-template-columns:repeat(2,1fr);gap:7px;margin-top:22px}.ff-mode{height:45px;border:1px solid #ddd8cf;border-radius:10px;background:#fff;font:inherit;font-size:12px;font-weight:750;cursor:pointer}.ff-mode.is-on{background:#111;border-color:#111;color:#fff}.ff-mode svg{width:14px;height:14px;vertical-align:-2px;margin-right:5px}.ff-input{width:100%;box-sizing:border-box;height:48px;margin-top:16px;padding:0 13px;border:1px solid #d9d4ca;border-radius:10px;font:inherit;font-weight:650;outline:0}.ff-input:focus{border-color:#ffc629;box-shadow:0 0 0 4px rgba(255,198,41,.2)}
       .free-flow--gate{padding:0;background:#fff}.ff-gate{min-height:calc(100vh - 72px);display:grid;grid-template-columns:1fr 1fr}.ff-gate__copy{padding:clamp(48px,11vh,120px) clamp(29px,5vw,90px);display:flex;align-items:center}.ff-gate__inner{max-width:420px}.ff-gate h1{margin:12px 0 0;font-size:clamp(27px,3vw,38px);line-height:1.08;letter-spacing:-.065em}.ff-gate__copy>div>p{font-size:13px;line-height:1.55;color:#625e58;margin:15px 0 0}.ff-stages{margin-top:35px;display:flex;flex-direction:column;gap:12px}.ff-stage{min-height:34px;padding:0 10px;display:flex;align-items:center;gap:11px;border-radius:9px;font-size:12px;font-weight:650}.ff-stage i{width:15px;height:15px;border-radius:50%;background:#111;color:#fff;display:grid;place-items:center}.ff-stage i svg{width:9px;height:9px}.ff-stage.now{background:#fff5da}.ff-stage.now i{background:transparent;border:1.5px solid #ffc629;border-top-color:transparent;animation:ff-spin .8s linear infinite}.ff-email{display:flex;align-items:center;gap:9px;margin-top:20px;padding:12px;border:1px solid #f1d798;border-radius:10px;background:#fffaf0;color:#9d6900;font-size:11px;font-weight:750}.ff-email svg{width:15px;height:15px}@keyframes ff-spin{to{transform:rotate(360deg)}}.ff-gate__visual{padding:28px 30px;background:#faf9f6;border-left:1px solid #ece8df;display:flex;align-items:center;justify-content:center}.ff-preview{width:min(100%,560px)}.ff-videos{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}.ff-video{height:200px;width:100%;border-radius:10px;object-fit:cover;filter:blur(3px);opacity:.75}.ff-gate__sheet--desktop{display:block}.ff-gate__sheet--mobile{display:none}.ff-signup{margin:18px auto 0;padding:23px;border:1px solid #e4e0d8;border-radius:16px;background:#fff;text-align:center;box-shadow:0 20px 35px -30px rgba(0,0,0,.25);max-width:100%}.ff-signup h2{font-size:16px;letter-spacing:-.035em;margin:0}.ff-signup p{font-size:11px!important;line-height:1.55!important;margin:13px auto 0!important;color:#756f68!important}.ff-google{appearance:none;-webkit-appearance:none;height:50px;width:100%;margin-top:18px;border:1px solid #111!important;border-radius:9px;background:#111!important;color:#fff!important;font:inherit;font-size:12px;font-weight:800;display:flex;align-items:center;justify-content:center;gap:9px;cursor:pointer;box-shadow:0 8px 16px -10px rgba(0,0,0,.7);transition:transform .16s,background .16s,box-shadow .16s}.ff-google:hover:not(:disabled){background:#292929!important;box-shadow:0 11px 20px -10px rgba(0,0,0,.65);transform:translateY(-1px)}.ff-google svg{width:19px;height:19px;background:#fff;border-radius:50%;padding:2px}.ff-google:disabled{opacity:.6}.ff-trust{font-size:10px!important;margin-top:12px!important}.ff-error{margin-top:12px!important;color:#aa3820!important;font-weight:700}
-      @media(max-width:720px){.free-flow--gate{padding:0;background:#f7f4ed}.ff-gate{position:relative;display:block;min-height:calc(100vh - 72px);padding:44px 16px 250px;overflow:hidden}.ff-gate__copy{display:flex;justify-content:center;padding:0;text-align:center}.ff-gate__inner{max-width:430px}.ff-gate h1{margin:14px 0 0;font-size:clamp(26px,8vw,36px);line-height:1.04}.ff-gate__copy>div>p{max-width:280px;margin-left:auto;margin-right:auto}.ff-stages{margin:32px auto 0;max-width:none}.ff-stage{text-align:left}.ff-stage i{flex:none}.ff-email{margin:20px auto 0;max-width:none;text-align:left}.ff-email svg{flex:none}.ff-gate__visual{display:none}.ff-gate__sheet--desktop{display:none}.ff-gate__sheet--mobile{position:fixed;left:0;right:0;bottom:0;z-index:20;display:flex;justify-content:center;padding:0 6px;pointer-events:none}.ff-gate__sheet--mobile.is-open .ff-signup{transform:translateY(0);opacity:1}.ff-signup{width:min(100%,560px);margin-top:0;padding:18px 18px 22px;border-bottom:0;border-radius:18px 18px 0 0;box-shadow:0 -12px 40px rgba(0,0,0,.10);transform:translateY(110%);opacity:0;transition:transform .34s ease,opacity .24s ease;pointer-events:auto}.ff-signup::before{content:'';display:block;width:46px;height:4px;border-radius:999px;background:#d7d2c8;margin:0 auto 16px}}@media(max-width:500px){.free-flow{padding:0 12px 35px}.free-flow--gate{padding:0}.ff-shell{padding-top:20px}.fs-step b{display:none}.fs-step em{width:20px;margin:0 5px}.ff-card{border-radius:16px}.ff-section{padding:20px 17px}.ff-subject{padding:0 17px}.ff-footer{padding:0 17px}.ff-run{padding:0 14px}.ff-modes{grid-template-columns:1fr}.ff-subject-form{margin:32px auto}.ff-gate{padding:38px 10px 248px}.ff-signup{padding:16px 14px 20px}}
+      @media(max-width:720px){.free-flow--gate{padding:0;background:#f7f4ed}.ff-gate{position:relative;display:block;min-height:calc(100vh - 72px);padding:44px 16px 250px;overflow:hidden}.ff-gate__copy{display:flex;justify-content:center;padding:0;text-align:center}.ff-gate__inner{max-width:430px}.ff-gate h1{margin:14px 0 0;font-size:clamp(26px,8vw,36px);line-height:1.04}.ff-gate__copy>div>p{max-width:280px;margin-left:auto;margin-right:auto}.ff-stages{margin:32px auto 0;max-width:none}.ff-stage{text-align:left}.ff-stage i{flex:none}.ff-email{margin:20px auto 0;max-width:none;text-align:left}.ff-email svg{flex:none}.ff-gate__visual{display:none}.ff-gate__sheet--desktop{display:none}.ff-gate__sheet--mobile{position:fixed;left:0;right:0;bottom:0;z-index:20;display:flex;justify-content:center;padding:0 6px;pointer-events:none}.ff-gate__sheet--mobile.is-open .ff-signup{transform:translateY(0);opacity:1}.ff-signup{width:min(100%,560px);margin-top:0;padding:18px 18px 22px;border-bottom:0;border-radius:18px 18px 0 0;box-shadow:0 -12px 40px rgba(0,0,0,.10);transform:translateY(110%);opacity:0;transition:transform .34s ease,opacity .24s ease;pointer-events:auto}.ff-signup::before{content:'';display:block;width:46px;height:4px;border-radius:999px;background:#d7d2c8;margin:0 auto 16px}}@media(max-width:500px){.free-flow{padding:0 12px 35px}.free-flow--gate{padding:0}.ff-shell{padding-top:20px}.fs-step b{display:none}.fs-step em{width:20px;margin:0 5px}.ff-card{border-radius:16px}.ff-section{padding:20px 17px}.ff-subject{padding:0 17px}.ff-footer{padding:0 17px}.ff-run{padding:0 14px}.ff-modes{grid-template-columns:1fr}.ff-subject-form{margin:32px auto}.ff-gate{padding:38px 10px 248px}.ff-signup{padding:16px 14px 20px}.ff-subject-suggest{top:calc(100% + 8px);border-radius:16px}.ff-subject-suggest__head{padding:10px 12px 9px;font-size:.62rem}.ff-subject-suggest__item{padding:10px}.ff-subject-suggest__copy strong{font-size:.86rem}}
     ` }),
 				/* @__PURE__ */ jsx("style", { children: `
       .ff-source{display:block}
@@ -15677,6 +16643,7 @@ function Free({ phrase = "", type = "brand", error = null }) {
 					className: "ff-subject-form",
 					children: [/* @__PURE__ */ jsx("h1", { children: "What do you want to scan?" }), /* @__PURE__ */ jsxs("form", {
 						onSubmit: beginRefine,
+						ref: subjectFieldRef,
 						children: [
 							/* @__PURE__ */ jsx("div", {
 								className: "ff-modes",
@@ -15687,12 +16654,64 @@ function Free({ phrase = "", type = "brand", error = null }) {
 									children: [/* @__PURE__ */ jsx(Icon, {}), label]
 								}, key))
 							}),
-							/* @__PURE__ */ jsx("input", {
-								className: "ff-input",
-								autoFocus: true,
-								value: subject,
-								placeholder: config.placeholder,
-								onChange: (event) => setSubject(event.target.value)
+							/* @__PURE__ */ jsxs("div", {
+								className: "ff-subject-field",
+								children: [/* @__PURE__ */ jsx("input", {
+									className: "ff-input",
+									autoFocus: true,
+									autoComplete: "off",
+									value: subject,
+									placeholder: config.placeholder,
+									onChange: (event) => {
+										setSubject(event.target.value);
+										setShowSuggestions(true);
+									},
+									onFocus: () => setShowSuggestions(true),
+									onKeyDown: (event) => {
+										if (!visibleSuggestions.length) return;
+										if (event.key === "ArrowDown") {
+											event.preventDefault();
+											setShowSuggestions(true);
+											setActiveSuggestion((current) => (current + 1) % visibleSuggestions.length);
+										}
+										if (event.key === "ArrowUp") {
+											event.preventDefault();
+											setShowSuggestions(true);
+											setActiveSuggestion((current) => current <= 0 ? visibleSuggestions.length - 1 : current - 1);
+										}
+										if (event.key === "Enter" && activeSuggestion >= 0 && visibleSuggestions[activeSuggestion]) {
+											event.preventDefault();
+											applySuggestion(visibleSuggestions[activeSuggestion].label);
+										}
+										if (event.key === "Escape") {
+											setShowSuggestions(false);
+											setActiveSuggestion(-1);
+										}
+									},
+									"aria-expanded": showSuggestions && visibleSuggestions.length > 0,
+									"aria-haspopup": "listbox"
+								}), showSuggestions && visibleSuggestions.length > 0 && /* @__PURE__ */ jsxs("div", {
+									className: "ff-subject-suggest",
+									role: "listbox",
+									"aria-label": `${kind} suggestions`,
+									children: [/* @__PURE__ */ jsxs("div", {
+										className: "ff-subject-suggest__head",
+										children: [/* @__PURE__ */ jsxs("span", { children: ["Suggested ", kind === "brand" ? "brands" : "products"] }), /* @__PURE__ */ jsx("span", { children: visibleSuggestions.length })]
+									}), /* @__PURE__ */ jsx("div", {
+										className: "ff-subject-suggest__list",
+										children: visibleSuggestions.map((suggestion, index) => /* @__PURE__ */ jsx("button", {
+											type: "button",
+											className: `ff-subject-suggest__item ${index === activeSuggestion ? "is-active" : ""}`.trim(),
+											onMouseEnter: () => setActiveSuggestion(index),
+											onMouseDown: (event) => event.preventDefault(),
+											onClick: () => applySuggestion(suggestion.label),
+											children: /* @__PURE__ */ jsxs("span", {
+												className: "ff-subject-suggest__copy",
+												children: [/* @__PURE__ */ jsx("strong", { children: suggestion.label }), suggestion.sector && /* @__PURE__ */ jsx("em", { children: suggestion.sector })]
+											})
+										}, `${suggestion.type}-${suggestion.id}`))
+									})]
+								})]
 							}),
 							/* @__PURE__ */ jsxs("button", {
 								className: "ff-run",
@@ -16345,6 +17364,10 @@ function ratio(used, limit) {
 	if (!limit || limit < 0) return 0;
 	return Math.min(100, Math.max(0, used / limit * 100));
 }
+function formatUsage(used, limit) {
+	if (limit === -1) return `${used} / Unlimited`;
+	return `${used} / ${limit || 0}`;
+}
 function Subscription({ subscription }) {
 	const limits = subscription?.limits ?? {};
 	const searchLimit = limits.searchCreditsLimit ?? 0;
@@ -16415,16 +17438,12 @@ function Subscription({ subscription }) {
 									children: [/* @__PURE__ */ jsx("span", {
 										className: "muted",
 										children: "Searches used"
-									}), /* @__PURE__ */ jsxs("span", {
+									}), /* @__PURE__ */ jsx("span", {
 										style: {
 											fontWeight: 700,
 											color: "var(--ink)"
 										},
-										children: [
-											searchUsed,
-											" / ",
-											searchLimit || 0
-										]
+										children: formatUsage(searchUsed, searchLimit)
 									})]
 								}),
 								/* @__PURE__ */ jsx("div", {
@@ -16452,16 +17471,12 @@ function Subscription({ subscription }) {
 								children: [/* @__PURE__ */ jsx("span", {
 									className: "muted",
 									children: "Video bookmarks used"
-								}), /* @__PURE__ */ jsxs("span", {
+								}), /* @__PURE__ */ jsx("span", {
 									style: {
 										fontWeight: 700,
 										color: "var(--ink)"
 									},
-									children: [
-										videoBookmarkUsed,
-										" ",
-										videoBookmarksUnlimited ? "" : `/ ${videoBookmarkLimit || 0}`
-									]
+									children: formatUsage(videoBookmarkUsed, videoBookmarkLimit)
 								})]
 							}), /* @__PURE__ */ jsx("div", {
 								className: "meter",
@@ -16477,16 +17492,12 @@ function Subscription({ subscription }) {
 								children: [/* @__PURE__ */ jsx("span", {
 									className: "muted",
 									children: "Search bookmarks used"
-								}), /* @__PURE__ */ jsxs("span", {
+								}), /* @__PURE__ */ jsx("span", {
 									style: {
 										fontWeight: 700,
 										color: "var(--ink)"
 									},
-									children: [
-										searchBookmarkUsed,
-										" ",
-										searchBookmarksUnlimited ? "" : `/ ${searchBookmarkLimit || 0}`
-									]
+									children: formatUsage(searchBookmarkUsed, searchBookmarkLimit)
 								})]
 							}), /* @__PURE__ */ jsx("div", {
 								className: "meter",
@@ -16502,16 +17513,12 @@ function Subscription({ subscription }) {
 								children: [/* @__PURE__ */ jsx("span", {
 									className: "muted",
 									children: "Video analysis used"
-								}), /* @__PURE__ */ jsxs("span", {
+								}), /* @__PURE__ */ jsx("span", {
 									style: {
 										fontWeight: 700,
 										color: "var(--ink)"
 									},
-									children: [
-										videoAnalysisUsed,
-										" ",
-										analysisUnlimited ? "" : `/ ${videoAnalysisLimit || 0}`
-									]
+									children: formatUsage(videoAnalysisUsed, videoAnalysisLimit)
 								})]
 							}), /* @__PURE__ */ jsx("div", {
 								className: "meter",

@@ -9,6 +9,7 @@ use App\Models\CustomKeywordSearch;
 use App\Models\CustomKeywordSearchRun;
 use App\Models\CustomKeywordSearchSnapshot;
 use App\Models\CustomKeywordSearchVideo;
+use App\Models\VideoAnalysis;
 use App\Models\ViralVideo;
 use App\Services\Billing\BillingService;
 use App\Services\Bookmarks\BookmarkService;
@@ -263,7 +264,7 @@ class SavedSearchController extends Controller
     }
 
     /**
-     * GET /bookmarks — the saved list.
+     * GET /library — the saved list.
      */
     public function index(Request $request): Response
     {
@@ -277,7 +278,7 @@ class SavedSearchController extends Controller
             ->map(fn (CustomKeywordSearch $search): array => SavedSearchPresenter::summary($search))
             ->all();
 
-        // The Bookmarks "Bookmarked videos" tab lives in the same default view.
+        // The Library "Saved videos" tab lives in the same default view.
         $videoIds = $bookmarkedOnly ? $this->bookmarks->idsForUser($request->user()) : [];
         $bookmarkedVideos = $videoIds === []
             ? []
@@ -291,10 +292,90 @@ class SavedSearchController extends Controller
         return Inertia::render('SavedSearches/Index', [
             'searches' => $searches,
             'bookmarkedVideos' => $bookmarkedVideos,
+            'analysisHistory' => $bookmarkedOnly ? $this->analysisHistory($request) : [],
             'filterType' => $filterType,
             'watchlistedOnly' => $bookmarkedOnly,
             'isAuthenticated' => $request->user() !== null,
         ]);
+    }
+
+    /**
+     * Analysis history belongs to the Library hub and is intentionally a flat
+     * log so users can quickly jump back into finished or in-flight analyses.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    private function analysisHistory(Request $request): array
+    {
+        $user = $request->user();
+
+        if ($user === null) {
+            return [];
+        }
+
+        $analyses = VideoAnalysis::query()
+            ->where('user_id', $user->id)
+            ->whereNotNull('viral_video_id')
+            ->with(['viralVideo' => fn ($query) => $query->visible()])
+            ->latest('updated_at')
+            ->get();
+
+        if ($analyses->isEmpty()) {
+            return [];
+        }
+
+        $videoIds = $analyses
+            ->pluck('viral_video_id')
+            ->filter()
+            ->unique()
+            ->values();
+
+        $searchLinks = CustomKeywordSearchVideo::query()
+            ->with('search')
+            ->whereIn('viral_video_id', $videoIds)
+            ->orderByDesc('updated_at')
+            ->get()
+            ->groupBy('viral_video_id');
+
+        return $analyses
+            ->map(function (VideoAnalysis $analysis) use ($searchLinks): ?array {
+                $video = $analysis->viralVideo;
+
+                if ($video === null) {
+                    return null;
+                }
+
+                $links = $searchLinks->get($analysis->viral_video_id, collect());
+                $searches = $links
+                    ->map(fn (CustomKeywordSearchVideo $row) => $row->search)
+                    ->filter()
+                    ->unique('id')
+                    ->values();
+                $primarySearch = $searches->first();
+
+                return [
+                    'id' => $analysis->id,
+                    'status' => $analysis->status,
+                    'analyzed_at' => $analysis->analyzed_at?->toIso8601String(),
+                    'updated_at' => $analysis->updated_at?->toIso8601String(),
+                    'counts_toward_quota' => (bool) $analysis->counts_toward_quota,
+                    'error_message' => $analysis->error_message,
+                    'video' => $video->toCardArray(),
+                    'analysis_url' => '/videos/'.$video->id.'/analysis',
+                    'searches' => $searches
+                        ->map(fn (CustomKeywordSearch $search): array => [
+                            'id' => $search->id,
+                            'name' => $search->name,
+                            'url' => $search->url(),
+                        ])
+                        ->all(),
+                    'search_name' => $primarySearch?->name,
+                    'search_url' => $primarySearch?->url(),
+                ];
+            })
+            ->filter()
+            ->values()
+            ->all();
     }
 
     /**
@@ -593,7 +674,7 @@ class SavedSearchController extends Controller
         }
     }
 
-    /** Old /bookmarks/{id} and /bookmark/{id} links redirect to the canonical /results/{public_id}. */
+    /** Old /library/{id}, /bookmarks/{id}, and /bookmark/{id} links redirect to the canonical /results/{public_id}. */
     public function showLegacyRedirect(Request $request, int $id): RedirectResponse
     {
         try {
@@ -719,7 +800,7 @@ class SavedSearchController extends Controller
             return response()->json(['deleted' => true]);
         }
 
-        return redirect('/bookmarks');
+        return redirect('/library');
     }
 
     public function bookmark(Request $request, int $id): JsonResponse

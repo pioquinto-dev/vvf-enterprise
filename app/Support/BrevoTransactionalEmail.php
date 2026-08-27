@@ -40,7 +40,7 @@ class BrevoTransactionalEmail
             'searchBookmarkLimit' => (int) data_get($subscription->metadata, 'subscription.search_bookmarks.limit', 0),
             'videoAnalysisLimit' => (int) data_get($subscription->metadata, 'subscription.video_analysis.limit', 0),
             'dashboardUrl' => url('/dashboard'),
-            'savedSearchesUrl' => url('/bookmarks'),
+            'savedSearchesUrl' => url('/library'),
             'settingsUrl' => url('/settings/subscription'),
         ]);
     }

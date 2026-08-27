@@ -22,7 +22,7 @@ function formatDuration(duration) {
 
 /**
  * One video card (the mockup's `.vc`), wired to a `ViralVideo::toCardArray`
- * payload. Bookmarks now plays in place like the results flow, using TikTok's
+ * payload. Library now plays in place like the results flow, using TikTok's
  * player when we have a stable video id and falling back to the saved embed.
  */
 export default function VideoCard({ video, rank }) {

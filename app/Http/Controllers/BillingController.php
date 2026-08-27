@@ -65,6 +65,6 @@ class BillingController extends Controller
             $this->billing->finalizeCheckout($user, $sessionId);
         }
 
-        return redirect('/bookmarks')->with('status', 'Subscription activated.');
+        return redirect('/library')->with('status', 'Subscription activated.');
     }
 }

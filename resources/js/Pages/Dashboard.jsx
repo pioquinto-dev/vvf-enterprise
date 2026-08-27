@@ -176,7 +176,7 @@ function RecentCard({ searches, retryingSearchId, onRetry }) {
       <section className="rc">
         <div className="rc__h">
           <h2>Pick up where you left off</h2>
-          <Link href="/bookmarks" className="link">
+          <Link href="/library" className="link">
             View all <Arrow />
           </Link>
         </div>

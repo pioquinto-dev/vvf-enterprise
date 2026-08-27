@@ -217,7 +217,7 @@ export default function RunningScreen({ searchId, onBack, onDone, onAutoReturn }
         )}
 
         <p className="faint" style={{ fontSize: '.8rem', marginTop: signedIn ? 24 : 18 }}>
-          Safe to close this tab — the search keeps running and stays in Bookmarks.
+          Safe to close this tab — the search keeps running and stays in Library.
         </p>
       </div>
     </div>

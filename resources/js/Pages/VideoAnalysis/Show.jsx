@@ -9,7 +9,7 @@ function closeModal() {
     return;
   }
 
-  window.location.assign('/bookmarks');
+  window.location.assign('/library');
 }
 
 export default function Show({ video, analysis: initialAnalysis, tabs }) {
@@ -18,7 +18,12 @@ export default function Show({ video, analysis: initialAnalysis, tabs }) {
       <Head title={`Video Analysis · ${video.handle ?? video.creator_name ?? 'TikTok'}`} />
 
       <AppLayout width="max-w-[1400px]">
-        <AnalysisModal video={video} initialAnalysis={initialAnalysis} tabs={tabs} onClose={closeModal} />
+        <AnalysisModal
+          video={video}
+          initialAnalysis={initialAnalysis}
+          tabs={tabs}
+          onClose={closeModal}
+        />
       </AppLayout>
     </>
   );

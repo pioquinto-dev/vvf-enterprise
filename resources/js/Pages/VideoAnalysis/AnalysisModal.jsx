@@ -310,6 +310,7 @@ function LeftSidebar({
   saved = false,
   saving = false,
   onToggleSave,
+  showExternalLink = true,
 }) {
   const metrics = statCards(video);
   const multiple = outlierMultiple(video);
@@ -455,46 +456,46 @@ function LeftSidebar({
       </div>
 
       <div className="mt-3.5 flex flex-col gap-[7px] border-t border-[#E7E5DF] pt-3.5">
-        <AnalyzeButton state={analyzeState} onClick={onAnalyze} />
+        <div className={`grid gap-[7px] ${showExternalLink ? 'grid-cols-[minmax(0,1fr)_40px]' : 'grid-cols-1'}`}>
+          <AnalyzeButton state={analyzeState} onClick={onAnalyze} />
 
-        <div className="grid grid-cols-[minmax(0,1fr)_40px] gap-[7px]">
-          {onToggleSave ? (
-            <button
-              type="button"
-              onClick={onToggleSave}
-              disabled={saving}
-              aria-pressed={saved}
-              className={`flex h-10 items-center justify-center gap-2 rounded-[11px] border px-2.5 text-[13px] font-bold transition disabled:opacity-60 ${
-                saved
-                  ? 'border-[#FFC629] bg-[#FFF8E6] text-[#5C4200]'
-                  : 'border-[#E7E5DF] bg-white text-[#0B0B0B] hover:bg-[#FAF9F6]'
+          {showExternalLink && (
+            <a
+              href={video.post_url || video.postUrl || '#'}
+              target="_blank"
+              rel="noreferrer noopener"
+              aria-disabled={!(video.post_url || video.postUrl)}
+              title="Open on TikTok"
+              aria-label="Open on TikTok"
+              className={`flex h-10 items-center justify-center rounded-[11px] border border-[#E7E5DF] bg-white text-[#0B0B0B] transition hover:bg-[#FAF9F6] ${
+                video.post_url || video.postUrl ? '' : 'pointer-events-none opacity-40'
               }`}
             >
-              <svg viewBox="0 0 24 24" className="h-[15px] w-[15px]" fill={saved ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinejoin="round">
-                <path d="M6 3h12v18l-6-4.5L6 21z" />
+              <svg viewBox="0 0 24 24" className="h-[15px] w-[15px]" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5" />
               </svg>
-              {saved ? 'Saved' : 'Save'}
-            </button>
-          ) : (
-            <span />
+            </a>
           )}
+        </div>
 
-          <a
-            href={video.post_url || video.postUrl || '#'}
-            target="_blank"
-            rel="noreferrer noopener"
-            aria-disabled={!(video.post_url || video.postUrl)}
-            title="Open on TikTok"
-            aria-label="Open on TikTok"
-            className={`flex h-10 items-center justify-center rounded-[11px] border border-[#E7E5DF] bg-white text-[#0B0B0B] transition hover:bg-[#FAF9F6] ${
-              video.post_url || video.postUrl ? '' : 'pointer-events-none opacity-40'
+        {onToggleSave && (
+          <button
+            type="button"
+            onClick={onToggleSave}
+            disabled={saving}
+            aria-pressed={saved}
+            className={`flex h-10 items-center justify-center gap-2 rounded-[11px] border px-2.5 text-[13px] font-bold transition disabled:opacity-60 ${
+              saved
+                ? 'border-[#FFC629] bg-[#FFF8E6] text-[#5C4200]'
+                : 'border-[#E7E5DF] bg-white text-[#0B0B0B] hover:bg-[#FAF9F6]'
             }`}
           >
-            <svg viewBox="0 0 24 24" className="h-[15px] w-[15px]" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5" />
+            <svg viewBox="0 0 24 24" className="h-[15px] w-[15px]" fill={saved ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinejoin="round">
+              <path d="M6 3h12v18l-6-4.5L6 21z" />
             </svg>
-          </a>
-        </div>
+            {saved ? 'Saved' : 'Save'}
+          </button>
+        )}
 
         {canRegenerate && (
           <RegenerateButton
@@ -874,6 +875,7 @@ export default function AnalysisModal({
   saved = false,
   saving = false,
   onToggleSave,
+  showExternalLink = true,
 }) {
   const [activeTab, setActiveTab] = useState(tabs[0]?.key ?? 'why');
   const [analysis, setAnalysis] = usePolling(video.id, initialAnalysis, open);
@@ -1014,6 +1016,7 @@ export default function AnalysisModal({
               saved={saved}
               saving={saving}
               onToggleSave={onToggleSave}
+              showExternalLink={showExternalLink}
             />
 
             <div className="min-w-0 space-y-3 min-[640px]:space-y-4">

@@ -27,6 +27,32 @@ const VIDEO_SORT = {
   recent: 'Most recent',
 };
 
+const ANALYSIS_STATUS_LABELS = {
+  complete: 'Ready',
+  processing: 'Processing',
+  failed: 'Failed',
+  idle: 'Queued',
+};
+
+const ANALYSIS_SORT = {
+  recent: 'Most recent',
+  oldest: 'Oldest first',
+};
+
+function formatAnalysisDate(value) {
+  if (!value) return 'Waiting for analysis';
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return 'Waiting for analysis';
+
+  return date.toLocaleString([], {
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  });
+}
+
 function compareDates(a, b) {
   return (b ? new Date(b).getTime() : 0) - (a ? new Date(a).getTime() : 0);
 }
@@ -46,6 +72,7 @@ function Sel({ value, onChange, ariaLabel, children }) {
 export default function Index({
   searches: initialSearches,
   bookmarkedVideos = [],
+  analysisHistory = [],
   filterType = null,
   watchlistedOnly: bookmarkedOnly = true,
 }) {
@@ -61,6 +88,9 @@ export default function Index({
   const [sortBy, setSortBy] = useState('recent_refresh');
   const [videoQuery, setVideoQuery] = useState('');
   const [videoSort, setVideoSort] = useState('score');
+  const [analysisQuery, setAnalysisQuery] = useState('');
+  const [analysisStatus, setAnalysisStatus] = useState('all');
+  const [analysisSort, setAnalysisSort] = useState('recent');
   const [modalState, setModalState] = useState({ type: null, search: null });
   const [formState, setFormState] = useState({
     name: '',
@@ -71,7 +101,7 @@ export default function Index({
   const [submitting, setSubmitting] = useState(false);
   const menuRef = useRef(null);
 
-  const title = filterType ? FILTER_LABELS[filterType] ?? 'Bookmarks' : 'Bookmarks';
+  const title = filterType ? FILTER_LABELS[filterType] ?? 'Library' : 'Library';
   const searchHref = `/search?type=${filterType === 'product' ? 'product' : 'brand'}`;
 
   /* close the row menu on outside click / escape */
@@ -139,6 +169,31 @@ export default function Index({
     });
     return next;
   }, [bookmarkedVideos, videoQuery, videoSort]);
+
+  const filteredAnalyses = useMemo(() => {
+    const q = analysisQuery.trim().toLowerCase();
+    const next = analysisHistory.filter((entry) => {
+      const searchNames = Array.isArray(entry.searches) ? entry.searches.map((search) => search?.name ?? '') : [];
+      const matchesQuery =
+        q === '' ||
+        entry.video?.title?.toLowerCase().includes(q) ||
+        entry.video?.handle?.toLowerCase().includes(q) ||
+        entry.video?.creator_name?.toLowerCase().includes(q) ||
+        searchNames.some((name) => name.toLowerCase().includes(q));
+      const matchesStatus = analysisStatus === 'all' || entry.status === analysisStatus;
+
+      return matchesQuery && matchesStatus;
+    });
+
+    next.sort((left, right) => {
+      const leftTime = new Date(left.analyzed_at ?? left.updated_at ?? 0).getTime();
+      const rightTime = new Date(right.analyzed_at ?? right.updated_at ?? 0).getTime();
+
+      return analysisSort === 'oldest' ? leftTime - rightTime : rightTime - leftTime;
+    });
+
+    return next;
+  }, [analysisHistory, analysisQuery, analysisSort, analysisStatus]);
 
   const openModal = (type, search) => {
     setOpenMenuId(null);
@@ -266,16 +321,27 @@ export default function Index({
       <AppLayout
         width="max-w-[1240px]"
         title={title}
-        subtitle="Everything you have saved — tracked searches and the individual videos you kept."
+        subtitle="Everything you have saved and analyzed — tracked searches, bookmarked videos, and your analysis log."
         actions={<EntitlementsBar />}
       >
         {showTabs && (
           <div className="tabs tabs--bookmarks">
             <button type="button" className={`tab${tab === 'searches' ? ' is-on' : ''}`} onClick={() => setTab('searches')}>
-              <Bookmark className="h-[15px] w-[15px]" /> Bookmarked searches <span className="tab__c">{searches.length}</span>
+              <Bookmark className="h-[15px] w-[15px]" />
+              <span className="sm:hidden">Searches</span>
+              <span className="hidden sm:inline">Saved searches</span>
+              <span className="tab__c">{searches.length}</span>
             </button>
             <button type="button" className={`tab${tab === 'videos' ? ' is-on' : ''}`} onClick={() => setTab('videos')}>
-              <Play className="h-[15px] w-[15px]" /> Bookmarked videos <span className="tab__c">{bookmarkedVideos.length}</span>
+              <Play className="h-[15px] w-[15px]" />
+              <span className="sm:hidden">Videos</span>
+              <span className="hidden sm:inline">Saved videos</span>
+              <span className="tab__c">{bookmarkedVideos.length}</span>
+            </button>
+            <button type="button" className={`tab${tab === 'analysis' ? ' is-on' : ''}`} onClick={() => setTab('analysis')}>
+              <Search className="h-[15px] w-[15px]" />
+              <span>Analysis History</span>
+              <span className="tab__c">{analysisHistory.length}</span>
             </button>
           </div>
         )}
@@ -334,7 +400,7 @@ export default function Index({
                 <h2>{searches.length === 0 ? 'Nothing saved yet' : 'No searches matched'}</h2>
                 <p className="muted" style={{ maxWidth: 360, margin: '10px auto 0' }}>
                   {searches.length === 0
-                    ? 'Run a search, then bookmark it to keep it here in Bookmarks.'
+                    ? 'Run a search, then save it to keep it here in Library.'
                     : 'Try a different keyword, status, type, or sort combination.'}
                 </p>
                 <Link href={searchHref} className="btn btn--y" style={{ margin: '22px auto 0' }}>
@@ -349,7 +415,7 @@ export default function Index({
               </div>
             )}
           </>
-        ) : (
+        ) : tab === 'videos' ? (
           <>
             <div className="tools">
               <label className="srch">
@@ -357,8 +423,8 @@ export default function Index({
                 <input
                   value={videoQuery}
                   onChange={(e) => setVideoQuery(e.target.value)}
-                  placeholder="Search your bookmarked videos"
-                  aria-label="Search your bookmarked videos"
+                  placeholder="Search your saved videos"
+                  aria-label="Search your saved videos"
                 />
               </label>
               <Sel value={videoSort} onChange={(e) => setVideoSort(e.target.value)} ariaLabel="Sort videos">
@@ -375,9 +441,9 @@ export default function Index({
                 <div className="empty__i">
                   <Play className="h-6 w-6" />
                 </div>
-                <h2>No bookmarked videos yet</h2>
+                <h2>No saved videos yet</h2>
                 <p className="muted" style={{ maxWidth: 360, margin: '10px auto 0' }}>
-                  Open a search and bookmark the videos worth keeping — they collect here.
+                  Open a search and save the videos worth keeping — they collect here.
                 </p>
               </div>
             ) : (
@@ -385,6 +451,119 @@ export default function Index({
                 {filteredVideos.map((v) => (
                   <VideoCard key={v.id} video={v} />
                 ))}
+              </div>
+            )}
+          </>
+        ) : (
+          <>
+            <div className="tools">
+              <label className="srch">
+                <Search className="h-4 w-4" />
+                <input
+                  value={analysisQuery}
+                  onChange={(e) => setAnalysisQuery(e.target.value)}
+                  placeholder="Search analysis history"
+                  aria-label="Search analysis history"
+                />
+              </label>
+              <Sel value={analysisStatus} onChange={(e) => setAnalysisStatus(e.target.value)} ariaLabel="Filter analyses">
+                <option value="all">All statuses</option>
+                <option value="complete">Ready</option>
+                <option value="processing">Processing</option>
+                <option value="failed">Failed</option>
+                <option value="idle">Queued</option>
+              </Sel>
+              <Sel value={analysisSort} onChange={(e) => setAnalysisSort(e.target.value)} ariaLabel="Sort analyses">
+                {Object.entries(ANALYSIS_SORT).map(([value, label]) => (
+                  <option key={value} value={value}>
+                    {label}
+                  </option>
+                ))}
+              </Sel>
+            </div>
+
+            {filteredAnalyses.length === 0 ? (
+              <div className="empty">
+                <div className="empty__i">
+                  <Search className="h-6 w-6" />
+                </div>
+                <h2>{analysisHistory.length === 0 ? 'No analyses yet' : 'No analyses matched'}</h2>
+                <p className="muted" style={{ maxWidth: 420, margin: '10px auto 0' }}>
+                  {analysisHistory.length === 0
+                    ? 'Analyze a video from any search result and it will show up here as a running history log.'
+                    : 'Try a different search term or status filter.'}
+                </p>
+              </div>
+            ) : (
+              <div className="rows">
+                {filteredAnalyses.map((entry) => {
+                  const statusLabel = ANALYSIS_STATUS_LABELS[entry.status] ?? 'Unknown';
+                  const searchNames = Array.isArray(entry.searches) ? entry.searches.map((search) => search.name).filter(Boolean) : [];
+                  const href =
+                    entry.status === 'complete'
+                      ? entry.analysis_url
+                      : entry.search_url
+                        ? `${entry.search_url}${entry.search_url.includes('?') ? '&' : '?'}analysisVideo=${encodeURIComponent(entry.video?.id ?? '')}&openAnalysis=1`
+                        : entry.analysis_url;
+
+                  return (
+                    <Link
+                      key={entry.id}
+                      href={href}
+                      className="row"
+                      style={{ alignItems: 'stretch', textDecoration: 'none' }}
+                    >
+                      <div
+                        style={{
+                          width: 88,
+                          minWidth: 88,
+                          borderRadius: 18,
+                          overflow: 'hidden',
+                          background: 'var(--panel)',
+                          border: '1px solid var(--line)',
+                        }}
+                      >
+                        {entry.video?.thumbnail_url ? (
+                          <img
+                            src={entry.video.thumbnail_url}
+                            alt={entry.video?.title ?? 'Video thumbnail'}
+                            style={{ width: '100%', height: '100%', minHeight: 88, objectFit: 'cover' }}
+                          />
+                        ) : (
+                          <div style={{ minHeight: 88, display: 'grid', placeItems: 'center', color: 'var(--muted)' }}>
+                            <Play className="h-5 w-5" />
+                          </div>
+                        )}
+                      </div>
+
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div className="row__t" style={{ marginBottom: 6, gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+                          <span>{entry.video?.title || entry.video?.handle || 'Analyzed video'}</span>
+                          <span className={`pill ${
+                            entry.status === 'complete'
+                              ? 'pill--ok'
+                              : entry.status === 'failed'
+                                ? 'pill--bad'
+                                : 'pill--run'
+                          }`}>
+                            <i />
+                            {statusLabel}
+                          </span>
+                        </div>
+                        <div className="row__m">
+                          {entry.video?.handle || entry.video?.creator_name || 'Unknown creator'}
+                          {searchNames.length > 0 ? ` • ${searchNames.join(', ')}` : ''}
+                        </div>
+                        <div className="row__m" style={{ marginTop: 6 }}>
+                          {entry.status === 'complete' ? 'Analyzed' : entry.status === 'failed' ? 'Last updated' : 'Started'}{' '}
+                          {formatAnalysisDate(entry.analyzed_at ?? entry.updated_at)}
+                          {!entry.counts_toward_quota ? ' • Auto analysis' : ''}
+                        </div>
+                        {entry.error_message && <div className="row__m" style={{ marginTop: 6, color: 'var(--warn)' }}>{entry.error_message}</div>}
+                      </div>
+                    </Link>
+                  );
+                })}
               </div>
             )}
           </>

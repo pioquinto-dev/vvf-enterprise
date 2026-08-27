@@ -24,7 +24,7 @@ const PILL_CLASS = {
  */
 const NAV = [
     { label: 'Search', href: '/dashboard', icon: Spark, match: '/dashboard' },
-    { label: 'Bookmarks', href: '/bookmarks', icon: Library, match: '/bookmarks' },
+    { label: 'Library', href: '/library', icon: Library, match: '/library' },
     { label: 'Brand searches', href: '/brands', icon: Store, match: '/brands' },
     { label: 'Product searches', href: '/products', icon: Search, match: '/products' },
 ];

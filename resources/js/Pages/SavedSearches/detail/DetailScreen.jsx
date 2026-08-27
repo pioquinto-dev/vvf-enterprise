@@ -802,7 +802,7 @@ export default function DetailScreen({
 
       {/* top bar */}
       <div className="rs-viewbar">
-        <Link className="rs-tbtn" href="/bookmarks">{Icons.Back} Back to bookmarks</Link>
+        <Link className="rs-tbtn" href="/library">{Icons.Back} Back to Library</Link>
         <div className="rs-viewbar__actions rs-mobileonly" ref={menuTopRef}>
           <button className={`rs-iconbtn${search?.is_watchlisted ? ' on' : ''}`} title="Bookmark" onClick={handleSearchBookmarkAction} disabled={bookmarkUpdating}>
             {search?.is_watchlisted ? Icons.Bookmark : Icons.BookmarkO}

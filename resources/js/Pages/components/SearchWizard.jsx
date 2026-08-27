@@ -268,7 +268,7 @@ export default function SearchWizard({
         setStep('subject');
     };
 
-    const onDone = useCallback((found) => router.visit(found?.url ?? `/bookmarks/${found?.id ?? searchId}`), [searchId]);
+    const onDone = useCallback((found) => router.visit(found?.url ?? `/library/${found?.id ?? searchId}`), [searchId]);
 
     const topTitle =
         step === 'subject' ? heading : phrase;

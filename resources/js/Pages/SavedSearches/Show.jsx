@@ -98,7 +98,7 @@ export default function Show({ search: initial, isAuthenticated = false, billing
     const remove = async () => {
         await api.destroy(search.id);
         untrackSearch(search.id);
-        router.visit('/bookmarks');
+        router.visit('/library');
     };
 
     const togglePause = async () => {
