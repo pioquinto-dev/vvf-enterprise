@@ -9,6 +9,8 @@ use App\Models\PricingPlan;
 use App\Models\Subscription;
 use App\Models\User;
 use App\Models\ViralVideo;
+use App\Models\VideoAnalysis;
+use App\Models\VideoBookmark;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -171,7 +173,7 @@ class AdminListingRepository
             'inquiries' => Inquiry::query()->with('user'),
             'plans' => PricingPlan::query()->withTrashed(),
             'subscription' => Subscription::query()->withTrashed()->with(['user', 'plan']),
-            'users' => User::query()->withTrashed(),
+            'users' => User::query()->withTrashed()->with(['subscriptions.plan']),
             'keyword-index' => IndexedKeyword::query()->withTrashed(),
             default => null,
         };
@@ -357,6 +359,75 @@ class AdminListingRepository
                 'source' => trim(Str::title($record->platform ?? '').' / '.($record->username ? '@'.$record->username : '-')),
                 'status' => $this->viralVideoStatus($record),
                 'published_at' => $record->uploaded_at?->diffForHumans() ?? '-',
+                'preview' => [
+                    'eyebrow' => 'Content record',
+                    'summary' => $record->title ?: ($record->video_id ?? 'Untitled'),
+                    'sections' => [
+                        [
+                            'title' => 'Content',
+                            'fields' => [
+                                ['label' => 'Title', 'value' => $record->title],
+                                ['label' => 'Platform', 'value' => $record->platform],
+                                ['label' => 'Video status', 'value' => $record->video_status],
+                                ['label' => 'Creator handle', 'value' => $record->username ? '@'.$record->username : null],
+                                ['label' => 'Creator name', 'value' => $record->name],
+                                ['label' => 'Content format', 'value' => $record->content_format],
+                                ['label' => 'Content hook', 'value' => $record->content_hook],
+                                ['label' => 'Content angle', 'value' => $record->content_angle],
+                                ['label' => 'Hashtags', 'value' => $this->tagList($record->hashtags), 'multiline' => true],
+                            ],
+                        ],
+                        [
+                            'title' => 'Creator',
+                            'fields' => [
+                                ['label' => 'Creator handle', 'value' => $record->username ? '@'.$record->username : null],
+                                ['label' => 'Creator name', 'value' => $record->name],
+                                ['label' => 'Followers', 'value' => $this->formatCount($record->followers)],
+                                ['label' => 'Avatar URL', 'value' => $record->avatar, 'multiline' => true],
+                            ],
+                        ],
+                        [
+                            'title' => 'Statistics',
+                            'fields' => [
+                                ['label' => 'Views', 'value' => $this->formatCount($record->views)],
+                                ['label' => 'Likes', 'value' => $this->formatCount($record->likes)],
+                                ['label' => 'Comments', 'value' => $this->formatCount($record->comments)],
+                                ['label' => 'Shares', 'value' => $this->formatCount($record->shares)],
+                                ['label' => 'Bookmarks', 'value' => $this->formatCount($record->bookmarks)],
+                                ['label' => 'Engagement rate', 'value' => $record->engagementRate() !== null ? number_format((float) $record->engagementRate(), 2).'%' : null],
+                                ['label' => 'Virality score', 'value' => $record->virality_score !== null ? number_format((float) $record->virality_score, 2) : null],
+                                ['label' => 'Duration', 'value' => $record->duration !== null ? number_format((float) $record->duration, 2).' sec' : null],
+                            ],
+                        ],
+                        [
+                            'title' => 'Sound',
+                            'fields' => [
+                                ['label' => 'Sound label', 'value' => $record->soundLabel()],
+                                ['label' => 'Song', 'value' => $record->song],
+                                ['label' => 'Artist', 'value' => $record->artist],
+                                ['label' => 'Song cover URL', 'value' => $record->song_cover_url, 'multiline' => true],
+                            ],
+                        ],
+                        [
+                            'title' => 'Asset URLs',
+                            'fields' => [
+                                ['label' => 'Post URL', 'value' => $record->post_url, 'multiline' => true],
+                                ['label' => 'Embed URL', 'value' => $record->embed_url, 'multiline' => true],
+                                ['label' => 'Video URL', 'value' => $record->video_url, 'multiline' => true],
+                                ['label' => 'Thumbnail URL', 'value' => $record->thumbnail_url, 'multiline' => true],
+                                ['label' => 'Cover URL', 'value' => $record->cover, 'multiline' => true],
+                            ],
+                        ],
+                        [
+                            'title' => 'Operational',
+                            'fields' => [
+                                ['label' => 'Listing status', 'value' => $this->viralVideoStatus($record)],
+                                ['label' => 'Scrape source', 'value' => $record->scrape_source],
+                                ['label' => 'Language bucket', 'value' => $record->title_language_bucket],
+                            ],
+                        ],
+                    ],
+                ],
             ],
             'searches' => [
                 'id' => $record->id,
@@ -364,6 +435,32 @@ class AdminListingRepository
                 'type' => $record->search_type ?? '-',
                 'owner' => $record->user?->name ?? $record->user?->email ?? 'Guest',
                 'status' => $record->trashed() ? 'deleted' : $record->status,
+                'preview' => [
+                    'eyebrow' => 'Search record',
+                    'summary' => $record->phrase ?: $record->name,
+                    'sections' => [
+                        [
+                            'title' => 'Search',
+                            'fields' => [
+                                ['label' => 'Name', 'value' => $record->name],
+                                ['label' => 'Phrase', 'value' => $record->phrase],
+                                ['label' => 'Type', 'value' => $record->search_type],
+                                ['label' => 'Owner', 'value' => $record->user?->name ?? $record->user?->email ?? 'Guest'],
+                                ['label' => 'Status', 'value' => $record->trashed() ? 'deleted' : $record->status],
+                                ['label' => 'Frequency', 'value' => $record->frequency],
+                            ],
+                        ],
+                        [
+                            'title' => 'Inputs',
+                            'fields' => [
+                                ['label' => 'Keywords', 'value' => implode(', ', (array) ($record->keywords ?? [])), 'multiline' => true],
+                                ['label' => 'TikTok handle source', 'value' => $record->source_tiktok_handle],
+                                ['label' => 'Website source', 'value' => $record->source_website, 'multiline' => true],
+                                ['label' => 'Guest token', 'value' => $record->guest_token],
+                            ],
+                        ],
+                    ],
+                ],
             ],
             'inquiries' => [
                 'id' => $record->id,
@@ -373,12 +470,25 @@ class AdminListingRepository
                 'message' => Str::limit((string) preg_replace('/\s+/', ' ', (string) $record->message), 96),
                 'received_at' => $record->created_at?->diffForHumans() ?? '-',
                 'preview' => [
-                    'name' => $record->name,
-                    'email' => $record->email,
-                    'category' => Str::headline((string) $record->category),
-                    'subject' => $record->subject ?: '-',
-                    'message' => $record->message,
-                    'received_at' => $record->created_at?->format('M j, Y g:i A') ?? '-',
+                    'eyebrow' => 'Support inquiry',
+                    'summary' => $record->subject ?: 'Inbound message',
+                    'sections' => [
+                        [
+                            'title' => 'Contact',
+                            'fields' => [
+                                ['label' => 'Name', 'value' => $record->name],
+                                ['label' => 'Email', 'value' => $record->email],
+                                ['label' => 'Category', 'value' => Str::headline((string) $record->category)],
+                                ['label' => 'Subject', 'value' => $record->subject],
+                            ],
+                        ],
+                        [
+                            'title' => 'Message',
+                            'fields' => [
+                                ['label' => 'Body', 'value' => $record->message, 'multiline' => true],
+                            ],
+                        ],
+                    ],
                 ],
             ],
             'plans' => [
@@ -387,29 +497,46 @@ class AdminListingRepository
                 'price' => '$'.number_format((float) $record->amount, 2).' / '.($record->duration ?? 'month'),
                 'status' => $this->planStatus($record),
                 'updated_at' => $record->updated_at?->diffForHumans() ?? '-',
+                'preview' => [
+                    'eyebrow' => 'Pricing plan',
+                    'summary' => $record->description ?: $record->name,
+                    'sections' => [
+                        [
+                            'title' => 'Plan',
+                            'fields' => [
+                                ['label' => 'Name', 'value' => $record->name],
+                                ['label' => 'Slug', 'value' => $record->slug],
+                                ['label' => 'Description', 'value' => $record->description, 'multiline' => true],
+                                ['label' => 'Type', 'value' => $record->plan_type],
+                                ['label' => 'Status', 'value' => $this->planStatus($record)],
+                                ['label' => 'Environment', 'value' => $record->plan_environment],
+                            ],
+                        ],
+                        [
+                            'title' => 'Billing',
+                            'fields' => [
+                                ['label' => 'Monthly price', 'value' => '$'.number_format((float) $record->amount, 2)],
+                                ['label' => 'Annual price', 'value' => '$'.number_format((float) $record->annual_amount, 2)],
+                                ['label' => 'Interval', 'value' => trim(($record->interval_count ?? 1).' '.($record->interval ?? 'month'))],
+                                ['label' => 'CTA label', 'value' => data_get($record->metadata, 'settings.cta')],
+                                ['label' => 'Trial enabled', 'value' => $this->yesNo((bool) data_get($record->metadata, 'subscription.trialEnabled', false))],
+                                ['label' => 'Popular', 'value' => $this->yesNo((bool) data_get($record->metadata, 'settings.popular', false))],
+                            ],
+                        ],
+                        [
+                            'title' => 'Limits',
+                            'fields' => [
+                                ['label' => 'Search credits limit', 'value' => $this->limitLabel((int) data_get($record->metadata, 'subscription.search_limits.limit', 0))],
+                                ['label' => 'Video bookmark limit', 'value' => $this->limitLabel((int) data_get($record->metadata, 'subscription.viral_video_bookmarks.limit', 0))],
+                                ['label' => 'Search bookmark limit', 'value' => $this->limitLabel((int) data_get($record->metadata, 'subscription.search_bookmarks.limit', 0))],
+                                ['label' => 'Video analysis limit', 'value' => $this->limitLabel((int) data_get($record->metadata, 'subscription.video_analysis.limit', 0))],
+                            ],
+                        ],
+                    ],
+                ],
             ],
-            'subscription' => [
-                'id' => $record->id,
-                'subscriber' => match (true) {
-                    $record->user !== null && filled($record->user->name) && filled($record->user->email) => $record->user->name.' / '.$record->user->email,
-                    $record->user !== null && filled($record->user->email) => $record->user->email,
-                    $record->user !== null && filled($record->user->name) => $record->user->name,
-                    default => 'Unknown',
-                },
-                'plan' => $record->plan?->name ?? '-',
-                'credits' => (string) ($record->user?->monthly_credits_remaining ?? 0),
-                'status' => $record->trashed() ? 'deleted' : $record->status,
-                'renewal' => $record->current_period_ends_at?->format('M j') ?? '-',
-            ],
-            'users' => [
-                'id' => $record->id,
-                'user' => $record->name ?: $record->email,
-                'email' => $record->email ?: '-',
-                'plan' => $record->current_plan_slug ?? 'free',
-                'credits' => (string) ($record->monthly_credits_remaining ?? 0),
-                'status' => $record->trashed() ? 'deleted' : 'active',
-                'joined_at' => $record->created_at?->format('M j, Y') ?? '-',
-            ],
+            'subscription' => $this->mapSubscriptionRow($record),
+            'users' => $this->mapUserRow($record),
             'keyword-index' => [
                 'id' => $record->id,
                 'keyword' => $record->label,
@@ -417,9 +544,132 @@ class AdminListingRepository
                 'sector' => $record->sector ?: '-',
                 'source' => str_replace('_', ' ', $record->source ?: 'manual'),
                 'status' => $record->trashed() ? 'deleted' : ($record->archived_at !== null ? 'archived' : 'live'),
+                'preview' => [
+                    'eyebrow' => 'Indexed keyword',
+                    'summary' => $record->label,
+                    'sections' => [
+                        [
+                            'title' => 'Keyword',
+                            'fields' => [
+                                ['label' => 'Label', 'value' => $record->label],
+                                ['label' => 'Normalized label', 'value' => $record->normalized_label],
+                                ['label' => 'Type', 'value' => $record->keyword_type],
+                                ['label' => 'Sector', 'value' => $record->sector],
+                                ['label' => 'Source', 'value' => $record->source],
+                                ['label' => 'Usage count', 'value' => $this->formatCount((int) $record->usage_count)],
+                            ],
+                        ],
+                    ],
+                ],
             ],
             default => [],
         };
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function mapSubscriptionRow(Subscription $record): array
+    {
+        $usage = $this->subscriptionUsage($record);
+
+        return [
+            'id' => $record->id,
+            'subscriber' => match (true) {
+                $record->user !== null && filled($record->user->name) && filled($record->user->email) => $record->user->name.' / '.$record->user->email,
+                $record->user !== null && filled($record->user->email) => $record->user->email,
+                $record->user !== null && filled($record->user->name) => $record->user->name,
+                default => 'Unknown',
+            },
+            'plan' => $record->plan?->name ?? '-',
+            'credits' => $this->creditSummary($usage['search']),
+            'status' => $record->trashed() ? 'deleted' : $record->status,
+            'renewal' => $record->current_period_ends_at?->format('M j') ?? '-',
+            'preview' => [
+                'eyebrow' => 'Subscription',
+                'summary' => $record->plan?->name ?? $record->status,
+                'sections' => [
+                    [
+                        'title' => 'Subscriber',
+                        'fields' => [
+                            ['label' => 'Name', 'value' => $record->user?->name],
+                            ['label' => 'Email', 'value' => $record->user?->email],
+                            ['label' => 'Status', 'value' => $record->trashed() ? 'deleted' : $record->status],
+                            ['label' => 'Plan', 'value' => $record->plan?->name],
+                        ],
+                    ],
+                    [
+                        'title' => 'Usage',
+                        'fields' => [
+                            ['label' => 'Search credits', 'value' => $this->usageSummary($usage['search'])],
+                            ['label' => 'Video bookmarks', 'value' => $this->usageSummary($usage['video_bookmarks'])],
+                            ['label' => 'Search bookmarks', 'value' => $this->usageSummary($usage['search_bookmarks'])],
+                            ['label' => 'Video analysis', 'value' => $this->usageSummary($usage['video_analysis'])],
+                        ],
+                    ],
+                    [
+                        'title' => 'Stripe',
+                        'fields' => [
+                            ['label' => 'Stripe subscription ID', 'value' => $record->stripe_subscription_id],
+                            ['label' => 'Stripe customer ID', 'value' => $record->stripe_customer_id ?: $record->user?->stripe_customer_id],
+                        ],
+                    ],
+                ],
+            ],
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function mapUserRow(User $record): array
+    {
+        $usage = $this->userUsage($record);
+
+        return [
+            'id' => $record->id,
+            'user' => $record->name ?: $record->email,
+            'email' => $record->email ?: '-',
+            'plan' => $record->current_plan_slug ?? 'free',
+            'credits' => $this->creditSummary($usage['search']),
+            'status' => $record->trashed() ? 'deleted' : 'active',
+            'joined_at' => $record->created_at?->format('M j, Y') ?? '-',
+            'preview' => [
+                'eyebrow' => 'User account',
+                'summary' => $record->email ?: $record->name,
+                'sections' => [
+                    [
+                        'title' => 'Account',
+                        'fields' => [
+                            ['label' => 'Name', 'value' => $record->name],
+                            ['label' => 'Email', 'value' => $record->email],
+                            ['label' => 'Current plan', 'value' => $record->current_plan_slug ?? 'free'],
+                            ['label' => 'Status', 'value' => $record->trashed() ? 'deleted' : 'active'],
+                            ['label' => 'Email verified', 'value' => $this->yesNo($record->email_verified_at !== null)],
+                            ['label' => 'Free search used', 'value' => $this->yesNo($record->free_search_used_at !== null)],
+                        ],
+                    ],
+                    [
+                        'title' => 'Usage',
+                        'fields' => [
+                            ['label' => 'Search credits', 'value' => $this->usageSummary($usage['search'])],
+                            ['label' => 'Video bookmarks', 'value' => $this->usageSummary($usage['video_bookmarks'])],
+                            ['label' => 'Search bookmarks', 'value' => $this->usageSummary($usage['search_bookmarks'])],
+                            ['label' => 'Video analysis', 'value' => $this->usageSummary($usage['video_analysis'])],
+                        ],
+                    ],
+                    [
+                        'title' => 'Relationships',
+                        'fields' => [
+                            ['label' => 'Searches owned', 'value' => $this->formatCount((int) $record->customKeywordSearches()->count())],
+                            ['label' => 'Inquiries sent', 'value' => $this->formatCount((int) $record->inquiries()->count())],
+                            ['label' => 'Video bookmarks', 'value' => $this->formatCount((int) $record->videoBookmarks()->count())],
+                            ['label' => 'Analyses created', 'value' => $this->formatCount((int) $record->videoAnalyses()->count())],
+                        ],
+                    ],
+                ],
+            ],
+        ];
     }
 
     private function viralVideoStatus(ViralVideo $video): string
@@ -689,6 +939,20 @@ class AdminListingRepository
                 'admin' => (string) config('admin.root_email'),
                 'role' => 'root',
                 'status' => 'active',
+                'preview' => [
+                    'eyebrow' => 'Admin access',
+                    'summary' => 'Config-driven root administrator',
+                    'sections' => [
+                        [
+                            'title' => 'Access',
+                            'fields' => [
+                                ['label' => 'Root email', 'value' => (string) config('admin.root_email')],
+                                ['label' => 'Role', 'value' => 'root'],
+                                ['label' => 'Status', 'value' => 'active'],
+                            ],
+                        ],
+                    ],
+                ],
             ],
         ];
     }
@@ -701,17 +965,133 @@ class AdminListingRepository
     public function capabilities(string $resource): array
     {
         return match ($resource) {
-            'viral-videos', 'plans' => ['edit' => true, 'archive' => true, 'delete' => true],
+            'viral-videos', 'plans' => ['preview' => true, 'edit' => true, 'archive' => true, 'delete' => true],
             // Searches are an audit trail of what customers ran. Editing or
             // deleting one here would rewrite their history, so this listing
             // stays read-only.
-            'searches' => ['preview' => false, 'edit' => false, 'archive' => false, 'delete' => false],
+            'searches' => ['preview' => true, 'edit' => false, 'archive' => false, 'delete' => false],
             'inquiries' => ['preview' => true, 'edit' => false, 'archive' => false, 'delete' => false],
-            'subscription' => ['edit' => true, 'archive' => false, 'delete' => true],
-            'users' => ['edit' => true, 'archive' => false, 'delete' => true, 'impersonate' => true],
-            'keyword-index' => ['edit' => true, 'archive' => true, 'delete' => true],
+            'subscription' => ['preview' => true, 'edit' => true, 'archive' => false, 'delete' => true],
+            'users' => ['preview' => true, 'edit' => true, 'archive' => false, 'delete' => true, 'impersonate' => true],
+            'keyword-index' => ['preview' => true, 'edit' => true, 'archive' => true, 'delete' => true],
+            'admin-users' => ['preview' => true, 'edit' => false, 'archive' => false, 'delete' => false],
             default => ['preview' => false, 'edit' => false, 'archive' => false, 'delete' => false],
         };
+    }
+
+    /**
+     * @return array{search: array{used: int, limit: int, remaining: int}, video_bookmarks: array{used: int, limit: int}, search_bookmarks: array{used: int, limit: int}, video_analysis: array{used: int, limit: int}}
+     */
+    private function subscriptionUsage(Subscription $subscription): array
+    {
+        $metadata = $subscription->metadata ?? [];
+        $searchLimit = (int) data_get($metadata, 'subscription.search_limits.limit', 0);
+        $searchUsed = max(0, (int) data_get($metadata, 'subscription.search_limits.used', 0));
+
+        return [
+            'search' => [
+                'used' => $searchUsed,
+                'limit' => $searchLimit,
+                'remaining' => max(0, (int) ($subscription->user?->monthly_credits_remaining ?? 0)),
+            ],
+            'video_bookmarks' => [
+                'used' => max(0, (int) data_get($metadata, 'subscription.viral_video_bookmarks.used', 0)),
+                'limit' => (int) data_get($metadata, 'subscription.viral_video_bookmarks.limit', 0),
+            ],
+            'search_bookmarks' => [
+                'used' => max(0, (int) data_get($metadata, 'subscription.search_bookmarks.used', 0)),
+                'limit' => (int) data_get($metadata, 'subscription.search_bookmarks.limit', 0),
+            ],
+            'video_analysis' => [
+                'used' => max(0, (int) data_get($metadata, 'subscription.video_analysis.used', 0)),
+                'limit' => (int) data_get($metadata, 'subscription.video_analysis.limit', 0),
+            ],
+        ];
+    }
+
+    /**
+     * @return array{search: array{used: int, limit: int, remaining: int}, video_bookmarks: array{used: int, limit: int}, search_bookmarks: array{used: int, limit: int}, video_analysis: array{used: int, limit: int}}
+     */
+    private function userUsage(User $user): array
+    {
+        $subscription = $user->relationLoaded('subscriptions')
+            ? $user->subscriptions->sortByDesc('created_at')->first()
+            : $user->subscriptions()->latest('created_at')->first();
+
+        if (! $subscription instanceof Subscription) {
+            $videoBookmarksUsed = (int) VideoBookmark::query()->where('user_id', $user->id)->count();
+            $videoAnalysisUsed = (int) VideoAnalysis::query()->where('user_id', $user->id)->where('counts_toward_quota', true)->count();
+
+            return [
+                'search' => [
+                    'used' => 0,
+                    'limit' => max(0, (int) $user->monthly_credits_remaining),
+                    'remaining' => max(0, (int) $user->monthly_credits_remaining),
+                ],
+                'video_bookmarks' => ['used' => $videoBookmarksUsed, 'limit' => 0],
+                'search_bookmarks' => ['used' => 0, 'limit' => 0],
+                'video_analysis' => ['used' => $videoAnalysisUsed, 'limit' => 0],
+            ];
+        }
+
+        return $this->subscriptionUsage($subscription);
+    }
+
+    /**
+     * @param  array{used: int, limit: int, remaining?: int}  $usage
+     */
+    private function creditSummary(array $usage): string
+    {
+        return sprintf(
+            '%s left / %s used',
+            number_format((int) ($usage['remaining'] ?? max(0, $usage['limit'] - $usage['used']))),
+            number_format((int) $usage['used'])
+        );
+    }
+
+    /**
+     * @param  array{used: int, limit: int, remaining?: int}  $usage
+     */
+    private function usageSummary(array $usage): string
+    {
+        return sprintf(
+            '%s used / %s limit%s',
+            number_format((int) $usage['used']),
+            $this->limitLabel((int) $usage['limit']),
+            array_key_exists('remaining', $usage)
+                ? ' / '.number_format((int) ($usage['remaining'] ?? 0)).' left'
+                : ''
+        );
+    }
+
+    private function limitLabel(int $limit): string
+    {
+        return $limit === -1 ? 'Unlimited' : number_format($limit);
+    }
+
+    private function yesNo(bool $value): string
+    {
+        return $value ? 'Yes' : 'No';
+    }
+
+    private function formatCount(?int $value): string
+    {
+        return number_format(max(0, (int) $value));
+    }
+
+    /**
+     * @param  array<int, string>|null  $tags
+     */
+    private function tagList(?array $tags): ?string
+    {
+        if (! is_array($tags) || $tags === []) {
+            return null;
+        }
+
+        return implode(', ', array_map(
+            static fn (string $tag): string => str_starts_with($tag, '#') ? $tag : '#'.$tag,
+            array_values(array_filter($tags, static fn ($tag): bool => filled($tag))),
+        ));
     }
 
     /**

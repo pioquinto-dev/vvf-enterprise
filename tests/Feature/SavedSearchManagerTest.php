@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Jobs\RunCustomKeywordSearch;
 use App\Models\CustomKeywordSearch;
 use App\Models\CustomKeywordSearchRun;
+use App\Models\IndexedKeyword;
 use App\Models\User;
 use App\Services\CustomKeywordSearch\SavedSearchManager;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -107,5 +108,34 @@ class SavedSearchManagerTest extends TestCase
 
         $this->assertSame($first->id, $second->id);
         $this->assertSame(1, CustomKeywordSearch::count());
+    }
+
+    public function test_learning_from_a_search_only_seeds_the_main_phrase_into_the_keyword_index(): void
+    {
+        $user = $this->user(credits: 5);
+
+        $this->manager->create(
+            user: $user,
+            guestToken: null,
+            type: CustomKeywordSearch::TYPE_BRAND,
+            phrase: 'american eagle',
+            keywords: ['american eagle', 'american eagle haul', 'american eagle unboxing'],
+            name: null,
+            frequency: CustomKeywordSearch::FREQUENCY_WEEKLY,
+        );
+
+        $this->assertDatabaseHas('indexed_keywords', [
+            'normalized_label' => 'american eagle',
+            'keyword_type' => IndexedKeyword::TYPE_BRAND,
+            'source' => 'search',
+        ]);
+
+        $this->assertDatabaseMissing('indexed_keywords', [
+            'normalized_label' => 'american eagle haul',
+        ]);
+
+        $this->assertDatabaseMissing('indexed_keywords', [
+            'normalized_label' => 'american eagle unboxing',
+        ]);
     }
 }

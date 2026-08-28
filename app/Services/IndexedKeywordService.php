@@ -102,10 +102,6 @@ class IndexedKeywordService
     public function learnFromSearch(string $type, string $phrase, array $keywords): void
     {
         $this->touchTerm($type, $phrase, 'search');
-
-        foreach ($keywords as $keyword) {
-            $this->touchTerm($type === IndexedKeyword::TYPE_BRAND ? IndexedKeyword::TYPE_PRODUCT : $type, $keyword, 'search_keyword');
-        }
     }
 
     public function touchTerm(string $type, string $label, string $source = 'manual'): IndexedKeyword

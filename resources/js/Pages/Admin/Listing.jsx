@@ -29,6 +29,7 @@ export default function Listing({
     const [editing, setEditing] = useState(null);
     const [previewing, setPreviewing] = useState(null);
     const [creating, setCreating] = useState(false);
+    const singularTitle = resource === 'keyword-index' ? 'Keyword' : title.endsWith('s') ? title.slice(0, -1) : title;
 
     const toolbar = <AdminFiltersBar title={title} search={search} searchPlaceholder={searchPlaceholder} filters={filters} />;
     const total = pagination?.total ?? rows.length;
@@ -101,7 +102,7 @@ export default function Listing({
             <AdminEditDrawer
                 open={creating}
                 resource={resource}
-                title={`New ${title.slice(0, -1)}`}
+                title={`New ${singularTitle}`}
                 fields={editableFields}
                 createValues={createValues}
                 mode="create"

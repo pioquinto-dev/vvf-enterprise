@@ -100,7 +100,7 @@ class AdminRecordController extends Controller
             }
 
             $rules[$field['name']] = match ($field['type']) {
-                'number' => ['nullable', 'numeric', 'min:0'],
+                'number' => ['nullable', 'numeric', 'min:'.($field['min'] ?? 0)],
                 'toggle' => ['nullable', 'boolean'],
                 'select' => ['nullable', 'string', 'in:'.implode(',', array_map(
                     fn ($option) => is_array($option) ? $option['value'] : $option,
