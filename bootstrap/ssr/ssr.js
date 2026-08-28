@@ -5049,25 +5049,6 @@ function withReturnTo(url, from) {
 	if (!target || !origin) return target;
 	return `${target}${target.includes("?") ? "&" : "?"}from=${encodeURIComponent(origin)}`;
 }
-function getSafeReturnTo(value) {
-	const target = String(value || "").trim();
-	if (!target.startsWith("/")) return null;
-	if (target.startsWith("//")) return null;
-	return target;
-}
-function canUseHistoryBack(referrer, currentPath) {
-	if (typeof window === "undefined") return false;
-	if (window.history.length <= 1) return false;
-	const source = String(referrer || "").trim();
-	if (!source) return false;
-	try {
-		const referrerUrl = new URL(source, window.location.origin);
-		if (referrerUrl.origin !== window.location.origin) return false;
-		return `${referrerUrl.pathname}${referrerUrl.search}` !== String(currentPath || "").trim();
-	} catch {
-		return false;
-	}
-}
 //#endregion
 //#region resources/js/Pages/components/SearchListScreen.jsx
 var SearchListScreen_exports = /* @__PURE__ */ __exportAll({ default: () => SearchListScreen });
@@ -5214,7 +5195,7 @@ function SearchListScreen({ kind = "brand", searches = [], moving = [], suggesti
 	const [searchList, setSearchList] = useState(searches);
 	const [query, setQuery] = useState("");
 	const [statusFilter, setStatusFilter] = useState("all");
-	const [sortBy, setSortBy] = useState("outliers");
+	const [sortBy, setSortBy] = useState("recent");
 	const [modalSearch, setModalSearch] = useState(null);
 	const [formState, setFormState] = useState({
 		name: "",
@@ -7320,7 +7301,7 @@ function SearchWizard({ initialType = "brand", initialQuery = "", heading = "Sta
 //#region resources/js/Pages/Dashboard.jsx
 var Dashboard_exports = /* @__PURE__ */ __exportAll({ default: () => Dashboard });
 var POLL_MS = 1e4;
-var ACTIVE_SEARCH_STATUSES = /* @__PURE__ */ new Set([
+var ACTIVE_SEARCH_STATUSES$1 = /* @__PURE__ */ new Set([
 	"pending",
 	"queued",
 	"running",
@@ -7836,7 +7817,7 @@ function Dashboard() {
 	const recentStatuses = useRef(new Map(recent.map((s) => [String(s.id), s.status])));
 	const flashedTrackedRef = useRef(false);
 	const flashedProcessingRef = useRef(false);
-	const hasActiveRecentSearch = recentSearches.some((s) => ACTIVE_SEARCH_STATUSES.has(s.status));
+	const hasActiveRecentSearch = recentSearches.some((s) => ACTIVE_SEARCH_STATUSES$1.has(s.status));
 	const mergeTrackedSearches = (entries = []) => {
 		if (!Array.isArray(entries) || entries.length === 0) return;
 		entries.forEach((entry) => {
@@ -7872,7 +7853,7 @@ function Dashboard() {
 		recentSearchesRef.current = searches;
 		setRecentSearches(searches);
 		if (!notifyOnTerminal) return;
-		const terminalSearches = searches.filter((s) => ACTIVE_SEARCH_STATUSES.has(previousStatuses.get(String(s.id))) && (s.status === "done" || s.status === "failed"));
+		const terminalSearches = searches.filter((s) => ACTIVE_SEARCH_STATUSES$1.has(previousStatuses.get(String(s.id))) && (s.status === "done" || s.status === "failed"));
 		if (terminalSearches.length === 0) return;
 		const trackedChanges = trackedTerminalChanges(terminalSearches);
 		if (trackedChanges.finished.length > 0 || trackedChanges.failed.length > 0) {
@@ -7916,7 +7897,7 @@ function Dashboard() {
 		let timer;
 		const poll = async () => {
 			if (cancelled || polling.current) return;
-			if (!recentSearchesRef.current.some((s) => ACTIVE_SEARCH_STATUSES.has(s.status))) return;
+			if (!recentSearchesRef.current.some((s) => ACTIVE_SEARCH_STATUSES$1.has(s.status))) return;
 			polling.current = true;
 			try {
 				const payload = await fetchRecentSearches();
@@ -12622,8 +12603,6 @@ var Icons = {
 	})
 };
 function DetailScreen({ search, isAuthenticated = false, billing: billing$2, refreshing = false, bookmarkUpdating = false, onRefresh, onSearchUpdated, onToggleBookmark, onToggleVideoBookmark, bookmarkingVideoId = null, onTogglePause, onDelete }) {
-	const { url: currentUrl } = usePage();
-	getSafeReturnTo(new URLSearchParams(currentUrl.split("?")[1] ?? "").get("from"));
 	const insights = search?.insights ?? {};
 	const bullets = search?.insights_bullets ?? [];
 	const [handleEditing, setHandleEditing] = useState(false);
@@ -12746,18 +12725,29 @@ function DetailScreen({ search, isAuthenticated = false, billing: billing$2, ref
 		eng: "engagement",
 		outliers: "outliers"
 	};
+	const latestNonEmptyWeekIndex = [...weeklyPoints].reverse().findIndex((point) => Number(point?.posts ?? 0) > 0);
+	const lastFilledWeekIndex = latestNonEmptyWeekIndex === -1 ? -1 : weeklyPoints.length - 1 - latestNonEmptyWeekIndex;
+	const firstFilledWeekIndex = weeklyPoints.findIndex((point) => Number(point?.posts ?? 0) > 0);
+	const firstFilledWeek = firstFilledWeekIndex >= 0 ? weeklyPoints[firstFilledWeekIndex] : null;
+	const lastFilledWeek = lastFilledWeekIndex >= 0 ? weeklyPoints[lastFilledWeekIndex] : null;
 	const metricSeriesMap = {
-		views: trend?.metrics?.views ?? null,
-		eng: trend?.metrics?.engagement ?? null,
+		views: trend?.metrics?.views ? {
+			...trend.metrics.views,
+			current: Number(lastFilledWeek?.views ?? trend.metrics.views.current ?? 0)
+		} : null,
+		eng: trend?.metrics?.engagement ? {
+			...trend.metrics.engagement,
+			current: Number(lastFilledWeek?.engagement ?? trend.metrics.engagement.current ?? 0)
+		} : null,
 		outliers: weeklyPoints.length > 0 ? {
 			label: "outliers",
 			format: "count",
 			values: weeklyPoints.map((point) => Number(point?.outliers ?? 0)),
-			current: Number(weeklyPoints[weeklyPoints.length - 1]?.outliers ?? 0),
-			delta: weeklyPoints.length >= 2 ? {
-				value: Number(weeklyPoints[weeklyPoints.length - 1]?.outliers ?? 0) - Number(weeklyPoints[0]?.outliers ?? 0),
+			current: Number(lastFilledWeek?.outliers ?? 0),
+			delta: firstFilledWeek && lastFilledWeek && firstFilledWeekIndex !== lastFilledWeekIndex ? {
+				value: Number(lastFilledWeek?.outliers ?? 0) - Number(firstFilledWeek?.outliers ?? 0),
 				unit: "absolute",
-				direction: Number(weeklyPoints[weeklyPoints.length - 1]?.outliers ?? 0) > Number(weeklyPoints[0]?.outliers ?? 0) ? "up" : Number(weeklyPoints[weeklyPoints.length - 1]?.outliers ?? 0) < Number(weeklyPoints[0]?.outliers ?? 0) ? "down" : "flat"
+				direction: Number(lastFilledWeek?.outliers ?? 0) > Number(firstFilledWeek?.outliers ?? 0) ? "up" : Number(lastFilledWeek?.outliers ?? 0) < Number(firstFilledWeek?.outliers ?? 0) ? "down" : "flat"
 			} : null
 		} : null
 	};
@@ -12870,7 +12860,7 @@ function DetailScreen({ search, isAuthenticated = false, billing: billing$2, ref
 	}, []);
 	useEffect(() => {
 		if (autoOpenedAnalysisRef.current) return;
-		const query = currentUrl.split("?")[1] ?? "";
+		const query = typeof window === "undefined" ? "" : window.location.search;
 		const params = new URLSearchParams(query);
 		const targetVideoId = params.get("analysisVideo");
 		if (!(params.get("openAnalysis") === "1") || !targetVideoId) return;
@@ -12884,7 +12874,7 @@ function DetailScreen({ search, isAuthenticated = false, billing: billing$2, ref
 			next.searchParams.delete("openAnalysis");
 			window.history.replaceState({}, "", `${next.pathname}${next.search}${next.hash}`);
 		}
-	}, [currentUrl, results]);
+	}, [results]);
 	const launchManualAnalysis = async (video) => {
 		setAnalysisStarting(true);
 		setConfirmAnalysisVideo(null);
@@ -13298,11 +13288,36 @@ function DetailScreen({ search, isAuthenticated = false, billing: billing$2, ref
 				})]
 			}), /* @__PURE__ */ jsxs("div", {
 				className: `rs-winner rs-winner--run-${winnerBucket}`,
-				children: [/* @__PURE__ */ jsx(VideoFrame, {
-					video: winner,
-					winner: true,
-					isPlaying: videoPlayingId === winner.id,
-					onTogglePlay: () => setVideoPlayingId((v) => v === winner.id ? null : winner.id)
+				children: [/* @__PURE__ */ jsxs("div", {
+					className: "rs-wmedia",
+					children: [/* @__PURE__ */ jsx(VideoFrame, {
+						video: winner,
+						winner: true,
+						showStats: false,
+						isPlaying: videoPlayingId === winner.id,
+						onTogglePlay: () => setVideoPlayingId((v) => v === winner.id ? null : winner.id)
+					}), /* @__PURE__ */ jsxs("div", {
+						className: "rs-oc__ov",
+						children: [/* @__PURE__ */ jsxs("div", {
+							className: "rs-ovchip rs-ovchip--out",
+							children: [/* @__PURE__ */ jsx("div", {
+								className: "rs-ovchip__l",
+								children: "Outlier score"
+							}), /* @__PURE__ */ jsxs("div", {
+								className: "rs-ovchip__n",
+								children: [compact(winner.multiple ?? winner.score ?? 0), "×"]
+							})]
+						}), /* @__PURE__ */ jsxs("div", {
+							className: "rs-ovchip rs-ovchip--views",
+							children: [/* @__PURE__ */ jsx("div", {
+								className: "rs-ovchip__l",
+								children: "Views"
+							}), /* @__PURE__ */ jsx("div", {
+								className: "rs-ovchip__n",
+								children: compact(winner.views)
+							})]
+						})]
+					})]
 				}), /* @__PURE__ */ jsxs("div", {
 					className: "rs-wdet",
 					children: [
@@ -13330,7 +13345,7 @@ function DetailScreen({ search, isAuthenticated = false, billing: billing$2, ref
 										})]
 									}), /* @__PURE__ */ jsx("div", {
 										className: "rs-wc__s",
-										children: "on TikTok"
+										children: Number(winner.followers ?? 0) > 0 ? `${compact(winner.followers)} followers` : "on TikTok"
 									})]
 								}),
 								/* @__PURE__ */ jsxs("span", {
@@ -13361,8 +13376,7 @@ function DetailScreen({ search, isAuthenticated = false, billing: billing$2, ref
 								/* @__PURE__ */ jsxs("span", { children: [Icons.Eye, /* @__PURE__ */ jsx("b", { children: compact(winner.views) })] }),
 								/* @__PURE__ */ jsxs("span", { children: [Icons.Heart, /* @__PURE__ */ jsx("b", { children: compact(winner.likes) })] }),
 								/* @__PURE__ */ jsxs("span", { children: [Icons.Comment, /* @__PURE__ */ jsx("b", { children: compact(winner.comments) })] }),
-								/* @__PURE__ */ jsxs("span", { children: [Icons.Share, /* @__PURE__ */ jsx("b", { children: compact(winner.shares) })] }),
-								Number(winner.followers ?? 0) > 0 && /* @__PURE__ */ jsxs("span", { children: [Icons.User, /* @__PURE__ */ jsx("b", { children: compact(winner.followers) })] })
+								/* @__PURE__ */ jsxs("span", { children: [Icons.Share, /* @__PURE__ */ jsx("b", { children: compact(winner.shares) })] })
 							]
 						}),
 						/* @__PURE__ */ jsx(VideoTags, { video: winner }),
@@ -14025,7 +14039,7 @@ function DetailScreen({ search, isAuthenticated = false, billing: billing$2, ref
 		})
 	] });
 }
-function VideoFrame({ video, winner = false, isPlaying, onTogglePlay }) {
+function VideoFrame({ video, winner = false, showStats = true, isPlaying, onTogglePlay }) {
 	const bg = video.thumbnail_url ? void 0 : gradientFor(video.id ?? video.handle);
 	const playerUrl = playerUrlFor(video, true);
 	const [playerReady, setPlayerReady] = useState(false);
@@ -14102,7 +14116,7 @@ function VideoFrame({ video, winner = false, isPlaying, onTogglePlay }) {
 				"aria-label": "Close video preview",
 				children: "×"
 			}),
-			!isPlaying && /* @__PURE__ */ jsxs("div", {
+			!isPlaying && showStats && /* @__PURE__ */ jsxs("div", {
 				className: "rs-vf__stats",
 				children: [/* @__PURE__ */ jsxs("div", {
 					className: "rs-vchip rs-vchip--out",
@@ -14167,11 +14181,34 @@ function OutlierCard$1({ video, runBucket = "old", expanded, locked = false, onT
 		className: `rs-oc rs-oc--run-${runBucket}${expanded ? " analyzed" : ""}`,
 		children: [/* @__PURE__ */ jsx(VideoFrame, {
 			video,
+			showStats: false,
 			isPlaying,
 			onTogglePlay
 		}), /* @__PURE__ */ jsxs("div", {
 			className: "rs-oc__b",
 			children: [
+				/* @__PURE__ */ jsxs("div", {
+					className: "rs-oc__ov",
+					children: [/* @__PURE__ */ jsxs("div", {
+						className: "rs-ovchip rs-ovchip--out",
+						children: [/* @__PURE__ */ jsx("div", {
+							className: "rs-ovchip__l",
+							children: "Outlier score"
+						}), /* @__PURE__ */ jsxs("div", {
+							className: "rs-ovchip__n",
+							children: [compact(video.multiple ?? video.score ?? 0), "×"]
+						})]
+					}), /* @__PURE__ */ jsxs("div", {
+						className: "rs-ovchip rs-ovchip--views",
+						children: [/* @__PURE__ */ jsx("div", {
+							className: "rs-ovchip__l",
+							children: "Views"
+						}), /* @__PURE__ */ jsx("div", {
+							className: "rs-ovchip__n",
+							children: compact(video.views)
+						})]
+					})]
+				}),
 				/* @__PURE__ */ jsxs("div", {
 					className: "rs-oc__cr",
 					children: [
@@ -14179,36 +14216,29 @@ function OutlierCard$1({ video, runBucket = "old", expanded, locked = false, onT
 							className: "rs-av",
 							style: {
 								background: gradientFor(video.handle ?? video.id),
-								width: 26,
-								height: 26,
+								width: 30,
+								height: 30,
 								borderRadius: "50%",
 								flex: "none"
 							}
 						}),
-						/* @__PURE__ */ jsx("div", {
+						/* @__PURE__ */ jsxs("div", {
 							className: "rs-oc__copy",
 							style: {
 								flex: 1,
 								minWidth: 0
 							},
-							children: /* @__PURE__ */ jsxs("div", {
-								className: "rs-oc__topline",
-								children: [/* @__PURE__ */ jsx("div", {
-									className: "rs-oc__h",
-									children: video.handle || video.username || "—"
-								}), /* @__PURE__ */ jsx("div", {
-									className: "rs-oc__s",
-									children: video.uploaded_at ? formatDate$1(video.uploaded_at) : video.posted_at ? formatDate$1(video.posted_at) : ""
-								})]
-							})
+							children: [/* @__PURE__ */ jsx("div", {
+								className: "rs-oc__h",
+								children: video.handle || video.username || "—"
+							}), Number(video.followers ?? 0) > 0 && /* @__PURE__ */ jsxs("div", {
+								className: "rs-oc__f",
+								children: [compact(video.followers), " followers"]
+							})]
 						}),
-						video.tiktok_url && /* @__PURE__ */ jsx("a", {
-							href: video.tiktok_url,
-							target: "_blank",
-							rel: "noopener",
-							className: "rs-ic2",
-							title: "Open in TikTok",
-							children: Icons.ExtLink
+						/* @__PURE__ */ jsx("div", {
+							className: "rs-oc__s",
+							children: video.uploaded_at ? formatDate$1(video.uploaded_at) : video.posted_at ? formatDate$1(video.posted_at) : ""
 						})
 					]
 				}),
@@ -14222,8 +14252,7 @@ function OutlierCard$1({ video, runBucket = "old", expanded, locked = false, onT
 						/* @__PURE__ */ jsxs("span", { children: [Icons.Eye, compact(video.views)] }),
 						/* @__PURE__ */ jsxs("span", { children: [Icons.Heart, compact(video.likes)] }),
 						/* @__PURE__ */ jsxs("span", { children: [Icons.Comment, compact(video.comments)] }),
-						/* @__PURE__ */ jsxs("span", { children: [Icons.Share, compact(video.shares)] }),
-						Number(video.followers ?? 0) > 0 && /* @__PURE__ */ jsxs("span", { children: [Icons.User, compact(video.followers)] })
+						/* @__PURE__ */ jsxs("span", { children: [Icons.Share, compact(video.shares)] })
 					]
 				}),
 				expanded && !locked && /* @__PURE__ */ jsx("div", {
@@ -14671,13 +14700,14 @@ var scopedCss = `
 .rs-vchip--out .rs-vchip__l{color:#F4CE6A} .rs-vchip--out .rs-vchip__n{color:#FFD766}
 .rs-vchip--views .rs-vchip__l{color:#F0AEC1} .rs-vchip--views .rs-vchip__n{color:#F7C2D2}
 
+.rs-wmedia{min-width:0;display:flex;flex-direction:column;gap:12px}
 .rs-wdet{min-width:0;display:flex;flex-direction:column}
 .rs-wcreator{display:flex;align-items:center;gap:10px}
 .rs-wcreator__copy{min-width:0;flex:1}
 .rs-wcreator__topline{display:flex;align-items:baseline;gap:8px}
 .rs-av{width:34px;height:34px;border-radius:50%;flex:none}
 .rs-wc__n{font-size:.92rem;font-weight:800;color:var(--ink);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.rs-wc__s{font-size:.76rem;color:var(--ink);white-space:nowrap}
+.rs-wc__s{font-size:.76rem;color:var(--muted);white-space:nowrap}
 .rs-wcap{font-size:.92rem;color:var(--body);line-height:1.5;margin:13px 0}
 .rs-wmets{display:flex;flex-wrap:wrap;gap:24px;padding:13px 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line);margin:13px 0}
 .rs-wmets span{display:inline-flex;align-items:center;gap:7px;font-size:.9rem;color:var(--ink);font-weight:500}
@@ -14753,11 +14783,20 @@ var scopedCss = `
 .rs-oc:hover{border-color:var(--line-2,#DEDBD3)}
 .rs-oc .rs-vf{border-radius:0}
 .rs-oc__b{padding:12px 13px;display:flex;flex-direction:column;flex:1;gap:0}
-.rs-oc__cr{display:flex;align-items:center;gap:8px}
+.rs-oc__ov{display:flex;gap:8px;margin-bottom:12px}
+.rs-ovchip{flex:1;min-width:0;border-radius:12px;padding:9px 11px;border:1px solid var(--line)}
+.rs-ovchip__l{display:inline-flex;align-items:center;gap:5px;font-size:.58rem;font-weight:800;text-transform:uppercase;letter-spacing:.05em;white-space:nowrap}
+.rs-ovchip__l::before{content:"";width:5px;height:5px;border-radius:50%;background:currentColor;flex:none}
+.rs-ovchip__n{margin-top:4px;font-size:1.05rem;font-weight:900;line-height:1;letter-spacing:-.025em;color:var(--ink);font-variant-numeric:tabular-nums}
+.rs-ovchip--out{background:#FCF3D6;border-color:#F0E2B6}
+.rs-ovchip--out .rs-ovchip__l{color:#B0841A}
+.rs-ovchip--views{background:#FBE9E2;border-color:#F1D8CD}
+.rs-ovchip--views .rs-ovchip__l{color:#C2410C}
+.rs-oc__cr{display:flex;align-items:flex-start;gap:9px}
 .rs-oc__copy{min-width:0;flex:1}
-.rs-oc__topline{display:flex;align-items:baseline;gap:8px}
 .rs-oc__h{font-size:.82rem;font-weight:800;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.rs-oc__s{font-size:.7rem;color:var(--ink);white-space:nowrap}
+.rs-oc__f{margin-top:2px;font-size:.7rem;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rs-oc__s{margin-left:auto;flex:none;font-size:.7rem;color:var(--muted);white-space:nowrap}
 .rs-oc__c{font-size:.8rem;color:var(--muted);line-height:1.4;margin-top:8px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .rs-oc__st{display:flex;justify-content:space-between;gap:6px;margin-top:11px}
 .rs-oc__st span{display:inline-flex;align-items:center;gap:5px;font-size:.76rem;color:var(--ink);font-weight:600;font-variant-numeric:tabular-nums}
@@ -14932,7 +14971,7 @@ var scopedCss = `
   .rs-stats{grid-template-columns:1fr 1fr}
   .rs-stt:nth-child(2){border-right:none}
   .rs-stt:nth-child(1),.rs-stt:nth-child(2){border-bottom:1px solid var(--line)}
-  .rs-winner{grid-template-columns:1fr}.rs-vf--big{max-width:240px;margin:0 auto}
+  .rs-winner{grid-template-columns:1fr}.rs-vf--big{max-width:240px;margin:0 auto}.rs-wmedia{max-width:240px;margin-inline:auto;width:100%}
   .rs-two{grid-template-columns:1fr}
   .rs-bhead{align-items:flex-start}
 }
@@ -15013,23 +15052,18 @@ var scopedCss = `
 }
 `;
 var goBack = () => {
-	if (typeof window === "undefined") {
-		router.visit(backHref);
-		return;
-	}
-	if (getSafeReturnTo(new URLSearchParams(currentUrl.split("?")[1] ?? "").get("from"))) {
-		router.visit(backHref);
-		return;
-	}
-	if (canUseHistoryBack(document.referrer, `${window.location.pathname}${window.location.search}`)) {
-		window.history.back();
-		return;
-	}
-	router.visit(backHref);
+	window.location.assign("/dashboard");
 };
 //#endregion
 //#region resources/js/Pages/SavedSearches/Show.jsx
 var Show_exports$1 = /* @__PURE__ */ __exportAll({ default: () => Show$1 });
+var ACTIVE_SEARCH_STATUSES = /* @__PURE__ */ new Set([
+	"pending",
+	"queued",
+	"running",
+	"scraping"
+]);
+var SEARCH_POLL_MS = 8e3;
 function UsageConfirmModal({ title, body, subject, confirmLabel, busy = false, onConfirm, onCancel }) {
 	return /* @__PURE__ */ jsx("div", {
 		className: "bb",
@@ -15080,6 +15114,88 @@ function UsageConfirmModal({ title, body, subject, confirmLabel, busy = false, o
 		})
 	});
 }
+function ProcessingOverlay({ search, failed = false, onGoDashboard }) {
+	const title = failed ? "Search needs attention" : "Your search is still processing";
+	const body = failed ? search?.latest_run_error || "We could not finish this search. You can head back to the dashboard and try again from there." : "We are still pulling videos, filtering matches, and preparing the result. This page will update automatically as soon as the run finishes.";
+	return /* @__PURE__ */ jsxs("div", {
+		className: "bb",
+		children: [/* @__PURE__ */ jsxs("div", {
+			className: "bb-modal",
+			children: [/* @__PURE__ */ jsx("div", {
+				className: "bb-modal__bg",
+				"aria-hidden": "true"
+			}), /* @__PURE__ */ jsxs("div", {
+				className: "bb-modal__box",
+				style: { maxWidth: 520 },
+				children: [
+					!failed && /* @__PURE__ */ jsx("div", {
+						"aria-hidden": "true",
+						style: {
+							width: 52,
+							height: 52,
+							margin: "0 auto 18px",
+							borderRadius: "999px",
+							border: "4px solid #f3e5b7",
+							borderTopColor: "#d4a017",
+							animation: "results-processing-spin 1s linear infinite"
+						}
+					}),
+					/* @__PURE__ */ jsx("h2", {
+						style: { textAlign: "center" },
+						children: title
+					}),
+					/* @__PURE__ */ jsx("p", {
+						className: "sub",
+						style: {
+							marginTop: 10,
+							textAlign: "center"
+						},
+						children: body
+					}),
+					search?.name && /* @__PURE__ */ jsx("p", {
+						style: {
+							marginTop: 18,
+							fontWeight: 700,
+							color: "var(--ink)",
+							textAlign: "center"
+						},
+						children: search.name
+					}),
+					/* @__PURE__ */ jsx("div", {
+						style: {
+							marginTop: 18,
+							display: "flex",
+							justifyContent: "center"
+						},
+						children: /* @__PURE__ */ jsxs("span", {
+							className: `pill ${failed ? "pill--bad" : "pill--run"}`,
+							style: { fontSize: ".82rem" },
+							children: [/* @__PURE__ */ jsx("i", {}), failed ? "Failed" : "Processing"]
+						})
+					}),
+					/* @__PURE__ */ jsx("div", {
+						className: "actrow__r",
+						style: {
+							marginTop: 24,
+							justifyContent: "center"
+						},
+						children: /* @__PURE__ */ jsx("button", {
+							type: "button",
+							className: "btn btn--g",
+							onClick: onGoDashboard,
+							children: "Go to dashboard"
+						})
+					})
+				]
+			})]
+		}), /* @__PURE__ */ jsx("style", { children: `
+                @keyframes results-processing-spin {
+                    from { transform: rotate(0deg); }
+                    to { transform: rotate(360deg); }
+                }
+            ` })]
+	});
+}
 var DetailScreenBoundary = class extends Component {
 	constructor(props) {
 		super(props);
@@ -15112,6 +15228,9 @@ function Show$1({ search: initial, isAuthenticated = false, billing }) {
 	const [bookmarkingSearch, setBookmarkingSearch] = useState(false);
 	const [bookmarkingVideoId, setBookmarkingVideoId] = useState(null);
 	const [confirmRefresh, setConfirmRefresh] = useState(false);
+	const [pollError, setPollError] = useState(false);
+	const isSearchProcessing = ACTIVE_SEARCH_STATUSES.has(String(search?.status ?? "").toLowerCase());
+	const hasProcessingFailure = String(search?.status ?? "").toLowerCase() === "failed";
 	const searchLimit = billing?.searchCreditsLimit ?? 0;
 	const searchUsed = billing?.searchCreditsUsed ?? 0;
 	const searchRemainingAfterUse = searchLimit === -1 ? "unlimited" : Math.max(0, searchLimit - searchUsed - 1);
@@ -15177,6 +15296,34 @@ function Show$1({ search: initial, isAuthenticated = false, billing }) {
 			setBookmarkingVideoId(null);
 		}
 	};
+	useEffect(() => {
+		setSearch(initial);
+	}, [initial]);
+	useEffect(() => {
+		if (!search?.id || !isSearchProcessing) return void 0;
+		let cancelled = false;
+		let timerId = null;
+		const poll = async () => {
+			try {
+				const payload = await savedSearch.get(search.id);
+				if (cancelled || !payload?.search) return;
+				setPollError(false);
+				setSearch((previous) => ({
+					...previous,
+					...payload.search
+				}));
+			} catch {
+				if (!cancelled) setPollError(true);
+			} finally {
+				if (!cancelled) timerId = window.setTimeout(poll, SEARCH_POLL_MS);
+			}
+		};
+		poll();
+		return () => {
+			cancelled = true;
+			if (timerId !== null) window.clearTimeout(timerId);
+		};
+	}, [isSearchProcessing, search?.id]);
 	return /* @__PURE__ */ jsxs(Fragment$1, { children: [
 		/* @__PURE__ */ jsx(Head, { title: `${search.name} · Brand Beacon` }),
 		/* @__PURE__ */ jsx(AppLayout, {
@@ -15207,6 +15354,11 @@ function Show$1({ search: initial, isAuthenticated = false, billing }) {
 				setConfirmRefresh(false);
 				await runRefresh();
 			}
+		}),
+		(isSearchProcessing || hasProcessingFailure && pollError) && /* @__PURE__ */ jsx(ProcessingOverlay, {
+			search,
+			failed: hasProcessingFailure && pollError,
+			onGoDashboard: () => window.location.assign("/dashboard")
 		})
 	] });
 }

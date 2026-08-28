@@ -1018,7 +1018,19 @@ export default function DetailScreen({
         <>
           <div className="rs-sh"><h2>Outlier videos</h2><span className="rs-note">Their posts that beat the search median, ranked by outlier score.</span></div>
           <div className={`rs-winner rs-winner--run-${winnerBucket}`}>
-            <VideoFrame video={winner} winner isPlaying={videoPlayingId === winner.id} onTogglePlay={() => setVideoPlayingId((v) => v === winner.id ? null : winner.id)} />
+            <div className="rs-wmedia">
+              <VideoFrame video={winner} winner showStats={false} isPlaying={videoPlayingId === winner.id} onTogglePlay={() => setVideoPlayingId((v) => v === winner.id ? null : winner.id)} />
+              <div className="rs-oc__ov">
+                <div className="rs-ovchip rs-ovchip--out">
+                  <div className="rs-ovchip__l">Outlier score</div>
+                  <div className="rs-ovchip__n">{compact(winner.multiple ?? winner.score ?? 0)}×</div>
+                </div>
+                <div className="rs-ovchip rs-ovchip--views">
+                  <div className="rs-ovchip__l">Views</div>
+                  <div className="rs-ovchip__n">{compact(winner.views)}</div>
+                </div>
+              </div>
+            </div>
             <div className="rs-wdet">
               <div className="rs-wcreator">
                 <span className="rs-av" style={{ background: gradientFor(winner.handle ?? winner.id) }} />
@@ -1027,7 +1039,7 @@ export default function DetailScreen({
                     <div className="rs-wc__n">{winner.handle || winner.username || '—'}</div>
                     <div className="rs-wc__s">{winner.uploaded_at ? formatDate(winner.uploaded_at) : winner.posted_at ? formatDate(winner.posted_at) : ''}</div>
                   </div>
-                  <div className="rs-wc__s">on TikTok</div>
+                  <div className="rs-wc__s">{Number(winner.followers ?? 0) > 0 ? `${compact(winner.followers)} followers` : 'on TikTok'}</div>
                 </div>
                 <span className={`rs-runpill rs-runpill--${winnerBucket}`} title={winnerBucketHint}>
                   <span className="rs-runpill__dot" aria-hidden />
@@ -1043,7 +1055,6 @@ export default function DetailScreen({
                 <span>{Icons.Heart}<b>{compact(winner.likes)}</b></span>
                 <span>{Icons.Comment}<b>{compact(winner.comments)}</b></span>
                 <span>{Icons.Share}<b>{compact(winner.shares)}</b></span>
-                {Number(winner.followers ?? 0) > 0 && <span>{Icons.User}<b>{compact(winner.followers)}</b></span>}
               </div>
               <VideoTags video={winner} />
               <AutoAnalysis video={winner} />
@@ -1529,7 +1540,7 @@ export default function DetailScreen({
 
 /* -------------------- sub-components -------------------- */
 
-function VideoFrame({ video, winner = false, isPlaying, onTogglePlay }) {
+function VideoFrame({ video, winner = false, showStats = true, isPlaying, onTogglePlay }) {
   const bg = video.thumbnail_url ? undefined : gradientFor(video.id ?? video.handle);
   const playerUrl = playerUrlFor(video, true);
   const [playerReady, setPlayerReady] = useState(false);
@@ -1588,7 +1599,7 @@ function VideoFrame({ video, winner = false, isPlaying, onTogglePlay }) {
       {!isPlaying && <button className="rs-vf__play" onClick={onTogglePlay} aria-label="Play">{Icons.Play}</button>}
       {isPlaying && playerUrl && !playerReady && <span className="rs-vf__loading">Loading video…</span>}
       {isPlaying && <button className="rs-vf__close" onClick={onTogglePlay} aria-label="Close video preview">×</button>}
-      {!isPlaying && <div className="rs-vf__stats">
+      {!isPlaying && showStats && <div className="rs-vf__stats">
         <div className="rs-vchip rs-vchip--out">
           <div className="rs-vchip__l">Outlier score</div>
           <div className="rs-vchip__n">{compact(video.multiple ?? video.score ?? 0)}×</div>
@@ -1657,19 +1668,25 @@ function AutoAnalysis({ video }) {
 function OutlierCard({ video, runBucket = 'old', expanded, locked = false, onToggle, onAnalyze, onToggleBookmark, bookmarking, isPlaying, onTogglePlay }) {
   return (
     <article className={`rs-oc rs-oc--run-${runBucket}${expanded ? ' analyzed' : ''}`}>
-      <VideoFrame video={video} isPlaying={isPlaying} onTogglePlay={onTogglePlay} />
+      <VideoFrame video={video} showStats={false} isPlaying={isPlaying} onTogglePlay={onTogglePlay} />
       <div className="rs-oc__b">
-        <div className="rs-oc__cr">
-          <span className="rs-av" style={{ background: gradientFor(video.handle ?? video.id), width: 26, height: 26, borderRadius: '50%', flex: 'none' }} />
-          <div className="rs-oc__copy" style={{ flex: 1, minWidth: 0 }}>
-            <div className="rs-oc__topline">
-              <div className="rs-oc__h">{video.handle || video.username || '—'}</div>
-              <div className="rs-oc__s">{video.uploaded_at ? formatDate(video.uploaded_at) : video.posted_at ? formatDate(video.posted_at) : ''}</div>
-            </div>
+        <div className="rs-oc__ov">
+          <div className="rs-ovchip rs-ovchip--out">
+            <div className="rs-ovchip__l">Outlier score</div>
+            <div className="rs-ovchip__n">{compact(video.multiple ?? video.score ?? 0)}×</div>
           </div>
-          {video.tiktok_url && (
-            <a href={video.tiktok_url} target="_blank" rel="noopener" className="rs-ic2" title="Open in TikTok">{Icons.ExtLink}</a>
-          )}
+          <div className="rs-ovchip rs-ovchip--views">
+            <div className="rs-ovchip__l">Views</div>
+            <div className="rs-ovchip__n">{compact(video.views)}</div>
+          </div>
+        </div>
+        <div className="rs-oc__cr">
+          <span className="rs-av" style={{ background: gradientFor(video.handle ?? video.id), width: 30, height: 30, borderRadius: '50%', flex: 'none' }} />
+          <div className="rs-oc__copy" style={{ flex: 1, minWidth: 0 }}>
+            <div className="rs-oc__h">{video.handle || video.username || '—'}</div>
+            {Number(video.followers ?? 0) > 0 && <div className="rs-oc__f">{compact(video.followers)} followers</div>}
+          </div>
+          <div className="rs-oc__s">{video.uploaded_at ? formatDate(video.uploaded_at) : video.posted_at ? formatDate(video.posted_at) : ''}</div>
         </div>
         <p className="rs-oc__c">{video.title || video.caption}</p>
         <div className="rs-oc__st">
@@ -1677,7 +1694,6 @@ function OutlierCard({ video, runBucket = 'old', expanded, locked = false, onTog
           <span>{Icons.Heart}{compact(video.likes)}</span>
           <span>{Icons.Comment}{compact(video.comments)}</span>
           <span>{Icons.Share}{compact(video.shares)}</span>
-          {Number(video.followers ?? 0) > 0 && <span>{Icons.User}{compact(video.followers)}</span>}
         </div>
         {expanded && !locked && (
           <div className="rs-oc__panel">
@@ -2090,13 +2106,14 @@ const scopedCss = `
 .rs-vchip--out .rs-vchip__l{color:#F4CE6A} .rs-vchip--out .rs-vchip__n{color:#FFD766}
 .rs-vchip--views .rs-vchip__l{color:#F0AEC1} .rs-vchip--views .rs-vchip__n{color:#F7C2D2}
 
+.rs-wmedia{min-width:0;display:flex;flex-direction:column;gap:12px}
 .rs-wdet{min-width:0;display:flex;flex-direction:column}
 .rs-wcreator{display:flex;align-items:center;gap:10px}
 .rs-wcreator__copy{min-width:0;flex:1}
 .rs-wcreator__topline{display:flex;align-items:baseline;gap:8px}
 .rs-av{width:34px;height:34px;border-radius:50%;flex:none}
 .rs-wc__n{font-size:.92rem;font-weight:800;color:var(--ink);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.rs-wc__s{font-size:.76rem;color:var(--ink);white-space:nowrap}
+.rs-wc__s{font-size:.76rem;color:var(--muted);white-space:nowrap}
 .rs-wcap{font-size:.92rem;color:var(--body);line-height:1.5;margin:13px 0}
 .rs-wmets{display:flex;flex-wrap:wrap;gap:24px;padding:13px 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line);margin:13px 0}
 .rs-wmets span{display:inline-flex;align-items:center;gap:7px;font-size:.9rem;color:var(--ink);font-weight:500}
@@ -2172,11 +2189,20 @@ const scopedCss = `
 .rs-oc:hover{border-color:var(--line-2,#DEDBD3)}
 .rs-oc .rs-vf{border-radius:0}
 .rs-oc__b{padding:12px 13px;display:flex;flex-direction:column;flex:1;gap:0}
-.rs-oc__cr{display:flex;align-items:center;gap:8px}
+.rs-oc__ov{display:flex;gap:8px;margin-bottom:12px}
+.rs-ovchip{flex:1;min-width:0;border-radius:12px;padding:9px 11px;border:1px solid var(--line)}
+.rs-ovchip__l{display:inline-flex;align-items:center;gap:5px;font-size:.58rem;font-weight:800;text-transform:uppercase;letter-spacing:.05em;white-space:nowrap}
+.rs-ovchip__l::before{content:"";width:5px;height:5px;border-radius:50%;background:currentColor;flex:none}
+.rs-ovchip__n{margin-top:4px;font-size:1.05rem;font-weight:900;line-height:1;letter-spacing:-.025em;color:var(--ink);font-variant-numeric:tabular-nums}
+.rs-ovchip--out{background:#FCF3D6;border-color:#F0E2B6}
+.rs-ovchip--out .rs-ovchip__l{color:#B0841A}
+.rs-ovchip--views{background:#FBE9E2;border-color:#F1D8CD}
+.rs-ovchip--views .rs-ovchip__l{color:#C2410C}
+.rs-oc__cr{display:flex;align-items:flex-start;gap:9px}
 .rs-oc__copy{min-width:0;flex:1}
-.rs-oc__topline{display:flex;align-items:baseline;gap:8px}
 .rs-oc__h{font-size:.82rem;font-weight:800;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.rs-oc__s{font-size:.7rem;color:var(--ink);white-space:nowrap}
+.rs-oc__f{margin-top:2px;font-size:.7rem;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rs-oc__s{margin-left:auto;flex:none;font-size:.7rem;color:var(--muted);white-space:nowrap}
 .rs-oc__c{font-size:.8rem;color:var(--muted);line-height:1.4;margin-top:8px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .rs-oc__st{display:flex;justify-content:space-between;gap:6px;margin-top:11px}
 .rs-oc__st span{display:inline-flex;align-items:center;gap:5px;font-size:.76rem;color:var(--ink);font-weight:600;font-variant-numeric:tabular-nums}
@@ -2351,7 +2377,7 @@ const scopedCss = `
   .rs-stats{grid-template-columns:1fr 1fr}
   .rs-stt:nth-child(2){border-right:none}
   .rs-stt:nth-child(1),.rs-stt:nth-child(2){border-bottom:1px solid var(--line)}
-  .rs-winner{grid-template-columns:1fr}.rs-vf--big{max-width:240px;margin:0 auto}
+  .rs-winner{grid-template-columns:1fr}.rs-vf--big{max-width:240px;margin:0 auto}.rs-wmedia{max-width:240px;margin-inline:auto;width:100%}
   .rs-two{grid-template-columns:1fr}
   .rs-bhead{align-items:flex-start}
 }
