@@ -1,9 +1,12 @@
-import { Component, useState } from 'react';
+import { Component, useEffect, useState } from 'react';
 import { Head, router } from '@inertiajs/react';
 
 import AppLayout from '../components/AppLayout.jsx';
 import DetailScreen from './detail/DetailScreen.jsx';
 import { bookmarks, savedSearch as api, untrackSearch } from '../../landing/flow/api.js';
+
+const ACTIVE_SEARCH_STATUSES = new Set(['pending', 'queued', 'running', 'scraping']);
+const SEARCH_POLL_MS = 8000;
 
 function UsageConfirmModal({ title, body, subject, confirmLabel, busy = false, onConfirm, onCancel }) {
     return (
@@ -24,6 +27,64 @@ function UsageConfirmModal({ title, body, subject, confirmLabel, busy = false, o
                     </div>
                 </div>
             </div>
+        </div>
+    );
+}
+
+function ProcessingOverlay({ search, failed = false, onGoDashboard }) {
+    const title = failed ? 'Search needs attention' : 'Your search is still processing';
+    const body = failed
+        ? (search?.latest_run_error || 'We could not finish this search. You can head back to the dashboard and try again from there.')
+        : 'We are still pulling videos, filtering matches, and preparing the result. This page will update automatically as soon as the run finishes.';
+
+    return (
+        <div className="bb">
+            <div className="bb-modal">
+                <div className="bb-modal__bg" aria-hidden="true" />
+                <div className="bb-modal__box" style={{ maxWidth: 520 }}>
+                    {!failed && (
+                        <div
+                            aria-hidden="true"
+                            style={{
+                                width: 52,
+                                height: 52,
+                                margin: '0 auto 18px',
+                                borderRadius: '999px',
+                                border: '4px solid #f3e5b7',
+                                borderTopColor: '#d4a017',
+                                animation: 'results-processing-spin 1s linear infinite',
+                            }}
+                        />
+                    )}
+                    <h2 style={{ textAlign: 'center' }}>{title}</h2>
+                    <p className="sub" style={{ marginTop: 10, textAlign: 'center' }}>{body}</p>
+                    {search?.name && (
+                        <p style={{ marginTop: 18, fontWeight: 700, color: 'var(--ink)', textAlign: 'center' }}>
+                            {search.name}
+                        </p>
+                    )}
+                    <div style={{ marginTop: 18, display: 'flex', justifyContent: 'center' }}>
+                        <span
+                            className={`pill ${failed ? 'pill--bad' : 'pill--run'}`}
+                            style={{ fontSize: '.82rem' }}
+                        >
+                            <i />
+                            {failed ? 'Failed' : 'Processing'}
+                        </span>
+                    </div>
+                    <div className="actrow__r" style={{ marginTop: 24, justifyContent: 'center' }}>
+                        <button type="button" className="btn btn--g" onClick={onGoDashboard}>
+                            Go to dashboard
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <style>{`
+                @keyframes results-processing-spin {
+                    from { transform: rotate(0deg); }
+                    to { transform: rotate(360deg); }
+                }
+            `}</style>
         </div>
     );
 }
@@ -70,6 +131,10 @@ export default function Show({ search: initial, isAuthenticated = false, billing
     const [bookmarkingSearch, setBookmarkingSearch] = useState(false);
     const [bookmarkingVideoId, setBookmarkingVideoId] = useState(null);
     const [confirmRefresh, setConfirmRefresh] = useState(false);
+    const [pollError, setPollError] = useState(false);
+
+    const isSearchProcessing = ACTIVE_SEARCH_STATUSES.has(String(search?.status ?? '').toLowerCase());
+    const hasProcessingFailure = String(search?.status ?? '').toLowerCase() === 'failed';
 
     const searchLimit = billing?.searchCreditsLimit ?? 0;
     const searchUsed = billing?.searchCreditsUsed ?? 0;
@@ -146,6 +211,45 @@ export default function Show({ search: initial, isAuthenticated = false, billing
         }
     };
 
+    useEffect(() => {
+        setSearch(initial);
+    }, [initial]);
+
+    useEffect(() => {
+        if (!search?.id || !isSearchProcessing) return undefined;
+
+        let cancelled = false;
+        let timerId = null;
+
+        const poll = async () => {
+            try {
+                const payload = await api.get(search.id);
+
+                if (cancelled || !payload?.search) return;
+
+                setPollError(false);
+                setSearch((previous) => ({ ...previous, ...payload.search }));
+            } catch {
+                if (!cancelled) {
+                    setPollError(true);
+                }
+            } finally {
+                if (!cancelled) {
+                    timerId = window.setTimeout(poll, SEARCH_POLL_MS);
+                }
+            }
+        };
+
+        poll();
+
+        return () => {
+            cancelled = true;
+            if (timerId !== null) {
+                window.clearTimeout(timerId);
+            }
+        };
+    }, [isSearchProcessing, search?.id]);
+
     return (
         <>
             <Head title={`${search.name} · Brand Beacon`} />
@@ -182,6 +286,14 @@ export default function Show({ search: initial, isAuthenticated = false, billing
                         setConfirmRefresh(false);
                         await runRefresh();
                     }}
+                />
+            )}
+
+            {(isSearchProcessing || (hasProcessingFailure && pollError)) && (
+                <ProcessingOverlay
+                    search={search}
+                    failed={hasProcessingFailure && pollError}
+                    onGoDashboard={() => window.location.assign('/dashboard')}
                 />
             )}
         </>
