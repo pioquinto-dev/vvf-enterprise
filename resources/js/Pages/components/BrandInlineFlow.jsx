@@ -84,6 +84,8 @@ export default function BrandInlineFlow({
   sample = 'rhode skin',
   eyebrow = 'Start a brand search',
   hint = 'One brand per search — we widen it with keywords next.',
+  prefillSubject = '',
+  prefillNonce = 0,
   onCreated = null,
 }) {
   const { billing = {}, auth = {} } = usePage().props;
@@ -112,6 +114,7 @@ export default function BrandInlineFlow({
 
   const inputRef = useRef(null);
   const subjectFieldRef = useRef(null);
+  const rootRef = useRef(null);
   const kwCount = useMemo(() => keywords.filter((k) => k.selected).length, [keywords]);
   const searchLeft = billing.searchCreditsRemaining;
   const searchLimit = billing.searchCreditsLimit;
@@ -141,6 +144,20 @@ export default function BrandInlineFlow({
 
     return () => document.removeEventListener('mousedown', close);
   }, []);
+
+  useEffect(() => {
+    const nextSubject = prefillSubject.trim().replace(/\s+/g, ' ');
+    if (!nextSubject) return;
+
+    setState('collapsed');
+    setSubject(nextSubject);
+    setShowSuggestions(false);
+    setActiveSuggestion(-1);
+    setError(null);
+
+    rootRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    window.requestAnimationFrame(() => inputRef.current?.focus());
+  }, [prefillNonce, prefillSubject]);
 
   /* -------- collapsed -> keywords: fetch suggested terms -------- */
   const startFlow = async () => {
@@ -461,7 +478,7 @@ export default function BrandInlineFlow({
         />
       )}
 
-      <section className="bif">
+      <section className="bif" ref={rootRef}>
         {/* ---------- COLLAPSED ---------- */}
         {state === 'collapsed' && (
           <>

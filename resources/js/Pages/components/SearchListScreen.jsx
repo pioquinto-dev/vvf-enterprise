@@ -126,13 +126,14 @@ export default function SearchListScreen({ kind = 'brand', searches = [], moving
   const { billing = {} } = usePage().props;
 
   const [searchList, setSearchList] = useState(searches);
-  const [subject, setSubject] = useState('');
   const [query, setQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [sortBy, setSortBy] = useState('outliers');
   const [modalSearch, setModalSearch] = useState(null);
   const [formState, setFormState] = useState({ name: '', frequency: 'weekly', tiktokHandle: '', website: '' });
   const [submitting, setSubmitting] = useState(false);
+  const [prefillSubject, setPrefillSubject] = useState('');
+  const [prefillNonce, setPrefillNonce] = useState(0);
 
   const searchLeft = billing.searchCreditsRemaining;
   const searchLimit = billing.searchCreditsLimit;
@@ -140,10 +141,12 @@ export default function SearchListScreen({ kind = 'brand', searches = [], moving
   const subjectSuggestions = useMemo(() => suggestions.slice(0, 5), [suggestions]);
   const suggestedToTrack = useMemo(() => suggestions.slice(0, 4), [suggestions]);
 
-  const runSearch = (e) => {
-    e.preventDefault();
-    const q = subject.trim().replace(/\s+/g, ' ');
-    router.visit(`/search?type=${kind}${q ? `&q=${encodeURIComponent(q)}` : ''}`);
+  const seedInlineFlow = (value) => {
+    const nextSubject = value.trim().replace(/\s+/g, ' ');
+    if (!nextSubject) return;
+
+    setPrefillSubject(nextSubject);
+    setPrefillNonce((current) => current + 1);
   };
 
   const filtered = useMemo(() => {
@@ -222,6 +225,8 @@ export default function SearchListScreen({ kind = 'brand', searches = [], moving
         placeholder={copy.placeholder}
         sample={copy.sample}
         hint={copy.heroHint}
+        prefillSubject={prefillSubject}
+        prefillNonce={prefillNonce}
         onCreated={(created) => setSearchList((current) => [{ ...created, search_type: kind }, ...current])}
       />
 
@@ -275,7 +280,7 @@ export default function SearchListScreen({ kind = 'brand', searches = [], moving
                 <button
                   type="button"
                   className="btn btn--g btn--sm"
-                  onClick={() => router.visit(`/search?type=${kind}&q=${encodeURIComponent(s.name)}`)}
+                  onClick={() => seedInlineFlow(s.name)}
                 >
                   <Plus className="h-[15px] w-[15px]" /> Track
                 </button>

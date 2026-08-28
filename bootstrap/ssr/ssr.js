@@ -3717,7 +3717,7 @@ function MiniStepper({ current }) {
 		})
 	});
 }
-function BrandInlineFlow({ kind = "brand", placeholder = "Which brand do you want to research?", sample = "rhode skin", eyebrow = "Start a brand search", hint = "One brand per search — we widen it with keywords next.", onCreated = null }) {
+function BrandInlineFlow({ kind = "brand", placeholder = "Which brand do you want to research?", sample = "rhode skin", eyebrow = "Start a brand search", hint = "One brand per search — we widen it with keywords next.", prefillSubject = "", prefillNonce = 0, onCreated = null }) {
 	const { billing = {}, auth = {} } = usePage().props;
 	const signedIn = auth.signedIn ?? Boolean(auth.user);
 	const [state, setState] = useState("collapsed");
@@ -3742,6 +3742,7 @@ function BrandInlineFlow({ kind = "brand", placeholder = "Which brand do you wan
 	runIdxRef.current = runIdx;
 	const inputRef = useRef(null);
 	const subjectFieldRef = useRef(null);
+	const rootRef = useRef(null);
 	const kwCount = useMemo(() => keywords.filter((k) => k.selected).length, [keywords]);
 	const searchLeft = billing.searchCreditsRemaining;
 	const searchLimit = billing.searchCreditsLimit;
@@ -3763,6 +3764,20 @@ function BrandInlineFlow({ kind = "brand", placeholder = "Which brand do you wan
 		document.addEventListener("mousedown", close);
 		return () => document.removeEventListener("mousedown", close);
 	}, []);
+	useEffect(() => {
+		const nextSubject = prefillSubject.trim().replace(/\s+/g, " ");
+		if (!nextSubject) return;
+		setState("collapsed");
+		setSubject(nextSubject);
+		setShowSuggestions(false);
+		setActiveSuggestion(-1);
+		setError(null);
+		rootRef.current?.scrollIntoView({
+			behavior: "smooth",
+			block: "start"
+		});
+		window.requestAnimationFrame(() => inputRef.current?.focus());
+	}, [prefillNonce, prefillSubject]);
 	const startFlow = async () => {
 		const q = subject.trim().replace(/\s+/g, " ");
 		if (!q) return;
@@ -4073,6 +4088,7 @@ function BrandInlineFlow({ kind = "brand", placeholder = "Which brand do you wan
 		}),
 		/* @__PURE__ */ jsxs("section", {
 			className: "bif",
+			ref: rootRef,
 			children: [
 				state === "collapsed" && /* @__PURE__ */ jsxs(Fragment$1, { children: [
 					/* @__PURE__ */ jsx("p", {
@@ -4853,13 +4869,15 @@ function VideoCard({ video, rank }) {
 		}), /* @__PURE__ */ jsxs("div", {
 			className: "vb",
 			children: [
-				/* @__PURE__ */ jsx("p", {
-					className: "vb__h",
-					children: video.handle
-				}),
-				/* @__PURE__ */ jsx("p", {
-					className: "vb__h",
-					children: [relativeTime$1(video.uploaded_at), video.followers > 0 ? `${compact$1(video.followers)} followers` : null].filter(Boolean).join(" · ")
+				/* @__PURE__ */ jsxs("div", {
+					className: "vb__meta",
+					children: [/* @__PURE__ */ jsx("p", {
+						className: "vb__h",
+						children: video.handle
+					}), /* @__PURE__ */ jsx("p", {
+						className: "vb__sub",
+						children: relativeTime$1(video.uploaded_at)
+					})]
 				}),
 				/* @__PURE__ */ jsx("p", {
 					className: "vb__c",
@@ -4870,7 +4888,8 @@ function VideoCard({ video, rank }) {
 					children: [
 						/* @__PURE__ */ jsxs("span", { children: [/* @__PURE__ */ jsx(Trend, {}), compact$1(video.views)] }),
 						/* @__PURE__ */ jsxs("span", { children: [/* @__PURE__ */ jsx(Heart, {}), compact$1(video.likes)] }),
-						/* @__PURE__ */ jsxs("span", { children: [/* @__PURE__ */ jsx(Comment, {}), compact$1(video.comments)] })
+						/* @__PURE__ */ jsxs("span", { children: [/* @__PURE__ */ jsx(Comment, {}), compact$1(video.comments)] }),
+						video.followers > 0 && /* @__PURE__ */ jsxs("span", { children: [/* @__PURE__ */ jsx(User, {}), compact$1(video.followers)] })
 					]
 				})
 			]
@@ -5165,7 +5184,6 @@ function SearchListScreen({ kind = "brand", searches = [], moving = [], suggesti
 	const copy = COPY[kind] ?? COPY.brand;
 	const { billing = {} } = usePage().props;
 	const [searchList, setSearchList] = useState(searches);
-	const [subject, setSubject] = useState("");
 	const [query, setQuery] = useState("");
 	const [statusFilter, setStatusFilter] = useState("all");
 	const [sortBy, setSortBy] = useState("outliers");
@@ -5177,10 +5195,18 @@ function SearchListScreen({ kind = "brand", searches = [], moving = [], suggesti
 		website: ""
 	});
 	const [submitting, setSubmitting] = useState(false);
+	const [prefillSubject, setPrefillSubject] = useState("");
+	const [prefillNonce, setPrefillNonce] = useState(0);
 	billing.searchCreditsRemaining;
 	billing.searchCreditsLimit;
 	useMemo(() => suggestions.slice(0, 5), [suggestions]);
 	const suggestedToTrack = useMemo(() => suggestions.slice(0, 4), [suggestions]);
+	const seedInlineFlow = (value) => {
+		const nextSubject = value.trim().replace(/\s+/g, " ");
+		if (!nextSubject) return;
+		setPrefillSubject(nextSubject);
+		setPrefillNonce((current) => current + 1);
+	};
 	const filtered = useMemo(() => {
 		const q = query.trim().toLowerCase();
 		const next = searchList.filter((s) => {
@@ -5262,6 +5288,8 @@ function SearchListScreen({ kind = "brand", searches = [], moving = [], suggesti
 				placeholder: copy.placeholder,
 				sample: copy.sample,
 				hint: copy.heroHint,
+				prefillSubject,
+				prefillNonce,
 				onCreated: (created) => setSearchList((current) => [{
 					...created,
 					search_type: kind
@@ -5340,7 +5368,7 @@ function SearchListScreen({ kind = "brand", searches = [], moving = [], suggesti
 							/* @__PURE__ */ jsxs("button", {
 								type: "button",
 								className: "btn btn--g btn--sm",
-								onClick: () => router.visit(`/search?type=${kind}&q=${encodeURIComponent(s.name)}`),
+								onClick: () => seedInlineFlow(s.name),
 								children: [/* @__PURE__ */ jsx(Plus, { className: "h-[15px] w-[15px]" }), " Track"]
 							})
 						]
@@ -7911,15 +7939,15 @@ function Dashboard() {
         .hero{position:relative;z-index:3;background:var(--white);border:1px solid var(--line);border-radius:20px;padding:24px 26px 26px}
         .hero__head{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:18px}
         .hero__head h2{font-size:1.1rem;font-weight:800;letter-spacing:-.028em;color:var(--ink)}
-        .prog{display:flex;align-items:center;gap:9px;font-size:.75rem;font-weight:700;color:var(--faint-2,#9A968E)}
-        .prog b{color:var(--muted)}
+        .prog{display:flex;align-items:center;gap:9px;font-size:.75rem;font-weight:700;color:var(--ink)}
+        .prog b{color:var(--ink)}
         .prog .seg3{display:flex;gap:4px}
         .prog .seg3 span{width:20px;height:4px;border-radius:100px;background:var(--line-2,#DEDBD3)}
         .prog .seg3 span.on{background:var(--yellow)}
 
         .seg{position:relative;display:flex;padding:4px;background:var(--canvas,#F7F6F2);border:1px solid var(--line);border-radius:100px;margin-bottom:14px}
         .seg__ind{position:absolute;top:4px;bottom:4px;left:4px;width:0;border-radius:100px;background:var(--yellow);transition:transform .32s cubic-bezier(.22,.61,.36,1),width .32s cubic-bezier(.22,.61,.36,1)}
-        .seg__b{position:relative;z-index:1;flex:1 1 0;display:inline-flex;align-items:center;justify-content:center;gap:8px;min-width:0;height:44px;padding:0 10px;border-radius:100px;font-size:.9rem;font-weight:600;letter-spacing:-.01em;color:var(--muted);background:transparent;border:0;cursor:pointer;transition:color .22s;white-space:nowrap}
+        .seg__b{position:relative;z-index:1;flex:1 1 0;display:inline-flex;align-items:center;justify-content:center;gap:8px;min-width:0;height:44px;padding:0 10px;border-radius:100px;font-size:.9rem;font-weight:600;letter-spacing:-.01em;color:var(--ink);background:transparent;border:0;cursor:pointer;transition:color .22s;white-space:nowrap}
         .seg__b svg{width:16px;height:16px;opacity:.65;transition:opacity .22s}
         .seg__b:hover{color:var(--ink)} .seg__b:hover svg{opacity:1}
         .seg__b[aria-selected="true"]{color:#1A1400}
@@ -7927,10 +7955,10 @@ function Dashboard() {
 
         .bar{position:relative;display:flex;align-items:center;gap:10px;padding:7px 7px 7px 18px;background:var(--white);border:1.5px solid var(--line-2,#DEDBD3);border-radius:100px;transition:border-color .18s,box-shadow .18s}
         .bar:focus-within{border-color:var(--yellow);box-shadow:0 0 0 4px rgba(255,198,41,.24)}
-        .bar__q{width:19px;height:19px;color:var(--faint-2,#9A968E);flex:none}
+        .bar__q{width:19px;height:19px;color:var(--ink);flex:none}
         .bar__field{position:relative;flex:1 1 auto;min-width:0}
         .bar input{width:100%;min-width:0;height:48px;border:0;outline:0;background:transparent;font:inherit;font-size:1.06rem;font-weight:600;letter-spacing:-.015em;color:var(--ink)}
-        .bar input::placeholder{color:var(--faint-2,#9A968E);font-weight:500}
+        .bar input::placeholder{color:var(--ink);font-weight:500}
         .bar .btn--y{flex:none;height:48px;padding:0 18px;border-radius:100px;font-size:.88rem;font-weight:700;display:inline-flex;align-items:center;gap:6px}
         .bar .btn--y[disabled]{opacity:.55;cursor:not-allowed}
         .btn__a{display:inline-flex;transition:transform .2s}
@@ -7943,12 +7971,12 @@ function Dashboard() {
         .hero-suggest__item.is-active{transform:translateX(2px)}
         .hero-suggest__text{display:flex;min-width:0;flex-direction:column;gap:3px}
         .hero-suggest__text strong{font-size:.93rem;font-weight:700;letter-spacing:-.02em;color:var(--ink)}
-        .hero-suggest__text em{font-style:normal;font-size:.74rem;font-weight:600;color:var(--faint-2,#9A968E)}
+        .hero-suggest__text em{font-style:normal;font-size:.74rem;font-weight:600;color:var(--ink)}
 
         .hero__foot{display:flex;align-items:center;flex-wrap:wrap;gap:10px 14px;margin-top:15px}
-        .hero__hint{font-size:.81rem;color:var(--faint-2,#9A968E);margin-right:auto}
+        .hero__hint{font-size:.81rem;color:var(--ink);margin-right:auto}
         .pop{display:flex;align-items:center;gap:7px;flex-wrap:wrap}
-        .pop__l{font-size:.75rem;font-weight:700;color:var(--faint-2,#9A968E)}
+        .pop__l{font-size:.75rem;font-weight:700;color:var(--ink)}
         .chip{height:30px;padding:0 13px;border-radius:100px;border:1px solid var(--line-2,#DEDBD3);background:var(--white);font-size:.8rem;font-weight:600;color:var(--body);cursor:pointer;transition:.15s}
         .chip:hover{border-color:var(--amber-ink);background:var(--wash);color:var(--amber-ink)}
 
@@ -7958,30 +7986,30 @@ function Dashboard() {
         .glance{display:grid;grid-template-columns:repeat(4,1fr);background:var(--white);border:1px solid var(--line);border-radius:16px;overflow:hidden}
         .gl{padding:17px 20px;border-right:1px solid var(--line)}
         .gl:last-child{border-right:none}
-        .gl__l{font-size:.77rem;color:var(--faint-2,#9A968E);font-weight:600}
+        .gl__l{font-size:.77rem;color:var(--ink);font-weight:600}
         .gl__v{margin-top:7px;font-size:1.46rem;font-weight:800;letter-spacing:-.04em;color:var(--ink);line-height:1;font-variant-numeric:tabular-nums}
-        .gl__d{margin-top:8px;font-size:.73rem;font-weight:600;display:inline-flex;align-items:center;gap:4px;color:var(--faint-2,#9A968E)}
+        .gl__d{margin-top:8px;font-size:.73rem;font-weight:600;display:inline-flex;align-items:center;gap:4px;color:var(--ink)}
         .gl__d.up{color:var(--ok)} .gl__d svg{width:11px;height:11px}
 
         .rc{background:var(--white);border:1px solid var(--line);border-radius:20px;overflow:hidden}
         .rc__h{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:17px 22px;border-bottom:1px solid var(--line)}
         .rc__h h2{font-size:1.02rem;font-weight:800;letter-spacing:-.028em;color:var(--ink)}
-        .link{display:inline-flex;align-items:center;gap:5px;font-size:.82rem;font-weight:700;color:var(--muted);text-decoration:none}
+        .link{display:inline-flex;align-items:center;gap:5px;font-size:.82rem;font-weight:700;color:var(--ink);text-decoration:none}
         .link:hover{color:var(--ink)} .link svg{width:14px;height:14px}
         .rc .row{display:grid;grid-template-columns:auto 1fr auto auto auto auto;align-items:center;gap:16px;padding:14px 22px;border-bottom:1px solid var(--line);transition:background .14s}
         .rc .row:last-child{border-bottom:none}
         .rc .row:hover{background:var(--paper,#FAF9F6)}
         .row__i{width:36px;height:36px;border-radius:10px;background:var(--wash);color:var(--amber-ink);display:grid;place-items:center;font-size:.8rem;font-weight:800}
         .row__n{display:block;font-size:.93rem;font-weight:700;color:var(--ink);letter-spacing:-.01em}
-        .row__m{display:block;font-size:.77rem;color:var(--faint-2,#9A968E);margin-top:1px}
+        .row__m{display:block;font-size:.77rem;color:var(--ink);margin-top:1px}
         .spark{display:flex;align-items:flex-end;gap:3px;height:24px}
         .spark span{width:5px;border-radius:2px;background:var(--line-2,#DEDBD3)}
         .spark span.hot{background:var(--yellow)}
-        .trend{font-size:.81rem;font-weight:800;font-variant-numeric:tabular-nums;min-width:40px;text-align:right;color:var(--faint-2,#9A968E)}
+        .trend{font-size:.81rem;font-weight:800;font-variant-numeric:tabular-nums;min-width:40px;text-align:right;color:var(--ink)}
         .trend.up{color:var(--ok)}
         .row__k{text-align:right;min-width:48px}
         .row__kv{display:block;font-size:1rem;font-weight:800;color:var(--ink);line-height:1;font-variant-numeric:tabular-nums}
-        .row__kl{display:block;font-size:.65rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--faint-2,#9A968E);margin-top:3px}
+        .row__kl{display:block;font-size:.65rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--ink);margin-top:3px}
 
         @media (max-width:1080px){
           .glance{grid-template-columns:repeat(2,1fr)}
@@ -8189,17 +8217,29 @@ var MODES = [{
 	label: "Your brand",
 	icon: Store,
 	prompt: "Which brand do you want to research?",
-	sample: "rhode skin"
+	sample: "rhode skin",
+	samples: [
+		"rhode skin",
+		"rare beauty",
+		"summer fridays"
+	]
 }, {
 	key: "product",
 	label: "A product",
 	icon: Search,
 	prompt: "Which product do you want to track?",
-	sample: "lip oil"
+	sample: "lip oil",
+	samples: [
+		"lip oil",
+		"blush stick",
+		"collagen mask"
+	]
 }];
 function Hero({ onStart }) {
 	const [type, setType] = useState("brand");
 	const [value, setValue] = useState("");
+	const [isFocused, setIsFocused] = useState(false);
+	const [typingText, setTypingText] = useState("");
 	const [subjectSuggestions, setSubjectSuggestions] = useState([]);
 	const [activeSuggestion, setActiveSuggestion] = useState(-1);
 	const [showSuggestions, setShowSuggestions] = useState(false);
@@ -8223,6 +8263,43 @@ function Hero({ onStart }) {
 		document.addEventListener("mousedown", close);
 		return () => document.removeEventListener("mousedown", close);
 	}, []);
+	useEffect(() => {
+		if (value) {
+			setTypingText("");
+			return;
+		}
+		const samples = mode.samples?.length ? mode.samples : [mode.sample];
+		let sampleIndex = 0;
+		let charIndex = 0;
+		let deleting = false;
+		let timeoutId;
+		const tick = () => {
+			const current = samples[sampleIndex] ?? "";
+			if (!deleting) {
+				charIndex += 1;
+				setTypingText(current.slice(0, charIndex));
+				if (charIndex >= current.length) {
+					deleting = true;
+					timeoutId = window.setTimeout(tick, 1300);
+					return;
+				}
+				timeoutId = window.setTimeout(tick, 75);
+				return;
+			}
+			charIndex -= 1;
+			setTypingText(current.slice(0, Math.max(0, charIndex)));
+			if (charIndex <= 0) {
+				deleting = false;
+				sampleIndex = (sampleIndex + 1) % samples.length;
+				timeoutId = window.setTimeout(tick, 260);
+				return;
+			}
+			timeoutId = window.setTimeout(tick, 38);
+		};
+		setTypingText("");
+		timeoutId = window.setTimeout(tick, 360);
+		return () => window.clearTimeout(timeoutId);
+	}, [mode, value]);
 	const submit = (e) => {
 		e?.preventDefault();
 		if (!query) {
@@ -8301,7 +8378,11 @@ function Hero({ onStart }) {
 										setValue(e.target.value);
 										setShowSuggestions(true);
 									},
-									onFocus: () => setShowSuggestions(true),
+									onFocus: () => {
+										setIsFocused(true);
+										setShowSuggestions(true);
+									},
+									onBlur: () => setIsFocused(false),
 									onKeyDown: (event) => {
 										if (!visibleSuggestions.length) return;
 										if (event.key === "ArrowDown") {
@@ -8323,10 +8404,15 @@ function Hero({ onStart }) {
 											setActiveSuggestion(-1);
 										}
 									},
-									placeholder: mode.sample,
+									placeholder: "",
 									"aria-label": `Type your ${type === "product" ? "product" : "brand name"}`,
 									"aria-expanded": showSuggestions && visibleSuggestions.length > 0,
 									"aria-haspopup": "listbox"
+								}),
+								!value && /* @__PURE__ */ jsx("span", {
+									className: `box__ghost${isFocused ? " is-focused" : ""}`,
+									"aria-hidden": "true",
+									children: typingText || mode.sample
 								}),
 								showSuggestions && visibleSuggestions.length > 0 && /* @__PURE__ */ jsxs("div", {
 									className: "hero-suggest",
@@ -13194,16 +13280,23 @@ function DetailScreen({ search, isAuthenticated = false, billing: billing$2, ref
 									style: { background: gradientFor(winner.handle ?? winner.id) }
 								}),
 								/* @__PURE__ */ jsxs("div", {
+									className: "rs-wcreator__copy",
 									style: {
 										flex: 1,
 										minWidth: 0
 									},
-									children: [/* @__PURE__ */ jsx("div", {
-										className: "rs-wc__n",
-										children: winner.handle || winner.username || "—"
-									}), /* @__PURE__ */ jsxs("div", {
+									children: [/* @__PURE__ */ jsxs("div", {
+										className: "rs-wcreator__topline",
+										children: [/* @__PURE__ */ jsx("div", {
+											className: "rs-wc__n",
+											children: winner.handle || winner.username || "—"
+										}), /* @__PURE__ */ jsx("div", {
+											className: "rs-wc__s",
+											children: winner.uploaded_at ? formatDate$1(winner.uploaded_at) : winner.posted_at ? formatDate$1(winner.posted_at) : ""
+										})]
+									}), /* @__PURE__ */ jsx("div", {
 										className: "rs-wc__s",
-										children: [winner.posted_at ? formatDate$1(winner.posted_at) : "", " on TikTok"]
+										children: "on TikTok"
 									})]
 								}),
 								/* @__PURE__ */ jsxs("span", {
@@ -13234,7 +13327,8 @@ function DetailScreen({ search, isAuthenticated = false, billing: billing$2, ref
 								/* @__PURE__ */ jsxs("span", { children: [Icons.Eye, /* @__PURE__ */ jsx("b", { children: compact(winner.views) })] }),
 								/* @__PURE__ */ jsxs("span", { children: [Icons.Heart, /* @__PURE__ */ jsx("b", { children: compact(winner.likes) })] }),
 								/* @__PURE__ */ jsxs("span", { children: [Icons.Comment, /* @__PURE__ */ jsx("b", { children: compact(winner.comments) })] }),
-								/* @__PURE__ */ jsxs("span", { children: [Icons.Share, /* @__PURE__ */ jsx("b", { children: compact(winner.shares) })] })
+								/* @__PURE__ */ jsxs("span", { children: [Icons.Share, /* @__PURE__ */ jsx("b", { children: compact(winner.shares) })] }),
+								Number(winner.followers ?? 0) > 0 && /* @__PURE__ */ jsxs("span", { children: [Icons.User, /* @__PURE__ */ jsx("b", { children: compact(winner.followers) })] })
 							]
 						}),
 						/* @__PURE__ */ jsx(VideoTags, { video: winner }),
@@ -14057,18 +14151,22 @@ function OutlierCard$1({ video, runBucket = "old", expanded, locked = false, onT
 								flex: "none"
 							}
 						}),
-						/* @__PURE__ */ jsxs("div", {
+						/* @__PURE__ */ jsx("div", {
+							className: "rs-oc__copy",
 							style: {
 								flex: 1,
 								minWidth: 0
 							},
-							children: [/* @__PURE__ */ jsx("div", {
-								className: "rs-oc__h",
-								children: video.handle || video.username || "—"
-							}), /* @__PURE__ */ jsx("div", {
-								className: "rs-oc__s",
-								children: video.posted_at ? formatDate$1(video.posted_at) : ""
-							})]
+							children: /* @__PURE__ */ jsxs("div", {
+								className: "rs-oc__topline",
+								children: [/* @__PURE__ */ jsx("div", {
+									className: "rs-oc__h",
+									children: video.handle || video.username || "—"
+								}), /* @__PURE__ */ jsx("div", {
+									className: "rs-oc__s",
+									children: video.uploaded_at ? formatDate$1(video.uploaded_at) : video.posted_at ? formatDate$1(video.posted_at) : ""
+								})]
+							})
 						}),
 						video.tiktok_url && /* @__PURE__ */ jsx("a", {
 							href: video.tiktok_url,
@@ -14090,7 +14188,8 @@ function OutlierCard$1({ video, runBucket = "old", expanded, locked = false, onT
 						/* @__PURE__ */ jsxs("span", { children: [Icons.Eye, compact(video.views)] }),
 						/* @__PURE__ */ jsxs("span", { children: [Icons.Heart, compact(video.likes)] }),
 						/* @__PURE__ */ jsxs("span", { children: [Icons.Comment, compact(video.comments)] }),
-						/* @__PURE__ */ jsxs("span", { children: [Icons.Share, compact(video.shares)] })
+						/* @__PURE__ */ jsxs("span", { children: [Icons.Share, compact(video.shares)] }),
+						Number(video.followers ?? 0) > 0 && /* @__PURE__ */ jsxs("span", { children: [Icons.User, compact(video.followers)] })
 					]
 				}),
 				expanded && !locked && /* @__PURE__ */ jsx("div", {
@@ -14385,7 +14484,7 @@ var scopedCss = `
 .rs-bhead__l{width:54px;height:54px;border-radius:15px;display:grid;place-items:center;color:#fff;font-weight:800;font-size:1.05rem;flex:none;text-shadow:0 1px 3px rgba(0,0,0,.15);box-shadow:inset 0 1px 0 rgba(255,255,255,.28),0 12px 24px -16px rgba(154,107,0,.55)}
 .rs-bhead__actions{margin-left:auto;display:flex;align-items:center;justify-content:flex-end;gap:10px;flex:none;position:relative}
 .rs-h1{font-size:1.65rem;font-weight:850;letter-spacing:-.04em;color:var(--ink);line-height:1.02;text-wrap:balance}
-.rs-bmeta{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:8px;font-size:.82rem;color:var(--faint-2,#9A968E);min-width:0;max-width:100%}
+.rs-bmeta{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:8px;font-size:.82rem;color:var(--ink);min-width:0;max-width:100%}
 .rs-bbadge{font-size:.64rem;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--amber-ink);background:var(--wash);padding:5px 9px;border-radius:999px;border:1px solid #f2e4b8}
 .rs-sep{width:3px;height:3px;border-radius:50%;background:#CFCCC3}
 .rs-handle{display:inline-flex;align-items:center;gap:5px;min-width:0;padding:4px 10px;border-radius:999px;background:var(--paper);border:1px solid var(--line);font-weight:600}
@@ -14454,7 +14553,7 @@ var scopedCss = `
 .rs-ai__h{display:flex;align-items:center;gap:9px;margin-bottom:10px}
 .rs-ai__h svg{width:19px;height:19px;color:var(--amber-ink)}
 .rs-ai__t{font-size:.72rem;font-weight:800;letter-spacing:.13em;text-transform:uppercase;color:var(--amber-ink)}
-.rs-ai__when{margin-left:auto;font-size:.75rem;color:var(--faint,#7C7972)}
+.rs-ai__when{margin-left:auto;font-size:.75rem;color:var(--ink)}
 .rs-ai__hint{display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:.78rem;font-weight:700;color:var(--amber-ink)}
 .rs-ai__chev{display:inline-flex;align-items:center;justify-content:center;transition:transform .18s ease}
 .rs-ai__chev svg{width:14px;height:14px;color:currentColor}
@@ -14467,15 +14566,15 @@ var scopedCss = `
 .rs-sh{display:flex;align-items:baseline;justify-content:space-between;gap:16px;margin:38px 0 14px;flex-wrap:wrap}
 .rs-sh h2{font-size:1.06rem;font-weight:800;letter-spacing:-.028em;color:var(--ink);display:flex;align-items:center;gap:11px}
 .rs-sh h2::before{content:'';width:4px;height:16px;border-radius:2px;background:var(--yellow)}
-.rs-note{font-size:.82rem;color:var(--faint-2,#9A968E)}
+.rs-note{font-size:.82rem;color:var(--ink)}
 
 .rs-stats{display:grid;grid-template-columns:repeat(4,1fr);background:var(--white);border:1px solid var(--line);border-radius:16px;overflow:hidden;margin-top:18px;min-width:0;max-width:100%}
 .rs-stt{padding:17px 20px;border-right:1px solid var(--line);display:flex;flex-direction:column;gap:11px}
 .rs-stt:last-child{border-right:none}
-.rs-stt__k{font-size:.73rem;color:var(--faint-2,#9A968E);font-weight:600}
+.rs-stt__k{font-size:.73rem;color:var(--ink);font-weight:600}
 .rs-stt__v{font-size:1.72rem;font-weight:800;letter-spacing:-.05em;color:var(--ink);line-height:1;font-variant-numeric:tabular-nums}
-.rs-stt__v small{font-size:.52em;font-weight:700;color:var(--faint-2,#9A968E);margin-left:1px}
-.rs-stt__d{font-size:.75rem;color:var(--faint-2,#9A968E);font-weight:500;display:inline-flex;align-items:center;gap:5px}
+.rs-stt__v small{font-size:.52em;font-weight:700;color:var(--ink);margin-left:1px}
+.rs-stt__d{font-size:.75rem;color:var(--ink);font-weight:500;display:inline-flex;align-items:center;gap:5px}
 .rs-stt__d.up{color:var(--ok);font-weight:600} .rs-stt__d svg{width:11px;height:11px}
 .rs-stt.hi .rs-stt__v{color:var(--amber-ink)}
 
@@ -14486,12 +14585,12 @@ var scopedCss = `
 .rs-bhead__l{width:50px;height:50px;border-radius:14px;font-size:1rem;box-shadow:none}
 .rs-bhead__actions .rs-iconbtn{width:46px;height:46px;border-radius:14px;border-color:#E6DFD1;box-shadow:0 2px 6px rgba(36,25,0,.04)}
 .rs-h1{font-size:2rem;line-height:.98}
-.rs-bmeta{margin-top:6px;gap:10px;font-size:.95rem;color:#978D7B}
+.rs-bmeta{margin-top:6px;gap:10px;font-size:.95rem;color:var(--ink)}
 .rs-bbadge{font-size:.68rem;padding:4px 10px}
-.rs-handle{padding:0;border:0;background:transparent;border-radius:0;font-weight:500;color:#978D7B}
+.rs-handle{padding:0;border:0;background:transparent;border-radius:0;font-weight:500;color:var(--ink)}
 .rs-handle span:first-child{max-width:220px}
 .rs-ed{width:18px;height:18px}
-.rs-bsub{margin-top:10px;gap:8px;font-size:.95rem;color:#978D7B}
+.rs-bsub{margin-top:10px;gap:8px;font-size:.95rem;color:var(--ink)}
 .rs-bline{gap:0}
 .rs-bline span+span::before{margin:0 10px 0 9px}
 .rs-bline__k{font-weight:700;color:#B28D28}
@@ -14500,15 +14599,15 @@ var scopedCss = `
 .rs-ai__h{margin-bottom:12px}
 .rs-ai__h svg{width:16px;height:16px}
 .rs-ai__t{font-size:.84rem;letter-spacing:.15em}
-.rs-ai__when{font-size:.92rem;color:#8F836D}
+.rs-ai__when{font-size:.92rem;color:var(--ink)}
 .rs-ai__list{gap:10px}
 .rs-ai__list li{padding-left:18px;font-size:1rem;line-height:1.52}
 .rs-ai__list li::before{left:2px;top:11px;width:7px;height:7px}
 .rs-stats{margin-top:18px;border-radius:18px;border-color:#E5DED2;grid-template-columns:repeat(4,minmax(0,1fr))}
 .rs-stt{padding:18px 20px 17px;gap:10px}
-.rs-stt__k{font-size:.9rem;color:#968A75}
+.rs-stt__k{font-size:.9rem;color:var(--ink)}
 .rs-stt__v{font-size:2.15rem;letter-spacing:-.06em}
-.rs-stt__d{font-size:.95rem;color:#968A75}
+.rs-stt__d{font-size:.95rem;color:var(--ink)}
 }
 
 .rs-winner{position:relative;display:grid;grid-template-columns:262px 1fr;gap:22px;background:var(--white);border:1px solid var(--line);border-radius:20px;padding:20px;min-width:0;max-width:100%;overflow:hidden}
@@ -14540,13 +14639,15 @@ var scopedCss = `
 
 .rs-wdet{min-width:0;display:flex;flex-direction:column}
 .rs-wcreator{display:flex;align-items:center;gap:10px}
+.rs-wcreator__copy{min-width:0;flex:1}
+.rs-wcreator__topline{display:flex;align-items:baseline;gap:8px}
 .rs-av{width:34px;height:34px;border-radius:50%;flex:none}
-.rs-wc__n{font-size:.92rem;font-weight:800;color:var(--ink)}
-.rs-wc__s{font-size:.76rem;color:var(--faint-2,#9A968E)}
+.rs-wc__n{font-size:.92rem;font-weight:800;color:var(--ink);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rs-wc__s{font-size:.76rem;color:var(--ink);white-space:nowrap}
 .rs-wcap{font-size:.92rem;color:var(--body);line-height:1.5;margin:13px 0}
 .rs-wmets{display:flex;flex-wrap:wrap;gap:24px;padding:13px 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line);margin:13px 0}
-.rs-wmets span{display:inline-flex;align-items:center;gap:7px;font-size:.9rem;color:var(--faint-2,#9A968E);font-weight:500}
-.rs-wmets svg{width:16px;height:16px;color:var(--faint-2,#9A968E);flex:none}
+.rs-wmets span{display:inline-flex;align-items:center;gap:7px;font-size:.9rem;color:var(--ink);font-weight:500}
+.rs-wmets svg{width:16px;height:16px;color:var(--ink);flex:none}
 .rs-wmets b{font-weight:700;color:var(--ink);font-variant-numeric:tabular-nums}
 .rs-tags{display:flex;flex-wrap:wrap;gap:7px;margin:13px 0}
 .rs-tag{font-size:.76rem;font-weight:600;color:var(--amber-ink);background:var(--wash);border:1px solid #F2E4B8;border-radius:100px;padding:4px 11px}
@@ -14619,12 +14720,14 @@ var scopedCss = `
 .rs-oc .rs-vf{border-radius:0}
 .rs-oc__b{padding:12px 13px;display:flex;flex-direction:column;flex:1;gap:0}
 .rs-oc__cr{display:flex;align-items:center;gap:8px}
+.rs-oc__copy{min-width:0;flex:1}
+.rs-oc__topline{display:flex;align-items:baseline;gap:8px}
 .rs-oc__h{font-size:.82rem;font-weight:800;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.rs-oc__s{font-size:.7rem;color:var(--faint-2,#9A968E)}
+.rs-oc__s{font-size:.7rem;color:var(--ink);white-space:nowrap}
 .rs-oc__c{font-size:.8rem;color:var(--muted);line-height:1.4;margin-top:8px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .rs-oc__st{display:flex;justify-content:space-between;gap:6px;margin-top:11px}
-.rs-oc__st span{display:inline-flex;align-items:center;gap:5px;font-size:.76rem;color:var(--faint-2,#9A968E);font-weight:600;font-variant-numeric:tabular-nums}
-.rs-oc__st svg{width:13px;height:13px;color:var(--faint-2,#9A968E);flex:none}
+.rs-oc__st span{display:inline-flex;align-items:center;gap:5px;font-size:.76rem;color:var(--ink);font-weight:600;font-variant-numeric:tabular-nums}
+.rs-oc__st svg{width:13px;height:13px;color:var(--ink);flex:none}
 .rs-oc__panel{margin-top:10px}
 .rs-modalback{position:fixed;inset:0;z-index:130;display:flex;align-items:center;justify-content:center;padding:16px;background:rgba(20,15,0,.34);backdrop-filter:blur(3px)}
 .rs-toast{position:fixed;right:18px;bottom:18px;z-index:140;display:flex;align-items:center;gap:12px;max-width:min(420px,calc(100vw - 32px));padding:14px 16px;border-radius:16px;border:1px solid var(--line);background:#fff;box-shadow:0 18px 40px rgba(42,33,20,.18)}
@@ -14705,7 +14808,7 @@ var scopedCss = `
 .rs-weekmodal{width:min(100%,760px);max-height:min(80vh,720px);display:flex;flex-direction:column;border-radius:22px;background:#fffdf8;border:1px solid #F1E2BE;box-shadow:0 28px 60px rgba(58,44,14,.18);overflow:hidden}
 .rs-weekmodal__head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;padding:20px 22px;border-bottom:1px solid #F1E2BE;background:linear-gradient(180deg,#FFFDF6 0%,#FFF8EA 100%)}
 .rs-weekmodal__head h3{font-size:1.05rem;font-weight:800;letter-spacing:-.03em;color:var(--ink)}
-.rs-weekmodal__head p{margin-top:4px;font-size:.84rem;color:#7C704D}
+.rs-weekmodal__head p{margin-top:4px;font-size:.84rem;color:var(--ink)}
 .rs-weekmodal__close{width:34px;height:34px;flex:none;border-radius:999px;border:1px solid #E8D9B3;background:#fff;color:#8A7445;font-size:1.1rem;cursor:pointer}
 .rs-weekmodal__list{padding:14px;overflow:auto;display:flex;flex-direction:column;gap:10px}
 .rs-weekmodal__cue{display:inline-flex;align-items:center;gap:6px;margin-top:10px;padding:4px 9px;border-radius:7px;border:1px solid #F0DFB4;background:#fff;font-size:.72rem;font-weight:700;color:#A87700}
@@ -14744,7 +14847,7 @@ var scopedCss = `
 .rs-hcell{height:20px;border-radius:4px;background:var(--paper)}
 .rs-hcell.has-posts{cursor:help}
 .rs-heat-tooltip{position:fixed;z-index:60;pointer-events:none;padding:6px 9px;border-radius:7px;background:#1F1D1A;color:#fff;font-size:.7rem;font-weight:700;white-space:nowrap;box-shadow:0 4px 12px rgba(0,0,0,.2)}
-.rs-hlegend{display:flex;align-items:center;gap:6px;margin-top:14px;font-size:.72rem;color:var(--faint-2,#9A968E);font-weight:600}
+.rs-hlegend{display:flex;align-items:center;gap:6px;margin-top:14px;font-size:.72rem;color:var(--ink);font-weight:600}
 .rs-hlegend span{width:16px;height:12px;border-radius:3px}
 .rs-insightbox{display:flex;gap:11px;margin-top:16px;padding:14px 16px;background:var(--wash);border:1px solid #F2E4B8;border-radius:16px}
 .rs-insightbox svg{width:18px;height:18px;color:var(--amber-ink);flex:none;margin-top:1px}
@@ -14754,13 +14857,13 @@ var scopedCss = `
 .rs-two{display:grid;grid-template-columns:1fr 1fr;gap:14px;min-width:0;max-width:100%}
 .rs-dcard{background:var(--white);border:1px solid var(--line);border-radius:20px;padding:20px;min-width:0;max-width:100%;overflow:hidden}
 .rs-dcard h3{font-size:.95rem;font-weight:800;color:var(--ink);letter-spacing:-.028em}
-.rs-sub{font-size:.78rem;color:var(--faint-2,#9A968E);margin-top:2px}
+.rs-sub{font-size:.78rem;color:var(--ink);margin-top:2px}
 .rs-owk{display:flex;align-items:flex-end;gap:12px;height:120px;margin-top:20px}
 .rs-owk__col{flex:1;display:flex;flex-direction:column;align-items:center;gap:7px;height:100%;justify-content:flex-end}
 .rs-owk__bar{width:100%;max-width:34px;border-radius:7px 7px 0 0;background:var(--a2);transition:.2s}
 .rs-owk__col.peak .rs-owk__bar{background:var(--yellow)}
 .rs-owk__v{font-size:.78rem;font-weight:800;color:var(--ink)}
-.rs-owk__x{font-size:.7rem;color:var(--faint-2,#9A968E);font-weight:600}
+.rs-owk__x{font-size:.7rem;color:var(--ink);font-weight:600}
 .rs-dist{display:flex;flex-direction:column;gap:11px;margin-top:18px}
 .rs-drow{display:grid;grid-template-columns:52px 1fr 30px;align-items:center;gap:12px}
 .rs-drow__lbl{font-size:.8rem;font-weight:700;color:var(--muted)}
@@ -14771,7 +14874,7 @@ var scopedCss = `
 .rs-scrollp{position:relative;background:var(--white);border:1px solid var(--line);border-radius:20px;overflow:hidden;min-width:0;max-width:100%}
 .rs-scrollp__hd{display:flex;align-items:center;justify-content:space-between;padding:16px 20px 10px}
 .rs-scrollp__hd h3{font-size:.95rem;font-weight:800;color:var(--ink)}
-.rs-scrollp__cnt{font-size:.75rem;color:var(--faint-2,#9A968E);font-weight:600}
+.rs-scrollp__cnt{font-size:.75rem;color:var(--ink);font-weight:600}
 .rs-scrollp__list{max-height:232px;overflow-y:auto;padding:2px 20px 20px;scrollbar-width:thin;scrollbar-color:var(--line-2) transparent}
 .rs-scrollp__list::-webkit-scrollbar{width:7px}
 .rs-scrollp__list::-webkit-scrollbar-thumb{background:var(--line-2,#DEDBD3);border-radius:100px;border:2px solid var(--white)}
@@ -14833,9 +14936,9 @@ var scopedCss = `
 .rs-stt__d{font-size:.67rem;line-height:1.25}
 .rs-stt__d svg{width:10px;height:10px}
 .rs-handle span:first-child{max-width:120px}
-.rs-oc__st{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
-.rs-oc__st span{min-width:0;justify-content:center;font-size:.72rem;gap:4px}
-.rs-oc__st svg{width:12px;height:12px}
+.rs-oc__st{display:flex;justify-content:space-between;gap:8px;flex-wrap:nowrap}
+.rs-oc__st span{min-width:0;justify-content:flex-start;font-size:.68rem;gap:3px;flex:1 1 0}
+.rs-oc__st svg{width:11px;height:11px}
 .rs-oc__an{gap:6px}
 .rs-oc__an .rs-analyze{padding:0 12px;font-size:.78rem}
 .rs-oc__an .rs-analyze__icon svg{width:13px;height:13px}
@@ -15909,17 +16012,20 @@ function WinnerVideo({ video, onToggleBookmark, onAnalyze, bookmarking = false, 
 							className: "av"
 						}),
 						/* @__PURE__ */ jsxs("div", {
+							className: "creator-copy",
 							style: { minWidth: 0 },
-							children: [/* @__PURE__ */ jsx("div", {
-								className: "cn",
-								children: video.handle ?? video.creator_name
+							children: [/* @__PURE__ */ jsxs("div", {
+								className: "creator-topline",
+								children: [/* @__PURE__ */ jsx("div", {
+									className: "cn",
+									children: video.handle ?? video.creator_name
+								}), /* @__PURE__ */ jsx("div", {
+									className: "cs",
+									children: video.uploaded_at ? relativeTime(video.uploaded_at) : "date unknown"
+								})]
 							}), /* @__PURE__ */ jsx("div", {
 								className: "cs",
-								children: [
-									video.uploaded_at ? relativeTime(video.uploaded_at) : "date unknown",
-									video.followers > 0 ? `${compactNumber(video.followers)} followers` : null,
-									"TikTok"
-								].filter(Boolean).join(" · ")
+								children: "TikTok"
 							})]
 						}),
 						duration && /* @__PURE__ */ jsx("span", {
@@ -15949,6 +16055,11 @@ function WinnerVideo({ video, onToggleBookmark, onAnalyze, bookmarking = false, 
 							/* @__PURE__ */ jsx(Share, {}),
 							" ",
 							compactNumber(video.shares)
+						] }),
+						video.followers > 0 && /* @__PURE__ */ jsxs("span", { children: [
+							/* @__PURE__ */ jsx(User, {}),
+							" ",
+							compactNumber(video.followers)
 						] }),
 						rate && /* @__PURE__ */ jsxs("span", { children: [
 							/* @__PURE__ */ jsx(Trend, {}),
@@ -16047,15 +16158,19 @@ function OutlierCard({ video, rank, onToggleBookmark, onAnalyze, bookmarking = f
 							video,
 							className: "av"
 						}),
-						/* @__PURE__ */ jsxs("div", {
+						/* @__PURE__ */ jsx("div", {
+							className: "bbwho__copy",
 							style: { minWidth: 0 },
-							children: [/* @__PURE__ */ jsx("div", {
-								className: "h2n",
-								children: video.handle ?? video.creator_name
-							}), /* @__PURE__ */ jsx("div", {
-								className: "sub",
-								children: [video.uploaded_at ? relativeTime(video.uploaded_at) : "date unknown", video.followers > 0 ? `${compactNumber(video.followers)} followers` : null].filter(Boolean).join(" · ")
-							})]
+							children: /* @__PURE__ */ jsxs("div", {
+								className: "bbwho__topline",
+								children: [/* @__PURE__ */ jsx("div", {
+									className: "h2n",
+									children: video.handle ?? video.creator_name
+								}), /* @__PURE__ */ jsx("div", {
+									className: "sub",
+									children: video.uploaded_at ? relativeTime(video.uploaded_at) : "date unknown"
+								})]
+							})
 						}),
 						video.post_url && /* @__PURE__ */ jsx("a", {
 							href: video.post_url,
@@ -16092,6 +16207,11 @@ function OutlierCard({ video, rank, onToggleBookmark, onAnalyze, bookmarking = f
 							/* @__PURE__ */ jsx(Share, {}),
 							" ",
 							compactNumber(video.shares)
+						] }),
+						video.followers > 0 && /* @__PURE__ */ jsxs("span", { children: [
+							/* @__PURE__ */ jsx(User, {}),
+							" ",
+							compactNumber(video.followers)
 						] }),
 						rate && /* @__PURE__ */ jsxs("span", { children: [
 							/* @__PURE__ */ jsx(Trend, {}),
@@ -17066,6 +17186,10 @@ function Free({ phrase = "", type = "brand", error = null }) {
 										/* @__PURE__ */ jsxs("p", {
 											className: "ff-count",
 											children: [/* @__PURE__ */ jsx("b", { children: selected.length }), " selected · all covered by your one free search."]
+										}),
+										message && /* @__PURE__ */ jsx("p", {
+											className: "ff-error",
+											children: message
 										})
 									]
 								}),
@@ -17140,13 +17264,18 @@ function Free({ phrase = "", type = "brand", error = null }) {
 										type: "button",
 										className: "ff-back",
 										onClick: () => window.location.assign("/"),
+										disabled: saving,
 										children: "Back"
 									}), /* @__PURE__ */ jsxs("button", {
 										type: "button",
 										className: "ff-run",
-										disabled: loading || selected.length === 0,
-										onClick: () => setScreen("gate"),
-										children: ["Run my free search ", /* @__PURE__ */ jsx(Arrow, {})]
+										disabled: loading || selected.length === 0 || saving,
+										onClick: goLogin,
+										children: [
+											saving && pendingRoute === "login" ? "Opening sign in…" : "Run my free search",
+											" ",
+											/* @__PURE__ */ jsx(Arrow, {})
+										]
 									})]
 								})
 							]
