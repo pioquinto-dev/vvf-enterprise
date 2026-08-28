@@ -9,9 +9,9 @@ import { Arrow, Bookmark, Search, Chevron, Plus, Dots, Play } from '../../landin
 import { savedSearch as api, untrackSearch } from '../../landing/flow/api.js';
 
 const FILTER_LABELS = {
-  'brand-group': 'Brand searches',
-  brand: 'Brand searches',
-  product: 'Product searches',
+  'brand-group': 'Brand',
+  brand: 'Brand',
+  product: 'Product',
 };
 
 const SORT_OPTIONS = {
@@ -31,13 +31,17 @@ const ANALYSIS_STATUS_LABELS = {
   complete: 'Ready',
   processing: 'Processing',
   failed: 'Failed',
-  idle: 'Queued',
 };
 
 const ANALYSIS_SORT = {
-  recent: 'Most recent',
-  oldest: 'Oldest first',
+  recent: 'Most Recent',
+  oldest: 'Oldest First',
+  outlier: 'Outlier Score',
+  az: 'A-Z (by title)',
+  za: 'Z-A (by title)',
 };
+
+const ANALYSIS_PAGE_SIZE = 20;
 
 function formatAnalysisDate(value) {
   if (!value) return 'Waiting for analysis';
@@ -53,6 +57,19 @@ function formatAnalysisDate(value) {
   });
 }
 
+function truncateAnalysisTitle(value, limit = 50) {
+  const text = String(value || '').trim();
+  if (text.length <= limit) return text;
+  return `${text.slice(0, limit).trimEnd()}......`;
+}
+
+function analysisAvatarLabel(video) {
+  const source = String(video?.handle || video?.creator_name || video?.username || '?')
+    .replace(/^@/, '')
+    .trim();
+  return source.slice(0, 2).toUpperCase() || '?';
+}
+
 function compareDates(a, b) {
   return (b ? new Date(b).getTime() : 0) - (a ? new Date(a).getTime() : 0);
 }
@@ -66,6 +83,103 @@ function Sel({ value, onChange, ariaLabel, children }) {
       </select>
       <Chevron />
     </span>
+  );
+}
+
+function AnalysisHistoryRow({ entry, href, statusLabel, searchNames }) {
+  const [thumbBroken, setThumbBroken] = useState(false);
+  const [expanded, setExpanded] = useState(false);
+  const title = expanded
+    ? String(entry.video?.title || entry.video?.handle || 'Analyzed video')
+    : truncateAnalysisTitle(entry.video?.title || entry.video?.handle || 'Analyzed video');
+  const titleExpandable = String(entry.video?.title || '').trim().length > 50;
+
+  return (
+    <Link
+      href={href}
+      className="row"
+      style={{ alignItems: 'stretch', textDecoration: 'none' }}
+    >
+      <div
+        style={{
+          width: 88,
+          minWidth: 88,
+          borderRadius: 18,
+          overflow: 'hidden',
+          background: 'var(--panel)',
+          border: '1px solid var(--line)',
+        }}
+      >
+        {entry.video?.thumbnail_url && !thumbBroken ? (
+          <img
+            src={entry.video.thumbnail_url}
+            alt={entry.video?.title ?? 'Video thumbnail'}
+            onError={() => setThumbBroken(true)}
+            onLoad={(event) => {
+              if (!event.currentTarget.naturalWidth || !event.currentTarget.naturalHeight) {
+                setThumbBroken(true);
+              }
+            }}
+            style={{ width: '100%', height: '100%', minHeight: 88, objectFit: 'cover' }}
+          />
+        ) : (
+          <div
+            style={{
+              minHeight: 88,
+              display: 'grid',
+              placeItems: 'center',
+              color: 'var(--amber-ink)',
+              background: 'linear-gradient(160deg, #f6ebcf, #e3c47a)',
+              fontSize: 24,
+              fontWeight: 800,
+              letterSpacing: '-0.03em',
+            }}
+            aria-hidden="true"
+          >
+            {analysisAvatarLabel(entry.video)}
+          </div>
+        )}
+      </div>
+
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div className="row__t" style={{ marginBottom: 6, gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+          <span style={{ minWidth: 0, overflowWrap: 'anywhere' }}>{title}</span>
+          <span className={`pill ${
+            entry.status === 'complete'
+              ? 'pill--ok'
+              : entry.status === 'failed'
+                ? 'pill--bad'
+                : 'pill--run'
+          }`}>
+            <i />
+            {statusLabel}
+          </span>
+        </div>
+        {titleExpandable && (
+          <button
+            type="button"
+            className="link"
+            onClick={(event) => {
+              event.preventDefault();
+              event.stopPropagation();
+              setExpanded((current) => !current);
+            }}
+            style={{ marginBottom: 4 }}
+          >
+            {expanded ? 'Show less' : 'Show more'}
+          </button>
+        )}
+        <div className="row__m">
+          {entry.video?.handle || entry.video?.creator_name || 'Unknown creator'}
+          {searchNames.length > 0 ? ` • ${searchNames.join(', ')}` : ''}
+        </div>
+        <div className="row__m" style={{ marginTop: 6 }}>
+          {entry.status === 'complete' ? 'Analyzed' : entry.status === 'failed' ? 'Last updated' : 'Started'}{' '}
+          {formatAnalysisDate(entry.analyzed_at ?? entry.updated_at)}
+          {!entry.counts_toward_quota ? ' • Auto analysis' : ''}
+        </div>
+      </div>
+    </Link>
   );
 }
 
@@ -91,6 +205,7 @@ export default function Index({
   const [analysisQuery, setAnalysisQuery] = useState('');
   const [analysisStatus, setAnalysisStatus] = useState('all');
   const [analysisSort, setAnalysisSort] = useState('recent');
+  const [visibleAnalysisCount, setVisibleAnalysisCount] = useState(ANALYSIS_PAGE_SIZE);
   const [modalState, setModalState] = useState({ type: null, search: null });
   const [formState, setFormState] = useState({
     name: '',
@@ -100,6 +215,7 @@ export default function Index({
   });
   const [submitting, setSubmitting] = useState(false);
   const menuRef = useRef(null);
+  const analysisLoadMoreRef = useRef(null);
 
   const title = filterType ? FILTER_LABELS[filterType] ?? 'Library' : 'Library';
   const searchHref = `/search?type=${filterType === 'product' ? 'product' : 'brand'}`;
@@ -180,7 +296,9 @@ export default function Index({
         entry.video?.handle?.toLowerCase().includes(q) ||
         entry.video?.creator_name?.toLowerCase().includes(q) ||
         searchNames.some((name) => name.toLowerCase().includes(q));
-      const matchesStatus = analysisStatus === 'all' || entry.status === analysisStatus;
+      const matchesStatus = analysisStatus === 'all'
+        ? entry.status !== 'idle'
+        : entry.status === analysisStatus;
 
       return matchesQuery && matchesStatus;
     });
@@ -188,12 +306,56 @@ export default function Index({
     next.sort((left, right) => {
       const leftTime = new Date(left.analyzed_at ?? left.updated_at ?? 0).getTime();
       const rightTime = new Date(right.analyzed_at ?? right.updated_at ?? 0).getTime();
+      const leftTitle = String(left.video?.title || left.video?.handle || '').toLowerCase();
+      const rightTitle = String(right.video?.title || right.video?.handle || '').toLowerCase();
+      const leftOutlier = Number(left.video?.virality_score ?? 0);
+      const rightOutlier = Number(right.video?.virality_score ?? 0);
 
-      return analysisSort === 'oldest' ? leftTime - rightTime : rightTime - leftTime;
+      switch (analysisSort) {
+        case 'oldest':
+          return leftTime - rightTime;
+        case 'outlier':
+          return rightOutlier - leftOutlier;
+        case 'az':
+          return leftTitle.localeCompare(rightTitle);
+        case 'za':
+          return rightTitle.localeCompare(leftTitle);
+        default:
+          return rightTime - leftTime;
+      }
     });
 
     return next;
   }, [analysisHistory, analysisQuery, analysisSort, analysisStatus]);
+
+  const visibleAnalyses = useMemo(
+    () => filteredAnalyses.slice(0, visibleAnalysisCount),
+    [filteredAnalyses, visibleAnalysisCount]
+  );
+  const hasMoreAnalyses = visibleAnalysisCount < filteredAnalyses.length;
+
+  useEffect(() => {
+    setVisibleAnalysisCount(ANALYSIS_PAGE_SIZE);
+  }, [analysisHistory, analysisQuery, analysisSort, analysisStatus, tab]);
+
+  useEffect(() => {
+    if (tab !== 'analysis' || !hasMoreAnalyses || !analysisLoadMoreRef.current) {
+      return undefined;
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) {
+          setVisibleAnalysisCount((current) => Math.min(current + ANALYSIS_PAGE_SIZE, filteredAnalyses.length));
+        }
+      },
+      { rootMargin: '160px 0px' }
+    );
+
+    observer.observe(analysisLoadMoreRef.current);
+
+    return () => observer.disconnect();
+  }, [filteredAnalyses.length, hasMoreAnalyses, tab]);
 
   const openModal = (type, search) => {
     setOpenMenuId(null);
@@ -348,8 +510,8 @@ export default function Index({
 
         {tab === 'searches' || !showTabs ? (
           <>
-            <div className="tools">
-              <label className="srch">
+            <div className="tools" style={{ display: 'grid', gap: 10 }}>
+              <label className="srch" style={{ minWidth: 0 }}>
                 <Search className="h-4 w-4" />
                 <input
                   value={query}
@@ -359,37 +521,39 @@ export default function Index({
                 />
               </label>
 
-              <Sel value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} ariaLabel="Status">
-                <option value="all">All statuses</option>
-                <option value="done">Ready</option>
-                <option value="scraping">Refreshing</option>
-                <option value="paused">Paused</option>
-                <option value="failed">Failed</option>
-              </Sel>
-
-              {(bookmarkedOnly || isBrandCategoryView) && (
-                <Sel
-                  value={searchTypeFilter}
-                  onChange={(e) => setSearchTypeFilter(e.target.value)}
-                  ariaLabel={isBrandCategoryView ? 'Brand category' : 'Search type'}
-                >
-                  <option value="all">{isBrandCategoryView ? 'All categories' : 'All types'}</option>
-                  <option value="brand">{isBrandCategoryView ? 'Own' : 'Brand searches'}</option>
-                  {!isBrandCategoryView && <option value="product">Product searches</option>}
+              <div className="tools tools--library-grid" style={{ marginBottom: 0 }}>
+                <Sel value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} ariaLabel="Status">
+                  <option value="all">All statuses</option>
+                  <option value="done">Ready</option>
+                  <option value="scraping">Refreshing</option>
+                  <option value="paused">Paused</option>
+                  <option value="failed">Failed</option>
                 </Sel>
-              )}
 
-              <Sel value={sortBy} onChange={(e) => setSortBy(e.target.value)} ariaLabel="Sort by">
-                {Object.entries(SORT_OPTIONS).map(([value, label]) => (
-                  <option key={value} value={value}>
-                    {label}
-                  </option>
-                ))}
-              </Sel>
+                {(bookmarkedOnly || isBrandCategoryView) && (
+                  <Sel
+                    value={searchTypeFilter}
+                    onChange={(e) => setSearchTypeFilter(e.target.value)}
+                    ariaLabel={isBrandCategoryView ? 'Brand category' : 'Search type'}
+                  >
+                    <option value="all">{isBrandCategoryView ? 'All categories' : 'All types'}</option>
+                    <option value="brand">Brand</option>
+                    {!isBrandCategoryView && <option value="product">Product</option>}
+                  </Sel>
+                )}
 
-              <Link href={searchHref} className="btn btn--y btn--sm">
-                <Plus className="h-[15px] w-[15px]" /> New search
-              </Link>
+                <Sel value={sortBy} onChange={(e) => setSortBy(e.target.value)} ariaLabel="Sort by">
+                  {Object.entries(SORT_OPTIONS).map(([value, label]) => (
+                    <option key={value} value={value}>
+                      {label}
+                    </option>
+                  ))}
+                </Sel>
+
+                <Link href={searchHref} className="btn btn--y btn--sm">
+                  <Plus className="h-[15px] w-[15px]" /> New search
+                </Link>
+              </div>
             </div>
 
             {filteredSearches.length === 0 ? (
@@ -417,8 +581,8 @@ export default function Index({
           </>
         ) : tab === 'videos' ? (
           <>
-            <div className="tools">
-              <label className="srch">
+            <div className="tools" style={{ display: 'grid', gap: 10 }}>
+              <label className="srch" style={{ minWidth: 0 }}>
                 <Search className="h-4 w-4" />
                 <input
                   value={videoQuery}
@@ -427,13 +591,15 @@ export default function Index({
                   aria-label="Search your saved videos"
                 />
               </label>
-              <Sel value={videoSort} onChange={(e) => setVideoSort(e.target.value)} ariaLabel="Sort videos">
-                {Object.entries(VIDEO_SORT).map(([value, label]) => (
-                  <option key={value} value={value}>
-                    {label}
-                  </option>
-                ))}
-              </Sel>
+              <div className="tools tools--library-grid" style={{ marginBottom: 0 }}>
+                <Sel value={videoSort} onChange={(e) => setVideoSort(e.target.value)} ariaLabel="Sort videos">
+                  {Object.entries(VIDEO_SORT).map(([value, label]) => (
+                    <option key={value} value={value}>
+                      {label}
+                    </option>
+                  ))}
+                </Sel>
+              </div>
             </div>
 
             {filteredVideos.length === 0 ? (
@@ -456,8 +622,8 @@ export default function Index({
           </>
         ) : (
           <>
-            <div className="tools">
-              <label className="srch">
+            <div className="tools" style={{ display: 'grid', gap: 10 }}>
+              <label className="srch" style={{ minWidth: 0 }}>
                 <Search className="h-4 w-4" />
                 <input
                   value={analysisQuery}
@@ -466,20 +632,21 @@ export default function Index({
                   aria-label="Search analysis history"
                 />
               </label>
-              <Sel value={analysisStatus} onChange={(e) => setAnalysisStatus(e.target.value)} ariaLabel="Filter analyses">
-                <option value="all">All statuses</option>
-                <option value="complete">Ready</option>
-                <option value="processing">Processing</option>
-                <option value="failed">Failed</option>
-                <option value="idle">Queued</option>
-              </Sel>
-              <Sel value={analysisSort} onChange={(e) => setAnalysisSort(e.target.value)} ariaLabel="Sort analyses">
-                {Object.entries(ANALYSIS_SORT).map(([value, label]) => (
-                  <option key={value} value={value}>
-                    {label}
-                  </option>
-                ))}
-              </Sel>
+              <div className="tools tools--library-grid" style={{ marginBottom: 0 }}>
+                <Sel value={analysisStatus} onChange={(e) => setAnalysisStatus(e.target.value)} ariaLabel="Filter analyses">
+                  <option value="all">All statuses</option>
+                  <option value="complete">Ready</option>
+                  <option value="processing">Processing</option>
+                  <option value="failed">Failed</option>
+                </Sel>
+                <Sel value={analysisSort} onChange={(e) => setAnalysisSort(e.target.value)} ariaLabel="Sort analyses">
+                  {Object.entries(ANALYSIS_SORT).map(([value, label]) => (
+                    <option key={value} value={value}>
+                      {label}
+                    </option>
+                  ))}
+                </Sel>
+              </div>
             </div>
 
             {filteredAnalyses.length === 0 ? (
@@ -496,7 +663,7 @@ export default function Index({
               </div>
             ) : (
               <div className="rows">
-                {filteredAnalyses.map((entry) => {
+                {visibleAnalyses.map((entry) => {
                   const statusLabel = ANALYSIS_STATUS_LABELS[entry.status] ?? 'Unknown';
                   const searchNames = Array.isArray(entry.searches) ? entry.searches.map((search) => search.name).filter(Boolean) : [];
                   const href =
@@ -506,64 +673,18 @@ export default function Index({
                         ? `${entry.search_url}${entry.search_url.includes('?') ? '&' : '?'}analysisVideo=${encodeURIComponent(entry.video?.id ?? '')}&openAnalysis=1`
                         : entry.analysis_url;
 
-                  return (
-                    <Link
-                      key={entry.id}
-                      href={href}
-                      className="row"
-                      style={{ alignItems: 'stretch', textDecoration: 'none' }}
-                    >
-                      <div
-                        style={{
-                          width: 88,
-                          minWidth: 88,
-                          borderRadius: 18,
-                          overflow: 'hidden',
-                          background: 'var(--panel)',
-                          border: '1px solid var(--line)',
-                        }}
-                      >
-                        {entry.video?.thumbnail_url ? (
-                          <img
-                            src={entry.video.thumbnail_url}
-                            alt={entry.video?.title ?? 'Video thumbnail'}
-                            style={{ width: '100%', height: '100%', minHeight: 88, objectFit: 'cover' }}
-                          />
-                        ) : (
-                          <div style={{ minHeight: 88, display: 'grid', placeItems: 'center', color: 'var(--muted)' }}>
-                            <Play className="h-5 w-5" />
-                          </div>
-                        )}
-                      </div>
-
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div className="row__t" style={{ marginBottom: 6, gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-                          <span>{entry.video?.title || entry.video?.handle || 'Analyzed video'}</span>
-                          <span className={`pill ${
-                            entry.status === 'complete'
-                              ? 'pill--ok'
-                              : entry.status === 'failed'
-                                ? 'pill--bad'
-                                : 'pill--run'
-                          }`}>
-                            <i />
-                            {statusLabel}
-                          </span>
-                        </div>
-                        <div className="row__m">
-                          {entry.video?.handle || entry.video?.creator_name || 'Unknown creator'}
-                          {searchNames.length > 0 ? ` • ${searchNames.join(', ')}` : ''}
-                        </div>
-                        <div className="row__m" style={{ marginTop: 6 }}>
-                          {entry.status === 'complete' ? 'Analyzed' : entry.status === 'failed' ? 'Last updated' : 'Started'}{' '}
-                          {formatAnalysisDate(entry.analyzed_at ?? entry.updated_at)}
-                          {!entry.counts_toward_quota ? ' • Auto analysis' : ''}
-                        </div>
-                        {entry.error_message && <div className="row__m" style={{ marginTop: 6, color: 'var(--warn)' }}>{entry.error_message}</div>}
-                      </div>
-                    </Link>
-                  );
+                  return <AnalysisHistoryRow key={entry.id} entry={entry} href={href} statusLabel={statusLabel} searchNames={searchNames} />;
                 })}
+                {hasMoreAnalyses && (
+                  <div
+                    ref={analysisLoadMoreRef}
+                    className="row"
+                    aria-hidden="true"
+                    style={{ justifyItems: 'center', color: 'var(--faint)', minHeight: 72 }}
+                  >
+                    Loading more analyses...
+                  </div>
+                )}
               </div>
             )}
           </>

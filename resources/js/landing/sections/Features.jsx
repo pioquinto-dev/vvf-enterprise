@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import { Check, Play, Trend } from '../components/Icons.jsx';
 import { FEATURES } from '../data/dummy.js';
@@ -42,7 +42,27 @@ const ALERTS = [
 
 export default function Features() {
   const [active, setActive] = useState(FEATURES[0].id);
+  const [hoverEnabled, setHoverEnabled] = useState(false);
   const current = FEATURES.find((f) => f.id === active) ?? FEATURES[0];
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
+      return undefined;
+    }
+
+    const media = window.matchMedia('(hover: hover) and (pointer: fine)');
+    const sync = () => setHoverEnabled(media.matches);
+
+    sync();
+
+    if (typeof media.addEventListener === 'function') {
+      media.addEventListener('change', sync);
+      return () => media.removeEventListener('change', sync);
+    }
+
+    media.addListener(sync);
+    return () => media.removeListener(sync);
+  }, []);
 
   return (
     <section className="sec wrap" id="features">
@@ -60,129 +80,146 @@ export default function Features() {
       <div className="feat__grid">
         <div className="feat__list">
           {FEATURES.map((feature) => (
-            <button
-              key={feature.id}
-              type="button"
-              className={`fbtn${feature.id === active ? ' is-on' : ''}`}
-              onClick={() => setActive(feature.id)}
-              onMouseEnter={() => setActive(feature.id)}
-            >
-              <div className="fbtn__top">
-                <span className="fdot" />
-                <span className="fbtn__t">{feature.title}</span>
-                <span className="fbtn__tag">{feature.tag}</span>
-              </div>
-              <p className="fbtn__b">{feature.body}</p>
-              <ul className="fbtn__ul">
-                {feature.bullets.map((bullet) => (
-                  <li key={bullet}>
-                    <Check className="h-[13px] w-[13px]" />
-                    {bullet}
-                  </li>
-                ))}
-              </ul>
-            </button>
+            <div key={feature.id} className="feat__item">
+              <button
+                type="button"
+                className={`fbtn${feature.id === active ? ' is-on' : ''}`}
+                onClick={() => setActive(feature.id)}
+                onMouseEnter={() => {
+                  if (hoverEnabled) setActive(feature.id);
+                }}
+                onFocus={() => setActive(feature.id)}
+                aria-pressed={feature.id === active}
+              >
+                <div className="fbtn__top">
+                  <span className="fdot" />
+                  <span className="fbtn__t">{feature.title}</span>
+                  <span className="fbtn__tag">{feature.tag}</span>
+                </div>
+                <p className="fbtn__b">{feature.body}</p>
+                <ul className="fbtn__ul">
+                  {feature.bullets.map((bullet) => (
+                    <li key={bullet}>
+                      <Check className="h-[13px] w-[13px]" />
+                      {bullet}
+                    </li>
+                  ))}
+                </ul>
+              </button>
+
+              {feature.id === active && (
+                <div className="feat__mobileprev">
+                  <PreviewPane active={active} current={current} />
+                </div>
+              )}
+            </div>
           ))}
         </div>
 
-        <div>
-          <div className="prev">
-            <div className="prev__top">
-              <span className="prev__tag">{current.tag}</span>
-              <span className="prev__live">
-                <i />
-                Live preview
-              </span>
-            </div>
-
-            <div className={`pane${active === 'outliers' ? '' : ' hide'}`}>
-              <VideoGrid videos={OUTLIER_VIDEOS} />
-            </div>
-
-            <div className={`pane${active === 'tracking' ? '' : ' hide'}`}>
-              <div className="comp">
-                <div className="comp__head">
-                  <span className="comp__logo">
-                    <img src="/landing/brands/glossier.svg" alt="Glossier logo" />
-                  </span>
-                  <div>
-                    <div className="comp__name">glossier</div>
-                    <div className="comp__sub">@glossier · tracked weekly</div>
-                  </div>
-                  <div className="comp__stat">
-                    <span>Videos this week</span>
-                    <strong>
-                      <Trend className="h-[13px] w-[13px]" />
-                      12 new
-                    </strong>
-                  </div>
-                </div>
-
-                <div className="feed">
-                  {BRAND_FEED.map((item) => (
-                    <div className="feed__row" key={item.title}>
-                      <span className="feed__thumb">
-                        <img src={item.image} alt="" />
-                      </span>
-                      <div className="feed__copy">
-                        <div className="feed__title">{item.title}</div>
-                        <div className="feed__meta">{item.meta}</div>
-                      </div>
-                      <span className={`feed__chip feed__chip--${item.tone}`}>{item.chip}</span>
-                    </div>
-                  ))}
-                </div>
-
-                <div className="digest">
-                  <Bell />
-                  Weekly digest ready · 12 new videos, 2 breakouts
-                </div>
-              </div>
-            </div>
-
-            <div className={`pane${active === 'alerts' ? '' : ' hide'}`}>
-              <div className="alerts">
-                <div className="threshold">
-                  <div className="threshold__title">Alert me when a video mentioning my brand crosses</div>
-                  <div className="threshold__rules">
-                    <span>1M views</span>
-                    or
-                    <span>10× outlier</span>
-                  </div>
-                  <div className="deliver">
-                    <span className="deliver__btn is-on">
-                      <i />
-                      Slack
-                    </span>
-                    <span className="deliver__btn is-on">
-                      <i />
-                      Email
-                    </span>
-                  </div>
-                </div>
-
-                <div className="alerts__list">
-                  {ALERTS.map((alert) => (
-                    <div className="alert" key={alert.title}>
-                      <span className="alert__icon">
-                        <Bell />
-                      </span>
-                      <div className="alert__body">
-                        <div className="alert__title">{alert.title}</div>
-                        <div className="alert__meta">
-                          {alert.meta}
-                          <span>{alert.channel}</span>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
+        <div className="feat__desktopprev">
+          <PreviewPane active={active} current={current} />
         </div>
       </div>
     </section>
+  );
+}
+
+function PreviewPane({ active, current }) {
+  return (
+    <div className="prev">
+      <div className="prev__top">
+        <span className="prev__tag">{current.tag}</span>
+        <span className="prev__live">
+          <i />
+          Live preview
+        </span>
+      </div>
+
+      <div className={`pane${active === 'outliers' ? '' : ' hide'}`}>
+        <VideoGrid videos={OUTLIER_VIDEOS} />
+      </div>
+
+      <div className={`pane${active === 'tracking' ? '' : ' hide'}`}>
+        <div className="comp">
+          <div className="comp__head">
+            <span className="comp__logo">
+              <img src="/landing/brands/glossier.svg" alt="Glossier logo" />
+            </span>
+            <div>
+              <div className="comp__name">glossier</div>
+              <div className="comp__sub">@glossier · tracked weekly</div>
+            </div>
+            <div className="comp__stat">
+              <span>Videos this week</span>
+              <strong>
+                <Trend className="h-[13px] w-[13px]" />
+                12 new
+              </strong>
+            </div>
+          </div>
+
+          <div className="feed">
+            {BRAND_FEED.map((item) => (
+              <div className="feed__row" key={item.title}>
+                <span className="feed__thumb">
+                  <img src={item.image} alt="" />
+                </span>
+                <div className="feed__copy">
+                  <div className="feed__title">{item.title}</div>
+                  <div className="feed__meta">{item.meta}</div>
+                </div>
+                <span className={`feed__chip feed__chip--${item.tone}`}>{item.chip}</span>
+              </div>
+            ))}
+          </div>
+
+          <div className="digest">
+            <Bell />
+            Weekly digest ready · 12 new videos, 2 breakouts
+          </div>
+        </div>
+      </div>
+
+      <div className={`pane${active === 'alerts' ? '' : ' hide'}`}>
+        <div className="alerts">
+          <div className="threshold">
+            <div className="threshold__title">Alert me when a video mentioning my brand crosses</div>
+            <div className="threshold__rules">
+              <span>1M views</span>
+              or
+              <span>10× outlier</span>
+            </div>
+            <div className="deliver">
+              <span className="deliver__btn is-on">
+                <i />
+                Slack
+              </span>
+              <span className="deliver__btn is-on">
+                <i />
+                Email
+              </span>
+            </div>
+          </div>
+
+          <div className="alerts__list">
+            {ALERTS.map((alert) => (
+              <div className="alert" key={alert.title}>
+                <span className="alert__icon">
+                  <Bell />
+                </span>
+                <div className="alert__body">
+                  <div className="alert__title">{alert.title}</div>
+                  <div className="alert__meta">
+                    {alert.meta}
+                    <span>{alert.channel}</span>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }
 

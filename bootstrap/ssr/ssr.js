@@ -2873,8 +2873,8 @@ var FOOT_NAV = [
 		href: "/"
 	},
 	{
-		label: "Bookmarks",
-		href: "/bookmarks"
+		label: "Library",
+		href: "/library"
 	},
 	{
 		label: "Contact",
@@ -3174,9 +3174,9 @@ var NAV$1 = [
 	},
 	{
 		label: "Library",
-		href: "/bookmarks",
+		href: "/library",
 		icon: Library,
-		match: "/bookmarks"
+		match: "/library"
 	},
 	{
 		label: "Brand searches",
@@ -4718,7 +4718,7 @@ function formatDuration$3(duration) {
 }
 /**
 * One video card (the mockup's `.vc`), wired to a `ViralVideo::toCardArray`
-* payload. Bookmarks now plays in place like the results flow, using TikTok's
+* payload. Library now plays in place like the results flow, using TikTok's
 * player when we have a stable video id and falling back to the saved embed.
 */
 function VideoCard({ video, rank }) {
@@ -4920,7 +4920,7 @@ function formatDate$3(iso) {
 * One saved-search row (the mockup's `.row`), wired to a presenter summary.
 *
 * - Dashboard "Recent" uses it as a plain Link with static bookmark/dots.
-* - Bookmarks passes `onNavigate` (making the row a div button so buttons can
+* - Library passes `onNavigate` (making the row a div button so buttons can
 *   nest cleanly) and an `actions` node with the live bookmark toggle + menu.
 */
 function SavedSearchRow({ search, onNavigate, actions }) {
@@ -4997,7 +4997,7 @@ function SavedSearchRow({ search, onNavigate, actions }) {
 	});
 	return /* @__PURE__ */ jsx(Link, {
 		className: "row",
-		href: search.url ?? `/bookmarks/${search.id}`,
+		href: search.url ?? `/library/${search.id}`,
 		children: inner
 	});
 }
@@ -5408,7 +5408,7 @@ function SearchListScreen({ kind = "brand", searches = [], moving = [], suggesti
 						className: "bgrid",
 						children: filtered.map((s) => /* @__PURE__ */ jsx(BrandCard, {
 							search: s,
-							onOpen: () => router.visit(s.url ?? `/bookmarks/${s.id}`),
+							onOpen: () => router.visit(s.url ?? `/library/${s.id}`),
 							onEdit: () => openEdit(s)
 						}, s.id))
 					})
@@ -6848,7 +6848,7 @@ function RunningScreen({ searchId, onBack, onDone, onAutoReturn }) {
 						fontSize: ".8rem",
 						marginTop: signedIn ? 24 : 18
 					},
-					children: "Safe to close this tab — the search keeps running and stays in Bookmarks."
+					children: "Safe to close this tab — the search keeps running and stays in Library."
 				})
 			]
 		})
@@ -7151,7 +7151,7 @@ function SearchWizard({ initialType = "brand", initialQuery = "", heading = "Sta
 		setSearchId(null);
 		setStep("subject");
 	};
-	const onDone = useCallback((found) => router.visit(found?.url ?? `/bookmarks/${found?.id ?? searchId}`), [searchId]);
+	const onDone = useCallback((found) => router.visit(found?.url ?? `/library/${found?.id ?? searchId}`), [searchId]);
 	const topTitle = step === "subject" ? heading : phrase;
 	const topSub = step === "subject" ? subheading : step === "sources" ? "Step 3 of 3 — optional." : `Step 2 of 3 — add terms to expand on your ${nounOf(type)}. Ticking six terms still spends one search.`;
 	return /* @__PURE__ */ jsxs(Fragment$1, { children: [
@@ -7517,7 +7517,7 @@ function RecentCard({ searches, retryingSearchId, onRetry }) {
 		children: [/* @__PURE__ */ jsxs("div", {
 			className: "rc__h",
 			children: [/* @__PURE__ */ jsx("h2", { children: "Pick up where you left off" }), /* @__PURE__ */ jsxs(Link, {
-				href: "/bookmarks",
+				href: "/library",
 				className: "link",
 				children: ["View all ", /* @__PURE__ */ jsx(Arrow, {})]
 			})]
@@ -8840,7 +8840,20 @@ var ALERTS = [
 ];
 function Features() {
 	const [active, setActive] = useState(FEATURES[0].id);
+	const [hoverEnabled, setHoverEnabled] = useState(false);
 	const current = FEATURES.find((f) => f.id === active) ?? FEATURES[0];
+	useEffect(() => {
+		if (typeof window === "undefined" || typeof window.matchMedia !== "function") return;
+		const media = window.matchMedia("(hover: hover) and (pointer: fine)");
+		const sync = () => setHoverEnabled(media.matches);
+		sync();
+		if (typeof media.addEventListener === "function") {
+			media.addEventListener("change", sync);
+			return () => media.removeEventListener("change", sync);
+		}
+		media.addListener(sync);
+		return () => media.removeListener(sync);
+	}, []);
 	return /* @__PURE__ */ jsxs("section", {
 		className: "sec wrap",
 		id: "features",
@@ -8861,171 +8874,193 @@ function Features() {
 			className: "feat__grid",
 			children: [/* @__PURE__ */ jsx("div", {
 				className: "feat__list",
-				children: FEATURES.map((feature) => /* @__PURE__ */ jsxs("button", {
-					type: "button",
-					className: `fbtn${feature.id === active ? " is-on" : ""}`,
-					onClick: () => setActive(feature.id),
-					onMouseEnter: () => setActive(feature.id),
-					children: [
-						/* @__PURE__ */ jsxs("div", {
-							className: "fbtn__top",
-							children: [
-								/* @__PURE__ */ jsx("span", { className: "fdot" }),
-								/* @__PURE__ */ jsx("span", {
-									className: "fbtn__t",
-									children: feature.title
-								}),
-								/* @__PURE__ */ jsx("span", {
-									className: "fbtn__tag",
-									children: feature.tag
-								})
-							]
-						}),
-						/* @__PURE__ */ jsx("p", {
-							className: "fbtn__b",
-							children: feature.body
-						}),
-						/* @__PURE__ */ jsx("ul", {
-							className: "fbtn__ul",
-							children: feature.bullets.map((bullet) => /* @__PURE__ */ jsxs("li", { children: [/* @__PURE__ */ jsx(Check, { className: "h-[13px] w-[13px]" }), bullet] }, bullet))
-						})
-					]
-				}, feature.id))
-			}), /* @__PURE__ */ jsx("div", { children: /* @__PURE__ */ jsxs("div", {
-				className: "prev",
-				children: [
-					/* @__PURE__ */ jsxs("div", {
-						className: "prev__top",
-						children: [/* @__PURE__ */ jsx("span", {
-							className: "prev__tag",
-							children: current.tag
-						}), /* @__PURE__ */ jsxs("span", {
-							className: "prev__live",
-							children: [/* @__PURE__ */ jsx("i", {}), "Live preview"]
-						})]
-					}),
-					/* @__PURE__ */ jsx("div", {
-						className: `pane${active === "outliers" ? "" : " hide"}`,
-						children: /* @__PURE__ */ jsx(VideoGrid, { videos: OUTLIER_VIDEOS })
-					}),
-					/* @__PURE__ */ jsx("div", {
-						className: `pane${active === "tracking" ? "" : " hide"}`,
-						children: /* @__PURE__ */ jsxs("div", {
-							className: "comp",
-							children: [
-								/* @__PURE__ */ jsxs("div", {
-									className: "comp__head",
-									children: [
-										/* @__PURE__ */ jsx("span", {
-											className: "comp__logo",
-											children: /* @__PURE__ */ jsx("img", {
-												src: "/landing/brands/glossier.svg",
-												alt: "Glossier logo"
-											})
-										}),
-										/* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsx("div", {
-											className: "comp__name",
-											children: "glossier"
-										}), /* @__PURE__ */ jsx("div", {
-											className: "comp__sub",
-											children: "@glossier · tracked weekly"
-										})] }),
-										/* @__PURE__ */ jsxs("div", {
-											className: "comp__stat",
-											children: [/* @__PURE__ */ jsx("span", { children: "Videos this week" }), /* @__PURE__ */ jsxs("strong", { children: [/* @__PURE__ */ jsx(Trend, { className: "h-[13px] w-[13px]" }), "12 new"] })]
-										})
-									]
-								}),
-								/* @__PURE__ */ jsx("div", {
-									className: "feed",
-									children: BRAND_FEED.map((item) => /* @__PURE__ */ jsxs("div", {
-										className: "feed__row",
-										children: [
-											/* @__PURE__ */ jsx("span", {
-												className: "feed__thumb",
-												children: /* @__PURE__ */ jsx("img", {
-													src: item.image,
-													alt: ""
-												})
-											}),
-											/* @__PURE__ */ jsxs("div", {
-												className: "feed__copy",
-												children: [/* @__PURE__ */ jsx("div", {
-													className: "feed__title",
-													children: item.title
-												}), /* @__PURE__ */ jsx("div", {
-													className: "feed__meta",
-													children: item.meta
-												})]
-											}),
-											/* @__PURE__ */ jsx("span", {
-												className: `feed__chip feed__chip--${item.tone}`,
-												children: item.chip
-											})
-										]
-									}, item.title))
-								}),
-								/* @__PURE__ */ jsxs("div", {
-									className: "digest",
-									children: [/* @__PURE__ */ jsx(Bell, {}), "Weekly digest ready · 12 new videos, 2 breakouts"]
-								})
-							]
-						})
-					}),
-					/* @__PURE__ */ jsx("div", {
-						className: `pane${active === "alerts" ? "" : " hide"}`,
-						children: /* @__PURE__ */ jsxs("div", {
-							className: "alerts",
-							children: [/* @__PURE__ */ jsxs("div", {
-								className: "threshold",
+				children: FEATURES.map((feature) => /* @__PURE__ */ jsxs("div", {
+					className: "feat__item",
+					children: [/* @__PURE__ */ jsxs("button", {
+						type: "button",
+						className: `fbtn${feature.id === active ? " is-on" : ""}`,
+						onClick: () => setActive(feature.id),
+						onMouseEnter: () => {
+							if (hoverEnabled) setActive(feature.id);
+						},
+						onFocus: () => setActive(feature.id),
+						"aria-pressed": feature.id === active,
+						children: [
+							/* @__PURE__ */ jsxs("div", {
+								className: "fbtn__top",
 								children: [
-									/* @__PURE__ */ jsx("div", {
-										className: "threshold__title",
-										children: "Alert me when a video mentioning my brand crosses"
+									/* @__PURE__ */ jsx("span", { className: "fdot" }),
+									/* @__PURE__ */ jsx("span", {
+										className: "fbtn__t",
+										children: feature.title
 									}),
-									/* @__PURE__ */ jsxs("div", {
-										className: "threshold__rules",
-										children: [
-											/* @__PURE__ */ jsx("span", { children: "1M views" }),
-											"or",
-											/* @__PURE__ */ jsx("span", { children: "10× outlier" })
-										]
-									}),
-									/* @__PURE__ */ jsxs("div", {
-										className: "deliver",
-										children: [/* @__PURE__ */ jsxs("span", {
-											className: "deliver__btn is-on",
-											children: [/* @__PURE__ */ jsx("i", {}), "Slack"]
-										}), /* @__PURE__ */ jsxs("span", {
-											className: "deliver__btn is-on",
-											children: [/* @__PURE__ */ jsx("i", {}), "Email"]
-										})]
+									/* @__PURE__ */ jsx("span", {
+										className: "fbtn__tag",
+										children: feature.tag
 									})
 								]
-							}), /* @__PURE__ */ jsx("div", {
-								className: "alerts__list",
-								children: ALERTS.map((alert) => /* @__PURE__ */ jsxs("div", {
-									className: "alert",
-									children: [/* @__PURE__ */ jsx("span", {
-										className: "alert__icon",
-										children: /* @__PURE__ */ jsx(Bell, {})
-									}), /* @__PURE__ */ jsxs("div", {
-										className: "alert__body",
-										children: [/* @__PURE__ */ jsx("div", {
-											className: "alert__title",
-											children: alert.title
-										}), /* @__PURE__ */ jsxs("div", {
-											className: "alert__meta",
-											children: [alert.meta, /* @__PURE__ */ jsx("span", { children: alert.channel })]
-										})]
-									})]
-								}, alert.title))
-							})]
+							}),
+							/* @__PURE__ */ jsx("p", {
+								className: "fbtn__b",
+								children: feature.body
+							}),
+							/* @__PURE__ */ jsx("ul", {
+								className: "fbtn__ul",
+								children: feature.bullets.map((bullet) => /* @__PURE__ */ jsxs("li", { children: [/* @__PURE__ */ jsx(Check, { className: "h-[13px] w-[13px]" }), bullet] }, bullet))
+							})
+						]
+					}), feature.id === active && /* @__PURE__ */ jsx("div", {
+						className: "feat__mobileprev",
+						children: /* @__PURE__ */ jsx(PreviewPane, {
+							active,
+							current
 						})
-					})
-				]
-			}) })]
+					})]
+				}, feature.id))
+			}), /* @__PURE__ */ jsx("div", {
+				className: "feat__desktopprev",
+				children: /* @__PURE__ */ jsx(PreviewPane, {
+					active,
+					current
+				})
+			})]
 		})]
+	});
+}
+function PreviewPane({ active, current }) {
+	return /* @__PURE__ */ jsxs("div", {
+		className: "prev",
+		children: [
+			/* @__PURE__ */ jsxs("div", {
+				className: "prev__top",
+				children: [/* @__PURE__ */ jsx("span", {
+					className: "prev__tag",
+					children: current.tag
+				}), /* @__PURE__ */ jsxs("span", {
+					className: "prev__live",
+					children: [/* @__PURE__ */ jsx("i", {}), "Live preview"]
+				})]
+			}),
+			/* @__PURE__ */ jsx("div", {
+				className: `pane${active === "outliers" ? "" : " hide"}`,
+				children: /* @__PURE__ */ jsx(VideoGrid, { videos: OUTLIER_VIDEOS })
+			}),
+			/* @__PURE__ */ jsx("div", {
+				className: `pane${active === "tracking" ? "" : " hide"}`,
+				children: /* @__PURE__ */ jsxs("div", {
+					className: "comp",
+					children: [
+						/* @__PURE__ */ jsxs("div", {
+							className: "comp__head",
+							children: [
+								/* @__PURE__ */ jsx("span", {
+									className: "comp__logo",
+									children: /* @__PURE__ */ jsx("img", {
+										src: "/landing/brands/glossier.svg",
+										alt: "Glossier logo"
+									})
+								}),
+								/* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsx("div", {
+									className: "comp__name",
+									children: "glossier"
+								}), /* @__PURE__ */ jsx("div", {
+									className: "comp__sub",
+									children: "@glossier · tracked weekly"
+								})] }),
+								/* @__PURE__ */ jsxs("div", {
+									className: "comp__stat",
+									children: [/* @__PURE__ */ jsx("span", { children: "Videos this week" }), /* @__PURE__ */ jsxs("strong", { children: [/* @__PURE__ */ jsx(Trend, { className: "h-[13px] w-[13px]" }), "12 new"] })]
+								})
+							]
+						}),
+						/* @__PURE__ */ jsx("div", {
+							className: "feed",
+							children: BRAND_FEED.map((item) => /* @__PURE__ */ jsxs("div", {
+								className: "feed__row",
+								children: [
+									/* @__PURE__ */ jsx("span", {
+										className: "feed__thumb",
+										children: /* @__PURE__ */ jsx("img", {
+											src: item.image,
+											alt: ""
+										})
+									}),
+									/* @__PURE__ */ jsxs("div", {
+										className: "feed__copy",
+										children: [/* @__PURE__ */ jsx("div", {
+											className: "feed__title",
+											children: item.title
+										}), /* @__PURE__ */ jsx("div", {
+											className: "feed__meta",
+											children: item.meta
+										})]
+									}),
+									/* @__PURE__ */ jsx("span", {
+										className: `feed__chip feed__chip--${item.tone}`,
+										children: item.chip
+									})
+								]
+							}, item.title))
+						}),
+						/* @__PURE__ */ jsxs("div", {
+							className: "digest",
+							children: [/* @__PURE__ */ jsx(Bell, {}), "Weekly digest ready · 12 new videos, 2 breakouts"]
+						})
+					]
+				})
+			}),
+			/* @__PURE__ */ jsx("div", {
+				className: `pane${active === "alerts" ? "" : " hide"}`,
+				children: /* @__PURE__ */ jsxs("div", {
+					className: "alerts",
+					children: [/* @__PURE__ */ jsxs("div", {
+						className: "threshold",
+						children: [
+							/* @__PURE__ */ jsx("div", {
+								className: "threshold__title",
+								children: "Alert me when a video mentioning my brand crosses"
+							}),
+							/* @__PURE__ */ jsxs("div", {
+								className: "threshold__rules",
+								children: [
+									/* @__PURE__ */ jsx("span", { children: "1M views" }),
+									"or",
+									/* @__PURE__ */ jsx("span", { children: "10× outlier" })
+								]
+							}),
+							/* @__PURE__ */ jsxs("div", {
+								className: "deliver",
+								children: [/* @__PURE__ */ jsxs("span", {
+									className: "deliver__btn is-on",
+									children: [/* @__PURE__ */ jsx("i", {}), "Slack"]
+								}), /* @__PURE__ */ jsxs("span", {
+									className: "deliver__btn is-on",
+									children: [/* @__PURE__ */ jsx("i", {}), "Email"]
+								})]
+							})
+						]
+					}), /* @__PURE__ */ jsx("div", {
+						className: "alerts__list",
+						children: ALERTS.map((alert) => /* @__PURE__ */ jsxs("div", {
+							className: "alert",
+							children: [/* @__PURE__ */ jsx("span", {
+								className: "alert__icon",
+								children: /* @__PURE__ */ jsx(Bell, {})
+							}), /* @__PURE__ */ jsxs("div", {
+								className: "alert__body",
+								children: [/* @__PURE__ */ jsx("div", {
+									className: "alert__title",
+									children: alert.title
+								}), /* @__PURE__ */ jsxs("div", {
+									className: "alert__meta",
+									children: [alert.meta, /* @__PURE__ */ jsx("span", { children: alert.channel })]
+								})]
+							})]
+						}, alert.title))
+					})]
+				})
+			})
+		]
 	});
 }
 function VideoGrid({ videos }) {
@@ -10227,7 +10262,14 @@ function Index({ searches: initialSearches, bookmarkedVideos = [], analysisHisto
 						onClick: () => setTab("searches"),
 						children: [
 							/* @__PURE__ */ jsx(Bookmark, { className: "h-[15px] w-[15px]" }),
-							" Bookmarked searches ",
+							/* @__PURE__ */ jsx("span", {
+								className: "sm:hidden",
+								children: "Searches"
+							}),
+							/* @__PURE__ */ jsx("span", {
+								className: "hidden sm:inline",
+								children: "Saved searches"
+							}),
 							/* @__PURE__ */ jsx("span", {
 								className: "tab__c",
 								children: searches.length
@@ -10240,7 +10282,14 @@ function Index({ searches: initialSearches, bookmarkedVideos = [], analysisHisto
 						onClick: () => setTab("videos"),
 						children: [
 							/* @__PURE__ */ jsx(Play, { className: "h-[15px] w-[15px]" }),
-							" Bookmarked videos ",
+							/* @__PURE__ */ jsx("span", {
+								className: "sm:hidden",
+								children: "Videos"
+							}),
+							/* @__PURE__ */ jsx("span", {
+								className: "hidden sm:inline",
+								children: "Saved videos"
+							}),
 							/* @__PURE__ */ jsx("span", {
 								className: "tab__c",
 								children: bookmarkedVideos.length
@@ -10253,7 +10302,7 @@ function Index({ searches: initialSearches, bookmarkedVideos = [], analysisHisto
 						onClick: () => setTab("analysis"),
 						children: [
 							/* @__PURE__ */ jsx(Search, { className: "h-[15px] w-[15px]" }),
-							" Analysis history ",
+							/* @__PURE__ */ jsx("span", { children: "Analysis History" }),
 							/* @__PURE__ */ jsx("span", {
 								className: "tab__c",
 								children: analysisHistory.length
@@ -10348,7 +10397,7 @@ function Index({ searches: initialSearches, bookmarkedVideos = [], analysisHisto
 							maxWidth: 360,
 							margin: "10px auto 0"
 						},
-						children: searches.length === 0 ? "Run a search, then bookmark it to keep it here in Bookmarks." : "Try a different keyword, status, type, or sort combination."
+						children: searches.length === 0 ? "Run a search, then save it to keep it here in Library." : "Try a different keyword, status, type, or sort combination."
 					}),
 					/* @__PURE__ */ jsxs(Link, {
 						href: searchHref,
@@ -10371,8 +10420,8 @@ function Index({ searches: initialSearches, bookmarkedVideos = [], analysisHisto
 					children: [/* @__PURE__ */ jsx(Search, { className: "h-4 w-4" }), /* @__PURE__ */ jsx("input", {
 						value: videoQuery,
 						onChange: (e) => setVideoQuery(e.target.value),
-						placeholder: "Search your bookmarked videos",
-						"aria-label": "Search your bookmarked videos"
+						placeholder: "Search your saved videos",
+						"aria-label": "Search your saved videos"
 					})]
 				}), /* @__PURE__ */ jsx(Sel, {
 					value: videoSort,
@@ -10390,14 +10439,14 @@ function Index({ searches: initialSearches, bookmarkedVideos = [], analysisHisto
 						className: "empty__i",
 						children: /* @__PURE__ */ jsx(Play, { className: "h-6 w-6" })
 					}),
-					/* @__PURE__ */ jsx("h2", { children: "No bookmarked videos yet" }),
+					/* @__PURE__ */ jsx("h2", { children: "No saved videos yet" }),
 					/* @__PURE__ */ jsx("p", {
 						className: "muted",
 						style: {
 							maxWidth: 360,
 							margin: "10px auto 0"
 						},
-						children: "Open a search and bookmark the videos worth keeping — they collect here."
+						children: "Open a search and save the videos worth keeping — they collect here."
 					})
 				]
 			}) : /* @__PURE__ */ jsx("div", {
@@ -11014,7 +11063,7 @@ function AnalyzeButton$1({ state, onClick }) {
 		}), "Analyze video"]
 	});
 }
-function LeftSidebar({ video, canRegenerate = false, regenerating = false, disabledRegenerate = false, onRegenerate, analyzeState = "idle", onAnalyze, saved = false, saving = false, onToggleSave }) {
+function LeftSidebar({ video, canRegenerate = false, regenerating = false, disabledRegenerate = false, onRegenerate, analyzeState = "idle", onAnalyze, saved = false, saving = false, onToggleSave, showExternalLink = true }) {
 	const metrics = statCards(video);
 	const multiple = outlierMultiple(video);
 	const followers = Number(video?.followers ?? 0);
@@ -11156,28 +11205,12 @@ function LeftSidebar({ video, canRegenerate = false, regenerating = false, disab
 			/* @__PURE__ */ jsxs("div", {
 				className: "mt-3.5 flex flex-col gap-[7px] border-t border-[#E7E5DF] pt-3.5",
 				children: [
-					/* @__PURE__ */ jsx(AnalyzeButton$1, {
-						state: analyzeState,
-						onClick: onAnalyze
-					}),
 					/* @__PURE__ */ jsxs("div", {
-						className: "grid grid-cols-[minmax(0,1fr)_40px] gap-[7px]",
-						children: [onToggleSave ? /* @__PURE__ */ jsxs("button", {
-							type: "button",
-							onClick: onToggleSave,
-							disabled: saving,
-							"aria-pressed": saved,
-							className: `flex h-10 items-center justify-center gap-2 rounded-[11px] border px-2.5 text-[13px] font-bold transition disabled:opacity-60 ${saved ? "border-[#FFC629] bg-[#FFF8E6] text-[#5C4200]" : "border-[#E7E5DF] bg-white text-[#0B0B0B] hover:bg-[#FAF9F6]"}`,
-							children: [/* @__PURE__ */ jsx("svg", {
-								viewBox: "0 0 24 24",
-								className: "h-[15px] w-[15px]",
-								fill: saved ? "currentColor" : "none",
-								stroke: "currentColor",
-								strokeWidth: "2",
-								strokeLinejoin: "round",
-								children: /* @__PURE__ */ jsx("path", { d: "M6 3h12v18l-6-4.5L6 21z" })
-							}), saved ? "Saved" : "Save"]
-						}) : /* @__PURE__ */ jsx("span", {}), /* @__PURE__ */ jsx("a", {
+						className: `grid gap-[7px] ${showExternalLink ? "grid-cols-[minmax(0,1fr)_40px]" : "grid-cols-1"}`,
+						children: [/* @__PURE__ */ jsx(AnalyzeButton$1, {
+							state: analyzeState,
+							onClick: onAnalyze
+						}), showExternalLink && /* @__PURE__ */ jsx("a", {
 							href: video.post_url || video.postUrl || "#",
 							target: "_blank",
 							rel: "noreferrer noopener",
@@ -11196,6 +11229,22 @@ function LeftSidebar({ video, canRegenerate = false, regenerating = false, disab
 								children: /* @__PURE__ */ jsx("path", { d: "M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5" })
 							})
 						})]
+					}),
+					onToggleSave && /* @__PURE__ */ jsxs("button", {
+						type: "button",
+						onClick: onToggleSave,
+						disabled: saving,
+						"aria-pressed": saved,
+						className: `flex h-10 items-center justify-center gap-2 rounded-[11px] border px-2.5 text-[13px] font-bold transition disabled:opacity-60 ${saved ? "border-[#FFC629] bg-[#FFF8E6] text-[#5C4200]" : "border-[#E7E5DF] bg-white text-[#0B0B0B] hover:bg-[#FAF9F6]"}`,
+						children: [/* @__PURE__ */ jsx("svg", {
+							viewBox: "0 0 24 24",
+							className: "h-[15px] w-[15px]",
+							fill: saved ? "currentColor" : "none",
+							stroke: "currentColor",
+							strokeWidth: "2",
+							strokeLinejoin: "round",
+							children: /* @__PURE__ */ jsx("path", { d: "M6 3h12v18l-6-4.5L6 21z" })
+						}), saved ? "Saved" : "Save"]
 					}),
 					canRegenerate && /* @__PURE__ */ jsx(RegenerateButton, {
 						regenerating,
@@ -11636,7 +11685,7 @@ var DEFAULT_TABS = [
 		shortLabel: "Strategist"
 	}
 ];
-function AnalysisModal({ video, initialAnalysis, tabs = DEFAULT_TABS, open = true, onClose, onAnalysisChange, onAnalyze, analyzeBusy = false, saved = false, saving = false, onToggleSave }) {
+function AnalysisModal({ video, initialAnalysis, tabs = DEFAULT_TABS, open = true, onClose, onAnalysisChange, onAnalyze, analyzeBusy = false, saved = false, saving = false, onToggleSave, showExternalLink = true }) {
 	const [activeTab, setActiveTab] = useState(tabs[0]?.key ?? "why");
 	const [analysis, setAnalysis] = usePolling(video.id, initialAnalysis, open);
 	const [regenerating, setRegenerating] = useState(false);
@@ -11756,7 +11805,8 @@ function AnalysisModal({ video, initialAnalysis, tabs = DEFAULT_TABS, open = tru
 							onAnalyze: startAnalysis,
 							saved,
 							saving,
-							onToggleSave
+							onToggleSave,
+							showExternalLink
 						}), /* @__PURE__ */ jsxs("div", {
 							className: "min-w-0 space-y-3 min-[640px]:space-y-4",
 							children: [
@@ -12600,8 +12650,8 @@ function DetailScreen({ search, isAuthenticated = false, billing: billing$2, ref
 			className: "rs-viewbar",
 			children: [/* @__PURE__ */ jsxs(Link, {
 				className: "rs-tbtn",
-				href: "/bookmarks",
-				children: [Icons.Back, " Back to bookmarks"]
+				href: "/library",
+				children: [Icons.Back, " Back to Library"]
 			}), /* @__PURE__ */ jsxs("div", {
 				className: "rs-viewbar__actions rs-mobileonly",
 				ref: menuTopRef,
@@ -14739,7 +14789,7 @@ function Show$1({ search: initial, isAuthenticated = false, billing }) {
 	const remove = async () => {
 		await savedSearch.destroy(search.id);
 		untrackSearch(search.id);
-		router.visit("/bookmarks");
+		router.visit("/library");
 	};
 	const togglePause = async () => {
 		const { search: updated } = search.status === "paused" ? await savedSearch.resume(search.id) : await savedSearch.pause(search.id);
@@ -17261,7 +17311,7 @@ var TOGGLES = [
 	{
 		key: "compact_rows",
 		title: "Compact rows",
-		desc: "Tighter spacing in Bookmarks and results lists.",
+		desc: "Tighter spacing in Library and results lists.",
 		on: false
 	},
 	{
@@ -17772,7 +17822,7 @@ function closeModal() {
 		window.history.back();
 		return;
 	}
-	window.location.assign("/bookmarks");
+	window.location.assign("/library");
 }
 function Show({ video, analysis: initialAnalysis, tabs }) {
 	return /* @__PURE__ */ jsxs(Fragment$1, { children: [/* @__PURE__ */ jsx(Head, { title: `Video Analysis · ${video.handle ?? video.creator_name ?? "TikTok"}` }), /* @__PURE__ */ jsx(AppLayout, {
