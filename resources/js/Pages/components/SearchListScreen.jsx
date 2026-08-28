@@ -132,7 +132,7 @@ export default function SearchListScreen({ kind = 'brand', searches = [], moving
   const [searchList, setSearchList] = useState(searches);
   const [query, setQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
-  const [sortBy, setSortBy] = useState('outliers');
+  const [sortBy, setSortBy] = useState('recent');
   const [modalSearch, setModalSearch] = useState(null);
   const [formState, setFormState] = useState({ name: '', frequency: 'weekly', tiktokHandle: '', website: '' });
   const [submitting, setSubmitting] = useState(false);
