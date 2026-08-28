@@ -24,6 +24,10 @@ Route::get('/', function (Request $request) {
 Route::post('/coming-soon-interest', ComingSoonInterestController::class)->name('coming-soon-interest.store');
 Route::get('/contact', [ContactInquiryController::class, 'create'])->name('contact.create');
 Route::post('/contact', [ContactInquiryController::class, 'store'])->name('contact.store');
+Route::get('/privacy', fn () => Inertia::render('PrivacyPolicy'))->name('privacy');
+Route::get('/terms', fn () => Inertia::render('TermsOfService'))->name('terms');
+Route::get('/dpa', fn () => Inertia::render('DataProcessingAddendum'))->name('dpa');
+Route::get('/security', fn () => Inertia::render('SecurityPage'))->name('security');
 
 Route::prefix('search')->group(function (): void {
     Route::get('/', function (Request $request) {

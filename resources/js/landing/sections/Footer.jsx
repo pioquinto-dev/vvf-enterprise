@@ -3,10 +3,10 @@ import { useState } from 'react';
 import { Logo } from '../components/Icons.jsx';
 
 const COLS = [
-  { h: 'Product', links: ['Outlier Vault', 'Brand Tracking', 'Creator Shortlists', 'Virality Alerts', 'Changelog'] },
-  { h: 'Company', links: ['About', 'Careers', 'Blog', 'Press kit', 'Contact'] },
-  { h: 'Resources', links: ['TikTok benchmarks', 'Category reports', 'Help center', 'API docs', 'Status'] },
-  { h: 'Legal', links: ['Terms', 'Privacy', 'DPA', 'Security'] },
+  { h: 'Product', links: [{ label: 'Outlier Vault', href: '#top' }, { label: 'Brand Tracking', href: '#top' }, { label: 'Creator Shortlists', href: '#top' }, { label: 'Virality Alerts', href: '#top' }, { label: 'Changelog', href: '#top' }] },
+  { h: 'Company', links: [{ label: 'About', href: '#top' }, { label: 'Careers', href: '#top' }, { label: 'Blog', href: '#top' }, { label: 'Press kit', href: '#top' }, { label: 'Contact', href: '/contact' }] },
+  { h: 'Resources', links: [{ label: 'TikTok benchmarks', href: '#top' }, { label: 'Category reports', href: '#top' }, { label: 'Help center', href: '#top' }, { label: 'API docs', href: '#top' }, { label: 'Status', href: '#top' }] },
+  { h: 'Legal', links: [{ label: 'Terms', href: '/terms' }, { label: 'Privacy', href: '/privacy' }, { label: 'DPA', href: '/dpa' }, { label: 'Security', href: '/security' }] },
 ];
 
 export default function Footer() {
@@ -49,8 +49,8 @@ export default function Footer() {
                 <h4>{col.h}</h4>
                 <ul>
                   {col.links.map((link) => (
-                    <li key={link}>
-                      <a href="#top">{link}</a>
+                    <li key={link.label}>
+                      <a href={link.href}>{link.label}</a>
                     </li>
                   ))}
                 </ul>
@@ -62,8 +62,9 @@ export default function Footer() {
         <div className="ftr__btm">
           <p>© 2026 Brand Beacon. TikTok viral intelligence for brands.</p>
           <nav>
-            <a href="#top">Terms</a>
-            <a href="#top">Privacy</a>
+            <a href="/terms">Terms</a>
+            <a href="/privacy">Privacy</a>
+            <a href="/security">Security</a>
             <a href="/contact">Contact</a>
           </nav>
         </div>
