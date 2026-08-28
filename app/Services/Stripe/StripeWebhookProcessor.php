@@ -196,6 +196,8 @@ class StripeWebhookProcessor
         $status = (string) ($payload->status ?? $subscription->status);
         $previousStatus = (string) ($subscription->status ?? '');
         $previousPeriodEnd = $subscription->current_period_ends_at;
+        $cancelAtPeriodEnd = (bool) data_get($payload, 'cancel_at_period_end', false);
+        $cancelAt = $this->timestampToCarbon(data_get($payload, 'cancel_at'));
         $periodStart = $this->timestampToCarbon(data_get($payload, 'current_period_start'));
         $periodEnd = $this->timestampToCarbon(data_get($payload, 'current_period_end'));
         $trialEnd = $status === 'trialing'
@@ -257,6 +259,8 @@ class StripeWebhookProcessor
                     'billing_cycle' => $billingCycle === 'annual' ? 'annual' : 'monthly',
                 ],
                 'subscription' => [
+                    'cancel_at_period_end' => $cancelAtPeriodEnd,
+                    'cancel_at' => $cancelAt?->toIso8601String(),
                     'trialEnabled' => (bool) ($limits['trialEnabled'] ?? false),
                     'search_limits' => [
                         'used' => max(0, $searchUsed),
@@ -328,6 +332,8 @@ class StripeWebhookProcessor
             'plan_slug' => $plan->slug,
             'status' => $status,
             'renewed' => $renewed,
+            'cancel_at_period_end' => $cancelAtPeriodEnd,
+            'cancel_at' => $cancelAt?->toIso8601String(),
             'current_period_starts_at' => $periodStart?->toIso8601String(),
             'current_period_ends_at' => $periodEnd?->toIso8601String(),
         ]);
