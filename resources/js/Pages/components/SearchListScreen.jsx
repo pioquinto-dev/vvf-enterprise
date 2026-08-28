@@ -8,6 +8,7 @@ import { compact } from './VideoCard.jsx';
 import { STATUS, formatDate } from './SavedSearchRow.jsx';
 import { savedSearch as api } from '../../landing/flow/api.js';
 import { Search, Chevron, Refresh, Plus } from '../../landing/components/Icons.jsx';
+import { withReturnTo } from '../utils/navigation.js';
 
 const COPY = {
   brand: {
@@ -124,6 +125,9 @@ function BrandCard({ search, onOpen, onEdit }) {
 export default function SearchListScreen({ kind = 'brand', searches = [], moving = [], suggestions = [] }) {
   const copy = COPY[kind] ?? COPY.brand;
   const { billing = {} } = usePage().props;
+  const currentPath = typeof window === 'undefined'
+    ? kind === 'product' ? '/products' : '/brands'
+    : `${window.location.pathname}${window.location.search}`;
 
   const [searchList, setSearchList] = useState(searches);
   const [query, setQuery] = useState('');
@@ -239,7 +243,7 @@ export default function SearchListScreen({ kind = 'brand', searches = [], moving
           </div>
           <div className="movers__g">
             {moving.map((v, i) => (
-              <Link key={i} className="mv" href={v.url ?? '#'}>
+              <Link key={i} className="mv" href={withReturnTo(v.url, currentPath) || '#'}>
                 <span className="mv__t">
                   {v.thumbnail_url && <img src={v.thumbnail_url} alt="" loading="lazy" />}
                   {v.multiplier && <span className="mv__x">{v.multiplier}</span>}
@@ -341,7 +345,7 @@ export default function SearchListScreen({ kind = 'brand', searches = [], moving
               <BrandCard
                 key={s.id}
                 search={s}
-                onOpen={() => router.visit(s.url ?? `/library/${s.id}`)}
+                onOpen={() => router.visit(withReturnTo(s.url ?? `/library/${s.id}`, currentPath))}
                 onEdit={() => openEdit(s)}
               />
             ))}

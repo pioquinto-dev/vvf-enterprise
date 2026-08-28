@@ -44,6 +44,7 @@
   "resources/js/Pages/components/SearchWizard.jsx": [],
   "resources/js/Pages/components/UpgradePromptModal.jsx": [],
   "resources/js/Pages/components/VideoCard.jsx": [],
+  "resources/js/Pages/utils/navigation.js": [],
   "resources/js/components/ContactFormCard.jsx": [],
   "resources/js/components/admin/AdminDataTable.jsx": [],
   "resources/js/components/admin/AdminEditDrawer.jsx": [],

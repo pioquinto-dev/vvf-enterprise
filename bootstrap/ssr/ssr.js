@@ -5042,6 +5042,33 @@ function SavedSearchRow({ search, onNavigate, actions }) {
 	});
 }
 //#endregion
+//#region resources/js/Pages/utils/navigation.js
+function withReturnTo(url, from) {
+	const target = String(url || "").trim();
+	const origin = String(from || "").trim();
+	if (!target || !origin) return target;
+	return `${target}${target.includes("?") ? "&" : "?"}from=${encodeURIComponent(origin)}`;
+}
+function getSafeReturnTo(value) {
+	const target = String(value || "").trim();
+	if (!target.startsWith("/")) return null;
+	if (target.startsWith("//")) return null;
+	return target;
+}
+function canUseHistoryBack(referrer, currentPath) {
+	if (typeof window === "undefined") return false;
+	if (window.history.length <= 1) return false;
+	const source = String(referrer || "").trim();
+	if (!source) return false;
+	try {
+		const referrerUrl = new URL(source, window.location.origin);
+		if (referrerUrl.origin !== window.location.origin) return false;
+		return `${referrerUrl.pathname}${referrerUrl.search}` !== String(currentPath || "").trim();
+	} catch {
+		return false;
+	}
+}
+//#endregion
 //#region resources/js/Pages/components/SearchListScreen.jsx
 var SearchListScreen_exports = /* @__PURE__ */ __exportAll({ default: () => SearchListScreen });
 var COPY = {
@@ -5183,6 +5210,7 @@ function BrandCard({ search, onOpen, onEdit }) {
 function SearchListScreen({ kind = "brand", searches = [], moving = [], suggestions = [] }) {
 	const copy = COPY[kind] ?? COPY.brand;
 	const { billing = {} } = usePage().props;
+	const currentPath = typeof window === "undefined" ? kind === "product" ? "/products" : "/brands" : `${window.location.pathname}${window.location.search}`;
 	const [searchList, setSearchList] = useState(searches);
 	const [query, setQuery] = useState("");
 	const [statusFilter, setStatusFilter] = useState("all");
@@ -5307,7 +5335,7 @@ function SearchListScreen({ kind = "brand", searches = [], moving = [], suggesti
 					className: "movers__g",
 					children: moving.map((v, i) => /* @__PURE__ */ jsxs(Link, {
 						className: "mv",
-						href: v.url ?? "#",
+						href: withReturnTo(v.url, currentPath) || "#",
 						children: [/* @__PURE__ */ jsxs("span", {
 							className: "mv__t",
 							children: [v.thumbnail_url && /* @__PURE__ */ jsx("img", {
@@ -5457,7 +5485,7 @@ function SearchListScreen({ kind = "brand", searches = [], moving = [], suggesti
 						className: "bgrid",
 						children: filtered.map((s) => /* @__PURE__ */ jsx(BrandCard, {
 							search: s,
-							onOpen: () => router.visit(s.url ?? `/library/${s.id}`),
+							onOpen: () => router.visit(withReturnTo(s.url ?? `/library/${s.id}`, currentPath)),
 							onEdit: () => openEdit(s)
 						}, s.id))
 					})
@@ -7555,7 +7583,7 @@ function GlanceStrip({ stats }) {
 	})] });
 }
 /** "Pick up where you left off" — the three most recent saved searches. */
-function RecentCard({ searches, retryingSearchId, onRetry }) {
+function RecentCard({ searches, retryingSearchId, onRetry, currentPath }) {
 	if (!searches?.length) return null;
 	return /* @__PURE__ */ jsxs(Fragment$1, { children: [/* @__PURE__ */ jsx("p", {
 		className: "ey",
@@ -7572,7 +7600,7 @@ function RecentCard({ searches, retryingSearchId, onRetry }) {
 			})]
 		}), searches.map((search) => /* @__PURE__ */ jsx(RecentRow, {
 			search,
-			onNavigate: () => router.visit(search.url),
+			onNavigate: () => router.visit(withReturnTo(search.url, currentPath)),
 			retrying: retryingSearchId === search.id,
 			onRetry
 		}, search.id))]
@@ -7797,6 +7825,7 @@ function SearchAccessPromptModal({ prompt, billing, onClose, onUpgrade }) {
 }
 function Dashboard() {
 	const { flash = {}, recent = [], stats = null, searchSuggestions = {}, billing = {} } = usePage().props;
+	const currentPath = typeof window === "undefined" ? "/dashboard" : `${window.location.pathname}${window.location.search}`;
 	const [processingModal, setProcessingModal] = useState(null);
 	const [completionModal, setCompletionModal] = useState(null);
 	const [searchAccessPrompt, setSearchAccessPrompt] = useState(null);
@@ -7909,7 +7938,7 @@ function Dashboard() {
 	const viewResults = (search) => {
 		if (!search?.url) return closeCompletionModal();
 		untrackSearch(search.id);
-		router.visit(search.url);
+		router.visit(withReturnTo(search.url, currentPath));
 	};
 	const contactSupport = () => {
 		setCompletionModal(null);
@@ -7931,7 +7960,8 @@ function Dashboard() {
 	const dashboardExtras = /* @__PURE__ */ jsxs(Fragment$1, { children: [/* @__PURE__ */ jsx(GlanceStrip, { stats }), /* @__PURE__ */ jsx(RecentCard, {
 		searches: recentSearches,
 		retryingSearchId,
-		onRetry: retryFailedSearch
+		onRetry: retryFailedSearch,
+		currentPath
 	})] });
 	return /* @__PURE__ */ jsxs(Fragment$1, { children: [
 		/* @__PURE__ */ jsx(Head, { title: "Dashboard · Brand Beacon" }),
@@ -10236,6 +10266,7 @@ function AnalysisHistoryRow({ entry, href, statusLabel, searchNames }) {
 	});
 }
 function Index({ searches: initialSearches, bookmarkedVideos = [], analysisHistory = [], filterType = null, watchlistedOnly: bookmarkedOnly = true }) {
+	const currentPath = typeof window === "undefined" ? "/library" : `${window.location.pathname}${window.location.search}`;
 	const isBrandCategoryView = filterType === "brand-group";
 	const showTabs = bookmarkedOnly && !filterType;
 	const [searches, setSearches] = useState(initialSearches);
@@ -10673,7 +10704,7 @@ function Index({ searches: initialSearches, bookmarkedVideos = [], analysisHisto
 				className: "rows",
 				children: filteredSearches.map((s) => /* @__PURE__ */ jsx(SavedSearchRow, {
 					search: s,
-					onNavigate: () => router.visit(s.url),
+					onNavigate: () => router.visit(withReturnTo(s.url, currentPath)),
 					actions: rowActions(s)
 				}, s.id))
 			})] }) : tab === "videos" ? /* @__PURE__ */ jsxs(Fragment$1, { children: [/* @__PURE__ */ jsxs("div", {
@@ -10796,7 +10827,8 @@ function Index({ searches: initialSearches, bookmarkedVideos = [], analysisHisto
 				children: [visibleAnalyses.map((entry) => {
 					const statusLabel = ANALYSIS_STATUS_LABELS[entry.status] ?? "Unknown";
 					const searchNames = Array.isArray(entry.searches) ? entry.searches.map((search) => search.name).filter(Boolean) : [];
-					const href = entry.status === "complete" ? entry.analysis_url : entry.search_url ? `${entry.search_url}${entry.search_url.includes("?") ? "&" : "?"}analysisVideo=${encodeURIComponent(entry.video?.id ?? "")}&openAnalysis=1` : entry.analysis_url;
+					const searchHrefWithReturnTo = withReturnTo(entry.search_url, currentPath);
+					const href = entry.status === "complete" ? entry.analysis_url : searchHrefWithReturnTo ? `${searchHrefWithReturnTo}${searchHrefWithReturnTo.includes("?") ? "&" : "?"}analysisVideo=${encodeURIComponent(entry.video?.id ?? "")}&openAnalysis=1` : entry.analysis_url;
 					return /* @__PURE__ */ jsx(AnalysisHistoryRow, {
 						entry,
 						href,
@@ -12591,6 +12623,7 @@ var Icons = {
 };
 function DetailScreen({ search, isAuthenticated = false, billing: billing$2, refreshing = false, bookmarkUpdating = false, onRefresh, onSearchUpdated, onToggleBookmark, onToggleVideoBookmark, bookmarkingVideoId = null, onTogglePause, onDelete }) {
 	const { url: currentUrl } = usePage();
+	getSafeReturnTo(new URLSearchParams(currentUrl.split("?")[1] ?? "").get("from"));
 	const insights = search?.insights ?? {};
 	const bullets = search?.insights_bullets ?? [];
 	const [handleEditing, setHandleEditing] = useState(false);
@@ -12921,10 +12954,11 @@ function DetailScreen({ search, isAuthenticated = false, billing: billing$2, ref
 		/* @__PURE__ */ jsx("style", { children: scopedCss }),
 		/* @__PURE__ */ jsxs("div", {
 			className: "rs-viewbar",
-			children: [/* @__PURE__ */ jsxs(Link, {
+			children: [/* @__PURE__ */ jsxs("button", {
+				type: "button",
 				className: "rs-tbtn",
-				href: "/library",
-				children: [Icons.Back, " Back to Library"]
+				onClick: goBack,
+				children: [Icons.Back, " Go back"]
 			}), /* @__PURE__ */ jsxs("div", {
 				className: "rs-viewbar__actions rs-mobileonly",
 				ref: menuTopRef,
@@ -14978,6 +15012,21 @@ var scopedCss = `
 .rs-weekmodal__thumb{width:46px;height:62px}
 }
 `;
+var goBack = () => {
+	if (typeof window === "undefined") {
+		router.visit(backHref);
+		return;
+	}
+	if (getSafeReturnTo(new URLSearchParams(currentUrl.split("?")[1] ?? "").get("from"))) {
+		router.visit(backHref);
+		return;
+	}
+	if (canUseHistoryBack(document.referrer, `${window.location.pathname}${window.location.search}`)) {
+		window.history.back();
+		return;
+	}
+	router.visit(backHref);
+};
 //#endregion
 //#region resources/js/Pages/SavedSearches/Show.jsx
 var Show_exports$1 = /* @__PURE__ */ __exportAll({ default: () => Show$1 });
@@ -18157,7 +18206,7 @@ function closeModal() {
 		window.history.back();
 		return;
 	}
-	window.location.assign("/library");
+	window.location.assign("/dashboard");
 }
 function Show({ video, analysis: initialAnalysis, tabs }) {
 	return /* @__PURE__ */ jsxs(Fragment$1, { children: [/* @__PURE__ */ jsx(Head, { title: `Video Analysis · ${video.handle ?? video.creator_name ?? "TikTok"}` }), /* @__PURE__ */ jsx(AppLayout, {

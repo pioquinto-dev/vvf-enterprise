@@ -5,6 +5,7 @@ import AppLayout from './components/AppLayout.jsx';
 import SearchWizard from './components/SearchWizard.jsx';
 import UpgradePromptModal from './components/UpgradePromptModal.jsx';
 import { Arrow } from '../landing/components/Icons.jsx';
+import { withReturnTo } from './utils/navigation.js';
 import {
   fetchRecentSearches,
   readTracked,
@@ -167,7 +168,7 @@ function GlanceStrip({ stats }) {
 }
 
 /** "Pick up where you left off" — the three most recent saved searches. */
-function RecentCard({ searches, retryingSearchId, onRetry }) {
+function RecentCard({ searches, retryingSearchId, onRetry, currentPath }) {
   if (!searches?.length) return null;
 
   return (
@@ -184,7 +185,7 @@ function RecentCard({ searches, retryingSearchId, onRetry }) {
           <RecentRow
             key={search.id}
             search={search}
-            onNavigate={() => router.visit(search.url)}
+            onNavigate={() => router.visit(withReturnTo(search.url, currentPath))}
             retrying={retryingSearchId === search.id}
             onRetry={onRetry}
           />
@@ -347,6 +348,7 @@ function SearchAccessPromptModal({ prompt, billing, onClose, onUpgrade }) {
 
 export default function Dashboard() {
   const { flash = {}, recent = [], stats = null, searchSuggestions = {}, billing = {} } = usePage().props;
+  const currentPath = typeof window === 'undefined' ? '/dashboard' : `${window.location.pathname}${window.location.search}`;
   const [processingModal, setProcessingModal] = useState(null);
   const [completionModal, setCompletionModal] = useState(null);
   const [searchAccessPrompt, setSearchAccessPrompt] = useState(null);
@@ -506,7 +508,7 @@ export default function Dashboard() {
   const viewResults = (search) => {
     if (!search?.url) return closeCompletionModal();
     untrackSearch(search.id);
-    router.visit(search.url);
+    router.visit(withReturnTo(search.url, currentPath));
   };
   const contactSupport = () => {
     setCompletionModal(null);
@@ -535,6 +537,7 @@ export default function Dashboard() {
         searches={recentSearches}
         retryingSearchId={retryingSearchId}
         onRetry={retryFailedSearch}
+        currentPath={currentPath}
       />
     </>
   );

@@ -1,5 +1,4 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
-import { Link, router, usePage } from '@inertiajs/react';
 
 import { savedSearch as savedSearchApi } from '../../../landing/flow/api.js';
 import { billing as billingApi } from '../../../landing/flow/api.js';
@@ -427,7 +426,6 @@ export default function DetailScreen({
   onTogglePause,
   onDelete,
 }) {
-  const { url: currentUrl } = usePage();
   const insights = search?.insights ?? {};
   const bullets = search?.insights_bullets ?? [];
 
@@ -728,7 +726,7 @@ export default function DetailScreen({
   useEffect(() => {
     if (autoOpenedAnalysisRef.current) return;
 
-    const query = currentUrl.split('?')[1] ?? '';
+    const query = typeof window === 'undefined' ? '' : window.location.search;
     const params = new URLSearchParams(query);
     const targetVideoId = params.get('analysisVideo');
     const shouldOpen = params.get('openAnalysis') === '1';
@@ -748,7 +746,7 @@ export default function DetailScreen({
       next.searchParams.delete('openAnalysis');
       window.history.replaceState({}, '', `${next.pathname}${next.search}${next.hash}`);
     }
-  }, [currentUrl, results]);
+  }, [results]);
 
   const launchManualAnalysis = async (video) => {
     setAnalysisStarting(true);
@@ -842,7 +840,7 @@ export default function DetailScreen({
 
       {/* top bar */}
       <div className="rs-viewbar">
-        <Link className="rs-tbtn" href="/library">{Icons.Back} Back to Library</Link>
+        <button type="button" className="rs-tbtn" onClick={goBack}>{Icons.Back} Go back</button>
         <div className="rs-viewbar__actions rs-mobileonly" ref={menuTopRef}>
           <button className={`rs-iconbtn${search?.is_watchlisted ? ' on' : ''}`} title="Bookmark" onClick={handleSearchBookmarkAction} disabled={bookmarkUpdating}>
             {search?.is_watchlisted ? Icons.Bookmark : Icons.BookmarkO}
@@ -2418,3 +2416,6 @@ const scopedCss = `
 .rs-weekmodal__thumb{width:46px;height:62px}
 }
 `;
+  const goBack = () => {
+    window.location.assign('/dashboard');
+  };

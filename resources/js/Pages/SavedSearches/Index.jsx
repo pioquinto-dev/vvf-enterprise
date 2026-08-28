@@ -7,6 +7,7 @@ import SavedSearchRow from '../components/SavedSearchRow.jsx';
 import VideoCard from '../components/VideoCard.jsx';
 import { Arrow, Bookmark, Search, Chevron, Plus, Dots, Play } from '../../landing/components/Icons.jsx';
 import { savedSearch as api, untrackSearch } from '../../landing/flow/api.js';
+import { withReturnTo } from '../utils/navigation.js';
 
 const FILTER_LABELS = {
   'brand-group': 'Brand',
@@ -190,6 +191,7 @@ export default function Index({
   filterType = null,
   watchlistedOnly: bookmarkedOnly = true,
 }) {
+  const currentPath = typeof window === 'undefined' ? '/library' : `${window.location.pathname}${window.location.search}`;
   const isBrandCategoryView = filterType === 'brand-group';
   const showTabs = bookmarkedOnly && !filterType;
 
@@ -574,7 +576,12 @@ export default function Index({
             ) : (
               <div className="rows">
                 {filteredSearches.map((s) => (
-                  <SavedSearchRow key={s.id} search={s} onNavigate={() => router.visit(s.url)} actions={rowActions(s)} />
+                  <SavedSearchRow
+                    key={s.id}
+                    search={s}
+                    onNavigate={() => router.visit(withReturnTo(s.url, currentPath))}
+                    actions={rowActions(s)}
+                  />
                 ))}
               </div>
             )}
@@ -666,11 +673,12 @@ export default function Index({
                 {visibleAnalyses.map((entry) => {
                   const statusLabel = ANALYSIS_STATUS_LABELS[entry.status] ?? 'Unknown';
                   const searchNames = Array.isArray(entry.searches) ? entry.searches.map((search) => search.name).filter(Boolean) : [];
+                  const searchHrefWithReturnTo = withReturnTo(entry.search_url, currentPath);
                   const href =
                     entry.status === 'complete'
                       ? entry.analysis_url
-                      : entry.search_url
-                        ? `${entry.search_url}${entry.search_url.includes('?') ? '&' : '?'}analysisVideo=${encodeURIComponent(entry.video?.id ?? '')}&openAnalysis=1`
+                      : searchHrefWithReturnTo
+                        ? `${searchHrefWithReturnTo}${searchHrefWithReturnTo.includes('?') ? '&' : '?'}analysisVideo=${encodeURIComponent(entry.video?.id ?? '')}&openAnalysis=1`
                         : entry.analysis_url;
 
                   return <AnalysisHistoryRow key={entry.id} entry={entry} href={href} statusLabel={statusLabel} searchNames={searchNames} />;
