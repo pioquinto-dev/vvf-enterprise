@@ -8,6 +8,7 @@ use App\Http\Controllers\Auth\EmailVerificationController;
 use App\Http\Controllers\Auth\GoogleAuthController;
 use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\BillingController;
+use App\Http\Controllers\CouponSubscriptionController;
 use App\Http\Controllers\StripeWebhookController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -80,5 +81,10 @@ Route::prefix('billing')->group(function (): void {
     Route::get('/checkout/{slug}', [BillingController::class, 'checkout'])->name('billing.checkout');
     Route::get('/success', [BillingController::class, 'success'])->name('billing.success');
 });
+
+// Managed coupon-program subscription links. The program is resolved from the
+// path in the controller; users never type a coupon code.
+Route::get('/internal-subscription', [CouponSubscriptionController::class, 'enter'])->name('coupon.internal');
+Route::get('/vip-subscription', [CouponSubscriptionController::class, 'enter'])->name('coupon.vip');
 
 Route::post('/stripe/webhook', StripeWebhookController::class)->name('stripe.webhook');

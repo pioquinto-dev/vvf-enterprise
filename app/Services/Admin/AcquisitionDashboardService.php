@@ -2,6 +2,7 @@
 
 namespace App\Services\Admin;
 
+use App\Models\ManagedCouponRedemption;
 use App\Models\Subscription;
 use App\Models\User;
 use App\Models\UtmAttribution;
@@ -21,16 +22,23 @@ class AcquisitionDashboardService
         $signups = $this->signups($start, $end);
         $trials = $this->trials($start, $end);
 
+        // Trials that arrived through a managed coupon program (IGNITEBB /
+        // IVANVIP) are the "no card" bucket; everything else is a regular
+        // card-collecting trial from the landing or plans page.
+        $trialNoCc = $trials->filter(fn (array $row): bool => $row['no_cc'])->values();
+        $trialCc = $trials->reject(fn (array $row): bool => $row['no_cc'])->values();
+
         return [
             'rangeLabel' => $start->format('M j').' - '.$end->format('M j, Y'),
             'metrics' => [
                 $this->metric('sign_ups', 'Sign ups', $signups),
-                $this->metric('trial_cc', 'Trial - CC', $trials),
-                ['key' => 'trial_no_cc', 'label' => 'Trial - no CC', 'value' => null, 'locked' => true, 'caption' => 'Not enabled'],
+                $this->metric('trial_cc', 'Trial - CC', $trialCc),
+                $this->metric('trial_no_cc', 'Trial - no CC', $trialNoCc, 'Coupon program'),
             ],
             'details' => [
                 'sign_ups' => $this->details($signups),
-                'trial_cc' => $this->details($trials),
+                'trial_cc' => $this->details($trialCc),
+                'trial_no_cc' => $this->details($trialNoCc),
             ],
             'funnel' => $this->funnel($start, $end, $signups->count(), $trials->count()),
         ];
@@ -57,17 +65,38 @@ class AcquisitionDashboardService
 
     private function trials(CarbonImmutable $start, CarbonImmutable $end): Collection
     {
+        [$couponSubscriptionIds, $couponUserIds] = $this->couponTrialKeys();
+
         return Subscription::query()->whereIn('status', self::TRIALING_STATUSES)->whereBetween('trial_started_at', [$start, $end])
             ->with(['user.utmAttributions' => fn ($query) => $query->whereNull('subscription_id')->latest('id'), 'plan:id,name'])
             ->latest('trial_started_at')->get()->filter(fn (Subscription $subscription) => $subscription->user !== null)
-            ->map(function (Subscription $subscription): array {
+            ->map(function (Subscription $subscription) use ($couponSubscriptionIds, $couponUserIds): array {
+                $noCc = ($subscription->stripe_subscription_id !== null && in_array($subscription->stripe_subscription_id, $couponSubscriptionIds, true))
+                    || in_array($subscription->user_id, $couponUserIds, true);
+
                 return $this->userRow(
                     $subscription->user,
                     $subscription->user->utmAttributions->first(),
                     $subscription->trial_started_at,
                     $subscription->plan?->name ?? 'Trial',
-                );
+                ) + ['no_cc' => $noCc];
             })->values();
+    }
+
+    /**
+     * Keys that identify a trial as coupon-originated: the Stripe subscription
+     * ids and user ids that carry a completed coupon redemption.
+     *
+     * @return array{0: array<int, string>, 1: array<int, int>}
+     */
+    private function couponTrialKeys(): array
+    {
+        $redemptions = ManagedCouponRedemption::query()->whereNotNull('redeemed_at')->get(['user_id', 'stripe_subscription_id']);
+
+        return [
+            $redemptions->pluck('stripe_subscription_id')->filter()->unique()->values()->all(),
+            $redemptions->pluck('user_id')->filter()->map(fn ($id): int => (int) $id)->unique()->values()->all(),
+        ];
     }
 
     /** @return array<string, mixed> */
@@ -84,9 +113,9 @@ class AcquisitionDashboardService
     }
 
     /** @param Collection<int, array<string, mixed>> $rows @return array<string, mixed> */
-    private function metric(string $key, string $label, Collection $rows): array
+    private function metric(string $key, string $label, Collection $rows, string $caption = 'Account-backed only'): array
     {
-        return ['key' => $key, 'label' => $label, 'value' => $rows->count(), 'locked' => false, 'caption' => 'Account-backed only'];
+        return ['key' => $key, 'label' => $label, 'value' => $rows->count(), 'locked' => false, 'caption' => $caption];
     }
 
     /** @param Collection<int, array<string, mixed>> $rows @return array<string, mixed> */

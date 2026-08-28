@@ -549,6 +549,32 @@ var NAV_GROUPS = [
 		}]
 	},
 	{
+		label: "Coupons",
+		items: [
+			{
+				key: "coupon-programs",
+				label: "Coupon Programs",
+				href: "/x/admin/coupon-programs",
+				description: "Program config",
+				icon: "CP"
+			},
+			{
+				key: "coupon-whitelist",
+				label: "Coupon Whitelist",
+				href: "/x/admin/coupon-whitelist",
+				description: "Allowed emails",
+				icon: "CW"
+			},
+			{
+				key: "coupon-usage",
+				label: "Coupon Usage",
+				href: "/x/admin/coupon-usage",
+				description: "Redemptions",
+				icon: "CU"
+			}
+		]
+	},
+	{
 		label: "User Management",
 		items: [{
 			key: "users",
@@ -836,7 +862,8 @@ var CATEGORIES = [
 	["all", "All activity"],
 	["sign_up", "Sign ups"],
 	["subscription", "Subscription"],
-	["engagement", "Engagement"]
+	["engagement", "Engagement"],
+	["coupon_usage", "Coupon usage"]
 ];
 var EVENT_LABELS = {
 	account_created: "Signup Created",
@@ -860,12 +887,21 @@ var EVENT_LABELS = {
 	payment_recovered: "Payment Recovered",
 	invoice_paid: "Invoice Paid",
 	account_deletion_requested: "Account Deletion Requested",
-	account_deleted: "Account Deleted"
+	account_deleted: "Account Deleted",
+	coupon_checkout_initiated: "Coupon Checkout Started",
+	coupon_redeemed: "Coupon Redeemed",
+	coupon_blocked_invalid_email: "Coupon Blocked: Invalid Email",
+	coupon_blocked_slots_exhausted: "Coupon Blocked: Slots Exhausted",
+	coupon_blocked_already_redeemed: "Coupon Blocked: Already Redeemed",
+	coupon_blocked_trial_already_used: "Coupon Blocked: Trial Used",
+	coupon_blocked_reverted_to_free: "Coupon Blocked: Reverted To Free",
+	coupon_blocked_program_inactive: "Coupon Blocked: Program Inactive"
 };
 var TONES = {
 	sign_up: "#20cfc2",
 	subscription: "#ee4393",
-	engagement: "#7b5cff"
+	engagement: "#7b5cff",
+	coupon_usage: "#f6a819"
 };
 function formatTimestamp$1(value) {
 	if (!value) return "-";
@@ -1472,13 +1508,15 @@ function ConversionFunnel({ funnel = {} }) {
 var ACTIVITY_TONES = {
 	sign_up: "#20cfc2",
 	subscription: "#ee4393",
-	engagement: "#7b5cff"
+	engagement: "#7b5cff",
+	coupon_usage: "#f6a819"
 };
 var ACTIVITY_FILTERS = [
 	["all", "All"],
 	["sign_up", "Sign up"],
 	["subscription", "Subscription"],
-	["engagement", "Engagement"]
+	["engagement", "Engagement"],
+	["coupon_usage", "Coupon"]
 ];
 function RecentActivity({ activity = {} }) {
 	const [filter, setFilter] = useState("all");
@@ -1547,7 +1585,113 @@ function RecentActivity({ activity = {} }) {
 		]
 	});
 }
-function Dashboard$1({ trend = [], stats = [], snapshot = {}, range = "30D", ranges = [], acquisition = {}, activity = {} }) {
+function CouponProgramsPanel({ coupons = {} }) {
+	const programs = coupons.programs ?? [];
+	const alerts = coupons.alerts ?? [];
+	const recent = coupons.recent ?? [];
+	if (programs.length === 0) return null;
+	return /* @__PURE__ */ jsxs("section", {
+		className: "rounded-2xl border border-[var(--line)] bg-white p-4 shadow-[0_1px_2px_rgba(20,15,0,.04),0_16px_32px_-26px_rgba(20,15,0,.18)] sm:p-5",
+		children: [
+			/* @__PURE__ */ jsx("div", {
+				className: "flex flex-wrap items-start justify-between gap-3",
+				children: /* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsx("p", {
+					className: "text-[10px] font-semibold tracking-[.22em] text-[var(--amber-ink)] uppercase",
+					children: "Coupons"
+				}), /* @__PURE__ */ jsx("h3", {
+					className: "mt-1 text-[17px] font-semibold text-[var(--ink)]",
+					children: "Program redemptions"
+				})] })
+			}),
+			alerts.length > 0 && /* @__PURE__ */ jsx("div", {
+				className: "mt-3 flex flex-col gap-1.5",
+				children: alerts.map((alert) => /* @__PURE__ */ jsxs("div", {
+					className: `flex items-center gap-2 rounded-lg border px-3 py-2 text-[11.5px] font-medium ${alert.type === "full" ? "border-[rgba(154,52,18,.25)] bg-[var(--warn-bg)] text-[var(--warn)]" : "border-[var(--yellow)] bg-[var(--wash)] text-[var(--amber-ink)]"}`,
+					children: [/* @__PURE__ */ jsx("span", { className: "h-1.5 w-1.5 rounded-full bg-current" }), alert.message]
+				}, `${alert.program}-${alert.type}`))
+			}),
+			/* @__PURE__ */ jsx("div", {
+				className: "mt-4 grid gap-3 sm:grid-cols-2",
+				children: programs.map((program) => {
+					const pct = program.max ? Math.min(100, Math.round(program.redeemed / program.max * 100)) : 0;
+					return /* @__PURE__ */ jsxs("div", {
+						className: "rounded-xl border border-[var(--line)] bg-[var(--paper)] px-3.5 py-3",
+						children: [
+							/* @__PURE__ */ jsxs("div", {
+								className: "flex items-center justify-between gap-2",
+								children: [/* @__PURE__ */ jsx("span", {
+									className: "text-[12.5px] font-bold text-[var(--ink)]",
+									children: program.code
+								}), /* @__PURE__ */ jsx("span", {
+									className: `text-[10px] font-semibold uppercase tracking-[.08em] ${program.active ? "text-[var(--ok)]" : "text-[var(--faint)]"}`,
+									children: program.active ? "Active" : "Inactive"
+								})]
+							}),
+							/* @__PURE__ */ jsxs("div", {
+								className: "mt-2 flex items-baseline gap-1.5",
+								children: [/* @__PURE__ */ jsx("span", {
+									className: "text-[20px] font-bold tracking-[-.02em] text-[var(--ink)] [font-variant-numeric:tabular-nums]",
+									children: program.redeemed
+								}), /* @__PURE__ */ jsxs("span", {
+									className: "text-[12px] text-[var(--faint)]",
+									children: [
+										"/ ",
+										program.max ?? "∞",
+										" redeemed"
+									]
+								})]
+							}),
+							/* @__PURE__ */ jsx("div", {
+								className: "mt-2 h-1.5 overflow-hidden rounded-full bg-[#edebe4]",
+								children: /* @__PURE__ */ jsx("span", {
+									className: `block h-full rounded-full ${program.full ? "bg-[var(--warn)]" : program.low ? "bg-[var(--yellow)]" : "bg-[var(--ok)]"}`,
+									style: { width: `${pct}%` }
+								})
+							}),
+							/* @__PURE__ */ jsx("p", {
+								className: "mt-1.5 text-[10.5px] text-[var(--faint)]",
+								children: program.remaining === null ? "No cap" : `${program.remaining} slots left`
+							})
+						]
+					}, program.code);
+				})
+			}),
+			recent.length > 0 && /* @__PURE__ */ jsxs("div", {
+				className: "mt-4",
+				children: [/* @__PURE__ */ jsx("p", {
+					className: "mb-2 text-[11px] font-semibold tracking-[.08em] text-[var(--faint)] uppercase",
+					children: "Recent redemptions"
+				}), /* @__PURE__ */ jsx("div", {
+					className: "rounded-xl border border-[var(--line)] bg-white",
+					children: recent.map((row, i) => /* @__PURE__ */ jsxs("div", {
+						className: "flex items-center gap-3 border-b border-[var(--line)] px-3 py-2.5 last:border-b-0",
+						children: [
+							/* @__PURE__ */ jsxs("div", {
+								className: "min-w-0 flex-1",
+								children: [/* @__PURE__ */ jsx("p", {
+									className: "truncate text-[12px] font-semibold text-[var(--ink)]",
+									children: row.name
+								}), /* @__PURE__ */ jsx("p", {
+									className: "truncate text-[10.5px] text-[var(--faint)]",
+									children: row.email
+								})]
+							}),
+							/* @__PURE__ */ jsx("span", {
+								className: "shrink-0 rounded-full bg-[var(--wash)] px-2 py-0.5 text-[9px] font-semibold tracking-[.06em] text-[var(--amber-ink)] uppercase",
+								children: row.program
+							}),
+							/* @__PURE__ */ jsx("span", {
+								className: "shrink-0 text-[10.5px] text-[var(--faint)]",
+								children: row.redeemedAt ? formatDay(row.redeemedAt.slice(0, 10)) : "-"
+							})
+						]
+					}, i))
+				})]
+			})
+		]
+	});
+}
+function Dashboard$1({ trend = [], stats = [], snapshot = {}, range = "30D", ranges = [], acquisition = {}, activity = {}, coupons = {} }) {
 	const refresh = useForm({});
 	const selectRange = (next) => {
 		router.get("/x/admin", { range: next }, {
@@ -1639,6 +1783,10 @@ function Dashboard$1({ trend = [], stats = [], snapshot = {}, range = "30D", ran
 			/* @__PURE__ */ jsxs("div", {
 				className: "mt-3 grid gap-3 xl:grid-cols-2",
 				children: [/* @__PURE__ */ jsx(RecentActivity, { activity }), /* @__PURE__ */ jsx(AcquisitionDashboard, { acquisition })]
+			}),
+			/* @__PURE__ */ jsx("div", {
+				className: "mt-3",
+				children: /* @__PURE__ */ jsx(CouponProgramsPanel, { coupons })
 			})
 		]
 	});
@@ -1981,7 +2129,7 @@ function AdminEditDrawer({ open, resource, title, fields = [], row, createValues
 						type: "submit",
 						disabled: form.processing,
 						className: "h-8 rounded-md bg-[var(--yellow)] px-3.5 text-[12.5px] font-semibold text-[#1a1400] transition hover:brightness-105 disabled:opacity-50",
-						children: form.processing ? mode === "create" ? "Creating..." : "Saving..." : mode === "create" ? `Create ${resource === "keyword-index" ? "keyword" : "plan"}` : "Save changes"
+						children: form.processing ? mode === "create" ? "Creating..." : "Saving..." : mode === "create" ? "Create" : "Save changes"
 					})]
 				})]
 			})]
@@ -2417,6 +2565,18 @@ function Listing({ resource, title, search, searchPlaceholder, filters = [], col
 					onClick: () => setCreating(true),
 					className: "inline-flex h-8 items-center rounded-md bg-[var(--yellow)] px-3.5 text-[12.5px] font-semibold text-[#1a1400] transition hover:brightness-105",
 					children: "New keyword"
+				}),
+				resource === "coupon-whitelist" && /* @__PURE__ */ jsx("button", {
+					type: "button",
+					onClick: () => setCreating(true),
+					className: "inline-flex h-8 items-center rounded-md bg-[var(--yellow)] px-3.5 text-[12.5px] font-semibold text-[#1a1400] transition hover:brightness-105",
+					children: "New entry"
+				}),
+				resource === "coupon-programs" && /* @__PURE__ */ jsx("button", {
+					type: "button",
+					onClick: () => setCreating(true),
+					className: "inline-flex h-8 items-center rounded-md bg-[var(--yellow)] px-3.5 text-[12.5px] font-semibold text-[#1a1400] transition hover:brightness-105",
+					children: "New program"
 				}),
 				/* @__PURE__ */ jsxs("span", {
 					className: "inline-flex items-center gap-1.5 rounded-md border border-[var(--line)] bg-white px-2 py-1 text-[11.5px] text-[var(--muted)]",
@@ -7868,12 +8028,72 @@ function SearchAccessPromptModal({ prompt, billing, onClose, onUpgrade }) {
 		onClose
 	});
 }
+function CouponAccessPromptModal({ prompt, onClose }) {
+	if (!prompt) return null;
+	return /* @__PURE__ */ jsx("div", {
+		className: "bb",
+		children: /* @__PURE__ */ jsxs("div", {
+			className: "bb-modal",
+			children: [/* @__PURE__ */ jsx("button", {
+				className: "bb-modal__bg",
+				"aria-label": "Close",
+				onClick: onClose
+			}), /* @__PURE__ */ jsxs("div", {
+				className: "bb-modal__box bb-modal__box--upgrade",
+				role: "dialog",
+				"aria-modal": "true",
+				"aria-label": prompt.title || "Notice",
+				children: [
+					/* @__PURE__ */ jsx("button", {
+						type: "button",
+						className: "bb-modal__close",
+						onClick: onClose,
+						"aria-label": "Close",
+						children: /* @__PURE__ */ jsx("svg", {
+							viewBox: "0 0 24 24",
+							fill: "none",
+							stroke: "currentColor",
+							strokeWidth: "2.2",
+							strokeLinecap: "round",
+							"aria-hidden": "true",
+							children: /* @__PURE__ */ jsx("path", { d: "M6 6l12 12M18 6L6 18" })
+						})
+					}),
+					(prompt.errorKey || prompt.program) && /* @__PURE__ */ jsx("div", {
+						className: "bb-modal__eyebrow",
+						children: /* @__PURE__ */ jsx("span", { children: [prompt.program, prompt.errorKey].filter(Boolean).join(" · ") })
+					}),
+					/* @__PURE__ */ jsx("h2", { children: prompt.title || "This offer is unavailable" }),
+					prompt.detail && /* @__PURE__ */ jsx("p", {
+						className: "sub",
+						children: prompt.detail
+					}),
+					/* @__PURE__ */ jsxs("div", {
+						className: "bb-modal__actions",
+						children: [/* @__PURE__ */ jsx(Link, {
+							href: "/contact",
+							className: "btn btn--y",
+							onClick: onClose,
+							children: "Contact us"
+						}), /* @__PURE__ */ jsx("button", {
+							type: "button",
+							className: "btn btn--g",
+							onClick: onClose,
+							children: "Got it"
+						})]
+					})
+				]
+			})]
+		})
+	});
+}
 function Dashboard() {
 	const { flash = {}, recent = [], stats = null, searchSuggestions = {}, billing = {} } = usePage().props;
 	const currentPath = typeof window === "undefined" ? "/dashboard" : `${window.location.pathname}${window.location.search}`;
 	const [processingModal, setProcessingModal] = useState(null);
 	const [completionModal, setCompletionModal] = useState(null);
 	const [searchAccessPrompt, setSearchAccessPrompt] = useState(null);
+	const [couponPrompt, setCouponPrompt] = useState(null);
 	const [retryingSearchId, setRetryingSearchId] = useState(null);
 	const [recentSearches, setRecentSearches] = useState(recent);
 	const polling = useRef(false);
@@ -7955,6 +8175,10 @@ function Dashboard() {
 		if (!flash.searchAccessPrompt) return;
 		setSearchAccessPrompt(flash.searchAccessPrompt);
 	}, [flash.searchAccessPrompt]);
+	useEffect(() => {
+		if (!flash.couponAccessPrompt) return;
+		setCouponPrompt(flash.couponAccessPrompt);
+	}, [flash.couponAccessPrompt]);
 	useEffect(() => {
 		if (completionModal) return void 0;
 		let cancelled = false;
@@ -8150,6 +8374,10 @@ function Dashboard() {
 		/* @__PURE__ */ jsx(SearchProcessingModal, {
 			searches: processingModal,
 			onClose: closeProcessingModal
+		}),
+		/* @__PURE__ */ jsx(CouponAccessPromptModal, {
+			prompt: couponPrompt,
+			onClose: () => setCouponPrompt(null)
 		}),
 		/* @__PURE__ */ jsx(SearchAccessPromptModal, {
 			prompt: searchAccessPrompt,

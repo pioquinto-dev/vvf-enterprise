@@ -79,6 +79,7 @@ class HandleInertiaRequests extends Middleware
                 'processingSearches' => fn () => $request->session()->get('processing_searches', []),
                 'searchAccessPrompt' => fn () => $request->session()->get('search_access_prompt'),
                 'trialAccessPrompt' => fn () => $request->session()->get('trial_access_prompt'),
+                'couponAccessPrompt' => fn () => $request->session()->get('coupon_access_prompt'),
             ],
             'services' => [
                 'apifyConfigured' => filled(config('services.apify.token')),

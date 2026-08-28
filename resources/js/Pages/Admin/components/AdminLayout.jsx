@@ -48,6 +48,14 @@ const NAV_GROUPS = [
         items: [{ key: 'subscription', label: 'Subscription', href: '/x/admin/subscription', description: 'Billing control', icon: 'SU' }],
     },
     {
+        label: 'Coupons',
+        items: [
+            { key: 'coupon-programs', label: 'Coupon Programs', href: '/x/admin/coupon-programs', description: 'Program config', icon: 'CP' },
+            { key: 'coupon-whitelist', label: 'Coupon Whitelist', href: '/x/admin/coupon-whitelist', description: 'Allowed emails', icon: 'CW' },
+            { key: 'coupon-usage', label: 'Coupon Usage', href: '/x/admin/coupon-usage', description: 'Redemptions', icon: 'CU' },
+        ],
+    },
+    {
         label: 'User Management',
         items: [
             { key: 'users', label: 'Users', href: '/x/admin/users', description: 'Customer accounts', icon: 'US' },

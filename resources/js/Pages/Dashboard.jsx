@@ -346,12 +346,43 @@ function SearchAccessPromptModal({ prompt, billing, onClose, onUpgrade }) {
   );
 }
 
+function CouponAccessPromptModal({ prompt, onClose }) {
+  if (!prompt) return null;
+
+  return (
+    <div className="bb">
+      <div className="bb-modal">
+        <button className="bb-modal__bg" aria-label="Close" onClick={onClose} />
+        <div className="bb-modal__box bb-modal__box--upgrade" role="dialog" aria-modal="true" aria-label={prompt.title || 'Notice'}>
+          <button type="button" className="bb-modal__close" onClick={onClose} aria-label="Close">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true">
+              <path d="M6 6l12 12M18 6L6 18" />
+            </svg>
+          </button>
+          {(prompt.errorKey || prompt.program) && (
+            <div className="bb-modal__eyebrow">
+              <span>{[prompt.program, prompt.errorKey].filter(Boolean).join(' · ')}</span>
+            </div>
+          )}
+          <h2>{prompt.title || 'This offer is unavailable'}</h2>
+          {prompt.detail && <p className="sub">{prompt.detail}</p>}
+          <div className="bb-modal__actions">
+            <Link href="/contact" className="btn btn--y" onClick={onClose}>Contact us</Link>
+            <button type="button" className="btn btn--g" onClick={onClose}>Got it</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function Dashboard() {
   const { flash = {}, recent = [], stats = null, searchSuggestions = {}, billing = {} } = usePage().props;
   const currentPath = typeof window === 'undefined' ? '/dashboard' : `${window.location.pathname}${window.location.search}`;
   const [processingModal, setProcessingModal] = useState(null);
   const [completionModal, setCompletionModal] = useState(null);
   const [searchAccessPrompt, setSearchAccessPrompt] = useState(null);
+  const [couponPrompt, setCouponPrompt] = useState(null);
   const [retryingSearchId, setRetryingSearchId] = useState(null);
   const [recentSearches, setRecentSearches] = useState(recent);
   const polling = useRef(false);
@@ -470,6 +501,11 @@ export default function Dashboard() {
     if (!flash.searchAccessPrompt) return;
     setSearchAccessPrompt(flash.searchAccessPrompt);
   }, [flash.searchAccessPrompt]);
+
+  useEffect(() => {
+    if (!flash.couponAccessPrompt) return;
+    setCouponPrompt(flash.couponAccessPrompt);
+  }, [flash.couponAccessPrompt]);
 
   useEffect(() => {
     if (completionModal) return undefined;
@@ -693,6 +729,10 @@ export default function Dashboard() {
       <SearchProcessingModal
         searches={processingModal}
         onClose={closeProcessingModal}
+      />
+      <CouponAccessPromptModal
+        prompt={couponPrompt}
+        onClose={() => setCouponPrompt(null)}
       />
       <SearchAccessPromptModal
         prompt={searchAccessPrompt}

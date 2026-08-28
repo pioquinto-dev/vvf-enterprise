@@ -2,6 +2,7 @@
 
 namespace App\Services\Billing;
 
+use App\Models\ManagedCouponProgram;
 use App\Models\PricingPlan;
 use App\Models\Subscription;
 use App\Models\User;
@@ -24,9 +25,10 @@ class BillingService
         private readonly BrevoLifecycleEmailService $emails,
         private readonly UtmAttributionService $utmAttributionService,
         private readonly ?UserActivityService $activity = null,
+        private readonly ?CouponAccessService $couponAccess = null,
     ) {}
 
-    public function checkout(User $user, PricingPlan $plan, bool $withTrial = false, string $cycle = 'monthly'): string
+    public function checkout(User $user, PricingPlan $plan, bool $withTrial = false, string $cycle = 'monthly', ?ManagedCouponProgram $program = null): string
     {
         if (! $plan->is_active || $plan->archived_at !== null) {
             throw ValidationException::withMessages([
@@ -53,7 +55,15 @@ class BillingService
 
         $customerId = $this->ensureCustomer($user);
 
-        $session = $this->stripe->createCheckoutSession([
+        // A managed coupon program can apply a Stripe discount server-side and,
+        // for the no-card trial programs, skip payment-method collection.
+        $collectPaymentMethod = $program === null || $program->collect_payment_method;
+        $programMeta = $program === null ? [] : [
+            'coupon_program_id' => (string) $program->id,
+            'coupon_program_code' => $program->code,
+        ];
+
+        $sessionPayload = [
             'mode' => 'subscription',
             'customer' => $customerId,
             'line_items' => [[
@@ -62,20 +72,36 @@ class BillingService
             ]],
             'success_url' => route('billing.success').'?session_id={CHECKOUT_SESSION_ID}',
             'cancel_url' => route('plans'),
-            'metadata' => [
+            'metadata' => array_merge([
                 'plan_slug' => $plan->slug,
                 'user_id' => (string) $user->id,
                 'trial_days' => $withTrial ? (string) self::TRIAL_DAYS : '0',
                 'billing_cycle' => $billingCycle,
-            ],
+            ], $programMeta),
             'subscription_data' => array_filter([
                 'trial_period_days' => $withTrial ? self::TRIAL_DAYS : null,
-                'metadata' => [
+                'metadata' => array_merge([
                     'plan_slug' => $plan->slug,
                     'billing_cycle' => $billingCycle,
-                ],
+                ], $programMeta),
+                // No-card trial: cancel at trial end if no payment method was added.
+                'trial_settings' => (! $collectPaymentMethod && $withTrial)
+                    ? ['end_behavior' => ['missing_payment_method' => 'cancel']]
+                    : null,
             ]),
-        ]);
+        ];
+
+        if (! $collectPaymentMethod) {
+            $sessionPayload['payment_method_collection'] = 'if_required';
+        }
+
+        $discount = $this->couponDiscountPayload($program);
+
+        if ($discount !== null) {
+            $sessionPayload['discounts'] = [$discount];
+        }
+
+        $session = $this->stripe->createCheckoutSession($sessionPayload);
 
         AppEventLogger::result('billing.checkout.session_created', [
             'user_id' => $user->id,
@@ -85,10 +111,85 @@ class BillingService
             'billing_cycle' => $billingCycle,
             'stripe_customer_id' => $customerId,
             'stripe_checkout_session_id' => (string) ($session->id ?? ''),
+            'coupon_program_code' => $program?->code,
         ]);
-        $this->activity?->record($user, 'engagement', 'checkout_initiated', "Initiated checkout for {$plan->name}.", ['plan' => $plan->slug], 'checkout:'.(string) ($session->id ?? ''));
+
+        if ($program !== null) {
+            $this->activity()?->record($user, 'coupon_usage', 'coupon_checkout_initiated', "Started {$program->code} checkout for {$plan->name}.", ['plan' => $plan->slug, 'coupon_program' => $program->code], 'coupon-checkout:'.(string) ($session->id ?? ''));
+        } else {
+            $this->activity?->record($user, 'engagement', 'checkout_initiated', "Initiated checkout for {$plan->name}.", ['plan' => $plan->slug], 'checkout:'.(string) ($session->id ?? ''));
+        }
 
         return $session->url;
+    }
+
+    private function recordCouponRedemption(User $user, mixed $session, string $subscriptionId, string $status): void
+    {
+        $programId = (int) ($session->metadata->coupon_program_id ?? 0);
+
+        if ($programId <= 0) {
+            return;
+        }
+
+        $program = ManagedCouponProgram::query()->find($programId);
+
+        if ($program === null) {
+            return;
+        }
+
+        // Resolved lazily: the container does not inject constructor params that
+        // carry a default value, so $this->couponAccess can be null in prod.
+        $couponAccess = $this->couponAccess ?? app(CouponAccessService::class);
+
+        $redemption = $couponAccess->recordRedemption(
+            $program,
+            $user,
+            (string) ($session->id ?? ''),
+            $subscriptionId !== '' ? $subscriptionId : null,
+            $status,
+        );
+
+        if ($redemption === null) {
+            AppEventLogger::error('billing.coupon.redemption_slot_lost', 'No slots remained when finalizing coupon redemption.', [
+                'user_id' => $user->id,
+                'coupon_program_code' => $program->code,
+            ]);
+
+            return;
+        }
+
+        $this->activity()?->record($user, 'coupon_usage', 'coupon_redeemed', "Redeemed {$program->code}.", ['coupon_program' => $program->code, 'status' => $status], 'coupon-redeemed:'.$program->id.':'.$user->id);
+    }
+
+    /**
+     * Activity recorder — resolved lazily because the container leaves the
+     * defaulted constructor dependency null (same reason as couponAccess).
+     */
+    private function activity(): ?UserActivityService
+    {
+        return $this->activity ?? app(UserActivityService::class);
+    }
+
+    private function couponDiscountPayload(?ManagedCouponProgram $program): ?array
+    {
+        if ($program === null) {
+            return null;
+        }
+
+        $promo = trim((string) $program->stripe_promotion_code_id);
+
+        if ($promo !== '') {
+            // Real Stripe promotion-code IDs are prefixed `promo_`. Anything else
+            // pasted here is almost certainly a coupon id in the wrong field, so
+            // treat it as a coupon rather than 500ing with "No such promotion code".
+            return str_starts_with($promo, 'promo_')
+                ? ['promotion_code' => $promo]
+                : ['coupon' => $promo];
+        }
+
+        $coupon = trim((string) $program->stripe_coupon_id);
+
+        return $coupon !== '' ? ['coupon' => $coupon] : null;
     }
 
     public function finalizeCheckout(User $user, string $sessionId): void
@@ -154,6 +255,8 @@ class BillingService
 
         $this->utmAttributionService->createSubscriptionAttribution($user, $subscriptionId);
         $this->activity?->record($user, 'subscription', $status === 'trialing' ? 'trial_started' : 'subscription_paid', $status === 'trialing' ? "Started a trial on {$plan->name}." : "Started a paid subscription on {$plan->name}.", ['plan' => $plan->slug], 'subscription:'.$sessionId.':'.$status);
+
+        $this->recordCouponRedemption($user, $session, $subscriptionId, $status);
 
         if (! in_array((string) ($existingSubscription?->status ?? ''), ['active', 'trialing', 'trial'], true)) {
             $this->emails->sendSubscriptionStarted($user, $subscription);

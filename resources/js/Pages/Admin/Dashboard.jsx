@@ -204,12 +204,13 @@ function ConversionFunnel({ funnel = {} }) {
     );
 }
 
-const ACTIVITY_TONES = { sign_up: '#20cfc2', subscription: '#ee4393', engagement: '#7b5cff' };
+const ACTIVITY_TONES = { sign_up: '#20cfc2', subscription: '#ee4393', engagement: '#7b5cff', coupon_usage: '#f6a819' };
 const ACTIVITY_FILTERS = [
     ['all', 'All'],
     ['sign_up', 'Sign up'],
     ['subscription', 'Subscription'],
     ['engagement', 'Engagement'],
+    ['coupon_usage', 'Coupon'],
 ];
 
 function RecentActivity({ activity = {} }) {
@@ -264,7 +265,88 @@ function RecentActivity({ activity = {} }) {
     );
 }
 
-export default function Dashboard({ trend = [], stats = [], snapshot = {}, range = '30D', ranges = [], acquisition = {}, activity = {} }) {
+function CouponProgramsPanel({ coupons = {} }) {
+    const programs = coupons.programs ?? [];
+    const alerts = coupons.alerts ?? [];
+    const recent = coupons.recent ?? [];
+
+    if (programs.length === 0) return null;
+
+    return (
+        <section className="rounded-2xl border border-[var(--line)] bg-white p-4 shadow-[0_1px_2px_rgba(20,15,0,.04),0_16px_32px_-26px_rgba(20,15,0,.18)] sm:p-5">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                    <p className="text-[10px] font-semibold tracking-[.22em] text-[var(--amber-ink)] uppercase">Coupons</p>
+                    <h3 className="mt-1 text-[17px] font-semibold text-[var(--ink)]">Program redemptions</h3>
+                </div>
+            </div>
+
+            {alerts.length > 0 && (
+                <div className="mt-3 flex flex-col gap-1.5">
+                    {alerts.map((alert) => (
+                        <div
+                            key={`${alert.program}-${alert.type}`}
+                            className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-[11.5px] font-medium ${
+                                alert.type === 'full'
+                                    ? 'border-[rgba(154,52,18,.25)] bg-[var(--warn-bg)] text-[var(--warn)]'
+                                    : 'border-[var(--yellow)] bg-[var(--wash)] text-[var(--amber-ink)]'
+                            }`}
+                        >
+                            <span className="h-1.5 w-1.5 rounded-full bg-current" />
+                            {alert.message}
+                        </div>
+                    ))}
+                </div>
+            )}
+
+            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                {programs.map((program) => {
+                    const pct = program.max ? Math.min(100, Math.round((program.redeemed / program.max) * 100)) : 0;
+                    return (
+                        <div key={program.code} className="rounded-xl border border-[var(--line)] bg-[var(--paper)] px-3.5 py-3">
+                            <div className="flex items-center justify-between gap-2">
+                                <span className="text-[12.5px] font-bold text-[var(--ink)]">{program.code}</span>
+                                <span className={`text-[10px] font-semibold uppercase tracking-[.08em] ${program.active ? 'text-[var(--ok)]' : 'text-[var(--faint)]'}`}>
+                                    {program.active ? 'Active' : 'Inactive'}
+                                </span>
+                            </div>
+                            <div className="mt-2 flex items-baseline gap-1.5">
+                                <span className="text-[20px] font-bold tracking-[-.02em] text-[var(--ink)] [font-variant-numeric:tabular-nums]">{program.redeemed}</span>
+                                <span className="text-[12px] text-[var(--faint)]">/ {program.max ?? '∞'} redeemed</span>
+                            </div>
+                            <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-[#edebe4]">
+                                <span className={`block h-full rounded-full ${program.full ? 'bg-[var(--warn)]' : program.low ? 'bg-[var(--yellow)]' : 'bg-[var(--ok)]'}`} style={{ width: `${pct}%` }} />
+                            </div>
+                            <p className="mt-1.5 text-[10.5px] text-[var(--faint)]">
+                                {program.remaining === null ? 'No cap' : `${program.remaining} slots left`}
+                            </p>
+                        </div>
+                    );
+                })}
+            </div>
+
+            {recent.length > 0 && (
+                <div className="mt-4">
+                    <p className="mb-2 text-[11px] font-semibold tracking-[.08em] text-[var(--faint)] uppercase">Recent redemptions</p>
+                    <div className="rounded-xl border border-[var(--line)] bg-white">
+                        {recent.map((row, i) => (
+                            <div key={i} className="flex items-center gap-3 border-b border-[var(--line)] px-3 py-2.5 last:border-b-0">
+                                <div className="min-w-0 flex-1">
+                                    <p className="truncate text-[12px] font-semibold text-[var(--ink)]">{row.name}</p>
+                                    <p className="truncate text-[10.5px] text-[var(--faint)]">{row.email}</p>
+                                </div>
+                                <span className="shrink-0 rounded-full bg-[var(--wash)] px-2 py-0.5 text-[9px] font-semibold tracking-[.06em] text-[var(--amber-ink)] uppercase">{row.program}</span>
+                                <span className="shrink-0 text-[10.5px] text-[var(--faint)]">{row.redeemedAt ? formatDay(row.redeemedAt.slice(0, 10)) : '-'}</span>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+        </section>
+    );
+}
+
+export default function Dashboard({ trend = [], stats = [], snapshot = {}, range = '30D', ranges = [], acquisition = {}, activity = {}, coupons = {} }) {
     const refresh = useForm({});
 
     const selectRange = (next) => {
@@ -335,6 +417,9 @@ export default function Dashboard({ trend = [], stats = [], snapshot = {}, range
             <div className="mt-3 grid gap-3 xl:grid-cols-2">
                 <RecentActivity activity={activity} />
                 <AcquisitionDashboard acquisition={acquisition} />
+            </div>
+            <div className="mt-3">
+                <CouponProgramsPanel coupons={coupons} />
             </div>
         </AdminLayout>
     );

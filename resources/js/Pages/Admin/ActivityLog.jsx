@@ -7,6 +7,7 @@ const CATEGORIES = [
     ['sign_up', 'Sign ups'],
     ['subscription', 'Subscription'],
     ['engagement', 'Engagement'],
+    ['coupon_usage', 'Coupon usage'],
 ];
 const EVENT_LABELS = {
     account_created: 'Signup Created',
@@ -31,8 +32,16 @@ const EVENT_LABELS = {
     invoice_paid: 'Invoice Paid',
     account_deletion_requested: 'Account Deletion Requested',
     account_deleted: 'Account Deleted',
+    coupon_checkout_initiated: 'Coupon Checkout Started',
+    coupon_redeemed: 'Coupon Redeemed',
+    coupon_blocked_invalid_email: 'Coupon Blocked: Invalid Email',
+    coupon_blocked_slots_exhausted: 'Coupon Blocked: Slots Exhausted',
+    coupon_blocked_already_redeemed: 'Coupon Blocked: Already Redeemed',
+    coupon_blocked_trial_already_used: 'Coupon Blocked: Trial Used',
+    coupon_blocked_reverted_to_free: 'Coupon Blocked: Reverted To Free',
+    coupon_blocked_program_inactive: 'Coupon Blocked: Program Inactive',
 };
-const TONES = { sign_up: '#20cfc2', subscription: '#ee4393', engagement: '#7b5cff' };
+const TONES = { sign_up: '#20cfc2', subscription: '#ee4393', engagement: '#7b5cff', coupon_usage: '#f6a819' };
 
 function formatTimestamp(value) {
     if (!value) return '-';

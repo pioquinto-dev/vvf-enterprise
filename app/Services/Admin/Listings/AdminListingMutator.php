@@ -4,6 +4,8 @@ namespace App\Services\Admin\Listings;
 
 use App\Models\CustomKeywordSearch;
 use App\Models\IndexedKeyword;
+use App\Models\ManagedCouponProgram;
+use App\Models\ManagedCouponWhitelistEntry;
 use App\Models\PricingPlan;
 use App\Models\Subscription;
 use App\Models\User;
@@ -35,6 +37,8 @@ class AdminListingMutator
             'subscription' => Subscription::withTrashed()->with('user')->find($id),
             'users' => User::withTrashed()->find($id),
             'keyword-index' => IndexedKeyword::withTrashed()->find($id),
+            'coupon-programs' => ManagedCouponProgram::withTrashed()->find($id),
+            'coupon-whitelist' => ManagedCouponWhitelistEntry::find($id),
             default => null,
         };
     }
@@ -50,6 +54,7 @@ class AdminListingMutator
             'subscription' => $this->updateSubscription($record, $input),
             'users' => $this->updateUser($record, $input),
             'keyword-index' => $this->updateIndexedKeyword($record, $input),
+            'coupon-programs' => $this->updateCouponProgram($record, $input),
             default => throw ValidationException::withMessages(['resource' => 'This resource cannot be edited.']),
         };
     }
@@ -62,6 +67,8 @@ class AdminListingMutator
         return match ($resource) {
             'plans' => $this->createPlan($input),
             'keyword-index' => $this->createIndexedKeyword($input),
+            'coupon-whitelist' => $this->createCouponWhitelistEntry($input),
+            'coupon-programs' => $this->createCouponProgram($input),
             default => throw ValidationException::withMessages(['resource' => 'This resource cannot be created.']),
         };
     }
@@ -312,6 +319,119 @@ class AdminListingMutator
         }
 
         $keyword->save();
+    }
+
+    /**
+     * @param  array<string, mixed>  $input
+     */
+    private function updateCouponProgram(ManagedCouponProgram $program, array $input): void
+    {
+        $this->fillCouponProgram($program, $input);
+        $program->save();
+    }
+
+    /**
+     * @param  array<string, mixed>  $input
+     */
+    private function createCouponProgram(array $input): ManagedCouponProgram
+    {
+        $program = new ManagedCouponProgram([
+            // Sensible defaults; overwritten by fillCouponProgram below.
+            'billing_cycle' => 'monthly',
+            'collect_payment_method' => true,
+            'is_active' => true,
+        ]);
+
+        $this->fillCouponProgram($program, $input);
+
+        if (blank($program->code) || blank($program->link_path) || blank($program->plan_slug)) {
+            throw ValidationException::withMessages(['code' => 'Code, link path and plan are required.']);
+        }
+
+        $program->save();
+
+        return $program;
+    }
+
+    /**
+     * Shared field assignment for coupon-program create and update.
+     *
+     * @param  array<string, mixed>  $input
+     */
+    private function fillCouponProgram(ManagedCouponProgram $program, array $input): void
+    {
+        if (array_key_exists('code', $input) && filled($input['code'])) {
+            $program->code = strtoupper(trim((string) $input['code']));
+        }
+
+        if (array_key_exists('name', $input) && filled($input['name'])) {
+            $program->name = (string) $input['name'];
+        }
+
+        if (array_key_exists('link_path', $input) && filled($input['link_path'])) {
+            $program->link_path = '/'.ltrim(trim((string) $input['link_path']), '/');
+        }
+
+        foreach (['plan_slug', 'billing_cycle'] as $field) {
+            if (array_key_exists($field, $input) && filled($input[$field])) {
+                $program->{$field} = (string) $input[$field];
+            }
+        }
+
+        if (array_key_exists('max_redemptions', $input)) {
+            $program->max_redemptions = $input['max_redemptions'] === null || $input['max_redemptions'] === ''
+                ? null
+                : max(0, (int) $input['max_redemptions']);
+        }
+
+        if (array_key_exists('allowed_domain', $input)) {
+            $program->allowed_domain = blank($input['allowed_domain']) ? null : strtolower(trim((string) $input['allowed_domain']));
+        }
+
+        foreach (['whitelist_only', 'trial_only', 'collect_payment_method', 'block_trial_used', 'block_reverted_free', 'is_active'] as $flag) {
+            if (array_key_exists($flag, $input)) {
+                $program->{$flag} = (bool) $input[$flag];
+            }
+        }
+
+        foreach (['stripe_coupon_id', 'stripe_promotion_code_id'] as $field) {
+            if (array_key_exists($field, $input)) {
+                $program->{$field} = blank($input[$field]) ? null : (string) $input[$field];
+            }
+        }
+    }
+
+    /**
+     * @param  array<string, mixed>  $input
+     */
+    private function createCouponWhitelistEntry(array $input): ManagedCouponWhitelistEntry
+    {
+        $program = ManagedCouponProgram::query()->where('code', strtoupper(trim((string) ($input['program_code'] ?? ''))))->first();
+
+        if ($program === null) {
+            throw ValidationException::withMessages(['program_code' => 'Select a valid coupon program.']);
+        }
+
+        $email = ManagedCouponWhitelistEntry::normalizeEmail($input['email'] ?? '');
+
+        if ($email === '') {
+            throw ValidationException::withMessages(['email' => 'A valid email is required.']);
+        }
+
+        if ($program->whitelistEntries()->where('email', $email)->exists()) {
+            throw ValidationException::withMessages(['email' => 'This email is already whitelisted for that program.']);
+        }
+
+        $adminUser = request()->session()->get('admin.user');
+        $addedBy = is_array($adminUser)
+            ? (string) ($adminUser['email'] ?? 'admin')
+            : (string) (config('admin.root_email') ?? 'admin');
+
+        return $program->whitelistEntries()->create([
+            'email' => $email,
+            'note' => blank($input['note'] ?? null) ? null : (string) $input['note'],
+            'added_by' => $addedBy,
+        ]);
     }
 
     /**

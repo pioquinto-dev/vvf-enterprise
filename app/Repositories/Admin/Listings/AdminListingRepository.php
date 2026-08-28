@@ -5,6 +5,9 @@ namespace App\Repositories\Admin\Listings;
 use App\Models\CustomKeywordSearch;
 use App\Models\IndexedKeyword;
 use App\Models\Inquiry;
+use App\Models\ManagedCouponProgram;
+use App\Models\ManagedCouponRedemption;
+use App\Models\ManagedCouponWhitelistEntry;
 use App\Models\PricingPlan;
 use App\Models\Subscription;
 use App\Models\User;
@@ -37,6 +40,9 @@ class AdminListingRepository
             'users' => 'Users',
             'admin-users' => 'Admin Users',
             'keyword-index' => 'Keyword Index',
+            'coupon-programs' => 'Coupon Programs',
+            'coupon-whitelist' => 'Coupon Whitelist',
+            'coupon-usage' => 'Coupon Usage',
             default => 'Admin',
         };
     }
@@ -51,10 +57,13 @@ class AdminListingRepository
             'searches' => ['search', 'type', 'owner', 'date'],
             'inquiries' => ['search', 'category', 'date'],
             'plans' => ['search', 'status'],
-            'subscription' => ['search', 'status', 'plan'],
+            'subscription' => ['search', 'status', 'plan', 'type'],
             'users' => ['search', 'status', 'plan'],
             'admin-users' => ['search', 'role', 'status'],
             'keyword-index' => ['search', 'type', 'status'],
+            'coupon-programs' => ['search', 'status'],
+            'coupon-whitelist' => ['search', 'program'],
+            'coupon-usage' => ['search', 'program'],
             default => ['search'],
         };
     }
@@ -83,6 +92,7 @@ class AdminListingRepository
             ],
             'subscription' => [
                 ['name' => 'status', 'label' => 'Status', 'options' => ['active', 'trialing', 'past_due', 'canceled', 'deleted']],
+                ['name' => 'type', 'label' => 'Type', 'options' => $this->subscriptionTypeOptions()],
             ],
             'users' => [
                 ['name' => 'status', 'label' => 'Status', 'options' => ['active', 'deleted']],
@@ -93,6 +103,15 @@ class AdminListingRepository
             'keyword-index' => [
                 ['name' => 'type', 'label' => 'Type', 'options' => ['brand', 'product']],
                 ['name' => 'status', 'label' => 'Status', 'options' => ['live', 'archived', 'deleted']],
+            ],
+            'coupon-programs' => [
+                ['name' => 'status', 'label' => 'Status', 'options' => ['active', 'inactive']],
+            ],
+            'coupon-whitelist' => [
+                ['name' => 'program', 'label' => 'Program', 'options' => $this->couponProgramOptions()],
+            ],
+            'coupon-usage' => [
+                ['name' => 'program', 'label' => 'Program', 'options' => $this->couponProgramOptions()],
             ],
             default => [],
         };
@@ -156,6 +175,24 @@ class AdminListingRepository
                 ['key' => 'source', 'label' => 'Source'],
                 ['key' => 'status', 'label' => 'Status'],
             ],
+            'coupon-programs' => [
+                ['key' => 'program', 'label' => 'Program'],
+                ['key' => 'plan', 'label' => 'Plan'],
+                ['key' => 'redemptions', 'label' => 'Redeemed'],
+                ['key' => 'status', 'label' => 'Status'],
+            ],
+            'coupon-whitelist' => [
+                ['key' => 'email', 'label' => 'Email'],
+                ['key' => 'program', 'label' => 'Program'],
+                ['key' => 'added_by', 'label' => 'Added by'],
+                ['key' => 'created', 'label' => 'Added'],
+            ],
+            'coupon-usage' => [
+                ['key' => 'subscriber', 'label' => 'Subscriber'],
+                ['key' => 'program', 'label' => 'Program'],
+                ['key' => 'status', 'label' => 'Status'],
+                ['key' => 'redeemed', 'label' => 'Redeemed'],
+            ],
             default => [],
         };
     }
@@ -175,6 +212,9 @@ class AdminListingRepository
             'subscription' => Subscription::query()->withTrashed()->with(['user', 'plan']),
             'users' => User::query()->withTrashed()->with(['subscriptions.plan']),
             'keyword-index' => IndexedKeyword::query()->withTrashed(),
+            'coupon-programs' => ManagedCouponProgram::query()->withTrashed(),
+            'coupon-whitelist' => ManagedCouponWhitelistEntry::query()->with('program'),
+            'coupon-usage' => ManagedCouponRedemption::query()->with(['program', 'user'])->whereNotNull('redeemed_at'),
             default => null,
         };
     }
@@ -214,6 +254,13 @@ class AdminListingRepository
                     ->orWhereRaw('LOWER(sector) like ?', [$like])
                     ->orWhereRaw('LOWER(source) like ?', [$like]),
             ),
+            'coupon-programs' => $query->where(
+                fn (Builder $inner) => $inner->whereRaw('LOWER(code) like ?', [$like])
+                    ->orWhereRaw('LOWER(name) like ?', [$like])
+                    ->orWhereRaw('LOWER(link_path) like ?', [$like]),
+            ),
+            'coupon-whitelist' => $query->whereRaw('LOWER(email) like ?', [$like]),
+            'coupon-usage' => $query->whereRaw('LOWER(email) like ?', [$like]),
             default => null,
         };
     }
@@ -249,6 +296,30 @@ class AdminListingRepository
 
         if ($name === 'category' && $resource === 'inquiries') {
             $query->where('category', $value);
+
+            return;
+        }
+
+        if ($name === 'type' && $resource === 'subscription') {
+            if ($value === 'regular') {
+                $couponUserIds = $this->couponSubscriberUserIds(null);
+
+                if ($couponUserIds !== []) {
+                    $query->whereNotIn('user_id', $couponUserIds);
+                }
+
+                return;
+            }
+
+            // Any other value is a program code (IGNITEBB / IVANVIP).
+            $query->whereIn('user_id', $this->couponSubscriberUserIds($value) ?: [-1]);
+
+            return;
+        }
+
+        if ($name === 'program' && in_array($resource, ['coupon-whitelist', 'coupon-usage'], true)) {
+            $programId = ManagedCouponProgram::withTrashed()->where('code', $value)->value('id');
+            $query->where('managed_coupon_program_id', $programId ?? 0);
 
             return;
         }
@@ -341,6 +412,11 @@ class AdminListingRepository
             'keyword-index' => match ($value) {
                 'archived' => $query->whereNotNull('archived_at'),
                 'live' => $query->whereNull('archived_at'),
+                default => null,
+            },
+            'coupon-programs' => match ($value) {
+                'active' => $query->where('is_active', true),
+                'inactive' => $query->where('is_active', false),
                 default => null,
             },
             default => null,
@@ -537,6 +613,53 @@ class AdminListingRepository
             ],
             'subscription' => $this->mapSubscriptionRow($record),
             'users' => $this->mapUserRow($record),
+            'coupon-programs' => $this->mapCouponProgramRow($record),
+            'coupon-whitelist' => [
+                'id' => $record->id,
+                'email' => $record->email,
+                'program' => $record->program?->code ?? '-',
+                'added_by' => $record->added_by ?: '-',
+                'created' => $record->created_at?->format('M j, Y') ?? '-',
+                'preview' => [
+                    'eyebrow' => 'Whitelist entry',
+                    'summary' => $record->email,
+                    'sections' => [[
+                        'title' => 'Entry',
+                        'fields' => [
+                            ['label' => 'Email', 'value' => $record->email],
+                            ['label' => 'Program', 'value' => $record->program?->code],
+                            ['label' => 'Added by', 'value' => $record->added_by],
+                            ['label' => 'Note', 'value' => $record->note, 'multiline' => true],
+                        ],
+                    ]],
+                ],
+            ],
+            'coupon-usage' => [
+                'id' => $record->id,
+                'subscriber' => match (true) {
+                    $record->user !== null && filled($record->user->name) => $record->user->name.' / '.$record->email,
+                    default => $record->email,
+                },
+                'program' => $record->program?->code ?? '-',
+                'status' => $record->subscription_status ?: '-',
+                'redeemed' => $record->redeemed_at?->format('M j, Y') ?? '-',
+                'preview' => [
+                    'eyebrow' => 'Coupon redemption',
+                    'summary' => ($record->program?->code ?? 'Coupon').' · '.$record->email,
+                    'sections' => [[
+                        'title' => 'Redemption',
+                        'fields' => [
+                            ['label' => 'Program', 'value' => $record->program?->code],
+                            ['label' => 'Subscriber', 'value' => $record->user?->name],
+                            ['label' => 'Email', 'value' => $record->email],
+                            ['label' => 'Subscription status', 'value' => $record->subscription_status],
+                            ['label' => 'Redeemed at', 'value' => $record->redeemed_at?->format('M j, Y g:i A')],
+                            ['label' => 'Stripe subscription ID', 'value' => $record->stripe_subscription_id],
+                            ['label' => 'Stripe checkout session', 'value' => $record->stripe_checkout_session_id],
+                        ],
+                    ]],
+                ],
+            ],
             'keyword-index' => [
                 'id' => $record->id,
                 'keyword' => $record->label,
@@ -670,6 +793,123 @@ class AdminListingRepository
                 ],
             ],
         ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function mapCouponProgramRow(ManagedCouponProgram $record): array
+    {
+        $redeemed = $record->redeemedCount();
+        $cap = $record->max_redemptions;
+
+        return [
+            'id' => $record->id,
+            'program' => $record->code,
+            'plan' => $record->plan_slug,
+            'redemptions' => $cap === null ? $redeemed.' / ∞' : $redeemed.' / '.$cap,
+            'status' => $record->trashed() ? 'deleted' : ($record->is_active ? 'active' : 'inactive'),
+            'preview' => [
+                'eyebrow' => 'Coupon program',
+                'summary' => $record->name.' ('.$record->code.')',
+                'sections' => [
+                    [
+                        'title' => 'Program',
+                        'fields' => [
+                            ['label' => 'Code', 'value' => $record->code],
+                            ['label' => 'Name', 'value' => $record->name],
+                            ['label' => 'Link path', 'value' => $record->link_path],
+                            ['label' => 'Plan slug', 'value' => $record->plan_slug],
+                            ['label' => 'Billing cycle', 'value' => $record->billing_cycle],
+                            ['label' => 'Status', 'value' => $record->is_active ? 'active' : 'inactive'],
+                        ],
+                    ],
+                    [
+                        'title' => 'Redemptions',
+                        'fields' => [
+                            ['label' => 'Redeemed', 'value' => (string) $redeemed],
+                            ['label' => 'Max redemptions', 'value' => $cap === null ? 'Unlimited' : (string) $cap],
+                            ['label' => 'Remaining', 'value' => $record->remainingSlots() === null ? 'Unlimited' : (string) $record->remainingSlots()],
+                        ],
+                    ],
+                    [
+                        'title' => 'Eligibility',
+                        'fields' => [
+                            ['label' => 'Allowed domain', 'value' => $record->allowed_domain],
+                            ['label' => 'Whitelist only', 'value' => $this->yesNo($record->whitelist_only)],
+                            ['label' => 'Trial only', 'value' => $this->yesNo($record->trial_only)],
+                            ['label' => 'Skip card collection', 'value' => $this->yesNo(! $record->collect_payment_method)],
+                            ['label' => 'Block trial-used', 'value' => $this->yesNo($record->block_trial_used)],
+                            ['label' => 'Block reverted-free', 'value' => $this->yesNo($record->block_reverted_free)],
+                        ],
+                    ],
+                    [
+                        'title' => 'Stripe',
+                        'fields' => [
+                            ['label' => 'Coupon ID', 'value' => $record->stripe_coupon_id],
+                            ['label' => 'Promotion code ID', 'value' => $record->stripe_promotion_code_id],
+                        ],
+                    ],
+                ],
+            ],
+        ];
+    }
+
+    /**
+     * Subscription "type" filter: Regular (no coupon) plus one entry per
+     * managed program (Internal = IGNITEBB, VIP = IVANVIP).
+     *
+     * @return array<int, array<string, string>>
+     */
+    private function subscriptionTypeOptions(): array
+    {
+        $programs = ManagedCouponProgram::query()
+            ->withTrashed()
+            ->orderBy('code')
+            ->get(['code', 'name'])
+            ->map(fn (ManagedCouponProgram $program): array => [
+                'value' => (string) $program->code,
+                'label' => $program->name.' ('.$program->code.')',
+            ])
+            ->all();
+
+        return [['value' => 'regular', 'label' => 'Regular'], ...$programs];
+    }
+
+    /**
+     * User ids that redeemed a managed coupon program (optionally a specific
+     * program code). Redemptions always carry a user id, so this is null-safe
+     * for filtering the subscriptions listing.
+     *
+     * @return array<int, int>
+     */
+    private function couponSubscriberUserIds(?string $programCode): array
+    {
+        return ManagedCouponRedemption::query()
+            ->whereNotNull('redeemed_at')
+            ->when($programCode !== null, fn (Builder $query) => $query->whereHas(
+                'program',
+                fn (Builder $inner) => $inner->where('code', $programCode),
+            ))
+            ->pluck('user_id')
+            ->filter()
+            ->map(fn ($id): int => (int) $id)
+            ->unique()
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @return array<int, array<string, string>>
+     */
+    private function couponProgramOptions(): array
+    {
+        return ManagedCouponProgram::query()
+            ->withTrashed()
+            ->orderBy('code')
+            ->get(['code', 'name'])
+            ->map(fn (ManagedCouponProgram $program): array => ['value' => (string) $program->code, 'label' => $program->code])
+            ->all();
     }
 
     private function viralVideoStatus(ViralVideo $video): string
@@ -911,6 +1151,23 @@ class AdminListingRepository
     }
 
     /**
+     * Purchasable plan slugs for a coupon program. `free` is intentionally
+     * excluded — a coupon always maps to a paid plan.
+     *
+     * @return array<int, array<string, string>>
+     */
+    private function couponPlanSlugOptions(): array
+    {
+        $options = PricingPlan::query()
+            ->orderBy('amount')
+            ->get(['slug', 'name'])
+            ->map(fn (PricingPlan $plan): array => ['value' => (string) $plan->slug, 'label' => $plan->name])
+            ->all();
+
+        return $options === [] ? [['value' => 'basic', 'label' => 'basic']] : $options;
+    }
+
+    /**
      * @return array<int, array<string, string>>
      */
     private function planOptions(): array
@@ -975,6 +1232,9 @@ class AdminListingRepository
             'users' => ['preview' => true, 'edit' => true, 'archive' => false, 'delete' => true, 'impersonate' => true],
             'keyword-index' => ['preview' => true, 'edit' => true, 'archive' => true, 'delete' => true],
             'admin-users' => ['preview' => true, 'edit' => false, 'archive' => false, 'delete' => false],
+            'coupon-programs' => ['preview' => true, 'edit' => true, 'archive' => false, 'delete' => false],
+            'coupon-whitelist' => ['preview' => true, 'edit' => false, 'archive' => false, 'delete' => true],
+            'coupon-usage' => ['preview' => true, 'edit' => false, 'archive' => false, 'delete' => false],
             default => ['preview' => false, 'edit' => false, 'archive' => false, 'delete' => false],
         };
     }
@@ -1168,6 +1428,28 @@ class AdminListingRepository
                 ['name' => 'usage_count', 'label' => 'Usage count', 'type' => 'number'],
                 ['name' => 'archived', 'label' => 'Archived', 'type' => 'toggle', 'help' => 'Keeps the keyword in admin history while hiding it from live suggestions.'],
             ],
+            'coupon-programs' => [
+                ['name' => 'code', 'label' => 'Code', 'type' => 'text', 'help' => 'Uppercase identifier, e.g. IGNITEBB. Not shown to users.', 'rules' => ['required', 'string', 'max:60', 'unique:managed_coupon_programs,code,{id}']],
+                ['name' => 'name', 'label' => 'Name', 'type' => 'text', 'rules' => ['required', 'string', 'max:120']],
+                ['name' => 'link_path', 'label' => 'Link path', 'type' => 'text', 'help' => 'The subscription URL, e.g. /internal-subscription.', 'rules' => ['required', 'string', 'max:120', 'unique:managed_coupon_programs,link_path,{id}']],
+                ['name' => 'plan_slug', 'label' => 'Plan', 'type' => 'select', 'options' => $this->couponPlanSlugOptions()],
+                ['name' => 'billing_cycle', 'label' => 'Billing cycle', 'type' => 'select', 'options' => ['monthly', 'annual']],
+                ['name' => 'max_redemptions', 'label' => 'Max redemptions', 'type' => 'number', 'min' => 0, 'help' => 'Leave blank/0 handling: 0 means no slots. Cap on successful redemptions.'],
+                ['name' => 'allowed_domain', 'label' => 'Allowed email domain', 'type' => 'text', 'help' => 'e.g. igniteamz.com. Anyone on this domain is eligible unless whitelist-only is on.'],
+                ['name' => 'whitelist_only', 'label' => 'Whitelist only', 'type' => 'toggle', 'help' => 'Only admin-added emails are eligible; the domain rule is ignored.'],
+                ['name' => 'trial_only', 'label' => 'Trial only', 'type' => 'toggle'],
+                ['name' => 'collect_payment_method', 'label' => 'Require card at checkout', 'type' => 'toggle', 'help' => 'Off = skip card collection when Stripe allows a $0 start.'],
+                ['name' => 'block_trial_used', 'label' => 'Block if trial already used', 'type' => 'toggle'],
+                ['name' => 'block_reverted_free', 'label' => 'Block if reverted to free', 'type' => 'toggle'],
+                ['name' => 'stripe_coupon_id', 'label' => 'Stripe coupon ID', 'type' => 'text'],
+                ['name' => 'stripe_promotion_code_id', 'label' => 'Stripe promotion code ID', 'type' => 'text'],
+                ['name' => 'is_active', 'label' => 'Active', 'type' => 'toggle'],
+            ],
+            'coupon-whitelist' => [
+                ['name' => 'program_code', 'label' => 'Program', 'type' => 'select', 'options' => $this->couponProgramOptions()],
+                ['name' => 'email', 'label' => 'Email', 'type' => 'text', 'rules' => ['required', 'email', 'max:191']],
+                ['name' => 'note', 'label' => 'Note', 'type' => 'text'],
+            ],
             default => [],
         };
     }
@@ -1246,6 +1528,23 @@ class AdminListingRepository
                 'usage_count' => (int) $record->usage_count,
                 'archived' => $record->archived_at !== null,
             ],
+            'coupon-programs' => [
+                'code' => $record->code,
+                'name' => $record->name,
+                'link_path' => $record->link_path,
+                'plan_slug' => $record->plan_slug,
+                'billing_cycle' => $record->billing_cycle,
+                'max_redemptions' => (int) ($record->max_redemptions ?? 0),
+                'allowed_domain' => $record->allowed_domain,
+                'whitelist_only' => (bool) $record->whitelist_only,
+                'trial_only' => (bool) $record->trial_only,
+                'collect_payment_method' => (bool) $record->collect_payment_method,
+                'block_trial_used' => (bool) $record->block_trial_used,
+                'block_reverted_free' => (bool) $record->block_reverted_free,
+                'stripe_coupon_id' => $record->stripe_coupon_id,
+                'stripe_promotion_code_id' => $record->stripe_promotion_code_id,
+                'is_active' => (bool) $record->is_active,
+            ],
             default => [],
         };
     }
@@ -1291,6 +1590,28 @@ class AdminListingRepository
                 'usage_count' => 0,
                 'archived' => false,
             ],
+            'coupon-whitelist' => [
+                'program_code' => (string) (ManagedCouponProgram::query()->orderBy('code')->value('code') ?? ''),
+                'email' => '',
+                'note' => '',
+            ],
+            'coupon-programs' => [
+                'code' => '',
+                'name' => '',
+                'link_path' => '',
+                'plan_slug' => (string) (PricingPlan::query()->orderBy('amount')->value('slug') ?? 'basic'),
+                'billing_cycle' => 'monthly',
+                'max_redemptions' => 0,
+                'allowed_domain' => '',
+                'whitelist_only' => false,
+                'trial_only' => false,
+                'collect_payment_method' => true,
+                'block_trial_used' => false,
+                'block_reverted_free' => false,
+                'stripe_coupon_id' => '',
+                'stripe_promotion_code_id' => '',
+                'is_active' => true,
+            ],
             default => [],
         };
     }
@@ -1306,6 +1627,9 @@ class AdminListingRepository
             'users' => 'No users match the current filters yet.',
             'admin-users' => 'No admin users match the current filters yet.',
             'keyword-index' => 'No indexed keywords match the current filters yet.',
+            'coupon-programs' => 'No coupon programs match the current filters yet.',
+            'coupon-whitelist' => 'No whitelist entries match the current filters yet.',
+            'coupon-usage' => 'No coupon redemptions match the current filters yet.',
             default => 'No records match the current filters yet.',
         };
     }
