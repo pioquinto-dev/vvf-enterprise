@@ -1431,7 +1431,6 @@ class AdminListingRepository
             'coupon-programs' => [
                 ['name' => 'code', 'label' => 'Code', 'type' => 'text', 'help' => 'Uppercase identifier, e.g. IGNITEBB. Not shown to users.', 'rules' => ['required', 'string', 'max:60', 'unique:managed_coupon_programs,code,{id}']],
                 ['name' => 'name', 'label' => 'Name', 'type' => 'text', 'rules' => ['required', 'string', 'max:120']],
-                ['name' => 'link_path', 'label' => 'Link path', 'type' => 'text', 'help' => 'The subscription URL, e.g. /internal-subscription.', 'rules' => ['required', 'string', 'max:120', 'unique:managed_coupon_programs,link_path,{id}']],
                 ['name' => 'plan_slug', 'label' => 'Plan', 'type' => 'select', 'options' => $this->couponPlanSlugOptions()],
                 ['name' => 'billing_cycle', 'label' => 'Billing cycle', 'type' => 'select', 'options' => ['monthly', 'annual']],
                 ['name' => 'max_redemptions', 'label' => 'Max redemptions', 'type' => 'number', 'min' => 0, 'help' => 'Leave blank/0 handling: 0 means no slots. Cap on successful redemptions.'],
@@ -1531,7 +1530,6 @@ class AdminListingRepository
             'coupon-programs' => [
                 'code' => $record->code,
                 'name' => $record->name,
-                'link_path' => $record->link_path,
                 'plan_slug' => $record->plan_slug,
                 'billing_cycle' => $record->billing_cycle,
                 'max_redemptions' => (int) ($record->max_redemptions ?? 0),
@@ -1598,7 +1596,6 @@ class AdminListingRepository
             'coupon-programs' => [
                 'code' => '',
                 'name' => '',
-                'link_path' => '',
                 'plan_slug' => (string) (PricingPlan::query()->orderBy('amount')->value('slug') ?? 'basic'),
                 'billing_cycle' => 'monthly',
                 'max_redemptions' => 0,

@@ -344,8 +344,8 @@ class AdminListingMutator
 
         $this->fillCouponProgram($program, $input);
 
-        if (blank($program->code) || blank($program->link_path) || blank($program->plan_slug)) {
-            throw ValidationException::withMessages(['code' => 'Code, link path and plan are required.']);
+        if (blank($program->code) || blank($program->plan_slug)) {
+            throw ValidationException::withMessages(['code' => 'Code and plan are required.']);
         }
 
         $program->save();
@@ -368,8 +368,11 @@ class AdminListingMutator
             $program->name = (string) $input['name'];
         }
 
-        if (array_key_exists('link_path', $input) && filled($input['link_path'])) {
-            $program->link_path = '/'.ltrim(trim((string) $input['link_path']), '/');
+        if (filled($program->code)) {
+            $program->link_path = $this->uniqueCouponLinkPath(
+                $program->code,
+                $program->exists ? $program->getKey() : null,
+            );
         }
 
         foreach (['plan_slug', 'billing_cycle'] as $field) {
@@ -399,6 +402,35 @@ class AdminListingMutator
                 $program->{$field} = blank($input[$field]) ? null : (string) $input[$field];
             }
         }
+    }
+
+    private function uniqueCouponLinkPath(string $code, mixed $ignoreId = null): string
+    {
+        $slug = Str::of($code)
+            ->lower()
+            ->replaceMatches('/[^a-z0-9]+/', '-')
+            ->trim('-')
+            ->value();
+
+        $slug = $slug !== '' ? $slug : 'coupon-program';
+        $basePath = '/subscription/'.$slug;
+        $path = $basePath;
+        $suffix = 2;
+
+        while ($this->couponLinkPathExists($path, $ignoreId)) {
+            $path = $basePath.'-'.$suffix;
+            $suffix++;
+        }
+
+        return $path;
+    }
+
+    private function couponLinkPathExists(string $path, mixed $ignoreId = null): bool
+    {
+        return ManagedCouponProgram::query()
+            ->when($ignoreId !== null, fn ($query) => $query->whereKeyNot($ignoreId))
+            ->where('link_path', $path)
+            ->exists();
     }
 
     /**

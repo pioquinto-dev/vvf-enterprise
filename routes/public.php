@@ -86,5 +86,8 @@ Route::prefix('billing')->group(function (): void {
 // path in the controller; users never type a coupon code.
 Route::get('/internal-subscription', [CouponSubscriptionController::class, 'enter'])->name('coupon.internal');
 Route::get('/vip-subscription', [CouponSubscriptionController::class, 'enter'])->name('coupon.vip');
+Route::get('/subscription/{programPath}', [CouponSubscriptionController::class, 'enter'])
+    ->where('programPath', '[A-Za-z0-9\-]+')
+    ->name('coupon.program');
 
 Route::post('/stripe/webhook', StripeWebhookController::class)->name('stripe.webhook');
