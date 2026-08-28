@@ -12,6 +12,7 @@ use Illuminate\Validation\ValidationException;
 class BillingController extends Controller
 {
     private const CHECKOUT_PLAN_SLUGS = ['basic', 'basic-annual', 'premium', 'premium-annual'];
+    private const PORTAL_ACTIONS = ['manage', 'payment_method', 'cancel'];
 
     public function __construct(private readonly BillingService $billing) {}
 
@@ -66,5 +67,31 @@ class BillingController extends Controller
         }
 
         return redirect('/library')->with('status', 'Subscription activated.');
+    }
+
+    public function portal(Request $request): RedirectResponse
+    {
+        $user = $request->user();
+
+        if ($user === null) {
+            return redirect('/login');
+        }
+
+        $action = (string) $request->query('action', 'manage');
+        $action = in_array($action, self::PORTAL_ACTIONS, true) ? $action : 'manage';
+
+        try {
+            return redirect()->away($this->billing->createBillingPortalSession(
+                $user,
+                route('settings.subscription'),
+                $action,
+            ));
+        } catch (ValidationException $exception) {
+            return redirect()->route('settings.subscription')
+                ->with('status', collect($exception->errors())->flatten()->first() ?? 'Billing settings are unavailable right now.');
+        } catch (\Throwable) {
+            return redirect()->route('settings.subscription')
+                ->with('status', 'Billing settings are unavailable right now.');
+        }
     }
 }

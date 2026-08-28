@@ -4,10 +4,12 @@ namespace App\Http\Controllers;
 
 use App\Models\PricingPlan;
 use App\Models\Subscription;
+use App\Services\Billing\BillingService;
 use App\Services\Admin\UserActivityService;
 use App\Services\Billing\BillingEntitlementService;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -30,6 +32,7 @@ class SettingsController extends Controller
     ];
 
     public function __construct(
+        private readonly BillingService $billingService,
         private readonly BillingEntitlementService $billing,
         private readonly UserActivityService $activity,
     ) {}
@@ -129,6 +132,60 @@ class SettingsController extends Controller
         return Inertia::render('Settings/Subscription', [
             'section' => 'subscription',
             'subscription' => $this->subscriptionPayload($user),
+            'stripePublishableKey' => config('services.stripe.key'),
+        ]);
+    }
+
+    public function createPaymentMethodSetup(Request $request): JsonResponse
+    {
+        return response()->json(
+            $this->billingService->createPaymentMethodSetup($request->user())
+        );
+    }
+
+    public function updatePaymentMethod(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'payment_method_id' => ['required', 'string', 'max:255'],
+        ]);
+
+        $this->billingService->setDefaultPaymentMethod(
+            $request->user(),
+            $validated['payment_method_id'],
+        );
+
+        return response()->json([
+            'paymentMethod' => $this->safePaymentMethodSummary($request->user()),
+            'message' => 'Payment method updated.',
+        ]);
+    }
+
+    public function cancelSubscription(Request $request): JsonResponse
+    {
+        $this->billingService->cancelSubscription($request->user());
+
+        return response()->json([
+            'message' => 'Subscription cancellation scheduled. Access stays active until the end of the current billing period.',
+        ]);
+    }
+
+    public function reactivateSubscription(Request $request): JsonResponse
+    {
+        $this->billingService->reactivateSubscription($request->user());
+
+        return response()->json([
+            'message' => 'Subscription reactivated. Auto-renew is back on.',
+        ]);
+    }
+
+    public function receipt(Request $request, string $invoice): Response
+    {
+        $details = $this->billingService->receiptDetails($request->user(), $invoice);
+
+        abort_if($details === null, 404);
+
+        return Inertia::render('Settings/Receipt', [
+            'receipt' => $details,
         ]);
     }
 
@@ -158,6 +215,8 @@ class SettingsController extends Controller
             : ($plan?->amount ?? ($plan?->price_cents !== null ? ((int) $plan->price_cents / 100) : null));
         $status = $subscription?->status === 'pending' ? ($user->current_plan_slug === 'free' ? 'free' : 'active') : ($subscription?->status ?? 'free');
         $videoAnalysisUsed = max(0, (int) data_get($subscription?->metadata, 'subscription.video_analysis.used', $limits['videoAnalysisUsed'] ?? 0));
+        $cancelAtPeriodEnd = (bool) data_get($subscription?->metadata, 'subscription.cancel_at_period_end', false);
+        $cancelAt = data_get($subscription?->metadata, 'subscription.cancel_at');
         $trialStartedAt = $subscription?->trial_started_at;
         $trialEndsAt = in_array($status, ['trialing', 'trial'], true) && $trialStartedAt !== null
             ? CarbonImmutable::instance($trialStartedAt)->addDays(self::TRIAL_DAYS)
@@ -166,6 +225,8 @@ class SettingsController extends Controller
             ? null
             : ($trialEndsAt ?? $subscription?->current_period_ends_at ?? $user->plan_renews_at);
         $planSlug = $plan?->slug ?? ($user->current_plan_slug ?? 'free');
+        $paymentMethod = $this->safePaymentMethodSummary($user);
+        $invoices = $this->safeInvoiceHistory($user);
 
         return [
             'status' => $status,
@@ -178,6 +239,10 @@ class SettingsController extends Controller
             'trialStartedAt' => $trialStartedAt?->toIso8601String(),
             'trialEndsAt' => $trialEndsAt?->toIso8601String(),
             'renewsAt' => $renewsAt?->toIso8601String(),
+            'cancelAtPeriodEnd' => $cancelAtPeriodEnd,
+            'cancelsAt' => is_string($cancelAt) ? $cancelAt : ($cancelAtPeriodEnd ? $renewsAt?->toIso8601String() : null),
+            'paymentMethod' => $paymentMethod,
+            'invoices' => $invoices,
             'limits' => [
                 'searchCreditsLimit' => (int) ($limits['searchCreditsLimit'] ?? 0),
                 'searchCreditsUsed' => $this->billing->searchCreditsUsed($user),
@@ -191,6 +256,24 @@ class SettingsController extends Controller
                 'bookmarksUsed' => $this->billing->searchBookmarkCount($user),
             ],
         ];
+    }
+
+    private function safeInvoiceHistory($user): array
+    {
+        try {
+            return $this->billingService->invoiceHistory($user);
+        } catch (\Throwable) {
+            return [];
+        }
+    }
+
+    private function safePaymentMethodSummary($user): ?array
+    {
+        try {
+            return $this->billingService->paymentMethodSummary($user);
+        } catch (\Throwable) {
+            return null;
+        }
     }
 
     private function formatPlanDisplayName(string $planSlug, ?string $fallbackName = null): string

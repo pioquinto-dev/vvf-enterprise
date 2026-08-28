@@ -104,6 +104,13 @@ export const billing = {
     if (cycle === 'annual') params.set('cycle', 'annual');
     window.location.assign(`/billing/checkout/${encodeURIComponent(slug)}?${params.toString()}`);
   },
+  createPaymentMethodSetup: () => request('/settings/subscription/payment-method/setup', { method: 'POST' }),
+  updatePaymentMethod: (paymentMethodId) => request('/settings/subscription/payment-method', {
+    method: 'PATCH',
+    body: { payment_method_id: paymentMethodId },
+  }),
+  cancelSubscription: () => request('/settings/subscription/cancel', { method: 'POST' }),
+  reactivateSubscription: () => request('/settings/subscription/reactivate', { method: 'POST' }),
 };
 
 export const bookmarks = {

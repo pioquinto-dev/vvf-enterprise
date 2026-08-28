@@ -3082,7 +3082,13 @@ var billing = {
 		const params = new URLSearchParams({ trial: "1" });
 		if (cycle === "annual") params.set("cycle", "annual");
 		window.location.assign(`/billing/checkout/${encodeURIComponent(slug)}?${params.toString()}`);
-	}
+	},
+	createPaymentMethodSetup: () => request("/settings/subscription/payment-method/setup", { method: "POST" }),
+	updatePaymentMethod: (paymentMethodId) => request("/settings/subscription/payment-method", {
+		method: "PATCH",
+		body: { payment_method_id: paymentMethodId }
+	}),
+	cancelSubscription: () => request("/settings/subscription/cancel", { method: "POST" })
 };
 var bookmarks = {
 	save: (id) => request(`${API_V1}/videos/${id}/bookmark`, { method: "POST" }),
@@ -4902,7 +4908,7 @@ var SavedSearchRow_exports = /* @__PURE__ */ __exportAll({
 	STATUS: () => STATUS,
 	TYPE_LABEL: () => TYPE_LABEL$1,
 	default: () => SavedSearchRow,
-	formatDate: () => formatDate$3,
+	formatDate: () => formatDate$4,
 	titleCase: () => titleCase$1
 });
 var STATUS = {
@@ -4947,7 +4953,7 @@ var TYPE_LABEL$1 = {
 function titleCase$1(value) {
 	return String(value || "").split(/[-_\s]+/).filter(Boolean).map((word) => word.charAt(0).toUpperCase() + word.slice(1)).join(" ");
 }
-function formatDate$3(iso) {
+function formatDate$4(iso) {
 	if (!iso) return "not yet";
 	const date = new Date(iso);
 	if (Number.isNaN(date.getTime())) return "not yet";
@@ -4988,7 +4994,7 @@ function SavedSearchRow({ search, onNavigate, actions }) {
 					" · ",
 					freq,
 					" · updated ",
-					formatDate$3(search.last_run_at)
+					formatDate$4(search.last_run_at)
 				]
 			})]
 		}),
@@ -5174,7 +5180,7 @@ function BrandCard({ search, onOpen, onEdit }) {
 			}),
 			/* @__PURE__ */ jsxs("div", {
 				className: "bcard__foot",
-				children: [/* @__PURE__ */ jsxs("span", { children: ["Updated ", formatDate$3(search.last_run_at)] }), /* @__PURE__ */ jsx("button", {
+				children: [/* @__PURE__ */ jsxs("span", { children: ["Updated ", formatDate$4(search.last_run_at)] }), /* @__PURE__ */ jsx("button", {
 					type: "button",
 					className: "btn btn--g btn--sm",
 					onClick: (e) => {
@@ -7347,7 +7353,7 @@ var TYPE_LABEL = {
 	product: "Product"
 };
 var titleCase = (v) => String(v || "").split(/[-_\s]+/).filter(Boolean).map((w) => w[0].toUpperCase() + w.slice(1)).join(" ");
-var formatDate$2 = (iso) => {
+var formatDate$3 = (iso) => {
 	if (!iso) return "not yet";
 	const d = new Date(iso);
 	return Number.isNaN(d.getTime()) ? "not yet" : d.toLocaleDateString("en-US", {
@@ -7406,7 +7412,7 @@ function RecentRow({ search, onNavigate, retrying, onRetry }) {
 						" · ",
 						freq,
 						" · updated ",
-						formatDate$2(search.last_run_at)
+						formatDate$3(search.last_run_at)
 					]
 				})]
 			}),
@@ -8096,6 +8102,670 @@ function Dashboard() {
 	] });
 }
 //#endregion
+//#region resources/js/landing/sections/Nav.jsx
+function Nav({ homeHref = "#top" }) {
+	const [stuck, setStuck] = useState(false);
+	useEffect(() => {
+		const onScroll = () => setStuck(window.scrollY > 8);
+		onScroll();
+		window.addEventListener("scroll", onScroll, { passive: true });
+		return () => window.removeEventListener("scroll", onScroll);
+	}, []);
+	return /* @__PURE__ */ jsx("header", {
+		className: `nav${stuck ? " is-stuck" : ""}`,
+		id: "nav",
+		children: /* @__PURE__ */ jsxs("div", {
+			className: "wrap nav__in",
+			children: [/* @__PURE__ */ jsxs("a", {
+				href: homeHref,
+				className: "brand",
+				children: [/* @__PURE__ */ jsx(Logo, { className: "h-8 w-8" }), /* @__PURE__ */ jsx("span", { children: "Brand Beacon" })]
+			}), /* @__PURE__ */ jsxs("div", {
+				className: "nav__end",
+				children: [/* @__PURE__ */ jsx(Link, {
+					href: "/login",
+					className: "nav__signin",
+					children: "Sign In"
+				}), /* @__PURE__ */ jsxs("a", {
+					href: "/auth/google",
+					className: "btn btn--primary",
+					style: {
+						height: 44,
+						padding: "0 20px"
+					},
+					children: [/* @__PURE__ */ jsx("span", {
+						className: "gicon gicon--sm",
+						children: /* @__PURE__ */ jsx(Google, {})
+					}), "Try for Free"]
+				})]
+			})]
+		})
+	});
+}
+//#endregion
+//#region resources/js/landing/sections/Footer.jsx
+var COLS = [
+	{
+		h: "Product",
+		links: [
+			{
+				label: "Outlier Vault",
+				href: "#top"
+			},
+			{
+				label: "Brand Tracking",
+				href: "#top"
+			},
+			{
+				label: "Creator Shortlists",
+				href: "#top"
+			},
+			{
+				label: "Virality Alerts",
+				href: "#top"
+			},
+			{
+				label: "Changelog",
+				href: "#top"
+			}
+		]
+	},
+	{
+		h: "Company",
+		links: [
+			{
+				label: "About",
+				href: "#top"
+			},
+			{
+				label: "Careers",
+				href: "#top"
+			},
+			{
+				label: "Blog",
+				href: "#top"
+			},
+			{
+				label: "Press kit",
+				href: "#top"
+			},
+			{
+				label: "Contact",
+				href: "/contact"
+			}
+		]
+	},
+	{
+		h: "Resources",
+		links: [
+			{
+				label: "TikTok benchmarks",
+				href: "#top"
+			},
+			{
+				label: "Category reports",
+				href: "#top"
+			},
+			{
+				label: "Help center",
+				href: "#top"
+			},
+			{
+				label: "API docs",
+				href: "#top"
+			},
+			{
+				label: "Status",
+				href: "#top"
+			}
+		]
+	},
+	{
+		h: "Legal",
+		links: [
+			{
+				label: "Terms",
+				href: "/terms"
+			},
+			{
+				label: "Privacy",
+				href: "/privacy"
+			},
+			{
+				label: "DPA",
+				href: "/dpa"
+			},
+			{
+				label: "Security",
+				href: "/security"
+			}
+		]
+	}
+];
+function Footer() {
+	const [subscribed, setSubscribed] = useState(false);
+	return /* @__PURE__ */ jsx("footer", {
+		className: "ftr",
+		children: /* @__PURE__ */ jsxs("div", {
+			className: "wrap",
+			children: [/* @__PURE__ */ jsxs("div", {
+				className: "ftr__top",
+				children: [/* @__PURE__ */ jsxs("div", { children: [
+					/* @__PURE__ */ jsxs("a", {
+						href: "#top",
+						className: "brand",
+						children: [/* @__PURE__ */ jsx(Logo, { className: "h-8 w-8" }), /* @__PURE__ */ jsx("span", { children: "Brand Beacon" })]
+					}),
+					/* @__PURE__ */ jsx("p", {
+						className: "ftr__blurb",
+						children: "TikTok social intelligence for brands. Find the viral videos moving your category, and the creators behind them."
+					}),
+					/* @__PURE__ */ jsxs("form", {
+						className: "ftr__form",
+						onSubmit: (e) => {
+							e.preventDefault();
+							setSubscribed(true);
+						},
+						children: [
+							/* @__PURE__ */ jsx("label", {
+								htmlFor: "nl",
+								children: "Weekly viral digest"
+							}),
+							/* @__PURE__ */ jsxs("div", {
+								className: "ftr__row",
+								children: [/* @__PURE__ */ jsx("input", {
+									id: "nl",
+									type: "email",
+									required: true,
+									placeholder: "you@brand.com"
+								}), /* @__PURE__ */ jsx("button", {
+									type: "submit",
+									className: "btn btn--primary",
+									children: subscribed ? "Subscribed" : "Subscribe"
+								})]
+							}),
+							/* @__PURE__ */ jsx("p", {
+								className: "ftr__fine",
+								children: "One email a week. Unsubscribe anytime."
+							})
+						]
+					})
+				] }), /* @__PURE__ */ jsx("div", {
+					className: "ftr__cols",
+					children: COLS.map((col) => /* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsx("h4", { children: col.h }), /* @__PURE__ */ jsx("ul", { children: col.links.map((link) => /* @__PURE__ */ jsx("li", { children: /* @__PURE__ */ jsx("a", {
+						href: link.href,
+						children: link.label
+					}) }, link.label)) })] }, col.h))
+				})]
+			}), /* @__PURE__ */ jsxs("div", {
+				className: "ftr__btm",
+				children: [/* @__PURE__ */ jsx("p", { children: "© 2026 Brand Beacon. TikTok viral intelligence for brands." }), /* @__PURE__ */ jsxs("nav", { children: [
+					/* @__PURE__ */ jsx("a", {
+						href: "/terms",
+						children: "Terms"
+					}),
+					/* @__PURE__ */ jsx("a", {
+						href: "/privacy",
+						children: "Privacy"
+					}),
+					/* @__PURE__ */ jsx("a", {
+						href: "/security",
+						children: "Security"
+					}),
+					/* @__PURE__ */ jsx("a", {
+						href: "/contact",
+						children: "Contact"
+					})
+				] })]
+			})]
+		})
+	});
+}
+//#endregion
+//#region resources/js/Pages/LegalPage.jsx
+var LegalPage_exports = /* @__PURE__ */ __exportAll({ default: () => LegalPage });
+function LegalPage({ title, effectiveDate, sections }) {
+	return /* @__PURE__ */ jsxs(Fragment$1, { children: [
+		/* @__PURE__ */ jsx(Head, { title: `${title} · Brand Beacon` }),
+		/* @__PURE__ */ jsxs("div", {
+			className: "bbh",
+			children: [
+				/* @__PURE__ */ jsx(Nav, {}),
+				/* @__PURE__ */ jsxs("main", {
+					className: "legal-page",
+					children: [/* @__PURE__ */ jsx("section", {
+						className: "legal-page__hero wrap",
+						children: /* @__PURE__ */ jsx("div", {
+							className: "legal-page__heroGrid",
+							children: /* @__PURE__ */ jsxs("div", {
+								className: "legal-page__heroCopy",
+								children: [
+									/* @__PURE__ */ jsx("p", {
+										className: "legal-page__eyebrow",
+										children: "Legal"
+									}),
+									/* @__PURE__ */ jsx("h1", { children: title }),
+									/* @__PURE__ */ jsxs("p", {
+										className: "legal-page__meta",
+										children: ["Effective date: ", effectiveDate]
+									}),
+									/* @__PURE__ */ jsx("p", {
+										className: "legal-page__lede",
+										children: "This document applies to Brand Beacon and the related websites, search tools, subscriptions, and analytics features we make available."
+									})
+								]
+							})
+						})
+					}), /* @__PURE__ */ jsxs("section", {
+						className: "legal-page__body wrap",
+						children: [/* @__PURE__ */ jsx("div", {
+							className: "legal-page__mobileJump",
+							children: /* @__PURE__ */ jsxs("details", {
+								className: "legal-page__mobileJumpCard",
+								children: [/* @__PURE__ */ jsxs("summary", { children: [/* @__PURE__ */ jsxs("span", {
+									className: "legal-page__mobileJumpCopy",
+									children: [/* @__PURE__ */ jsx("em", { children: "Quick navigation" }), /* @__PURE__ */ jsx("b", { children: "Jump to a section" })]
+								}), /* @__PURE__ */ jsx("strong", {
+									"aria-hidden": "true",
+									className: "legal-page__mobileJumpIcon",
+									children: "⌄"
+								})] }), /* @__PURE__ */ jsx("nav", {
+									className: "legal-page__mobileJumpList",
+									"aria-label": `${title} mobile sections`,
+									children: sections.map((section, index) => /* @__PURE__ */ jsxs("a", {
+										href: `#legal-section-${index + 1}`,
+										children: [
+											String(index + 1).padStart(2, "0"),
+											" ",
+											section.heading.replace(/^\d+\.\s*/, "")
+										]
+									}, `mobile-${section.heading}`))
+								})]
+							})
+						}), /* @__PURE__ */ jsxs("div", {
+							className: "legal-page__layout",
+							children: [/* @__PURE__ */ jsx("aside", {
+								className: "legal-page__toc",
+								children: /* @__PURE__ */ jsxs("div", {
+									className: "legal-page__tocCard",
+									children: [/* @__PURE__ */ jsx("p", {
+										className: "legal-page__tocLabel",
+										children: "On this page"
+									}), /* @__PURE__ */ jsx("nav", {
+										className: "legal-page__tocList",
+										"aria-label": `${title} sections`,
+										children: sections.map((section, index) => /* @__PURE__ */ jsxs("a", {
+											href: `#legal-section-${index + 1}`,
+											children: [/* @__PURE__ */ jsx("span", { children: String(index + 1).padStart(2, "0") }), /* @__PURE__ */ jsx("strong", { children: section.heading.replace(/^\d+\.\s*/, "") })]
+										}, section.heading))
+									})]
+								})
+							}), /* @__PURE__ */ jsx("div", {
+								className: "legal-page__card",
+								children: sections.map((section, index) => /* @__PURE__ */ jsxs("section", {
+									id: `legal-section-${index + 1}`,
+									className: "legal-page__section",
+									children: [/* @__PURE__ */ jsxs("div", {
+										className: "legal-page__sectionHead",
+										children: [/* @__PURE__ */ jsx("span", {
+											className: "legal-page__sectionNum",
+											children: String(index + 1).padStart(2, "0")
+										}), /* @__PURE__ */ jsx("h2", { children: section.heading.replace(/^\d+\.\s*/, "") })]
+									}), section.paragraphs.map((paragraph, paragraphIndex) => /* @__PURE__ */ jsx("p", { children: paragraph }, `${section.heading}-${paragraphIndex}`))]
+								}, section.heading))
+							})]
+						})]
+					})]
+				}),
+				/* @__PURE__ */ jsx(Footer, {})
+			]
+		}),
+		/* @__PURE__ */ jsx("style", { children: `
+        .legal-page{
+          background:
+            radial-gradient(circle at top left, rgba(255, 217, 108, .22), transparent 28%),
+            radial-gradient(circle at top right, rgba(201, 155, 62, .08), transparent 24%),
+            linear-gradient(180deg, #fffdf8 0%, #f8f2e8 100%);
+          min-height: calc(100vh - 72px);
+          padding: 42px 20px 80px;
+        }
+        .legal-page__hero{max-width: 1120px}
+        .legal-page__heroGrid{
+          display:grid;
+          grid-template-columns:minmax(0,1fr) 300px;
+          gap:28px;
+          align-items:end;
+        }
+        .legal-page__heroCopy{min-width:0}
+        .legal-page__eyebrow{
+          font-size:.72rem;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:#a16d00
+        }
+        .legal-page__hero h1{
+          margin-top:14px;font-size:clamp(2rem,4vw,3.5rem);line-height:1.02;letter-spacing:-.05em;color:#151515
+        }
+        .legal-page__meta{
+          margin-top:14px;font-size:.92rem;font-weight:700;color:#7a6642
+        }
+        .legal-page__lede{
+          max-width: 70ch;
+          margin-top: 14px;
+          font-size: 1rem;
+          line-height: 1.75;
+          color: #4f4638;
+        }
+        .legal-page__summary{
+          padding:20px 22px;
+          border:1px solid rgba(216, 193, 145, .8);
+          border-radius:24px;
+          background:linear-gradient(180deg, rgba(255,255,255,.86), rgba(255,247,226,.94));
+          box-shadow:0 18px 36px -28px rgba(49,34,11,.25);
+        }
+        .legal-page__summaryLabel{
+          font-size:.7rem;
+          font-weight:800;
+          letter-spacing:.14em;
+          text-transform:uppercase;
+          color:#a16d00;
+        }
+        .legal-page__summaryList{
+          margin-top:14px;
+          display:grid;
+          gap:10px;
+          padding:0;
+          list-style:none;
+        }
+        .legal-page__summaryList li{
+          font-size:.93rem;
+          line-height:1.5;
+          color:#4f4638;
+          padding-left:16px;
+          position:relative;
+        }
+        .legal-page__summaryList li::before{
+          content:'';
+          position:absolute;
+          left:0;
+          top:.62rem;
+          width:6px;
+          height:6px;
+          border-radius:999px;
+          background:#d39b22;
+        }
+        .legal-page__body{max-width: 1120px;margin-top: 30px}
+        .legal-page__mobileJump{display:none}
+        .legal-page__mobileJumpCard{
+          border:1px solid #eadfca;
+          border-radius:18px;
+          background:rgba(255,255,255,.92);
+          box-shadow:0 18px 36px -32px rgba(49,34,11,.28);
+          overflow:hidden;
+        }
+        .legal-page__mobileJumpCard summary{
+          display:flex;
+          align-items:center;
+          justify-content:space-between;
+          gap:12px;
+          padding:16px 16px 15px;
+          cursor:pointer;
+          list-style:none;
+        }
+        .legal-page__mobileJumpCard summary::-webkit-details-marker{display:none}
+        .legal-page__mobileJumpCopy{
+          display:flex;
+          flex-direction:column;
+          gap:3px;
+          min-width:0;
+        }
+        .legal-page__mobileJumpCopy em{
+          font-style:normal;
+          font-size:.66rem;
+          font-weight:800;
+          letter-spacing:.12em;
+          text-transform:uppercase;
+          color:#a16d00;
+        }
+        .legal-page__mobileJumpCopy b{
+          font-size:.93rem;
+          font-weight:800;
+          color:#151515;
+          letter-spacing:-.02em;
+        }
+        .legal-page__mobileJumpCard summary strong{
+          display:inline-flex;
+          align-items:center;
+          justify-content:center;
+          width:30px;
+          height:30px;
+          border-radius:999px;
+          background:#fff1c8;
+          border:1px solid #efd9a1;
+          font-size:1rem;
+          font-weight:800;
+          color:#8f6100;
+          white-space:nowrap;
+          transition:transform .18s ease, background .18s ease;
+        }
+        .legal-page__mobileJumpCard[open] .legal-page__mobileJumpIcon{transform:rotate(180deg)}
+        .legal-page__mobileJumpList{
+          display:grid;
+          gap:4px;
+          padding:0 10px 12px;
+        }
+        .legal-page__mobileJumpList a{
+          padding:11px 12px;
+          border-radius:14px;
+          text-decoration:none;
+          color:#4f4638;
+          font-size:.86rem;
+          line-height:1.45;
+          font-weight:600;
+          background:rgba(255,250,241,.72);
+        }
+        .legal-page__mobileJumpList a:hover{background:#fff5dc;color:#151515}
+        .legal-page__layout{
+          display:grid;
+          grid-template-columns:260px minmax(0,1fr);
+          gap:24px;
+          align-items:start;
+        }
+        .legal-page__toc{
+          position:sticky;
+          top:96px;
+        }
+        .legal-page__tocCard{
+          padding:18px 16px;
+          border:1px solid #eadfca;
+          border-radius:24px;
+          background:rgba(255,255,255,.78);
+          backdrop-filter:blur(8px);
+          box-shadow:0 22px 44px -34px rgba(49,34,11,.24);
+        }
+        .legal-page__tocLabel{
+          font-size:.7rem;
+          font-weight:800;
+          letter-spacing:.14em;
+          text-transform:uppercase;
+          color:#a16d00;
+        }
+        .legal-page__tocList{
+          display:grid;
+          gap:8px;
+          margin-top:14px;
+        }
+        .legal-page__tocList a{
+          display:grid;
+          grid-template-columns:32px minmax(0,1fr);
+          gap:10px;
+          align-items:start;
+          padding:10px 11px;
+          border-radius:14px;
+          text-decoration:none;
+          color:#4f4638;
+          transition:background .16s ease,color .16s ease,transform .16s ease;
+        }
+        .legal-page__tocList a:hover{
+          background:#fff5dc;
+          color:#151515;
+          transform:translateX(2px);
+        }
+        .legal-page__tocList a span{
+          font-size:.72rem;
+          font-weight:800;
+          color:#a16d00;
+          padding-top:2px;
+        }
+        .legal-page__tocList a strong{
+          font-size:.84rem;
+          font-weight:700;
+          line-height:1.4;
+        }
+        .legal-page__card{
+          padding: 10px;
+          border: 1px solid #eadfca;
+          border-radius: 32px;
+          background: rgba(255,255,255,.88);
+          box-shadow: 0 30px 70px -42px rgba(49, 34, 11, .28);
+        }
+        .legal-page__section + .legal-page__section{
+          margin-top: 12px;
+        }
+        .legal-page__section{
+          padding:24px 22px 26px;
+          border-radius:24px;
+          background:linear-gradient(180deg, rgba(255,255,255,.96), rgba(255,251,243,.92));
+        }
+        .legal-page__sectionHead{
+          display:flex;
+          align-items:flex-start;
+          gap:14px;
+        }
+        .legal-page__sectionNum{
+          width:34px;
+          height:34px;
+          flex:none;
+          display:grid;
+          place-items:center;
+          border-radius:12px;
+          background:#fff2ce;
+          color:#9a6700;
+          font-size:.76rem;
+          font-weight:800;
+          letter-spacing:.04em;
+        }
+        .legal-page__section h2{
+          font-size: 1.1rem;
+          font-weight: 800;
+          letter-spacing: -.03em;
+          color: #151515;
+          padding-top:4px;
+        }
+        .legal-page__section p{
+          margin-top: 12px;
+          font-size: .96rem;
+          line-height: 1.78;
+          color: #4f4638;
+        }
+        .legal-page__section a{color:#8a5b00;text-decoration:underline}
+        html{scroll-behavior:smooth}
+        @media (max-width: 980px){
+          .legal-page__heroGrid,
+          .legal-page__layout{grid-template-columns:minmax(0,1fr)}
+          .legal-page__toc{position:static}
+        }
+        @media (max-width: 640px){
+          .legal-page{padding: 20px 12px 48px}
+          .legal-page__hero h1{font-size:clamp(1.7rem,8vw,2.4rem)}
+          .legal-page__meta{margin-top:10px;font-size:.84rem}
+          .legal-page__lede{margin-top:12px;font-size:.9rem;line-height:1.58}
+          .legal-page__mobileJump{display:block;margin-bottom:14px}
+          .legal-page__toc{display:none}
+          .legal-page__mobileJumpCard{border-radius:20px}
+          .legal-page__mobileJumpCard summary{padding:15px 14px 14px}
+          .legal-page__mobileJumpCopy em{font-size:.62rem}
+          .legal-page__mobileJumpCopy b{font-size:.9rem}
+          .legal-page__mobileJumpCard summary strong{width:28px;height:28px;font-size:.95rem}
+          .legal-page__mobileJumpList{padding:0 8px 10px}
+          .legal-page__mobileJumpList a{padding:10px 11px;font-size:.83rem}
+          .legal-page__card{padding: 8px;border-radius: 24px}
+          .legal-page__section{padding:16px 14px 18px;border-radius:18px}
+          .legal-page__section + .legal-page__section{margin-top:8px}
+          .legal-page__sectionHead{gap:10px}
+          .legal-page__sectionNum{width:30px;height:30px;border-radius:10px;font-size:.7rem}
+          .legal-page__section h2{font-size:1rem;line-height:1.2}
+          .legal-page__section p{font-size: .89rem;line-height: 1.6;margin-top:10px}
+        }
+      ` })
+	] });
+}
+//#endregion
+//#region resources/js/Pages/DataProcessingAddendum.jsx
+var DataProcessingAddendum_exports = /* @__PURE__ */ __exportAll({ default: () => DataProcessingAddendum });
+var sections$3 = [
+	{
+		heading: "1. Scope of This Addendum",
+		paragraphs: ["This Data Processing Addendum applies when Brand Beacon processes personal data on behalf of a customer in connection with the services covered by our Terms of Service. It supplements those Terms and applies only to the extent Brand Beacon is acting as a processor or service provider for customer personal data.", "If there is any conflict between this Addendum and the Terms of Service regarding data-processing obligations, this Addendum controls to the extent of that conflict."]
+	},
+	{
+		heading: "2. Roles of the Parties",
+		paragraphs: ["The customer is the controller or business, and Brand Beacon is the processor or service provider, for customer personal data processed through the service on the customer’s behalf.", "Each party will comply with the obligations applicable to it under relevant data-protection laws."]
+	},
+	{
+		heading: "3. Subject Matter and Duration",
+		paragraphs: ["Brand Beacon processes customer personal data for the purpose of providing the service, including account administration, authentication, search operations, analytics delivery, support, billing administration, service security, troubleshooting, and related operational functions.", "Processing continues for the duration of the customer’s use of the service, plus any limited retention period reasonably required for legal compliance, security, backup integrity, dispute resolution, or other legitimate business needs."]
+	},
+	{
+		heading: "4. Nature of Processing and Types of Data",
+		paragraphs: ["Processing may include collection, organization, storage, retrieval, consultation, transmission, analysis, deletion, and other actions necessary to operate the service.", "Customer personal data may include account identifiers, contact information, billing-related metadata, support communications, saved searches, usage records, settings, and other information the customer or its authorized users submit to or generate through the service."]
+	},
+	{
+		heading: "5. Customer Instructions",
+		paragraphs: ["Brand Beacon will process customer personal data only on documented instructions from the customer, including as necessary to provide the service under the Terms of Service and this Addendum, unless otherwise required by applicable law.", "If Brand Beacon believes an instruction violates applicable law, it may notify the customer and suspend the affected processing until the issue is resolved."]
+	},
+	{
+		heading: "6. Confidentiality and Personnel",
+		paragraphs: ["Brand Beacon will ensure that personnel authorized to process customer personal data are subject to appropriate confidentiality obligations and access controls."]
+	},
+	{
+		heading: "7. Security Measures",
+		paragraphs: ["Brand Beacon will implement reasonable technical and organizational measures designed to protect customer personal data against accidental or unlawful destruction, loss, alteration, unauthorized disclosure, or unauthorized access.", "Those measures may include access restrictions, role-based permissions, authentication controls, logging, vendor security review, encrypted transmission, and other measures appropriate to the nature of the service."]
+	},
+	{
+		heading: "8. Subprocessors",
+		paragraphs: ["The customer authorizes Brand Beacon to use subprocessors that are reasonably necessary to provide the service, including providers supporting hosting, storage, authentication, billing, communications, monitoring, and operational infrastructure.", "Brand Beacon will remain responsible for the performance of its subprocessors to the extent required by applicable law and will impose data-protection obligations on subprocessors as appropriate for the services they provide."]
+	},
+	{
+		heading: "9. Assistance with Data Subject Requests",
+		paragraphs: ["Taking into account the nature of the processing, Brand Beacon will provide reasonable assistance to the customer in responding to requests from data subjects where the customer cannot address the request through the service itself."]
+	},
+	{
+		heading: "10. Assistance with Compliance",
+		paragraphs: ["Brand Beacon will provide reasonable information to help the customer meet obligations relating to security, breach notification, impact assessments, and consultations with regulators, to the extent required by applicable law and reasonably possible given the nature of the service."]
+	},
+	{
+		heading: "11. Security Incident Notification",
+		paragraphs: ["If Brand Beacon becomes aware of a confirmed security incident affecting customer personal data, Brand Beacon will notify the customer without undue delay and provide available information reasonably necessary to help the customer understand the incident and meet applicable notification obligations."]
+	},
+	{
+		heading: "12. Return or Deletion of Data",
+		paragraphs: ["Upon termination of the relevant services, Brand Beacon will delete or return customer personal data as required by applicable law and the Terms of Service, except where retention is required for legal, security, backup, accounting, or dispute-resolution purposes."]
+	},
+	{
+		heading: "13. International Transfers",
+		paragraphs: ["Customer personal data may be processed in jurisdictions outside the customer’s own jurisdiction where Brand Beacon or its subprocessors operate. Where required by applicable law, the parties will cooperate in implementing appropriate transfer mechanisms."]
+	},
+	{
+		heading: "14. Contact",
+		paragraphs: ["Questions regarding this Data Processing Addendum may be sent to hello@brandbeacon.com."]
+	}
+];
+function DataProcessingAddendum() {
+	return /* @__PURE__ */ jsx(LegalPage, {
+		title: "Data Processing Addendum",
+		effectiveDate: "August 29, 2026",
+		sections: sections$3
+	});
+}
+//#endregion
 //#region resources/js/Pages/Home.jsx
 var Home_exports = /* @__PURE__ */ __exportAll({ default: () => Home });
 function Home({ stack, integrations }) {
@@ -8179,47 +8849,6 @@ function Home({ stack, integrations }) {
 			]
 		})
 	})] });
-}
-//#endregion
-//#region resources/js/landing/sections/Nav.jsx
-function Nav({ homeHref = "#top" }) {
-	const [stuck, setStuck] = useState(false);
-	useEffect(() => {
-		const onScroll = () => setStuck(window.scrollY > 8);
-		onScroll();
-		window.addEventListener("scroll", onScroll, { passive: true });
-		return () => window.removeEventListener("scroll", onScroll);
-	}, []);
-	return /* @__PURE__ */ jsx("header", {
-		className: `nav${stuck ? " is-stuck" : ""}`,
-		id: "nav",
-		children: /* @__PURE__ */ jsxs("div", {
-			className: "wrap nav__in",
-			children: [/* @__PURE__ */ jsxs("a", {
-				href: homeHref,
-				className: "brand",
-				children: [/* @__PURE__ */ jsx(Logo, { className: "h-8 w-8" }), /* @__PURE__ */ jsx("span", { children: "Brand Beacon" })]
-			}), /* @__PURE__ */ jsxs("div", {
-				className: "nav__end",
-				children: [/* @__PURE__ */ jsx(Link, {
-					href: "/login",
-					className: "nav__signin",
-					children: "Sign In"
-				}), /* @__PURE__ */ jsxs("a", {
-					href: "/auth/google",
-					className: "btn btn--primary",
-					style: {
-						height: 44,
-						padding: "0 20px"
-					},
-					children: [/* @__PURE__ */ jsx("span", {
-						className: "gicon gicon--sm",
-						children: /* @__PURE__ */ jsx(Google, {})
-					}), "Try for Free"]
-				})]
-			})]
-		})
-	});
 }
 //#endregion
 //#region resources/js/landing/sections/Hero.jsx
@@ -9583,124 +10212,6 @@ function FinalCta({ onStart }) {
 	});
 }
 //#endregion
-//#region resources/js/landing/sections/Footer.jsx
-var COLS = [
-	{
-		h: "Product",
-		links: [
-			"Outlier Vault",
-			"Brand Tracking",
-			"Creator Shortlists",
-			"Virality Alerts",
-			"Changelog"
-		]
-	},
-	{
-		h: "Company",
-		links: [
-			"About",
-			"Careers",
-			"Blog",
-			"Press kit",
-			"Contact"
-		]
-	},
-	{
-		h: "Resources",
-		links: [
-			"TikTok benchmarks",
-			"Category reports",
-			"Help center",
-			"API docs",
-			"Status"
-		]
-	},
-	{
-		h: "Legal",
-		links: [
-			"Terms",
-			"Privacy",
-			"DPA",
-			"Security"
-		]
-	}
-];
-function Footer() {
-	const [subscribed, setSubscribed] = useState(false);
-	return /* @__PURE__ */ jsx("footer", {
-		className: "ftr",
-		children: /* @__PURE__ */ jsxs("div", {
-			className: "wrap",
-			children: [/* @__PURE__ */ jsxs("div", {
-				className: "ftr__top",
-				children: [/* @__PURE__ */ jsxs("div", { children: [
-					/* @__PURE__ */ jsxs("a", {
-						href: "#top",
-						className: "brand",
-						children: [/* @__PURE__ */ jsx(Logo, { className: "h-8 w-8" }), /* @__PURE__ */ jsx("span", { children: "Brand Beacon" })]
-					}),
-					/* @__PURE__ */ jsx("p", {
-						className: "ftr__blurb",
-						children: "TikTok social intelligence for brands. Find the viral videos moving your category, and the creators behind them."
-					}),
-					/* @__PURE__ */ jsxs("form", {
-						className: "ftr__form",
-						onSubmit: (e) => {
-							e.preventDefault();
-							setSubscribed(true);
-						},
-						children: [
-							/* @__PURE__ */ jsx("label", {
-								htmlFor: "nl",
-								children: "Weekly viral digest"
-							}),
-							/* @__PURE__ */ jsxs("div", {
-								className: "ftr__row",
-								children: [/* @__PURE__ */ jsx("input", {
-									id: "nl",
-									type: "email",
-									required: true,
-									placeholder: "you@brand.com"
-								}), /* @__PURE__ */ jsx("button", {
-									type: "submit",
-									className: "btn btn--primary",
-									children: subscribed ? "Subscribed" : "Subscribe"
-								})]
-							}),
-							/* @__PURE__ */ jsx("p", {
-								className: "ftr__fine",
-								children: "One email a week. Unsubscribe anytime."
-							})
-						]
-					})
-				] }), /* @__PURE__ */ jsx("div", {
-					className: "ftr__cols",
-					children: COLS.map((col) => /* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsx("h4", { children: col.h }), /* @__PURE__ */ jsx("ul", { children: col.links.map((link) => /* @__PURE__ */ jsx("li", { children: /* @__PURE__ */ jsx("a", {
-						href: "#top",
-						children: link
-					}) }, link)) })] }, col.h))
-				})]
-			}), /* @__PURE__ */ jsxs("div", {
-				className: "ftr__btm",
-				children: [/* @__PURE__ */ jsx("p", { children: "© 2026 Brand Beacon. TikTok viral intelligence for brands." }), /* @__PURE__ */ jsxs("nav", { children: [
-					/* @__PURE__ */ jsx("a", {
-						href: "#top",
-						children: "Terms"
-					}),
-					/* @__PURE__ */ jsx("a", {
-						href: "#top",
-						children: "Privacy"
-					}),
-					/* @__PURE__ */ jsx("a", {
-						href: "/contact",
-						children: "Contact"
-					})
-				] })]
-			})]
-		})
-	});
-}
-//#endregion
 //#region resources/js/Pages/Landing.jsx
 var Landing_exports = /* @__PURE__ */ __exportAll({ default: () => Landing });
 function Landing() {
@@ -10067,6 +10578,74 @@ function Plans() {
 			})
 		]
 	})] });
+}
+//#endregion
+//#region resources/js/Pages/PrivacyPolicy.jsx
+var PrivacyPolicy_exports = /* @__PURE__ */ __exportAll({ default: () => PrivacyPolicy });
+var sections$2 = [
+	{
+		heading: "1. Information We Collect",
+		paragraphs: [
+			"We collect information you provide directly to us, including account details such as your name, email address, password, company or brand information, billing details, support messages, and any information you submit while creating or managing searches.",
+			"We also collect service data generated through your use of Brand Beacon, such as saved searches, keywords, bookmarks, video-analysis requests, subscription status, usage counts, settings, and activity needed to operate the product.",
+			"Like most online services, we may automatically collect technical and usage information such as IP address, browser type, device information, pages viewed, referring URLs, timestamps, and cookie or session data."
+		]
+	},
+	{
+		heading: "2. How We Use Information",
+		paragraphs: ["We use information to provide, maintain, secure, and improve Brand Beacon, including operating search workflows, storing results, preserving media references, processing subscriptions, sending transactional messages, analyzing product usage, preventing abuse, and supporting customers.", "We may also use information to communicate with you about your account, product updates, pricing, legal notices, and marketing messages where permitted by law. You can opt out of non-essential marketing emails at any time."]
+	},
+	{
+		heading: "3. Search Data and Third-Party Sources",
+		paragraphs: ["Brand Beacon surfaces analytics, search results, and media-related information derived from third-party platforms and service providers. That information can change, become unavailable, or be removed by those platforms at any time.", "We may use service providers to help retrieve, process, enrich, host, store, deliver, or analyze data used within the product. We do not promise that third-party data will always be complete, current, or continuously available."]
+	},
+	{
+		heading: "4. Sharing of Information",
+		paragraphs: [
+			"We may share information with vendors and service providers that help us operate Brand Beacon, including providers supporting authentication, billing, communications, infrastructure, storage, analytics, and search-related processing.",
+			"We may also disclose information when reasonably necessary to comply with law, enforce our terms, protect the rights or safety of Brand Beacon, our users, or others, or in connection with a merger, financing, acquisition, or sale of assets.",
+			"We do not sell your personal information for money."
+		]
+	},
+	{
+		heading: "5. Cookies and Similar Technologies",
+		paragraphs: ["We use cookies, local storage, and similar technologies to keep you signed in, remember preferences, maintain sessions, attribute traffic, improve performance, and understand how the service is used.", "Your browser may allow you to block or remove cookies, but parts of Brand Beacon may not function properly if you do so."]
+	},
+	{
+		heading: "6. Data Retention",
+		paragraphs: ["We retain information for as long as reasonably necessary to provide the service, comply with legal obligations, resolve disputes, enforce agreements, and maintain business records.", "Search records, analytics, billing records, and related operational logs may persist for a period of time even after an account is closed or a deletion request is submitted where retention is necessary for security, legal, accounting, or legitimate business purposes."]
+	},
+	{
+		heading: "7. Security",
+		paragraphs: ["We use reasonable administrative, technical, and organizational measures designed to protect personal information. However, no system is perfectly secure, and we cannot guarantee absolute security."]
+	},
+	{
+		heading: "8. Your Choices and Rights",
+		paragraphs: ["Depending on where you live, you may have rights to access, correct, delete, or restrict certain personal information, or to object to certain processing. You may also have the right to request a copy of certain information.", "To make a privacy request, contact us at hello@brandbeacon.com. We may need to verify your identity before completing your request."]
+	},
+	{
+		heading: "9. Children",
+		paragraphs: ["Brand Beacon is not directed to children, and we do not knowingly collect personal information from children under 13."]
+	},
+	{
+		heading: "10. International Processing",
+		paragraphs: ["Your information may be processed or stored in countries other than your own, including where our vendors or infrastructure providers operate. By using the service, you understand that information may be transferred to jurisdictions with different data-protection laws."]
+	},
+	{
+		heading: "11. Changes to This Policy",
+		paragraphs: ["We may update this Privacy Policy from time to time. If we make material changes, we will post the updated version on this page and may provide additional notice through the product or by email where appropriate."]
+	},
+	{
+		heading: "12. Contact Us",
+		paragraphs: ["If you have questions about this Privacy Policy or our privacy practices, contact us at hello@brandbeacon.com."]
+	}
+];
+function PrivacyPolicy() {
+	return /* @__PURE__ */ jsx(LegalPage, {
+		title: "Privacy Policy",
+		effectiveDate: "August 29, 2026",
+		sections: sections$2
+	});
 }
 //#endregion
 //#region resources/js/Pages/Products.jsx
@@ -12112,7 +12691,7 @@ function compact(n) {
 	if (n >= 1e3) return `${(n / 1e3).toFixed(n >= 1e4 ? 0 : 1)}K`;
 	return String(Math.round(n));
 }
-function formatDate$1(iso) {
+function formatDate$2(iso) {
 	if (!iso) return null;
 	const d = new Date(iso);
 	return Number.isNaN(d.getTime()) ? null : d.toLocaleDateString(void 0, {
@@ -12677,8 +13256,8 @@ function DetailScreen({ search, isAuthenticated = false, billing: billing$2, ref
 		previousRunId
 	]);
 	const runLabels = {
-		latest: runList.length > 0 ? formatDate$1(runList[runList.length - 1]?.completed_at) || "latest run" : "latest run",
-		previous: runList.length > 1 ? formatDate$1(runList[runList.length - 2]?.completed_at) || "previous run" : "previous run"
+		latest: runList.length > 0 ? formatDate$2(runList[runList.length - 1]?.completed_at) || "latest run" : "latest run",
+		previous: runList.length > 1 ? formatDate$2(runList[runList.length - 2]?.completed_at) || "previous run" : "previous run"
 	};
 	const sortedRest = useMemo(() => {
 		const arr = runFilter === "all" ? [...rest] : rest.filter((v) => bucketForVideo(v) === runFilter);
@@ -13056,8 +13635,8 @@ function DetailScreen({ search, isAuthenticated = false, billing: billing$2, ref
 										className: "rs-bline__k",
 										children: search.frequency
 									}),
-									/* @__PURE__ */ jsx("span", { children: search.last_run_at ? `last run ${formatDate$1(search.last_run_at)}` : "not run yet" }),
-									search.next_run_at ? /* @__PURE__ */ jsx("span", { children: `next refresh ${formatDate$1(search.next_run_at)}` }) : null
+									/* @__PURE__ */ jsx("span", { children: search.last_run_at ? `last run ${formatDate$2(search.last_run_at)}` : "not run yet" }),
+									search.next_run_at ? /* @__PURE__ */ jsx("span", { children: `next refresh ${formatDate$2(search.next_run_at)}` }) : null
 								]
 							}), /* @__PURE__ */ jsxs("span", {
 								className: `rs-state rs-state--${String(search?.status ?? "ready").toLowerCase()}`,
@@ -13177,7 +13756,7 @@ function DetailScreen({ search, isAuthenticated = false, billing: billing$2, ref
 						}),
 						/* @__PURE__ */ jsx("span", {
 							className: "rs-ai__when",
-							children: formatDate$1(search?.ai_summary_generated_at)
+							children: formatDate$2(search?.ai_summary_generated_at)
 						})
 					]
 				}), mobileCards && /* @__PURE__ */ jsxs("div", {
@@ -13232,7 +13811,7 @@ function DetailScreen({ search, isAuthenticated = false, billing: billing$2, ref
 						}),
 						/* @__PURE__ */ jsx("span", {
 							className: "rs-stt__d",
-							children: search?.last_run_at ? `all from the ${formatDate$1(search.last_run_at)} refresh` : "this run"
+							children: search?.last_run_at ? `all from the ${formatDate$2(search.last_run_at)} refresh` : "this run"
 						})
 					]
 				}),
@@ -13341,7 +13920,7 @@ function DetailScreen({ search, isAuthenticated = false, billing: billing$2, ref
 											children: winner.handle || winner.username || "—"
 										}), /* @__PURE__ */ jsx("div", {
 											className: "rs-wc__s",
-											children: winner.uploaded_at ? formatDate$1(winner.uploaded_at) : winner.posted_at ? formatDate$1(winner.posted_at) : ""
+											children: winner.uploaded_at ? formatDate$2(winner.uploaded_at) : winner.posted_at ? formatDate$2(winner.posted_at) : ""
 										})]
 									}), /* @__PURE__ */ jsx("div", {
 										className: "rs-wc__s",
@@ -13958,7 +14537,7 @@ function DetailScreen({ search, isAuthenticated = false, billing: billing$2, ref
 											children: [
 												compact(video.views),
 												" views · uploaded ",
-												formatDate$1(video.uploaded_at) || "—"
+												formatDate$2(video.uploaded_at) || "—"
 											]
 										})
 									]
@@ -14238,7 +14817,7 @@ function OutlierCard$1({ video, runBucket = "old", expanded, locked = false, onT
 						}),
 						/* @__PURE__ */ jsx("div", {
 							className: "rs-oc__s",
-							children: video.uploaded_at ? formatDate$1(video.uploaded_at) : video.posted_at ? formatDate$1(video.posted_at) : ""
+							children: video.uploaded_at ? formatDate$2(video.uploaded_at) : video.posted_at ? formatDate$2(video.posted_at) : ""
 						})
 					]
 				}),
@@ -17613,6 +18192,58 @@ function Running({ searchId }) {
 	})] });
 }
 //#endregion
+//#region resources/js/Pages/SecurityPage.jsx
+var SecurityPage_exports = /* @__PURE__ */ __exportAll({ default: () => SecurityPage });
+var sections$1 = [
+	{
+		heading: "1. Security Overview",
+		paragraphs: ["Brand Beacon is designed with practical administrative, technical, and operational controls intended to protect customer accounts, application data, billing workflows, and service infrastructure.", "Our security program continues to evolve as the product, vendors, and threat environment change."]
+	},
+	{
+		heading: "2. Access Controls",
+		paragraphs: ["We limit access to systems and data based on role and business need. Administrative access is restricted to authorized personnel, and access may be reviewed, changed, or removed when responsibilities change.", "Customer account access is managed through application authentication controls, and users are responsible for maintaining the confidentiality of their credentials."]
+	},
+	{
+		heading: "3. Infrastructure and Vendors",
+		paragraphs: ["Brand Beacon relies on third-party infrastructure and service providers to support hosting, storage, billing, communications, authentication, monitoring, and related application operations.", "We select vendors based on product and operational needs and may review them for security, reliability, and fit for purpose as part of our vendor-management process."]
+	},
+	{
+		heading: "4. Data Protection Measures",
+		paragraphs: ["We use reasonable safeguards intended to protect data in transit and to limit unauthorized access to stored service data. Depending on the component, those safeguards may include encrypted transport, access restrictions, environment separation, logging, and least-privilege operational practices.", "No method of transmission or storage is perfectly secure, so we cannot guarantee absolute security."]
+	},
+	{
+		heading: "5. Monitoring and Response",
+		paragraphs: ["We maintain operational monitoring and troubleshooting practices intended to detect service issues, abuse, failures, and potential security concerns.", "If we confirm a security incident affecting customer data, we aim to investigate, contain, remediate, and communicate appropriately based on the nature of the incident and our legal obligations."]
+	},
+	{
+		heading: "6. Product Safeguards",
+		paragraphs: ["Brand Beacon includes controls intended to reduce misuse and unintended exposure, such as authenticated access to account areas, server-side validation, billing and entitlement checks, audit-oriented activity records, and role-based controls for administrative features."]
+	},
+	{
+		heading: "7. Backups and Availability",
+		paragraphs: ["We may use backup, redundancy, and recovery-oriented practices appropriate to the service and infrastructure we operate. However, we do not guarantee that the service will be uninterrupted, error-free, or immune from outages caused by third-party providers or platform dependencies."]
+	},
+	{
+		heading: "8. Customer Responsibilities",
+		paragraphs: ["Customers play an important role in security. You should use strong passwords, protect account credentials, limit access to authorized team members, review account activity, and notify us promptly if you suspect unauthorized access or misuse."]
+	},
+	{
+		heading: "9. Responsible Disclosure",
+		paragraphs: ["If you believe you have identified a security issue affecting Brand Beacon, contact us at hello@brandbeacon.com with relevant details. Please avoid actions that could harm users, disrupt the service, or access data you are not authorized to access."]
+	},
+	{
+		heading: "10. Contact",
+		paragraphs: ["Security-related questions may be sent to hello@brandbeacon.com."]
+	}
+];
+function SecurityPage() {
+	return /* @__PURE__ */ jsx(LegalPage, {
+		title: "Security",
+		effectiveDate: "August 29, 2026",
+		sections: sections$1
+	});
+}
+//#endregion
 //#region resources/js/Pages/Settings/Account.jsx
 var Account_exports = /* @__PURE__ */ __exportAll({ default: () => Account });
 var NOTIFICATIONS = [
@@ -17934,6 +18565,227 @@ function Appearance() {
 	})] });
 }
 //#endregion
+//#region resources/js/Pages/Settings/Receipt.jsx
+var Receipt_exports = /* @__PURE__ */ __exportAll({ default: () => Receipt });
+function formatDate$1(iso) {
+	if (!iso) return null;
+	const date = new Date(iso);
+	if (Number.isNaN(date.getTime())) return null;
+	return date.toLocaleDateString(void 0, {
+		month: "long",
+		day: "numeric",
+		year: "numeric"
+	});
+}
+function formatPeriod(start, end) {
+	const a = formatDate$1(start);
+	const b = formatDate$1(end);
+	if (a && b) return `${a} – ${b}`;
+	return a || b || null;
+}
+var StatusPill = ({ status }) => {
+	const paid = status === "paid";
+	return /* @__PURE__ */ jsx("span", {
+		className: `rcpt-status${paid ? " is-paid" : ""}`,
+		children: paid ? "Paid" : status || "Open"
+	});
+};
+function Receipt({ receipt }) {
+	const issued = formatDate$1(receipt?.date);
+	const lines = Array.isArray(receipt?.lines) ? receipt.lines : [];
+	return /* @__PURE__ */ jsxs("div", {
+		className: "bb",
+		children: [/* @__PURE__ */ jsx(Head, { title: `Receipt ${receipt?.number || ""} · Brand Beacon` }), /* @__PURE__ */ jsxs("div", {
+			className: "rcpt",
+			children: [/* @__PURE__ */ jsxs("div", {
+				className: "rcpt__bar",
+				children: [/* @__PURE__ */ jsx(Link, {
+					href: "/settings/subscription",
+					className: "rcpt__back",
+					children: "← Back to subscription"
+				}), /* @__PURE__ */ jsxs("div", {
+					className: "rcpt__bar-actions",
+					children: [receipt?.pdfUrl && /* @__PURE__ */ jsx("a", {
+						className: "rcpt__btn",
+						href: receipt.pdfUrl,
+						target: "_blank",
+						rel: "noreferrer",
+						children: "Stripe PDF"
+					}), /* @__PURE__ */ jsxs("button", {
+						type: "button",
+						className: "rcpt__btn rcpt__btn--primary",
+						onClick: () => window.print(),
+						children: [/* @__PURE__ */ jsx("svg", {
+							viewBox: "0 0 24 24",
+							fill: "none",
+							stroke: "currentColor",
+							strokeWidth: "2",
+							strokeLinecap: "round",
+							strokeLinejoin: "round",
+							children: /* @__PURE__ */ jsx("path", { d: "M6 9V3h12v6M6 18H4v-6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v6h-2M6 14h12v7H6z" })
+						}), "Print / Save PDF"]
+					})]
+				})]
+			}), /* @__PURE__ */ jsxs("article", {
+				className: "rcpt__sheet",
+				children: [
+					/* @__PURE__ */ jsxs("header", {
+						className: "rcpt__head",
+						children: [/* @__PURE__ */ jsxs("div", {
+							className: "rcpt__brand",
+							children: [/* @__PURE__ */ jsx("span", {
+								className: "rcpt__logo",
+								"aria-hidden": true,
+								children: /* @__PURE__ */ jsxs("svg", {
+									viewBox: "0 0 24 24",
+									fill: "none",
+									stroke: "currentColor",
+									strokeWidth: "2",
+									strokeLinecap: "round",
+									strokeLinejoin: "round",
+									children: [/* @__PURE__ */ jsx("path", { d: "M4 12a8 8 0 0 1 8-8M4 12a8 8 0 0 0 8 8M8 12a4 4 0 0 1 4-4" }), /* @__PURE__ */ jsx("circle", {
+										cx: "12",
+										cy: "12",
+										r: "1.4",
+										fill: "currentColor",
+										stroke: "none"
+									})]
+								})
+							}), /* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsx("div", {
+								className: "rcpt__brandname",
+								children: "Brand Beacon"
+							}), /* @__PURE__ */ jsx("div", {
+								className: "rcpt__brandsub",
+								children: "TikTok viral intelligence for brands"
+							})] })]
+						}), /* @__PURE__ */ jsxs("div", {
+							className: "rcpt__title",
+							children: [
+								/* @__PURE__ */ jsx("div", {
+									className: "rcpt__title-lab",
+									children: "Receipt"
+								}),
+								receipt?.number && /* @__PURE__ */ jsx("div", {
+									className: "rcpt__num",
+									children: receipt.number
+								}),
+								/* @__PURE__ */ jsx(StatusPill, { status: receipt?.status })
+							]
+						})]
+					}),
+					/* @__PURE__ */ jsxs("div", {
+						className: "rcpt__meta",
+						children: [
+							/* @__PURE__ */ jsxs("div", { children: [
+								/* @__PURE__ */ jsx("div", {
+									className: "rcpt__meta-lab",
+									children: "Billed to"
+								}),
+								/* @__PURE__ */ jsx("div", {
+									className: "rcpt__meta-val",
+									children: receipt?.customerName || receipt?.customerEmail || "—"
+								}),
+								receipt?.customerName && receipt?.customerEmail && /* @__PURE__ */ jsx("div", {
+									className: "rcpt__meta-sub",
+									children: receipt.customerEmail
+								})
+							] }),
+							/* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsx("div", {
+								className: "rcpt__meta-lab",
+								children: "Date issued"
+							}), /* @__PURE__ */ jsx("div", {
+								className: "rcpt__meta-val",
+								children: issued || "—"
+							})] }),
+							receipt?.card && /* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsx("div", {
+								className: "rcpt__meta-lab",
+								children: "Paid with"
+							}), /* @__PURE__ */ jsxs("div", {
+								className: "rcpt__meta-val",
+								children: [
+									receipt.card.brand,
+									" ·· ",
+									receipt.card.last4
+								]
+							})] })
+						]
+					}),
+					/* @__PURE__ */ jsxs("table", {
+						className: "rcpt__table",
+						children: [/* @__PURE__ */ jsx("thead", { children: /* @__PURE__ */ jsxs("tr", { children: [
+							/* @__PURE__ */ jsx("th", { children: "Description" }),
+							/* @__PURE__ */ jsx("th", {
+								className: "rcpt__r",
+								children: "Qty"
+							}),
+							/* @__PURE__ */ jsx("th", {
+								className: "rcpt__r",
+								children: "Amount"
+							})
+						] }) }), /* @__PURE__ */ jsx("tbody", { children: lines.length === 0 ? /* @__PURE__ */ jsx("tr", { children: /* @__PURE__ */ jsx("td", {
+							colSpan: 3,
+							className: "rcpt__empty",
+							children: "No line items on this invoice."
+						}) }) : lines.map((line, i) => {
+							const period = formatPeriod(line.periodStart, line.periodEnd);
+							return /* @__PURE__ */ jsxs("tr", { children: [
+								/* @__PURE__ */ jsxs("td", { children: [/* @__PURE__ */ jsx("div", {
+									className: "rcpt__desc",
+									children: line.description
+								}), period && /* @__PURE__ */ jsx("div", {
+									className: "rcpt__period",
+									children: period
+								})] }),
+								/* @__PURE__ */ jsx("td", {
+									className: "rcpt__r rcpt__num-cell",
+									children: line.quantity
+								}),
+								/* @__PURE__ */ jsx("td", {
+									className: "rcpt__r rcpt__num-cell",
+									children: line.amount
+								})
+							] }, i);
+						}) })]
+					}),
+					/* @__PURE__ */ jsxs("div", {
+						className: "rcpt__totals",
+						children: [
+							/* @__PURE__ */ jsxs("div", {
+								className: "rcpt__totrow",
+								children: [/* @__PURE__ */ jsx("span", { children: "Subtotal" }), /* @__PURE__ */ jsx("span", {
+									className: "rcpt__num-cell",
+									children: receipt?.subtotal
+								})]
+							}),
+							receipt?.tax && /* @__PURE__ */ jsxs("div", {
+								className: "rcpt__totrow",
+								children: [/* @__PURE__ */ jsx("span", { children: "Tax" }), /* @__PURE__ */ jsx("span", {
+									className: "rcpt__num-cell",
+									children: receipt.tax
+								})]
+							}),
+							/* @__PURE__ */ jsxs("div", {
+								className: "rcpt__totrow rcpt__totrow--grand",
+								children: [/* @__PURE__ */ jsx("span", { children: "Total paid" }), /* @__PURE__ */ jsx("span", {
+									className: "rcpt__num-cell",
+									children: receipt?.amountPaid || receipt?.total
+								})]
+							})
+						]
+					}),
+					/* @__PURE__ */ jsxs("footer", {
+						className: "rcpt__foot",
+						children: [/* @__PURE__ */ jsx("p", { children: "Thank you for using Brand Beacon." }), /* @__PURE__ */ jsx("p", {
+							className: "rcpt__foot-sub",
+							children: "Payments are securely processed by Stripe. Questions about this receipt? Reply to your billing email and we’ll help."
+						})]
+					})
+				]
+			})]
+		})]
+	});
+}
+//#endregion
 //#region resources/js/Pages/Settings/Subscription.jsx
 var Subscription_exports = /* @__PURE__ */ __exportAll({ default: () => Subscription });
 function formatDate(iso) {
@@ -17950,11 +18802,259 @@ function ratio(used, limit) {
 	if (!limit || limit < 0) return 0;
 	return Math.min(100, Math.max(0, used / limit * 100));
 }
-function formatUsage(used, limit) {
-	if (limit === -1) return `${used} / Unlimited`;
-	return `${used} / ${limit || 0}`;
+var METER_ICONS = {
+	search: /* @__PURE__ */ jsxs("svg", {
+		viewBox: "0 0 24 24",
+		fill: "none",
+		stroke: "currentColor",
+		strokeWidth: "2",
+		strokeLinecap: "round",
+		children: [/* @__PURE__ */ jsx("circle", {
+			cx: "11",
+			cy: "11",
+			r: "7"
+		}), /* @__PURE__ */ jsx("path", { d: "m20 20-3.5-3.5" })]
+	}),
+	analysis: /* @__PURE__ */ jsxs("svg", {
+		viewBox: "0 0 24 24",
+		fill: "none",
+		stroke: "currentColor",
+		strokeWidth: "2",
+		strokeLinecap: "round",
+		strokeLinejoin: "round",
+		children: [/* @__PURE__ */ jsx("path", { d: "M3 5h18v14H3z" }), /* @__PURE__ */ jsx("path", { d: "m10 9 5 3-5 3z" })]
+	}),
+	videoBookmark: /* @__PURE__ */ jsx("svg", {
+		viewBox: "0 0 24 24",
+		fill: "none",
+		stroke: "currentColor",
+		strokeWidth: "2",
+		strokeLinejoin: "round",
+		children: /* @__PURE__ */ jsx("path", { d: "M6 3h12v18l-6-4.5L6 21z" })
+	}),
+	searchBookmark: /* @__PURE__ */ jsxs("svg", {
+		viewBox: "0 0 24 24",
+		fill: "none",
+		stroke: "currentColor",
+		strokeWidth: "2",
+		strokeLinecap: "round",
+		strokeLinejoin: "round",
+		children: [
+			/* @__PURE__ */ jsx("circle", {
+				cx: "11",
+				cy: "11",
+				r: "7"
+			}),
+			/* @__PURE__ */ jsx("path", { d: "m20 20-3.5-3.5" }),
+			/* @__PURE__ */ jsx("path", {
+				d: "M9 13V9l3.5 2z",
+				fill: "currentColor",
+				stroke: "none"
+			})
+		]
+	})
+};
+function UsageMeter({ icon, label, used, limit, note }) {
+	const unlimited = limit === -1;
+	const pct = unlimited ? 0 : ratio(used, limit);
+	return /* @__PURE__ */ jsxs("div", {
+		className: "subx-meter",
+		children: [
+			/* @__PURE__ */ jsxs("div", {
+				className: "subx-meter__top",
+				children: [/* @__PURE__ */ jsx("span", {
+					className: "subx-meter__ic",
+					children: icon
+				}), /* @__PURE__ */ jsx("span", {
+					className: "subx-meter__label",
+					children: label
+				})]
+			}),
+			/* @__PURE__ */ jsxs("div", {
+				className: "subx-meter__val",
+				children: [/* @__PURE__ */ jsx("span", {
+					className: "subx-meter__used num",
+					children: used
+				}), unlimited ? /* @__PURE__ */ jsx("span", {
+					className: "subx-meter__inf",
+					children: "· Unlimited"
+				}) : /* @__PURE__ */ jsxs("span", {
+					className: "subx-meter__lim num",
+					children: ["/ ", limit || 0]
+				})]
+			}),
+			unlimited ? /* @__PURE__ */ jsx("div", { className: "subx-track subx-track--dash subx-track--good" }) : /* @__PURE__ */ jsx("div", {
+				className: "subx-track",
+				children: /* @__PURE__ */ jsx("i", { style: { width: `${pct}%` } })
+			}),
+			note && /* @__PURE__ */ jsx("div", {
+				className: "subx-meter__note",
+				children: note
+			})
+		]
+	});
 }
-function Subscription({ subscription }) {
+function formatPaymentMethod(method) {
+	if (!method?.last4) return "No card on file yet";
+	const expiry = method.expMonth && method.expYear ? ` · expires ${String(method.expMonth).padStart(2, "0")}/${String(method.expYear).slice(-2)}` : "";
+	return `${method.brand || "Card"} ending in ${method.last4}${expiry}`;
+}
+var stripeJsPromise = null;
+function loadStripeJs() {
+	if (typeof window === "undefined") return Promise.reject(/* @__PURE__ */ new Error("Stripe.js requires a browser."));
+	if (window.Stripe) return Promise.resolve(window.Stripe);
+	if (stripeJsPromise) return stripeJsPromise;
+	stripeJsPromise = new Promise((resolve, reject) => {
+		const existing = document.querySelector("script[data-stripe-js=\"true\"]");
+		if (existing) {
+			existing.addEventListener("load", () => resolve(window.Stripe));
+			existing.addEventListener("error", () => reject(/* @__PURE__ */ new Error("Could not load Stripe.js.")));
+			return;
+		}
+		const script = document.createElement("script");
+		script.src = "https://js.stripe.com/v3/";
+		script.async = true;
+		script.dataset.stripeJs = "true";
+		script.onload = () => resolve(window.Stripe);
+		script.onerror = () => reject(/* @__PURE__ */ new Error("Could not load Stripe.js."));
+		document.head.appendChild(script);
+	});
+	return stripeJsPromise;
+}
+function PaymentMethodModal({ open, busy, saving, error, onClose, onSubmit }) {
+	if (!open) return null;
+	return /* @__PURE__ */ jsx("div", {
+		className: "bb",
+		children: /* @__PURE__ */ jsxs("div", {
+			className: "bb-modal",
+			children: [/* @__PURE__ */ jsx("button", {
+				className: "bb-modal__bg",
+				"aria-label": "Close",
+				onClick: busy || saving ? void 0 : onClose
+			}), /* @__PURE__ */ jsxs("div", {
+				className: "bb-modal__box",
+				children: [
+					/* @__PURE__ */ jsx("h2", { children: "Update payment method" }),
+					/* @__PURE__ */ jsx("p", {
+						className: "sub",
+						children: "Your card details are collected securely by Stripe. We only store the payment method summary in Brand Beacon."
+					}),
+					/* @__PURE__ */ jsx("div", {
+						id: "stripe-card-element",
+						style: {
+							marginTop: 18,
+							padding: "14px 16px",
+							borderRadius: 14,
+							border: "1px solid var(--line)",
+							background: "var(--paper)",
+							minHeight: 52
+						}
+					}),
+					error && /* @__PURE__ */ jsx("p", {
+						className: "hint",
+						style: {
+							marginTop: 10,
+							color: "var(--warn)"
+						},
+						children: error
+					}),
+					/* @__PURE__ */ jsxs("div", {
+						className: "actrow__r",
+						style: {
+							marginTop: 22,
+							justifyContent: "flex-end"
+						},
+						children: [/* @__PURE__ */ jsx("button", {
+							type: "button",
+							className: "btn btn--g",
+							onClick: onClose,
+							disabled: busy || saving,
+							children: "Cancel"
+						}), /* @__PURE__ */ jsx("button", {
+							type: "button",
+							className: "btn btn--y",
+							onClick: onSubmit,
+							disabled: busy || saving,
+							children: saving ? "Saving…" : busy ? "Loading…" : "Save card"
+						})]
+					})
+				]
+			})]
+		})
+	});
+}
+function CancelConfirmModal({ open, busy, planName, periodEnd, onConfirm, onClose }) {
+	if (!open) return null;
+	return /* @__PURE__ */ jsx("div", {
+		className: "bb",
+		children: /* @__PURE__ */ jsxs("div", {
+			className: "bb-modal",
+			children: [/* @__PURE__ */ jsx("button", {
+				className: "bb-modal__bg",
+				"aria-label": "Close",
+				onClick: busy ? void 0 : onClose
+			}), /* @__PURE__ */ jsxs("div", {
+				className: "bb-modal__box",
+				role: "dialog",
+				"aria-modal": "true",
+				"aria-label": "Cancel subscription",
+				children: [
+					/* @__PURE__ */ jsx("div", {
+						className: "subx-cancel__icon",
+						"aria-hidden": true,
+						children: /* @__PURE__ */ jsxs("svg", {
+							viewBox: "0 0 24 24",
+							fill: "none",
+							stroke: "currentColor",
+							strokeWidth: "2",
+							strokeLinecap: "round",
+							strokeLinejoin: "round",
+							children: [/* @__PURE__ */ jsx("path", { d: "M12 9v4M12 17h.01" }), /* @__PURE__ */ jsx("path", { d: "M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z" })]
+						})
+					}),
+					/* @__PURE__ */ jsxs("h2", { children: [
+						"Cancel your ",
+						planName,
+						" plan?"
+					] }),
+					/* @__PURE__ */ jsxs("p", {
+						className: "sub",
+						children: [
+							"Your subscription will not renew. You’ll keep full access",
+							periodEnd ? /* @__PURE__ */ jsxs(Fragment$1, { children: [" until ", /* @__PURE__ */ jsx("b", {
+								style: { color: "var(--ink)" },
+								children: periodEnd
+							})] }) : " until the end of your current billing period",
+							", then move to the free plan. You can resubscribe anytime."
+						]
+					}),
+					/* @__PURE__ */ jsxs("div", {
+						className: "actrow__r",
+						style: {
+							marginTop: 22,
+							justifyContent: "flex-end"
+						},
+						children: [/* @__PURE__ */ jsx("button", {
+							type: "button",
+							className: "btn btn--g",
+							onClick: onClose,
+							disabled: busy,
+							children: "Keep subscription"
+						}), /* @__PURE__ */ jsx("button", {
+							type: "button",
+							className: "btn btn--bad",
+							onClick: onConfirm,
+							disabled: busy,
+							children: busy ? "Cancelling…" : "Cancel subscription"
+						})]
+					})
+				]
+			})]
+		})
+	});
+}
+function Subscription({ subscription, stripePublishableKey = null }) {
+	const { flash = {} } = usePage().props;
 	const limits = subscription?.limits ?? {};
 	const searchLimit = limits.searchCreditsLimit ?? 0;
 	const searchUsed = limits.searchCreditsUsed ?? 0;
@@ -17974,205 +19074,406 @@ function Subscription({ subscription }) {
 	const trialEnds = formatDate(subscription?.trialEndsAt);
 	const renews = formatDate(subscription?.renewsAt);
 	const invoices = subscription?.invoices ?? [];
+	const [statusMessage, setStatusMessage] = useState(flash.status ?? null);
+	const [paymentMethod, setPaymentMethod] = useState(subscription?.paymentMethod ?? null);
+	const [paymentModalOpen, setPaymentModalOpen] = useState(false);
+	const [paymentLoading, setPaymentLoading] = useState(false);
+	const [paymentSaving, setPaymentSaving] = useState(false);
+	const [paymentError, setPaymentError] = useState(null);
+	const [cancelBusy, setCancelBusy] = useState(false);
+	const [cancelModalOpen, setCancelModalOpen] = useState(false);
+	const [elementsState, setElementsState] = useState(null);
 	const searchesLeft = searchLimit > 0 ? Math.max(0, searchLimit - searchUsed) : 0;
 	const videoBookmarksUnlimited = videoBookmarkLimit === -1;
 	const searchBookmarksUnlimited = searchBookmarkLimit === -1;
 	const analysisUnlimited = videoAnalysisLimit === -1;
-	return /* @__PURE__ */ jsxs(Fragment$1, { children: [/* @__PURE__ */ jsx(Head, { title: "Subscription · Brand Beacon" }), /* @__PURE__ */ jsxs(SettingsShell, {
-		section: "subscription",
-		children: [/* @__PURE__ */ jsx("div", {
-			className: "card",
-			children: /* @__PURE__ */ jsxs("div", {
-				className: "card__p",
-				children: [
-					/* @__PURE__ */ jsxs("div", {
-						style: {
-							display: "flex",
-							alignItems: "flex-start",
-							justifyContent: "space-between",
-							gap: 18,
-							flexWrap: "wrap"
-						},
-						children: [/* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsx("h2", { children: planName }), /* @__PURE__ */ jsxs("p", {
-							className: "muted",
+	const openPaymentMethodModal = async () => {
+		if (!stripePublishableKey) {
+			setPaymentError("Stripe is not configured yet.");
+			setPaymentModalOpen(true);
+			return;
+		}
+		setPaymentModalOpen(true);
+		setPaymentLoading(true);
+		setPaymentError(null);
+		try {
+			const stripe = (await loadStripeJs())(stripePublishableKey);
+			const payload = await billing.createPaymentMethodSetup();
+			if (!payload?.clientSecret) throw new Error("Could not start the card update flow.");
+			const elements = stripe.elements({ clientSecret: payload.clientSecret });
+			const card = elements.create("payment");
+			card.mount("#stripe-card-element");
+			setElementsState({
+				stripe,
+				elements,
+				card
+			});
+		} catch (error) {
+			setPaymentError(error?.message || "Could not open the card form.");
+		} finally {
+			setPaymentLoading(false);
+		}
+	};
+	const closePaymentMethodModal = () => {
+		if (paymentLoading || paymentSaving) return;
+		try {
+			elementsState?.card?.destroy?.();
+		} catch {}
+		setElementsState(null);
+		setPaymentModalOpen(false);
+		setPaymentError(null);
+	};
+	const savePaymentMethod = async () => {
+		if (!elementsState?.stripe || !elementsState?.elements) return;
+		setPaymentSaving(true);
+		setPaymentError(null);
+		try {
+			const result = await elementsState.stripe.confirmSetup({
+				elements: elementsState.elements,
+				redirect: "if_required"
+			});
+			if (result.error) throw new Error(result.error.message || "Could not save this card.");
+			const paymentMethodId = result.setupIntent?.payment_method;
+			if (!paymentMethodId) throw new Error("Stripe did not return a payment method.");
+			const response = await billing.updatePaymentMethod(paymentMethodId);
+			setPaymentMethod(response?.paymentMethod ?? null);
+			setStatusMessage(response?.message || "Payment method updated.");
+			closePaymentMethodModal();
+			router.reload({ only: ["subscription"] });
+		} catch (error) {
+			setPaymentError(error?.message || "Could not save this card.");
+		} finally {
+			setPaymentSaving(false);
+		}
+	};
+	const cancelSubscription = async () => {
+		setCancelBusy(true);
+		try {
+			const response = await billing.cancelSubscription();
+			setStatusMessage(response?.message || "Subscription cancellation scheduled.");
+			setCancelModalOpen(false);
+			router.reload({ only: ["subscription"] });
+		} finally {
+			setCancelBusy(false);
+		}
+	};
+	return /* @__PURE__ */ jsxs(Fragment$1, { children: [
+		/* @__PURE__ */ jsx(Head, { title: "Subscription · Brand Beacon" }),
+		/* @__PURE__ */ jsxs(SettingsShell, {
+			section: "subscription",
+			children: [
+				statusMessage && /* @__PURE__ */ jsx("div", {
+					className: "card",
+					style: { marginBottom: 16 },
+					children: /* @__PURE__ */ jsx("div", {
+						className: "card__p",
+						children: /* @__PURE__ */ jsx("p", {
 							style: {
-								fontSize: ".86rem",
-								marginTop: 6
+								fontWeight: 700,
+								color: "var(--ok)"
 							},
-							children: [price > 0 ? `$${price}/${interval}` : "Free plan", isTrialing && trialEnds ? ` · trial ends ${trialEnds}` : renews ? ` · renews ${renews}` : ""]
-						})] }), /* @__PURE__ */ jsxs("span", {
-							className: `pill ${active ? "pill--ok" : "pill--off"}`,
-							children: [/* @__PURE__ */ jsx("i", {}), active ? "Active" : status]
-						})]
-					}),
-					/* @__PURE__ */ jsxs("div", {
-						style: {
-							marginTop: 26,
-							display: "flex",
-							flexDirection: "column",
-							gap: 20
-						},
-						children: [
-							/* @__PURE__ */ jsxs("div", { children: [
-								/* @__PURE__ */ jsxs("div", {
-									style: {
-										display: "flex",
-										justifyContent: "space-between",
-										fontSize: ".84rem",
-										marginBottom: 8
-									},
+							children: statusMessage
+						})
+					})
+				}),
+				/* @__PURE__ */ jsxs("div", {
+					className: "card subx",
+					children: [
+						/* @__PURE__ */ jsxs("div", {
+							className: "subx-plan",
+							children: [/* @__PURE__ */ jsxs("div", {
+								className: "subx-plan__id",
+								children: [/* @__PURE__ */ jsxs("div", {
+									className: "subx-plan__name-row",
 									children: [/* @__PURE__ */ jsx("span", {
-										className: "muted",
-										children: "Searches used"
-									}), /* @__PURE__ */ jsx("span", {
-										style: {
-											fontWeight: 700,
-											color: "var(--ink)"
-										},
-										children: formatUsage(searchUsed, searchLimit)
+										className: "subx-plan__name",
+										children: planName
+									}), /* @__PURE__ */ jsxs("span", {
+										className: `pill ${isTrialing ? "pill--run" : active ? "pill--ok" : "pill--off"}`,
+										children: [/* @__PURE__ */ jsx("i", {}), isTrialing ? "Trialing" : active ? "Active" : status]
+									})]
+								}), /* @__PURE__ */ jsxs("p", {
+									className: "subx-plan__price",
+									children: [price > 0 ? /* @__PURE__ */ jsxs(Fragment$1, { children: [
+										/* @__PURE__ */ jsxs("b", { children: ["$", price] }),
+										" / ",
+										interval
+									] }) : /* @__PURE__ */ jsx("b", { children: "Free plan" }), isTrialing && trialEnds ? /* @__PURE__ */ jsxs(Fragment$1, { children: [" · Trial ends ", /* @__PURE__ */ jsx("b", { children: trialEnds })] }) : renews ? /* @__PURE__ */ jsxs(Fragment$1, { children: [" · Renews ", /* @__PURE__ */ jsx("b", { children: renews })] }) : ""]
+								})]
+							}), /* @__PURE__ */ jsx(Link, {
+								href: "/plans",
+								className: "btn btn--y",
+								children: active ? "Change plan" : "Upgrade"
+							})]
+						}),
+						/* @__PURE__ */ jsxs("div", {
+							className: "subx-usage-hd",
+							children: [/* @__PURE__ */ jsx("h3", { children: "Usage this cycle" }), isTrialing && trialEnds ? /* @__PURE__ */ jsxs("span", { children: ["Trial ends ", trialEnds] }) : renews ? /* @__PURE__ */ jsxs("span", { children: ["Resets ", renews] }) : null]
+						}),
+						/* @__PURE__ */ jsxs("div", {
+							className: "subx-usage",
+							children: [
+								/* @__PURE__ */ jsx(UsageMeter, {
+									icon: METER_ICONS.search,
+									label: "Searches",
+									used: searchUsed,
+									limit: searchLimit,
+									note: searchLimit > 0 ? `${searchesLeft} left this cycle` : null
+								}),
+								/* @__PURE__ */ jsx(UsageMeter, {
+									icon: METER_ICONS.analysis,
+									label: "Video analysis",
+									used: videoAnalysisUsed,
+									limit: videoAnalysisLimit,
+									note: analysisUnlimited ? "No cap on your plan" : `${Math.max(0, videoAnalysisLimit - videoAnalysisUsed)} left this cycle`
+								}),
+								/* @__PURE__ */ jsx(UsageMeter, {
+									icon: METER_ICONS.videoBookmark,
+									label: "Video bookmarks",
+									used: videoBookmarkUsed,
+									limit: videoBookmarkLimit,
+									note: videoBookmarksUnlimited ? "No cap on your plan" : `${Math.max(0, videoBookmarkLimit - videoBookmarkUsed)} left`
+								}),
+								/* @__PURE__ */ jsx(UsageMeter, {
+									icon: METER_ICONS.searchBookmark,
+									label: "Search bookmarks",
+									used: searchBookmarkUsed,
+									limit: searchBookmarkLimit,
+									note: searchBookmarksUnlimited ? "No cap on your plan" : `${Math.max(0, searchBookmarkLimit - searchBookmarkUsed)} left`
+								})
+							]
+						}),
+						/* @__PURE__ */ jsx("hr", { className: "subx-divider" }),
+						paymentMethod ? /* @__PURE__ */ jsxs("div", {
+							className: "subx-pm",
+							children: [
+								/* @__PURE__ */ jsx("span", {
+									className: "subx-pm__brand",
+									children: (paymentMethod.brand || "Card").toUpperCase()
+								}),
+								/* @__PURE__ */ jsxs("div", {
+									className: "subx-pm__copy",
+									children: [/* @__PURE__ */ jsx("div", {
+										className: "subx-pm__line num",
+										children: formatPaymentMethod(paymentMethod)
+									}), /* @__PURE__ */ jsx("div", {
+										className: "subx-pm__sub",
+										children: "Update your card details"
 									})]
 								}),
-								/* @__PURE__ */ jsx("div", {
-									className: "meter",
-									children: /* @__PURE__ */ jsx("span", { style: { width: `${ratio(searchUsed, searchLimit)}%` } })
-								}),
-								searchLimit > 0 && /* @__PURE__ */ jsxs("p", {
-									className: "hint",
-									children: [
-										searchesLeft,
-										" search",
-										searchesLeft === 1 ? "" : "es",
-										" left this cycle",
-										isTrialing && trialEnds ? `. Trial ends ${trialEnds}.` : renews ? `. Resets ${renews}.` : "."
-									]
+								/* @__PURE__ */ jsx("button", {
+									type: "button",
+									className: "btn btn--g btn--sm",
+									onClick: openPaymentMethodModal,
+									children: "Update card"
 								})
-							] }),
-							/* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsxs("div", {
-								style: {
-									display: "flex",
-									justifyContent: "space-between",
-									fontSize: ".84rem",
-									marginBottom: 8
-								},
-								children: [/* @__PURE__ */ jsx("span", {
-									className: "muted",
-									children: "Video bookmarks used"
-								}), /* @__PURE__ */ jsx("span", {
-									style: {
-										fontWeight: 700,
-										color: "var(--ink)"
-									},
-									children: formatUsage(videoBookmarkUsed, videoBookmarkLimit)
-								})]
-							}), /* @__PURE__ */ jsx("div", {
-								className: "meter",
-								children: /* @__PURE__ */ jsx("span", { style: { width: videoBookmarksUnlimited ? "100%" : `${ratio(videoBookmarkUsed, videoBookmarkLimit)}%` } })
-							})] }),
-							/* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsxs("div", {
-								style: {
-									display: "flex",
-									justifyContent: "space-between",
-									fontSize: ".84rem",
-									marginBottom: 8
-								},
-								children: [/* @__PURE__ */ jsx("span", {
-									className: "muted",
-									children: "Search bookmarks used"
-								}), /* @__PURE__ */ jsx("span", {
-									style: {
-										fontWeight: 700,
-										color: "var(--ink)"
-									},
-									children: formatUsage(searchBookmarkUsed, searchBookmarkLimit)
-								})]
-							}), /* @__PURE__ */ jsx("div", {
-								className: "meter",
-								children: /* @__PURE__ */ jsx("span", { style: { width: searchBookmarksUnlimited ? "100%" : `${ratio(searchBookmarkUsed, searchBookmarkLimit)}%` } })
-							})] }),
-							/* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsxs("div", {
-								style: {
-									display: "flex",
-									justifyContent: "space-between",
-									fontSize: ".84rem",
-									marginBottom: 8
-								},
-								children: [/* @__PURE__ */ jsx("span", {
-									className: "muted",
-									children: "Video analysis used"
-								}), /* @__PURE__ */ jsx("span", {
-									style: {
-										fontWeight: 700,
-										color: "var(--ink)"
-									},
-									children: formatUsage(videoAnalysisUsed, videoAnalysisLimit)
-								})]
-							}), /* @__PURE__ */ jsx("div", {
-								className: "meter",
-								children: /* @__PURE__ */ jsx("span", { style: { width: analysisUnlimited ? "100%" : `${ratio(videoAnalysisUsed, videoAnalysisLimit)}%` } })
-							})] })
-						]
-					}),
-					/* @__PURE__ */ jsxs("div", {
-						style: {
-							marginTop: 26,
-							display: "flex",
-							gap: 9,
-							flexWrap: "wrap"
-						},
-						children: [/* @__PURE__ */ jsx(Link, {
-							href: "/plans",
-							className: "btn btn--y",
-							children: active ? "Change plan" : "Upgrade"
-						}), /* @__PURE__ */ jsx(Link, {
-							href: "/plans",
-							className: "btn btn--g",
-							children: "Manage billing"
+							]
+						}) : /* @__PURE__ */ jsxs("div", {
+							className: "subx-pm subx-pm--empty",
+							children: [
+								/* @__PURE__ */ jsx("span", {
+									className: "subx-pm__add",
+									"aria-hidden": true,
+									children: /* @__PURE__ */ jsxs("svg", {
+										viewBox: "0 0 24 24",
+										fill: "none",
+										stroke: "currentColor",
+										strokeWidth: "2",
+										strokeLinecap: "round",
+										strokeLinejoin: "round",
+										children: [/* @__PURE__ */ jsx("rect", {
+											x: "2.5",
+											y: "5",
+											width: "19",
+											height: "14",
+											rx: "2.5"
+										}), /* @__PURE__ */ jsx("path", { d: "M2.5 9.5h19M12 13.5v4M10 15.5h4" })]
+									})
+								}),
+								/* @__PURE__ */ jsxs("div", {
+									className: "subx-pm__copy",
+									children: [/* @__PURE__ */ jsx("div", {
+										className: "subx-pm__line",
+										children: "No card on file"
+									}), /* @__PURE__ */ jsxs("div", {
+										className: "subx-pm__sub subx-pm__sub--warn",
+										children: [
+											"Add a card",
+											isTrialing && trialEnds ? ` before your trial ends ${trialEnds}` : "",
+											" to keep access."
+										]
+									})]
+								}),
+								/* @__PURE__ */ jsxs("button", {
+									type: "button",
+									className: "btn btn--y btn--sm",
+									onClick: openPaymentMethodModal,
+									children: [/* @__PURE__ */ jsx("svg", {
+										viewBox: "0 0 24 24",
+										fill: "none",
+										stroke: "currentColor",
+										strokeWidth: "2.2",
+										strokeLinecap: "round",
+										children: /* @__PURE__ */ jsx("path", { d: "M12 5v14M5 12h14" })
+									}), "Add card"]
+								})
+							]
+						}),
+						(active || isTrialing) && /* @__PURE__ */ jsxs("div", {
+							className: "subx-foot",
+							children: [/* @__PURE__ */ jsxs("span", {
+								className: "subx-foot__q",
+								children: [/* @__PURE__ */ jsx("b", { children: "Need to cancel?" }), " Keep access through the end of your billing period."]
+							}), /* @__PURE__ */ jsx("button", {
+								type: "button",
+								className: "subx-cancel-link",
+								onClick: () => setCancelModalOpen(true),
+								children: "Cancel subscription"
+							})]
+						})
+					]
+				}),
+				invoices.length > 0 && /* @__PURE__ */ jsx("div", {
+					className: "card subx",
+					style: { marginTop: 16 },
+					id: "billing-history",
+					children: /* @__PURE__ */ jsxs("div", {
+						className: "card__p",
+						children: [/* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsx("h2", { children: "Payment history" }), /* @__PURE__ */ jsx("p", {
+							className: "muted",
+							style: {
+								fontSize: ".84rem",
+								marginTop: 6
+							},
+							children: "Your recent Stripe invoices and receipts."
+						})] }), /* @__PURE__ */ jsx("div", {
+							className: "subx-inv",
+							children: invoices.map((inv, i) => /* @__PURE__ */ jsxs("div", {
+								className: "subx-inv__row",
+								children: [
+									/* @__PURE__ */ jsx("span", {
+										className: "subx-inv__date num",
+										children: formatDate(inv.date) ?? inv.date
+									}),
+									/* @__PURE__ */ jsxs("span", {
+										className: "subx-inv__meta",
+										children: [
+											planName,
+											" · ",
+											billingCycle === "annual" ? "annual" : "monthly",
+											/* @__PURE__ */ jsx("span", {
+												className: `subx-inv__tag${inv.status === "paid" ? " is-paid" : ""}`,
+												children: inv.status
+											})
+										]
+									}),
+									/* @__PURE__ */ jsx("b", {
+										className: "subx-inv__amt num",
+										children: inv.amount
+									}),
+									inv.id && /* @__PURE__ */ jsx("a", {
+										href: `/settings/subscription/receipt/${encodeURIComponent(inv.id)}`,
+										className: "btn btn--g btn--sm",
+										target: "_blank",
+										rel: "noreferrer",
+										children: "Receipt"
+									})
+								]
+							}, inv.id || i))
 						})]
 					})
-				]
-			})
-		}), invoices.length > 0 && /* @__PURE__ */ jsx("div", {
-			className: "card",
-			style: { marginTop: 16 },
-			children: /* @__PURE__ */ jsxs("div", {
-				className: "card__p",
-				children: [/* @__PURE__ */ jsx("h2", { children: "Invoices" }), /* @__PURE__ */ jsx("div", {
-					style: { marginTop: 8 },
-					children: invoices.map((inv, i) => /* @__PURE__ */ jsxs("div", {
-						className: "rowf",
-						children: [/* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsx("p", {
-							className: "rowf__t",
-							children: formatDate(inv.date) ?? inv.date
-						}), /* @__PURE__ */ jsxs("p", {
-							className: "rowf__d",
-							children: [
-								planName,
-								" · ",
-								billingCycle === "annual" ? "annual" : "monthly"
-							]
-						})] }), /* @__PURE__ */ jsxs("span", {
-							style: {
-								display: "flex",
-								alignItems: "center",
-								gap: 14
-							},
-							children: [/* @__PURE__ */ jsx("b", {
-								style: {
-									fontSize: ".88rem",
-									color: "var(--ink)"
-								},
-								children: inv.amount
-							}), inv.url && /* @__PURE__ */ jsx("a", {
-								href: inv.url,
-								className: "btn btn--g btn--sm",
-								children: "Receipt"
-							})]
-						})]
-					}, i))
-				})]
-			})
-		})]
-	})] });
+				})
+			]
+		}),
+		/* @__PURE__ */ jsx(PaymentMethodModal, {
+			open: paymentModalOpen,
+			busy: paymentLoading,
+			saving: paymentSaving,
+			error: paymentError,
+			onClose: closePaymentMethodModal,
+			onSubmit: savePaymentMethod
+		}),
+		/* @__PURE__ */ jsx(CancelConfirmModal, {
+			open: cancelModalOpen,
+			busy: cancelBusy,
+			planName,
+			periodEnd: renews || trialEnds,
+			onConfirm: cancelSubscription,
+			onClose: () => cancelBusy ? void 0 : setCancelModalOpen(false)
+		})
+	] });
+}
+//#endregion
+//#region resources/js/Pages/TermsOfService.jsx
+var TermsOfService_exports = /* @__PURE__ */ __exportAll({ default: () => TermsOfService });
+var sections = [
+	{
+		heading: "1. Acceptance of These Terms",
+		paragraphs: ["These Terms of Service govern your access to and use of Brand Beacon, including our website, applications, search workflows, analytics tools, subscriptions, and related services. By using Brand Beacon, you agree to these Terms.", "If you are using Brand Beacon on behalf of a company or other organization, you represent that you have authority to bind that organization to these Terms."]
+	},
+	{
+		heading: "2. Eligibility and Accounts",
+		paragraphs: ["You must provide accurate account information and keep your login credentials secure. You are responsible for activity that occurs under your account and for promptly notifying us of any unauthorized use.", "We may suspend or terminate accounts that violate these Terms, create risk for Brand Beacon or others, or are used in a fraudulent, abusive, or unlawful manner."]
+	},
+	{
+		heading: "3. The Service",
+		paragraphs: ["Brand Beacon helps users discover, monitor, and analyze short-form video trends, related search results, and associated performance signals. Features may change over time, and some features may depend on third-party platforms or service providers.", "We may add, modify, limit, or discontinue features at any time. We do not guarantee uninterrupted availability of every feature or data source."]
+	},
+	{
+		heading: "4. Subscriptions, Trials, and Billing",
+		paragraphs: [
+			"Paid features may require a subscription, trial enrollment, or other fee-based access. By purchasing a plan, you authorize us and our billing providers to charge the applicable fees, taxes, and renewal amounts using your selected payment method.",
+			"Unless otherwise stated, subscriptions renew automatically until canceled. Trial eligibility, feature limits, usage caps, and pricing are determined by the plan presented at the time of purchase.",
+			"You are responsible for reviewing plan details before purchase. Except where required by law, fees are non-refundable once charged."
+		]
+	},
+	{
+		heading: "5. Acceptable Use",
+		paragraphs: ["You may not use Brand Beacon to violate law, infringe others’ rights, attempt unauthorized access, interfere with the service, reverse engineer protected parts of the product except where prohibited by law, or use automated means to extract or republish the service in a way that competes with, harms, or overloads Brand Beacon.", "You may not use the service to store or transmit malicious code, evade plan limits, resell access without permission, or misuse third-party data surfaced through the product."]
+	},
+	{
+		heading: "6. Customer Content and Inputs",
+		paragraphs: ["You retain rights in the content and inputs you submit to the service, such as searches, keywords, account information, and support communications. You grant Brand Beacon a non-exclusive right to host, process, transmit, and use that information as needed to operate and improve the service.", "You are responsible for ensuring that your inputs and use of the service comply with applicable law and do not violate third-party rights."]
+	},
+	{
+		heading: "7. Data Sources and Results",
+		paragraphs: ["Brand Beacon may rely on third-party platforms, infrastructure providers, and data-processing services. Search results, analytics, rankings, media availability, and other outputs may vary over time and may be incomplete, delayed, removed, or unavailable.", "You understand that outputs are provided for business insight and workflow support, not as legal, financial, or professional advice."]
+	},
+	{
+		heading: "8. Intellectual Property",
+		paragraphs: ["Brand Beacon and its related software, design, content, trademarks, and service materials are owned by us or our licensors and are protected by law. Except for the limited right to use the service under these Terms, no rights are granted to you."]
+	},
+	{
+		heading: "9. Termination",
+		paragraphs: ["You may stop using the service at any time. We may suspend or terminate your access if you violate these Terms, create legal or operational risk, fail to pay applicable fees, or if we discontinue the service.", "Sections that by their nature should survive termination will survive, including provisions on payment obligations, intellectual property, disclaimers, limitation of liability, indemnity, and dispute-related terms."]
+	},
+	{
+		heading: "10. Disclaimers",
+		paragraphs: ["Brand Beacon is provided on an “as is” and “as available” basis. To the fullest extent permitted by law, we disclaim warranties of any kind, whether express, implied, or statutory, including warranties of merchantability, fitness for a particular purpose, title, and non-infringement."]
+	},
+	{
+		heading: "11. Limitation of Liability",
+		paragraphs: ["To the fullest extent permitted by law, Brand Beacon and its affiliates, officers, employees, and service providers will not be liable for indirect, incidental, special, consequential, exemplary, or punitive damages, or for loss of profits, revenues, goodwill, data, or business opportunities arising from or related to the service.", "To the fullest extent permitted by law, our total liability for claims arising out of or relating to Brand Beacon will not exceed the amount you paid us for the service during the 12 months before the event giving rise to the claim, or one hundred U.S. dollars if you have not made any payments."]
+	},
+	{
+		heading: "12. Indemnity",
+		paragraphs: ["You agree to defend, indemnify, and hold harmless Brand Beacon and its affiliates, officers, employees, and agents from and against claims, liabilities, damages, losses, and expenses arising out of or related to your use of the service, your content or inputs, or your violation of these Terms or applicable law."]
+	},
+	{
+		heading: "13. Changes to These Terms",
+		paragraphs: ["We may update these Terms from time to time. If we make material changes, we will post the updated Terms and may provide additional notice through the service or by email. Your continued use of Brand Beacon after the updated Terms take effect means you accept the revised Terms."]
+	},
+	{
+		heading: "14. Contact",
+		paragraphs: ["Questions about these Terms may be sent to hello@brandbeacon.com."]
+	}
+];
+function TermsOfService() {
+	return /* @__PURE__ */ jsx(LegalPage, {
+		title: "Terms of Service",
+		effectiveDate: "August 29, 2026",
+		sections
+	});
 }
 //#endregion
 //#region resources/js/landing/flow/screens/TrialScreen.jsx
@@ -18389,10 +19690,13 @@ createServer((page) => createInertiaApp({
 			"./Pages/ComingSoon.jsx": ComingSoon_exports,
 			"./Pages/Contact.jsx": Contact_exports,
 			"./Pages/Dashboard.jsx": Dashboard_exports,
+			"./Pages/DataProcessingAddendum.jsx": DataProcessingAddendum_exports,
 			"./Pages/Home.jsx": Home_exports,
 			"./Pages/Landing.jsx": Landing_exports,
 			"./Pages/LandingContact.jsx": LandingContact_exports,
+			"./Pages/LegalPage.jsx": LegalPage_exports,
 			"./Pages/Plans.jsx": Plans_exports,
+			"./Pages/PrivacyPolicy.jsx": PrivacyPolicy_exports,
 			"./Pages/Products.jsx": Products_exports,
 			"./Pages/SavedSearches/Index.jsx": Index_exports,
 			"./Pages/SavedSearches/Show.jsx": Show_exports$1,
@@ -18404,10 +19708,13 @@ createServer((page) => createInertiaApp({
 			"./Pages/Search/Free.jsx": Free_exports,
 			"./Pages/Search/Keywords.jsx": Keywords_exports,
 			"./Pages/Search/Running.jsx": Running_exports,
+			"./Pages/SecurityPage.jsx": SecurityPage_exports,
 			"./Pages/Settings/Account.jsx": Account_exports,
 			"./Pages/Settings/Appearance.jsx": Appearance_exports,
+			"./Pages/Settings/Receipt.jsx": Receipt_exports,
 			"./Pages/Settings/SettingsShell.jsx": SettingsShell_exports,
 			"./Pages/Settings/Subscription.jsx": Subscription_exports,
+			"./Pages/TermsOfService.jsx": TermsOfService_exports,
 			"./Pages/Trial.jsx": Trial_exports,
 			"./Pages/VideoAnalysis/AnalysisModal.jsx": AnalysisModal_exports,
 			"./Pages/VideoAnalysis/Show.jsx": Show_exports,

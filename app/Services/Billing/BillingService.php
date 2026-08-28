@@ -336,6 +336,263 @@ class BillingService
         return $this->entitlements->limitsForUser($user);
     }
 
+    public function createBillingPortalSession(User $user, string $returnUrl, string $action = 'manage'): string
+    {
+        $customerId = $this->ensureCustomer($user);
+        $payload = [
+            'customer' => $customerId,
+            'return_url' => $returnUrl,
+        ];
+
+        if ($action === 'payment_method') {
+            $payload['flow_data'] = [
+                'type' => 'payment_method_update',
+                'after_completion' => [
+                    'type' => 'redirect',
+                    'redirect' => ['return_url' => $returnUrl],
+                ],
+            ];
+        }
+
+        if ($action === 'cancel') {
+            $subscription = Subscription::query()
+                ->where('user_id', $user->id)
+                ->whereNotNull('stripe_subscription_id')
+                ->whereNull('deleted_at')
+                ->latest('current_period_ends_at')
+                ->first();
+
+            if ($subscription?->stripe_subscription_id) {
+                $payload['flow_data'] = [
+                    'type' => 'subscription_cancel',
+                    'subscription_cancel' => [
+                        'subscription' => $subscription->stripe_subscription_id,
+                    ],
+                    'after_completion' => [
+                        'type' => 'redirect',
+                        'redirect' => ['return_url' => $returnUrl],
+                    ],
+                ];
+            }
+        }
+
+        $session = $this->stripe->createBillingPortalSession($payload);
+
+        return (string) $session->url;
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    public function invoiceHistory(User $user, int $limit = 12): array
+    {
+        if (blank($user->stripe_customer_id)) {
+            return [];
+        }
+
+        $invoices = $this->stripe->listInvoices([
+            'customer' => $user->stripe_customer_id,
+            'limit' => max(1, min($limit, 24)),
+        ]);
+
+        return collect($invoices->data ?? [])
+            ->map(function ($invoice): array {
+                $amountCents = (int) ($invoice->amount_paid ?? $invoice->amount_due ?? 0);
+                $currency = strtoupper((string) ($invoice->currency ?? 'USD'));
+
+                return [
+                    'id' => (string) ($invoice->id ?? ''),
+                    'number' => (string) ($invoice->number ?? ''),
+                    'date' => isset($invoice->created) ? CarbonImmutable::createFromTimestampUTC((int) $invoice->created)->toIso8601String() : null,
+                    'status' => (string) ($invoice->status ?? 'open'),
+                    'amount' => $this->formatCurrencyAmount($amountCents, $currency),
+                    'currency' => $currency,
+                    'url' => (string) ($invoice->hosted_invoice_url ?? $invoice->invoice_pdf ?? ''),
+                ];
+            })
+            ->values()
+            ->all();
+    }
+
+    /**
+     * Structured data for our own branded receipt page, sourced from Stripe.
+     * Returns null when the invoice does not exist or does not belong to the user.
+     *
+     * @return array<string, mixed>|null
+     */
+    public function receiptDetails(User $user, string $invoiceId): ?array
+    {
+        if (blank($user->stripe_customer_id) || blank($invoiceId)) {
+            return null;
+        }
+
+        try {
+            $invoice = $this->stripe->retrieveInvoice($invoiceId, [
+                'expand' => ['charge', 'lines.data'],
+            ]);
+        } catch (\Throwable) {
+            return null;
+        }
+
+        // Guard against reading another customer's invoice by id-guessing.
+        if ((string) ($invoice->customer ?? '') !== (string) $user->stripe_customer_id) {
+            return null;
+        }
+
+        $currency = strtoupper((string) ($invoice->currency ?? 'USD'));
+        $card = $invoice->charge->payment_method_details->card ?? null;
+
+        $lines = collect($invoice->lines->data ?? [])
+            ->map(function ($line) use ($currency): array {
+                $start = data_get($line, 'period.start');
+                $end = data_get($line, 'period.end');
+
+                return [
+                    'description' => (string) ($line->description ?? 'Subscription'),
+                    'quantity' => (int) ($line->quantity ?? 1),
+                    'amount' => $this->formatCurrencyAmount((int) ($line->amount ?? 0), $currency),
+                    'periodStart' => $start ? CarbonImmutable::createFromTimestampUTC((int) $start)->toIso8601String() : null,
+                    'periodEnd' => $end ? CarbonImmutable::createFromTimestampUTC((int) $end)->toIso8601String() : null,
+                ];
+            })
+            ->values()
+            ->all();
+
+        $taxCents = (int) ($invoice->tax ?? 0);
+
+        return [
+            'id' => (string) ($invoice->id ?? ''),
+            'number' => (string) ($invoice->number ?? ''),
+            'status' => (string) ($invoice->status ?? 'open'),
+            'date' => isset($invoice->created) ? CarbonImmutable::createFromTimestampUTC((int) $invoice->created)->toIso8601String() : null,
+            'currency' => $currency,
+            'customerName' => (string) ($invoice->customer_name ?? ''),
+            'customerEmail' => (string) ($invoice->customer_email ?? $user->email ?? ''),
+            'lines' => $lines,
+            'subtotal' => $this->formatCurrencyAmount((int) ($invoice->subtotal ?? 0), $currency),
+            'tax' => $taxCents > 0 ? $this->formatCurrencyAmount($taxCents, $currency) : null,
+            'total' => $this->formatCurrencyAmount((int) ($invoice->total ?? $invoice->amount_paid ?? 0), $currency),
+            'amountPaid' => $this->formatCurrencyAmount((int) ($invoice->amount_paid ?? 0), $currency),
+            'card' => $card ? [
+                'brand' => ucfirst((string) ($card->brand ?? 'card')),
+                'last4' => (string) ($card->last4 ?? ''),
+            ] : null,
+            'hostedUrl' => (string) ($invoice->hosted_invoice_url ?? ''),
+            'pdfUrl' => (string) ($invoice->invoice_pdf ?? ''),
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    public function paymentMethodSummary(User $user): ?array
+    {
+        if (blank($user->stripe_customer_id)) {
+            return null;
+        }
+
+        $methods = $this->stripe->listPaymentMethods([
+            'customer' => $user->stripe_customer_id,
+            'type' => 'card',
+            'limit' => 1,
+        ]);
+
+        $method = $methods->data[0] ?? null;
+
+        if ($method === null || ! isset($method->card)) {
+            return null;
+        }
+
+        return [
+            'brand' => ucfirst((string) ($method->card->brand ?? 'card')),
+            'last4' => (string) ($method->card->last4 ?? ''),
+            'expMonth' => (int) ($method->card->exp_month ?? 0),
+            'expYear' => (int) ($method->card->exp_year ?? 0),
+            'id' => (string) ($method->id ?? ''),
+        ];
+    }
+
+    /**
+     * @return array{clientSecret: string}
+     */
+    public function createPaymentMethodSetup(User $user): array
+    {
+        $customerId = $this->ensureCustomer($user);
+        $intent = $this->stripe->createSetupIntent([
+            'customer' => $customerId,
+            'payment_method_types' => ['card'],
+            'usage' => 'off_session',
+        ]);
+
+        return [
+            'clientSecret' => (string) ($intent->client_secret ?? ''),
+        ];
+    }
+
+    public function setDefaultPaymentMethod(User $user, string $paymentMethodId): void
+    {
+        $customerId = $this->ensureCustomer($user);
+
+        $this->stripe->updateCustomer($customerId, [
+            'invoice_settings' => [
+                'default_payment_method' => $paymentMethodId,
+            ],
+        ]);
+
+        $subscription = Subscription::query()
+            ->where('user_id', $user->id)
+            ->whereNotNull('stripe_subscription_id')
+            ->whereNull('deleted_at')
+            ->latest('current_period_ends_at')
+            ->first();
+
+        if ($subscription?->stripe_subscription_id) {
+            $this->stripe->updateSubscription($subscription->stripe_subscription_id, [
+                'default_payment_method' => $paymentMethodId,
+            ]);
+        }
+    }
+
+    public function cancelSubscription(User $user): void
+    {
+        $subscription = Subscription::query()
+            ->where('user_id', $user->id)
+            ->whereNotNull('stripe_subscription_id')
+            ->whereNull('deleted_at')
+            ->latest('current_period_ends_at')
+            ->first();
+
+        if ($subscription === null || blank($subscription->stripe_subscription_id)) {
+            throw ValidationException::withMessages([
+                'subscription' => 'No active Stripe subscription was found for this account.',
+            ]);
+        }
+
+        $this->stripe->updateSubscription($subscription->stripe_subscription_id, [
+            'cancel_at_period_end' => true,
+        ]);
+    }
+
+    public function reactivateSubscription(User $user): void
+    {
+        $subscription = Subscription::query()
+            ->where('user_id', $user->id)
+            ->whereNotNull('stripe_subscription_id')
+            ->whereNull('deleted_at')
+            ->latest('current_period_ends_at')
+            ->first();
+
+        if ($subscription === null || blank($subscription->stripe_subscription_id)) {
+            throw ValidationException::withMessages([
+                'subscription' => 'No active Stripe subscription was found for this account.',
+            ]);
+        }
+
+        $this->stripe->updateSubscription($subscription->stripe_subscription_id, [
+            'cancel_at_period_end' => false,
+        ]);
+    }
+
     public function ensureSubscriptionRecord(User $user): Subscription
     {
         $existing = Subscription::query()
@@ -448,5 +705,15 @@ class BillingService
             'starts_at' => $periodStart,
             'ends_at' => $monthlyEnd->lessThan($periodEnd) ? $monthlyEnd : $periodEnd,
         ];
+    }
+
+    private function formatCurrencyAmount(int $amountCents, string $currency): string
+    {
+        $amount = number_format($amountCents / 100, 2, '.', ',');
+
+        return match ($currency) {
+            'USD' => '$'.$amount,
+            default => $amount.' '.$currency,
+        };
     }
 }

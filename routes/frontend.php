@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\VideoAnalysisPageController;
+use App\Http\Controllers\BillingController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\SavedSearchController;
 
@@ -21,6 +22,12 @@ Route::middleware('auth')->group(function (): void {
     Route::get('/settings/appearance', [SettingsController::class, 'appearance'])->name('settings.appearance');
     Route::patch('/settings/appearance', [SettingsController::class, 'updateAppearance'])->name('settings.appearance.update');
     Route::get('/settings/subscription', [SettingsController::class, 'subscription'])->name('settings.subscription');
+    Route::post('/settings/subscription/payment-method/setup', [SettingsController::class, 'createPaymentMethodSetup'])->name('settings.subscription.payment-method.setup');
+    Route::patch('/settings/subscription/payment-method', [SettingsController::class, 'updatePaymentMethod'])->name('settings.subscription.payment-method.update');
+    Route::post('/settings/subscription/cancel', [SettingsController::class, 'cancelSubscription'])->name('settings.subscription.cancel');
+    Route::post('/settings/subscription/reactivate', [SettingsController::class, 'reactivateSubscription'])->name('settings.subscription.reactivate');
+    Route::get('/settings/subscription/receipt/{invoice}', [SettingsController::class, 'receipt'])->name('settings.subscription.receipt');
+    Route::get('/settings/subscription/portal', [BillingController::class, 'portal'])->name('settings.subscription.portal');
     Route::get('/plans', [SettingsController::class, 'plans'])->name('plans');
     Route::get('/videos/{id}/analysis', [VideoAnalysisPageController::class, 'show'])->name('videos.analysis.show');
 });
