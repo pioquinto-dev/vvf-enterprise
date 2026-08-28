@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 
-import { Play, Trend, Heart, Comment } from '../../landing/components/Icons.jsx';
+import { Play, Trend, Heart, Comment, User } from '../../landing/components/Icons.jsx';
 import { buildTikTokPlayerUrl, postTikTokMessage } from '../SavedSearches/detail/tiktokPlayer.js';
 
 function compact(n) {
@@ -18,6 +18,20 @@ function formatDuration(duration) {
   const mins = Math.floor(total / 60);
   const secs = Math.round(total % 60);
   return `${mins}:${String(secs).padStart(2, '0')}`;
+}
+
+function relativeTime(iso) {
+  if (!iso) return 'date unknown';
+  const then = new Date(iso).getTime();
+  if (!Number.isFinite(then)) return 'date unknown';
+  const diff = Date.now() - then;
+  const minute = 60_000;
+  const hour = 60 * minute;
+  const day = 24 * hour;
+  if (diff < hour) return `${Math.max(1, Math.round(diff / minute))}m ago`;
+  if (diff < day) return `${Math.max(1, Math.round(diff / hour))}h ago`;
+  if (diff < 7 * day) return `${Math.max(1, Math.round(diff / day))}d ago`;
+  return new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
 /**
@@ -141,7 +155,10 @@ export default function VideoCard({ video, rank }) {
         )}
       </div>
       <div className="vb">
-        <p className="vb__h">{video.handle}</p>
+        <div className="vb__meta">
+          <p className="vb__h">{video.handle}</p>
+          <p className="vb__sub">{relativeTime(video.uploaded_at)}</p>
+        </div>
         <p className="vb__c">{video.title || video.content_hook}</p>
         <div className="vb__s">
           <span>
@@ -156,6 +173,12 @@ export default function VideoCard({ video, rank }) {
             <Comment />
             {compact(video.comments)}
           </span>
+          {video.followers > 0 && (
+            <span>
+              <User />
+              {compact(video.followers)}
+            </span>
+          )}
         </div>
       </div>
     </article>

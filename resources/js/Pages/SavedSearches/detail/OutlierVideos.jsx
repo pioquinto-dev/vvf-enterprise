@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 
 import { compactNumber, outlierLabel, percent, relativeTime } from '../../../landing/flow/format.js';
-import { Heart, Comment, Share, Trend, Bookmark, Search, Arrow } from '../../../landing/components/Icons.jsx';
+import { Heart, Comment, Share, Trend, Bookmark, Search, Arrow, User } from '../../../landing/components/Icons.jsx';
 import {
   activateTikTokPlayer,
   detectPlatform,
@@ -198,26 +198,33 @@ function VideoPlayerShell({ video, activePlayerId, onPlay, onClose, className, d
 function AnalyzeButton({ status = 'idle', small = false, onClick }) {
   const isProcessing = status === 'processing';
   const isComplete = status === 'complete';
-  const label = isProcessing ? 'Analyzing Video.....' : isComplete ? 'View Analysis' : 'Analyze Video';
+  const isFailed = status === 'failed';
+  const stateClass = isProcessing ? 'is-busy' : isComplete ? 'is-done' : 'is-ready';
+  const label = isProcessing ? 'Analyzing video...' : isComplete ? 'View analysis' : isFailed ? 'Retry analysis' : 'Analyze video';
 
   return (
     <button
       type="button"
-      className={`bb-analyze${small ? ' bb-analyze--sm' : ''}${isProcessing ? ' opacity-90' : ''}`}
+      className={`bb-analyze ${stateClass}${small ? ' bb-analyze--sm' : ''}`}
       onClick={onClick}
       aria-busy={isProcessing}
+      disabled={isProcessing}
     >
       {isProcessing ? (
-        <span className="inline-flex items-center gap-2">
-          <span className="relative flex h-3.5 w-3.5 items-center justify-center">
-            <span className="absolute inline-flex h-3.5 w-3.5 animate-ping rounded-full bg-current/35" />
-            <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-current" />
-          </span>
-          {label}
-        </span>
+        <>
+          <span className="bb-analyze__ring" aria-hidden />
+          <span>{label}</span>
+        </>
+      ) : isComplete ? (
+        <>
+          <span className="bb-analyze__badge" aria-hidden>✓</span>
+          <span>{label}</span>
+          <span className="bb-analyze__chev" aria-hidden>→</span>
+        </>
       ) : (
         <>
-          <Search className={small ? 'h-[13px] w-[13px]' : 'h-[15px] w-[15px]'} /> {label}
+          <Search className={small ? 'h-[13px] w-[13px]' : 'h-[15px] w-[15px]'} />
+          <span>{label}</span>
         </>
       )}
     </button>
@@ -275,9 +282,12 @@ export function WinnerVideo({
       <div className="detail">
         <div className="creator">
           <Avatar video={video} className="av" />
-          <div style={{ minWidth: 0 }}>
-            <div className="cn">{video.handle ?? video.creator_name}</div>
-            <div className="cs">{video.uploaded_at ? relativeTime(video.uploaded_at) : 'date unknown'} · TikTok</div>
+          <div className="creator-copy" style={{ minWidth: 0 }}>
+            <div className="creator-topline">
+              <div className="cn">{video.handle ?? video.creator_name}</div>
+              <div className="cs">{video.uploaded_at ? relativeTime(video.uploaded_at) : 'date unknown'}</div>
+            </div>
+            <div className="cs">TikTok</div>
           </div>
           {duration && <span className="durbadge">{duration}</span>}
         </div>
@@ -294,6 +304,11 @@ export function WinnerVideo({
           <span>
             <Share /> {compactNumber(video.shares)}
           </span>
+          {video.followers > 0 && (
+            <span>
+              <User /> {compactNumber(video.followers)}
+            </span>
+          )}
           {rate && (
             <span>
               <Trend /> {rate} eng
@@ -391,9 +406,11 @@ export function OutlierCard({
 
         <div className="bbwho">
           <Avatar video={video} className="av" />
-          <div style={{ minWidth: 0 }}>
-            <div className="h2n">{video.handle ?? video.creator_name}</div>
-            <div className="sub">{video.uploaded_at ? relativeTime(video.uploaded_at) : 'date unknown'}</div>
+          <div className="bbwho__copy" style={{ minWidth: 0 }}>
+            <div className="bbwho__topline">
+              <div className="h2n">{video.handle ?? video.creator_name}</div>
+              <div className="sub">{video.uploaded_at ? relativeTime(video.uploaded_at) : 'date unknown'}</div>
+            </div>
           </div>
           {video.post_url && (
             <a href={video.post_url} target="_blank" rel="noreferrer noopener" className="bbopen" title="Open in TikTok" aria-label="Open in TikTok">
@@ -417,6 +434,11 @@ export function OutlierCard({
           <span>
             <Share /> {compactNumber(video.shares)}
           </span>
+          {video.followers > 0 && (
+            <span>
+              <User /> {compactNumber(video.followers)}
+            </span>
+          )}
           {rate && (
             <span>
               <Trend /> {rate}

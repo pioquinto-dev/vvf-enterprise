@@ -427,7 +427,9 @@ function LeftSidebar({
         </span>
         <div className="min-w-0">
           <div className="truncate text-[13px] font-bold text-[#0B0B0B]">{video.handle ?? video.creator_name ?? '@creator'}</div>
-          {followers > 0 && <div className="text-[11.5px] text-[#5C5A54]">{compactNumber(followers)} followers</div>}
+          <div className="text-[11.5px] text-[#5C5A54]">
+            {[postedAt, followers > 0 ? `${compactNumber(followers)} followers` : null].filter(Boolean).join(' · ')}
+          </div>
         </div>
       </div>
 
@@ -437,8 +439,8 @@ function LeftSidebar({
             {video.content_format}
           </span>
         )}
-        {(postedAt || runtime) && (
-          <span>{[postedAt, runtime].filter(Boolean).join(' · ')}</span>
+        {runtime && (
+          <span>{runtime}</span>
         )}
       </div>
 

@@ -276,6 +276,46 @@ function analysisCtaLabel(analysis) {
   return 'Analyze video';
 }
 
+function AnalyzeStateButton({ analysis, onClick, small = false }) {
+  const status = analysis?.status ?? 'idle';
+  const isProcessing = status === 'processing';
+  const isComplete = status === 'complete';
+  const stateClass = isProcessing ? 'rs-analyze--busy' : isComplete ? 'rs-analyze--done' : 'rs-analyze--ready';
+  const desktopLabel = analysisCtaLabel(analysis);
+  const mobileLabel = desktopLabel === 'Analyze video' ? 'Analyze' : desktopLabel;
+
+  return (
+    <button
+      type="button"
+      className={`rs-analyze ${stateClass}${small ? ' rs-analyze--sm' : ''}`}
+      onClick={onClick}
+      aria-busy={isProcessing}
+      disabled={isProcessing}
+    >
+      {isProcessing ? (
+        <>
+          <span className="rs-analyze__ring" aria-hidden />
+          <span className="rs-analyze__label rs-analyze__label--desktop">{desktopLabel}</span>
+          <span className="rs-analyze__label rs-analyze__label--mobile">{mobileLabel}</span>
+        </>
+      ) : isComplete ? (
+        <>
+          <span className="rs-analyze__badge" aria-hidden>✓</span>
+          <span className="rs-analyze__label rs-analyze__label--desktop">{desktopLabel}</span>
+          <span className="rs-analyze__label rs-analyze__label--mobile">{mobileLabel}</span>
+          <span className="rs-analyze__chev" aria-hidden>→</span>
+        </>
+      ) : (
+        <>
+          <span className="rs-analyze__icon" aria-hidden>{Icons.Spark}</span>
+          <span className="rs-analyze__label rs-analyze__label--desktop">{desktopLabel}</span>
+          <span className="rs-analyze__label rs-analyze__label--mobile">{mobileLabel}</span>
+        </>
+      )}
+    </button>
+  );
+}
+
 function canUsePaidVideoAnalysis(billing) {
   if (!billing) return false;
 
@@ -969,9 +1009,12 @@ export default function DetailScreen({
             <div className="rs-wdet">
               <div className="rs-wcreator">
                 <span className="rs-av" style={{ background: gradientFor(winner.handle ?? winner.id) }} />
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div className="rs-wc__n">{winner.handle || winner.username || '—'}</div>
-                  <div className="rs-wc__s">{winner.posted_at ? formatDate(winner.posted_at) : ''} on TikTok</div>
+                <div className="rs-wcreator__copy" style={{ flex: 1, minWidth: 0 }}>
+                  <div className="rs-wcreator__topline">
+                    <div className="rs-wc__n">{winner.handle || winner.username || '—'}</div>
+                    <div className="rs-wc__s">{winner.uploaded_at ? formatDate(winner.uploaded_at) : winner.posted_at ? formatDate(winner.posted_at) : ''}</div>
+                  </div>
+                  <div className="rs-wc__s">on TikTok</div>
                 </div>
                 <span className={`rs-runpill rs-runpill--${winnerBucket}`} title={winnerBucketHint}>
                   <span className="rs-runpill__dot" aria-hidden />
@@ -987,17 +1030,12 @@ export default function DetailScreen({
                 <span>{Icons.Heart}<b>{compact(winner.likes)}</b></span>
                 <span>{Icons.Comment}<b>{compact(winner.comments)}</b></span>
                 <span>{Icons.Share}<b>{compact(winner.shares)}</b></span>
+                {Number(winner.followers ?? 0) > 0 && <span>{Icons.User}<b>{compact(winner.followers)}</b></span>}
               </div>
               <VideoTags video={winner} />
               <AutoAnalysis video={winner} />
               <div className="rs-wact">
-                <button
-                  className="rs-btn rs-btn--y"
-                  onClick={() => openAnalysis(winner)}
-                  aria-busy={winner.analysis?.status === 'processing'}
-                >
-                  {Icons.Spark}<span>{analysisCtaLabel(winner.analysis)}</span>
-                </button>
+                <AnalyzeStateButton analysis={winner.analysis} onClick={() => openAnalysis(winner)} />
                 <button
                   className={`rs-ic2${winner.bookmarked ? ' on' : ''}`}
                   onClick={() => onToggleVideoBookmark?.(winner)}
@@ -1604,23 +1642,17 @@ function AutoAnalysis({ video }) {
 }
 
 function OutlierCard({ video, runBucket = 'old', expanded, locked = false, onToggle, onAnalyze, onToggleBookmark, bookmarking, isPlaying, onTogglePlay }) {
-  const primaryLabel = video.analysis?.status === 'processing'
-    ? 'Analyzing video...'
-    : video.analysis?.status === 'complete'
-      ? 'View analysis'
-      : video.analysis?.status === 'failed'
-        ? 'Retry analysis'
-        : 'Analyze video';
-  const mobilePrimaryLabel = primaryLabel === 'Analyze video' ? 'Analyze' : primaryLabel;
   return (
     <article className={`rs-oc rs-oc--run-${runBucket}${expanded ? ' analyzed' : ''}`}>
       <VideoFrame video={video} isPlaying={isPlaying} onTogglePlay={onTogglePlay} />
       <div className="rs-oc__b">
         <div className="rs-oc__cr">
           <span className="rs-av" style={{ background: gradientFor(video.handle ?? video.id), width: 26, height: 26, borderRadius: '50%', flex: 'none' }} />
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div className="rs-oc__h">{video.handle || video.username || '—'}</div>
-            <div className="rs-oc__s">{video.posted_at ? formatDate(video.posted_at) : ''}</div>
+          <div className="rs-oc__copy" style={{ flex: 1, minWidth: 0 }}>
+            <div className="rs-oc__topline">
+              <div className="rs-oc__h">{video.handle || video.username || '—'}</div>
+              <div className="rs-oc__s">{video.uploaded_at ? formatDate(video.uploaded_at) : video.posted_at ? formatDate(video.posted_at) : ''}</div>
+            </div>
           </div>
           {video.tiktok_url && (
             <a href={video.tiktok_url} target="_blank" rel="noopener" className="rs-ic2" title="Open in TikTok">{Icons.ExtLink}</a>
@@ -1632,6 +1664,7 @@ function OutlierCard({ video, runBucket = 'old', expanded, locked = false, onTog
           <span>{Icons.Heart}{compact(video.likes)}</span>
           <span>{Icons.Comment}{compact(video.comments)}</span>
           <span>{Icons.Share}{compact(video.shares)}</span>
+          {Number(video.followers ?? 0) > 0 && <span>{Icons.User}{compact(video.followers)}</span>}
         </div>
         {expanded && !locked && (
           <div className="rs-oc__panel">
@@ -1639,11 +1672,7 @@ function OutlierCard({ video, runBucket = 'old', expanded, locked = false, onTog
           </div>
         )}
         <div className="rs-oc__an">
-          <button className="rs-btn rs-btn--y rs-btn--sm" onClick={onAnalyze} disabled={video.analysis?.status === 'processing'}>
-            <span className="rs-oc__anIcon">{Icons.Spark}</span>
-            <span className="rs-oc__anLabel rs-oc__anLabel--desktop">{primaryLabel}</span>
-            <span className="rs-oc__anLabel rs-oc__anLabel--mobile">{mobilePrimaryLabel}</span>
-          </button>
+          <AnalyzeStateButton analysis={video.analysis} onClick={onAnalyze} small />
           <button className="rs-ic2" title={expanded && !locked ? 'Hide inline summary' : 'Show inline summary'} onClick={onToggle}>{Icons.ExtLink}</button>
           <button
             className={`rs-ic2${video.bookmarked ? ' on' : ''}`}
@@ -1935,6 +1964,28 @@ const scopedCss = `
 .rs-btn--danger:hover:not(:disabled){background:#972f0f}
 .rs-btn--sm{height:34px;padding:0 14px;font-size:.82rem;font-weight:600}
 .rs-btn:disabled{opacity:.55;cursor:not-allowed}
+.rs-analyze{position:relative;display:inline-flex;align-items:center;justify-content:center;gap:9px;height:46px;padding:0 22px;border-radius:999px;border:1px solid transparent;font-size:.92rem;font-weight:600;letter-spacing:-.01em;white-space:nowrap;cursor:pointer;overflow:hidden;transition:background .16s ease,border-color .16s ease,color .16s ease,transform .12s ease,box-shadow .16s ease}
+.rs-analyze > *{position:relative;z-index:1}
+.rs-analyze:focus-visible{outline:2px solid var(--ink);outline-offset:3px}
+.rs-analyze--sm{height:34px;padding:0 14px;font-size:.82rem;gap:7px}
+.rs-analyze--ready{background:var(--yellow);color:#1A1400;box-shadow:0 1px 2px rgba(17,17,20,.08),0 8px 18px -10px rgba(239,174,0,.9)}
+.rs-analyze--ready:hover:not(:disabled){background:var(--yellow-hot,#FFD84D);transform:translateY(-1px);box-shadow:0 2px 4px rgba(17,17,20,.1),0 12px 22px -12px rgba(239,174,0,1)}
+.rs-analyze--ready .rs-analyze__icon{display:inline-flex;animation:rs-analyze-twinkle 2.6s ease-in-out infinite}
+.rs-analyze--ready:hover:not(:disabled) .rs-analyze__icon{animation-duration:1.1s}
+.rs-analyze--busy{background:var(--white);border-color:var(--line-2,#DEDBD3);color:var(--ink);font-weight:500;cursor:progress;box-shadow:none}
+.rs-analyze--busy::before{content:"";position:absolute;top:0;bottom:0;left:0;width:44%;background:linear-gradient(90deg,transparent,rgba(255,198,41,.45),transparent);animation:rs-analyze-comet 1.5s cubic-bezier(.5,0,.5,1) infinite}
+.rs-analyze--done{background:var(--ink);color:#fff;font-weight:500;padding-right:16px}
+.rs-analyze--done:hover:not(:disabled){background:#000;transform:translateY(-1px)}
+.rs-analyze__icon svg{width:15px;height:15px}
+.rs-analyze__ring{width:14px;height:14px;border:2px solid rgba(239,174,0,.3);border-top-color:#EFAE00;border-radius:999px;animation:rs-analyze-spin .9s linear infinite}
+.rs-analyze__badge{color:var(--yellow);font-size:.95em;line-height:1}
+.rs-analyze__chev{color:rgba(255,255,255,.6);transition:transform .16s ease,color .16s ease}
+.rs-analyze--done:hover:not(:disabled) .rs-analyze__chev{transform:translateX(3px);color:#fff}
+.rs-analyze__label{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rs-analyze__label--mobile{display:none}
+@keyframes rs-analyze-twinkle{0%,72%,100%{transform:scale(1) rotate(0)}82%{transform:scale(1.18) rotate(14deg)}92%{transform:scale(.96) rotate(-6deg)}}
+@keyframes rs-analyze-comet{from{transform:translateX(-110%)}to{transform:translateX(330%)}}
+@keyframes rs-analyze-spin{to{transform:rotate(360deg)}}
 
 .rs-ai{border:1px solid #F2E4B8;background:var(--wash);border-radius:16px;padding:18px 20px;margin-top:20px;min-width:0;max-width:100%;overflow-x:hidden}
 .rs-ai__toggle{width:100%;border:0;background:transparent;padding:0;text-align:left;cursor:default}
@@ -2028,9 +2079,11 @@ const scopedCss = `
 
 .rs-wdet{min-width:0;display:flex;flex-direction:column}
 .rs-wcreator{display:flex;align-items:center;gap:10px}
+.rs-wcreator__copy{min-width:0;flex:1}
+.rs-wcreator__topline{display:flex;align-items:baseline;gap:8px}
 .rs-av{width:34px;height:34px;border-radius:50%;flex:none}
-.rs-wc__n{font-size:.92rem;font-weight:800;color:var(--ink)}
-.rs-wc__s{font-size:.76rem;color:var(--faint-2,#9A968E)}
+.rs-wc__n{font-size:.92rem;font-weight:800;color:var(--ink);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rs-wc__s{font-size:.76rem;color:var(--faint-2,#9A968E);white-space:nowrap}
 .rs-wcap{font-size:.92rem;color:var(--body);line-height:1.5;margin:13px 0}
 .rs-wmets{display:flex;flex-wrap:wrap;gap:24px;padding:13px 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line);margin:13px 0}
 .rs-wmets span{display:inline-flex;align-items:center;gap:7px;font-size:.9rem;color:var(--faint-2,#9A968E);font-weight:500}
@@ -2107,8 +2160,10 @@ const scopedCss = `
 .rs-oc .rs-vf{border-radius:0}
 .rs-oc__b{padding:12px 13px;display:flex;flex-direction:column;flex:1;gap:0}
 .rs-oc__cr{display:flex;align-items:center;gap:8px}
+.rs-oc__copy{min-width:0;flex:1}
+.rs-oc__topline{display:flex;align-items:baseline;gap:8px}
 .rs-oc__h{font-size:.82rem;font-weight:800;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.rs-oc__s{font-size:.7rem;color:var(--faint-2,#9A968E)}
+.rs-oc__s{font-size:.7rem;color:var(--faint-2,#9A968E);white-space:nowrap}
 .rs-oc__c{font-size:.8rem;color:var(--muted);line-height:1.4;margin-top:8px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .rs-oc__st{display:flex;justify-content:space-between;gap:6px;margin-top:11px}
 .rs-oc__st span{display:inline-flex;align-items:center;gap:5px;font-size:.76rem;color:var(--faint-2,#9A968E);font-weight:600;font-variant-numeric:tabular-nums}
@@ -2135,9 +2190,7 @@ const scopedCss = `
 .rs-upgmodal__actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:18px}
 .rs-upgmodal__actions .rs-btn{flex:1}
 .rs-oc__an{margin-top:auto;padding-top:11px;display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:8px;align-items:center}
-.rs-oc__an .rs-btn{min-width:0}
-.rs-oc__an .rs-btn span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.rs-oc__anLabel--mobile{display:none}
+.rs-oc__an .rs-analyze{min-width:0}
 .rs-loadmore{display:flex;justify-content:center;margin-top:20px}
 
 .rs-acard{background:linear-gradient(180deg,#FFFEFB 0%,#FFF8EB 100%);border:1px solid #F1E2BE;border-radius:20px;padding:20px 22px;box-shadow:0 18px 38px -30px rgba(117,85,11,.25);min-width:0;max-width:100%;overflow-x:hidden}
@@ -2323,20 +2376,24 @@ const scopedCss = `
 .rs-stt__d{font-size:.67rem;line-height:1.25}
 .rs-stt__d svg{width:10px;height:10px}
 .rs-handle span:first-child{max-width:120px}
-.rs-oc__st{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
-.rs-oc__st span{min-width:0;justify-content:center;font-size:.72rem;gap:4px}
-.rs-oc__st svg{width:12px;height:12px}
+.rs-oc__st{display:flex;justify-content:space-between;gap:8px;flex-wrap:nowrap}
+.rs-oc__st span{min-width:0;justify-content:flex-start;font-size:.68rem;gap:3px;flex:1 1 0}
+.rs-oc__st svg{width:11px;height:11px}
 .rs-oc__an{gap:6px}
-.rs-oc__an .rs-btn{padding:0 12px;font-size:.78rem}
-.rs-oc__an .rs-btn svg{width:13px;height:13px}
-.rs-oc__anIcon{display:none}
-.rs-oc__anLabel--desktop{display:none}
-.rs-oc__anLabel--mobile{display:inline}
+.rs-oc__an .rs-analyze{padding:0 12px;font-size:.78rem}
+.rs-oc__an .rs-analyze__icon svg{width:13px;height:13px}
+.rs-analyze__label--desktop{display:none}
+.rs-analyze__label--mobile{display:inline}
 .rs-ic2{width:34px;height:34px}
 .rs-upgmodal{padding:20px 16px 16px}
 .rs-upgmodal h3{font-size:1.02rem;max-width:none}
 .rs-upgmodal p{font-size:.84rem}
 .rs-upgmodal__actions .rs-btn{width:100%}
+}
+@media (prefers-reduced-motion:reduce){
+.rs-analyze{transition:none}
+.rs-analyze--busy::before{animation:none;width:100%;opacity:.5}
+.rs-analyze--busy .rs-analyze__ring,.rs-analyze--ready .rs-analyze__icon{animation:none}
 }
 @media (max-width:420px){
 .rs-ogrid{grid-template-columns:1fr}
