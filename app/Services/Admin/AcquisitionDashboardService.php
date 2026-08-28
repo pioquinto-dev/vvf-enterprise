@@ -5,7 +5,6 @@ namespace App\Services\Admin;
 use App\Models\Subscription;
 use App\Models\User;
 use App\Models\UtmAttribution;
-use App\Models\UtmPageVisit;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Collection;
 
@@ -19,20 +18,17 @@ class AcquisitionDashboardService
     public function payload(int $days): array
     {
         [$start, $end] = $this->window($days);
-        $visits = $this->visits($start, $end);
         $signups = $this->signups($start, $end);
         $trials = $this->trials($start, $end);
 
         return [
             'rangeLabel' => $start->format('M j').' - '.$end->format('M j, Y'),
             'metrics' => [
-                $this->metric('page_views', 'Page views', $visits),
                 $this->metric('sign_ups', 'Sign ups', $signups),
                 $this->metric('trial_cc', 'Trial - CC', $trials),
                 ['key' => 'trial_no_cc', 'label' => 'Trial - no CC', 'value' => null, 'locked' => true, 'caption' => 'Not enabled'],
             ],
             'details' => [
-                'page_views' => $this->details($visits),
                 'sign_ups' => $this->details($signups),
                 'trial_cc' => $this->details($trials),
             ],
@@ -47,19 +43,6 @@ class AcquisitionDashboardService
         $start = $end->startOfDay()->subDays(max(0, $days - 1));
 
         return [$start, $end];
-    }
-
-    private function visits(CarbonImmutable $start, CarbonImmutable $end): Collection
-    {
-        return UtmPageVisit::query()->whereBetween('created_at', [$start, $end])->latest('created_at')->get()
-            ->map(fn (UtmPageVisit $visit): array => [
-                'id' => 'visit-'.$visit->id,
-                'name' => 'Anonymous visitor',
-                'email' => 'Acquisition visit',
-                'source' => $this->source($visit->utm_source),
-                'date' => $visit->created_at?->toIso8601String(),
-                'meta' => filled($visit->utm_medium) ? $visit->utm_medium : (filled($visit->referrer_host) ? "Referral: {$visit->referrer_host}" : 'Direct visit'),
-            ]);
     }
 
     private function signups(CarbonImmutable $start, CarbonImmutable $end): Collection
@@ -103,7 +86,7 @@ class AcquisitionDashboardService
     /** @param Collection<int, array<string, mixed>> $rows @return array<string, mixed> */
     private function metric(string $key, string $label, Collection $rows): array
     {
-        return ['key' => $key, 'label' => $label, 'value' => $rows->count(), 'locked' => false, 'caption' => $key === 'page_views' ? 'Unique sessions' : 'This range'];
+        return ['key' => $key, 'label' => $label, 'value' => $rows->count(), 'locked' => false, 'caption' => 'Account-backed only'];
     }
 
     /** @param Collection<int, array<string, mixed>> $rows @return array<string, mixed> */

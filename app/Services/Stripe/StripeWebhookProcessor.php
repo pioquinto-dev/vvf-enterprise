@@ -101,7 +101,30 @@ class StripeWebhookProcessor
             return;
         }
 
+        $previousStatus = (string) ($subscription->status ?? '');
         $subscription->forceFill(['status' => 'active'])->save();
+
+        if ($subscription->user !== null) {
+            if ($previousStatus === 'past_due') {
+                $this->activity?->record(
+                    $subscription->user,
+                    'subscription',
+                    'payment_recovered',
+                    'Recovered a past-due subscription after payment succeeded.',
+                    ['subscription_id' => $subscription->id, 'stripe_subscription_id' => $subscriptionId],
+                    'stripe:'.(string) $event->id.':payment_recovered'
+                );
+            }
+
+            $this->activity?->record(
+                $subscription->user,
+                'subscription',
+                'invoice_paid',
+                'Stripe invoice payment succeeded.',
+                ['subscription_id' => $subscription->id, 'stripe_subscription_id' => $subscriptionId],
+                'stripe:'.(string) $event->id.':invoice_paid'
+            );
+        }
 
         AppEventLogger::result('billing.webhook.invoice_paid', [
             'event_id' => (string) ($event->id ?? ''),
@@ -135,7 +158,19 @@ class StripeWebhookProcessor
             return;
         }
 
+        $previousStatus = (string) ($subscription->status ?? '');
         $subscription->forceFill(['status' => 'past_due'])->save();
+
+        if ($subscription->user !== null) {
+            $this->activity?->record(
+                $subscription->user,
+                'subscription',
+                'payment_failed',
+                'Stripe invoice payment failed.',
+                ['subscription_id' => $subscription->id, 'stripe_subscription_id' => $subscriptionId, 'previous_status' => $previousStatus],
+                'stripe:'.(string) $event->id.':payment_failed'
+            );
+        }
 
         AppEventLogger::result('billing.webhook.invoice_payment_failed', [
             'event_id' => (string) ($event->id ?? ''),
@@ -285,13 +320,51 @@ class StripeWebhookProcessor
         ])->save();
 
         if ($status === 'trialing' && $previousStatus !== 'trialing') {
-            $this->activity?->record($user, 'regular_trial', 'trial_started', "Started a trial on {$plan->name}.", ['plan' => $plan->slug], 'stripe:'.(string) $event->id.':trial');
+            $this->activity?->record($user, 'subscription', 'trial_started', "Started a trial on {$plan->name}.", ['plan' => $plan->slug], 'stripe:'.(string) $event->id.':trial');
         }
         if (in_array($status, ['active', 'paid'], true) && ! in_array($previousStatus, ['active', 'paid'], true)) {
-            $this->activity?->record($user, 'paid', 'subscription_paid', "Started a paid subscription on {$plan->name}.", ['plan' => $plan->slug], 'stripe:'.(string) $event->id.':paid');
+            $eventKey = in_array($previousStatus, ['canceled', 'unpaid', 'incomplete_expired', 'past_due'], true)
+                ? 'subscription_reactivated'
+                : 'subscription_paid';
+            $summary = $eventKey === 'subscription_reactivated'
+                ? "Reactivated {$plan->name} into an active paid subscription."
+                : "Started a paid subscription on {$plan->name}.";
+            $this->activity?->record($user, 'subscription', $eventKey, $summary, ['plan' => $plan->slug], 'stripe:'.(string) $event->id.':paid');
+        }
+        if ($previousStatus === 'trialing' && $status !== 'trialing') {
+            $this->activity?->record(
+                $user,
+                'subscription',
+                'trial_completed',
+                in_array($status, ['active', 'paid'], true)
+                    ? "Completed trial and converted to {$plan->name}."
+                    : 'Trial period ended.',
+                ['plan' => $plan->slug, 'result_status' => $status],
+                'stripe:'.(string) $event->id.':trial_completed'
+            );
+        }
+        if ($cancelAtPeriodEnd && ! (bool) data_get($subscription->getOriginal('metadata'), 'subscription.cancel_at_period_end', false)) {
+            $this->activity?->record(
+                $user,
+                'subscription',
+                'subscription_cancellation_scheduled',
+                'Subscription is scheduled to cancel at period end.',
+                ['plan' => $plan->slug, 'cancel_at' => $cancelAt?->toIso8601String()],
+                'stripe:'.(string) $event->id.':cancel_scheduled'
+            );
+        }
+        if (! $cancelAtPeriodEnd && (bool) data_get($subscription->getOriginal('metadata'), 'subscription.cancel_at_period_end', false)) {
+            $this->activity?->record(
+                $user,
+                'subscription',
+                'subscription_cancellation_reverted',
+                'Scheduled subscription cancellation was reverted.',
+                ['plan' => $plan->slug],
+                'stripe:'.(string) $event->id.':cancel_reverted'
+            );
         }
         if (in_array($status, ['canceled', 'unpaid', 'incomplete_expired'], true) && ! in_array($previousStatus, ['canceled', 'unpaid', 'incomplete_expired'], true)) {
-            $this->activity?->record($user, 'cancelled', 'subscription_cancelled', 'Subscription was cancelled.', ['plan' => $plan->slug], 'stripe:'.(string) $event->id.':cancelled');
+            $this->activity?->record($user, 'subscription', 'subscription_cancelled', 'Subscription was cancelled.', ['plan' => $plan->slug], 'stripe:'.(string) $event->id.':cancelled');
         }
 
         if ($status === 'active' && $periodEnd !== null) {
@@ -318,6 +391,15 @@ class StripeWebhookProcessor
                 'monthly_credits_remaining' => 1,
                 'plan_renews_at' => CarbonImmutable::now()->addMonth(),
             ])->save();
+
+            $this->activity?->record(
+                $user,
+                'subscription',
+                'subscription_reverted_to_free',
+                'Subscription access ended and the account reverted to free.',
+                ['plan' => $plan->slug, 'status' => $status],
+                'stripe:'.(string) $event->id.':reverted_to_free'
+            );
 
             if (! in_array($previousStatus, ['canceled', 'unpaid', 'incomplete_expired'], true)) {
                 $this->emails->sendSubscriptionCanceled($user, $subscription);

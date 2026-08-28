@@ -459,6 +459,46 @@ var NAV_GROUPS = [
 		}]
 	},
 	{
+		label: "Needs Attention",
+		items: [
+			{
+				key: "subscription-past-due",
+				label: "Past Due Subs",
+				href: "/x/admin/subscription?status=past_due",
+				description: "Payment follow-up",
+				icon: "PD"
+			},
+			{
+				key: "plans-archived",
+				label: "Archived Plans",
+				href: "/x/admin/plans?status=archived",
+				description: "Legacy pricing",
+				icon: "AP"
+			},
+			{
+				key: "users-deleted",
+				label: "Deleted Users",
+				href: "/x/admin/users?status=deleted",
+				description: "Restore review",
+				icon: "DU"
+			},
+			{
+				key: "videos-archived",
+				label: "Archived Videos",
+				href: "/x/admin/viral-videos?status=archived",
+				description: "Content review",
+				icon: "AV"
+			},
+			{
+				key: "keywords-archived",
+				label: "Archived Keywords",
+				href: "/x/admin/keyword-index?status=archived",
+				description: "Suggestion cleanup",
+				icon: "AK"
+			}
+		]
+	},
+	{
 		label: "Content",
 		items: [
 			{
@@ -795,11 +835,8 @@ var RANGES = [
 var CATEGORIES = [
 	["all", "All activity"],
 	["sign_up", "Sign ups"],
-	["regular_trial", "Regular trials"],
-	["affiliate_trial", "Affiliate trials"],
-	["paid", "Active paid"],
-	["engagement", "Engagement"],
-	["cancelled", "Cancelled"]
+	["subscription", "Subscription"],
+	["engagement", "Engagement"]
 ];
 var EVENT_LABELS = {
 	account_created: "Signup Created",
@@ -810,18 +847,25 @@ var EVENT_LABELS = {
 	video_analysis_triggered: "Video Analysis Triggered",
 	checkout_initiated: "Checkout Initiated",
 	trial_started: "Trial Started",
+	trial_completed: "Trial Completed",
 	subscription_paid: "Subscription Activated",
+	subscription_reactivated: "Subscription Reactivated",
+	subscription_cancellation_requested: "Cancellation Requested",
+	subscription_cancellation_scheduled: "Cancellation Scheduled",
+	subscription_cancellation_reverted: "Cancellation Reverted",
+	subscription_reactivation_requested: "Reactivation Requested",
 	subscription_cancelled: "Subscription Canceled",
+	subscription_reverted_to_free: "Reverted To Free",
+	payment_failed: "Payment Failed",
+	payment_recovered: "Payment Recovered",
+	invoice_paid: "Invoice Paid",
 	account_deletion_requested: "Account Deletion Requested",
 	account_deleted: "Account Deleted"
 };
 var TONES = {
 	sign_up: "#20cfc2",
-	regular_trial: "#ffae19",
-	affiliate_trial: "#9b6cff",
-	paid: "#ee4393",
-	engagement: "#7b5cff",
-	cancelled: "#fb5c6a"
+	subscription: "#ee4393",
+	engagement: "#7b5cff"
 };
 function formatTimestamp$1(value) {
 	if (!value) return "-";
@@ -967,9 +1011,9 @@ function ActivityLog({ rows = [], filters = {}, events = [], pagination = {} }) 
 					}, row.id))
 				}),
 				/* @__PURE__ */ jsxs("div", {
-					className: "mt-4 flex items-center justify-between gap-3 text-[11px] text-[#718197]",
+					className: "mt-4 flex flex-col gap-2 text-[11px] text-[#718197] sm:flex-row sm:items-center sm:justify-between sm:gap-3",
 					children: [/* @__PURE__ */ jsxs("span", { children: [pagination.total ?? 0, " activities"] }), /* @__PURE__ */ jsxs("div", {
-						className: "flex gap-2",
+						className: "flex items-center gap-2",
 						children: [
 							/* @__PURE__ */ jsx("button", {
 								type: "button",
@@ -1270,14 +1314,14 @@ function AcquisitionDashboard({ acquisition = {} }) {
 				})]
 			}),
 			/* @__PURE__ */ jsx("div", {
-				className: "mt-3 grid grid-cols-4 overflow-hidden rounded-2xl border border-[#dce4f0] bg-[#fbfdff]",
+				className: "mt-3 grid grid-cols-2 overflow-hidden rounded-2xl border border-[#dce4f0] bg-[#fbfdff] sm:grid-cols-4",
 				children: metrics.map((metric) => {
 					const active = activeMetric?.key === metric.key;
 					return /* @__PURE__ */ jsxs("button", {
 						type: "button",
 						disabled: metric.locked,
 						onClick: () => selectMetric(metric),
-						className: `min-h-[62px] border-b border-[#e8edf5] px-3 py-2.5 text-left transition sm:border-r sm:border-b-0 last:sm:border-r-0 ${active ? "bg-white ring-1 ring-inset ring-[#49d4ef]" : metric.locked ? "cursor-not-allowed bg-[#f6f7fa] opacity-55" : "hover:bg-white"}`,
+						className: `min-h-[62px] border-b border-[#e8edf5] px-3 py-2.5 text-left transition odd:border-r sm:border-r sm:border-b-0 last:sm:border-r-0 ${active ? "bg-white ring-1 ring-inset ring-[#49d4ef]" : metric.locked ? "cursor-not-allowed bg-[#f6f7fa] opacity-55" : "hover:bg-white"}`,
 						children: [/* @__PURE__ */ jsx("span", {
 							className: "block text-[9px] font-semibold tracking-[.16em] text-[#7b8ba0] uppercase",
 							children: metric.label
@@ -1397,10 +1441,10 @@ function ConversionFunnel({ funnel = {} }) {
 		}), /* @__PURE__ */ jsx("div", {
 			className: "mt-5 space-y-3",
 			children: steps.map((step) => /* @__PURE__ */ jsxs("div", {
-				className: "grid grid-cols-[42px_1fr_86px] items-center gap-2 sm:grid-cols-[54px_1fr_112px] sm:gap-3",
+				className: "grid grid-cols-[58px_1fr_78px] items-center gap-2 sm:grid-cols-[54px_1fr_112px] sm:gap-3",
 				children: [
 					/* @__PURE__ */ jsx("span", {
-						className: "text-[10.5px] font-medium text-[#55667d]",
+						className: "text-[10.5px] leading-tight font-medium text-[#55667d]",
 						children: step.label
 					}),
 					/* @__PURE__ */ jsxs("div", {
@@ -1427,20 +1471,14 @@ function ConversionFunnel({ funnel = {} }) {
 }
 var ACTIVITY_TONES = {
 	sign_up: "#20cfc2",
-	regular_trial: "#ffae19",
-	affiliate_trial: "#9b6cff",
-	paid: "#ee4393",
-	engagement: "#7b5cff",
-	cancelled: "#fb5c6a"
+	subscription: "#ee4393",
+	engagement: "#7b5cff"
 };
 var ACTIVITY_FILTERS = [
 	["all", "All"],
 	["sign_up", "Sign up"],
-	["regular_trial", "Regular trials"],
-	["affiliate_trial", "Affiliate trials"],
-	["paid", "Paid"],
-	["engagement", "Engagement"],
-	["cancelled", "Cancelled"]
+	["subscription", "Subscription"],
+	["engagement", "Engagement"]
 ];
 function RecentActivity({ activity = {} }) {
 	const [filter, setFilter] = useState("all");
@@ -1547,10 +1585,15 @@ function Dashboard$1({ trend = [], stats = [], snapshot = {}, range = "30D", ran
 									formatDay(snapshot.rangeStart),
 									" - ",
 									formatDay(snapshot.rangeEnd),
-									" · ",
-									snapshot.rangeStart,
-									" to ",
-									snapshot.rangeEnd
+									/* @__PURE__ */ jsxs("span", {
+										className: "hidden sm:inline",
+										children: [
+											" · ",
+											snapshot.rangeStart,
+											" to ",
+											snapshot.rangeEnd
+										]
+									})
 								]
 							}),
 							/* @__PURE__ */ jsx("button", {
@@ -1586,7 +1629,7 @@ function Dashboard$1({ trend = [], stats = [], snapshot = {}, range = "30D", ran
 				}), /* @__PURE__ */ jsx(AdminTrendChart, { points: trend })]
 			}),
 			/* @__PURE__ */ jsx("div", {
-				className: "mt-3 grid grid-cols-3 gap-2 sm:gap-3 lg:grid-cols-5",
+				className: "mt-3 grid grid-cols-2 gap-2 min-[420px]:grid-cols-3 sm:gap-3 lg:grid-cols-5",
 				children: stats.map((card) => /* @__PURE__ */ jsx(StatCard, { card }, card.key))
 			}),
 			/* @__PURE__ */ jsx("div", {
@@ -1642,18 +1685,18 @@ function AdminRowMenu({ resource, row, capabilities = {}, onEdit, onPreview, onI
 	if (items.length === 0 && !canEdit && !canPreview && !canImpersonate) return null;
 	return /* @__PURE__ */ jsxs("div", {
 		ref: container,
-		className: "relative flex items-center justify-end gap-1",
+		className: "relative flex flex-nowrap items-center justify-end gap-1",
 		children: [
 			canPreview && /* @__PURE__ */ jsx("button", {
 				type: "button",
 				onClick: () => onPreview(row),
-				className: "inline-flex h-6 items-center rounded-md border border-[var(--line)] bg-white px-2 text-[11.5px] font-medium text-[var(--ink)] transition hover:border-[var(--yellow)] hover:bg-[var(--wash)]",
+				className: "inline-flex h-6 shrink-0 items-center whitespace-nowrap rounded-md border border-[var(--line)] bg-white px-2 text-[11.5px] font-medium text-[var(--ink)] transition hover:border-[var(--yellow)] hover:bg-[var(--wash)]",
 				children: "View"
 			}),
 			canEdit && /* @__PURE__ */ jsx("button", {
 				type: "button",
 				onClick: () => onEdit(row),
-				className: "inline-flex h-6 items-center rounded-md border border-[var(--yellow)] bg-[var(--wash)] px-2 text-[11.5px] font-medium text-[var(--amber-ink)] transition hover:bg-[var(--yellow)] hover:text-[#1a1400]",
+				className: "inline-flex h-6 shrink-0 items-center whitespace-nowrap rounded-md border border-[var(--yellow)] bg-[var(--wash)] px-2 text-[11.5px] font-medium text-[var(--amber-ink)] transition hover:bg-[var(--yellow)] hover:text-[#1a1400]",
 				children: "Edit"
 			}),
 			canImpersonate && /* @__PURE__ */ jsx("button", {
@@ -1661,14 +1704,14 @@ function AdminRowMenu({ resource, row, capabilities = {}, onEdit, onPreview, onI
 				onClick: () => {
 					if (window.confirm(`Log in as ${row.email || row.user} for one hour?`)) onImpersonate(row);
 				},
-				className: "inline-flex h-6 items-center rounded-md border border-[var(--line)] bg-white px-2 text-[11.5px] font-medium text-[var(--ink)] transition hover:border-[var(--yellow)] hover:bg-[var(--wash)]",
+				className: "inline-flex h-6 shrink-0 items-center whitespace-nowrap rounded-md border border-[var(--line)] bg-white px-2 text-[11.5px] font-medium text-[var(--ink)] transition hover:border-[var(--yellow)] hover:bg-[var(--wash)]",
 				children: "Log in as"
 			}),
 			items.length > 0 && /* @__PURE__ */ jsx("button", {
 				type: "button",
 				"aria-label": "More actions",
 				onClick: () => setOpen((current) => !current),
-				className: `inline-flex h-6 w-6 items-center justify-center rounded-md border transition ${open ? "border-[var(--yellow)] bg-[var(--wash)] text-[var(--ink)]" : "border-[var(--line)] bg-white text-[var(--muted)] hover:border-[var(--line-2)] hover:text-[var(--ink)]"}`,
+				className: `inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-md border transition ${open ? "border-[var(--yellow)] bg-[var(--wash)] text-[var(--ink)]" : "border-[var(--line)] bg-white text-[var(--muted)] hover:border-[var(--line-2)] hover:text-[var(--ink)]"}`,
 				children: /* @__PURE__ */ jsx(Dots, { className: "h-3.5 w-3.5" })
 			}),
 			open && /* @__PURE__ */ jsx("div", {
@@ -1761,7 +1804,7 @@ function AdminDataTable({ columns = [], rows = [], resource, capabilities = {}, 
 				className: "sticky top-0 z-10 border-b border-[var(--line)] bg-[var(--paper)] px-4 py-2 text-left text-[11px] font-semibold tracking-[.06em] whitespace-nowrap text-[var(--faint)] uppercase",
 				children: column.label
 			}, column.key)), hasActions && /* @__PURE__ */ jsx("th", {
-				className: "sticky top-0 z-10 w-[190px] border-b border-[var(--line)] bg-[var(--paper)] px-4 py-2 text-right text-[11px] font-semibold tracking-[.06em] whitespace-nowrap text-[var(--faint)] uppercase",
+				className: "sticky top-0 z-10 min-w-[190px] border-b border-[var(--line)] bg-[var(--paper)] px-4 py-2 text-right text-[11px] font-semibold tracking-[.06em] whitespace-nowrap text-[var(--faint)] uppercase",
 				children: "Actions"
 			})] }) }), /* @__PURE__ */ jsx("tbody", { children: rows.map((row, rowIndex) => /* @__PURE__ */ jsxs("tr", {
 				className: "group transition-colors hover:bg-[rgba(255,248,230,.65)]",
@@ -1769,7 +1812,7 @@ function AdminDataTable({ columns = [], rows = [], resource, capabilities = {}, 
 					className: "max-w-[280px] truncate border-b border-[var(--line)] px-4 py-2.5 align-middle whitespace-nowrap",
 					children: renderCell(column, row, columnIndex)
 				}, column.key)), hasActions && /* @__PURE__ */ jsx("td", {
-					className: "border-b border-[var(--line)] px-4 py-2.5 text-right",
+					className: "border-b border-[var(--line)] px-4 py-2.5 text-right whitespace-nowrap",
 					children: /* @__PURE__ */ jsx(AdminRowMenu, {
 						resource,
 						row,
@@ -1785,29 +1828,33 @@ function AdminDataTable({ columns = [], rows = [], resource, capabilities = {}, 
 		className: "divide-y divide-[var(--line)] md:hidden",
 		children: rows.map((row, rowIndex) => /* @__PURE__ */ jsxs("article", {
 			className: "group grid gap-2 px-4 py-3",
-			children: [/* @__PURE__ */ jsxs("div", {
-				className: "flex items-center justify-between gap-2",
-				children: [/* @__PURE__ */ jsx("div", {
+			children: [
+				/* @__PURE__ */ jsx("div", {
 					className: "min-w-0",
 					children: renderCell(columns[0], row, 0)
-				}), hasActions && /* @__PURE__ */ jsx(AdminRowMenu, {
-					resource,
-					row,
-					capabilities,
-					onEdit,
-					onPreview,
-					onImpersonate
-				})]
-			}), columns.slice(1).map((column) => /* @__PURE__ */ jsxs("div", {
-				className: "flex items-center justify-between gap-4",
-				children: [/* @__PURE__ */ jsx("span", {
-					className: "text-[11px] text-[var(--faint)]",
-					children: column.label
-				}), /* @__PURE__ */ jsx("span", {
-					className: "min-w-0 text-right",
-					children: renderCell(column, row, 1)
-				})]
-			}, column.key))]
+				}),
+				columns.slice(1).map((column) => /* @__PURE__ */ jsxs("div", {
+					className: "flex items-center justify-between gap-4",
+					children: [/* @__PURE__ */ jsx("span", {
+						className: "shrink-0 text-[11px] text-[var(--faint)]",
+						children: column.label
+					}), /* @__PURE__ */ jsx("span", {
+						className: "min-w-0 truncate text-right",
+						children: renderCell(column, row, 1)
+					})]
+				}, column.key)),
+				hasActions && /* @__PURE__ */ jsx("div", {
+					className: "mt-1 flex flex-wrap justify-end gap-1.5 border-t border-[var(--line)] pt-2.5",
+					children: /* @__PURE__ */ jsx(AdminRowMenu, {
+						resource,
+						row,
+						capabilities,
+						onEdit,
+						onPreview,
+						onImpersonate
+					})
+				})
+			]
 		}, row.id ?? rowIndex))
 	})] });
 }
@@ -2246,20 +2293,31 @@ function AdminPagination({ pagination, query = {} }) {
 //#endregion
 //#region resources/js/components/admin/AdminPreviewDrawer.jsx
 function PreviewField({ label, value, multiline = false }) {
+	const displayValue = value === null || value === void 0 || value === "" ? "-" : value;
 	return /* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsx("p", {
 		className: "mb-1.5 text-[11.5px] font-medium text-[var(--muted)]",
 		children: label
 	}), multiline ? /* @__PURE__ */ jsx("div", {
 		className: "min-h-[120px] rounded-lg border border-[var(--line)] bg-white px-3 py-2.5 text-[13px] leading-6 whitespace-pre-wrap text-[var(--body)]",
-		children: value || "-"
+		children: displayValue
 	}) : /* @__PURE__ */ jsx("div", {
 		className: "rounded-lg border border-[var(--line)] bg-white px-3 py-2.5 text-[13px] text-[var(--body)]",
-		children: value || "-"
+		children: displayValue
 	})] });
+}
+function normalizeSections(preview) {
+	return (preview.sections ?? []).map((section) => ({
+		...section,
+		fields: (section.fields ?? []).filter((field) => {
+			const value = field?.value;
+			return value !== null && value !== void 0 && String(value).trim() !== "";
+		})
+	})).filter((section) => section.fields.length > 0);
 }
 function AdminPreviewDrawer({ open, title, row, onClose }) {
 	if (!open || !row) return null;
 	const preview = row.preview ?? {};
+	const sections = normalizeSections(preview);
 	return /* @__PURE__ */ jsxs("div", {
 		className: "fixed inset-0 z-50 flex justify-end",
 		children: [/* @__PURE__ */ jsx("button", {
@@ -2272,48 +2330,46 @@ function AdminPreviewDrawer({ open, title, row, onClose }) {
 			children: [
 				/* @__PURE__ */ jsxs("header", {
 					className: "flex items-center justify-between border-b border-[var(--line)] px-4 py-3",
-					children: [/* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsx("p", {
-						className: "text-[10px] font-semibold tracking-[.18em] text-[var(--faint)] uppercase",
-						children: "Preview"
-					}), /* @__PURE__ */ jsx("h2", {
-						className: "mt-0.5 truncate text-[14px] font-semibold text-[var(--ink)]",
-						children: title
-					})] }), /* @__PURE__ */ jsx("button", {
+					children: [/* @__PURE__ */ jsxs("div", { children: [
+						/* @__PURE__ */ jsx("p", {
+							className: "text-[10px] font-semibold tracking-[.18em] text-[var(--faint)] uppercase",
+							children: preview.eyebrow ?? "Preview"
+						}),
+						/* @__PURE__ */ jsx("h2", {
+							className: "mt-0.5 truncate text-[14px] font-semibold text-[var(--ink)]",
+							children: title
+						}),
+						preview.summary && /* @__PURE__ */ jsx("p", {
+							className: "mt-1 text-[12px] text-[var(--muted)]",
+							children: preview.summary
+						})
+					] }), /* @__PURE__ */ jsx("button", {
 						type: "button",
 						onClick: onClose,
 						className: "flex h-7 w-7 items-center justify-center rounded-md text-[var(--faint)] transition hover:bg-white hover:text-[var(--ink)]",
 						children: /* @__PURE__ */ jsx(Close, { className: "h-4 w-4" })
 					})]
 				}),
-				/* @__PURE__ */ jsxs("div", {
+				/* @__PURE__ */ jsx("div", {
 					className: "min-h-0 flex-1 space-y-4 overflow-y-auto px-4 py-4",
-					children: [
-						/* @__PURE__ */ jsx(PreviewField, {
-							label: "Name",
-							value: preview.name
-						}),
-						/* @__PURE__ */ jsx(PreviewField, {
-							label: "Email",
-							value: preview.email
-						}),
-						/* @__PURE__ */ jsx(PreviewField, {
-							label: "Category",
-							value: preview.category
-						}),
-						/* @__PURE__ */ jsx(PreviewField, {
-							label: "Subject",
-							value: preview.subject
-						}),
-						/* @__PURE__ */ jsx(PreviewField, {
-							label: "Received",
-							value: preview.received_at
-						}),
-						/* @__PURE__ */ jsx(PreviewField, {
-							label: "Message",
-							value: preview.message,
-							multiline: true
-						})
-					]
+					children: sections.length > 0 ? sections.map((section) => /* @__PURE__ */ jsxs("section", {
+						className: "space-y-3 rounded-xl border border-[var(--line)] bg-white p-3",
+						children: [section.title && /* @__PURE__ */ jsx("h3", {
+							className: "text-[11px] font-semibold tracking-[.12em] text-[var(--faint)] uppercase",
+							children: section.title
+						}), /* @__PURE__ */ jsx("div", {
+							className: "space-y-3",
+							children: section.fields.map((field) => /* @__PURE__ */ jsx(PreviewField, {
+								label: field.label,
+								value: field.value,
+								multiline: field.multiline === true
+							}, `${section.title ?? "details"}-${field.label}`))
+						})]
+					}, section.title ?? "details")) : /* @__PURE__ */ jsx(PreviewField, {
+						label: "Details",
+						value: "No additional details available for this record yet.",
+						multiline: true
+					})
 				}),
 				/* @__PURE__ */ jsx("footer", {
 					className: "flex items-center justify-end border-t border-[var(--line)] px-4 py-3",
@@ -2335,6 +2391,7 @@ function Listing({ resource, title, search, searchPlaceholder, filters = [], col
 	const [editing, setEditing] = useState(null);
 	const [previewing, setPreviewing] = useState(null);
 	const [creating, setCreating] = useState(false);
+	const singularTitle = resource === "keyword-index" ? "Keyword" : title.endsWith("s") ? title.slice(0, -1) : title;
 	const toolbar = /* @__PURE__ */ jsx(AdminFiltersBar, {
 		title,
 		search,
@@ -2402,7 +2459,7 @@ function Listing({ resource, title, search, searchPlaceholder, filters = [], col
 			/* @__PURE__ */ jsx(AdminEditDrawer, {
 				open: creating,
 				resource,
-				title: `New ${title.slice(0, -1)}`,
+				title: `New ${singularTitle}`,
 				fields: editableFields,
 				createValues,
 				mode: "create",
@@ -3088,7 +3145,8 @@ var billing = {
 		method: "PATCH",
 		body: { payment_method_id: paymentMethodId }
 	}),
-	cancelSubscription: () => request("/settings/subscription/cancel", { method: "POST" })
+	cancelSubscription: () => request("/settings/subscription/cancel", { method: "POST" }),
+	reactivateSubscription: () => request("/settings/subscription/reactivate", { method: "POST" })
 };
 var bookmarks = {
 	save: (id) => request(`${API_V1}/videos/${id}/bookmark`, { method: "POST" }),
@@ -19071,6 +19129,8 @@ function Subscription({ subscription, stripePublishableKey = null }) {
 	const interval = subscription?.interval ?? "month";
 	const billingCycle = subscription?.billingCycle ?? "monthly";
 	const isTrialing = status === "trialing" || status === "trial";
+	const cancelAtPeriodEnd = Boolean(subscription?.cancelAtPeriodEnd);
+	const cancelsAt = formatDate(subscription?.cancelsAt);
 	const trialEnds = formatDate(subscription?.trialEndsAt);
 	const renews = formatDate(subscription?.renewsAt);
 	const invoices = subscription?.invoices ?? [];
@@ -19081,6 +19141,7 @@ function Subscription({ subscription, stripePublishableKey = null }) {
 	const [paymentSaving, setPaymentSaving] = useState(false);
 	const [paymentError, setPaymentError] = useState(null);
 	const [cancelBusy, setCancelBusy] = useState(false);
+	const [reactivateBusy, setReactivateBusy] = useState(false);
 	const [cancelModalOpen, setCancelModalOpen] = useState(false);
 	const [elementsState, setElementsState] = useState(null);
 	const searchesLeft = searchLimit > 0 ? Math.max(0, searchLimit - searchUsed) : 0;
@@ -19157,6 +19218,16 @@ function Subscription({ subscription, stripePublishableKey = null }) {
 			setCancelBusy(false);
 		}
 	};
+	const reactivateSubscription = async () => {
+		setReactivateBusy(true);
+		try {
+			const response = await billing.reactivateSubscription();
+			setStatusMessage(response?.message || "Subscription reactivated.");
+			router.reload({ only: ["subscription"] });
+		} finally {
+			setReactivateBusy(false);
+		}
+	};
 	return /* @__PURE__ */ jsxs(Fragment$1, { children: [
 		/* @__PURE__ */ jsx(Head, { title: "Subscription · Brand Beacon" }),
 		/* @__PURE__ */ jsxs(SettingsShell, {
@@ -19189,8 +19260,8 @@ function Subscription({ subscription, stripePublishableKey = null }) {
 										className: "subx-plan__name",
 										children: planName
 									}), /* @__PURE__ */ jsxs("span", {
-										className: `pill ${isTrialing ? "pill--run" : active ? "pill--ok" : "pill--off"}`,
-										children: [/* @__PURE__ */ jsx("i", {}), isTrialing ? "Trialing" : active ? "Active" : status]
+										className: `pill ${cancelAtPeriodEnd ? "pill--warn" : isTrialing ? "pill--run" : active ? "pill--ok" : "pill--off"}`,
+										children: [/* @__PURE__ */ jsx("i", {}), cancelAtPeriodEnd ? "Scheduled to cancel" : isTrialing ? "Trialing" : active ? "Active" : status]
 									})]
 								}), /* @__PURE__ */ jsxs("p", {
 									className: "subx-plan__price",
@@ -19198,12 +19269,64 @@ function Subscription({ subscription, stripePublishableKey = null }) {
 										/* @__PURE__ */ jsxs("b", { children: ["$", price] }),
 										" / ",
 										interval
-									] }) : /* @__PURE__ */ jsx("b", { children: "Free plan" }), isTrialing && trialEnds ? /* @__PURE__ */ jsxs(Fragment$1, { children: [" · Trial ends ", /* @__PURE__ */ jsx("b", { children: trialEnds })] }) : renews ? /* @__PURE__ */ jsxs(Fragment$1, { children: [" · Renews ", /* @__PURE__ */ jsx("b", { children: renews })] }) : ""]
+									] }) : /* @__PURE__ */ jsx("b", { children: "Free plan" }), cancelAtPeriodEnd && cancelsAt ? /* @__PURE__ */ jsxs(Fragment$1, { children: [" · Access ends ", /* @__PURE__ */ jsx("b", { children: cancelsAt })] }) : isTrialing && trialEnds ? /* @__PURE__ */ jsxs(Fragment$1, { children: [" · Trial ends ", /* @__PURE__ */ jsx("b", { children: trialEnds })] }) : renews ? /* @__PURE__ */ jsxs(Fragment$1, { children: [" · Renews ", /* @__PURE__ */ jsx("b", { children: renews })] }) : ""]
 								})]
 							}), /* @__PURE__ */ jsx(Link, {
 								href: "/plans",
 								className: "btn btn--y",
 								children: active ? "Change plan" : "Upgrade"
+							})]
+						}),
+						cancelAtPeriodEnd && /* @__PURE__ */ jsxs("div", {
+							className: "subx-notice",
+							role: "status",
+							"aria-live": "polite",
+							children: [/* @__PURE__ */ jsx("div", {
+								className: "subx-notice__icon",
+								"aria-hidden": true,
+								children: /* @__PURE__ */ jsxs("svg", {
+									viewBox: "0 0 24 24",
+									fill: "none",
+									stroke: "currentColor",
+									strokeWidth: "2",
+									strokeLinecap: "round",
+									strokeLinejoin: "round",
+									children: [
+										/* @__PURE__ */ jsx("path", { d: "M12 8v4" }),
+										/* @__PURE__ */ jsx("path", { d: "M12 16h.01" }),
+										/* @__PURE__ */ jsx("path", { d: "M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z" })
+									]
+								})
+							}), /* @__PURE__ */ jsxs("div", {
+								className: "subx-notice__copy",
+								children: [
+									/* @__PURE__ */ jsx("p", {
+										className: "subx-notice__eyebrow",
+										children: "Cancellation scheduled"
+									}),
+									/* @__PURE__ */ jsxs("p", {
+										className: "subx-notice__title",
+										children: [
+											"Your plan stays active",
+											cancelsAt ? /* @__PURE__ */ jsxs(Fragment$1, { children: [" until ", /* @__PURE__ */ jsx("b", { children: cancelsAt })] }) : "",
+											"."
+										]
+									}),
+									/* @__PURE__ */ jsx("p", {
+										className: "subx-notice__text",
+										children: "Renewal has been turned off, so the subscription will end automatically at the close of this billing period."
+									}),
+									/* @__PURE__ */ jsx("div", {
+										className: "subx-notice__actions",
+										children: /* @__PURE__ */ jsx("button", {
+											type: "button",
+											className: "btn btn--y btn--sm",
+											onClick: reactivateSubscription,
+											disabled: reactivateBusy,
+											children: reactivateBusy ? "Reactivating…" : "Reactivate subscription"
+										})
+									})
+								]
 							})]
 						}),
 						/* @__PURE__ */ jsxs("div", {
@@ -19319,7 +19442,7 @@ function Subscription({ subscription, stripePublishableKey = null }) {
 								})
 							]
 						}),
-						(active || isTrialing) && /* @__PURE__ */ jsxs("div", {
+						(active || isTrialing) && !cancelAtPeriodEnd && /* @__PURE__ */ jsxs("div", {
 							className: "subx-foot",
 							children: [/* @__PURE__ */ jsxs("span", {
 								className: "subx-foot__q",

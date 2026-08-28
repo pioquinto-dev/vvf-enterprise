@@ -35,7 +35,7 @@ class UserActivityServiceTest extends TestCase
 
         $activity->record($user, 'engagement', 'logged_in', 'Logged in.');
         $activity->record($user, 'engagement', 'search_triggered', 'Triggered a product search with keyword serum.');
-        $activity->record($user, 'paid', 'subscription_paid', 'Subscription is active.');
+        $activity->record($user, 'subscription', 'subscription_paid', 'Subscription is active.');
 
         $payload = $activity->activityLogPayload(Request::create('/x/admin/activity', 'GET', [
             'range' => '30D',

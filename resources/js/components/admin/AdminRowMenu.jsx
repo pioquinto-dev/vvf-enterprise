@@ -63,12 +63,12 @@ export default function AdminRowMenu({ resource, row, capabilities = {}, onEdit,
     }
 
     return (
-        <div ref={container} className="relative flex items-center justify-end gap-1">
+        <div ref={container} className="relative flex flex-nowrap items-center justify-end gap-1">
             {canPreview && (
                 <button
                     type="button"
                     onClick={() => onPreview(row)}
-                    className="inline-flex h-6 items-center rounded-md border border-[var(--line)] bg-white px-2 text-[11.5px] font-medium text-[var(--ink)] transition hover:border-[var(--yellow)] hover:bg-[var(--wash)]"
+                    className="inline-flex h-6 shrink-0 items-center whitespace-nowrap rounded-md border border-[var(--line)] bg-white px-2 text-[11.5px] font-medium text-[var(--ink)] transition hover:border-[var(--yellow)] hover:bg-[var(--wash)]"
                 >
                     View
                 </button>
@@ -78,7 +78,7 @@ export default function AdminRowMenu({ resource, row, capabilities = {}, onEdit,
                 <button
                     type="button"
                     onClick={() => onEdit(row)}
-                    className="inline-flex h-6 items-center rounded-md border border-[var(--yellow)] bg-[var(--wash)] px-2 text-[11.5px] font-medium text-[var(--amber-ink)] transition hover:bg-[var(--yellow)] hover:text-[#1a1400]"
+                    className="inline-flex h-6 shrink-0 items-center whitespace-nowrap rounded-md border border-[var(--yellow)] bg-[var(--wash)] px-2 text-[11.5px] font-medium text-[var(--amber-ink)] transition hover:bg-[var(--yellow)] hover:text-[#1a1400]"
                 >
                     Edit
                 </button>
@@ -92,7 +92,7 @@ export default function AdminRowMenu({ resource, row, capabilities = {}, onEdit,
                             onImpersonate(row);
                         }
                     }}
-                    className="inline-flex h-6 items-center rounded-md border border-[var(--line)] bg-white px-2 text-[11.5px] font-medium text-[var(--ink)] transition hover:border-[var(--yellow)] hover:bg-[var(--wash)]"
+                    className="inline-flex h-6 shrink-0 items-center whitespace-nowrap rounded-md border border-[var(--line)] bg-white px-2 text-[11.5px] font-medium text-[var(--ink)] transition hover:border-[var(--yellow)] hover:bg-[var(--wash)]"
                 >
                     Log in as
                 </button>
@@ -103,7 +103,7 @@ export default function AdminRowMenu({ resource, row, capabilities = {}, onEdit,
                     type="button"
                     aria-label="More actions"
                     onClick={() => setOpen((current) => !current)}
-                    className={`inline-flex h-6 w-6 items-center justify-center rounded-md border transition ${
+                    className={`inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-md border transition ${
                         open
                             ? 'border-[var(--yellow)] bg-[var(--wash)] text-[var(--ink)]'
                             : 'border-[var(--line)] bg-white text-[var(--muted)] hover:border-[var(--line-2)] hover:text-[var(--ink)]'

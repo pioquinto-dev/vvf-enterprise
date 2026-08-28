@@ -5,11 +5,8 @@ const RANGES = ['7D', '30D', '6M', '1Y'];
 const CATEGORIES = [
     ['all', 'All activity'],
     ['sign_up', 'Sign ups'],
-    ['regular_trial', 'Regular trials'],
-    ['affiliate_trial', 'Affiliate trials'],
-    ['paid', 'Active paid'],
+    ['subscription', 'Subscription'],
     ['engagement', 'Engagement'],
-    ['cancelled', 'Cancelled'],
 ];
 const EVENT_LABELS = {
     account_created: 'Signup Created',
@@ -20,12 +17,22 @@ const EVENT_LABELS = {
     video_analysis_triggered: 'Video Analysis Triggered',
     checkout_initiated: 'Checkout Initiated',
     trial_started: 'Trial Started',
+    trial_completed: 'Trial Completed',
     subscription_paid: 'Subscription Activated',
+    subscription_reactivated: 'Subscription Reactivated',
+    subscription_cancellation_requested: 'Cancellation Requested',
+    subscription_cancellation_scheduled: 'Cancellation Scheduled',
+    subscription_cancellation_reverted: 'Cancellation Reverted',
+    subscription_reactivation_requested: 'Reactivation Requested',
     subscription_cancelled: 'Subscription Canceled',
+    subscription_reverted_to_free: 'Reverted To Free',
+    payment_failed: 'Payment Failed',
+    payment_recovered: 'Payment Recovered',
+    invoice_paid: 'Invoice Paid',
     account_deletion_requested: 'Account Deletion Requested',
     account_deleted: 'Account Deleted',
 };
-const TONES = { sign_up: '#20cfc2', regular_trial: '#ffae19', affiliate_trial: '#9b6cff', paid: '#ee4393', engagement: '#7b5cff', cancelled: '#fb5c6a' };
+const TONES = { sign_up: '#20cfc2', subscription: '#ee4393', engagement: '#7b5cff' };
 
 function formatTimestamp(value) {
     if (!value) return '-';
@@ -87,9 +94,9 @@ export default function ActivityLog({ rows = [], filters = {}, events = [], pagi
                     ))}
                 </div>
 
-                <div className="mt-4 flex items-center justify-between gap-3 text-[11px] text-[#718197]">
+                <div className="mt-4 flex flex-col gap-2 text-[11px] text-[#718197] sm:flex-row sm:items-center sm:justify-between sm:gap-3">
                     <span>{pagination.total ?? 0} activities</span>
-                    <div className="flex gap-2">
+                    <div className="flex items-center gap-2">
                         <button type="button" disabled={(pagination.currentPage ?? 1) <= 1} onClick={() => goToPage(pagination.currentPage - 1)} className="rounded-lg border border-[#dce4f0] bg-white px-3 py-1.5 font-semibold text-[var(--ink)] disabled:cursor-not-allowed disabled:opacity-45">Previous</button>
                         <span className="px-1 py-1.5">Page {pagination.currentPage ?? 1} of {pagination.lastPage ?? 1}</span>
                         <button type="button" disabled={(pagination.currentPage ?? 1) >= (pagination.lastPage ?? 1)} onClick={() => goToPage(pagination.currentPage + 1)} className="rounded-lg border border-[#dce4f0] bg-white px-3 py-1.5 font-semibold text-[var(--ink)] disabled:cursor-not-allowed disabled:opacity-45">Next</button>

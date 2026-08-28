@@ -153,7 +153,7 @@ class BillingService
         ]);
 
         $this->utmAttributionService->createSubscriptionAttribution($user, $subscriptionId);
-        $this->activity?->record($user, $status === 'trialing' ? 'regular_trial' : 'paid', $status === 'trialing' ? 'trial_started' : 'subscription_paid', $status === 'trialing' ? "Started a trial on {$plan->name}." : "Started a paid subscription on {$plan->name}.", ['plan' => $plan->slug], 'subscription:'.$sessionId.':'.$status);
+        $this->activity?->record($user, 'subscription', $status === 'trialing' ? 'trial_started' : 'subscription_paid', $status === 'trialing' ? "Started a trial on {$plan->name}." : "Started a paid subscription on {$plan->name}.", ['plan' => $plan->slug], 'subscription:'.$sessionId.':'.$status);
 
         if (! in_array((string) ($existingSubscription?->status ?? ''), ['active', 'trialing', 'trial'], true)) {
             $this->emails->sendSubscriptionStarted($user, $subscription);
@@ -571,6 +571,19 @@ class BillingService
         $this->stripe->updateSubscription($subscription->stripe_subscription_id, [
             'cancel_at_period_end' => true,
         ]);
+
+        $this->activity?->record(
+            $user,
+            'subscription',
+            'subscription_cancellation_requested',
+            'Requested subscription cancellation at period end.',
+            [
+                'subscription_id' => $subscription->id,
+                'plan' => data_get($subscription->metadata, 'plan_slug', $user->current_plan_slug),
+                'stripe_subscription_id' => $subscription->stripe_subscription_id,
+            ],
+            'subscription:cancel-request:'.$subscription->id
+        );
     }
 
     public function reactivateSubscription(User $user): void
@@ -591,6 +604,19 @@ class BillingService
         $this->stripe->updateSubscription($subscription->stripe_subscription_id, [
             'cancel_at_period_end' => false,
         ]);
+
+        $this->activity?->record(
+            $user,
+            'subscription',
+            'subscription_reactivation_requested',
+            'Requested subscription reactivation.',
+            [
+                'subscription_id' => $subscription->id,
+                'plan' => data_get($subscription->metadata, 'plan_slug', $user->current_plan_slug),
+                'stripe_subscription_id' => $subscription->stripe_subscription_id,
+            ],
+            'subscription:reactivation-request:'.$subscription->id
+        );
     }
 
     public function ensureSubscriptionRecord(User $user): Subscription

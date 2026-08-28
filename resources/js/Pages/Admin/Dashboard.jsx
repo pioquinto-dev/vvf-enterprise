@@ -74,7 +74,7 @@ function AcquisitionDashboard({ acquisition = {} }) {
                 </span>
             </div>
 
-            <div className="mt-3 grid grid-cols-4 overflow-hidden rounded-2xl border border-[#dce4f0] bg-[#fbfdff]">
+            <div className="mt-3 grid grid-cols-2 overflow-hidden rounded-2xl border border-[#dce4f0] bg-[#fbfdff] sm:grid-cols-4">
                 {metrics.map((metric) => {
                     const active = activeMetric?.key === metric.key;
 
@@ -84,7 +84,7 @@ function AcquisitionDashboard({ acquisition = {} }) {
                             type="button"
                             disabled={metric.locked}
                             onClick={() => selectMetric(metric)}
-                            className={`min-h-[62px] border-b border-[#e8edf5] px-3 py-2.5 text-left transition sm:border-r sm:border-b-0 last:sm:border-r-0 ${
+                            className={`min-h-[62px] border-b border-[#e8edf5] px-3 py-2.5 text-left transition odd:border-r sm:border-r sm:border-b-0 last:sm:border-r-0 ${
                                 active
                                     ? 'bg-white ring-1 ring-inset ring-[#49d4ef]'
                                     : metric.locked
@@ -183,8 +183,8 @@ function ConversionFunnel({ funnel = {} }) {
 
             <div className="mt-5 space-y-3">
                 {steps.map((step) => (
-                    <div key={step.key} className="grid grid-cols-[42px_1fr_86px] items-center gap-2 sm:grid-cols-[54px_1fr_112px] sm:gap-3">
-                        <span className="text-[10.5px] font-medium text-[#55667d]">{step.label}</span>
+                    <div key={step.key} className="grid grid-cols-[58px_1fr_78px] items-center gap-2 sm:grid-cols-[54px_1fr_112px] sm:gap-3">
+                        <span className="text-[10.5px] leading-tight font-medium text-[#55667d]">{step.label}</span>
                         <div className="flex items-center gap-2">
                             <strong className="w-7 text-[12px] text-[var(--ink)]">{step.value.toLocaleString()}</strong>
                             <div className="h-3 flex-1 overflow-hidden rounded-full bg-[#edf1f6]">
@@ -204,15 +204,12 @@ function ConversionFunnel({ funnel = {} }) {
     );
 }
 
-const ACTIVITY_TONES = { sign_up: '#20cfc2', regular_trial: '#ffae19', affiliate_trial: '#9b6cff', paid: '#ee4393', engagement: '#7b5cff', cancelled: '#fb5c6a' };
+const ACTIVITY_TONES = { sign_up: '#20cfc2', subscription: '#ee4393', engagement: '#7b5cff' };
 const ACTIVITY_FILTERS = [
     ['all', 'All'],
     ['sign_up', 'Sign up'],
-    ['regular_trial', 'Regular trials'],
-    ['affiliate_trial', 'Affiliate trials'],
-    ['paid', 'Paid'],
+    ['subscription', 'Subscription'],
     ['engagement', 'Engagement'],
-    ['cancelled', 'Cancelled'],
 ];
 
 function RecentActivity({ activity = {} }) {
@@ -285,7 +282,8 @@ export default function Dashboard({ trend = [], stats = [], snapshot = {}, range
                         {snapshot.capturedAt ? 'Snapshot loaded' : 'No snapshot'}
                     </span>
                     <span className="text-[12px] text-[var(--muted)]">
-                        {formatDay(snapshot.rangeStart)} - {formatDay(snapshot.rangeEnd)} · {snapshot.rangeStart} to {snapshot.rangeEnd}
+                        {formatDay(snapshot.rangeStart)} - {formatDay(snapshot.rangeEnd)}
+                        <span className="hidden sm:inline"> · {snapshot.rangeStart} to {snapshot.rangeEnd}</span>
                     </span>
                     <button
                         type="button"
@@ -325,7 +323,7 @@ export default function Dashboard({ trend = [], stats = [], snapshot = {}, range
                 <AdminTrendChart points={trend} />
             </section>
 
-            <div className="mt-3 grid grid-cols-3 gap-2 sm:gap-3 lg:grid-cols-5">
+            <div className="mt-3 grid grid-cols-2 gap-2 min-[420px]:grid-cols-3 sm:gap-3 lg:grid-cols-5">
                 {stats.map((card) => (
                     <StatCard key={card.key} card={card} />
                 ))}

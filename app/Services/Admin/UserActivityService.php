@@ -26,7 +26,7 @@ class UserActivityService
         $range = strtoupper((string) $request->query('range', '30D'));
         $rangeDays = ['7D' => 7, '30D' => 30, '6M' => 180, '1Y' => 365];
         $range = array_key_exists($range, $rangeDays) ? $range : '30D';
-        $categories = ['sign_up', 'regular_trial', 'affiliate_trial', 'paid', 'engagement', 'cancelled'];
+        $categories = ['sign_up', 'subscription', 'engagement'];
         $category = (string) $request->query('category', 'all');
         $category = in_array($category, $categories, true) ? $category : 'all';
         $event = trim((string) $request->query('event', 'all'));

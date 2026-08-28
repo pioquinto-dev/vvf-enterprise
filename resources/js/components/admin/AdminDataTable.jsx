@@ -87,7 +87,7 @@ export default function AdminDataTable({ columns = [], rows = [], resource, capa
                                 </th>
                             ))}
                             {hasActions && (
-                                <th className="sticky top-0 z-10 w-[190px] border-b border-[var(--line)] bg-[var(--paper)] px-4 py-2 text-right text-[11px] font-semibold tracking-[.06em] whitespace-nowrap text-[var(--faint)] uppercase">
+                                <th className="sticky top-0 z-10 min-w-[190px] border-b border-[var(--line)] bg-[var(--paper)] px-4 py-2 text-right text-[11px] font-semibold tracking-[.06em] whitespace-nowrap text-[var(--faint)] uppercase">
                                     Actions
                                 </th>
                             )}
@@ -105,7 +105,7 @@ export default function AdminDataTable({ columns = [], rows = [], resource, capa
                                     </td>
                                 ))}
                                 {hasActions && (
-                                    <td className="border-b border-[var(--line)] px-4 py-2.5 text-right">
+                                    <td className="border-b border-[var(--line)] px-4 py-2.5 text-right whitespace-nowrap">
                                         <AdminRowMenu
                                             resource={resource}
                                             row={row}
@@ -125,18 +125,18 @@ export default function AdminDataTable({ columns = [], rows = [], resource, capa
             <div className="divide-y divide-[var(--line)] md:hidden">
                 {rows.map((row, rowIndex) => (
                     <article key={row.id ?? rowIndex} className="group grid gap-2 px-4 py-3">
-                        <div className="flex items-center justify-between gap-2">
-                            <div className="min-w-0">{renderCell(columns[0], row, 0)}</div>
-                            {hasActions && (
-                                <AdminRowMenu resource={resource} row={row} capabilities={capabilities} onEdit={onEdit} onPreview={onPreview} onImpersonate={onImpersonate} />
-                            )}
-                        </div>
+                        <div className="min-w-0">{renderCell(columns[0], row, 0)}</div>
                         {columns.slice(1).map((column) => (
                             <div key={column.key} className="flex items-center justify-between gap-4">
-                                <span className="text-[11px] text-[var(--faint)]">{column.label}</span>
-                                <span className="min-w-0 text-right">{renderCell(column, row, 1)}</span>
+                                <span className="shrink-0 text-[11px] text-[var(--faint)]">{column.label}</span>
+                                <span className="min-w-0 truncate text-right">{renderCell(column, row, 1)}</span>
                             </div>
                         ))}
+                        {hasActions && (
+                            <div className="mt-1 flex flex-wrap justify-end gap-1.5 border-t border-[var(--line)] pt-2.5">
+                                <AdminRowMenu resource={resource} row={row} capabilities={capabilities} onEdit={onEdit} onPreview={onPreview} onImpersonate={onImpersonate} />
+                            </div>
+                        )}
                     </article>
                 ))}
             </div>
