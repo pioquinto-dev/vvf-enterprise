@@ -297,10 +297,10 @@ export const FAQS = [
 		q: "Why focus on breakouts?",
 		a: "A video with 4 million views from a creator with 4 million followers is great, but a video with 4 million views from a creator with 4 thousand followers is something to pay attention to. Breakouts are videos that outperform their creator's average. That's what we want to track."
 	},
-	{
-		q: "Why is Brand Beacon more than just a scraper?",
-		a: "Because raw data is only the starting point. The real work is reliable collection, media preservation, normalization, deduplication, ranking, historical comparison, and constant maintenance as upstream platforms change. That operational layer is what makes the product useful, and much harder to reproduce than it looks."
-	},
+//	{
+//		q: "Why is Brand Beacon more than just a scraper?",
+//		a: "Because raw data is only the starting point. The real work is reliable collection, media preservation, normalization, deduplication, ranking, historical comparison, and constant maintenance as upstream platforms change. That operational layer is what makes the product useful, and much harder to reproduce than it looks."
+//	},
   {
     q: 'What happens after the 8-day trial?',
     a: "1 day after your search updates, we'll email that your searches refreshed and let you know you'll be billed.",
