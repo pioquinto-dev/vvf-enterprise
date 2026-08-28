@@ -572,19 +572,34 @@ export default function DetailScreen({
   const trend = insights?.trend ?? {};
   const weeklyPoints = trend?.points ?? [];
   const metricKeys = { views: 'views', eng: 'engagement', outliers: 'outliers' };
+  const latestNonEmptyWeekIndex = [...weeklyPoints].reverse().findIndex((point) => Number(point?.posts ?? 0) > 0);
+  const lastFilledWeekIndex = latestNonEmptyWeekIndex === -1 ? -1 : weeklyPoints.length - 1 - latestNonEmptyWeekIndex;
+  const firstFilledWeekIndex = weeklyPoints.findIndex((point) => Number(point?.posts ?? 0) > 0);
+  const firstFilledWeek = firstFilledWeekIndex >= 0 ? weeklyPoints[firstFilledWeekIndex] : null;
+  const lastFilledWeek = lastFilledWeekIndex >= 0 ? weeklyPoints[lastFilledWeekIndex] : null;
   const metricSeriesMap = {
-    views: trend?.metrics?.views ?? null,
-    eng: trend?.metrics?.engagement ?? null,
+    views: trend?.metrics?.views
+      ? {
+          ...trend.metrics.views,
+          current: Number(lastFilledWeek?.views ?? trend.metrics.views.current ?? 0),
+        }
+      : null,
+    eng: trend?.metrics?.engagement
+      ? {
+          ...trend.metrics.engagement,
+          current: Number(lastFilledWeek?.engagement ?? trend.metrics.engagement.current ?? 0),
+        }
+      : null,
     outliers: weeklyPoints.length > 0 ? {
       label: 'outliers',
       format: 'count',
       values: weeklyPoints.map((point) => Number(point?.outliers ?? 0)),
-      current: Number(weeklyPoints[weeklyPoints.length - 1]?.outliers ?? 0),
-      delta: weeklyPoints.length >= 2
+      current: Number(lastFilledWeek?.outliers ?? 0),
+      delta: firstFilledWeek && lastFilledWeek && firstFilledWeekIndex !== lastFilledWeekIndex
         ? {
-            value: Number(weeklyPoints[weeklyPoints.length - 1]?.outliers ?? 0) - Number(weeklyPoints[0]?.outliers ?? 0),
+            value: Number(lastFilledWeek?.outliers ?? 0) - Number(firstFilledWeek?.outliers ?? 0),
             unit: 'absolute',
-            direction: Number(weeklyPoints[weeklyPoints.length - 1]?.outliers ?? 0) > Number(weeklyPoints[0]?.outliers ?? 0) ? 'up' : (Number(weeklyPoints[weeklyPoints.length - 1]?.outliers ?? 0) < Number(weeklyPoints[0]?.outliers ?? 0) ? 'down' : 'flat'),
+            direction: Number(lastFilledWeek?.outliers ?? 0) > Number(firstFilledWeek?.outliers ?? 0) ? 'up' : (Number(lastFilledWeek?.outliers ?? 0) < Number(firstFilledWeek?.outliers ?? 0) ? 'down' : 'flat'),
           }
         : null,
     } : null,
