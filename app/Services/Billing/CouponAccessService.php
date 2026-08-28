@@ -108,7 +108,11 @@ class CouponAccessService
 
         $domain = strtolower(trim((string) $program->allowed_domain));
 
-        return $domain !== '' && Str::endsWith($normalized, '@'.$domain);
+        if ($domain === '') {
+            return true;
+        }
+
+        return Str::endsWith($normalized, '@'.$domain);
     }
 
     public function isWhitelisted(ManagedCouponProgram $program, string $normalizedEmail): bool

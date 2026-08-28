@@ -85,6 +85,17 @@ class CouponAccessServiceTest extends TestCase
         $this->assertSame('Invalid Email', $result->errorKey);
     }
 
+    public function test_blank_domain_allows_any_email_when_not_whitelist_only(): void
+    {
+        $program = $this->ignite([
+            'allowed_domain' => null,
+            'whitelist_only' => false,
+        ]);
+        $user = User::factory()->create(['email' => 'anyone@example.com']);
+
+        $this->assertTrue($this->service()->evaluate($program, $user)->allowed);
+    }
+
     public function test_vip_is_whitelist_only(): void
     {
         $program = $this->vip();
