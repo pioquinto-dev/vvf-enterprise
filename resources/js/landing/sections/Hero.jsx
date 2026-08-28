@@ -6,7 +6,7 @@ import { fetchKeywordSuggestions } from '../flow/api.js';
 const MODES = [
   {
     key: 'brand',
-    label: 'Your brand',
+    label: 'Brand',
     icon: Store,
     prompt: 'Which brand do you want to research?',
     sample: 'rhode skin',

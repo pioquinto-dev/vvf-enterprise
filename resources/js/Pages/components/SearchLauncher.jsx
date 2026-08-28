@@ -18,7 +18,7 @@ import { fetchKeywordSuggestions } from '../../landing/flow/api.js';
 const TYPES = [
     {
         key: 'brand',
-        label: 'Your brand',
+        label: 'Brand',
         icon: Store,
         placeholder: 'Enter your brand name…',
         sample: 'rhode skin',

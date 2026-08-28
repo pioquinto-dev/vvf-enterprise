@@ -21,10 +21,6 @@ export default function EntitlementsBar({ variant = 'default' }) {
     const searchLimit = billing.searchCreditsLimit ?? 0;
     const searchLeft = billing.searchCreditsRemaining ?? 0;
     const searchUsed = billing.searchCreditsUsed ?? 0;
-    const bookmarkLimit = billing.searchBookmarkLimit ?? billing.bookmarkLimit ?? 0;
-    const bookmarksUsed = billing.searchBookmarkCount ?? billing.bookmarksUsed ?? billing.bookmarkCount ?? 0;
-    const showBookmarkCounter = bookmarkLimit !== -1;
-
     // Warn only when it is nearly gone — a quiet bar that cries wolf gets ignored.
     const searchesLow = searchLimit > 0 && searchLeft <= Math.max(1, Math.round(searchLimit * 0.1));
 
@@ -53,15 +49,6 @@ export default function EntitlementsBar({ variant = 'default' }) {
                 <b>{searchUsed}</b>
                 {searchLimit > 0 && `/${searchLimit}`} searches
             </span>
-            {showBookmarkCounter && (
-                <>
-                    <i />
-                    <span>
-                        <b>{bookmarksUsed}</b>
-                        {bookmarkLimit > 0 && `/${bookmarkLimit}`} search bookmarks
-                    </span>
-                </>
-            )}
             {!billing.hasPaidPlan && (
                 <>
                     <i />

@@ -84,7 +84,7 @@ class AdminRecordController extends Controller
     /**
      * @return array<string, array<int, string>>
      */
-    private function rulesFor(string $resource, string $recordId = '__create__'): array
+    private function rulesFor(string $resource, ?string $recordId = null): array
     {
         $fields = $this->listings->editableFields($resource);
         $rules = [];
@@ -92,7 +92,7 @@ class AdminRecordController extends Controller
         foreach ($fields as $field) {
             if (isset($field['rules'])) {
                 $rules[$field['name']] = array_map(
-                    fn (string $rule): string => str_replace('{id}', $recordId, $rule),
+                    fn (string $rule): string => $this->interpolateRule($rule, $recordId),
                     $field['rules'],
                 );
 
@@ -111,5 +111,18 @@ class AdminRecordController extends Controller
         }
 
         return $rules;
+    }
+
+    private function interpolateRule(string $rule, ?string $recordId): string
+    {
+        if (! str_contains($rule, '{id}')) {
+            return $rule;
+        }
+
+        if ($recordId === null) {
+            return str_replace(',{id}', '', $rule);
+        }
+
+        return str_replace('{id}', $recordId, $rule);
     }
 }
