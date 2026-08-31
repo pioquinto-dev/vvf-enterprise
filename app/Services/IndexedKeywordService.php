@@ -6,6 +6,7 @@ use App\Models\CustomKeywordSearch;
 use App\Models\IndexedKeyword;
 use App\Services\CustomKeywordSearch\KeywordNormalizer;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 
 class IndexedKeywordService
 {
@@ -261,8 +262,8 @@ class IndexedKeywordService
             ->whereIn('search_type', $searchTypes)
             ->whereNotNull('phrase')
             ->where('phrase', '!=', '')
-            ->when($existingLabels !== [], fn ($query) => $query->whereNotIn('LOWER(phrase)', $existingLabels))
-            ->groupBy('phrase', 'normalized_phrase')
+            ->when($existingLabels !== [], fn ($query) => $query->whereNotIn(DB::raw('LOWER(phrase)'), $existingLabels))
+            ->groupBy('phrase', DB::raw('LOWER(phrase)'))
             ->orderByDesc('usage_count')
             ->orderByDesc('latest_at')
             ->limit($limit)

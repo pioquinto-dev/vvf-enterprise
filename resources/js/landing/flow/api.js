@@ -80,6 +80,14 @@ export function fetchRecentSearches() {
   return request(`${API_V1}/saved-searches/recent`);
 }
 
+export function fetchBookmarkedVideos() {
+  return request(`${API_V1}/saved-searches/bookmarked-videos`);
+}
+
+export function fetchAnalysisHistory() {
+  return request(`${API_V1}/saved-searches/analysis-history`);
+}
+
 export const savedSearch = {
   get: (id) => request(`${API_V1}/saved-searches/${id}/json`),
   bookmark: (id, bookmarked) =>

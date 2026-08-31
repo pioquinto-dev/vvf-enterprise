@@ -252,6 +252,8 @@ class SearchRunProcessor
         // prevents a long media copy from delaying an otherwise ready search.
         $this->archiveMediaInBackground($freshlyScraped);
 
+        $search = $search->fresh() ?? $search;
+
         $trigger->update([
             'item_count' => count($rawItems),
             'result_count' => count($kept),

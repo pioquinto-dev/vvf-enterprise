@@ -280,22 +280,30 @@ class SavedSearchController extends Controller
 
         // The Library "Saved videos" tab lives in the same default view.
         $videoIds = $bookmarkedOnly ? $this->bookmarks->idsForUser($request->user()) : [];
-        $bookmarkedVideos = $videoIds === []
-            ? []
-            : ViralVideo::query()
-                ->visible()
-                ->whereIn('id', $videoIds)
-                ->get()
-                ->map(fn (ViralVideo $video): array => $video->toCardArray())
-                ->all();
 
         return Inertia::render('SavedSearches/Index', [
             'searches' => $searches,
-            'bookmarkedVideos' => $bookmarkedVideos,
-            'analysisHistory' => $bookmarkedOnly ? $this->analysisHistory($request) : [],
+            'bookmarkedVideos' => [],
+            'bookmarkedVideosCount' => count($videoIds),
+            'analysisHistory' => [],
+            'analysisHistoryCount' => $bookmarkedOnly ? $this->analysisHistoryCount($request) : 0,
             'filterType' => $filterType,
             'watchlistedOnly' => $bookmarkedOnly,
             'isAuthenticated' => $request->user() !== null,
+        ]);
+    }
+
+    public function bookmarkedVideos(Request $request): JsonResponse
+    {
+        return response()->json([
+            'videos' => $this->bookmarkedVideosPayload($request),
+        ]);
+    }
+
+    public function analysisHistoryJson(Request $request): JsonResponse
+    {
+        return response()->json([
+            'history' => $this->analysisHistory($request),
         ]);
     }
 
@@ -378,6 +386,36 @@ class SavedSearchController extends Controller
             ->all();
     }
 
+    private function analysisHistoryCount(Request $request): int
+    {
+        $user = $request->user();
+
+        if ($user === null) {
+            return 0;
+        }
+
+        return VideoAnalysis::query()
+            ->where('user_id', $user->id)
+            ->whereNotNull('viral_video_id')
+            ->count();
+    }
+
+    private function bookmarkedVideosPayload(Request $request): array
+    {
+        $videoIds = $this->bookmarks->idsForUser($request->user());
+
+        if ($videoIds === []) {
+            return [];
+        }
+
+        return ViralVideo::query()
+            ->visible()
+            ->whereIn('id', $videoIds)
+            ->get()
+            ->map(fn (ViralVideo $video): array => $video->toCardArray())
+            ->all();
+    }
+
     /**
      * GET /brands — the dedicated brand search hub.
      */
@@ -413,6 +451,19 @@ class SavedSearchController extends Controller
             'videos as outlier_count' => fn ($query) => $query->where('is_new_breakout', true),
         ]);
         $searches->loadMax('videos', 'viral_score');
+        $searches->load('latestSnapshot');
+
+        $averageViewsBySearchId = CustomKeywordSearchVideo::query()
+            ->join('viral_videos', 'viral_videos.id', '=', 'custom_keyword_search_videos.viral_video_id')
+            ->whereIn('custom_keyword_search_videos.custom_keyword_search_id', $searches->pluck('id'))
+            ->whereNull('viral_videos.archived_at')
+            ->groupBy('custom_keyword_search_videos.custom_keyword_search_id')
+            ->selectRaw('custom_keyword_search_videos.custom_keyword_search_id, AVG(viral_videos.views) as average_video_views')
+            ->pluck('average_video_views', 'custom_keyword_search_videos.custom_keyword_search_id');
+
+        $searches->each(function (CustomKeywordSearch $search) use ($averageViewsBySearchId): void {
+            $search->average_video_views = $averageViewsBySearchId->get($search->id);
+        });
 
         $cards = $searches
             ->map(fn (CustomKeywordSearch $search): array => SavedSearchPresenter::card($search))

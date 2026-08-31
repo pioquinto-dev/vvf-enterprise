@@ -3264,6 +3264,12 @@ function fetchNotifications(ids) {
 function fetchRecentSearches() {
 	return request(`${API_V1}/saved-searches/recent`);
 }
+function fetchBookmarkedVideos() {
+	return request(`${API_V1}/saved-searches/bookmarked-videos`);
+}
+function fetchAnalysisHistory() {
+	return request(`${API_V1}/saved-searches/analysis-history`);
+}
 var savedSearch = {
 	get: (id) => request(`${API_V1}/saved-searches/${id}/json`),
 	bookmark: (id, bookmarked) => request(`${API_V1}/saved-searches/${id}/bookmark`, {
@@ -11103,13 +11109,19 @@ function AnalysisHistoryRow({ entry, href, statusLabel, searchNames }) {
 		})]
 	});
 }
-function Index({ searches: initialSearches, bookmarkedVideos = [], analysisHistory = [], filterType = null, watchlistedOnly: bookmarkedOnly = true }) {
+function Index({ searches: initialSearches, bookmarkedVideos: initialBookmarkedVideos = [], bookmarkedVideosCount = 0, analysisHistory: initialAnalysisHistory = [], analysisHistoryCount = 0, filterType = null, watchlistedOnly: bookmarkedOnly = true }) {
 	const currentPath = typeof window === "undefined" ? "/library" : `${window.location.pathname}${window.location.search}`;
 	const isBrandCategoryView = filterType === "brand-group";
 	const showTabs = bookmarkedOnly && !filterType;
 	const [searches, setSearches] = useState(initialSearches);
 	const [tab, setTab] = useState("searches");
 	const [openMenuId, setOpenMenuId] = useState(null);
+	const [bookmarkedVideos, setBookmarkedVideos] = useState(initialBookmarkedVideos);
+	const [analysisHistory, setAnalysisHistory] = useState(initialAnalysisHistory);
+	const [bookmarkedVideosLoaded, setBookmarkedVideosLoaded] = useState(initialBookmarkedVideos.length > 0 || bookmarkedVideosCount === 0);
+	const [analysisHistoryLoaded, setAnalysisHistoryLoaded] = useState(initialAnalysisHistory.length > 0 || analysisHistoryCount === 0);
+	const [bookmarkedVideosLoading, setBookmarkedVideosLoading] = useState(false);
+	const [analysisHistoryLoading, setAnalysisHistoryLoading] = useState(false);
 	const [query, setQuery] = useState("");
 	const [statusFilter, setStatusFilter] = useState("all");
 	const [searchTypeFilter, setSearchTypeFilter] = useState(isBrandCategoryView ? "all" : filterType ?? "all");
@@ -11152,6 +11164,46 @@ function Index({ searches: initialSearches, bookmarkedVideos = [], analysisHisto
 		document.addEventListener("keydown", onEsc);
 		return () => document.removeEventListener("keydown", onEsc);
 	}, [modalState.type, submitting]);
+	useEffect(() => {
+		let cancelled = false;
+		if (tab === "videos" && !bookmarkedVideosLoaded && !bookmarkedVideosLoading) {
+			setBookmarkedVideosLoading(true);
+			fetchBookmarkedVideos().then((payload) => {
+				if (cancelled) return;
+				setBookmarkedVideos(Array.isArray(payload?.videos) ? payload.videos : []);
+				setBookmarkedVideosLoaded(true);
+			}).catch(() => {
+				if (cancelled) return;
+				setBookmarkedVideos([]);
+				setBookmarkedVideosLoaded(true);
+			}).finally(() => {
+				if (!cancelled) setBookmarkedVideosLoading(false);
+			});
+		}
+		if (tab === "analysis" && !analysisHistoryLoaded && !analysisHistoryLoading) {
+			setAnalysisHistoryLoading(true);
+			fetchAnalysisHistory().then((payload) => {
+				if (cancelled) return;
+				setAnalysisHistory(Array.isArray(payload?.history) ? payload.history : []);
+				setAnalysisHistoryLoaded(true);
+			}).catch(() => {
+				if (cancelled) return;
+				setAnalysisHistory([]);
+				setAnalysisHistoryLoaded(true);
+			}).finally(() => {
+				if (!cancelled) setAnalysisHistoryLoading(false);
+			});
+		}
+		return () => {
+			cancelled = true;
+		};
+	}, [
+		analysisHistoryLoaded,
+		analysisHistoryLoading,
+		bookmarkedVideosLoaded,
+		bookmarkedVideosLoading,
+		tab
+	]);
 	const filteredSearches = useMemo(() => {
 		const q = query.trim().toLowerCase();
 		const next = searches.filter((s) => {
@@ -11416,7 +11468,7 @@ function Index({ searches: initialSearches, bookmarkedVideos = [], analysisHisto
 							}),
 							/* @__PURE__ */ jsx("span", {
 								className: "tab__c",
-								children: bookmarkedVideos.length
+								children: bookmarkedVideosCount
 							})
 						]
 					}),
@@ -11429,7 +11481,7 @@ function Index({ searches: initialSearches, bookmarkedVideos = [], analysisHisto
 							/* @__PURE__ */ jsx("span", { children: "Analysis History" }),
 							/* @__PURE__ */ jsx("span", {
 								className: "tab__c",
-								children: analysisHistory.length
+								children: analysisHistoryCount
 							})
 						]
 					})
@@ -11573,7 +11625,24 @@ function Index({ searches: initialSearches, bookmarkedVideos = [], analysisHisto
 						}, value))
 					})
 				})]
-			}), filteredVideos.length === 0 ? /* @__PURE__ */ jsxs("div", {
+			}), bookmarkedVideosLoading ? /* @__PURE__ */ jsxs("div", {
+				className: "empty",
+				children: [
+					/* @__PURE__ */ jsx("div", {
+						className: "empty__i",
+						children: /* @__PURE__ */ jsx(Play, { className: "h-6 w-6" })
+					}),
+					/* @__PURE__ */ jsx("h2", { children: "Loading saved videos" }),
+					/* @__PURE__ */ jsx("p", {
+						className: "muted",
+						style: {
+							maxWidth: 360,
+							margin: "10px auto 0"
+						},
+						children: "Pulling your bookmarked video library now."
+					})
+				]
+			}) : filteredVideos.length === 0 ? /* @__PURE__ */ jsxs("div", {
 				className: "empty",
 				children: [
 					/* @__PURE__ */ jsx("div", {
@@ -11643,7 +11712,24 @@ function Index({ searches: initialSearches, bookmarkedVideos = [], analysisHisto
 						}, value))
 					})]
 				})]
-			}), filteredAnalyses.length === 0 ? /* @__PURE__ */ jsxs("div", {
+			}), analysisHistoryLoading ? /* @__PURE__ */ jsxs("div", {
+				className: "empty",
+				children: [
+					/* @__PURE__ */ jsx("div", {
+						className: "empty__i",
+						children: /* @__PURE__ */ jsx(Search, { className: "h-6 w-6" })
+					}),
+					/* @__PURE__ */ jsx("h2", { children: "Loading analysis history" }),
+					/* @__PURE__ */ jsx("p", {
+						className: "muted",
+						style: {
+							maxWidth: 360,
+							margin: "10px auto 0"
+						},
+						children: "Gathering your completed and in-flight video analyses."
+					})
+				]
+			}) : filteredAnalyses.length === 0 ? /* @__PURE__ */ jsxs("div", {
 				className: "empty",
 				children: [
 					/* @__PURE__ */ jsx("div", {

@@ -6,7 +6,12 @@ import EntitlementsBar from '../components/EntitlementsBar.jsx';
 import SavedSearchRow from '../components/SavedSearchRow.jsx';
 import VideoCard from '../components/VideoCard.jsx';
 import { Arrow, Bookmark, Search, Chevron, Plus, Dots, Play } from '../../landing/components/Icons.jsx';
-import { savedSearch as api, untrackSearch } from '../../landing/flow/api.js';
+import {
+  fetchAnalysisHistory,
+  fetchBookmarkedVideos,
+  savedSearch as api,
+  untrackSearch,
+} from '../../landing/flow/api.js';
 import { withReturnTo } from '../utils/navigation.js';
 
 const FILTER_LABELS = {
@@ -186,8 +191,10 @@ function AnalysisHistoryRow({ entry, href, statusLabel, searchNames }) {
 
 export default function Index({
   searches: initialSearches,
-  bookmarkedVideos = [],
-  analysisHistory = [],
+  bookmarkedVideos: initialBookmarkedVideos = [],
+  bookmarkedVideosCount = 0,
+  analysisHistory: initialAnalysisHistory = [],
+  analysisHistoryCount = 0,
   filterType = null,
   watchlistedOnly: bookmarkedOnly = true,
 }) {
@@ -198,6 +205,16 @@ export default function Index({
   const [searches, setSearches] = useState(initialSearches);
   const [tab, setTab] = useState('searches');
   const [openMenuId, setOpenMenuId] = useState(null);
+  const [bookmarkedVideos, setBookmarkedVideos] = useState(initialBookmarkedVideos);
+  const [analysisHistory, setAnalysisHistory] = useState(initialAnalysisHistory);
+  const [bookmarkedVideosLoaded, setBookmarkedVideosLoaded] = useState(
+    initialBookmarkedVideos.length > 0 || bookmarkedVideosCount === 0
+  );
+  const [analysisHistoryLoaded, setAnalysisHistoryLoaded] = useState(
+    initialAnalysisHistory.length > 0 || analysisHistoryCount === 0
+  );
+  const [bookmarkedVideosLoading, setBookmarkedVideosLoading] = useState(false);
+  const [analysisHistoryLoading, setAnalysisHistoryLoading] = useState(false);
   const [query, setQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [searchTypeFilter, setSearchTypeFilter] = useState(isBrandCategoryView ? 'all' : filterType ?? 'all');
@@ -241,6 +258,56 @@ export default function Index({
     document.addEventListener('keydown', onEsc);
     return () => document.removeEventListener('keydown', onEsc);
   }, [modalState.type, submitting]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    if (tab === 'videos' && !bookmarkedVideosLoaded && !bookmarkedVideosLoading) {
+      setBookmarkedVideosLoading(true);
+      fetchBookmarkedVideos()
+        .then((payload) => {
+          if (cancelled) return;
+          setBookmarkedVideos(Array.isArray(payload?.videos) ? payload.videos : []);
+          setBookmarkedVideosLoaded(true);
+        })
+        .catch(() => {
+          if (cancelled) return;
+          setBookmarkedVideos([]);
+          setBookmarkedVideosLoaded(true);
+        })
+        .finally(() => {
+          if (!cancelled) setBookmarkedVideosLoading(false);
+        });
+    }
+
+    if (tab === 'analysis' && !analysisHistoryLoaded && !analysisHistoryLoading) {
+      setAnalysisHistoryLoading(true);
+      fetchAnalysisHistory()
+        .then((payload) => {
+          if (cancelled) return;
+          setAnalysisHistory(Array.isArray(payload?.history) ? payload.history : []);
+          setAnalysisHistoryLoaded(true);
+        })
+        .catch(() => {
+          if (cancelled) return;
+          setAnalysisHistory([]);
+          setAnalysisHistoryLoaded(true);
+        })
+        .finally(() => {
+          if (!cancelled) setAnalysisHistoryLoading(false);
+        });
+    }
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    analysisHistoryLoaded,
+    analysisHistoryLoading,
+    bookmarkedVideosLoaded,
+    bookmarkedVideosLoading,
+    tab,
+  ]);
 
   const filteredSearches = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -500,12 +567,12 @@ export default function Index({
               <Play className="h-[15px] w-[15px]" />
               <span className="sm:hidden">Videos</span>
               <span className="hidden sm:inline">Saved videos</span>
-              <span className="tab__c">{bookmarkedVideos.length}</span>
+              <span className="tab__c">{bookmarkedVideosCount}</span>
             </button>
             <button type="button" className={`tab${tab === 'analysis' ? ' is-on' : ''}`} onClick={() => setTab('analysis')}>
               <Search className="h-[15px] w-[15px]" />
               <span>Analysis History</span>
-              <span className="tab__c">{analysisHistory.length}</span>
+              <span className="tab__c">{analysisHistoryCount}</span>
             </button>
           </div>
         )}
@@ -609,7 +676,17 @@ export default function Index({
               </div>
             </div>
 
-            {filteredVideos.length === 0 ? (
+            {bookmarkedVideosLoading ? (
+              <div className="empty">
+                <div className="empty__i">
+                  <Play className="h-6 w-6" />
+                </div>
+                <h2>Loading saved videos</h2>
+                <p className="muted" style={{ maxWidth: 360, margin: '10px auto 0' }}>
+                  Pulling your bookmarked video library now.
+                </p>
+              </div>
+            ) : filteredVideos.length === 0 ? (
               <div className="empty">
                 <div className="empty__i">
                   <Play className="h-6 w-6" />
@@ -656,7 +733,17 @@ export default function Index({
               </div>
             </div>
 
-            {filteredAnalyses.length === 0 ? (
+            {analysisHistoryLoading ? (
+              <div className="empty">
+                <div className="empty__i">
+                  <Search className="h-6 w-6" />
+                </div>
+                <h2>Loading analysis history</h2>
+                <p className="muted" style={{ maxWidth: 360, margin: '10px auto 0' }}>
+                  Gathering your completed and in-flight video analyses.
+                </p>
+              </div>
+            ) : filteredAnalyses.length === 0 ? (
               <div className="empty">
                 <div className="empty__i">
                   <Search className="h-6 w-6" />

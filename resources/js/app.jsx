@@ -4,10 +4,17 @@ import { createInertiaApp } from '@inertiajs/react';
 import { createRoot } from 'react-dom/client';
 
 createInertiaApp({
-    resolve: (name) => {
-        const pages = import.meta.glob('./Pages/**/*.jsx', { eager: true });
+    resolve: async (name) => {
+        const pages = import.meta.glob('./Pages/**/*.jsx');
+        const page = pages[`./Pages/${name}.jsx`];
 
-        return pages[`./Pages/${name}.jsx`];
+        if (!page) {
+            throw new Error(`Unknown Inertia page: ${name}`);
+        }
+
+        const module = await page();
+
+        return module.default;
     },
     setup({ el, App, props }) {
         createRoot(el).render(<App {...props} />);

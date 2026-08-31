@@ -9,10 +9,12 @@ use App\Models\User;
 use App\Models\VideoAnalysis;
 use App\Models\ViralVideo;
 use App\Jobs\PrepareVideoAnalysis;
+use App\Services\Brevo\BrevoLifecycleEmailService;
 use App\Services\CustomKeywordSearch\SearchRunProcessor;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
+use Mockery;
 use Tests\TestCase;
 
 class SearchRunProcessorTest extends TestCase
@@ -179,6 +181,38 @@ class SearchRunProcessorTest extends TestCase
         $this->assertSame(2, VideoAnalysis::query()->where('user_id', $user->id)->count());
         $this->assertSame(0, VideoAnalysis::query()->where('user_id', $user->id)->where('counts_toward_quota', true)->count());
         Queue::assertPushed(PrepareVideoAnalysis::class, 2);
+    }
+
+    public function test_a_claimed_guest_search_still_sends_the_completion_email(): void
+    {
+        Queue::fake();
+
+        config()->set('brevo_notifications.search_done_enabled', true);
+        config()->set('brevo_notifications.notifications.search_done.template_id', 20);
+
+        $emails = Mockery::mock(BrevoLifecycleEmailService::class);
+        $this->app->instance(BrevoLifecycleEmailService::class, $emails);
+
+        $emails->shouldReceive('sendSearchDone')
+            ->once()
+            ->with(
+                Mockery::on(fn (User $user): bool => $user->email === 'owner@example.com'),
+                Mockery::on(fn (CustomKeywordSearch $search): bool => $search->user_id !== null)
+            )
+            ->andReturn(true);
+
+        $user = User::factory()->create(['email' => 'owner@example.com']);
+        $search = $this->search();
+        $run = $search->runs()->create(['status' => CustomKeywordSearchRun::STATUS_QUEUED]);
+
+        $this->fakeApify([$this->apifyItem()]);
+
+        CustomKeywordSearch::whereKey($search->id)->update([
+            'user_id' => $user->id,
+            'guest_token' => null,
+        ]);
+
+        app(SearchRunProcessor::class)->process($run);
     }
 
     public function test_local_corpus_matches_are_pooled_with_the_scrape(): void
