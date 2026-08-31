@@ -55,6 +55,14 @@ class CouponAccessService
             );
         }
 
+        if ($user !== null && $this->entitlements->hasPaidPlan($user)) {
+            return CouponEligibility::block(
+                'Already Paid',
+                'You are already on a paid plan',
+                'This account already has paid access. For upgrades or plan transition requests, please contact us and we can help from there.',
+            );
+        }
+
         if ($user !== null && $this->hasRedeemed($program, $user)) {
             return CouponEligibility::block(
                 'Already Redeemed',
