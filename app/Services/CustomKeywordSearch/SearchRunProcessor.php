@@ -2,7 +2,7 @@
 
 namespace App\Services\CustomKeywordSearch;
 
-use App\Jobs\ArchiveViralVideoMediaBatch;
+use App\Jobs\ArchiveViralVideoMedia;
 use App\Jobs\EnrichSearchResults;
 use App\Models\ApifyTrigger;
 use App\Models\CustomKeywordSearch;
@@ -11,6 +11,8 @@ use App\Models\CustomKeywordSearchVideo;
 use App\Models\ViralVideo;
 use App\Services\Apify\ApifyClient;
 use App\Services\Billing\BillingService;
+use App\Services\ViralVideoAnalysis\VideoAnalysisManager;
+use App\Support\AppEventLogger;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -30,9 +32,11 @@ class SearchRunProcessor
         private readonly SnapshotRecorder $snapshots,
         private readonly LocalCorpusRecall $localCorpus,
         private readonly BillingService $billing,
+        private readonly VideoAnalysisManager $videoAnalyses,
+        private readonly BrandAccountResolver $brandAccounts,
     ) {}
 
-    public function process(CustomKeywordSearchRun $run): void
+    public function process(CustomKeywordSearchRun $run, bool $throwOnFailure = false): void
     {
         $search = $run->search;
 
@@ -51,14 +55,33 @@ class SearchRunProcessor
         try {
             $this->run($search, $run);
         } catch (Throwable $e) {
+            AppEventLogger::error('search.run.failed', $e, [
+                'search_id' => $search->id,
+                'run_id' => $run->id,
+                'search_type' => $search->search_type,
+                'phrase' => $search->phrase,
+            ]);
+
             Log::error('Custom keyword search run failed.', [
                 'search_id' => $search->id,
                 'run_id' => $run->id,
                 'error' => $e->getMessage(),
             ]);
 
-            $this->failRun($run, $e->getMessage());
-            $this->settleSearchAfterFailure($search);
+            if ($throwOnFailure) {
+                throw $e;
+            }
+
+            $this->markFailed($run, $e->getMessage());
+        }
+    }
+
+    public function markFailed(CustomKeywordSearchRun $run, string $message): void
+    {
+        $this->failRun($run, $message);
+
+        if ($run->search !== null) {
+            $this->settleSearchAfterFailure($run->search);
         }
     }
 
@@ -90,6 +113,15 @@ class SearchRunProcessor
             'input' => $input,
             'search_keywords' => $search->keywords,
             'requested_by_user_id' => $search->user_id,
+        ]);
+
+        AppEventLogger::result('search.run.started', [
+            'search_id' => $search->id,
+            'run_id' => $run->id,
+            'search_type' => $search->search_type,
+            'phrase' => $search->phrase,
+            'keyword_count' => count($search->keywords ?? []),
+            'apify_trigger_id' => $trigger->id,
         ]);
 
         $started = $this->apify->startTaskRun($taskId, $input);
@@ -146,6 +178,7 @@ class SearchRunProcessor
         foreach ($rawItems as $rawItem) {
             if (! is_array($rawItem)) {
                 $invalidItems++;
+
                 continue;
             }
 
@@ -156,37 +189,66 @@ class SearchRunProcessor
             }
         }
 
-        // Pool in what the database already holds for this phrase. The corpus
-        // has been paid for by earlier runs and sibling searches — a video we
-        // already imported should not need Apify to resurface it. On a
-        // collision the scraped item wins: its stats are minutes old, the
-        // stored row's are from whenever it was last seen.
-        $localCandidates = $this->localCorpus->candidates($search);
-
-        foreach ($localCandidates as $videoId => $localItem) {
-            if (! isset($mapped[$videoId])) {
-                $mapped[$videoId] = $localItem;
-            }
-        }
-
-        ['kept' => $kept, 'summary' => $summary] = $this->matcher->prescreen(
+        // Step 1: take the full Apify dataset and drop anything that fails the
+        // normal matching gates.
+        ['kept' => $apifyMatches, 'summary' => $summary] = $this->matcher->prescreen(
             array_values($mapped),
             $search->phrase,
             $search->keywords ?? []
         );
 
+        // Step 2: pool in what the database already holds for this phrase. The
+        // corpus has been paid for by earlier runs and sibling searches — a
+        // video we already imported should not need Apify to resurface it.
+        $localCandidates = $this->localCorpus->candidates($search);
+        ['kept' => $localMatches, 'summary' => $localSummary] = $this->matcher->prescreen(
+            array_values($localCandidates),
+            $search->phrase,
+            $search->keywords ?? []
+        );
+
+        // Step 3: combine both match sets. On a collision the Apify match wins:
+        // its stats are minutes old, the stored row's are from whenever it was
+        // last seen.
+        $combined = [];
+
+        foreach ($apifyMatches as $item) {
+            $combined[$item['video_id']] = $item;
+        }
+
+        foreach ($localMatches as $item) {
+            if (! isset($combined[$item['video_id']])) {
+                $combined[$item['video_id']] = $item;
+            }
+        }
+
+        $kept = array_values($combined);
+
         $summary['received'] += $invalidItems;
         $summary['invalid_item'] += $invalidItems;
         $summary['local_pool'] = count($localCandidates);
-        $summary['kept_local'] = count(array_filter(
-            $kept,
-            fn (array $item): bool => ($item['origin'] ?? null) === 'local',
-        ));
+        $summary['kept_local'] = count($localMatches);
+        $summary['kept'] = count($kept);
+        $summary['kept_phrase'] += (int) ($localSummary['kept_phrase'] ?? 0);
+        $summary['rescued_by_handle'] += (int) ($localSummary['rescued_by_handle'] ?? 0);
+        $summary['rescued_by_supporting'] += (int) ($localSummary['rescued_by_supporting'] ?? 0);
 
+        // Step 4: sort by the strongest winners first.
         $ranked = $this->matcher->rank($kept);
         $top = array_slice($ranked, 0, (int) config('custom_keyword_search.limits.max_results', 100));
 
-        $attached = $this->persist($search, $run, $trigger, $top);
+        $summary['kept_apify'] = count($apifyMatches);
+
+        $previousWinnerVideoId = $this->previousWinnerVideoId($search);
+        $freshlyScraped = [];
+        $attached = $this->persist($search, $run, $trigger, $top, $freshlyScraped);
+        $this->fillMissingSourceHandleFromAi($search, $top);
+
+        // Fresh results can be shown before archival finishes; the repair
+        // command and async archive jobs can catch up afterward if any source
+        // URLs expire or an upload hiccups. Keeping this off the critical path
+        // prevents a long media copy from delaying an otherwise ready search.
+        $this->archiveMediaInBackground($freshlyScraped);
 
         $trigger->update([
             'item_count' => count($rawItems),
@@ -195,6 +257,31 @@ class SearchRunProcessor
             'filter_summary' => $summary,
         ]);
 
+        if ($this->reservedCredit($run) && $search->user !== null) {
+            $this->billing->syncSubscriptionUsage($search->user);
+        }
+
+        // The scrape is complete before any supplemental work begins, so a
+        // failure below must never reopen a finished run.
+        try {
+            $this->snapshots->record($search->refresh(), $run);
+        } catch (Throwable $e) {
+            Log::warning('Snapshot recording failed.', ['search_id' => $search->id, 'error' => $e->getMessage()]);
+        }
+
+        $winnerAnalysis = $this->analyzeWinnerIfChanged($search, $run, $previousWinnerVideoId);
+        if ($search->user !== null && $attached > 0 && $winnerAnalysis?->status !== \App\Models\VideoAnalysis::STATUS_COMPLETE) {
+            throw new RuntimeException('The winner video analysis did not complete: '.($winnerAnalysis?->error_message ?? 'no analysis was created.'));
+        }
+
+        // Equivalent to `php artisan search:enrich <id> --sync`. Run this
+        // inline so insights and per-card creative analysis are present when
+        // the refreshed search-results page is first rendered.
+        EnrichSearchResults::dispatchSync($search->id);
+
+        // The running screen polls this state before it navigates to the
+        // detail page. Marking the run done only after enrichment prevents a
+        // results page from rendering between the scrape and its AI content.
         $run->update([
             'status' => CustomKeywordSearchRun::STATUS_DONE,
             'completed_at' => now(),
@@ -211,25 +298,21 @@ class SearchRunProcessor
             'next_run_at' => $this->nextRunAt($search->frequency),
         ]);
 
-        if ($this->reservedCredit($run) && $search->user !== null) {
-            $this->billing->syncSubscriptionUsage($search->user);
-        }
-
-        // Everything past this point is enrichment. The scrape has already
-        // succeeded and the user's results are live — a failure here must not
-        // reopen a finished run.
-        try {
-            $this->snapshots->record($search->refresh(), $run);
-        } catch (Throwable $e) {
-            Log::warning('Snapshot recording failed.', ['search_id' => $search->id, 'error' => $e->getMessage()]);
-        }
-
-        try {
-            EnrichSearchResults::dispatch($search->id)
-                ->onQueue((string) config('custom_keyword_search.queue', 'default'));
-        } catch (Throwable $e) {
-            Log::warning('Enrichment dispatch failed.', ['search_id' => $search->id, 'error' => $e->getMessage()]);
-        }
+        AppEventLogger::result('search.run.completed', [
+            'search_id' => $search->id,
+            'run_id' => $run->id,
+            'search_type' => $search->search_type,
+            'phrase' => $search->phrase,
+            'apify_trigger_id' => $trigger->id,
+            'apify_run_id' => $apifyRunId,
+            'dataset_id' => $datasetId,
+            'received' => $summary['received'] ?? count($rawItems),
+            'kept' => count($kept),
+            'attached' => $attached,
+            'local_pool' => $summary['local_pool'] ?? 0,
+            'compute_units' => $finished['stats']['computeUnits'] ?? null,
+            'usage_total_usd' => $finished['usageTotalUsd'] ?? null,
+        ]);
     }
 
     /**
@@ -243,12 +326,11 @@ class SearchRunProcessor
         CustomKeywordSearchRun $run,
         ApifyTrigger $trigger,
         array $items,
+        array &$freshlyScraped,
     ): int {
         if ($items === []) {
             return 0;
         }
-
-        $freshlyScraped = [];
 
         $attached = DB::transaction(function () use ($search, $run, $trigger, $items, &$freshlyScraped): int {
             $existingIds = $search->videos()->pluck('viral_video_id')->all();
@@ -340,40 +422,104 @@ class SearchRunProcessor
             return $attached;
         });
 
-        $this->queueMediaArchive($freshlyScraped);
-
         return $attached;
     }
 
+    private function previousWinnerVideoId(CustomKeywordSearch $search): ?string
+    {
+        $previous = $search->videos()
+            ->whereHas('run', fn ($query) => $query->where('status', CustomKeywordSearchRun::STATUS_DONE))
+            ->with('run')
+            ->get()
+            ->sortByDesc(fn (CustomKeywordSearchVideo $row) => $row->run?->completed_at?->getTimestamp() ?? 0)
+            ->firstWhere('rank', 1);
+
+        return $previous?->viral_video_id;
+    }
+
     /**
-     * Hands the freshly scraped rows to the archiver.
+     * Restore the initial guessed brand handle when the user left the source
+     * handle blank. Explicit user input always wins and is never overwritten.
      *
-     * Queued, never inline: the source URLs are already saved, so a slow or
-     * broken bucket costs the run nothing. It is dispatched after the
-     * transaction commits so the worker cannot race ahead of the rows it is
-     * meant to read.
+     * @param  array<int, array<string, mixed>>  $results
+     */
+    private function fillMissingSourceHandleFromAi(CustomKeywordSearch $search, array $results): void
+    {
+        if ($search->search_type === CustomKeywordSearch::TYPE_PRODUCT || ! blank($search->source_tiktok_handle)) {
+            return;
+        }
+
+        $detected = $this->brandAccounts->resolve($results, $search->phrase);
+        $handle = ltrim(trim((string) ($detected['handle'] ?? '')), '@');
+
+        if ($handle === '') {
+            return;
+        }
+
+        $search->update([
+            'source_tiktok_handle' => $handle,
+        ]);
+    }
+
+    private function analyzeWinnerIfChanged(
+        CustomKeywordSearch $search,
+        CustomKeywordSearchRun $run,
+        ?string $previousWinnerVideoId,
+    ): ?\App\Models\VideoAnalysis {
+        if ($search->user === null) {
+            return null;
+        }
+
+        $winner = $search->videos()
+            ->where('custom_keyword_search_run_id', $run->id)
+            ->where('rank', 1)
+            ->with('video')
+            ->first();
+
+        if ($winner?->video === null) {
+            return null;
+        }
+
+        $analysis = $this->videoAnalyses->requestAutomaticWinnerAndWait($search->user, $winner->video);
+
+        AppEventLogger::result('search.winner_analysis_queued', [
+            'search_id' => $search->id,
+            'run_id' => $run->id,
+            'viral_video_id' => $winner->viral_video_id,
+            'previous_winner_video_id' => $previousWinnerVideoId,
+            'winner_changed' => $winner->viral_video_id !== $previousWinnerVideoId,
+            'analysis_id' => $analysis->id,
+            'analysis_status' => $analysis->status,
+        ]);
+
+        return $analysis;
+    }
+
+    /**
+     * Archives fresh imports before exposing a completed search. The job owns
+     * the canonical archive behavior; synchronous dispatch simply makes media
+     * durability part of this run's completion contract.
      *
      * @param  array<int, string>  $viralVideoIds
      */
-    private function queueMediaArchive(array $viralVideoIds): void
+    private function archiveMediaInBackground(array $viralVideoIds): void
     {
         if ($viralVideoIds === [] || ! config('viral_videos.media.enabled', false)) {
             return;
         }
 
-        if (config('custom_keyword_search.skip_media_archive', true)) {
-            return;
-        }
-
-        $queue = (string) config('viral_videos.media.queue', 'default');
-
-        foreach (array_chunk(array_unique($viralVideoIds), (int) config('viral_videos.media.batch_size', 50)) as $chunk) {
-            ArchiveViralVideoMediaBatch::dispatch($chunk)->onQueue($queue);
+        foreach (array_unique($viralVideoIds) as $viralVideoId) {
+            ArchiveViralVideoMedia::dispatch($viralVideoId);
         }
     }
 
     private function failRun(CustomKeywordSearchRun $run, string $message): void
     {
+        AppEventLogger::error('search.run.marked_failed', $message, [
+            'run_id' => $run->id,
+            'search_id' => $run->search?->id,
+        ]);
+
         $run->update([
             'status' => CustomKeywordSearchRun::STATUS_FAILED,
             'completed_at' => now(),

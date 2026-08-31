@@ -1,10 +1,14 @@
 <?php
 
 use App\Http\Controllers\ComingSoonInterestController;
+use App\Http\Controllers\ContactInquiryController;
+use App\Http\Controllers\FreeSearchFunnelController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
+use App\Http\Controllers\Auth\EmailVerificationController;
 use App\Http\Controllers\Auth\GoogleAuthController;
 use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\BillingController;
+use App\Http\Controllers\CouponSubscriptionController;
 use App\Http\Controllers\StripeWebhookController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -19,16 +23,27 @@ Route::get('/', function (Request $request) {
 })->name('landing');
 
 Route::post('/coming-soon-interest', ComingSoonInterestController::class)->name('coming-soon-interest.store');
+Route::get('/contact', [ContactInquiryController::class, 'create'])->name('contact.create');
+Route::post('/contact', [ContactInquiryController::class, 'store'])->name('contact.store');
+Route::get('/privacy', fn () => Inertia::render('PrivacyPolicy'))->name('privacy');
+Route::get('/terms', fn () => Inertia::render('TermsOfService'))->name('terms');
+Route::get('/dpa', fn () => Inertia::render('DataProcessingAddendum'))->name('dpa');
+Route::get('/security', fn () => Inertia::render('SecurityPage'))->name('security');
 
 Route::prefix('search')->group(function (): void {
     Route::get('/', function (Request $request) {
-        return Inertia::render('Search/Keywords', [
+        return Inertia::render('Search/Free', [
             'phrase' => trim((string) $request->query('q', '')),
-            'type' => in_array($request->query('type'), ['brand', 'competitor', 'product'], true)
-                ? $request->query('type')
-                : 'brand',
+            'type' => match ((string) $request->query('type')) {
+                'product' => 'product',
+                'competitor' => 'brand',
+                default => 'brand',
+            },
+            'error' => $request->session()->pull('free_search_error'),
         ]);
     })->name('search.keywords');
+
+    Route::post('/pending', [FreeSearchFunnelController::class, 'store'])->name('search.pending');
 
     Route::get('/running', function (Request $request) {
         return Inertia::render('Search/Running', [
@@ -54,6 +69,10 @@ Route::middleware('guest')->group(function (): void {
     Route::post('/register', [RegisteredUserController::class, 'store']);
 });
 
+Route::get('/verify-email/{id}/{hash}', EmailVerificationController::class)
+    ->middleware('signed')
+    ->name('verification.verify');
+
 Route::post('/logout', [AuthenticatedSessionController::class, 'destroy'])
     ->middleware('auth')
     ->name('logout');
@@ -62,5 +81,13 @@ Route::prefix('billing')->group(function (): void {
     Route::get('/checkout/{slug}', [BillingController::class, 'checkout'])->name('billing.checkout');
     Route::get('/success', [BillingController::class, 'success'])->name('billing.success');
 });
+
+// Managed coupon-program subscription links. The program is resolved from the
+// path in the controller; users never type a coupon code.
+Route::get('/internal-subscription', [CouponSubscriptionController::class, 'enter'])->name('coupon.internal');
+Route::get('/vip-subscription', [CouponSubscriptionController::class, 'enter'])->name('coupon.vip');
+Route::get('/subscription/{programPath}', [CouponSubscriptionController::class, 'enter'])
+    ->where('programPath', '[A-Za-z0-9\-]+')
+    ->name('coupon.program');
 
 Route::post('/stripe/webhook', StripeWebhookController::class)->name('stripe.webhook');

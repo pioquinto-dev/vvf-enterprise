@@ -2,7 +2,9 @@
 
 namespace App\Services\Apify;
 
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\PendingRequest;
+use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
 use RuntimeException;
 
@@ -25,7 +27,7 @@ class ApifyClient
      */
     public function startTaskRun(string $taskId, array $input): array
     {
-        $response = $this->request()->post("/v2/actor-tasks/{$taskId}/runs", $input);
+        $response = $this->send('post', "/v2/actor-tasks/{$taskId}/runs", $input);
 
         if ($response->failed()) {
             throw new RuntimeException(
@@ -37,11 +39,28 @@ class ApifyClient
     }
 
     /**
+     * @param  array<string, mixed>  $input
+     * @return array<string, mixed>
+     */
+    public function startActorRun(string $actorId, array $input): array
+    {
+        $response = $this->send('post', "/v2/acts/{$actorId}/runs", $input);
+
+        if ($response->failed()) {
+            throw new RuntimeException(
+                "Apify actor run could not be started (HTTP {$response->status()}): ".$response->body()
+            );
+        }
+
+        return (array) $response->json('data', []);
+    }
+
+    /**
      * @return array<string, mixed>
      */
     public function getRun(string $runId): array
     {
-        $response = $this->request()->get("/v2/actor-runs/{$runId}");
+        $response = $this->send('get', "/v2/actor-runs/{$runId}");
 
         if ($response->failed()) {
             throw new RuntimeException("Apify run {$runId} could not be read (HTTP {$response->status()}).");
@@ -52,7 +71,7 @@ class ApifyClient
 
     public function abortRun(string $runId): void
     {
-        $this->request()->post("/v2/actor-runs/{$runId}/abort");
+        $this->send('post', "/v2/actor-runs/{$runId}/abort");
     }
 
     /**
@@ -87,7 +106,7 @@ class ApifyClient
      */
     public function getDatasetItems(string $datasetId, int $limit = 1000): array
     {
-        $response = $this->request()->get("/v2/datasets/{$datasetId}/items", [
+        $response = $this->send('get', "/v2/datasets/{$datasetId}/items", [
             'clean' => 'true',
             'format' => 'json',
             'limit' => $limit,
@@ -104,16 +123,47 @@ class ApifyClient
 
     private function request(): PendingRequest
     {
+        $proxy = config('services.apify.proxy');
+
+        return Http::withToken((string) config('services.apify.token'))
+            ->baseUrl($this->baseUrl())
+            ->acceptJson()
+            ->withOptions([
+                // Bypass inherited machine-wide proxy env vars unless Apify
+                // is explicitly configured to use one.
+                'proxy' => filled($proxy) ? (string) $proxy : '',
+            ])
+            ->timeout((int) env('HTTP_TIMEOUT', 120))
+            ->retry((int) env('HTTP_RETRY_TIMES', 3), 500, throw: false);
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    private function send(string $method, string $path, array $data = []): Response
+    {
+        try {
+            return match (strtolower($method)) {
+                'post' => $this->request()->post($path, $data),
+                'get' => $this->request()->get($path, $data),
+                default => throw new RuntimeException("Unsupported Apify HTTP method [{$method}]."),
+            };
+        } catch (ConnectionException $e) {
+            $target = $this->baseUrl();
+
+            throw new ApifyConnectionException(
+                "Apify connection failed for {$target}{$path}. Check APIFY_BASE_URL, network egress, and whether the upstream endpoint is reachable. Original error: {$e->getMessage()}",
+                previous: $e,
+            );
+        }
+    }
+
+    private function baseUrl(): string
+    {
         $base = rtrim((string) config('services.apify.base_url', 'https://api.apify.com'), '/');
 
         // The configured base URL may or may not already include the version
         // segment; paths in this class always carry their own /v2 prefix.
-        $base = preg_replace('#/v2$#', '', $base) ?? $base;
-
-        return Http::withToken((string) config('services.apify.token'))
-            ->baseUrl($base)
-            ->acceptJson()
-            ->timeout((int) env('HTTP_TIMEOUT', 120))
-            ->retry((int) env('HTTP_RETRY_TIMES', 3), 500, throw: false);
+        return preg_replace('#/v2$#', '', $base) ?? $base;
     }
 }

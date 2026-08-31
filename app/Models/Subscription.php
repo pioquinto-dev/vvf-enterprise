@@ -4,9 +4,12 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Subscription extends Model
 {
+    use SoftDeletes;
+
     public $incrementing = false;
     protected $keyType = 'string';
     protected $guarded = [];
@@ -18,6 +21,7 @@ class Subscription extends Model
             'current_period_starts_at' => 'datetime',
             'current_period_ends_at' => 'datetime',
             'trial_started_at' => 'datetime',
+            'trial_ends_at' => 'datetime',
             'trial_completed_at' => 'datetime',
             'canceled_at' => 'datetime',
         ];

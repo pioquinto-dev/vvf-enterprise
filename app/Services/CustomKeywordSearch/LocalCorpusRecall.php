@@ -45,6 +45,7 @@ class LocalCorpusRecall
         }
 
         $query = ViralVideo::query()
+            ->visible()
             ->where('platform', 'tiktok')
             ->where('video_status', 'visible')
             ->where(function ($outer) use ($phrase, $compact): void {

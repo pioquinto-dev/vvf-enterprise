@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Welcome to BrandBeacon</title>
+</head>
+<body style="margin:0;padding:0;background-color:#f4efe8;font-family:Arial,Helvetica,sans-serif;color:#1e293b;">
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color:#f4efe8;margin:0;padding:24px 0;">
+        <tr>
+            <td align="center">
+                <table role="presentation" width="640" cellspacing="0" cellpadding="0" style="width:640px;max-width:640px;background:#fffdf8;border-radius:24px;overflow:hidden;">
+                    <tr>
+                        <td style="padding:40px;background:linear-gradient(135deg,#12263a 0%,#1d4e89 100%);color:#ffffff;">
+                            <img src="../../public/brand-beacon-logo.svg" alt="BrandBeacon" width="40" height="40" style="display:block;width:40px;height:40px;">
+                            <h1 style="margin:16px 0 12px;font-size:34px;line-height:1.15;">Your account is live. Time to spot what is breaking through.</h1>
+                            <p style="margin:0;font-size:16px;line-height:1.7;max-width:480px;">Hi {{params.firstName}}, you’re officially in. Your account is ready, and your next winning creative idea is a few clicks away.</p>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="padding:36px 40px 12px;">
+                            <p style="margin:0 0 18px;font-size:16px;line-height:1.7;">With your new account, you can start tracking high-performing content, save the patterns that matter, and turn viral signals into a sharper creative strategy.</p>
+                            <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+                                <tr>
+                                    <td style="padding:0 0 12px;font-size:15px;line-height:1.7;">• Explore your dashboard and start your first search</td>
+                                </tr>
+                                <tr>
+                                    <td style="padding:0 0 12px;font-size:15px;line-height:1.7;">• Save standout videos and product searches for your team</td>
+                                </tr>
+                                <tr>
+                                    <td style="padding:0 0 12px;font-size:15px;line-height:1.7;">• Upgrade anytime when you’re ready for deeper analysis</td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="padding:20px 40px 8px;">
+                            <a href="{{params.dashboardUrl}}" style="display:inline-block;background:#ff6b35;color:#ffffff;text-decoration:none;font-weight:bold;padding:16px 28px;border-radius:999px;">Open your dashboard</a>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="padding:8px 40px 40px;">
+                            <p style="margin:0;font-size:14px;line-height:1.7;color:#475569;">Want the full experience? Compare plans here: <a href="{{params.plansUrl}}" style="color:#1d4e89;">{{params.plansUrl}}</a></p>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>

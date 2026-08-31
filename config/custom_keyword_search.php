@@ -36,7 +36,8 @@ return [
         'candidate_pool' => (int) env('CUSTOM_KEYWORD_SEARCH_EXPANSION_CANDIDATE_POOL', 12),
         'min_relevance' => (float) env('CUSTOM_KEYWORD_SEARCH_EXPANSION_MIN_RELEVANCE', 0.55),
         'cache_seconds' => (int) env('CUSTOM_KEYWORD_SEARCH_EXPANSION_CACHE_SECONDS', 86400),
-        'timeout' => (int) env('CUSTOM_KEYWORD_SEARCH_EXPANSION_TIMEOUT', 20),
+        'timeout' => (int) env('CUSTOM_KEYWORD_SEARCH_EXPANSION_TIMEOUT', 8),
+        'lock_seconds' => (int) env('CUSTOM_KEYWORD_SEARCH_EXPANSION_LOCK_SECONDS', 12),
     ],
 
     'scrape' => [
@@ -49,6 +50,7 @@ return [
         // Poll the Apify run until it reaches a terminal state.
         'poll_seconds' => (int) env('CUSTOM_KEYWORD_SEARCH_POLL_SECONDS', 10),
         'run_timeout_seconds' => (int) env('CUSTOM_KEYWORD_SEARCH_RUN_TIMEOUT_SECONDS', 900),
+        'job_timeout_seconds' => (int) env('CUSTOM_KEYWORD_SEARCH_JOB_TIMEOUT_SECONDS', 1800),
 
         // A run stuck in `running` past this is treated as stale.
         'stale_after_minutes' => (int) env('CUSTOM_KEYWORD_SEARCH_STALE_AFTER_MINUTES', 30),
@@ -136,7 +138,7 @@ return [
     'queue' => env('CUSTOM_KEYWORD_SEARCH_QUEUE', 'default'),
 
     'skip_media_archive' => filter_var(
-        env('CUSTOM_KEYWORD_SEARCH_SKIP_MEDIA_ARCHIVE', true),
+        env('CUSTOM_KEYWORD_SEARCH_SKIP_MEDIA_ARCHIVE', false),
         FILTER_VALIDATE_BOOL
     ),
 

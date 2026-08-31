@@ -19,6 +19,9 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
+        $this->call(IndexedKeywordSeeder::class);
+        $this->call(ManagedCouponProgramSeeder::class);
+
         if (PricingPlan::query()->count() === 0) {
             PricingPlanTable::seedDefaults();
         }
@@ -40,6 +43,16 @@ class DatabaseSeeder extends Seeder
             ['name' => 'Test User 03', 'email' => 'free3@example.com'],
             ['name' => 'Test User 04', 'email' => 'free4@example.com'],
             ['name' => 'Test User 05', 'email' => 'free5@example.com'],
+            ['name' => 'Test User 06', 'email' => 'free6@example.com'],
+            ['name' => 'Test User 07', 'email' => 'free7@example.com'],
+            ['name' => 'Test User 08', 'email' => 'free8@example.com'],
+            ['name' => 'Test User 09', 'email' => 'free9@example.com'],
+            ['name' => 'Test User 10', 'email' => 'free10@example.com'],
+            ['name' => 'Test User 11', 'email' => 'free11@example.com'],
+            ['name' => 'Test User 12', 'email' => 'free12@example.com'],
+            ['name' => 'Test User 13', 'email' => 'free13@example.com'],
+            ['name' => 'Test User 14', 'email' => 'free14@example.com'],
+            ['name' => 'Test User 15', 'email' => 'free15@example.com'],
         ])->each(function (array $user): void {
             User::query()->updateOrCreate(
                 ['email' => $user['email']],

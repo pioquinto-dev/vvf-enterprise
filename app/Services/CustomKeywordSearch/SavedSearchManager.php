@@ -2,11 +2,13 @@
 
 namespace App\Services\CustomKeywordSearch;
 
-use App\Models\User;
-use App\Services\Billing\BillingService;
 use App\Jobs\RunCustomKeywordSearch;
 use App\Models\CustomKeywordSearch;
 use App\Models\CustomKeywordSearchRun;
+use App\Models\User;
+use App\Services\Admin\UserActivityService;
+use App\Services\Billing\BillingService;
+use App\Services\IndexedKeywordService;
 use Closure;
 use Illuminate\Validation\ValidationException;
 
@@ -20,6 +22,8 @@ class SavedSearchManager
         private readonly KeywordNormalizer $normalizer,
         private readonly SearchRunProcessor $processor,
         private readonly BillingService $billing,
+        private readonly UserActivityService $activity,
+        private readonly IndexedKeywordService $indexedKeywords,
     ) {}
 
     /**
@@ -37,6 +41,7 @@ class SavedSearchManager
         array $keywords,
         ?string $name,
         string $frequency,
+        ?array $sources = null,
         ?Closure $chargeGuest = null,
     ): CustomKeywordSearch {
         $type = in_array($type, CustomKeywordSearch::allowedTypes(), true)
@@ -59,6 +64,8 @@ class SavedSearchManager
 
         $name = $this->normalizer->name($name, $phrase);
         $signature = $this->normalizer->signature($keywords);
+        $sourceHandle = $this->normalizeSourceHandle($sources['tiktokHandle'] ?? null);
+        $sourceWebsite = $this->normalizeSourceWebsite($sources['website'] ?? null);
 
         // Same keywords in any order means the same saved search. The record
         // is reused so the list stays clean — but re-searching is a real
@@ -72,7 +79,12 @@ class SavedSearchManager
             ->first();
 
         if ($existing !== null) {
-            $existing->update(['name' => $name, 'frequency' => $frequency]);
+            $existing->update([
+                'name' => $name,
+                'frequency' => $frequency,
+                'source_tiktok_handle' => $sourceHandle,
+                'source_website' => $sourceWebsite,
+            ]);
 
             // An already-active run means no new scrape starts, so nothing is
             // charged — the user is just brought back to the search in flight.
@@ -86,6 +98,7 @@ class SavedSearchManager
                 }
 
                 $this->queueRun($existing, $user !== null);
+                $this->recordSearch($user, $existing);
             }
 
             return $existing->refresh();
@@ -97,6 +110,8 @@ class SavedSearchManager
             'name' => $name,
             'phrase' => $phrase,
             'search_type' => $type,
+            'source_tiktok_handle' => $sourceHandle,
+            'source_website' => $sourceWebsite,
             'keywords' => $keywords,
             'keyword_signature' => $signature,
             'frequency' => $frequency,
@@ -112,8 +127,27 @@ class SavedSearchManager
         }
 
         $this->queueRun($search, $user !== null);
+        $this->recordSearch($user, $search);
+        $this->indexedKeywords->learnFromSearch($type, $phrase, $keywords);
 
         return $search;
+    }
+
+    private function normalizeSourceHandle(mixed $value): ?string
+    {
+        $handle = trim((string) ($value ?? ''));
+        $handle = ltrim($handle, '@');
+
+        return $handle === '' ? null : $handle;
+    }
+
+    private function normalizeSourceWebsite(mixed $value): ?string
+    {
+        $website = trim((string) ($value ?? ''));
+        $website = preg_replace('#^https?://#i', '', $website) ?? $website;
+        $website = rtrim($website, '/');
+
+        return $website === '' ? null : $website;
     }
 
     public function queueRun(CustomKeywordSearch $search, bool $reservedCredit = false): CustomKeywordSearchRun
@@ -160,8 +194,13 @@ class SavedSearchManager
         return $search->refresh();
     }
 
-    public function updateSettings(CustomKeywordSearch $search, ?string $name, ?string $frequency): CustomKeywordSearch
-    {
+    public function updateSettings(
+        CustomKeywordSearch $search,
+        ?string $name,
+        ?string $frequency,
+        ?string $sourceTikTokHandle = null,
+        ?string $sourceWebsite = null,
+    ): CustomKeywordSearch {
         $changes = [];
 
         if ($name !== null) {
@@ -174,6 +213,14 @@ class SavedSearchManager
             if ($search->status !== CustomKeywordSearch::STATUS_PAUSED) {
                 $changes['next_run_at'] = $this->processor->nextRunAt($frequency);
             }
+        }
+
+        if ($sourceTikTokHandle !== null) {
+            $changes['source_tiktok_handle'] = $this->normalizeSourceHandle($sourceTikTokHandle);
+        }
+
+        if ($sourceWebsite !== null) {
+            $changes['source_website'] = $this->normalizeSourceWebsite($sourceWebsite);
         }
 
         if ($changes !== []) {
@@ -204,12 +251,22 @@ class SavedSearchManager
         }
 
         $search->update(['is_watchlisted' => $bookmarked]);
+        if ($bookmarked && $search->user !== null) {
+            $this->activity->record($search->user, 'engagement', 'search_bookmarked', 'Bookmarked a search.', ['search_id' => $search->id]);
+        }
 
         if ($search->user !== null) {
             $this->billing->syncSubscriptionUsage($search->user);
         }
 
         return $search->refresh();
+    }
+
+    private function recordSearch(?User $user, CustomKeywordSearch $search): void
+    {
+        if ($user !== null) {
+            $this->activity->record($user, 'engagement', 'search_triggered', sprintf('Triggered a %s search with keyword %s.', $search->search_type, $search->phrase), ['search_id' => $search->id, 'type' => $search->search_type, 'keyword' => $search->phrase]);
+        }
     }
 
     /**

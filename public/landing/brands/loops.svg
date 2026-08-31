@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-labelledby="title">
+  <title>Loops logo tile</title>
+  <rect width="64" height="64" rx="14" fill="#ffffff"/>
+  <g fill="#050505">
+    <path d="M9 16h11c4 0 7.2 3.2 7.2 7.2v24.8H18V26H15v22H9z"/>
+    <path d="M35.2 16H45c5.5 0 10 4.5 10 10v5.8h-5.8V26A4.2 4.2 0 0 0 45 21.8h-5.5v26.3h-4.3z"/>
+    <path d="M33.5 33.5h10c5.8 0 10.5 4.7 10.5 10.5V48h-6v-4c0-2.5-2-4.5-4.5-4.5h-10z"/>
+  </g>
+</svg>

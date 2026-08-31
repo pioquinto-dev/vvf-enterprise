@@ -1,4 +1,4 @@
-import { readFile, writeFile } from 'node:fs/promises';
+import { appendFile, mkdir, readFile, writeFile } from 'node:fs/promises';
 import { spawn } from 'node:child_process';
 import process from 'node:process';
 import { setTimeout as delay } from 'node:timers/promises';
@@ -6,20 +6,28 @@ import { setTimeout as delay } from 'node:timers/promises';
 const root = process.cwd();
 const envPath = `${root}/.env`;
 const ngrokApi = 'http://127.0.0.1:4040/api/tunnels';
-const ngrokArgs = ['http', '--log=stdout', '8000'];
+const ngrokLogPath = `${root}\\storage\\logs\\ngrok-listener.log`;
+const stripeLogPath = `${root}\\storage\\logs\\stripe-listener.log`;
+const serveLogPath = `${root}\\storage\\logs\\serve-listener.log`;
+const queueLogPath = `${root}\\storage\\logs\\queue-listener.log`;
+const videoAnalysisQueueLogPath = `${root}\\storage\\logs\\video-analysis-queue-listener.log`;
+const errorsLogPath = `${root}\\storage\\logs\\errors.log`;
+const helperScriptDir = `${root}\\storage\\app\\dev-scripts`;
 
-let ngrokProcess;
 const appProcesses = [];
+let ngrokProcess;
 
 async function main() {
-    ensureWindowsPowerShellNote();
+    if (process.platform === 'win32') {
+        console.log('Starting dev flow on Windows with helper consoles.');
+    }
 
-    ngrokProcess = spawnCommand('ngrok', ngrokArgs, {
+    ngrokProcess = spawnCommand('ngrok', ['http', '--log=stdout', '8000'], {
         stdio: ['ignore', 'pipe', 'pipe'],
     });
 
-    pipeWithPrefix(ngrokProcess.stdout, '[ngrok]');
-    pipeWithPrefix(ngrokProcess.stderr, '[ngrok]');
+    pipeToFile(ngrokProcess.stdout, ngrokLogPath);
+    pipeToFile(ngrokProcess.stderr, ngrokLogPath);
 
     const tunnelUrl = await waitForNgrokUrl();
 
@@ -31,23 +39,27 @@ async function main() {
     await runNpmCommand(['run', 'build']);
     await runCommand('php', ['artisan', 'queue:restart']);
 
+    logActiveQueues();
     startAppProcesses();
-
+    await launchHelperConsoles();
     forwardTerminationSignals();
 
     const exitCode = await waitForAnyExit(appProcesses, [
-        'npm run serve',
+        'php artisan serve',
         'php artisan queue:work',
+        'php artisan queue:work --queue=video-analysis',
         'npm run dev',
     ]);
-    await shutdown(0);
+
+    await shutdown();
     process.exit(exitCode);
 }
 
-function ensureWindowsPowerShellNote() {
-    if (process.platform === 'win32') {
-        console.log('Starting dev flow on Windows using npm.cmd and local processes.');
-    }
+function logActiveQueues() {
+    console.log('Queue connection: redis');
+    console.log('Active queue workers:');
+    console.log('  - php artisan queue:work (default queue)');
+    console.log('  - php artisan queue:work --queue=video-analysis');
 }
 
 async function waitForNgrokUrl() {
@@ -121,19 +133,28 @@ function spawnNpmCommand(args, options = {}) {
 }
 
 function startAppProcesses() {
-    const server = spawnNpmCommand(['run', 'serve'], {
+    const server = spawnCommand('php', ['-S', '127.0.0.1:8000', '-t', 'public'], {
         stdio: ['ignore', 'pipe', 'pipe'],
     });
-    pipeWithPrefix(server.stdout, '[serve]');
-    pipeWithPrefix(server.stderr, '[serve]');
+    pipeToFile(server.stdout, serveLogPath);
+    pipeToFile(server.stderr, serveLogPath);
     appProcesses.push(server);
 
     const queueWorker = spawnCommand('php', ['artisan', 'queue:work'], {
+        env: { ...process.env, QUEUE_CONNECTION: 'redis' },
         stdio: ['ignore', 'pipe', 'pipe'],
     });
-    pipeWithPrefix(queueWorker.stdout, '[queue]');
-    pipeWithPrefix(queueWorker.stderr, '[queue]');
+    pipeToFile(queueWorker.stdout, queueLogPath);
+    pipeToFile(queueWorker.stderr, queueLogPath);
     appProcesses.push(queueWorker);
+
+    const videoAnalysisQueueWorker = spawnCommand('php', ['artisan', 'queue:work', '--queue=video-analysis'], {
+        env: { ...process.env, QUEUE_CONNECTION: 'redis' },
+        stdio: ['ignore', 'pipe', 'pipe'],
+    });
+    pipeToFile(videoAnalysisQueueWorker.stdout, videoAnalysisQueueLogPath);
+    pipeToFile(videoAnalysisQueueWorker.stderr, videoAnalysisQueueLogPath);
+    appProcesses.push(videoAnalysisQueueWorker);
 
     const vite = spawnNpmCommand(['run', 'dev'], {
         stdio: ['ignore', 'pipe', 'pipe'],
@@ -141,6 +162,147 @@ function startAppProcesses() {
     pipeWithPrefix(vite.stdout, '[vite]');
     pipeWithPrefix(vite.stderr, '[vite]');
     appProcesses.push(vite);
+}
+
+async function launchHelperConsoles() {
+    if (process.platform !== 'win32') {
+        console.log('Helper consoles are only auto-launched on Windows.');
+        return;
+    }
+
+    await mkdir(helperScriptDir, { recursive: true });
+
+    const helpers = [
+        {
+            title: 'vvf stripe listen',
+            command: [
+                `$Host.UI.RawUI.WindowTitle = 'vvf stripe listen'`,
+                `Write-Host 'Starting Stripe listener...'`,
+                `stripe listen --forward-to 127.0.0.1:8000/stripe/webhook 2>&1 | Tee-Object -FilePath '${stripeLogPath}' -Append`,
+            ].join('\r\n'),
+        },
+        {
+            title: 'vvf ngrok logs',
+            command: tailFileCommand(ngrokLogPath),
+        },
+        {
+            title: 'vvf endpoint trigger logs',
+            command: tailFileCommand(serveLogPath, 'vvf endpoint trigger logs'),
+        },
+        {
+            title: 'vvf jobs trigger logs',
+            command: filteredTailCommand('vvf jobs trigger logs', queueLogPath, [
+                'processing',
+                'processed',
+                'failed',
+                'running',
+                'done',
+                'error',
+                'exception',
+            ]),
+        },
+        {
+            title: 'vvf video analysis logs',
+            command: filteredTailCommand('vvf video analysis logs', videoAnalysisQueueLogPath, [
+                'processing',
+                'processed',
+                'failed',
+                'running',
+                'done',
+                'error',
+                'exception',
+                'video',
+                'analysis',
+            ]),
+        },
+        {
+            title: 'vvf system error logs',
+            command: formattedJsonTailCommand('vvf system error logs', errorsLogPath),
+        },
+    ];
+
+    console.log('Helper listeners:');
+    helpers.forEach((helper) => {
+        console.log(`  - ${helper.title}`);
+    });
+
+    for (const helper of helpers) {
+        const scriptPath = `${helperScriptDir}\\${slugify(helper.title)}.ps1`;
+        await writeFile(scriptPath, helper.command, 'utf8');
+        startPowerShellWindow(helper.title, scriptPath);
+    }
+}
+
+function filteredTailCommand(title, path, patterns) {
+    const joinedPatterns = patterns.map((pattern) => `'${pattern}'`).join(', ');
+
+    return [
+        `$Host.UI.RawUI.WindowTitle = '${title}'`,
+        `$patterns = @(${joinedPatterns})`,
+        `if (-not (Test-Path '${path}')) { New-Item -ItemType File -Path '${path}' -Force | Out-Null }`,
+        `Write-Host 'Watching ${path}'`,
+        `Get-Content -Path '${path}' -Wait | Where-Object { $line = $_.ToLowerInvariant(); ($patterns | Where-Object { $line.Contains($_) }).Count -gt 0 }`,
+    ].join('\r\n');
+}
+
+function tailFileCommand(path, title = 'vvf ngrok logs') {
+    return [
+        `$Host.UI.RawUI.WindowTitle = '${title}'`,
+        `if (-not (Test-Path '${path}')) { New-Item -ItemType File -Path '${path}' -Force | Out-Null }`,
+        `Write-Host 'Watching ${path}'`,
+        `Get-Content -Path '${path}' -Wait`,
+    ].join('\r\n');
+}
+
+function formattedJsonTailCommand(title, path) {
+    return [
+        `$Host.UI.RawUI.WindowTitle = '${title}'`,
+        `if (-not (Test-Path '${path}')) { New-Item -ItemType File -Path '${path}' -Force | Out-Null }`,
+        `Write-Host 'Watching ${path}'`,
+        `function Format-VvfErrorLine([string]$line) {`,
+        `  if ([string]::IsNullOrWhiteSpace($line)) { return }`,
+        `  $match = [regex]::Match($line, '^(?<prefix>.+?)\\s(?<json>\\{.*\\})$')`,
+        `  if (-not $match.Success) { Write-Host $line -ForegroundColor Red; return }`,
+        `  $prefix = $match.Groups['prefix'].Value`,
+        `  $json = $match.Groups['json'].Value`,
+        `  try {`,
+        `    $data = $json | ConvertFrom-Json`,
+        `    Write-Host ''`,
+        `    Write-Host ('=' * 96) -ForegroundColor DarkRed`,
+        `    Write-Host $prefix -ForegroundColor Red`,
+        `    foreach ($property in $data.PSObject.Properties) {`,
+        `      $value = $property.Value`,
+        `      if ($null -eq $value) { $rendered = '<null>' }`,
+        `      elseif ($value -is [System.Management.Automation.PSCustomObject] -or $value -is [hashtable] -or $value -is [System.Collections.IEnumerable] -and -not ($value -is [string])) {`,
+        `        $rendered = $value | ConvertTo-Json -Depth 8 -Compress`,
+        `      } else {`,
+        `        $rendered = [string]$value`,
+        `      }`,
+        `      Write-Host ('  {0}: {1}' -f $property.Name, $rendered) -ForegroundColor Yellow`,
+        `    }`,
+        `  } catch {`,
+        `    Write-Host $line -ForegroundColor Red`,
+        `  }`,
+        `}`,
+        `Get-Content -Path '${path}' -Wait | ForEach-Object { Format-VvfErrorLine $_ }`,
+    ].join('\r\n');
+}
+
+function startPowerShellWindow(title, scriptPath) {
+    spawn('powershell.exe', [
+        '-NoProfile',
+        '-Command',
+        `Start-Process powershell.exe -WorkingDirectory '${root}' -ArgumentList '-NoExit','-ExecutionPolicy','Bypass','-File','${scriptPath}'`,
+    ], {
+        cwd: root,
+        env: process.env,
+        stdio: 'ignore',
+        windowsHide: true,
+    }).unref();
+}
+
+function slugify(value) {
+    return value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
 }
 
 function resolveNpmCommand(args) {
@@ -205,18 +367,32 @@ function pipeWithPrefix(stream, prefix) {
     });
 }
 
+function pipeToFile(stream, path) {
+    if (!stream) {
+        return;
+    }
+
+    stream.on('data', async (chunk) => {
+        try {
+            await appendFile(path, chunk.toString(), 'utf8');
+        } catch {
+            // Helper log mirroring is best-effort only.
+        }
+    });
+}
+
 function forwardTerminationSignals() {
     const signals = ['SIGINT', 'SIGTERM'];
 
     for (const signal of signals) {
         process.on(signal, async () => {
-            await shutdown(0);
+            await shutdown();
             process.exit(0);
         });
     }
 }
 
-async function shutdown(exitCode) {
+async function shutdown() {
     for (const processHandle of appProcesses) {
         if (processHandle.exitCode === null) {
             processHandle.kill('SIGTERM');
@@ -228,11 +404,10 @@ async function shutdown(exitCode) {
     }
 
     await delay(250);
-    return exitCode;
 }
 
 main().catch(async (error) => {
     console.error(error.message);
-    await shutdown(1);
+    await shutdown();
     process.exit(1);
 });

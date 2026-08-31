@@ -3,6 +3,8 @@
     <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
+        <link rel="icon" type="image/svg+xml" href="{{ asset('brand-beacon-logo.svg') }}">
+        <link rel="shortcut icon" href="{{ asset('brand-beacon-logo.svg') }}">
 
         <title>{{ config('app.name', 'Laravel') }}</title>
 

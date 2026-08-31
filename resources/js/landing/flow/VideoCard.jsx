@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Play, Heart, Comment, Trend, Arrow, Bookmark } from '../components/Icons.jsx';
 import { compactNumber, duration, gradientFor, multiplier, relativeTime } from './format.js';
+import { buildTikTokPlayerUrl, postTikTokMessage } from '../../Pages/SavedSearches/detail/tiktokPlayer.js';
 
 /*
  * The player source.
@@ -8,20 +9,49 @@ import { compactNumber, duration, gradientFor, multiplier, relativeTime } from '
  * `video_url` is not used on purpose: Apify returns TikTok's signed CDN address,
  * which expires within days and 403s from a browser origin. The embed is the
  * only URL that keeps working, so playback goes through it.
+ *
+ * `player/v1` is preferred over the older `embed/v2`: embed/v2 ships TikTok's
+ * own chrome — avatar header, close button, caption bar — which spills outside
+ * the card and makes these look nothing like the tracker's winner card.
+ * player/v1 is the bare video, so both surfaces crop identically through
+ * `.tiktok-frame-host`. `embed_url` stays as the fallback for rows with no id.
  */
 function embedFor(video) {
-  if (video.embed_url) return video.embed_url;
-  const id = video.video_id;
-  return id ? `https://www.tiktok.com/embed/v2/${id}` : null;
+  return buildTikTokPlayerUrl(video.video_id, true) ?? video.embed_url ?? null;
 }
 
 export function Thumb({ video, rank, className = '' }) {
   const [broken, setBroken] = useState(false);
   const [playing, setPlaying] = useState(false);
+  const iframeRef = useRef(null);
   const gradient = gradientFor(video.video_id ?? video.id);
   const src = video.thumbnail_url;
   const mult = multiplier(video.score ?? video.virality_score);
   const embed = embedFor(video);
+
+  useEffect(() => {
+    const iframe = iframeRef.current;
+    if (!playing || !iframe || !video?.video_id) return undefined;
+
+    const unmuteAndPlay = () => {
+      postTikTokMessage(iframe, 'unMute');
+      postTikTokMessage(iframe, 'play');
+    };
+
+    const handleReady = (event) => {
+      const payload = event?.data;
+      if (!payload || payload['x-tiktok-player'] !== true || payload.type !== 'onPlayerReady') return;
+      if (event.source !== iframe.contentWindow) return;
+      unmuteAndPlay();
+    };
+
+    iframe.addEventListener('load', unmuteAndPlay);
+    window.addEventListener('message', handleReady);
+    return () => {
+      iframe.removeEventListener('load', unmuteAndPlay);
+      window.removeEventListener('message', handleReady);
+    };
+  }, [playing, video?.video_id]);
 
   return (
     <div
@@ -30,14 +60,18 @@ export function Thumb({ video, rank, className = '' }) {
     >
       {playing && embed ? (
         <>
-          <iframe
-            src={embed}
-            title={video.title || 'TikTok video'}
-            loading="lazy"
-            allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
-            allowFullScreen
-            className="absolute inset-0 h-full w-full border-0"
-          />
+          <div className="tiktok-frame-host">
+            <iframe
+              ref={iframeRef}
+              src={embed}
+              title={video.title || 'TikTok video'}
+              loading="lazy"
+              scrolling="no"
+              allow="accelerometer; controls; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+              allowFullScreen
+              className="tracker-embed-frame"
+            />
+          </div>
           <button
             type="button"
             onClick={() => setPlaying(false)}
@@ -196,7 +230,7 @@ export function GridVideo({ video, onToggleBookmark, bookmarking = false }) {
           </span>
         </div>
         <div className="mt-2 truncate text-[12.5px] muted">{video.handle ?? video.creator_name}</div>
-        <div className="mt-2 flex items-center justify-between gap-2">
+        <div className="mt-2 flex flex-col items-start gap-2 min-[420px]:flex-row min-[420px]:items-center min-[420px]:justify-between">
           <a
             href={video.post_url}
             target="_blank"
@@ -209,7 +243,7 @@ export function GridVideo({ video, onToggleBookmark, bookmarking = false }) {
             type="button"
             onClick={() => onToggleBookmark?.(video)}
             disabled={!onToggleBookmark || bookmarking}
-            className="inline-flex items-center gap-1 text-xs font-semibold muted"
+            className="inline-flex items-center gap-1 self-stretch justify-center rounded-full border border-black/[.08] px-3 py-2 text-xs font-semibold muted min-[420px]:self-auto min-[420px]:justify-start dark:border-white/[.12]"
           >
             <Bookmark className="h-3.5 w-3.5" filled={Boolean(video.bookmarked)} />
           </button>

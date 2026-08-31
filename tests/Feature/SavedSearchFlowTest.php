@@ -70,6 +70,36 @@ class SavedSearchFlowTest extends TestCase
         });
     }
 
+    public function test_expansion_can_bypass_cache_when_regenerating(): void
+    {
+        config()->set('services.openai.api_key', 'test-key');
+
+        Http::fakeSequence()
+            ->push([
+                'choices' => [[
+                    'message' => ['content' => json_encode(['gymshark review', 'gymshark leggings'])],
+                ]],
+            ])
+            ->push([
+                'choices' => [[
+                    'message' => ['content' => json_encode(['gymshark haul', 'gymshark shorts'])],
+                ]],
+            ]);
+
+        $first = $this->postJson('/saved-searches/expand', ['phrase' => 'gymshark']);
+        $cached = $this->postJson('/saved-searches/expand', ['phrase' => 'gymshark']);
+        $fresh = $this->postJson('/saved-searches/expand', ['phrase' => 'gymshark', 'fresh' => true]);
+
+        $first->assertOk()
+            ->assertJsonPath('keywords.1', 'gymshark review');
+
+        $cached->assertOk()
+            ->assertJsonPath('keywords.1', 'gymshark review');
+
+        $fresh->assertOk()
+            ->assertJsonPath('keywords.1', 'gymshark haul');
+    }
+
     public function test_expansion_filters_out_terms_that_drift_off_the_phrase_anchor(): void
     {
         config()->set('services.openai.api_key', 'test-key');
@@ -129,6 +159,92 @@ class SavedSearchFlowTest extends TestCase
         ]);
 
         Queue::assertPushed(RunCustomKeywordSearch::class);
+    }
+
+    public function test_an_initial_failed_search_can_retry_without_using_the_refresh_endpoint(): void
+    {
+        $this->postJson('/saved-searches', [
+            'phrase' => 'rare beauty',
+            'keywords' => ['rare beauty'],
+            'frequency' => 'weekly',
+        ])->assertCreated();
+
+        $search = CustomKeywordSearch::firstOrFail();
+        $search->update(['status' => CustomKeywordSearch::STATUS_FAILED]);
+        $search->runs()->latest('id')->firstOrFail()->update([
+            'status' => CustomKeywordSearchRun::STATUS_FAILED,
+            'completed_at' => now(),
+            'error_message' => 'Apify connection failed.',
+        ]);
+
+        $this->postJson("/saved-searches/{$search->id}/retry")
+            ->assertOk()
+            ->assertJsonPath('search.status', CustomKeywordSearch::STATUS_SCRAPING)
+            ->assertJsonPath('search.can_retry_initial', false);
+
+        $this->assertSame(2, $search->runs()->count());
+        Queue::assertPushed(RunCustomKeywordSearch::class, 2);
+    }
+
+    public function test_creating_a_product_search_queues_a_run_without_sources(): void
+    {
+        $response = $this->postJson('/saved-searches', [
+            'type' => 'product',
+            'phrase' => 'lip oil',
+            'keywords' => ['lip oil', 'lip oil review', 'best lip oil'],
+            'frequency' => 'weekly',
+        ]);
+
+        $response->assertCreated()
+            ->assertJsonPath('status', 'scraping');
+
+        $search = CustomKeywordSearch::firstOrFail();
+
+        $this->assertSame(CustomKeywordSearch::TYPE_PRODUCT, $search->search_type);
+        $this->assertSame('lip oil', $search->phrase);
+        $this->assertNull($search->source_tiktok_handle);
+        $this->assertNull($search->source_website);
+
+        Queue::assertPushed(RunCustomKeywordSearch::class);
+    }
+
+    public function test_creating_a_search_persists_optional_sources(): void
+    {
+        $this->postJson('/saved-searches', [
+            'type' => 'brand',
+            'phrase' => 'rhode skin',
+            'keywords' => ['rhode skin', 'rhode'],
+            'frequency' => 'weekly',
+            'sources' => [
+                'tiktokHandle' => '@rhode',
+                'website' => 'https://rhodeskin.com/',
+            ],
+        ])->assertCreated();
+
+        $search = CustomKeywordSearch::firstOrFail();
+
+        $this->assertSame('rhode', $search->source_tiktok_handle);
+        $this->assertSame('rhodeskin.com', $search->source_website);
+    }
+
+    public function test_creating_a_product_search_persists_optional_sources(): void
+    {
+        $this->postJson('/saved-searches', [
+            'type' => 'product',
+            'phrase' => 'lip oil',
+            'keywords' => ['lip oil', 'lip oil review'],
+            'frequency' => 'weekly',
+            'sources' => [
+                'tiktokHandle' => '@not-a-brand',
+                'website' => 'https://example.com/',
+            ],
+        ])->assertCreated();
+
+        $search = CustomKeywordSearch::firstOrFail();
+
+        $this->assertSame(CustomKeywordSearch::TYPE_PRODUCT, $search->search_type);
+        $this->assertSame('not-a-brand', $search->source_tiktok_handle);
+        $this->assertSame('example.com', $search->source_website);
     }
 
     public function test_creating_the_same_keyword_set_reuses_the_existing_search(): void
@@ -228,6 +344,63 @@ class SavedSearchFlowTest extends TestCase
             ->assertJsonPath('search.frequency', 'monthly');
 
         $this->assertSame(['korean skincare', 'glass skin'], CustomKeywordSearch::findOrFail($id)->keywords);
+    }
+
+    public function test_frequency_update_can_edit_brand_sources(): void
+    {
+        $id = $this->postJson('/saved-searches', [
+            'type' => 'brand',
+            'phrase' => 'rhode skin',
+            'keywords' => ['rhode skin', 'rhode'],
+            'frequency' => 'weekly',
+            'sources' => [
+                'tiktokHandle' => '@rhode',
+                'website' => 'https://rhodeskin.com/',
+            ],
+        ])->json('id');
+
+        $this->patchJson("/saved-searches/{$id}/frequency", [
+            'name' => 'Rhode',
+            'frequency' => 'monthly',
+            'sources' => [
+                'tiktokHandle' => '@haileybieber',
+                'website' => 'https://rhode.co/',
+            ],
+        ])->assertOk()
+            ->assertJsonPath('search.name', 'Rhode')
+            ->assertJsonPath('search.frequency', 'monthly')
+            ->assertJsonPath('search.source_tiktok_handle', 'haileybieber')
+            ->assertJsonPath('search.source_website', 'rhode.co');
+
+        $search = CustomKeywordSearch::findOrFail($id);
+
+        $this->assertSame(['rhode skin', 'rhode'], $search->keywords);
+        $this->assertSame('haileybieber', $search->source_tiktok_handle);
+        $this->assertSame('rhode.co', $search->source_website);
+    }
+
+    public function test_frequency_update_can_edit_sources_for_product_searches(): void
+    {
+        $id = $this->postJson('/saved-searches', [
+            'type' => 'product',
+            'phrase' => 'lip oil',
+            'keywords' => ['lip oil', 'lip oil review'],
+            'frequency' => 'weekly',
+        ])->json('id');
+
+        $this->patchJson("/saved-searches/{$id}/frequency", [
+            'sources' => [
+                'tiktokHandle' => '@not-a-brand',
+                'website' => 'https://example.com/',
+            ],
+        ])->assertOk()
+            ->assertJsonPath('search.source_tiktok_handle', 'not-a-brand')
+            ->assertJsonPath('search.source_website', 'example.com');
+
+        $search = CustomKeywordSearch::findOrFail($id);
+
+        $this->assertSame('not-a-brand', $search->source_tiktok_handle);
+        $this->assertSame('example.com', $search->source_website);
     }
 
     public function test_delete_soft_deletes_the_search(): void

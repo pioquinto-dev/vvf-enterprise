@@ -1,36 +1,150 @@
+import { useEffect, useMemo, useState } from 'react';
 import { Head, usePage } from '@inertiajs/react';
 
-import AppLayout from './components/AppLayout.jsx';
-import { useReveal } from '../landing/components/Reveal.jsx';
-import Pricing from '../landing/sections/Pricing.jsx';
+import SettingsShell from './Settings/SettingsShell.jsx';
 import { billing } from '../landing/flow/api.js';
+import { Check, Arrow } from '../landing/components/Icons.jsx';
+import { PRICING_PLAN_ORDER } from '../landing/data/dummy.js';
+import UpgradePromptModal from './components/UpgradePromptModal.jsx';
 
 export default function Plans() {
-  const { auth = {} } = usePage().props;
-  const revealRoot = useReveal();
+  const { billing: billingState = {}, pricingPlans = [], flash = {} } = usePage().props;
+  const current = String(billingState.currentPlan ?? 'free').toLowerCase();
+  const isTrialing = Boolean(billingState.isTrialing);
+  const hasUsedTrial = Boolean(billingState.hasUsedTrial);
+  const [trialPromptOpen, setTrialPromptOpen] = useState(Boolean(flash.trialAccessPrompt));
+  const orderedPlans = [...pricingPlans].sort((a, b) => {
+    const aKey = a.slug ?? a.name?.toLowerCase();
+    const bKey = b.slug ?? b.name?.toLowerCase();
+    const aIndex = PRICING_PLAN_ORDER.indexOf(aKey);
+    const bIndex = PRICING_PLAN_ORDER.indexOf(bKey);
 
-  const startFree = () => {
-    window.location.assign('/search?type=brand');
-  };
+    return (aIndex === -1 ? Number.MAX_SAFE_INTEGER : aIndex) - (bIndex === -1 ? Number.MAX_SAFE_INTEGER : bIndex);
+  });
+  const currentPlan = orderedPlans.find((plan) => plan.slug === current);
+  const [billingCycle, setBillingCycle] = useState((currentPlan?.duration ?? 'monthly') === 'annual' ? 'annual' : 'monthly');
+  const visiblePlans = orderedPlans.filter((plan) => plan.slug === 'free' || (plan.duration ?? 'monthly') === billingCycle);
+  const annualBanner = useMemo(() => {
+    const percents = orderedPlans
+      .filter((plan) => (plan.duration ?? 'monthly') === 'annual')
+      .map((plan) => Number(plan.annualSavingsPercent ?? 0))
+      .filter((value) => value > 0);
 
-  const startTrialCheckout = (plan) => {
-    if (!auth.signedIn) {
-      window.location.assign(`/login?redirect=trial_checkout&plan=${encodeURIComponent(plan?.slug ?? 'basic')}&trial=1`);
-      return;
+    return percents.length > 0 ? Math.max(...percents) : 0;
+  }, [orderedPlans]);
+
+  const upgrade = (slug, cycle = billingCycle) => billing.checkout(slug, cycle);
+  const promptPlanSlug =
+    flash.trialAccessPrompt?.plan_slug ?? visiblePlans.find((plan) => plan.planType === 'growth')?.slug ?? 'basic';
+
+  useEffect(() => {
+    setTrialPromptOpen(Boolean(flash.trialAccessPrompt));
+  }, [flash.trialAccessPrompt]);
+
+  const priceLine = (plan) => {
+    const annual = billingCycle === 'annual';
+
+    if ((plan.price ?? 0) <= 0) {
+      return { amount: '$0', suffix: '/mo', subline: '' };
     }
 
-    billing.trialCheckout(plan?.slug ?? 'basic');
+    if (!hasUsedTrial || isTrialing) {
+      return {
+        amount: `$${plan.price}`,
+        suffix: annual ? '/yr' : '/mo',
+        subline: annual ? `Save ${plan.annualSavingsPercent}% with annual billing` : '$0 for 8 days',
+      };
+    }
+
+    return {
+      amount: `$${plan.price}`,
+      suffix: annual ? '/yr' : '/mo',
+      subline: annual ? `Save ${plan.annualSavingsPercent}% with annual billing` : '',
+    };
   };
 
   return (
     <>
-      <Head title="Plans - Outlier Vault" />
+      <Head title="Plans · Brand Beacon" />
 
-      <AppLayout width="max-w-7xl">
-        <div ref={revealRoot}>
-          <Pricing onStart={startFree} onTrial={startTrialCheckout} onTrialStart={startTrialCheckout} compact />
+      <SettingsShell section="plans">
+        <UpgradePromptModal
+          open={trialPromptOpen}
+          eyebrow="Trial already used"
+          title="Your 8-day trial has already been used"
+          body="This account already finished its free trial, so the next step is a paid upgrade."
+          detail="You can still unlock scheduled tracking, bookmarks, and video analysis right away."
+          primaryLabel="Upgrade to Growth"
+          onPrimary={() => upgrade(promptPlanSlug)}
+          secondaryLabel="Maybe later"
+          onSecondary={() => setTrialPromptOpen(false)}
+          onClose={() => setTrialPromptOpen(false)}
+        />
+
+        <div style={{ marginBottom: 18 }}>
+          <h2>Plans</h2>
+          <p className="muted" style={{ fontSize: '.86rem', marginTop: 6 }}>
+            Start with one free search. Upgrade when you want tracking on a schedule.
+          </p>
+          <div className="toggle" style={{ marginTop: 16 }}>
+            <button className={billingCycle === 'monthly' ? 'is-on' : ''} type="button" onClick={() => setBillingCycle('monthly')}>
+              Monthly
+            </button>
+            <button className={billingCycle === 'annual' ? 'is-on' : ''} type="button" onClick={() => setBillingCycle('annual')}>
+              Annual{annualBanner > 0 ? ` · save up to ${annualBanner}%` : ''}
+            </button>
+          </div>
         </div>
-      </AppLayout>
+
+        <div className="plans">
+          {visiblePlans.map((plan) => {
+            const isCurrent = plan.slug === current;
+            const isFree = plan.slug === 'free';
+            const price = priceLine(plan);
+
+            return (
+              <div key={plan.slug} className={`plan${isCurrent ? ' plan--on' : ''}`}>
+                {isCurrent && <span className="plan__tag">Current plan</span>}
+                <div className="plan__n">{plan.name}</div>
+                <p className="plan__t">{plan.tagline}</p>
+                <div className="plan__p">
+                  {price.amount}
+                  {price.suffix && <span>{price.suffix}</span>}
+                </div>
+                <p className="plan__s">
+                  {price.subline || (isCurrent ? 'Your current plan' : plan.price > 0 ? 'Billed monthly' : '')}
+                </p>
+
+                <ul>
+                  {plan.features.map((feature) => (
+                    <li key={feature}>
+                      <Check className="h-3.5 w-3.5" />
+                      {feature}
+                    </li>
+                  ))}
+                </ul>
+
+                {isCurrent ? (
+                  <button type="button" className="btn btn--g btn--w" disabled>
+                    Current plan
+                  </button>
+                ) : isFree ? (
+                  <button type="button" className="btn btn--g btn--w" disabled>
+                    Free plan unavailable
+                  </button>
+                ) : (
+                  <button type="button" className="btn btn--y btn--w" onClick={() => upgrade(plan.slug, billingCycle)}>
+                    {!hasUsedTrial && !isTrialing
+                      ? 'Try free for 8 days'
+                      : `Upgrade to ${plan.name}`}{' '}
+                    <Arrow />
+                  </button>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </SettingsShell>
     </>
   );
 }

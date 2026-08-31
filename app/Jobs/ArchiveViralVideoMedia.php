@@ -90,9 +90,9 @@ class ArchiveViralVideoMedia implements ShouldQueue
             return;
         }
 
-        $this->fail(new \RuntimeException(
+        throw new \RuntimeException(
             'Could not archive media for video '.$video->video_id.': '.$report['failures'][0]['message']
-        ));
+        );
     }
 
     /**

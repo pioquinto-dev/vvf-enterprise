@@ -1,11 +1,14 @@
 import { usePage } from '@inertiajs/react';
+import { useMemo, useState } from 'react';
 import { PRICING, PRICING_PLAN_ORDER } from '../../data/dummy.js';
 import { Check, Arrow } from '../../components/Icons.jsx';
 import { billing } from '../api.js';
 
 export default function TrialScreen({ onBack, backLabel = 'Back to results' }) {
   const { pricingPlans = [], auth = {} } = usePage().props;
-  const plans = (pricingPlans.length > 0 ? [...pricingPlans] : [...PRICING.monthly]).sort((a, b) => {
+  const [billingCycle, setBillingCycle] = useState('monthly');
+  const allPlans = pricingPlans.length > 0 ? [...pricingPlans] : [...PRICING.monthly, ...PRICING.annual];
+  const plans = allPlans.sort((a, b) => {
     const aKey = a.slug ?? a.name?.toLowerCase();
     const bKey = b.slug ?? b.name?.toLowerCase();
     const aIndex = PRICING_PLAN_ORDER.indexOf(aKey);
@@ -13,16 +16,23 @@ export default function TrialScreen({ onBack, backLabel = 'Back to results' }) {
 
     return (aIndex === -1 ? Number.MAX_SAFE_INTEGER : aIndex) - (bIndex === -1 ? Number.MAX_SAFE_INTEGER : bIndex);
   });
-  const tiers = plans.filter((t) => t.price > 0);
+  const tiers = plans.filter((t) => t.price > 0 && (t.duration ?? 'monthly') === billingCycle);
   const trialTier = tiers.find((t) => t.popular) || tiers[0];
+  const annualBanner = useMemo(() => {
+    const percents = tiers
+      .map((plan) => Number(plan.annualSavingsPercent ?? 0))
+      .filter((value) => value > 0);
 
-  const startCheckout = (slug) => {
+    return percents.length > 0 ? Math.max(...percents) : 0;
+  }, [tiers]);
+
+  const startCheckout = (slug, cycle = billingCycle) => {
     if (!auth.signedIn) {
-      window.location.assign(`/login?redirect=trial_checkout&plan=${encodeURIComponent(slug)}&trial=1`);
+      window.location.assign(`/login?redirect=trial_checkout&plan=${encodeURIComponent(slug)}&trial=1&cycle=${encodeURIComponent(cycle)}`);
       return;
     }
 
-    billing.trialCheckout(slug);
+    billing.trialCheckout(slug, cycle);
   };
 
   return (
@@ -40,9 +50,19 @@ export default function TrialScreen({ onBack, backLabel = 'Back to results' }) {
           Unlock paid tracking
         </h1>
         <p className="mt-3 text-[14.5px] muted">
-          Start on a 7-day trial. Basic includes 150 searches and 50 bookmark slots. Premium includes 400 searches and
-          unlimited bookmarks.
+          Start on an 8-day trial. Growth includes 100 searches, 100 viral breakout video analyses, weekly + monthly
+          scheduling, virality alerts, and unlimited bookmarks. Scale lifts those limits with unlimited searches and
+          unlimited viral breakout video analysis.
         </p>
+
+        <div className="toggle mx-auto mt-6">
+          <button className={billingCycle === 'monthly' ? 'is-on' : ''} type="button" onClick={() => setBillingCycle('monthly')}>
+            Monthly
+          </button>
+          <button className={billingCycle === 'annual' ? 'is-on' : ''} type="button" onClick={() => setBillingCycle('annual')}>
+            Annual{annualBanner > 0 ? ` · save up to ${annualBanner}%` : ''}
+          </button>
+        </div>
 
         <div className="mx-auto mt-9 grid max-w-2xl gap-5 text-left sm:grid-cols-2">
           {tiers.map((t) => (
@@ -63,11 +83,17 @@ export default function TrialScreen({ onBack, backLabel = 'Back to results' }) {
               <p className="font-display text-[16px] font-bold">{t.name}</p>
               <p className="mt-1 text-[12.5px] faint">{t.tagline}</p>
 
-              <p className="mt-3 font-display text-[32px] leading-none font-bold tracking-[-.03em]">$0</p>
-              <p className="mt-2 min-h-[32px] text-[11.5px] leading-[1.35] faint">then ${t.price} after 7 days</p>
+              <p className="mt-3 font-display text-[32px] leading-none font-bold tracking-[-.03em]">
+                ${t.price}
+              </p>
+              <p className="mt-2 min-h-[32px] text-[11.5px] leading-[1.35] faint">
+                {billingCycle === 'annual' ? `Save ${t.annualSavingsPercent}% with annual billing` : '$0 for 8 days'}
+              </p>
 
               <p className="mt-4 text-[12px] faint">
-                {t.searchCreditsLimit} searches · {t.bookmarkLimit === -1 ? 'Unlimited' : t.bookmarkLimit} bookmarks
+                {t.searchCreditsLimit === -1 ? 'Unlimited' : t.searchCreditsLimit} searches
+                {' · '}
+                {t.searchBookmarkLimit === -1 ? 'Unlimited' : t.searchBookmarkLimit} search bookmarks
               </p>
 
               <ul className="mt-5 space-y-2.5 border-t border-black/[.05] pt-5 text-[13.5px] muted dark:border-white/[.07]">
@@ -82,20 +108,20 @@ export default function TrialScreen({ onBack, backLabel = 'Back to results' }) {
               </ul>
 
               <button
-                onClick={() => startCheckout(t.slug)}
+                onClick={() => startCheckout(t.slug, billingCycle)}
                 className={`mt-6 h-11 w-full text-sm ${t.popular ? 'btn-accent' : 'btn-ghost'}`}
               >
-                Start {t.name} trial <Arrow />
+                Try free for 8 days <Arrow />
               </button>
             </div>
           ))}
         </div>
 
-        <button onClick={() => startCheckout(trialTier.slug)} className="btn-accent mx-auto mt-9 h-[52px] px-8 text-[15px]">
-          Start {trialTier.name} trial <Arrow />
+        <button onClick={() => startCheckout(trialTier.slug, billingCycle)} className="btn-accent mx-auto mt-9 h-[52px] px-8 text-[15px]">
+          Try free for 8 days <Arrow />
         </button>
         <p className="mt-4 text-xs faint">
-          Card details are collected up front, and billing starts after 7 days unless you cancel.
+          Card details are collected up front, and billing starts after 8 days unless you cancel.
         </p>
       </div>
     </div>

@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Your BrandBeacon plan has been canceled</title>
+</head>
+<body style="margin:0;padding:0;background-color:#f8f6f3;font-family:Arial,Helvetica,sans-serif;color:#1f2937;">
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color:#f8f6f3;margin:0;padding:24px 0;">
+        <tr>
+            <td align="center">
+                <table role="presentation" width="640" cellspacing="0" cellpadding="0" style="width:640px;max-width:640px;background:#ffffff;border-radius:24px;overflow:hidden;">
+                    <tr>
+                        <td style="padding:40px;background:#111827;color:#ffffff;">
+                            <img src="../../public/brand-beacon-logo.svg" alt="BrandBeacon" width="40" height="40" style="display:block;width:40px;height:40px;">
+                            <h1 style="margin:16px 0 12px;font-size:30px;line-height:1.2;">Your {{params.planName}} plan has been canceled.</h1>
+                            <p style="margin:0;font-size:16px;line-height:1.7;">Hi {{params.firstName}}, we’ve processed your cancellation. Your account access will continue through {{params.accessEndsAt}}.</p>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="padding:32px 40px 12px;">
+                            <p style="margin:0 0 18px;font-size:16px;line-height:1.7;">You can keep using your current plan features until your billing period ends. After that, your account will move back to the free experience.</p>
+                            <p style="margin:0 0 18px;font-size:16px;line-height:1.7;">If you canceled by mistake, you can choose a plan again anytime and pick up where you left off.</p>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="padding:20px 40px 8px;">
+                            <a href="{{params.plansUrl}}" style="display:inline-block;background:#ff6b35;color:#ffffff;text-decoration:none;font-weight:bold;padding:15px 28px;border-radius:999px;">View plans</a>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="padding:8px 40px 40px;">
+                            <p style="margin:0;font-size:14px;line-height:1.7;color:#4b5563;">Questions? Reach us at <a href="mailto:{{params.supportEmail}}" style="color:#1d4ed8;">{{params.supportEmail}}</a>.</p>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>

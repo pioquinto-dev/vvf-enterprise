@@ -2,10 +2,14 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class PricingPlan extends Model
 {
+    use SoftDeletes;
+
     protected $table = 'plans';
     public $incrementing = false;
     protected $keyType = 'string';
@@ -31,6 +35,7 @@ class PricingPlan extends Model
         'unit_amount',
         'duration',
         'plan_environment',
+        'archived_at',
     ];
 
     protected function casts(): array
@@ -38,6 +43,7 @@ class PricingPlan extends Model
         return [
             'features' => 'array',
             'metadata' => 'array',
+            'archived_at' => 'datetime',
             'is_active' => 'boolean',
             'price_cents' => 'integer',
             'interval_count' => 'integer',
@@ -46,5 +52,14 @@ class PricingPlan extends Model
             'saved_amount' => 'decimal:2',
             'unit_amount' => 'integer',
         ];
+    }
+
+    /**
+     * Archived plans stay attached to existing subscriptions but must not be
+     * offered to new customers, so pricing surfaces read through this scope.
+     */
+    public function scopePurchasable(Builder $query): Builder
+    {
+        return $query->where('is_active', true)->whereNull('archived_at');
     }
 }

@@ -11,10 +11,10 @@ return [
     | rendered a week after its scrape points at a dead link, which is why the
     | grid is full of gradient placeholders.
     |
-    | The fix is two-stage: the import writes the source URLs as it always has,
-    | then a background pass downloads each asset, uploads it to object storage,
-    | verifies it landed, and rewrites the column to the durable URL. Nothing is
-    | uploaded inline during a scrape — a slow bucket must never slow a run.
+    | Fresh saved-search imports wait for archival before their run is marked
+    | ready. Other import paths use a background pass. Both download each asset,
+    | upload it to object storage, verify it landed, and rewrite the column to
+    | the durable URL.
     |
     */
 

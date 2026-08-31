@@ -1,197 +1,274 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { router } from '@inertiajs/react';
 
-import { Arrow, Lock, Search } from '../../landing/components/Icons.jsx';
+import { Arrow, Search, Store } from '../../landing/components/Icons.jsx';
+import { fetchKeywordSuggestions } from '../../landing/flow/api.js';
 
 /**
- * The single entry point into the search flow.
+ * Step one of the search flow — pick a subject.
  *
- * Step one of the flow is "pick a subject", and that is all this does — a type
- * toggle, one input, and suggestions that fill the input rather than firing a
- * search. Filling instead of submitting is deliberate: a search costs a credit,
- * so a stray click on a chip must never spend one.
+ * Redesigned to match the flat "Brand Beacon — Start a search" mockup:
+ *   - a segmented mode pill (Your brand / A product) with a
+ *     yellow sliding indicator behind the active tab,
+ *   - one unified pill-shaped search bar with the Continue button inline,
+ *   - a "Popular" row of fill-in chips that only *populate* the input
+ *     (they never fire a search — a search costs a credit).
  */
 
 const TYPES = [
     {
         key: 'brand',
-        label: 'Your brand',
-        hint: 'Track how your own brand is showing up on TikTok.',
-        placeholder: 'e.g. rhode skin',
-        suggestions: ['rhode skin', 'glossier', 'drunk elephant', 'cerave', 'stanley'],
-    },
-    {
-        key: 'competitor',
-        label: 'A competitor',
-        hint: 'Watch what is working for someone else in your category.',
-        placeholder: 'e.g. skims',
-        suggestions: ['skims', 'fenty beauty', 'gymshark', 'alo yoga', 'summer fridays'],
+        label: 'Brand',
+        icon: Store,
+        placeholder: 'Enter your brand name…',
+        sample: 'rhode skin',
+        suggestions: ['rhode skin', 'skims', 'lip oil'],
     },
     {
         key: 'product',
         label: 'A product',
-        hint: 'Product searches are coming soon.',
-        placeholder: 'e.g. lip oil',
-        suggestions: ['lip oil', 'hair oil', 'sunscreen stick', 'liquid blush'],
-        locked: true,
+        icon: Search,
+        placeholder: 'Enter a product to track…',
+        sample: 'lip oil',
+        suggestions: ['lip oil', 'hair oil', 'sunscreen stick'],
     },
 ];
 
 export default function SearchLauncher({
     initialType = 'brand',
     initialQuery = '',
-    heading = 'What do you want to research?',
-    subheading = 'Pick a subject and we scan TikTok for the outlier videos around it.',
-    eyebrow = null,
-    showOutline = true,
-    bare = false,
     onSubmit,
+    suggestionsByType = {},
+    showProgress = true,
 }) {
-    const [type, setType] = useState(initialType === 'product' ? 'brand' : initialType);
+    const [type, setType] = useState(initialType);
     const [value, setValue] = useState(initialQuery);
+    const [liveSuggestions, setLiveSuggestions] = useState([]);
+    const [activeSuggestion, setActiveSuggestion] = useState(-1);
+    const [showSuggestions, setShowSuggestions] = useState(false);
     const inputRef = useRef(null);
+    const fieldRef = useRef(null);
 
-    const config = TYPES.find((t) => t.key === type) ?? TYPES[0];
+    const segRef = useRef(null);
+    const [indStyle, setIndStyle] = useState({ width: 0, transform: 'translateX(0px)' });
+
+    const baseConfig = TYPES.find((t) => t.key === type) ?? TYPES[0];
+    const dynamic = (suggestionsByType?.[type] ?? [])
+        .map((s) => (typeof s === 'string' ? s : s?.name))
+        .filter(Boolean)
+        .slice(0, 3);
+    const chips = dynamic.length > 0 ? dynamic : baseConfig.suggestions;
+
     const query = value.trim().replace(/\s+/g, ' ');
+
+    useEffect(() => {
+        const controller = new AbortController();
+        const term = value.trim();
+
+        fetchKeywordSuggestions(type, term, { signal: controller.signal })
+            .then((payload) => {
+                setLiveSuggestions(Array.isArray(payload?.suggestions) ? payload.suggestions : []);
+                setActiveSuggestion(-1);
+            })
+            .catch(() => {});
+
+        return () => controller.abort();
+    }, [type, value]);
+
+    useEffect(() => {
+        const close = (event) => {
+            if (!fieldRef.current?.contains(event.target)) {
+                setShowSuggestions(false);
+                setActiveSuggestion(-1);
+            }
+        };
+
+        document.addEventListener('mousedown', close);
+
+        return () => document.removeEventListener('mousedown', close);
+    }, []);
+
+    /* position the yellow slider under the active segment */
+    useEffect(() => {
+        const seg = segRef.current;
+        if (!seg) return undefined;
+
+        const place = () => {
+            const btn = seg.querySelector(`[data-mode="${type}"]`);
+            if (!btn) return;
+            setIndStyle({
+                width: `${btn.offsetWidth}px`,
+                transform: `translateX(${btn.offsetLeft - 4}px)`,
+            });
+        };
+
+        place();
+        window.addEventListener('resize', place);
+        if (document.fonts?.ready) document.fonts.ready.then(place).catch(() => {});
+        return () => window.removeEventListener('resize', place);
+    }, [type]);
 
     const submit = (event) => {
         event.preventDefault();
         if (!query) return;
 
-        // Inside the wizard this advances a step in place; standalone it still
-        // has to be a real link so /search?q= keeps working as a deep link.
         if (onSubmit) {
             onSubmit({ type, phrase: query });
             return;
         }
-
         router.visit(`/search?type=${type}&q=${encodeURIComponent(query)}`);
     };
 
-    const useSuggestion = (suggestion) => {
-        setValue(suggestion);
-        inputRef.current?.focus();
+    const visibleSuggestions = liveSuggestions.filter((suggestion) => suggestion.label?.trim());
+
+    const applySuggestion = (label) => {
+        setValue(label);
+        setShowSuggestions(false);
+        setActiveSuggestion(-1);
+        window.requestAnimationFrame(() => inputRef.current?.focus());
     };
 
     return (
-        <div className={bare ? '' : 'surface animate-fade-up p-6 sm:p-8'}>
-            {eyebrow && (
-                <p className="text-[11.5px] font-semibold tracking-[.16em] faint uppercase">{eyebrow}</p>
-            )}
-            <h2 className={`font-display text-[26px] font-bold tracking-[-.03em] sm:text-[32px] ${eyebrow ? 'mt-2' : ''}`}>
-                {heading}
-            </h2>
-            <p className="mt-2.5 max-w-xl text-[14px] leading-relaxed muted">{subheading}</p>
+        <div className="hero">
+            <div className="hero__head">
+                <h2>What do you want to scan?</h2>
+                {showProgress && (
+                    <div className="prog">
+                        <span className="seg3">
+                            <span className="on" />
+                            <span />
+                            <span />
+                        </span>{' '}
+                        <b>Step 1</b>&nbsp;of 3<span className="prog__detail"> · Subject</span>
+                    </div>
+                )}
+            </div>
 
-            {/* type toggle */}
-            <div
-                role="radiogroup"
-                aria-label="Search type"
-                className="mt-6 grid gap-2 sm:grid-cols-3"
-            >
+            <div className="seg" ref={segRef} role="tablist" aria-label="What to research">
+                <span className="seg__ind" style={indStyle} aria-hidden />
                 {TYPES.map((option) => {
+                    const Icon = option.icon;
                     const active = option.key === type;
-
                     return (
                         <button
                             key={option.key}
                             type="button"
-                            role="radio"
-                            aria-checked={active}
-                            disabled={option.locked}
-                            title={option.locked ? 'Product searches are coming soon' : option.hint}
-                            onClick={() => !option.locked && setType(option.key)}
-                            className={`rounded-2xl border px-4 py-3.5 text-left transition-all duration-300 ${
-                                option.locked
-                                    ? 'cursor-not-allowed border-black/[.06] bg-black/[.02] opacity-60 dark:border-white/[.07] dark:bg-white/[.02]'
-                                    : active
-                                      ? 'border-accent/45 bg-accent/[.08] shadow-[0_14px_34px_-24px_rgba(109,75,255,.9)] dark:border-accent-glow/40 dark:bg-accent-glow/[.09]'
-                                      : 'border-black/[.08] hover:-translate-y-px hover:border-accent/35 dark:border-white/[.1]'
-                            }`}
+                            role="tab"
+                            aria-selected={active}
+                            data-mode={option.key}
+                            onClick={() => setType(option.key)}
+                            className="seg__b"
                         >
-                            <span className="flex items-center gap-2">
-                                <span
-                                    className={`text-[14px] font-semibold ${
-                                        active && !option.locked ? 'text-accent dark:text-accent-glow' : ''
-                                    }`}
-                                >
-                                    {option.label}
-                                </span>
-                                {option.locked && (
-                                    <span className="inline-flex items-center gap-1 rounded-full bg-black/[.05] px-2 py-0.5 text-[10px] font-bold tracking-[.12em] uppercase faint dark:bg-white/[.08]">
-                                        <Lock className="h-3 w-3" /> Soon
-                                    </span>
-                                )}
-                            </span>
-                            <span className="mt-1 block text-[12.5px] leading-snug faint">{option.hint}</span>
+                            <Icon className="h-4 w-4" />
+                            {option.label}
                         </button>
                     );
                 })}
             </div>
 
-            {/* subject input */}
-            <form onSubmit={submit} className="mt-5 flex flex-col gap-2.5 sm:flex-row">
-                <label className="flex h-[56px] flex-1 items-center gap-3 rounded-2xl border border-black/[.08] bg-white px-4 transition-all duration-300 focus-within:border-accent/40 focus-within:shadow-[0_18px_44px_-30px_rgba(109,75,255,.8)] dark:border-white/[.12] dark:bg-white/[.04] dark:focus-within:border-accent-glow/40">
-                    <Search className="h-4 w-4 shrink-0 faint" />
+            <form className="bar" onSubmit={submit} ref={fieldRef}>
+                <svg className="bar__q" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                    <circle cx="11" cy="11" r="7" />
+                    <path d="m20 20-3.5-3.5" />
+                </svg>
+                <div className="bar__field">
                     <input
                         ref={inputRef}
+                        id="dashboard-search-subject"
+                        type="text"
+                        autoComplete="off"
                         value={value}
-                        onChange={(event) => setValue(event.target.value)}
-                        placeholder={config.placeholder}
-                        aria-label="Search subject"
-                        maxLength={80}
-                        className="w-full border-0 bg-transparent p-0 text-[15px] font-medium text-ink placeholder:text-black/35 focus:ring-0 focus:outline-none dark:text-white dark:placeholder:text-white/35"
-                    />
-                </label>
+                        onChange={(e) => {
+                            setValue(e.target.value);
+                            setShowSuggestions(true);
+                        }}
+                        onFocus={() => setShowSuggestions(true)}
+                        onKeyDown={(event) => {
+                            if (!visibleSuggestions.length) {
+                                return;
+                            }
 
-                <button type="submit" disabled={!query} className="btn-accent h-[56px] px-6 text-[15px]">
-                    Continue <Arrow />
+                            if (event.key === 'ArrowDown') {
+                                event.preventDefault();
+                                setShowSuggestions(true);
+                                setActiveSuggestion((current) => (current + 1) % visibleSuggestions.length);
+                            }
+
+                            if (event.key === 'ArrowUp') {
+                                event.preventDefault();
+                                setShowSuggestions(true);
+                                setActiveSuggestion((current) => (current <= 0 ? visibleSuggestions.length - 1 : current - 1));
+                            }
+
+                            if (event.key === 'Enter' && activeSuggestion >= 0 && visibleSuggestions[activeSuggestion]) {
+                                event.preventDefault();
+                                applySuggestion(visibleSuggestions[activeSuggestion].label);
+                            }
+
+                            if (event.key === 'Escape') {
+                                setShowSuggestions(false);
+                                setActiveSuggestion(-1);
+                            }
+                        }}
+                        placeholder={baseConfig.placeholder}
+                        aria-label={baseConfig.placeholder}
+                        aria-expanded={showSuggestions && visibleSuggestions.length > 0}
+                        aria-haspopup="listbox"
+                    />
+
+                    {showSuggestions && visibleSuggestions.length > 0 && (
+                        <div className="hero-suggest" role="listbox" aria-label={`${type} suggestions`}>
+                            <div className="hero-suggest__head">
+                                <span>Suggested {type === 'brand' ? 'brands' : 'products'}</span>
+                                <span>{visibleSuggestions.length}</span>
+                            </div>
+                            <div className="hero-suggest__list">
+                                {visibleSuggestions.map((suggestion, index) => (
+                                    <button
+                                        key={`${suggestion.type}-${suggestion.id}`}
+                                        type="button"
+                                        className={`hero-suggest__item${index === activeSuggestion ? ' is-active' : ''}`}
+                                        onMouseEnter={() => setActiveSuggestion(index)}
+                                        onMouseDown={(event) => event.preventDefault()}
+                                        onClick={() => applySuggestion(suggestion.label)}
+                                    >
+                                        <span className="hero-suggest__text">
+                                            <strong>{suggestion.label}</strong>
+                                            {suggestion.sector && <em>{suggestion.sector}</em>}
+                                        </span>
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+                </div>
+                <button type="submit" className="btn btn--y" disabled={!query}>
+                    Continue
+                    <span className="btn__a">
+                        <Arrow />
+                    </span>
                 </button>
             </form>
 
-            {/* suggestions */}
-            <div className="mt-5">
-                <p className="text-[12px] font-semibold tracking-[.14em] faint uppercase">
-                    Try one of these
-                </p>
-                <div className="mt-2.5 flex flex-wrap gap-2">
-                    {config.suggestions.map((suggestion) => (
+            <div className="hero__foot">
+                <span className="hero__hint">One subject per search keeps every result tight.</span>
+                <div className="pop">
+                    <span className="pop__l">Popular</span>
+                    {chips.map((chip) => (
                         <button
-                            key={suggestion}
+                            key={chip}
                             type="button"
-                            onClick={() => useSuggestion(suggestion)}
-                            className="inline-flex items-center rounded-full border border-accent/16 bg-accent/[.07] px-3.5 py-1.5 text-[12.5px] font-semibold text-accent transition hover:-translate-y-px hover:bg-accent/[.12] dark:border-accent-glow/18 dark:bg-accent-glow/[.08] dark:text-accent-glow dark:hover:bg-accent-glow/[.14]"
+                            className="chip"
+                            onClick={() => {
+                                setValue(chip);
+                                inputRef.current?.focus();
+                            }}
                         >
-                            {suggestion}
+                            {chip}
                         </button>
                     ))}
                 </div>
-                <p className="mt-3 text-[12px] faint">
-                    Tapping a suggestion fills the box — nothing runs until you press Continue.
-                </p>
             </div>
-
-            {/* what happens next — redundant once the stepper is on screen */}
-            <ol
-                hidden={!showOutline}
-                className="mt-7 grid gap-3 border-t border-black/[.06] pt-6 sm:grid-cols-3 dark:border-white/[.07]"
-            >
-                {[
-                    ['Pick a subject', 'One brand, competitor, or product per search.'],
-                    ['Tune the keywords', 'We suggest related terms — keep the ones that fit.'],
-                    ['Get outlier videos', 'Ranked results that refresh on your schedule.'],
-                ].map(([title, body], index) => (
-                    <li key={title} className="flex gap-3">
-                        <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-accent/[.1] font-display text-[12px] font-bold text-accent dark:bg-accent-glow/[.12] dark:text-accent-glow">
-                            {index + 1}
-                        </span>
-                        <span>
-                            <span className="block text-[13.5px] font-semibold">{title}</span>
-                            <span className="mt-0.5 block text-[12.5px] leading-snug faint">{body}</span>
-                        </span>
-                    </li>
-                ))}
-            </ol>
         </div>
     );
 }

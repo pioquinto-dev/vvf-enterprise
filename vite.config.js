@@ -11,15 +11,9 @@ export default defineConfig({
             ssr: 'resources/js/ssr.jsx',
             refresh: true,
             fonts: [
-                bunny('Instrument Sans', {
-                    weights: [400, 500, 600],
-                }),
-                // Landing page typography
-                bunny('Space Grotesk', {
-                    weights: [500, 600, 700],
-                }),
-                bunny('Inter', {
-                    weights: [400, 500, 600],
+                // Figtree is the whole Brand Beacon typeface, self-hosted.
+                bunny('Figtree', {
+                    weights: [400, 500, 600, 700, 800, 900],
                 }),
             ],
         }),

@@ -1,29 +1,30 @@
-import { useCallback, useState } from 'react';
-import { router } from '@inertiajs/react';
+import { useCallback, useEffect, useState } from 'react';
+import { router, usePage } from '@inertiajs/react';
 
 import SearchLauncher from './SearchLauncher.jsx';
+import EntitlementsBar from './EntitlementsBar.jsx';
+import UpgradePromptModal from './UpgradePromptModal.jsx';
 import KeywordsScreen from '../../landing/flow/screens/KeywordsScreen.jsx';
+import SourcesScreen from '../../landing/flow/screens/SourcesScreen.jsx';
 import RunningScreen from '../../landing/flow/screens/RunningScreen.jsx';
 import { createSavedSearch, trackSearch } from '../../landing/flow/api.js';
-import { Check } from '../../landing/components/Icons.jsx';
-
-const STEPS = [
-    { key: 'subject', label: 'Subject', hint: 'Brand, competitor or product' },
-    { key: 'keywords', label: 'Keywords', hint: 'Widen and filter the pull' },
-    { key: 'running', label: 'Results', hint: 'We scrape and rank' },
-];
 
 /**
- * The whole search flow on one page.
+ * The whole in-app search flow on one page (Dashboard and /search share it).
  *
- * Steps advance in local state rather than by navigation, so the keyword work
- * survives a step back — and a failed run can drop the user straight back onto
- * the keywords they already tuned instead of an empty form.
+ * The wizard branches by search kind, but every search can now optionally add
+ * source context before it runs:
+ *   - product / brand → Subject → Keywords → Sources → run
+ * The run/loading screen is *not* a wizard step and has no stepper.
  *
- * The only thing written to the URL is `?run=<id>` once a run exists, via
- * replaceState. That is a resume handle, not a navigation: a reload should not
- * lose sight of a scrape that is already costing money server-side.
+ * Steps advance in local state so keyword work survives a step back, and a
+ * failed run drops straight back onto the tuned keywords. The only thing
+ * written to the URL is `?run=<id>` once a run exists, as a resume handle.
  */
+
+const kindOf = (type) => (type === 'product' ? 'product' : 'brand');
+const nounOf = (type) => (type === 'product' ? 'product' : 'brand');
+const PENDING_SEARCH_KEY = 'brand-beacon.pending-search';
 
 function readRunParam() {
     if (typeof window === 'undefined') return null;
@@ -31,118 +32,228 @@ function readRunParam() {
     return id && /^\d+$/.test(id) ? Number(id) : null;
 }
 
-/**
- * A header strip on the card, not three cards of its own — the stepper is
- * orientation, so it should read as part of the search panel rather than
- * three more things competing for a click.
- */
-function Stepper({ current, onJump, reachable }) {
-    const index = STEPS.findIndex((s) => s.key === current);
-
+function UsageConfirmModal({ title, body, subject, confirmLabel, busy = false, onConfirm, onCancel }) {
     return (
-        <ol className="flex items-center gap-2 border-b border-black/[.06] bg-black/[.015] px-4 py-3 sm:gap-3 sm:px-6 dark:border-white/[.07] dark:bg-white/[.02]">
-            {STEPS.map((step, i) => {
-                const state = i < index ? 'done' : i === index ? 'active' : 'todo';
-                const clickable = state === 'done' && reachable.includes(step.key);
-
-                return (
-                    <li key={step.key} className="flex min-w-0 items-center gap-2 sm:gap-3">
-                        {i > 0 && (
-                            <span
-                                aria-hidden
-                                className={`h-px w-4 shrink-0 sm:w-8 ${
-                                    state === 'todo' ? 'bg-black/[.1] dark:bg-white/[.12]' : 'bg-accent/40'
-                                }`}
-                            />
-                        )}
-
-                        <button
-                            type="button"
-                            disabled={!clickable}
-                            onClick={() => clickable && onJump(step.key)}
-                            aria-current={state === 'active' ? 'step' : undefined}
-                            className={`flex min-w-0 items-center gap-2 rounded-full py-1 pr-2 pl-1 text-left transition ${
-                                clickable ? 'cursor-pointer hover:bg-black/[.04] dark:hover:bg-white/[.06]' : 'cursor-default'
-                            }`}
-                        >
-                            <span
-                                className={`flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-full font-display text-[11.5px] font-bold ${
-                                    state === 'todo'
-                                        ? 'bg-black/[.06] faint dark:bg-white/[.09]'
-                                        : 'bg-accent text-white'
-                                }`}
-                            >
-                                {state === 'done' ? <Check className="h-2.5 w-2.5" /> : i + 1}
-                            </span>
-
-                            <span
-                                className={`truncate text-[12.5px] font-semibold ${
-                                    state === 'active'
-                                        ? 'text-accent dark:text-accent-glow'
-                                        : state === 'todo'
-                                          ? 'faint'
-                                          : 'muted'
-                                }`}
-                            >
-                                {step.label}
-                            </span>
+        <div className="bb">
+            <div className="bb-modal">
+                <button className="bb-modal__bg" aria-label="Close" onClick={onCancel} />
+                <div className="bb-modal__box">
+                    <h2>{title}</h2>
+                    <p className="sub">{body}</p>
+                    {subject && <p style={{ marginTop: 16, fontWeight: 700, color: 'var(--ink)' }}>{subject}</p>}
+                    <div className="actrow__r" style={{ marginTop: 24, justifyContent: 'flex-end' }}>
+                        <button type="button" className="btn btn--g" onClick={onCancel} disabled={busy}>
+                            Cancel
                         </button>
-                    </li>
-                );
-            })}
-        </ol>
+                        <button type="button" className="btn btn--y" onClick={onConfirm} disabled={busy}>
+                            {busy ? 'Starting…' : confirmLabel}
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
     );
 }
 
-export default function SearchWizard({ initialType = 'brand', initialQuery = '', heading, subheading }) {
+function AuthPromptModal({ type, phrase, onClose }) {
+    const noun = nounOf(type);
+
+    const goTo = (path) => {
+        if (typeof window === 'undefined') return;
+        window.location.assign(path);
+    };
+
+    return (
+        <div className="bb">
+            <div className="bb-modal">
+                <button className="bb-modal__bg" aria-label="Close" onClick={onClose} />
+                <div className="bb-modal__box">
+                    <h2>Create your account first</h2>
+                    <p className="sub">
+                        Your {noun} is ready. Create an account or sign in first, and we will start this search right after you get back.
+                    </p>
+                    {phrase && <p style={{ marginTop: 16, fontWeight: 700, color: 'var(--ink)' }}>{phrase}</p>}
+                    <div className="actrow__r" style={{ marginTop: 24, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+                        <button type="button" className="btn btn--g" onClick={onClose}>
+                            Not now
+                        </button>
+                        <button type="button" className="btn btn--g" onClick={() => goTo('/login')}>
+                            Sign in
+                        </button>
+                        <button type="button" className="btn btn--y" onClick={() => goTo('/register')}>
+                            Create account
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+function readPendingSearch() {
+    if (typeof window === 'undefined') return null;
+
+    try {
+        const raw = window.sessionStorage.getItem(PENDING_SEARCH_KEY);
+        if (!raw) return null;
+        const parsed = JSON.parse(raw);
+
+        return parsed && typeof parsed === 'object' ? parsed : null;
+    } catch {
+        return null;
+    }
+}
+
+function writePendingSearch(payload) {
+    if (typeof window === 'undefined') return;
+    window.sessionStorage.setItem(PENDING_SEARCH_KEY, JSON.stringify(payload));
+}
+
+function clearPendingSearch() {
+    if (typeof window === 'undefined') return;
+    window.sessionStorage.removeItem(PENDING_SEARCH_KEY);
+}
+
+export default function SearchWizard({
+    initialType = 'brand',
+    initialQuery = '',
+    heading = 'Start a search',
+    subheading = 'Pick one brand or product — we widen it with smarter keywords on the next step.',
+    subjectExtra = null,
+    suggestionsByType = {},
+    onTrackedSearchChange = null,
+}) {
+    const page = usePage();
+    const { auth = {}, billing = {} } = page.props;
     const resumeId = readRunParam();
 
     const [step, setStep] = useState(resumeId ? 'running' : initialQuery ? 'keywords' : 'subject');
     const [type, setType] = useState(initialType);
     const [phrase, setPhrase] = useState(initialQuery);
+    const [pending, setPending] = useState(null); // keyword payload awaiting sources/create
     const [searchId, setSearchId] = useState(resumeId);
     const [submitting, setSubmitting] = useState(false);
     const [error, setError] = useState(null);
+    const [confirmPayload, setConfirmPayload] = useState(null);
+    const [authPromptPayload, setAuthPromptPayload] = useState(null);
+    const [upgradeModalOpen, setUpgradeModalOpen] = useState(false);
+
+    const kind = kindOf(type);
+    const signedIn = auth.signedIn ?? Boolean(auth.user);
+    const searchLimit = billing.searchCreditsLimit ?? 0;
+    const searchRemaining = billing.searchCreditsRemaining ?? 0;
+    const searchUsed = billing.searchCreditsUsed ?? 0;
+    const searchRemainingAfterUse = searchLimit === -1 ? 'unlimited' : Math.max(0, searchLimit - searchUsed - 1);
+    const searchCreditsAvailable = !signedIn || searchLimit === -1 || searchRemaining > 0;
 
     const stampUrl = (id) => {
         if (typeof window === 'undefined') return;
         const url = new URL(window.location.href);
         if (id) url.searchParams.set('run', String(id));
         else url.searchParams.delete('run');
-        // Preserve Inertia's own history state — replacing it with {} breaks back/forward.
         window.history.replaceState(window.history.state, '', url.toString());
     };
 
     const pickSubject = ({ type: nextType, phrase: nextPhrase }) => {
+        if (!searchCreditsAvailable) {
+            setUpgradeModalOpen(true);
+            return;
+        }
+
         setType(nextType);
         setPhrase(nextPhrase);
         setStep('keywords');
     };
 
-    const submit = async ({ phrase: finalPhrase, keywords, frequency, name }) => {
+    const doCreate = async (payload, sources, searchType = type, searchPhrase = payload.phrase || phrase) => {
         setSubmitting(true);
         setError(null);
 
         try {
             const created = await createSavedSearch({
-                type,
-                phrase: finalPhrase || phrase,
-                name,
-                keywords,
-                frequency,
+                type: searchType,
+                phrase: searchPhrase,
+                name: payload.name,
+                keywords: payload.keywords,
+                frequency: payload.frequency,
+                sources,
             });
 
-            // Tracked locally so a reload can pick the run back up.
+            clearPendingSearch();
             trackSearch({ id: created.id, name: created.name, url: created.url });
-
+            onTrackedSearchChange?.();
             setSearchId(created.id);
             stampUrl(created.id);
             setStep('running');
         } catch (e) {
+            const pendingSearch = readPendingSearch();
+            if (pendingSearch?.started) {
+                writePendingSearch({ ...pendingSearch, started: false });
+            }
             setError(e.message || 'Could not start the search. Try again.');
+            setStep('keywords');
         } finally {
             setSubmitting(false);
         }
+    };
+
+    useEffect(() => {
+        if (!signedIn) return;
+
+        const pendingSearch = readPendingSearch();
+
+        if (!pendingSearch || pendingSearch.started) {
+            return;
+        }
+
+        if (!pendingSearch.payload || !['brand', 'competitor', 'product'].includes(pendingSearch.type)) {
+            clearPendingSearch();
+            return;
+        }
+
+        writePendingSearch({ ...pendingSearch, started: true });
+        setType(pendingSearch.type === 'competitor' ? 'brand' : pendingSearch.type);
+        setPhrase(pendingSearch.phrase ?? '');
+        setPending(pendingSearch.payload);
+        setError(null);
+        setAuthPromptPayload(null);
+
+        setStep('sources');
+    }, [signedIn]);
+
+    const needsSearchConfirm = signedIn && searchLimit !== 0;
+
+    const runSearch = (payload, sources) => {
+        if (!signedIn) {
+            writePendingSearch({
+                type,
+                kind,
+                phrase: payload.phrase || phrase,
+                payload,
+                sources: sources ?? null,
+                started: false,
+            });
+            setPending(payload);
+            setAuthPromptPayload({ type, phrase: payload.phrase || phrase });
+            return;
+        }
+
+        if (! needsSearchConfirm) {
+            doCreate(payload, sources);
+            return;
+        }
+
+        setConfirmPayload({ payload, sources });
+    };
+
+    const afterKeywords = (payload) => {
+        setPending(payload);
+        if (!signedIn) {
+            runSearch(payload);
+            return;
+        }
+
+        setStep('sources');
     };
 
     const backToKeywords = () => {
@@ -151,50 +262,133 @@ export default function SearchWizard({ initialType = 'brand', initialQuery = '',
         setStep(phrase ? 'keywords' : 'subject');
     };
 
-    const onDone = useCallback(
-        (found) => router.visit(`/bookmark/${found?.id ?? searchId}`),
-        [searchId]
-    );
+    const leaveRunningScreen = () => {
+        stampUrl(null);
+        setSearchId(null);
+        setStep('subject');
+    };
 
-    // A run in flight cannot be re-tuned, so those steps stop being clickable.
-    const reachable = searchId ? [] : ['subject', 'keywords'];
+    const onDone = useCallback((found) => router.visit(found?.url ?? `/library/${found?.id ?? searchId}`), [searchId]);
+
+    const topTitle =
+        step === 'subject' ? heading : phrase;
+    const topSub =
+        step === 'subject'
+            ? subheading
+            : step === 'sources'
+              ? 'Step 3 of 3 — optional.'
+              : `Step 2 of 3 — add terms to expand on your ${nounOf(type)}. Ticking six terms still spends one search.`;
 
     return (
-        <div className="surface animate-fade-up overflow-hidden">
-            <Stepper current={step} reachable={reachable} onJump={(key) => setStep(key)} />
+        <>
+            {step !== 'running' && (
+                <div className="top top--wizard">
+                    <div>
+                        <h1>{topTitle}</h1>
+                        <p>{topSub}</p>
+                    </div>
+                    <EntitlementsBar />
+                </div>
+            )}
 
-            <div className="p-6 sm:p-8">
-                {step === 'subject' && (
-                    <SearchLauncher
-                        initialType={type}
-                        initialQuery={phrase}
-                        heading={heading}
-                        subheading={subheading}
-                        showOutline={false}
-                        bare
-                        onSubmit={pickSubject}
-                    />
-                )}
+            {step === 'running' && searchId ? (
+                <RunningScreen
+                    searchId={searchId}
+                    onBack={backToKeywords}
+                    onDone={onDone}
+                    onAutoReturn={leaveRunningScreen}
+                />
+            ) : (
+                <div className="card card--search-wizard">
+                    {step === 'subject' && (
+                        <SearchLauncher
+                            initialType={type}
+                            initialQuery={phrase}
+                            onSubmit={pickSubject}
+                            suggestionsByType={suggestionsByType}
+                            showProgress={false}
+                        />
+                    )}
 
-                {/* Kept mounted so stepping back — or retrying a failed run — returns
-                    the user to the keywords they already tuned, not a fresh expansion. */}
-                {phrase && (
-                    <div hidden={step !== 'keywords'}>
+                    {step === 'keywords' && phrase && (
                         <KeywordsScreen
                             key={`${type}:${phrase}`}
                             phrase={phrase}
+                            noun={nounOf(type)}
+                            searchType={type}
+                            nextLabel="Continue"
                             submitting={submitting}
                             error={error}
-                            onBack={() => setStep('subject')}
-                            onSubmit={submit}
-                        />
-                    </div>
-                )}
+                            onBack={() => {
+                                if (!signedIn) {
+                                    if (typeof window !== 'undefined') {
+                                        window.location.assign('/');
+                                        return;
+                                    }
 
-                {step === 'running' && searchId && (
-                    <RunningScreen searchId={searchId} onBack={backToKeywords} onDone={onDone} />
-                )}
-            </div>
-        </div>
+                                    router.visit('/', { replace: true, preserveState: false, preserveScroll: false });
+                                    return;
+                                }
+
+                                setStep('subject');
+                            }}
+                            onSubmit={afterKeywords}
+                        />
+                    )}
+
+                    {step === 'sources' && (
+                        <SourcesScreen
+                            noun={nounOf(type)}
+                            submitting={submitting}
+                            onBack={() => setStep('keywords')}
+                            onSkip={() => runSearch(pending)}
+                            onRun={(sources) => runSearch(pending, sources)}
+                        />
+                    )}
+                </div>
+            )}
+
+            {step === 'subject' && subjectExtra}
+
+            {confirmPayload && (
+                <UsageConfirmModal
+                    title="Start this search?"
+                    body={`This will use 1 search credit. You will have ${searchRemainingAfterUse} search credits remaining after this run starts. Search credits are not restored later, even if you pause, delete, or rerun the search.`}
+                    subject={confirmPayload.payload?.name ?? confirmPayload.payload?.phrase ?? phrase}
+                    confirmLabel="Start search"
+                    busy={submitting}
+                    onCancel={() => setConfirmPayload(null)}
+                    onConfirm={() => {
+                        const next = confirmPayload;
+                        setConfirmPayload(null);
+                        doCreate(next.payload, next.sources);
+                    }}
+                />
+            )}
+
+            {authPromptPayload && (
+                <AuthPromptModal
+                    type={authPromptPayload.type}
+                    phrase={authPromptPayload.phrase}
+                    onClose={() => {
+                        clearPendingSearch();
+                        setAuthPromptPayload(null);
+                    }}
+                />
+            )}
+
+            {upgradeModalOpen && (
+                <UpgradePromptModal
+                    eyebrow="Search credits"
+                    title={(billing.trialEligible ?? true) && !(billing.hasUsedTrial ?? false) ? 'Start your 8-day Growth trial' : 'Upgrade to unlock more searches'}
+                    body={(billing.trialEligible ?? true) && !(billing.hasUsedTrial ?? false)
+                        ? "You've already used the search credits on Free. Start your trial to keep finding new outliers."
+                        : "You've already used the search credits available on your current plan. Upgrade to Growth or Scale to keep finding new outliers."}
+                    primaryLabel={(billing.trialEligible ?? true) && !(billing.hasUsedTrial ?? false) ? 'Start 8-day Growth trial' : 'Upgrade to Growth'}
+                    onPrimary={() => router.visit((billing.trialEligible ?? true) && !(billing.hasUsedTrial ?? false) ? '/trial' : '/plans')}
+                    onClose={() => setUpgradeModalOpen(false)}
+                />
+            )}
+        </>
     );
 }

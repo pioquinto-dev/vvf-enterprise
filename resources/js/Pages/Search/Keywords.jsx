@@ -1,7 +1,6 @@
 import { Head } from '@inertiajs/react';
 
 import AppLayout from '../components/AppLayout.jsx';
-import EntitlementsBar from '../components/EntitlementsBar.jsx';
 import SearchWizard from '../components/SearchWizard.jsx';
 
 /**
@@ -12,10 +11,9 @@ import SearchWizard from '../components/SearchWizard.jsx';
 export default function Keywords({ phrase = '', type = 'brand' }) {
     return (
         <>
-            <Head title={phrase ? 'Add keywords - Outlier Vault' : 'Search - Outlier Vault'} />
+            <Head title={phrase ? 'Add keywords · Brand Beacon' : 'Search · Brand Beacon'} />
 
             <AppLayout width="max-w-4xl">
-                <EntitlementsBar />
                 <SearchWizard initialType={type} initialQuery={phrase} />
             </AppLayout>
         </>

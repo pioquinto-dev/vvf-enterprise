@@ -1,32 +1,16 @@
-import { useRef, useState } from 'react';
-import { Arrow, Google, Lock, Search, Store, Target, Trend } from '../components/Icons.jsx';
-import CountUp from '../components/CountUp.jsx';
-import Reveal from '../components/Reveal.jsx';
-import { STATS } from '../data/dummy.js';
+import { useEffect, useRef, useState } from 'react';
 
-/**
- * The hero is one job: pick a subject and go. Everything else on this page is
- * persuasion for people who did not do that yet.
- *
- * Modes sit above the box rather than inside it so the input stays the largest
- * thing on screen, and the sample is a hint under the field — one tap fills it,
- * nothing runs until the visitor presses the button.
- */
+import { Arrow, Search, Store } from '../components/Icons.jsx';
+import { fetchKeywordSuggestions } from '../flow/api.js';
 
 const MODES = [
   {
     key: 'brand',
-    label: 'Your brand',
+    label: 'Brand',
     icon: Store,
     prompt: 'Which brand do you want to research?',
     sample: 'rhode skin',
-  },
-  {
-    key: 'competitor',
-    label: 'A competitor',
-    icon: Target,
-    prompt: 'Which competitor should we watch?',
-    sample: 'skims',
+    samples: ['rhode skin', 'rare beauty', 'summer fridays'],
   },
   {
     key: 'product',
@@ -34,17 +18,95 @@ const MODES = [
     icon: Search,
     prompt: 'Which product do you want to track?',
     sample: 'lip oil',
-    locked: true,
+    samples: ['lip oil', 'blush stick', 'collagen mask'],
   },
 ];
 
 export default function Hero({ onStart }) {
   const [type, setType] = useState('brand');
   const [value, setValue] = useState('');
+  const [isFocused, setIsFocused] = useState(false);
+  const [typingText, setTypingText] = useState('');
+  const [subjectSuggestions, setSubjectSuggestions] = useState([]);
+  const [activeSuggestion, setActiveSuggestion] = useState(-1);
+  const [showSuggestions, setShowSuggestions] = useState(false);
   const inputRef = useRef(null);
+  const fieldRef = useRef(null);
 
   const mode = MODES.find((m) => m.key === type) ?? MODES[0];
   const query = value.trim().replace(/\s+/g, ' ');
+  const visibleSuggestions = subjectSuggestions.filter((suggestion) => suggestion.label?.trim());
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    fetchKeywordSuggestions(type, value.trim(), { signal: controller.signal })
+      .then((payload) => setSubjectSuggestions(Array.isArray(payload?.suggestions) ? payload.suggestions : []))
+      .catch(() => {});
+
+    return () => controller.abort();
+  }, [type, value]);
+
+  useEffect(() => {
+    const close = (event) => {
+      if (!fieldRef.current?.contains(event.target)) {
+        setShowSuggestions(false);
+        setActiveSuggestion(-1);
+      }
+    };
+
+    document.addEventListener('mousedown', close);
+
+    return () => document.removeEventListener('mousedown', close);
+  }, []);
+
+  useEffect(() => {
+    if (value) {
+      setTypingText('');
+      return undefined;
+    }
+
+    const samples = mode.samples?.length ? mode.samples : [mode.sample];
+    let sampleIndex = 0;
+    let charIndex = 0;
+    let deleting = false;
+    let timeoutId;
+
+    const tick = () => {
+      const current = samples[sampleIndex] ?? '';
+
+      if (!deleting) {
+        charIndex += 1;
+        setTypingText(current.slice(0, charIndex));
+
+        if (charIndex >= current.length) {
+          deleting = true;
+          timeoutId = window.setTimeout(tick, 1300);
+          return;
+        }
+
+        timeoutId = window.setTimeout(tick, 75);
+        return;
+      }
+
+      charIndex -= 1;
+      setTypingText(current.slice(0, Math.max(0, charIndex)));
+
+      if (charIndex <= 0) {
+        deleting = false;
+        sampleIndex = (sampleIndex + 1) % samples.length;
+        timeoutId = window.setTimeout(tick, 260);
+        return;
+      }
+
+      timeoutId = window.setTimeout(tick, 38);
+    };
+
+    setTypingText('');
+    timeoutId = window.setTimeout(tick, 360);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [mode, value]);
 
   const submit = (e) => {
     e?.preventDefault();
@@ -55,139 +117,137 @@ export default function Hero({ onStart }) {
     onStart(type, query);
   };
 
+  const applySuggestion = (label) => {
+    setValue(label);
+    setShowSuggestions(false);
+    setActiveSuggestion(-1);
+    window.requestAnimationFrame(() => inputRef.current?.focus());
+  };
+
   return (
-    <section id="top" className="relative isolate overflow-hidden pt-12 sm:pt-20 lg:pt-24">
-      <div aria-hidden className="pointer-events-none absolute inset-0 -z-10">
-        <div className="bg-grid mask-radial-fade absolute inset-0" />
-        <div className="absolute top-[-18%] left-1/2 h-[560px] w-[900px] max-w-[140vw] -translate-x-1/2 rounded-full bg-accent/25 blur-[150px] dark:bg-accent/30" />
-        <div className="animate-float absolute top-[24%] right-[6%] h-[260px] w-[260px] rounded-full bg-hot/20 blur-[120px]" />
-        <div className="absolute bottom-[-10%] left-[4%] h-[240px] w-[240px] rounded-full bg-accent-glow/15 blur-[130px]" />
-      </div>
+    <section className="hero" id="top">
+      <div className="wrap">
+        <h1>
+          TikTok Brand and Social Media <span className="hl">Intelligence Tool</span>
+        </h1>
+        <p className="hero__sub">
+          Facebook has an ad library. Organic TikTok doesn't. So we built it.
+        </p>
 
-      <div className="relative mx-auto max-w-page px-4 sm:px-6 lg:px-8">
-        <div className="mx-auto max-w-3xl text-center">
-          <Reveal delay={80}>
-            <h1 className="mt-7 font-display text-[38px] leading-[1.04] font-bold tracking-[-.035em] sm:text-[58px] lg:text-[72px]">
-              TikTok Brand and Social Media
-              <span className="text-gradient"> Intelligence Tool</span>
-            </h1>
-          </Reveal>
+        <form className="box" onSubmit={submit}>
+          <p className="box__label">
+            <span className="box__step">1</span>
+            Pick what you want to search
+          </p>
 
-          <Reveal delay={140}>
-            <p className="mx-auto mt-6 max-w-xl text-[15.5px] leading-relaxed muted sm:text-[17px]">
-              Enter your brand, a competitor or single product; then we will scan TikTok and return the most viral
-              outlier videos, the creators behind them and the reason they went viral
-            </p>
-          </Reveal>
-        </div>
-
-        <Reveal delay={200} className="mx-auto mt-10 max-w-2xl">
-          {/* mode tabs */}
-          <div role="tablist" aria-label="What to research" className="flex flex-wrap items-center justify-center gap-1.5">
-            {MODES.map(({ key, label, icon: Icon, locked }) => {
-              const active = key === type;
-
-              return (
-                <button
-                  key={key}
-                  role="tab"
-                  type="button"
-                  aria-selected={active}
-                  disabled={locked}
-                  title={locked ? 'Product searches are coming soon' : undefined}
-                  onClick={() => !locked && setType(key)}
-                  className={`inline-flex items-center gap-2 rounded-full border px-4 py-2 text-[13.5px] font-semibold transition-all duration-300 ${
-                    locked
-                      ? 'cursor-not-allowed border-transparent faint'
-                      : active
-                        ? 'border-black/[.08] bg-white text-ink shadow-[0_10px_30px_-20px_rgba(20,20,50,.6)] dark:border-white/[.14] dark:bg-white/[.08] dark:text-white'
-                        : 'border-transparent muted hover:bg-black/[.04] hover:text-ink dark:hover:bg-white/[.06] dark:hover:text-white'
-                  }`}
-                >
-                  <Icon className="h-4 w-4 shrink-0" />
-                  {label}
-                  {locked && <Lock className="h-3 w-3 shrink-0" />}
-                </button>
-              );
-            })}
-          </div>
-
-          {/* the box */}
-          <form
-            onSubmit={submit}
-            className="mt-4 rounded-[24px] border border-accent/30 bg-white/80 p-5 shadow-[0_40px_100px_-50px_rgba(20,20,50,.5),0_0_0_4px_rgba(109,75,255,.06)] backdrop-blur-2xl sm:p-6 dark:border-accent-glow/30 dark:bg-[rgba(18,17,28,.75)] dark:shadow-[0_50px_120px_-60px_rgba(0,0,0,1),0_0_0_4px_rgba(123,92,255,.08)]"
-          >
-            <textarea
-              ref={inputRef}
-              /* Secondary CTAs elsewhere on the page focus this by id. */
-              id="search-subject"
-              rows={2}
-              value={value}
-              maxLength={80}
-              onChange={(e) => setValue(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && !e.shiftKey) submit(e);
-              }}
-              placeholder={mode.prompt}
-              aria-label={mode.prompt}
-              className="w-full resize-none border-0 bg-transparent p-0 font-display text-[18px] leading-snug font-semibold tracking-[-.01em] text-ink placeholder:text-black/30 focus:ring-0 focus:outline-none sm:text-[20px] dark:text-white dark:placeholder:text-white/30"
-            />
-
-            <div className="mt-5 flex items-end justify-between gap-4">
-              <p className="text-left text-[12.5px] faint">
-                Try{' '}
-                <button
-                  type="button"
-                  onClick={() => {
-                    setValue(mode.sample);
-                    inputRef.current?.focus();
-                  }}
-                  className="font-semibold text-accent underline-offset-4 hover:underline dark:text-accent-glow"
-                >
-                  “{mode.sample}”
-                </button>
-                <span className="mt-1 block">One subject per search keeps each result tight.</span>
-              </p>
-
-              <button type="submit" className="btn-accent h-11 shrink-0 px-5 text-[14.5px]">
-                Find outliers <Arrow />
+          <div className="modes" role="tablist" aria-label="What to research">
+            {MODES.map(({ key, label, icon: Icon }) => (
+              <button
+                key={key}
+                type="button"
+                className={`mode${key === type ? ' is-on' : ''}`}
+                role="tab"
+                aria-selected={key === type}
+                onClick={() => setType(key)}
+              >
+                <Icon className="h-[15px] w-[15px]" />
+                {label}
               </button>
-            </div>
-          </form>
-
-          {/* secondary calls to action */}
-          <div className="mt-6 flex flex-col items-center justify-center gap-3 sm:flex-row">
-            <a
-              href="/auth/google"
-              className="btn-accent h-[52px] w-full justify-center px-6 text-[15px] sm:w-auto"
-            >
-              <span className="flex h-7 w-7 items-center justify-center rounded-full bg-white">
-                <Google />
-              </span>
-              Get started free <Arrow />
-            </a>
-
-            <a href="#how" className="btn-ghost h-[52px] w-full justify-center px-6 text-[15px] sm:w-auto">
-              See how it works
-            </a>
+            ))}
           </div>
 
-          <p className="mt-4 text-center text-[13px] faint">1 free search - no credit card</p>
-        </Reveal>
+          <label className="box__label" htmlFor="search-subject">
+            <span className="box__step">2</span>
+            Type your {type === 'product' ? 'product' : 'brand name'}
+          </label>
 
-        <dl className="mx-auto mt-16 grid max-w-4xl grid-cols-2 gap-px overflow-hidden rounded-2xl border border-black/[.06] bg-black/[.06] sm:mt-20 sm:grid-cols-4 dark:border-white/[.08] dark:bg-white/[.08]">
-          {STATS.map((s, i) => (
-            <Reveal key={s.label} delay={i * 70} className="bg-canvas px-4 py-6 text-center dark:bg-canvas-dark">
-              <dt className="font-display text-[26px] font-bold tracking-tight sm:text-[32px]">
-                <CountUp value={s.value} />
-              </dt>
-              <dd className="mt-1.5 flex items-center justify-center gap-1.5 text-[12.5px] faint">
-                <Trend className="h-2.5 w-2.5 text-accent dark:text-accent-glow" />
-                {s.label}
-              </dd>
-            </Reveal>
-          ))}
-        </dl>
+          <div className="box__field" ref={fieldRef}>
+            <input
+              ref={inputRef}
+              id="search-subject"
+              maxLength={80}
+              value={value}
+              autoComplete="off"
+              onChange={(e) => {
+                setValue(e.target.value);
+                setShowSuggestions(true);
+              }}
+              onFocus={() => {
+                setIsFocused(true);
+                setShowSuggestions(true);
+              }}
+              onBlur={() => setIsFocused(false)}
+              onKeyDown={(event) => {
+                if (!visibleSuggestions.length) return;
+
+                if (event.key === 'ArrowDown') {
+                  event.preventDefault();
+                  setShowSuggestions(true);
+                  setActiveSuggestion((current) => (current + 1) % visibleSuggestions.length);
+                }
+
+                if (event.key === 'ArrowUp') {
+                  event.preventDefault();
+                  setShowSuggestions(true);
+                  setActiveSuggestion((current) => (current <= 0 ? visibleSuggestions.length - 1 : current - 1));
+                }
+
+                if (event.key === 'Enter' && activeSuggestion >= 0 && visibleSuggestions[activeSuggestion]) {
+                  event.preventDefault();
+                  applySuggestion(visibleSuggestions[activeSuggestion].label);
+                }
+
+                if (event.key === 'Escape') {
+                  setShowSuggestions(false);
+                  setActiveSuggestion(-1);
+                }
+              }}
+              placeholder=""
+              aria-label={`Type your ${type === 'product' ? 'product' : 'brand name'}`}
+              aria-expanded={showSuggestions && visibleSuggestions.length > 0}
+              aria-haspopup="listbox"
+            />
+            {!value && (
+              <span className={`box__ghost${isFocused ? ' is-focused' : ''}`} aria-hidden="true">
+                {typingText || mode.sample}
+              </span>
+            )}
+            {showSuggestions && visibleSuggestions.length > 0 && (
+              <div className="hero-suggest" role="listbox" aria-label={`${type} suggestions`}>
+                <div className="hero-suggest__head">
+                  <span>Suggested {type === 'brand' ? 'brands' : 'products'}</span>
+                  <span>{visibleSuggestions.length}</span>
+                </div>
+                <div className="hero-suggest__list">
+                  {visibleSuggestions.map((suggestion, index) => (
+                    <button
+                      key={`${suggestion.type}-${suggestion.id}`}
+                      type="button"
+                      className={`hero-suggest__item${index === activeSuggestion ? ' is-active' : ''}`}
+                      onMouseEnter={() => setActiveSuggestion(index)}
+                      onMouseDown={(event) => event.preventDefault()}
+                      onClick={() => applySuggestion(suggestion.label)}
+                    >
+                      <span className="hero-suggest__text">
+                        <strong>{suggestion.label}</strong>
+                        {suggestion.sector && <em>{suggestion.sector}</em>}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+            <button type="submit" className="btn btn--primary btn--lg btn--pulse">
+              Find outliers
+              <Arrow className="btn__arrow h-[15px] w-[15px]" />
+            </button>
+          </div>
+
+          <div className="box__foot">
+            <span>1 free search · no credit card</span>
+            <a href="#how">See how it works</a>
+          </div>
+        </form>
       </div>
     </section>
   );

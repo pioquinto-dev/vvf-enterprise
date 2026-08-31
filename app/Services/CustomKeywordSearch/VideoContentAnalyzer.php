@@ -3,6 +3,7 @@
 namespace App\Services\CustomKeywordSearch;
 
 use App\Models\ViralVideo;
+use App\Support\AppEventLogger;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Throwable;
@@ -30,6 +31,10 @@ class VideoContentAnalyzer
     public function analyze(iterable $videos): int
     {
         if (! $this->enabled()) {
+            AppEventLogger::result('video_content_analysis.skipped', [
+                'reason' => 'disabled',
+            ]);
+
             return 0;
         }
 
@@ -44,12 +49,26 @@ class VideoContentAnalyzer
         }
 
         if ($pending === []) {
+            AppEventLogger::result('video_content_analysis.skipped', [
+                'reason' => 'no_pending_videos',
+            ]);
+
             return 0;
         }
+
+        AppEventLogger::result('video_content_analysis.started', [
+            'video_count' => count($pending),
+            'video_ids' => array_keys($pending),
+        ]);
 
         $labels = $this->requestLabels(array_values($pending));
 
         if ($labels === null) {
+            AppEventLogger::error('video_content_analysis.labels_missing', 'Video content analysis returned no usable labels.', [
+                'video_count' => count($pending),
+                'video_ids' => array_keys($pending),
+            ]);
+
             return 0;
         }
 
@@ -67,6 +86,12 @@ class VideoContentAnalyzer
 
             $written++;
         }
+
+        AppEventLogger::result('video_content_analysis.completed', [
+            'video_count' => count($pending),
+            'written_count' => $written,
+            'video_ids' => array_keys($pending),
+        ]);
 
         return $written;
     }
@@ -93,6 +118,11 @@ class VideoContentAnalyzer
         ], $videos);
 
         try {
+            AppEventLogger::result('video_content_analysis.request_started', [
+                'video_count' => count($videos),
+                'video_ids' => array_map(fn (ViralVideo $video): string => (string) $video->video_id, $videos),
+            ]);
+
             $response = Http::withToken((string) config('services.openai.api_key'))
                 ->timeout((int) config('custom_keyword_search.analysis.timeout', 45))
                 ->acceptJson()
@@ -130,6 +160,11 @@ class VideoContentAnalyzer
                 ]);
 
             if ($response->failed()) {
+                AppEventLogger::error('video_content_analysis.request_failed', 'Video content analysis request failed.', [
+                    'status' => $response->status(),
+                    'count' => count($videos),
+                ]);
+
                 Log::warning('Video content analysis request failed.', [
                     'status' => $response->status(),
                     'count' => count($videos),
@@ -141,6 +176,10 @@ class VideoContentAnalyzer
             $decoded = json_decode((string) data_get($response->json(), 'choices.0.message.content'), true);
 
             if (! is_array($decoded)) {
+                AppEventLogger::error('video_content_analysis.invalid_payload', 'Video content analysis returned a non-array payload.', [
+                    'count' => count($videos),
+                ]);
+
                 return null;
             }
 
@@ -157,8 +196,17 @@ class VideoContentAnalyzer
                 }
             }
 
+            AppEventLogger::result('video_content_analysis.response_received', [
+                'count' => count($videos),
+                'label_count' => count($labels),
+            ]);
+
             return $labels;
         } catch (Throwable $e) {
+            AppEventLogger::error('video_content_analysis.exception', $e, [
+                'count' => count($videos),
+            ]);
+
             Log::warning('Video content analysis threw.', ['error' => $e->getMessage()]);
 
             return null;

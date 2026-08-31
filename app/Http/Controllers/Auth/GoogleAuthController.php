@@ -2,8 +2,15 @@
 
 namespace App\Http\Controllers\Auth;
 
+use App\Http\Controllers\FreeSearchFunnelController;
 use App\Models\User;
+use App\Services\Admin\UserActivityService;
 use App\Services\Auth\PostAuthenticationRedirector;
+use App\Services\Brevo\BrevoLifecycleEmailService;
+use App\Services\Billing\BillingService;
+use App\Services\CustomKeywordSearch\SavedSearchManager;
+use App\Support\TrialCheckoutIntent;
+use Carbon\CarbonImmutable;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -12,12 +19,19 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 use Laravel\Socialite\Facades\Socialite;
-use Carbon\CarbonImmutable;
 use Throwable;
 
 class GoogleAuthController extends Controller
 {
-    public function __construct(private readonly PostAuthenticationRedirector $redirector) {}
+    private const CHECKOUT_PLAN_SLUGS = ['basic', 'basic-annual', 'premium', 'premium-annual'];
+
+    public function __construct(
+        private readonly PostAuthenticationRedirector $redirector,
+        private readonly BrevoLifecycleEmailService $emails,
+        private readonly UserActivityService $activity,
+        private readonly SavedSearchManager $searches,
+        private readonly BillingService $billing,
+    ) {}
 
     public function redirect(Request $request): RedirectResponse
     {
@@ -46,8 +60,15 @@ class GoogleAuthController extends Controller
             ]);
         }
 
-        $user = User::query()->firstWhere('email', $email);
+        $user = User::withTrashed()->firstWhere('email', $email);
 
+        if ($user?->trashed()) {
+            return redirect()->route('login')->withErrors([
+                'email' => 'This account has already been deleted.',
+            ]);
+        }
+
+        $created = ! $user;
         if (! $user) {
             $user = User::create([
                 'name' => trim((string) ($googleUser->getName() ?: $googleUser->getNickname() ?: Str::before($email, '@'))),
@@ -60,14 +81,57 @@ class GoogleAuthController extends Controller
             ]);
 
             event(new Registered($user));
+            $this->emails->sendNewRegistration($user);
+            $this->billing->ensureSubscriptionRecord($user);
         } elseif (! $user->email_verified_at) {
             $user->forceFill([
                 'email_verified_at' => now(),
             ])->save();
         }
 
-        Auth::login($user, remember: true);
+        Auth::login($user);
+        if ($created) {
+            $this->activity->record($user, 'sign_up', 'account_created', 'Created account.');
+        }
+        $this->activity->record($user, 'engagement', 'logged_in', 'Logged in.');
         $request->session()->regenerate();
+
+        if ($checkoutRedirect = $this->checkoutRedirect($request, $user)) {
+            return $checkoutRedirect;
+        }
+
+        if ($pending = FreeSearchFunnelController::pull($request)) {
+            try {
+                $this->billing->ensureCanCreateSearch($user);
+                $search = $this->searches->create(
+                    user: $user,
+                    guestToken: null,
+                    type: $pending['type'],
+                    phrase: $pending['phrase'],
+                    keywords: $pending['keywords'],
+                    name: $pending['phrase'],
+                    frequency: $pending['frequency'],
+                    sources: $pending['sources'] ?? null,
+                );
+
+                $tracked = [[
+                    'id' => $search->id,
+                    'name' => $search->name,
+                    'url' => $search->url(),
+                    'status' => $search->status,
+                ]];
+
+                return redirect()->route('dashboard')
+                    ->with('tracked_searches', $tracked)
+                    ->with('processing_searches', $tracked);
+            } catch (\Illuminate\Validation\ValidationException $exception) {
+                return redirect()->route('dashboard')->with('search_access_prompt', [
+                    'reason' => 'search_credit_exhausted',
+                    'phrase' => $pending['phrase'] ?? '',
+                    'message' => collect($exception->errors())->flatten()->first() ?? 'We could not start this search.',
+                ]);
+            }
+        }
 
         return redirect()->intended($this->redirector->destination($request));
     }
@@ -75,5 +139,36 @@ class GoogleAuthController extends Controller
     private function redirectUrl(Request $request): string
     {
         return $request->getSchemeAndHttpHost().'/auth/google/callback';
+    }
+
+    private function checkoutRedirect(Request $request, User $user): ?RedirectResponse
+    {
+        $intent = TrialCheckoutIntent::pull($request);
+
+        if (! is_array($intent) || ! in_array($intent['plan_slug'] ?? null, self::CHECKOUT_PLAN_SLUGS, true)) {
+            return null;
+        }
+
+        $plan = \App\Models\PricingPlan::query()->where('slug', $intent['plan_slug'])->first();
+
+        if ($plan === null) {
+            return null;
+        }
+
+        $withTrial = (bool) ($intent['with_trial'] ?? false);
+        $cycle = ($intent['cycle'] ?? 'monthly') === 'annual' ? 'annual' : 'monthly';
+
+        try {
+            return redirect()->away($this->billing->checkout($user, $plan, $withTrial, $cycle));
+        } catch (\Illuminate\Validation\ValidationException $exception) {
+            if ($withTrial && $exception->errors()['trial'] ?? false) {
+                return redirect()->route('plans')->with('trial_access_prompt', [
+                    'reason' => 'already_used',
+                    'plan_slug' => $plan->slug,
+                ]);
+            }
+
+            return redirect()->route('plans')->with('status', collect($exception->errors())->flatten()->first() ?? 'Checkout could not be started.');
+        }
     }
 }

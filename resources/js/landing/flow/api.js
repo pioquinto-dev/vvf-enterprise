@@ -9,10 +9,11 @@ function csrfToken() {
 
 const API_V1 = '/api/v1';
 
-async function request(url, { method = 'GET', body } = {}) {
+async function request(url, { method = 'GET', body, signal } = {}) {
   const response = await fetch(url, {
     method,
     credentials: 'same-origin',
+    signal,
     headers: {
       Accept: 'application/json',
       'X-Requested-With': 'XMLHttpRequest',
@@ -34,7 +35,7 @@ async function request(url, { method = 'GET', body } = {}) {
   return payload;
 }
 
-export function expandKeywords(phrase, { signal } = {}) {
+export function expandKeywords(phrase, { signal, fresh = false, type = 'brand' } = {}) {
   return fetch(`${API_V1}/saved-searches/expand`, {
     method: 'POST',
     credentials: 'same-origin',
@@ -45,7 +46,7 @@ export function expandKeywords(phrase, { signal } = {}) {
       'X-Requested-With': 'XMLHttpRequest',
       'X-CSRF-TOKEN': csrfToken(),
     },
-    body: JSON.stringify({ phrase }),
+    body: JSON.stringify({ phrase, type, ...(fresh ? { fresh: true } : {}) }),
   }).then(async (response) => {
     const payload = await response.json().catch(() => null);
     if (!response.ok) throw new Error(payload?.message || 'Could not suggest keywords.');
@@ -53,16 +54,30 @@ export function expandKeywords(phrase, { signal } = {}) {
   });
 }
 
-export function createSavedSearch({ type, phrase, name, keywords, frequency }) {
+export function fetchKeywordSuggestions(type, q, { signal } = {}) {
+  const params = new URLSearchParams();
+  params.set('type', type);
+  if (q) params.set('q', q);
+
+  return request(`${API_V1}/keyword-index/suggestions?${params.toString()}`, { signal });
+}
+
+export function createSavedSearch({ type, phrase, name, keywords, frequency, sources }) {
+  // `sources` (brand/competitor TikTok handle + website) rides along optionally;
+  // the backend uses it to sharpen matching where it can, and ignores it otherwise.
   return request(`${API_V1}/saved-searches`, {
     method: 'POST',
-    body: { type, phrase, name, keywords, frequency },
+    body: { type, phrase, name, keywords, frequency, ...(sources ? { sources } : {}) },
   });
 }
 
 export function fetchNotifications(ids) {
   const query = ids.map((id) => `ids[]=${encodeURIComponent(id)}`).join('&');
   return request(`${API_V1}/saved-searches/notifications?${query}`);
+}
+
+export function fetchRecentSearches() {
+  return request(`${API_V1}/saved-searches/recent`);
 }
 
 export const savedSearch = {
@@ -73,22 +88,77 @@ export const savedSearch = {
   resume: (id) => request(`${API_V1}/saved-searches/${id}/resume`, { method: 'PATCH' }),
   update: (id, body) => request(`${API_V1}/saved-searches/${id}/frequency`, { method: 'PATCH', body }),
   refresh: (id) => request(`${API_V1}/saved-searches/${id}/refresh`, { method: 'POST' }),
+  retry: (id) => request(`${API_V1}/saved-searches/${id}/retry`, { method: 'POST' }),
   destroy: (id) => request(`${API_V1}/saved-searches/${id}`, { method: 'DELETE' }),
 };
 
 export const billing = {
-  checkout: (slug) => {
-    window.location.assign(`/billing/checkout/${encodeURIComponent(slug)}`);
+  checkout: (slug, cycle = 'monthly') => {
+    const params = new URLSearchParams();
+    if (cycle === 'annual') params.set('cycle', 'annual');
+    const suffix = params.toString() ? `?${params.toString()}` : '';
+    window.location.assign(`/billing/checkout/${encodeURIComponent(slug)}${suffix}`);
   },
-  trialCheckout: (slug) => {
-    window.location.assign(`/billing/checkout/${encodeURIComponent(slug)}?trial=1`);
+  trialCheckout: (slug, cycle = 'monthly') => {
+    const params = new URLSearchParams({ trial: '1' });
+    if (cycle === 'annual') params.set('cycle', 'annual');
+    window.location.assign(`/billing/checkout/${encodeURIComponent(slug)}?${params.toString()}`);
   },
+  createPaymentMethodSetup: () => request('/settings/subscription/payment-method/setup', { method: 'POST' }),
+  updatePaymentMethod: (paymentMethodId) => request('/settings/subscription/payment-method', {
+    method: 'PATCH',
+    body: { payment_method_id: paymentMethodId },
+  }),
+  cancelSubscription: () => request('/settings/subscription/cancel', { method: 'POST' }),
+  reactivateSubscription: () => request('/settings/subscription/reactivate', { method: 'POST' }),
 };
 
 export const bookmarks = {
   save: (id) => request(`${API_V1}/videos/${id}/bookmark`, { method: 'POST' }),
   remove: (id) => request(`${API_V1}/videos/${id}/bookmark`, { method: 'DELETE' }),
 };
+
+export const videoAnalysis = {
+  request: (id, body = {}) => request(`${API_V1}/videos/${id}/analysis`, { method: 'POST', body }),
+  get: (id) => request(`${API_V1}/videos/${id}/analysis`),
+};
+
+/* ---------------- tracked video analyses (session storage) ---------------- */
+
+const TRACKED_ANALYSES_KEY = 'vvf-tracked-video-analyses';
+
+export function readTrackedVideoAnalyses() {
+  try {
+    const raw = window.sessionStorage.getItem(TRACKED_ANALYSES_KEY);
+    const parsed = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+export function writeTrackedVideoAnalyses(entries) {
+  try {
+    window.sessionStorage.setItem(TRACKED_ANALYSES_KEY, JSON.stringify(entries.slice(0, 25)));
+  } catch {
+    /* storage disabled — tracking is a nicety, not a requirement */
+  }
+}
+
+export function trackVideoAnalysis(entry) {
+  const existing = readTrackedVideoAnalyses().filter((item) => String(item.videoId) !== String(entry.videoId));
+  writeTrackedVideoAnalyses([{ ...entry }, ...existing]);
+}
+
+export function updateTrackedVideoAnalysis(videoId, patch) {
+  writeTrackedVideoAnalyses(
+    readTrackedVideoAnalyses().map((item) => (String(item.videoId) === String(videoId) ? { ...item, ...patch } : item))
+  );
+}
+
+export function untrackVideoAnalysis(videoId) {
+  writeTrackedVideoAnalyses(readTrackedVideoAnalyses().filter((item) => String(item.videoId) !== String(videoId)));
+}
 
 /* ---------------- tracked searches (session storage) ---------------- */
 

@@ -2,6 +2,7 @@
 
 namespace App\Services\Media;
 
+use App\Support\AppEventLogger;
 use Illuminate\Contracts\Filesystem\Filesystem;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Http;
@@ -33,8 +34,8 @@ use Symfony\Component\Process\Process;
 class MediaArchiver
 {
     public const KIND_COVER = 'video_cover';
-    public const KIND_THUMBNAIL = 'video_thumbnail';
-    public const KIND_AVATAR = 'channel_avatar';
+    public const KIND_THUMBNAIL = 'thumbnail';
+    public const KIND_AVATAR = 'avatar';
 
     /** Statuses that mean the source is gone for good. */
     private const DEAD_STATUSES = [403, 404, 410];
@@ -92,6 +93,17 @@ class MediaArchiver
                 triggerId: $attributes['apify_trigger_id'] ?? null,
             );
         }
+
+        AppEventLogger::result('media.archive.completed', [
+            'video_id' => (string) ($attributes['video_id'] ?? ''),
+            'trigger_id' => $attributes['apify_trigger_id'] ?? null,
+            'failure_count' => count($this->failures),
+            'archived_fields' => array_values(array_filter([
+                ! empty($attributes['cover']) ? 'cover' : null,
+                ! empty($attributes['thumbnail_url']) ? 'thumbnail_url' : null,
+                ! empty($attributes['avatar']) ? 'avatar' : null,
+            ])),
+        ]);
 
         return ['attributes' => $attributes, 'failures' => $this->failures];
     }
@@ -263,14 +275,32 @@ class MediaArchiver
             if (! $this->storedObjectExists($path)) {
                 $this->recordFailure($videoId, $triggerId, $kind, $sourceUrl, $path, 'Upload reported success but the object does not exist.');
                 Log::warning('Media upload could not be verified.', ['video_id' => $videoId, 'kind' => $kind, 'path' => $path]);
+                AppEventLogger::error('media.archive.verification_failed', 'Upload reported success but object verification failed.', [
+                    'video_id' => $videoId,
+                    'trigger_id' => $triggerId,
+                    'kind' => $kind,
+                    'path' => $path,
+                ]);
 
                 return $sourceUrl;
             }
+
+            AppEventLogger::result('media.archive.asset_uploaded', [
+                'video_id' => $videoId,
+                'trigger_id' => $triggerId,
+                'kind' => $kind,
+                'path' => $path,
+            ]);
 
             return (string) $this->disk()->url($path);
         } catch (\Throwable $e) {
             $this->recordFailure($videoId, $triggerId, $kind, $sourceUrl, null, $e->getMessage());
             Log::warning('Media archive threw.', ['video_id' => $videoId, 'kind' => $kind, 'error' => $e->getMessage()]);
+            AppEventLogger::error('media.archive.failed', $e, [
+                'video_id' => $videoId,
+                'trigger_id' => $triggerId,
+                'kind' => $kind,
+            ]);
 
             return $sourceUrl;
         } finally {
@@ -384,8 +414,8 @@ class MediaArchiver
     }
 
     /**
-     * Deterministic key so the same asset always lands in the same place and a
-     * repair run overwrites rather than duplicates.
+     * Deterministic directory so every video's assets stay isolated together
+     * and a repair run overwrites rather than duplicates.
      *
      * @param  array<string, mixed>  $attributes
      */
@@ -393,14 +423,17 @@ class MediaArchiver
     {
         $trigger = $attributes['apify_trigger_id'] ?? null;
         $triggerPart = $trigger === null || $trigger === '' ? 'na' : $this->sanitize((string) $trigger);
+        $folder = implode('_', [
+            $triggerPart,
+            $this->sanitize((string) $attributes['video_id']),
+            (string) $this->timestamp($attributes),
+        ]);
 
         return implode('/', [
             $this->prefix(),
-            implode('_', [
-                $triggerPart,
-                $this->sanitize((string) $attributes['video_id']),
-                (string) $this->timestamp($attributes),
-            ]),
+            'tiktok',
+            $folder,
+            $folder,
         ]);
     }
 
@@ -539,7 +572,7 @@ class MediaArchiver
      * Imagick in-process, then the ImageMagick CLI, then ffmpeg. Hosts vary and
      * none of the three is guaranteed.
      */
-    private function convertToJpeg(string $source, string $target): bool
+    protected function convertToJpeg(string $source, string $target): bool
     {
         if (class_exists(\Imagick::class)) {
             try {

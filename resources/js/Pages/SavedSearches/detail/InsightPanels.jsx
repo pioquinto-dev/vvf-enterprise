@@ -1,9 +1,21 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { compactNumber, outlierLabel, percent } from '../../../landing/flow/format.js';
-import { DeltaLine, RebuiltBadge } from './Badges.jsx';
+import { DeltaLine } from './Badges.jsx';
 
-const HOUR_LABELS = { 0: '12a', 6: '6a', 12: '12p', 18: '6p' };
+const PST_OFFSET_HOURS = -8;
+const HOUR_LABELS = { 0: '4 PM', 6: '10 PM', 12: '4 AM', 18: '10 AM' };
 const PANEL_STEP = 5;
+
+function pstHourFromUtc(hour) {
+  return (hour + PST_OFFSET_HOURS + 24) % 24;
+}
+
+function formatPstHour(hour) {
+  const normalized = pstHourFromUtc(hour);
+  const suffix = normalized >= 12 ? 'PM' : 'AM';
+  const displayHour = normalized % 12 === 0 ? 12 : normalized % 12;
+  return `${displayHour}:00 ${suffix} PST`;
+}
 
 /**
  * Splits a formatted figure into the big number and its trailing unit, so the
@@ -73,90 +85,132 @@ function Growth({ growth }) {
   );
 }
 
-export function HashtagPanel({ hashtags = [] }) {
+function ExpandableSignalList({ items = [], renderRow, emptyLabel, ariaLabel, moreLabelBuilder }) {
   const [visible, setVisible] = useState(PANEL_STEP);
-  const shown = hashtags.slice(0, visible);
-  const remaining = Math.max(0, hashtags.length - shown.length);
+  const [flashRange, setFlashRange] = useState(null);
+  const listRef = useRef(null);
+  const shown = items.slice(0, visible);
+  const remaining = Math.max(0, items.length - shown.length);
+
+  useEffect(() => {
+    if (!flashRange) return undefined;
+
+    const list = listRef.current;
+    if (list) {
+      window.requestAnimationFrame(() => {
+        list.scrollTo({
+          top: list.scrollHeight,
+          behavior: 'smooth',
+        });
+      });
+    }
+
+    const timeout = window.setTimeout(() => setFlashRange(null), 1800);
+    return () => window.clearTimeout(timeout);
+  }, [flashRange]);
+
+  useEffect(() => {
+    setVisible(PANEL_STEP);
+    setFlashRange(null);
+  }, [items]);
+
+  const showMore = () => {
+    const added = Math.min(PANEL_STEP, remaining);
+    if (added <= 0) return;
+
+    setFlashRange({ start: visible, end: visible + added - 1, count: added });
+    setVisible((count) => count + added);
+  };
 
   return (
-    <div className="hspanel">
-      <h3># hashtags</h3>
-      {hashtags.length === 0 ? (
-        <p className="empty">No hashtags on the matched videos.</p>
+    <>
+      {items.length === 0 ? (
+        <p className="empty">{emptyLabel}</p>
       ) : (
         <>
-          <div className="hlist" role="list" aria-label="Top hashtags">
-            {shown.map((row, index) => (
-              <div className="hrow" key={row.tag} role="listitem">
-                <span className="idx">{index + 1}</span>
-                <span className="nm">#{row.tag}</span>
-                <span className="cnt">on {row.posts} posts</span>
-                <Growth growth={row.growth} />
-              </div>
-            ))}
+          <div ref={listRef} className="hlist" role="list" aria-label={ariaLabel}>
+            {shown.map((row, index) => {
+              const isNew = flashRange && index >= flashRange.start && index <= flashRange.end;
+              return (
+                <div className={`hrow${isNew ? ' is-new' : ''}`} key={row.id ?? row.tag ?? row.label ?? index} role="listitem">
+                  {renderRow(row, index)}
+                </div>
+              );
+            })}
           </div>
+          {flashRange && (
+            <p className="hmore-note" aria-live="polite">
+              Added {flashRange.count} more.
+            </p>
+          )}
           {remaining > 0 && (
             <div className="hmore">
-              <button className="tbtn" type="button" onClick={() => setVisible((count) => count + PANEL_STEP)}>
-                show {Math.min(PANEL_STEP, remaining)} more
+              <button className="tbtn" type="button" onClick={showMore}>
+                {moreLabelBuilder(Math.min(PANEL_STEP, remaining))}
               </button>
             </div>
           )}
         </>
       )}
+    </>
+  );
+}
+
+export function HashtagPanel({ hashtags = [] }) {
+  return (
+    <div className="hspanel">
+      <h3># hashtags</h3>
+      <ExpandableSignalList
+        items={hashtags}
+        emptyLabel="No hashtags on the matched videos."
+        ariaLabel="Top hashtags"
+        moreLabelBuilder={(count) => `show ${count} more`}
+        renderRow={(row, index) => (
+          <>
+            <span className="idx">{index + 1}</span>
+            <span className="nm">#{row.tag}</span>
+            <span className="cnt">on {row.posts} posts</span>
+            <Growth growth={row.growth} />
+          </>
+        )}
+      />
     </div>
   );
 }
 
 export function SoundPanel({ sounds = [] }) {
-  const [visible, setVisible] = useState(PANEL_STEP);
-  const shown = sounds.slice(0, visible);
-  const remaining = Math.max(0, sounds.length - shown.length);
-
   return (
     <div className="hspanel">
       <h3>sounds</h3>
-      {sounds.length === 0 ? (
-        <p className="empty">No sound credited on the matched videos.</p>
-      ) : (
-        <>
-          <div className="hlist" role="list" aria-label="Top sounds">
-            {shown.map((row, index) => (
-              <div className="hrow" key={row.label} role="listitem">
-                <span className="idx">{index + 1}</span>
-                <span className="splay">
-                  <svg width="11" height="12" viewBox="0 0 14 16" fill="var(--violet)" aria-hidden>
-                    <path d="M0 0l14 8-14 8z" />
-                  </svg>
-                </span>
-                <span className="nm">
-                  {row.label}
-                  {row.on_top_video && <span className="u">used on the winner</span>}
-                </span>
-                <span className="cnt">{row.posts} posts</span>
-                <Growth growth={row.growth} />
-              </div>
-            ))}
-          </div>
-          {remaining > 0 && (
-            <div className="hmore">
-              <button className="tbtn" type="button" onClick={() => setVisible((count) => count + PANEL_STEP)}>
-                show {Math.min(PANEL_STEP, remaining)} more
-              </button>
-            </div>
-          )}
-        </>
-      )}
+      <ExpandableSignalList
+        items={sounds}
+        emptyLabel="No sound credited on the matched videos."
+        ariaLabel="Top sounds"
+        moreLabelBuilder={(count) => `show ${count} more`}
+        renderRow={(row, index) => (
+          <>
+            <span className="idx">{index + 1}</span>
+            <span className="splay">
+              <svg width="11" height="12" viewBox="0 0 14 16" fill="var(--violet)" aria-hidden>
+                <path d="M0 0l14 8-14 8z" />
+              </svg>
+            </span>
+            <span className="nm">
+              {row.label}
+              {row.on_top_video && <span className="u">used on the winner</span>}
+            </span>
+            <span className="cnt">{row.posts} posts</span>
+            <Growth growth={row.growth} />
+          </>
+        )}
+      />
     </div>
   );
 }
 
-/**
- * Posting rhythm by weekday and hour. Hours are UTC; `uploaded_at` is stored
- * in UTC and no creator timezone is captured, so the label says so plainly
- * rather than implying local time.
- */
 export function PostingHeatmap({ heatmap }) {
+  const [tip, setTip] = useState(null);
+
   if (!heatmap || heatmap.counted === 0) {
     return (
       <div className="panel">
@@ -165,7 +219,7 @@ export function PostingHeatmap({ heatmap }) {
     );
   }
 
-  const { days = [], cells = [], max = 0, peak, timezone } = heatmap;
+  const { days = [], cells = [], max = 0, peak } = heatmap;
 
   return (
     <div className="panel">
@@ -184,12 +238,14 @@ export function PostingHeatmap({ heatmap }) {
               {(cells[dayIndex] ?? []).map((count, hour) => {
                 const t = max > 0 ? count / max : 0;
                 const isPeak = peak && peak.day === day && peak.hour === hour && count > 0;
+                const label = `${day} ${formatPstHour(hour)} · ${count} ${count === 1 ? 'post' : 'posts'}`;
 
                 return (
                   <div
                     className="cell"
                     key={hour}
-                    title={`${day} ${String(hour).padStart(2, '0')}:00 ${timezone} - ${count} ${count === 1 ? 'post' : 'posts'}`}
+                    onMouseMove={(event) => setTip({ x: event.clientX, y: event.clientY, label })}
+                    onMouseLeave={() => setTip(null)}
                     style={
                       count > 0
                         ? {
@@ -207,6 +263,12 @@ export function PostingHeatmap({ heatmap }) {
         </div>
       </div>
 
+      {tip && (
+        <div className="heat-tip" style={{ left: tip.x, top: tip.y }}>
+          {tip.label}
+        </div>
+      )}
+
       <div className="heatlegend">
         less
         <span className="scale">
@@ -220,9 +282,7 @@ export function PostingHeatmap({ heatmap }) {
 
       {peak && (
         <div className="heat-note">
-          <b>Their rhythm:</b> busiest slot is {peak.day} around {String(peak.hour).padStart(2, '0')}:00 {timezone},
-          with {peak.count} {peak.count === 1 ? 'post' : 'posts'}. Hours are {timezone}; no creator timezone is
-          captured on a scrape.
+          <b>Their rhythm:</b> busiest slot is {peak.day} around {formatPstHour(peak.hour)}, with {peak.count} {peak.count === 1 ? 'post' : 'posts'}. Times are shown in PST using the UTC scrape timestamps.
         </div>
       )}
     </div>
@@ -241,7 +301,6 @@ const GHOST_HEIGHTS = [34, 58, 42, 66, 50, 82];
  */
 export function OutliersPerWeek({ bars = [], threshold = 3, totalOutliers = 0, nextRunLabel = null }) {
   const max = Math.max(...bars.map((b) => b.value), 1);
-  const anyRebuilt = bars.some((b) => b.reconstructed);
   const isEmpty = bars.length === 0 || bars.every((b) => !b.value);
 
   if (isEmpty) {
@@ -270,9 +329,7 @@ export function OutliersPerWeek({ bars = [], threshold = 3, totalOutliers = 0, n
 
   return (
     <div className="panel">
-      <h3>
-        outliers per week {anyRebuilt && <RebuiltBadge className="ml-2" />}
-      </h3>
+      <h3>outliers per week</h3>
       <div className="psub">their posts scoring {outlierLabel(threshold) ?? '3x'} or higher</div>
 
       <div className="spark">
@@ -284,7 +341,6 @@ export function OutliersPerWeek({ bars = [], threshold = 3, totalOutliers = 0, n
             >
               <em>{bar.value}</em>
             </div>
-            {/* Mockup labels: "wk 1" to "now", oldest first. */}
             <span className="wl">{index === bars.length - 1 ? 'now' : `wk ${index + 1}`}</span>
           </div>
         ))}

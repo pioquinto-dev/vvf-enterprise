@@ -30,6 +30,7 @@ return [
 
     'apify' => [
         'base_url' => env('APIFY_BASE_URL', 'https://api.apify.com/v2'),
+        'proxy' => env('APIFY_PROXY'),
         'token' => env('APIFY_TOKEN'),
         'default_actor' => env('APIFY_DEFAULT_ACTOR'),
     ],
@@ -49,6 +50,11 @@ return [
         'key' => env('STRIPE_KEY'),
         'secret' => env('STRIPE_SECRET'),
         'webhook_secret' => env('STRIPE_WEBHOOK_SECRET'),
+    ],
+
+    'brevo' => [
+        'api_key' => env('BREVO_API_KEY'),
+        'test_recipient_ema8il' => env('BREVO_TEST_RECIPIENT_EMAIL'),
     ],
 
     'slack' => [

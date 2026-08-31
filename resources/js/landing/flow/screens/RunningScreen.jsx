@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { usePage } from '@inertiajs/react';
-import { Google, Arrow, Check } from '../../components/Icons.jsx';
+import { Google, Arrow, Check, Search } from '../../components/Icons.jsx';
 import { fetchNotifications, updateTracked } from '../api.js';
 
 const POLL_MS = 10000;
+const AUTO_RETURN_MS = 5000;
 
 const STAGES = [
   'Starting the scrape',
@@ -12,22 +13,26 @@ const STAGES = [
   'Ranking by outlier score',
 ];
 
-export default function RunningScreen({ searchId, onBack, onDone }) {
+/**
+ * The transitional loading state after a run is dispatched. Not a wizard step —
+ * it has no stepper — just a live view of a scrape already running server-side.
+ */
+export default function RunningScreen({ searchId, onBack, onDone, onAutoReturn }) {
   // The capture card exists to get an anonymous visitor an account before the
-  // run finishes. Someone already signed in has nothing to claim, so it is
-  // theirs by default and the card would just be asking them to log in twice.
+  // run finishes. Someone already signed in has nothing to claim.
   const { auth = {} } = usePage().props;
   const signedIn = auth.signedIn ?? Boolean(auth.user);
 
   const [search, setSearch] = useState(null);
   const [failed, setFailed] = useState(null);
+  const [completed, setCompleted] = useState(null);
   const [email, setEmail] = useState('');
   const [emailSaved, setEmailSaved] = useState(false);
   const [stage, setStage] = useState(0);
   const finished = useRef(false);
+  const polling = useRef(false);
+  const completionTimer = useRef(null);
 
-  // Poll only while the tab is visible — a backgrounded tab does not need to
-  // keep hitting the endpoint, and the run continues server-side regardless.
   useEffect(() => {
     if (!searchId) return undefined;
 
@@ -35,7 +40,9 @@ export default function RunningScreen({ searchId, onBack, onDone }) {
     let cancelled = false;
 
     const poll = async () => {
-      if (cancelled || finished.current) return;
+      if (cancelled || finished.current || polling.current) return;
+
+      polling.current = true;
 
       try {
         const payload = await fetchNotifications([searchId]);
@@ -47,7 +54,8 @@ export default function RunningScreen({ searchId, onBack, onDone }) {
           if (found.status === 'done') {
             finished.current = true;
             updateTracked(searchId, { completedPromptShown: true, name: found.name });
-            onDone?.(found);
+            setCompleted(found);
+            completionTimer.current = window.setTimeout(() => onDone?.(found), 900);
             return;
           }
 
@@ -59,6 +67,8 @@ export default function RunningScreen({ searchId, onBack, onDone }) {
         }
       } catch {
         /* transient — the next tick will retry */
+      } finally {
+        polling.current = false;
       }
 
       timer = window.setTimeout(poll, POLL_MS);
@@ -77,9 +87,21 @@ export default function RunningScreen({ searchId, onBack, onDone }) {
     return () => {
       cancelled = true;
       window.clearTimeout(timer);
+      window.clearTimeout(completionTimer.current);
       document.removeEventListener('visibilitychange', onVisibility);
     };
   }, [searchId, onDone]);
+
+  useEffect(() => {
+    if (!searchId || failed || completed || finished.current) return undefined;
+
+    const timer = window.setTimeout(() => {
+      updateTracked(searchId, { runningPromptShown: true });
+      onAutoReturn?.();
+    }, AUTO_RETURN_MS);
+
+    return () => window.clearTimeout(timer);
+  }, [completed, failed, onAutoReturn, searchId]);
 
   // Purely cosmetic progression so the wait reads as movement, not a hang.
   useEffect(() => {
@@ -88,118 +110,115 @@ export default function RunningScreen({ searchId, onBack, onDone }) {
     return () => window.clearInterval(timer);
   }, [failed]);
 
+  if (failed) {
+    return (
+      <div className="card">
+        <div className="run">
+          <span className="pill pill--bad" style={{ margin: '0 auto' }}>
+            <i />
+            Search failed
+          </span>
+          <h1 style={{ marginTop: 20 }}>That run didn&rsquo;t finish</h1>
+          <p className="muted" style={{ maxWidth: 420, margin: '12px auto 0' }}>{failed}</p>
+          <button onClick={onBack} className="btn btn--g" style={{ margin: '24px auto 0' }}>
+            Edit keywords and retry
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (completed) {
+    return (
+      <div className="card">
+        <div className="run">
+          <div className="run__d"><Check /></div>
+          <span className="pill pill--ok" style={{ margin: '0 auto' }}><i />Search complete</span>
+          <h1 style={{ marginTop: 18 }}>Your results are ready</h1>
+          <p className="muted" style={{ maxWidth: 420, margin: '12px auto 0' }}>
+            Videos, durable media, winner analysis, and search insights are ready. Opening your results now.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  const progress = ((stage + 1) / STAGES.length) * 100;
+
   return (
-    <div className="animate-fade-up">
-      <button onClick={onBack} className="text-[13px] font-semibold muted transition hover:text-accent">
-        ← Back to keywords
-      </button>
+    <div className="card">
+      <div className="run">
+        <div className="run__d">
+          <Search className="h-[26px] w-[26px]" />
+        </div>
 
-      <div className="mx-auto mt-8 max-w-md text-center">
-        {failed ? (
-          <>
-            <span className="inline-flex items-center gap-2.5 rounded-full border border-hot/25 bg-hot/10 px-4 py-2 text-[12.5px] font-semibold text-hot">
-              Search failed
-            </span>
-            <h1 className="mt-7 font-display text-[26px] leading-tight font-bold tracking-[-.02em] sm:text-[32px]">
-              That run didn't finish
-            </h1>
-            <p className="mt-3 text-[14.5px] muted">{failed}</p>
-            <button onClick={onBack} className="btn-ghost mx-auto mt-7 h-[52px] px-6 text-[15px]">
-              Edit keywords and retry
-            </button>
-          </>
-        ) : (
-          <>
-            <span className="inline-flex items-center gap-2.5 rounded-full border border-accent/25 bg-accent/10 px-4 py-2 text-[12.5px] font-semibold text-accent dark:text-accent-glow">
-              <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-accent border-t-transparent" />
-              Search running · 1 to 20 min
-            </span>
+        <span className="pill pill--run" style={{ margin: '0 auto' }}>
+          <i />
+          Search running · 1 to 20 min
+        </span>
 
-            <h1 className="mt-7 font-display text-[26px] leading-tight font-bold tracking-[-.02em] sm:text-[32px]">
-              {search?.name ? `Scouting “${search.name}”` : 'Scouting your niche'}
-            </h1>
-            <p className="mt-3 text-[14.5px] muted">
-              We'll show the results right here the moment they're ready.
-            </p>
+        <h1 style={{ marginTop: 18 }}>{search?.name ? `Scouting “${search.name}”` : 'Scouting your niche'}</h1>
+        <p className="muted" style={{ maxWidth: 420, margin: '12px auto 0' }}>
+          We&rsquo;ll send you back to the dashboard in a few seconds while this keeps running.
+        </p>
 
-            <ol className="mx-auto mt-8 max-w-sm space-y-2.5 text-left">
-              {STAGES.map((label, i) => {
-                const state = i < stage ? 'done' : i === stage ? 'active' : 'pending';
-                return (
-                  <li
-                    key={label}
-                    className={`flex items-center gap-3 rounded-xl border px-4 py-3 text-[13.5px] transition-all duration-500 ${
-                      state === 'pending'
-                        ? 'border-black/[.06] faint dark:border-white/[.07]'
-                        : 'border-accent/25 bg-accent/[.06]'
-                    }`}
-                  >
-                    <span
-                      className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full ${
-                        state === 'done'
-                          ? 'bg-accent text-white'
-                          : state === 'active'
-                            ? 'border-2 border-accent border-t-transparent animate-spin'
-                            : 'border border-black/15 dark:border-white/20'
-                      }`}
-                    >
-                      {state === 'done' && <Check className="h-2.5 w-2.5" />}
-                    </span>
-                    {label}
-                  </li>
-                );
-              })}
-            </ol>
-
-            {!signedIn && (
-              <div className="ring-gradient mt-8 rounded-3xl bg-white/70 p-6 text-left backdrop-blur-2xl dark:bg-white/[.04]">
-                <p className="mb-4 text-center font-display text-sm font-semibold">
-                  Or have them emailed when they're done
-                </p>
-
-                <a
-                  href="/auth/google"
-                  className="flex h-[52px] w-full items-center justify-center gap-3 rounded-full bg-[#2f2a2a] px-5 text-[15px] font-semibold text-white shadow-[0_18px_40px_-26px_rgba(0,0,0,.55)] transition hover:opacity-95"
-                >
-                  <span className="flex h-8 w-8 items-center justify-center rounded-full bg-white">
-                    <Google />
-                  </span>
-                  Continue with Google
-                </a>
-
-                <div className="my-4 flex items-center gap-3 text-xs faint">
-                  <span className="h-px flex-1 bg-black/[.08] dark:bg-white/10" />
-                  or
-                  <span className="h-px flex-1 bg-black/[.08] dark:bg-white/10" />
-                </div>
-
-                <form
-                  onSubmit={(e) => {
-                    e.preventDefault();
-                    setEmailSaved(true);
-                  }}
-                  className="flex flex-col gap-2 sm:flex-row"
-                >
-                  <input
-                    type="email"
-                    required
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="you@brand.com"
-                    className="field h-[52px] flex-1"
-                  />
-                  <button type="submit" className="btn-accent h-[52px] px-5 text-[15px]">
-                    {emailSaved ? 'Saved' : 'Email me'} {!emailSaved && <Arrow />}
-                  </button>
-                </form>
+        <div className="run__s">
+          {STAGES.map((label, i) => {
+            const state = i < stage ? 'done' : i === stage ? 'now' : '';
+            return (
+              <div key={label} className={`stg ${state}`.trim()}>
+                <span className="stg__d">{state === 'done' && <Check />}</span>
+                {label}
               </div>
-            )}
+            );
+          })}
+        </div>
 
-            <p className={`text-[12.5px] leading-relaxed faint ${signedIn ? 'mt-8' : 'mt-5'}`}>
-              Safe to close this tab — the search keeps running and stays in Bookmark.
+        <div className="runbar">
+          <span style={{ width: `${progress}%` }} />
+        </div>
+
+        {!signedIn && (
+          <div className="capture">
+            <p style={{ textAlign: 'center', fontWeight: 700, fontSize: '.9rem', color: 'var(--ink)' }}>
+              Or have them emailed when they&rsquo;re done
             </p>
-          </>
+
+            <a href="/auth/google" className="btn btn--k btn--w" style={{ marginTop: 14, height: 48 }}>
+              <span className="gic">
+                <Google />
+              </span>
+              Continue with Google
+            </a>
+
+            <div className="divid">or</div>
+
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                setEmailSaved(true);
+              }}
+              style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}
+            >
+              <input
+                type="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="you@brand.com"
+                className="fld"
+                style={{ flex: 1, minWidth: 180 }}
+              />
+              <button type="submit" className="btn btn--y">
+                {emailSaved ? 'Saved' : 'Email me'} {!emailSaved && <Arrow />}
+              </button>
+            </form>
+          </div>
         )}
+
+        <p className="faint" style={{ fontSize: '.8rem', marginTop: signedIn ? 24 : 18 }}>
+          Safe to close this tab — the search keeps running and stays in Library.
+        </p>
       </div>
     </div>
   );

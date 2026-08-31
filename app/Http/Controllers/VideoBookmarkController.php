@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Services\Bookmarks\BookmarkService;
 use App\Services\Billing\BillingEntitlementService;
+use App\Support\AppEventLogger;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
@@ -15,7 +16,7 @@ class VideoBookmarkController extends Controller
         private readonly BillingEntitlementService $billing,
     ) {}
 
-    public function store(Request $request, int $videoId): JsonResponse
+    public function store(Request $request, string $videoId): JsonResponse
     {
         $user = $request->user();
 
@@ -25,15 +26,22 @@ class VideoBookmarkController extends Controller
             ]);
         }
 
+        $this->billing->ensureCanBookmark($user);
         $this->bookmarks->add($user, $videoId);
+
+        AppEventLogger::result('video_bookmark.saved', [
+            'user_id' => $user->id,
+            'video_id' => $videoId,
+            'bookmark_count' => $this->billing->videoBookmarkCount($user),
+        ]);
 
         return response()->json([
             'bookmarked' => true,
-            'bookmarkCount' => $this->billing->bookmarkCount($user),
+            'bookmarkCount' => $this->billing->videoBookmarkCount($user),
         ]);
     }
 
-    public function destroy(Request $request, int $videoId): JsonResponse
+    public function destroy(Request $request, string $videoId): JsonResponse
     {
         $user = $request->user();
 
@@ -45,9 +53,15 @@ class VideoBookmarkController extends Controller
 
         $this->bookmarks->remove($user, $videoId);
 
+        AppEventLogger::result('video_bookmark.removed', [
+            'user_id' => $user->id,
+            'video_id' => $videoId,
+            'bookmark_count' => $this->billing->videoBookmarkCount($user),
+        ]);
+
         return response()->json([
             'bookmarked' => false,
-            'bookmarkCount' => $this->billing->bookmarkCount($user),
+            'bookmarkCount' => $this->billing->videoBookmarkCount($user),
         ]);
     }
 }
