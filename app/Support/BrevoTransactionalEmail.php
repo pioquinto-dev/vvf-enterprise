@@ -134,9 +134,7 @@ class BrevoTransactionalEmail
     public static function searchDone(User $user, CustomKeywordSearch $search): array
     {
         $latestRun = $search->latestRun;
-        $resultsCount = $search->relationLoaded('videos')
-            ? $search->videos->count()
-            : ((int) ($search->result_count ?? 0));
+        $resultsCount = $search->videos_count ?? $search->videos()->count();
 
         return self::payload('search_done', $user, [
             'firstName' => self::firstName($user->name),
