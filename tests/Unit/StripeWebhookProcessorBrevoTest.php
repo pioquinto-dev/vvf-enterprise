@@ -188,6 +188,88 @@ class StripeWebhookProcessorBrevoTest extends TestCase
         $this->assertSame('basic', $freshUser->current_plan_slug);
     }
 
+    public function test_final_failed_payment_transition_sends_failed_payment_email_instead_of_generic_cancellation(): void
+    {
+        CarbonImmutable::setTestNow('2026-08-29 01:13:19');
+
+        $user = User::factory()->create([
+            'current_plan_slug' => 'basic',
+            'monthly_credits_remaining' => 8,
+            'plan_renews_at' => CarbonImmutable::now()->addDays(14),
+        ]);
+
+        $plan = PricingPlan::query()->create([
+            'id' => (string) str()->ulid(),
+            'slug' => 'basic',
+            'name' => 'Growth',
+            'stripe_price_id' => 'price_basic',
+            'price_cents' => 9900,
+            'interval_count' => 1,
+            'is_active' => true,
+            'amount' => 99,
+            'annual_amount' => 0,
+            'saved_amount' => 0,
+            'unit_amount' => 9900,
+        ]);
+
+        $subscription = Subscription::query()->create([
+            'id' => (string) str()->ulid(),
+            'user_id' => $user->id,
+            'plan_id' => $plan->id,
+            'stripe_customer_id' => 'cus_test_789',
+            'stripe_subscription_id' => 'sub_test_789',
+            'status' => 'past_due',
+            'current_period_starts_at' => CarbonImmutable::now()->subDays(16),
+            'current_period_ends_at' => CarbonImmutable::now(),
+            'metadata' => [],
+        ]);
+
+        $billing = Mockery::mock(BillingService::class);
+        $emails = Mockery::mock(BrevoLifecycleEmailService::class);
+
+        $billing->shouldReceive('limitsFor')
+            ->once()
+            ->with(Mockery::type(PricingPlan::class))
+            ->andReturn([
+                'searchLimit' => 10,
+                'videoBookmarkLimit' => 5,
+                'searchBookmarkLimit' => 3,
+                'videoAnalysisLimit' => 2,
+                'trialEnabled' => false,
+            ]);
+        $billing->shouldReceive('videoBookmarkCount')->once()->with(Mockery::type(User::class))->andReturn(0);
+        $billing->shouldReceive('syncSubscriptionUsage')->never();
+
+        $emails->shouldReceive('sendFinalFailedPayment')
+            ->once()
+            ->with(
+                Mockery::on(fn (User $candidate): bool => $candidate->is($user)),
+                Mockery::on(fn (Subscription $candidate): bool => $candidate->is($subscription))
+            );
+        $emails->shouldReceive('sendSubscriptionCanceled')->never();
+
+        $processor = new StripeWebhookProcessor($billing, $emails);
+
+        $event = Event::constructFrom([
+            'id' => 'evt_test_final_failed_payment',
+            'type' => 'customer.subscription.updated',
+            'data' => [
+                'object' => [
+                    'id' => 'sub_test_789',
+                    'customer' => 'cus_test_789',
+                    'status' => 'unpaid',
+                    'current_period_start' => CarbonImmutable::now()->subDays(16)->timestamp,
+                    'current_period_end' => CarbonImmutable::now()->timestamp,
+                ],
+            ],
+        ]);
+
+        $processor->handle($event);
+
+        $this->assertSame('free', $user->fresh()->current_plan_slug);
+        $this->assertSame('unpaid', $subscription->fresh()->status);
+    }
+
     public function test_checkout_finalization_copies_signup_utm_to_subscription_attribution(): void
     {
         $user = User::factory()->create([

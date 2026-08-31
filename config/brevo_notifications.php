@@ -6,6 +6,7 @@ return [
         'email' => env('BREVO_SENDER_EMAIL', config('mail.from.address', 'hello@example.com')),
     ],
     'logo_url' => env('BREVO_LOGO_URL', rtrim((string) config('app.url'), '/').'/brand-beacon-logo.png'),
+    'search_done_enabled' => env('BREVO_SEARCH_DONE_ENABLED', env('APP_ENV', 'production') !== 'local'),
 
     'notifications' => [
         'new_registration' => [
@@ -32,6 +33,21 @@ return [
             'subject' => 'Your trial is ending soon',
             'template_id' => env('BREVO_TEMPLATE_ID_TRIAL_ENDING'),
             'tags' => ['trial', 'billing'],
+        ],
+        'final_failed_payment' => [
+            'subject' => 'Your paid access is ending due to a final payment failure',
+            'template_id' => env('BREVO_TEMPLATE_ID_FINAL_FAILED_PAYMENT'),
+            'tags' => ['billing', 'payment-failed', 'downgrade'],
+        ],
+        'no_cc_trial_ending' => [
+            'subject' => 'Add your card to keep paid access after your trial',
+            'template_id' => env('BREVO_TEMPLATE_ID_NO_CC_TRIAL_ENDING'),
+            'tags' => ['trial', 'billing', 'payment-method'],
+        ],
+        'search_done' => [
+            'subject' => 'Your search is ready',
+            'template_id' => env('BREVO_TEMPLATE_ID_SEARCH_DONE'),
+            'tags' => ['search', 'results'],
         ],
     ],
 ];

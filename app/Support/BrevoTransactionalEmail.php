@@ -2,6 +2,7 @@
 
 namespace App\Support;
 
+use App\Models\CustomKeywordSearch;
 use App\Models\Subscription;
 use App\Models\User;
 use Illuminate\Support\Facades\URL;
@@ -92,6 +93,60 @@ class BrevoTransactionalEmail
             'dashboardUrl' => url('/dashboard'),
             'settingsUrl' => url('/settings/subscription'),
             'plansUrl' => url('/plans'),
+        ]);
+    }
+
+    public static function finalFailedPayment(User $user, Subscription $subscription): array
+    {
+        $planName = ucfirst((string) ($subscription->plan?->name ?? $subscription->plan?->slug ?? 'Plan'));
+
+        return self::payload('final_failed_payment', $user, [
+            'firstName' => self::firstName($user->name),
+            'fullName' => $user->name,
+            'planName' => $planName,
+            'accessEndedAt' => $subscription->current_period_ends_at?->timezone(config('app.timezone'))->format('F j, Y') ?? 'today',
+            'dashboardUrl' => url('/dashboard'),
+            'settingsUrl' => url('/settings/subscription'),
+            'contactUrl' => url('/contact'),
+            'plansUrl' => url('/plans'),
+            'supportEmail' => (string) config('mail.from.address', 'support@example.com'),
+        ]);
+    }
+
+    public static function noCardTrialEnding(User $user, Subscription $subscription, int $daysRemaining): array
+    {
+        $planName = ucfirst((string) ($subscription->plan?->name ?? $subscription->plan?->slug ?? 'Plan'));
+        $endsAt = $subscription->trial_ends_at ?? $subscription->current_period_ends_at;
+
+        return self::payload('no_cc_trial_ending', $user, [
+            'firstName' => self::firstName($user->name),
+            'fullName' => $user->name,
+            'planName' => $planName,
+            'daysRemaining' => max(0, $daysRemaining),
+            'trialEndsAt' => $endsAt?->timezone(config('app.timezone'))->format('F j, Y') ?? 'soon',
+            'dashboardUrl' => url('/dashboard'),
+            'settingsUrl' => url('/settings/subscription'),
+            'plansUrl' => url('/plans'),
+        ]);
+    }
+
+    public static function searchDone(User $user, CustomKeywordSearch $search): array
+    {
+        $latestRun = $search->latestRun;
+        $resultsCount = $search->relationLoaded('videos')
+            ? $search->videos->count()
+            : ((int) ($search->result_count ?? 0));
+
+        return self::payload('search_done', $user, [
+            'firstName' => self::firstName($user->name),
+            'fullName' => $user->name,
+            'searchName' => (string) ($search->name ?: $search->phrase),
+            'searchPhrase' => (string) $search->phrase,
+            'searchType' => (string) $search->search_type,
+            'resultsCount' => $resultsCount,
+            'resultsUrl' => url($search->url()),
+            'dashboardUrl' => url('/dashboard'),
+            'latestRunAt' => $latestRun?->completed_at?->timezone(config('app.timezone'))->format('F j, Y g:i A') ?? null,
         ]);
     }
 

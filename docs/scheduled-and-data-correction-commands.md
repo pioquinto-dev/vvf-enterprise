@@ -108,7 +108,7 @@ Schedule:
 - `runInBackground()`
 
 Important behavior:
-- current implementation sends only at 3 days remaining
+- current implementation sends at 3 days remaining and 1 day remaining
 - sent markers are stored in subscription metadata to avoid duplicates
 - only `trialing` or `trial` subscriptions with `trial_ends_at` are considered
 

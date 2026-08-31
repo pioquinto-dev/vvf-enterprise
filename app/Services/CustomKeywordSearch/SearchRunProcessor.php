@@ -11,6 +11,7 @@ use App\Models\CustomKeywordSearchVideo;
 use App\Models\ViralVideo;
 use App\Services\Apify\ApifyClient;
 use App\Services\Billing\BillingService;
+use App\Services\Brevo\BrevoLifecycleEmailService;
 use App\Services\ViralVideoAnalysis\VideoAnalysisManager;
 use App\Support\AppEventLogger;
 use Illuminate\Support\Carbon;
@@ -32,6 +33,7 @@ class SearchRunProcessor
         private readonly SnapshotRecorder $snapshots,
         private readonly LocalCorpusRecall $localCorpus,
         private readonly BillingService $billing,
+        private readonly BrevoLifecycleEmailService $emails,
         private readonly VideoAnalysisManager $videoAnalyses,
         private readonly BrandAccountResolver $brandAccounts,
     ) {}
@@ -297,6 +299,10 @@ class SearchRunProcessor
             'last_run_at' => now(),
             'next_run_at' => $this->nextRunAt($search->frequency),
         ]);
+
+        if ($search->user !== null) {
+            $this->emails->sendSearchDone($search->user, $search->refresh());
+        }
 
         AppEventLogger::result('search.run.completed', [
             'search_id' => $search->id,

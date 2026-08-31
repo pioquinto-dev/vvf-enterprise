@@ -402,7 +402,11 @@ class StripeWebhookProcessor
             );
 
             if (! in_array($previousStatus, ['canceled', 'unpaid', 'incomplete_expired'], true)) {
-                $this->emails->sendSubscriptionCanceled($user, $subscription);
+                if ($this->isFinalFailedPaymentTransition($previousStatus, $status)) {
+                    $this->emails->sendFinalFailedPayment($user, $subscription);
+                } else {
+                    $this->emails->sendSubscriptionCanceled($user, $subscription);
+                }
             }
         }
 
@@ -428,5 +432,15 @@ class StripeWebhookProcessor
         }
 
         return CarbonImmutable::createFromTimestampUTC((int) $timestamp);
+    }
+
+    private function isFinalFailedPaymentTransition(string $previousStatus, string $status): bool
+    {
+        if (in_array($status, ['unpaid', 'incomplete_expired'], true)) {
+            return true;
+        }
+
+        return $previousStatus === 'past_due'
+            && in_array($status, ['canceled', 'unpaid', 'incomplete_expired'], true);
     }
 }

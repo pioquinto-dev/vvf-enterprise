@@ -54,7 +54,7 @@ return [
 
     'brevo' => [
         'api_key' => env('BREVO_API_KEY'),
-        'test_recipient_ema8il' => env('BREVO_TEST_RECIPIENT_EMAIL'),
+        'test_recipient_email' => env('BREVO_TEST_RECIPIENT_EMAIL'),
     ],
 
     'slack' => [

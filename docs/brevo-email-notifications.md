@@ -1,12 +1,15 @@
 ## Brevo email notifications
 
-This project now has a Brevo-ready notification pack for five lifecycle emails:
+This project now has a Brevo-ready notification pack for eight lifecycle and product emails:
 
 - New registration
 - New subscription paid or trial started
 - Cancellation of plan
+- Final failed payment downgrade
 - Verify email for manual account creation
 - Trial ending for Basic or Premium
+- No-card managed trial ending soon
+- Search done
 
 ### Files
 
@@ -51,6 +54,9 @@ php artisan testing:send-brevo-email subscription_started
 php artisan testing:send-brevo-email subscription_canceled
 php artisan testing:send-brevo-email verify_email_manual_account
 php artisan testing:send-brevo-email trial_ending
+php artisan testing:send-brevo-email final_failed_payment
+php artisan testing:send-brevo-email no_cc_trial_ending
+php artisan testing:send-brevo-email search_done
 ```
 
 Override the target inbox for one run:
@@ -73,6 +79,10 @@ BREVO_TEMPLATE_ID_SUBSCRIPTION_STARTED=
 BREVO_TEMPLATE_ID_SUBSCRIPTION_CANCELED=
 BREVO_TEMPLATE_ID_VERIFY_EMAIL_MANUAL_ACCOUNT=
 BREVO_TEMPLATE_ID_TRIAL_ENDING=
+BREVO_TEMPLATE_ID_FINAL_FAILED_PAYMENT=
+BREVO_TEMPLATE_ID_NO_CC_TRIAL_ENDING=
+BREVO_TEMPLATE_ID_SEARCH_DONE=
+BREVO_SEARCH_DONE_ENABLED=false
 ```
 
 ### Trigger map
@@ -210,7 +220,7 @@ Expected params:
 
 #### 5. Trial ending for Basic or Premium
 
-Trigger this from a scheduled command when a `trialing` subscription on `basic` or `premium` is 3 days, 1 day, or 0 days from `current_period_ends_at`.
+Trigger this from a scheduled command when a normal card-collecting trial has 3 days or 1 day remaining.
 
 ```php
 $payload = \App\Support\BrevoTransactionalEmail::trialEnding($user, $subscription, $daysRemaining);
@@ -236,6 +246,102 @@ Expected params:
   "dashboardUrl": "https://your-app.test/dashboard",
   "settingsUrl": "https://your-app.test/settings/subscription",
   "plansUrl": "https://your-app.test/plans"
+}
+```
+
+#### 6. Final failed payment downgrade
+
+Trigger this when a Stripe subscription is being moved to `free` because payment finally failed and access is ending now.
+
+```php
+$payload = \App\Support\BrevoTransactionalEmail::finalFailedPayment($user, $subscription);
+```
+
+Template env:
+
+```dotenv
+BREVO_TEMPLATE_ID_FINAL_FAILED_PAYMENT=128
+```
+
+Expected params:
+
+```json
+{
+  "logoUrl": "https://your-app.test/brand-beacon-logo.png",
+  "appName": "BrandBeacon",
+  "firstName": "Jane",
+  "fullName": "Jane Doe",
+  "planName": "Premium",
+  "accessEndedAt": "September 1, 2026",
+  "dashboardUrl": "https://your-app.test/dashboard",
+  "settingsUrl": "https://your-app.test/settings/subscription",
+  "contactUrl": "https://your-app.test/contact",
+  "plansUrl": "https://your-app.test/plans",
+  "supportEmail": "support@yourdomain.com"
+}
+```
+
+#### 7. No-card managed trial ending soon
+
+Trigger this from the scheduled trial-ending command for managed coupon-program trials that were started without collecting a payment method, such as `/vip-subscription` or `/internal-subscription`, when they have 3 days or 1 day remaining.
+
+```php
+$payload = \App\Support\BrevoTransactionalEmail::noCardTrialEnding($user, $subscription, $daysRemaining);
+```
+
+Template env:
+
+```dotenv
+BREVO_TEMPLATE_ID_NO_CC_TRIAL_ENDING=129
+```
+
+Expected params:
+
+```json
+{
+  "logoUrl": "https://your-app.test/brand-beacon-logo.png",
+  "appName": "BrandBeacon",
+  "firstName": "Jane",
+  "fullName": "Jane Doe",
+  "planName": "Basic",
+  "daysRemaining": 3,
+  "trialEndsAt": "September 4, 2026",
+  "dashboardUrl": "https://your-app.test/dashboard",
+  "settingsUrl": "https://your-app.test/settings/subscription",
+  "plansUrl": "https://your-app.test/plans"
+}
+```
+
+#### 8. Search done
+
+Trigger this after a saved search finishes processing and its results page is ready.
+
+```php
+$payload = \App\Support\BrevoTransactionalEmail::searchDone($user, $search);
+```
+
+Template env:
+
+```dotenv
+BREVO_TEMPLATE_ID_SEARCH_DONE=130
+BREVO_SEARCH_DONE_ENABLED=true
+```
+
+Expected params:
+
+```json
+{
+  "logoUrl": "https://your-app.test/brand-beacon-logo.png",
+  "appName": "BrandBeacon",
+  "firstName": "Jane",
+  "fullName": "Jane Doe",
+  "searchName": "Rhode",
+  "searchPhrase": "rhode",
+  "searchType": "brand",
+  "resultsCount": 14,
+  "resultsUrl": "https://your-app.test/results/abcd1234efgh",
+  "dashboardUrl": "https://your-app.test/dashboard",
+  "latestRunAt": "September 1, 2026 2:30 PM"
 }
 ```
 
@@ -274,5 +380,8 @@ curl --request POST \
 - Registration: send once after `RegisteredUserController::store()`
 - Subscription started: send once after checkout finalization or only from Stripe webhook, not both
 - Cancellation: send only when previous status was not canceled
+- Final failed payment: send instead of the generic cancellation email when access is ending because Stripe payment recovery failed
 - Verify email: send only for manually created accounts
 - Trial ending: send from a scheduler with your chosen day thresholds
+- No-card trial ending: use a separate template with a CTA to `/settings/subscription`
+- Search done: gate behind `BREVO_SEARCH_DONE_ENABLED`, defaulting to off in local
