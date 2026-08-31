@@ -82,6 +82,7 @@ BREVO_TEMPLATE_ID_TRIAL_ENDING=
 BREVO_TEMPLATE_ID_FINAL_FAILED_PAYMENT=
 BREVO_TEMPLATE_ID_NO_CC_TRIAL_ENDING=
 BREVO_TEMPLATE_ID_SEARCH_DONE=
+BREVO_PROXY=
 BREVO_SEARCH_DONE_ENABLED=false
 ```
 
@@ -147,7 +148,7 @@ Expected params:
   "searchBookmarkLimit": 15,
   "videoAnalysisLimit": 5,
   "dashboardUrl": "https://your-app.test/dashboard",
-  "savedSearchesUrl": "https://your-app.test/bookmark",
+  "savedSearchesUrl": "https://your-app.test/library",
   "settingsUrl": "https://your-app.test/settings/subscription"
 }
 ```
@@ -384,4 +385,4 @@ curl --request POST \
 - Verify email: send only for manually created accounts
 - Trial ending: send from a scheduler with your chosen day thresholds
 - No-card trial ending: use a separate template with a CTA to `/settings/subscription`
-- Search done: gate behind `BREVO_SEARCH_DONE_ENABLED`, defaulting to off in local
+- Search done: gate behind `BREVO_SEARCH_DONE_ENABLED`, defaulting to off only when `APP_ENV=local`

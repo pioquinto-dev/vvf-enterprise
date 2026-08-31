@@ -77,7 +77,8 @@ class StripeWebhookProcessorBrevoTest extends TestCase
             ->with(
                 Mockery::on(fn (User $candidate): bool => $candidate->is($user)),
                 Mockery::on(fn (Subscription $candidate): bool => $candidate->is($subscription))
-            );
+            )
+            ->andReturn(true);
 
         $processor = new StripeWebhookProcessor($billing, $emails);
 
@@ -245,7 +246,8 @@ class StripeWebhookProcessorBrevoTest extends TestCase
             ->with(
                 Mockery::on(fn (User $candidate): bool => $candidate->is($user)),
                 Mockery::on(fn (Subscription $candidate): bool => $candidate->is($subscription))
-            );
+            )
+            ->andReturn(true);
         $emails->shouldReceive('sendSubscriptionCanceled')->never();
 
         $processor = new StripeWebhookProcessor($billing, $emails);
@@ -326,7 +328,7 @@ class StripeWebhookProcessorBrevoTest extends TestCase
         ]);
         $entitlements->shouldReceive('remainingSearchCreditsFrom')->once()->andReturn(10);
 
-        $emails->shouldReceive('sendSubscriptionStarted')->once();
+        $emails->shouldReceive('sendSubscriptionStarted')->once()->andReturn(true);
 
         $billing = new BillingService($stripe, $entitlements, $emails, $utmAttributionService);
         $billing->finalizeCheckout($user, 'cs_test_123');

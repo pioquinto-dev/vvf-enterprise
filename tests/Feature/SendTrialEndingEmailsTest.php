@@ -62,7 +62,8 @@ class SendTrialEndingEmailsTest extends TestCase
                 Mockery::on(fn (User $candidate): bool => $candidate->is($user)),
                 Mockery::on(fn (Subscription $candidate): bool => $candidate->is($subscription)),
                 3
-            );
+            )
+            ->andReturn(true);
 
         $this->artisan('brevo:send-trial-ending-emails')
             ->expectsOutput('Sent 1 trial ending reminder(s).')
@@ -107,7 +108,8 @@ class SendTrialEndingEmailsTest extends TestCase
                 Mockery::on(fn (User $candidate): bool => $candidate->is($user)),
                 Mockery::on(fn (Subscription $candidate): bool => $candidate->is($subscription)),
                 1
-            );
+            )
+            ->andReturn(true);
 
         $this->artisan('brevo:send-trial-ending-emails')
             ->expectsOutput('Sent 1 trial ending reminder(s).')
@@ -176,7 +178,8 @@ class SendTrialEndingEmailsTest extends TestCase
                 Mockery::on(fn (User $candidate): bool => $candidate->is($user)),
                 Mockery::on(fn (Subscription $candidate): bool => $candidate->is($subscription)),
                 3
-            );
+            )
+            ->andReturn(true);
         $emails->shouldNotReceive('sendTrialEnding');
 
         $this->artisan('brevo:send-trial-ending-emails')
@@ -238,7 +241,8 @@ class SendTrialEndingEmailsTest extends TestCase
                 Mockery::on(fn (User $candidate): bool => $candidate->is($user)),
                 Mockery::on(fn (Subscription $candidate): bool => $candidate->is($subscription)),
                 1
-            );
+            )
+            ->andReturn(true);
         $emails->shouldNotReceive('sendTrialEnding');
 
         $this->artisan('brevo:send-trial-ending-emails')
@@ -246,5 +250,43 @@ class SendTrialEndingEmailsTest extends TestCase
             ->assertSuccessful();
 
         $this->assertNotNull(data_get($subscription->fresh()->metadata, 'brevo.no_cc_trial_ending_sent.1'));
+    }
+
+    public function test_trial_ending_command_does_not_mark_sent_when_delivery_fails(): void
+    {
+        CarbonImmutable::setTestNow('2026-08-17 09:00:00');
+
+        $user = User::factory()->create();
+        $plan = $this->plan();
+
+        $subscription = Subscription::query()->create([
+            'id' => (string) str()->ulid(),
+            'user_id' => $user->id,
+            'plan_id' => $plan->id,
+            'status' => 'trialing',
+            'current_period_starts_at' => CarbonImmutable::now()->subDays(4),
+            'current_period_ends_at' => CarbonImmutable::now()->addDays(3),
+            'trial_started_at' => CarbonImmutable::now()->subDays(4),
+            'trial_ends_at' => CarbonImmutable::now()->addDays(3),
+            'metadata' => [],
+        ]);
+
+        $emails = Mockery::mock(BrevoLifecycleEmailService::class);
+        $this->app->instance(BrevoLifecycleEmailService::class, $emails);
+
+        $emails->shouldReceive('sendTrialEnding')
+            ->once()
+            ->with(
+                Mockery::on(fn (User $candidate): bool => $candidate->is($user)),
+                Mockery::on(fn (Subscription $candidate): bool => $candidate->is($subscription)),
+                3
+            )
+            ->andReturn(false);
+
+        $this->artisan('brevo:send-trial-ending-emails')
+            ->expectsOutput('Sent 0 trial ending reminder(s).')
+            ->assertSuccessful();
+
+        $this->assertNull(data_get($subscription->fresh()->metadata, 'brevo.trial_ending_sent.3'));
     }
 }

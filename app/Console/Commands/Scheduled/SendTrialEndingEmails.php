@@ -48,14 +48,16 @@ class SendTrialEndingEmails extends Command
                 }
 
                 if ($this->isNoCardTrial($subscription, $noCardSubscriptionIds, $noCardUserIds)) {
-                    $this->emails->sendNoCardTrialEnding($user, $subscription, $daysRemaining);
-                    $this->markSent($subscription, $daysRemaining, 'no_cc_trial_ending_sent');
+                    if ($this->emails->sendNoCardTrialEnding($user, $subscription, $daysRemaining)) {
+                        $this->markSent($subscription, $daysRemaining, 'no_cc_trial_ending_sent');
+                        $sent++;
+                    }
                 } else {
-                    $this->emails->sendTrialEnding($user, $subscription, $daysRemaining);
-                    $this->markSent($subscription, $daysRemaining);
+                    if ($this->emails->sendTrialEnding($user, $subscription, $daysRemaining)) {
+                        $this->markSent($subscription, $daysRemaining);
+                        $sent++;
+                    }
                 }
-
-                $sent++;
             });
 
         $this->info(sprintf('Sent %d trial ending reminder(s).', $sent));

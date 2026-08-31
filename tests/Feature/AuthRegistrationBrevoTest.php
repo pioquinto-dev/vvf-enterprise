@@ -20,11 +20,13 @@ class AuthRegistrationBrevoTest extends TestCase
 
         $emails->shouldReceive('sendNewRegistration')
             ->once()
-            ->with(Mockery::on(fn (User $user): bool => $user->email === 'jane@example.com'));
+            ->with(Mockery::on(fn (User $user): bool => $user->email === 'jane@example.com'))
+            ->andReturn(true);
 
         $emails->shouldReceive('sendVerifyEmail')
             ->once()
-            ->with(Mockery::on(fn (User $user): bool => $user->email === 'jane@example.com'));
+            ->with(Mockery::on(fn (User $user): bool => $user->email === 'jane@example.com'))
+            ->andReturn(true);
 
         $this->post('/register', [
             'name' => 'Jane Example',
@@ -39,8 +41,8 @@ class AuthRegistrationBrevoTest extends TestCase
         $emails = Mockery::mock(BrevoLifecycleEmailService::class);
         $this->app->instance(BrevoLifecycleEmailService::class, $emails);
 
-        $emails->shouldReceive('sendNewRegistration')->once();
-        $emails->shouldReceive('sendVerifyEmail')->once();
+        $emails->shouldReceive('sendNewRegistration')->once()->andReturn(true);
+        $emails->shouldReceive('sendVerifyEmail')->once()->andReturn(true);
 
         $this->withSession([
             'utm_params' => [

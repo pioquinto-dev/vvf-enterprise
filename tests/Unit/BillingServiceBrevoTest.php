@@ -143,7 +143,8 @@ class BillingServiceBrevoTest extends TestCase
             ->with(
                 Mockery::on(fn (User $candidate): bool => $candidate->is($user)),
                 Mockery::on(fn ($subscription): bool => $subscription->user_id === $user->id && $subscription->plan_id === $plan->id)
-            );
+            )
+            ->andReturn(true);
 
         $utm->shouldReceive('createSubscriptionAttribution')
             ->once()

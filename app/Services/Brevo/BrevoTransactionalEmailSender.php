@@ -3,6 +3,7 @@
 namespace App\Services\Brevo;
 
 use Illuminate\Http\Client\Factory as HttpFactory;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Response;
 use RuntimeException;
 
@@ -22,12 +23,24 @@ class BrevoTransactionalEmailSender
             throw new RuntimeException('BREVO_API_KEY is not configured.');
         }
 
-        $response = $this->http
-            ->acceptJson()
-            ->withHeaders([
-                'api-key' => $apiKey,
-            ])
-            ->post('https://api.brevo.com/v3/smtp/email', $payload);
+        try {
+            $response = $this->http
+                ->acceptJson()
+                ->withHeaders([
+                    'api-key' => $apiKey,
+                ])
+                ->withOptions([
+                    // Match the Apify client: ignore inherited machine proxy
+                    // settings unless Brevo is explicitly configured to use one.
+                    'proxy' => filled(config('services.brevo.proxy')) ? (string) config('services.brevo.proxy') : '',
+                ])
+                ->post('https://api.brevo.com/v3/smtp/email', $payload);
+        } catch (ConnectionException $e) {
+            throw new RuntimeException(
+                'Brevo connection failed for https://api.brevo.com/v3/smtp/email. Check BREVO proxy/network settings and whether the upstream endpoint is reachable. Original error: '.$e->getMessage(),
+                previous: $e,
+            );
+        }
 
         $this->throwIfFailed($response);
 

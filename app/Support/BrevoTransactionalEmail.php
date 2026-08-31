@@ -5,6 +5,7 @@ namespace App\Support;
 use App\Models\CustomKeywordSearch;
 use App\Models\Subscription;
 use App\Models\User;
+use RuntimeException;
 use Illuminate\Support\Facades\URL;
 
 class BrevoTransactionalEmail
@@ -146,13 +147,18 @@ class BrevoTransactionalEmail
             'resultsCount' => $resultsCount,
             'resultsUrl' => url($search->url()),
             'dashboardUrl' => url('/dashboard'),
-            'latestRunAt' => $latestRun?->completed_at?->timezone(config('app.timezone'))->format('F j, Y g:i A') ?? null,
+            'latestRunAt' => $latestRun?->completed_at?->timezone(config('app.timezone'))->format('F j, Y g:i A') ?? 'just now',
         ]);
     }
 
     private static function payload(string $notification, User $user, array $params): array
     {
         $definition = config("brevo_notifications.notifications.{$notification}", []);
+        $templateId = $definition['template_id'] ?? null;
+
+        if (! is_numeric($templateId) || (int) $templateId <= 0) {
+            throw new RuntimeException("Brevo template ID is not configured for [{$notification}].");
+        }
 
         return [
             'sender' => [
@@ -164,7 +170,7 @@ class BrevoTransactionalEmail
                 'name' => $user->name,
             ]],
             'subject' => (string) ($definition['subject'] ?? 'BrandBeacon update'),
-            'templateId' => (int) ($definition['template_id'] ?? 0),
+            'templateId' => (int) $templateId,
             'tags' => (array) ($definition['tags'] ?? []),
             'params' => array_merge([
                 'logoUrl' => (string) config('brevo_notifications.logo_url'),
