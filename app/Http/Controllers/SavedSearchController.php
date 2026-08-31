@@ -11,6 +11,7 @@ use App\Models\CustomKeywordSearchSnapshot;
 use App\Models\CustomKeywordSearchVideo;
 use App\Models\VideoAnalysis;
 use App\Models\ViralVideo;
+use App\Services\Analytics\AnalyticsEvent;
 use App\Services\Billing\BillingService;
 use App\Services\Bookmarks\BookmarkService;
 use App\Services\CustomKeywordSearch\GuestSearchQuota;
@@ -102,6 +103,15 @@ class SavedSearchController extends Controller
             'url' => $search->url(),
             'status' => $search->status,
             'initial_count' => $search->videos()->count(),
+            'analytics' => [
+                AnalyticsEvent::make('search_created', [
+                    'search_id' => $search->id,
+                    'search_type' => $search->search_type,
+                    'search_phrase' => $search->phrase,
+                    'search_frequency' => $search->frequency,
+                    'is_authenticated' => $request->user() !== null,
+                ]),
+            ],
         ], 201);
     }
 
@@ -810,7 +820,16 @@ class SavedSearchController extends Controller
 
         $this->manager->queueRun($search, $request->user() !== null);
 
-        return response()->json(['search' => SavedSearchPresenter::summary($search->refresh())]);
+        return response()->json([
+            'search' => SavedSearchPresenter::summary($search->refresh()),
+            'analytics' => [
+                AnalyticsEvent::make('search_refresh_requested', [
+                    'search_id' => $search->id,
+                    'search_type' => $search->search_type,
+                    'search_phrase' => $search->phrase,
+                ]),
+            ],
+        ]);
     }
 
     public function retryInitial(Request $request, int $id): JsonResponse
@@ -840,7 +859,16 @@ class SavedSearchController extends Controller
         // deliberately not metered as a separate refresh.
         $this->manager->queueRun($search);
 
-        return response()->json(['search' => SavedSearchPresenter::summary($search->refresh())]);
+        return response()->json([
+            'search' => SavedSearchPresenter::summary($search->refresh()),
+            'analytics' => [
+                AnalyticsEvent::make('search_refresh_requested', [
+                    'search_id' => $search->id,
+                    'search_type' => $search->search_type,
+                    'search_phrase' => $search->phrase,
+                ]),
+            ],
+        ]);
     }
 
     public function destroy(Request $request, int $id): RedirectResponse|JsonResponse
@@ -867,6 +895,21 @@ class SavedSearchController extends Controller
 
         return response()->json([
             'search' => SavedSearchPresenter::summary($search),
+            'analytics' => $validated['bookmarked']
+                ? [
+                    AnalyticsEvent::make('search_bookmarked', [
+                        'search_id' => $search->id,
+                        'search_type' => $search->search_type,
+                        'search_phrase' => $search->phrase,
+                    ]),
+                ]
+                : [
+                    AnalyticsEvent::make('search_unbookmarked', [
+                        'search_id' => $search->id,
+                        'search_type' => $search->search_type,
+                        'search_phrase' => $search->phrase,
+                    ]),
+                ],
         ]);
     }
 

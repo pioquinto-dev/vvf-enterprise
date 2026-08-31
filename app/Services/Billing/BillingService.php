@@ -6,6 +6,8 @@ use App\Models\ManagedCouponProgram;
 use App\Models\PricingPlan;
 use App\Models\Subscription;
 use App\Models\User;
+use App\Services\Analytics\AnalyticsEvent;
+use App\Services\Analytics\AnalyticsEventManager;
 use App\Services\Admin\UserActivityService;
 use App\Services\Brevo\BrevoLifecycleEmailService;
 use App\Services\Stripe\StripeClient;
@@ -26,6 +28,7 @@ class BillingService
         private readonly UtmAttributionService $utmAttributionService,
         private readonly ?UserActivityService $activity = null,
         private readonly ?CouponAccessService $couponAccess = null,
+        private readonly ?AnalyticsEventManager $analytics = null,
     ) {}
 
     public function checkout(User $user, PricingPlan $plan, bool $withTrial = false, string $cycle = 'monthly', ?ManagedCouponProgram $program = null): string
@@ -120,6 +123,13 @@ class BillingService
             $this->activity?->record($user, 'engagement', 'checkout_initiated', "Initiated checkout for {$plan->name}.", ['plan' => $plan->slug], 'checkout:'.(string) ($session->id ?? ''));
         }
 
+        $this->analytics()->queueForUser($user, AnalyticsEvent::make('checkout_started', [
+            'plan_slug' => $plan->slug,
+            'billing_cycle' => $billingCycle,
+            'with_trial' => $withTrial,
+            'coupon_program' => $program?->code,
+        ]));
+
         return $session->url;
     }
 
@@ -168,6 +178,11 @@ class BillingService
     private function activity(): ?UserActivityService
     {
         return $this->activity ?? app(UserActivityService::class);
+    }
+
+    private function analytics(): AnalyticsEventManager
+    {
+        return $this->analytics ?? app(AnalyticsEventManager::class);
     }
 
     private function couponDiscountPayload(?ManagedCouponProgram $program): ?array
@@ -255,6 +270,16 @@ class BillingService
 
         $this->utmAttributionService->createSubscriptionAttribution($user, $subscriptionId);
         $this->activity?->record($user, 'subscription', $status === 'trialing' ? 'trial_started' : 'subscription_paid', $status === 'trialing' ? "Started a trial on {$plan->name}." : "Started a paid subscription on {$plan->name}.", ['plan' => $plan->slug], 'subscription:'.$sessionId.':'.$status);
+        $this->analytics()->queueForUser($user, AnalyticsEvent::make($status === 'trialing' ? 'trial_started' : 'subscription_started', [
+            'plan_slug' => $plan->slug,
+            'billing_cycle' => $billingCycle,
+            'subscription_status' => $status,
+            'currency' => strtoupper((string) ($plan->currency ?? 'usd')),
+            'value' => $billingCycle === 'annual'
+                ? (float) ($plan->annual_amount ?? ($plan->price_cents !== null ? ((int) $plan->price_cents / 100) : 0))
+                : (float) ($plan->amount ?? ($plan->price_cents !== null ? ((int) $plan->price_cents / 100) : 0)),
+            'trial_days' => $trialDays,
+        ]));
 
         $this->recordCouponRedemption($user, $session, $subscriptionId, $status);
 
@@ -687,6 +712,7 @@ class BillingService
             ],
             'subscription:cancel-request:'.$subscription->id
         );
+
     }
 
     public function reactivateSubscription(User $user): void
@@ -720,6 +746,7 @@ class BillingService
             ],
             'subscription:reactivation-request:'.$subscription->id
         );
+
     }
 
     public function ensureSubscriptionRecord(User $user): Subscription

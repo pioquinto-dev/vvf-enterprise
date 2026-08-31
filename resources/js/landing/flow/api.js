@@ -3,6 +3,8 @@
  * navigation; these calls are the in-page ones that should not re-render the
  * whole document.
  */
+import { pushAnalyticsEvents } from '../../lib/analytics.js';
+
 function csrfToken() {
   return document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') ?? '';
 }
@@ -31,6 +33,8 @@ async function request(url, { method = 'GET', body, signal } = {}) {
     error.payload = payload;
     throw error;
   }
+
+  pushAnalyticsEvents(payload?.analytics);
 
   return payload;
 }

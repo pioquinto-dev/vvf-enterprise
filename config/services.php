@@ -46,6 +46,13 @@ return [
         'redirect' => env('GOOGLE_REDIRECT_URI'),
     ],
 
+    'analytics' => [
+        'enabled' => env('ANALYTICS_ENABLED', false),
+        'gtm_container_id' => env('GTM_CONTAINER_ID'),
+        'ga4_measurement_id' => env('GA4_MEASUREMENT_ID'),
+        'debug_mode' => env('ANALYTICS_DEBUG_MODE', false),
+    ],
+
     'stripe' => [
         'key' => env('STRIPE_KEY'),
         'secret' => env('STRIPE_SECRET'),

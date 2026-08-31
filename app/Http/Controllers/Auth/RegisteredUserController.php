@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Auth;
 use App\Http\Controllers\FreeSearchFunnelController;
 use App\Models\PricingPlan;
 use App\Models\User;
+use App\Services\Analytics\AnalyticsEvent;
+use App\Services\Analytics\AnalyticsEventManager;
 use App\Services\Admin\UserActivityService;
 use App\Services\Auth\PostAuthenticationRedirector;
 use App\Services\Billing\BillingService;
@@ -35,6 +37,7 @@ class RegisteredUserController extends Controller
         private readonly SavedSearchManager $searches,
         private readonly UtmAttributionService $utmAttributionService,
         private readonly UserActivityService $activity,
+        private readonly AnalyticsEventManager $analytics,
     ) {}
 
     public function create(Request $request): Response
@@ -69,6 +72,10 @@ class RegisteredUserController extends Controller
         Auth::login($user);
         $this->activity->record($user, 'sign_up', 'account_created', 'Created account.');
         $this->activity->record($user, 'engagement', 'logged_in', 'Logged in.');
+        $this->analytics->queueForUser($user, AnalyticsEvent::make('sign_up', [
+            'method' => 'email',
+            'user_id' => $user->id,
+        ]));
 
         $request->session()->regenerate();
 

@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\FreeSearchFunnelController;
 use App\Models\User;
+use App\Services\Analytics\AnalyticsEvent;
+use App\Services\Analytics\AnalyticsEventManager;
 use App\Services\Admin\UserActivityService;
 use App\Services\Auth\PostAuthenticationRedirector;
 use App\Services\Brevo\BrevoLifecycleEmailService;
@@ -31,6 +33,7 @@ class GoogleAuthController extends Controller
         private readonly UserActivityService $activity,
         private readonly SavedSearchManager $searches,
         private readonly BillingService $billing,
+        private readonly AnalyticsEventManager $analytics,
     ) {}
 
     public function redirect(Request $request): RedirectResponse
@@ -92,6 +95,10 @@ class GoogleAuthController extends Controller
         Auth::login($user);
         if ($created) {
             $this->activity->record($user, 'sign_up', 'account_created', 'Created account.');
+            $this->analytics->queueForUser($user, AnalyticsEvent::make('sign_up', [
+                'method' => 'google',
+                'user_id' => $user->id,
+            ]));
         }
         $this->activity->record($user, 'engagement', 'logged_in', 'Logged in.');
         $request->session()->regenerate();

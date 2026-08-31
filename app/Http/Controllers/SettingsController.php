@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\PricingPlan;
 use App\Models\Subscription;
+use App\Services\Analytics\AnalyticsEvent;
 use App\Services\Billing\BillingService;
 use App\Services\Admin\UserActivityService;
 use App\Services\Billing\BillingEntitlementService;
@@ -166,6 +167,11 @@ class SettingsController extends Controller
 
         return response()->json([
             'message' => 'Subscription cancellation scheduled. Access stays active until the end of the current billing period.',
+            'analytics' => [
+                AnalyticsEvent::make('subscription_cancellation_requested', [
+                    'plan_slug' => (string) ($request->user()?->current_plan_slug ?? 'free'),
+                ]),
+            ],
         ]);
     }
 
@@ -175,6 +181,11 @@ class SettingsController extends Controller
 
         return response()->json([
             'message' => 'Subscription reactivated. Auto-renew is back on.',
+            'analytics' => [
+                AnalyticsEvent::make('subscription_reactivation_requested', [
+                    'plan_slug' => (string) ($request->user()?->current_plan_slug ?? 'free'),
+                ]),
+            ],
         ]);
     }
 

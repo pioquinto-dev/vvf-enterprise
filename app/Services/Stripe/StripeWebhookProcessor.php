@@ -5,6 +5,8 @@ namespace App\Services\Stripe;
 use App\Models\CustomKeywordSearch;
 use App\Models\Subscription;
 use App\Models\User;
+use App\Services\Analytics\AnalyticsEvent;
+use App\Services\Analytics\AnalyticsEventManager;
 use App\Services\Admin\UserActivityService;
 use App\Services\Billing\BillingService;
 use App\Services\Brevo\BrevoLifecycleEmailService;
@@ -20,6 +22,7 @@ class StripeWebhookProcessor
         private readonly BillingService $billing,
         private readonly BrevoLifecycleEmailService $emails,
         private readonly ?UserActivityService $activity = null,
+        private readonly ?AnalyticsEventManager $analytics = null,
     ) {}
 
     public function handle(Event $event): void
@@ -38,6 +41,11 @@ class StripeWebhookProcessor
             'customer.subscription.deleted' => $this->handleSubscriptionEvent($event),
             default => null,
         };
+    }
+
+    private function analytics(): AnalyticsEventManager
+    {
+        return $this->analytics ?? app(AnalyticsEventManager::class);
     }
 
     private function handleCheckoutCompleted(Event $event): void
@@ -321,6 +329,10 @@ class StripeWebhookProcessor
 
         if ($status === 'trialing' && $previousStatus !== 'trialing') {
             $this->activity?->record($user, 'subscription', 'trial_started', "Started a trial on {$plan->name}.", ['plan' => $plan->slug], 'stripe:'.(string) $event->id.':trial');
+            $this->analytics()->queueForUser($user, AnalyticsEvent::make('trial_started', [
+                'plan_slug' => $plan->slug,
+                'subscription_status' => $status,
+            ]));
         }
         if (in_array($status, ['active', 'paid'], true) && ! in_array($previousStatus, ['active', 'paid'], true)) {
             $eventKey = in_array($previousStatus, ['canceled', 'unpaid', 'incomplete_expired', 'past_due'], true)
@@ -330,6 +342,11 @@ class StripeWebhookProcessor
                 ? "Reactivated {$plan->name} into an active paid subscription."
                 : "Started a paid subscription on {$plan->name}.";
             $this->activity?->record($user, 'subscription', $eventKey, $summary, ['plan' => $plan->slug], 'stripe:'.(string) $event->id.':paid');
+            $this->analytics()->queueForUser($user, AnalyticsEvent::make($eventKey === 'subscription_reactivated' ? 'subscription_reactivated' : 'subscription_started', [
+                'plan_slug' => $plan->slug,
+                'subscription_status' => $status,
+                'billing_cycle' => $billingCycle,
+            ]));
         }
         if ($previousStatus === 'trialing' && $status !== 'trialing') {
             $this->activity?->record(
@@ -352,6 +369,10 @@ class StripeWebhookProcessor
                 ['plan' => $plan->slug, 'cancel_at' => $cancelAt?->toIso8601String()],
                 'stripe:'.(string) $event->id.':cancel_scheduled'
             );
+            $this->analytics()->queueForUser($user, AnalyticsEvent::make('subscription_cancellation_scheduled', [
+                'plan_slug' => $plan->slug,
+                'cancel_at' => $cancelAt?->toIso8601String(),
+            ]));
         }
         if (! $cancelAtPeriodEnd && (bool) data_get($subscription->getOriginal('metadata'), 'subscription.cancel_at_period_end', false)) {
             $this->activity?->record(
@@ -362,9 +383,16 @@ class StripeWebhookProcessor
                 ['plan' => $plan->slug],
                 'stripe:'.(string) $event->id.':cancel_reverted'
             );
+            $this->analytics()->queueForUser($user, AnalyticsEvent::make('subscription_cancellation_reverted', [
+                'plan_slug' => $plan->slug,
+            ]));
         }
         if (in_array($status, ['canceled', 'unpaid', 'incomplete_expired'], true) && ! in_array($previousStatus, ['canceled', 'unpaid', 'incomplete_expired'], true)) {
             $this->activity?->record($user, 'subscription', 'subscription_cancelled', 'Subscription was cancelled.', ['plan' => $plan->slug], 'stripe:'.(string) $event->id.':cancelled');
+            $this->analytics()->queueForUser($user, AnalyticsEvent::make('subscription_cancelled', [
+                'plan_slug' => $plan->slug,
+                'subscription_status' => $status,
+            ]));
         }
 
         if ($status === 'active' && $periodEnd !== null) {
