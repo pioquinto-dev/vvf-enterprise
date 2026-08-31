@@ -3136,9 +3136,6 @@ function EntitlementsBar({ variant = "default" }) {
 	const searchLimit = billing.searchCreditsLimit ?? 0;
 	const searchLeft = billing.searchCreditsRemaining ?? 0;
 	const searchUsed = billing.searchCreditsUsed ?? 0;
-	const bookmarkLimit = billing.searchBookmarkLimit ?? billing.bookmarkLimit ?? 0;
-	const bookmarksUsed = billing.searchBookmarkCount ?? billing.bookmarksUsed ?? billing.bookmarkCount ?? 0;
-	const showBookmarkCounter = bookmarkLimit !== -1;
 	const searchesLow = searchLimit > 0 && searchLeft <= Math.max(1, Math.round(searchLimit * .1));
 	if (variant === "drawer") return /* @__PURE__ */ jsx(Link, {
 		href: "/settings/subscription",
@@ -3180,11 +3177,6 @@ function EntitlementsBar({ variant = "default" }) {
 					" searches"
 				]
 			}),
-			showBookmarkCounter && /* @__PURE__ */ jsxs(Fragment$1, { children: [/* @__PURE__ */ jsx("i", {}), /* @__PURE__ */ jsxs("span", { children: [
-				/* @__PURE__ */ jsx("b", { children: bookmarksUsed }),
-				bookmarkLimit > 0 && `/${bookmarkLimit}`,
-				" search bookmarks"
-			] })] }),
 			!billing.hasPaidPlan && /* @__PURE__ */ jsxs(Fragment$1, { children: [/* @__PURE__ */ jsx("i", {}), /* @__PURE__ */ jsx("span", {
 				style: { textDecoration: "underline" },
 				children: "Upgrade"
@@ -6144,7 +6136,7 @@ var SearchLauncher_exports = /* @__PURE__ */ __exportAll({ default: () => Search
 */
 var TYPES$1 = [{
 	key: "brand",
-	label: "Your brand",
+	label: "Brand",
 	icon: Store,
 	placeholder: "Enter your brand name…",
 	sample: "rhode skin",
@@ -9140,7 +9132,7 @@ function Home({ stack, integrations }) {
 //#region resources/js/landing/sections/Hero.jsx
 var MODES = [{
 	key: "brand",
-	label: "Your brand",
+	label: "Brand",
 	icon: Store,
 	prompt: "Which brand do you want to research?",
 	sample: "rhode skin",

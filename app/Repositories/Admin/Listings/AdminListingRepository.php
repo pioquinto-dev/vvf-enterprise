@@ -1160,8 +1160,17 @@ class AdminListingRepository
     {
         $options = PricingPlan::query()
             ->orderBy('amount')
-            ->get(['slug', 'name'])
-            ->map(fn (PricingPlan $plan): array => ['value' => (string) $plan->slug, 'label' => $plan->name])
+            ->get(['slug', 'name', 'duration'])
+            ->map(function (PricingPlan $plan): array {
+                $duration = strtolower((string) ($plan->duration ?? 'monthly'));
+                $label = $plan->name;
+
+                if (in_array($duration, ['monthly', 'annual'], true)) {
+                    $label .= ' ('.ucfirst($duration).')';
+                }
+
+                return ['value' => (string) $plan->slug, 'label' => $label];
+            })
             ->all();
 
         return $options === [] ? [['value' => 'basic', 'label' => 'basic']] : $options;
