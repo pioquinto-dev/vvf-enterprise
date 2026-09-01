@@ -66,12 +66,19 @@ export function fetchKeywordSuggestions(type, q, { signal } = {}) {
   return request(`${API_V1}/keyword-index/suggestions?${params.toString()}`, { signal });
 }
 
-export function createSavedSearch({ type, phrase, name, keywords, frequency, sources }) {
+export function createSavedSearch({ type, phrase, name, keywords, frequency, sources, refreshExisting = false }) {
   // `sources` (brand/competitor TikTok handle + website) rides along optionally;
   // the backend uses it to sharpen matching where it can, and ignores it otherwise.
   return request(`${API_V1}/saved-searches`, {
     method: 'POST',
-    body: { type, phrase, name, keywords, frequency, ...(sources ? { sources } : {}) },
+    body: { type, phrase, name, keywords, frequency, ...(sources ? { sources } : {}), ...(refreshExisting ? { refresh_existing: true } : {}) },
+  });
+}
+
+export function checkDuplicateSavedSearch({ type, phrase, name, keywords, frequency }) {
+  return request(`${API_V1}/saved-searches/check-duplicate`, {
+    method: 'POST',
+    body: { type, phrase, name, keywords, frequency },
   });
 }
 

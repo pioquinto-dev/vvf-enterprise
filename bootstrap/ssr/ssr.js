@@ -3268,7 +3268,7 @@ function fetchKeywordSuggestions(type, q, { signal } = {}) {
 	if (q) params.set("q", q);
 	return request(`${API_V1}/keyword-index/suggestions?${params.toString()}`, { signal });
 }
-function createSavedSearch({ type, phrase, name, keywords, frequency, sources }) {
+function createSavedSearch({ type, phrase, name, keywords, frequency, sources, refreshExisting = false }) {
 	return request(`${API_V1}/saved-searches`, {
 		method: "POST",
 		body: {
@@ -3277,7 +3277,8 @@ function createSavedSearch({ type, phrase, name, keywords, frequency, sources })
 			name,
 			keywords,
 			frequency,
-			...sources ? { sources } : {}
+			...sources ? { sources } : {},
+			...refreshExisting ? { refresh_existing: true } : {}
 		}
 	});
 }
@@ -3788,6 +3789,84 @@ function AppLayout({ pill, step, title, subtitle, actions, toolbar, width = "max
 	});
 }
 //#endregion
+//#region resources/js/Pages/components/DuplicateSearchModal.jsx
+var DuplicateSearchModal_exports = /* @__PURE__ */ __exportAll({ default: () => DuplicateSearchModal });
+function DuplicateSearchModal({ search, newKeywords = [], busy = false, onRefresh, onCancel }) {
+	const additions = newKeywords.slice(0, 4);
+	const hasAdditions = additions.length > 0;
+	return /* @__PURE__ */ jsx("div", {
+		className: "bb",
+		children: /* @__PURE__ */ jsxs("div", {
+			className: "bb-modal",
+			children: [/* @__PURE__ */ jsx("button", {
+				className: "bb-modal__bg",
+				"aria-label": "Close",
+				onClick: onCancel
+			}), /* @__PURE__ */ jsxs("div", {
+				className: "bb-modal__box",
+				children: [
+					/* @__PURE__ */ jsx("h2", { children: "Already in your history" }),
+					/* @__PURE__ */ jsxs("p", {
+						className: "sub",
+						children: ["This keyword already has a saved search. ", hasAdditions ? "Add these new expansion terms and refresh it with the latest TikTok results?" : "Would you like to refresh it with the latest TikTok results?"]
+					}),
+					search?.name && /* @__PURE__ */ jsx("p", {
+						style: {
+							marginTop: 16,
+							fontWeight: 700,
+							color: "var(--ink)"
+						},
+						children: search.name
+					}),
+					hasAdditions && /* @__PURE__ */ jsxs("div", {
+						className: "chips",
+						style: { marginTop: 12 },
+						children: [additions.map((keyword) => /* @__PURE__ */ jsx("span", {
+							className: "chip",
+							children: keyword
+						}, keyword)), newKeywords.length > additions.length && /* @__PURE__ */ jsxs("span", {
+							className: "chip",
+							children: [
+								"+",
+								newKeywords.length - additions.length,
+								" more"
+							]
+						})]
+					}),
+					/* @__PURE__ */ jsx("p", {
+						className: "muted",
+						style: {
+							marginTop: 12,
+							fontSize: ".82rem"
+						},
+						children: "This refresh uses 1 search credit."
+					}),
+					/* @__PURE__ */ jsxs("div", {
+						className: "actrow__r",
+						style: {
+							marginTop: 24,
+							justifyContent: "flex-end"
+						},
+						children: [/* @__PURE__ */ jsx("button", {
+							type: "button",
+							className: "btn btn--g",
+							onClick: onCancel,
+							disabled: busy,
+							children: "Cancel"
+						}), /* @__PURE__ */ jsx("button", {
+							type: "button",
+							className: "btn btn--y",
+							onClick: onRefresh,
+							disabled: busy,
+							children: busy ? "Refreshing…" : hasAdditions ? "Merge & refresh" : "Refresh search"
+						})]
+					})
+				]
+			})]
+		})
+	});
+}
+//#endregion
 //#region resources/js/Pages/components/UpgradePromptModal.jsx
 var UpgradePromptModal_exports = /* @__PURE__ */ __exportAll({ default: () => UpgradePromptModal });
 function SparkIcon() {
@@ -3877,7 +3956,7 @@ var BrandInlineFlow_exports = /* @__PURE__ */ __exportAll({ default: () => Brand
 * The brand/product page's expand-in-place search flow (matches the
 * "Brand Beacon — Inline search flow" mockup).
 *
-* States: collapsed → keywords → sources → running → done. The card sits at
+* States: collapsed → keywords → running → done. The card sits at
 * the top of the page and expands in-place — the page context beneath it
 * (moving-this-week, suggested-to-track, all-searches) never unmounts.
 *
@@ -3921,18 +4000,12 @@ function useRunStages(active, done) {
 	return idx;
 }
 function MiniStepper({ current }) {
-	const steps = current === "sources" ? [{
-		key: "keywords",
-		label: "Keywords"
-	}, {
-		key: "sources",
-		label: "Sources"
-	}] : [{
+	const steps = [{
 		key: "keywords",
 		label: "Keywords"
 	}];
 	const activeIdx = steps.findIndex((s) => s.key === current);
-	if (!(current === "sources" || current === "keywords")) return null;
+	if (!(current === "keywords")) return null;
 	return /* @__PURE__ */ jsx("div", {
 		className: "mini",
 		children: [{
@@ -3971,14 +4044,12 @@ function BrandInlineFlow({ kind = "brand", placeholder = "Which brand do you wan
 	const [activeSuggestion, setActiveSuggestion] = useState(-1);
 	const [showSuggestions, setShowSuggestions] = useState(false);
 	const [keywords, setKeywords] = useState([]);
-	const [frequency, setFrequency] = useState("weekly");
-	const [tiktokHandle, setTiktokHandle] = useState("");
-	const [website, setWebsite] = useState("");
 	const [emailWhenReady, setEmailWhenReady] = useState(true);
 	const [addKeyword, setAddKeyword] = useState("");
 	const [expanding, setExpanding] = useState(false);
 	const [submitting, setSubmitting] = useState(false);
 	const [error, setError] = useState(null);
+	const [duplicateSearch, setDuplicateSearch] = useState(null);
 	const [searchResult, setSearchResult] = useState(null);
 	const [runDone, setRunDone] = useState(false);
 	const [upgradeModalOpen, setUpgradeModalOpen] = useState(false);
@@ -3992,7 +4063,6 @@ function BrandInlineFlow({ kind = "brand", placeholder = "Which brand do you wan
 	const searchLeft = billing.searchCreditsRemaining;
 	const searchLimit = billing.searchCreditsLimit;
 	const searchCreditsAvailable = !signedIn || searchLimit === -1 || Number(searchLeft ?? 0) > 0;
-	const supportsSources = kind !== "product";
 	const shouldOfferTrial = (billing.trialEligible ?? true) && !(billing.hasUsedTrial ?? false);
 	useEffect(() => {
 		const controller = new AbortController();
@@ -4106,7 +4176,7 @@ function BrandInlineFlow({ kind = "brand", placeholder = "Which brand do you wan
 			setExpanding(false);
 		}
 	};
-	const runSearch = async () => {
+	const runSearch = async (refreshExisting = false) => {
 		if (!signedIn) {
 			window.location.assign(`/search?type=${kind}&q=${encodeURIComponent(subject)}`);
 			return;
@@ -4126,11 +4196,8 @@ function BrandInlineFlow({ kind = "brand", placeholder = "Which brand do you wan
 				phrase: subject,
 				name: subject,
 				keywords: selected,
-				frequency,
-				sources: {
-					tiktokHandle: tiktokHandle.trim().replace(/^@/, ""),
-					website: website.trim()
-				}
+				frequency: "weekly",
+				refreshExisting
 			});
 			trackSearch({
 				id: created.id,
@@ -4140,8 +4207,17 @@ function BrandInlineFlow({ kind = "brand", placeholder = "Which brand do you wan
 			setSearchResult(created);
 			onCreated?.(created);
 		} catch (e) {
+			if (e.status === 409 && e.payload?.code === "existing_search") {
+				setDuplicateSearch({
+					search: e.payload.search,
+					newKeywords: e.payload.new_keywords
+				});
+				setState("keywords");
+				setSubmitting(false);
+				return;
+			}
 			setError(e.message || "Could not start the search.");
-			setState(supportsSources ? "sources" : "keywords");
+			setState("keywords");
 			setSubmitting(false);
 		}
 	};
@@ -4166,7 +4242,7 @@ function BrandInlineFlow({ kind = "brand", placeholder = "Which brand do you wan
 				if (!cancelled && s?.status === "failed") {
 					setError("The search failed to complete.");
 					setSubmitting(false);
-					setState(supportsSources ? "sources" : "keywords");
+					setState("keywords");
 					return;
 				}
 			} catch {}
@@ -4177,11 +4253,7 @@ function BrandInlineFlow({ kind = "brand", placeholder = "Which brand do you wan
 			cancelled = true;
 			window.clearTimeout(timer);
 		};
-	}, [
-		state,
-		searchResult?.id,
-		supportsSources
-	]);
+	}, [state, searchResult?.id]);
 	const viewResults = () => {
 		if (searchResult?.url) router.visit(searchResult.url);
 	};
@@ -4560,30 +4632,6 @@ function BrandInlineFlow({ kind = "brand", placeholder = "Which brand do you wan
 						className: "khint",
 						children: [/* @__PURE__ */ jsx("b", { children: kwCount }), " selected · each keyword widens the same single search."]
 					}),
-					/* @__PURE__ */ jsx("p", {
-						className: "schead",
-						children: "How often should we re-run it?"
-					}),
-					/* @__PURE__ */ jsx("div", {
-						className: "freq",
-						children: [{
-							key: "weekly",
-							label: "Weekly",
-							desc: "Fresh viral videos every week. Best for fast-moving categories."
-						}, {
-							key: "monthly",
-							label: "Monthly",
-							desc: "A lighter monthly pull for slower niches."
-						}].map((f) => /* @__PURE__ */ jsxs("button", {
-							type: "button",
-							className: `fq${frequency === f.key ? " on" : ""}`,
-							onClick: () => setFrequency(f.key),
-							children: [/* @__PURE__ */ jsxs("span", {
-								className: "fq__t",
-								children: [/* @__PURE__ */ jsx("span", { className: "fq__r" }), f.label]
-							}), /* @__PURE__ */ jsx("p", { children: f.desc })]
-						}, f.key))
-					}),
 					error && /* @__PURE__ */ jsx("div", {
 						className: "bif__err",
 						children: error
@@ -4595,142 +4643,16 @@ function BrandInlineFlow({ kind = "brand", placeholder = "Which brand do you wan
 							className: "btn btn--g",
 							onClick: collapse,
 							children: "Cancel"
-						}), /* @__PURE__ */ jsx("button", {
+						}), /* @__PURE__ */ jsxs("button", {
 							type: "button",
 							className: "btn btn--y",
-							onClick: () => supportsSources ? setState("sources") : runSearch(),
+							onClick: runSearch,
 							disabled: kwCount === 0 || submitting,
-							children: supportsSources ? /* @__PURE__ */ jsxs(Fragment$1, { children: ["Continue ", /* @__PURE__ */ jsx(Arrow, {})] }) : /* @__PURE__ */ jsxs(Fragment$1, { children: [
+							children: [
 								submitting ? "Starting…" : "Run the search",
 								" ",
 								/* @__PURE__ */ jsx(Arrow, {})
-							] })
-						})]
-					})
-				] }),
-				supportsSources && state === "sources" && /* @__PURE__ */ jsxs("div", { children: [
-					/* @__PURE__ */ jsxs("div", {
-						className: "ph",
-						children: [
-							/* @__PURE__ */ jsx("p", {
-								className: "ph__k",
-								children: "Optional"
-							}),
-							/* @__PURE__ */ jsxs("h3", { children: [
-								"Add the ",
-								kind === "product" ? "product" : "brand",
-								"'s handle or website"
-							] }),
-							/* @__PURE__ */ jsx("p", {
-								className: "sub",
-								children: "Helps us match videos more accurately and unlock better insights."
-							})
-						]
-					}),
-					/* @__PURE__ */ jsxs("div", {
-						className: "srcs",
-						children: [/* @__PURE__ */ jsxs("div", {
-							className: "src",
-							children: [
-								/* @__PURE__ */ jsxs("div", {
-									className: "src__h",
-									children: [/* @__PURE__ */ jsx("span", {
-										className: "src__i",
-										children: /* @__PURE__ */ jsx("svg", {
-											viewBox: "0 0 24 24",
-											fill: "currentColor",
-											children: /* @__PURE__ */ jsx("path", { d: "M8 5v14l11-7z" })
-										})
-									}), /* @__PURE__ */ jsx("span", {
-										className: "src__t",
-										children: "TikTok handle"
-									})]
-								}),
-								/* @__PURE__ */ jsxs("div", {
-									className: "src__f",
-									children: [/* @__PURE__ */ jsx("span", {
-										className: "src__pre",
-										children: "@"
-									}), /* @__PURE__ */ jsx("input", {
-										value: tiktokHandle,
-										onChange: (e) => setTiktokHandle(e.target.value.replace(/^@/, "")),
-										placeholder: sample.split(" ")[0]
-									})]
-								}),
-								/* @__PURE__ */ jsx("p", {
-									className: "src__m faint",
-									children: "Optional"
-								})
 							]
-						}), /* @__PURE__ */ jsxs("div", {
-							className: "src",
-							children: [
-								/* @__PURE__ */ jsxs("div", {
-									className: "src__h",
-									children: [/* @__PURE__ */ jsx("span", {
-										className: "src__i",
-										children: /* @__PURE__ */ jsx("svg", {
-											viewBox: "0 0 24 24",
-											fill: "none",
-											stroke: "currentColor",
-											strokeWidth: "2",
-											strokeLinecap: "round",
-											strokeLinejoin: "round",
-											children: /* @__PURE__ */ jsx("path", { d: "M3 9l1.5-5h15L21 9M3 9v10a1 1 0 0 0 1 1h16a1 1 0 0 0 1-1V9M3 9h18M9 20v-6h6v6" })
-										})
-									}), /* @__PURE__ */ jsx("span", {
-										className: "src__t",
-										children: "Website"
-									})]
-								}),
-								/* @__PURE__ */ jsxs("div", {
-									className: "src__f",
-									children: [/* @__PURE__ */ jsx("span", {
-										className: "src__pre",
-										children: "https://"
-									}), /* @__PURE__ */ jsx("input", {
-										value: website,
-										onChange: (e) => setWebsite(e.target.value),
-										placeholder: `${sample.split(" ")[0]}.com`
-									})]
-								}),
-								/* @__PURE__ */ jsx("p", {
-									className: "src__m faint",
-									children: "Optional"
-								})
-							]
-						})]
-					}),
-					error && /* @__PURE__ */ jsx("div", {
-						className: "bif__err",
-						children: error
-					}),
-					/* @__PURE__ */ jsxs("div", {
-						className: "biffoot",
-						children: [/* @__PURE__ */ jsx("button", {
-							type: "button",
-							className: "btn btn--g",
-							onClick: () => setState("keywords"),
-							children: "Back"
-						}), /* @__PURE__ */ jsxs("div", {
-							className: "biffoot__r",
-							children: [/* @__PURE__ */ jsx("button", {
-								type: "button",
-								className: "btn btn--g",
-								onClick: runSearch,
-								disabled: submitting,
-								children: "Skip"
-							}), /* @__PURE__ */ jsxs("button", {
-								type: "button",
-								className: "btn btn--y",
-								onClick: runSearch,
-								disabled: submitting,
-								children: [
-									submitting ? "Starting…" : "Run the search",
-									" ",
-									/* @__PURE__ */ jsx(Arrow, {})
-								]
-							})]
 						})]
 					})
 				] }),
@@ -4746,9 +4668,7 @@ function BrandInlineFlow({ kind = "brand", placeholder = "Which brand do you wan
 								kwCount,
 								" keyword",
 								kwCount === 1 ? "" : "s",
-								" · ",
-								frequency,
-								" schedule"
+								" · weekly schedule"
 							]
 						}),
 						/* @__PURE__ */ jsx("div", {
@@ -4830,6 +4750,16 @@ function BrandInlineFlow({ kind = "brand", placeholder = "Which brand do you wan
 					]
 				})
 			]
+		}),
+		duplicateSearch && /* @__PURE__ */ jsx(DuplicateSearchModal, {
+			search: duplicateSearch.search,
+			newKeywords: duplicateSearch.newKeywords,
+			busy: submitting,
+			onCancel: () => setDuplicateSearch(null),
+			onRefresh: () => {
+				setDuplicateSearch(null);
+				runSearch(true);
+			}
 		})
 	] });
 }
@@ -5444,9 +5374,7 @@ function SearchListScreen({ kind = "brand", searches = [], moving = [], suggesti
 	const [modalSearch, setModalSearch] = useState(null);
 	const [formState, setFormState] = useState({
 		name: "",
-		frequency: "weekly",
-		tiktokHandle: "",
-		website: ""
+		frequency: "weekly"
 	});
 	const [submitting, setSubmitting] = useState(false);
 	const [prefillSubject, setPrefillSubject] = useState("");
@@ -5493,9 +5421,7 @@ function SearchListScreen({ kind = "brand", searches = [], moving = [], suggesti
 		setModalSearch(search);
 		setFormState({
 			name: search.name ?? "",
-			frequency: search.frequency ?? "weekly",
-			tiktokHandle: search.source_tiktok_handle ?? "",
-			website: search.source_website ?? ""
+			frequency: search.frequency ?? "weekly"
 		});
 	};
 	const closeEdit = () => {
@@ -5518,11 +5444,7 @@ function SearchListScreen({ kind = "brand", searches = [], moving = [], suggesti
 		try {
 			const { search: updated } = await savedSearch.update(modalSearch.id, {
 				name: formState.name.trim(),
-				frequency: formState.frequency,
-				sources: {
-					tiktokHandle: formState.tiktokHandle.trim(),
-					website: formState.website.trim()
-				}
+				frequency: formState.frequency
 			});
 			patchSearch(modalSearch.id, updated);
 			setModalSearch(null);
@@ -5765,80 +5687,13 @@ function SearchListScreen({ kind = "brand", searches = [], moving = [], suggesti
 								children: [/* @__PURE__ */ jsx("label", {
 									className: "lbl",
 									children: "Schedule"
-								}), /* @__PURE__ */ jsx("div", {
+								}), /* @__PURE__ */ jsx("output", {
+									className: "btn btn--y btn--w",
 									style: {
-										display: "flex",
-										gap: 8
+										cursor: "default",
+										userSelect: "none"
 									},
-									children: ["weekly", "monthly"].map((frequency) => /* @__PURE__ */ jsx("button", {
-										type: "button",
-										className: `btn ${formState.frequency === frequency ? "btn--y" : "btn--g"} btn--w`,
-										onClick: () => setFormState((c) => ({
-											...c,
-											frequency
-										})),
-										children: frequency === "weekly" ? "Weekly" : "Monthly"
-									}, frequency))
-								})]
-							}),
-							/* @__PURE__ */ jsxs("div", {
-								style: { marginTop: 20 },
-								children: [/* @__PURE__ */ jsx("label", {
-									className: "lbl",
-									children: "TikTok handle"
-								}), /* @__PURE__ */ jsxs("div", {
-									style: { position: "relative" },
-									children: [/* @__PURE__ */ jsx("span", {
-										style: {
-											position: "absolute",
-											left: 14,
-											top: "50%",
-											transform: "translateY(-50%)",
-											color: "var(--muted)",
-											pointerEvents: "none"
-										},
-										children: "@"
-									}), /* @__PURE__ */ jsx("input", {
-										className: "fld",
-										style: { paddingLeft: 28 },
-										value: formState.tiktokHandle,
-										onChange: (e) => setFormState((c) => ({
-											...c,
-											tiktokHandle: e.target.value.replace(/^@/, "")
-										})),
-										placeholder: "rhode",
-										"aria-label": "TikTok handle"
-									})]
-								})]
-							}),
-							/* @__PURE__ */ jsxs("div", {
-								style: { marginTop: 20 },
-								children: [/* @__PURE__ */ jsx("label", {
-									className: "lbl",
-									children: "Website"
-								}), /* @__PURE__ */ jsxs("div", {
-									style: { position: "relative" },
-									children: [/* @__PURE__ */ jsx("span", {
-										style: {
-											position: "absolute",
-											left: 14,
-											top: "50%",
-											transform: "translateY(-50%)",
-											color: "var(--muted)",
-											pointerEvents: "none"
-										},
-										children: "https://"
-									}), /* @__PURE__ */ jsx("input", {
-										className: "fld",
-										style: { paddingLeft: 72 },
-										value: formState.website,
-										onChange: (e) => setFormState((c) => ({
-											...c,
-											website: e.target.value
-										})),
-										placeholder: "rhodeskin.com",
-										"aria-label": "Website"
-									})]
+									children: formState.frequency === "monthly" ? "Monthly" : "Weekly"
 								})]
 							}),
 							/* @__PURE__ */ jsxs("div", {
@@ -6423,15 +6278,6 @@ function SearchLauncher({ initialType = "brand", initialQuery = "", onSubmit, su
 //#endregion
 //#region resources/js/landing/flow/screens/KeywordsScreen.jsx
 var KEYWORD_CAP = 12;
-var FREQUENCIES = [{
-	value: "weekly",
-	label: "Weekly",
-	hint: "Fresh viral videos every week. Best for fast-moving categories."
-}, {
-	value: "monthly",
-	label: "Monthly",
-	hint: "A monthly pull. Lighter cadence for slower niches."
-}];
 function SkeletonChips() {
 	return /* @__PURE__ */ jsxs(Fragment$1, { children: [/* @__PURE__ */ jsxs("p", {
 		className: "hint",
@@ -6464,7 +6310,7 @@ function SkeletonChips() {
 	})] });
 }
 /**
-* Step two — widen the single scrape with keywords and set the cadence.
+* Step two — widen the single scrape with keywords.
 *
 * The scrape is sent only the primary phrase; every ticked keyword filters the
 * results locally, so "1 search covers everything you select" is literally true.
@@ -6477,7 +6323,6 @@ function KeywordsScreen({ phrase, noun = "brand", searchType = "brand", nextLabe
 	const [expansionSource, setExpansionSource] = useState(null);
 	const [adding, setAdding] = useState(false);
 	const [draft, setDraft] = useState("");
-	const [frequency, setFrequency] = useState("weekly");
 	const requested = useRef(false);
 	/**
 	* Build a term list from an expansion payload, keeping anything the user
@@ -6685,28 +6530,6 @@ function KeywordsScreen({ phrase, noun = "brand", searchType = "brand", nextLabe
 				})
 			] })]
 		}),
-		/* @__PURE__ */ jsxs("div", {
-			className: "sect",
-			children: [/* @__PURE__ */ jsx("div", {
-				className: "sect__h",
-				children: /* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsx("p", {
-					className: "sect__n",
-					children: "Schedule"
-				}), /* @__PURE__ */ jsx("h2", { children: "How often should we re-run it?" })] })
-			}), /* @__PURE__ */ jsx("div", {
-				className: "freq",
-				children: FREQUENCIES.map((f) => /* @__PURE__ */ jsxs("button", {
-					type: "button",
-					className: `fq${frequency === f.value ? " on" : ""}`,
-					"aria-pressed": frequency === f.value,
-					onClick: () => setFrequency(f.value),
-					children: [/* @__PURE__ */ jsxs("span", {
-						className: "fq__t",
-						children: [/* @__PURE__ */ jsx("span", { className: "fq__r" }), f.label]
-					}), /* @__PURE__ */ jsx("p", { children: f.hint })]
-				}, f.value))
-			})]
-		}),
 		error && /* @__PURE__ */ jsx("div", {
 			className: "sect",
 			children: /* @__PURE__ */ jsx("p", {
@@ -6732,7 +6555,7 @@ function KeywordsScreen({ phrase, noun = "brand", searchType = "brand", nextLabe
 				onClick: () => onSubmit({
 					phrase,
 					keywords: selected,
-					frequency,
+					frequency: "weekly",
 					name: phrase
 				}),
 				children: [
@@ -6743,151 +6566,6 @@ function KeywordsScreen({ phrase, noun = "brand", searchType = "brand", nextLabe
 			})]
 		})
 	] });
-}
-//#endregion
-//#region resources/js/landing/flow/screens/SourcesScreen.jsx
-/**
-* Step three for every search type — optional. Connect the subject's TikTok
-* handle and/or website so results match more tightly.
-*
-* Both are skippable: "Skip" and "Run the search" both start the scrape; the
-* handle/website ride along in the payload for the backend to use.
-*/
-function SourcesScreen({ noun = "brand", onBack, onSkip, onRun, submitting = false }) {
-	const [handle, setHandle] = useState("");
-	const [website, setWebsite] = useState("");
-	const sources = () => ({
-		tiktokHandle: handle.trim().replace(/^@/, ""),
-		website: website.trim()
-	});
-	return /* @__PURE__ */ jsxs("div", {
-		className: "sect",
-		children: [
-			/* @__PURE__ */ jsx("div", {
-				className: "sect__h",
-				children: /* @__PURE__ */ jsxs("div", { children: [
-					/* @__PURE__ */ jsx("p", {
-						className: "sect__n",
-						children: "Optional"
-					}),
-					/* @__PURE__ */ jsxs("h2", { children: [
-						"Add the ",
-						noun,
-						"’s handle or website"
-					] }),
-					/* @__PURE__ */ jsx("p", {
-						className: "faint",
-						style: {
-							fontSize: ".88rem",
-							marginTop: 8,
-							maxWidth: "60ch"
-						},
-						children: "Helps us match videos more accurately and unlock better insights."
-					})
-				] })
-			}),
-			/* @__PURE__ */ jsxs("div", {
-				className: "srcs",
-				children: [/* @__PURE__ */ jsxs("div", {
-					className: `src${handle.trim() ? " is-on" : ""}`,
-					children: [
-						/* @__PURE__ */ jsxs("div", {
-							className: "src__h",
-							children: [/* @__PURE__ */ jsx("span", {
-								className: "src__i",
-								children: /* @__PURE__ */ jsx(Play, { className: "h-[15px] w-[15px]" })
-							}), /* @__PURE__ */ jsx("div", {
-								style: { minWidth: 0 },
-								children: /* @__PURE__ */ jsx("p", {
-									className: "src__t",
-									children: "TikTok handle"
-								})
-							})]
-						}),
-						/* @__PURE__ */ jsxs("div", {
-							className: "src__f",
-							children: [/* @__PURE__ */ jsx("span", {
-								className: "src__pre",
-								children: "@"
-							}), /* @__PURE__ */ jsx("input", {
-								value: handle.replace(/^@/, ""),
-								onChange: (e) => setHandle(e.target.value),
-								placeholder: "rhode",
-								"aria-label": "TikTok handle"
-							})]
-						}),
-						/* @__PURE__ */ jsx("p", {
-							className: "src__m faint",
-							children: "Optional, but it sharpens every number on the report."
-						})
-					]
-				}), /* @__PURE__ */ jsxs("div", {
-					className: `src${website.trim() ? " is-on" : ""}`,
-					children: [
-						/* @__PURE__ */ jsxs("div", {
-							className: "src__h",
-							children: [/* @__PURE__ */ jsx("span", {
-								className: "src__i",
-								children: /* @__PURE__ */ jsx(Store, { className: "h-[15px] w-[15px]" })
-							}), /* @__PURE__ */ jsx("div", {
-								style: { minWidth: 0 },
-								children: /* @__PURE__ */ jsx("p", {
-									className: "src__t",
-									children: "Website"
-								})
-							})]
-						}),
-						/* @__PURE__ */ jsxs("div", {
-							className: "src__f",
-							children: [/* @__PURE__ */ jsx("span", {
-								className: "src__pre",
-								children: "https://"
-							}), /* @__PURE__ */ jsx("input", {
-								value: website,
-								onChange: (e) => setWebsite(e.target.value),
-								placeholder: "rhodeskin.com",
-								"aria-label": "Website"
-							})]
-						}),
-						/* @__PURE__ */ jsx("p", {
-							className: "src__m faint",
-							children: "Optional"
-						})
-					]
-				})]
-			}),
-			/* @__PURE__ */ jsxs("div", {
-				className: "actrow",
-				style: { marginTop: 24 },
-				children: [/* @__PURE__ */ jsx("button", {
-					type: "button",
-					className: "btn btn--g",
-					onClick: onBack,
-					disabled: submitting,
-					children: "Back"
-				}), /* @__PURE__ */ jsxs("span", {
-					className: "actrow__r",
-					children: [/* @__PURE__ */ jsx("button", {
-						type: "button",
-						className: "btn btn--g",
-						onClick: onSkip,
-						disabled: submitting,
-						children: "Skip"
-					}), /* @__PURE__ */ jsxs("button", {
-						type: "button",
-						className: "btn btn--y",
-						onClick: () => onRun(sources()),
-						disabled: submitting,
-						children: [
-							submitting ? "Starting…" : "Run the search",
-							" ",
-							/* @__PURE__ */ jsx(Arrow, {})
-						]
-					})]
-				})]
-			})
-		]
-	});
 }
 //#endregion
 //#region resources/js/landing/flow/screens/RunningScreen.jsx
@@ -7163,9 +6841,8 @@ var SearchWizard_exports = /* @__PURE__ */ __exportAll({ default: () => SearchWi
 /**
 * The whole in-app search flow on one page (Dashboard and /search share it).
 *
-* The wizard branches by search kind, but every search can now optionally add
-* source context before it runs:
-*   - product / brand → Subject → Keywords → Sources → run
+* The wizard branches by search kind:
+*   - product / brand → Subject → Keywords → run
 * The run/loading screen is *not* a wizard step and has no stepper.
 *
 * Steps advance in local state so keyword work survives a step back, and a
@@ -7322,11 +6999,11 @@ function SearchWizard({ initialType = "brand", initialQuery = "", heading = "Sta
 	const [step, setStep] = useState(resumeId ? "running" : initialQuery ? "keywords" : "subject");
 	const [type, setType] = useState(initialType);
 	const [phrase, setPhrase] = useState(initialQuery);
-	const [pending, setPending] = useState(null);
 	const [searchId, setSearchId] = useState(resumeId);
 	const [submitting, setSubmitting] = useState(false);
 	const [error, setError] = useState(null);
 	const [confirmPayload, setConfirmPayload] = useState(null);
+	const [duplicatePayload, setDuplicatePayload] = useState(null);
 	const [authPromptPayload, setAuthPromptPayload] = useState(null);
 	const [upgradeModalOpen, setUpgradeModalOpen] = useState(false);
 	const kind = kindOf(type);
@@ -7352,7 +7029,7 @@ function SearchWizard({ initialType = "brand", initialQuery = "", heading = "Sta
 		setPhrase(nextPhrase);
 		setStep("keywords");
 	};
-	const doCreate = async (payload, sources, searchType = type, searchPhrase = payload.phrase || phrase) => {
+	const doCreate = async (payload, searchType = type, searchPhrase = payload.phrase || phrase, refreshExisting = false) => {
 		setSubmitting(true);
 		setError(null);
 		try {
@@ -7362,7 +7039,7 @@ function SearchWizard({ initialType = "brand", initialQuery = "", heading = "Sta
 				name: payload.name,
 				keywords: payload.keywords,
 				frequency: payload.frequency,
-				sources
+				refreshExisting
 			});
 			clearPendingSearch();
 			trackSearch({
@@ -7375,6 +7052,18 @@ function SearchWizard({ initialType = "brand", initialQuery = "", heading = "Sta
 			stampUrl(created.id);
 			setStep("running");
 		} catch (e) {
+			if (e.status === 409 && e.payload?.code === "existing_search") {
+				clearPendingSearch();
+				setDuplicatePayload({
+					payload,
+					searchType,
+					searchPhrase,
+					search: e.payload.search,
+					newKeywords: e.payload.new_keywords
+				});
+				setStep("keywords");
+				return;
+			}
 			const pendingSearch = readPendingSearch();
 			if (pendingSearch?.started) writePendingSearch({
 				...pendingSearch,
@@ -7398,29 +7087,28 @@ function SearchWizard({ initialType = "brand", initialQuery = "", heading = "Sta
 			clearPendingSearch();
 			return;
 		}
+		const restoredType = pendingSearch.type === "competitor" ? "brand" : pendingSearch.type;
+		const restoredPhrase = pendingSearch.phrase ?? "";
 		writePendingSearch({
 			...pendingSearch,
 			started: true
 		});
-		setType(pendingSearch.type === "competitor" ? "brand" : pendingSearch.type);
-		setPhrase(pendingSearch.phrase ?? "");
-		setPending(pendingSearch.payload);
+		setType(restoredType);
+		setPhrase(restoredPhrase);
 		setError(null);
 		setAuthPromptPayload(null);
-		setStep("sources");
+		doCreate(pendingSearch.payload, restoredType, restoredPhrase);
 	}, [signedIn]);
 	const needsSearchConfirm = signedIn && searchLimit !== 0;
-	const runSearch = (payload, sources) => {
+	const runSearch = (payload) => {
 		if (!signedIn) {
 			writePendingSearch({
 				type,
 				kind,
 				phrase: payload.phrase || phrase,
 				payload,
-				sources: sources ?? null,
 				started: false
 			});
-			setPending(payload);
 			setAuthPromptPayload({
 				type,
 				phrase: payload.phrase || phrase
@@ -7428,21 +7116,13 @@ function SearchWizard({ initialType = "brand", initialQuery = "", heading = "Sta
 			return;
 		}
 		if (!needsSearchConfirm) {
-			doCreate(payload, sources);
+			doCreate(payload);
 			return;
 		}
-		setConfirmPayload({
-			payload,
-			sources
-		});
+		setConfirmPayload({ payload });
 	};
 	const afterKeywords = (payload) => {
-		setPending(payload);
-		if (!signedIn) {
-			runSearch(payload);
-			return;
-		}
-		setStep("sources");
+		runSearch(payload);
 	};
 	const backToKeywords = () => {
 		stampUrl(null);
@@ -7456,7 +7136,7 @@ function SearchWizard({ initialType = "brand", initialQuery = "", heading = "Sta
 	};
 	const onDone = useCallback((found) => router.visit(found?.url ?? `/library/${found?.id ?? searchId}`), [searchId]);
 	const topTitle = step === "subject" ? heading : phrase;
-	const topSub = step === "subject" ? subheading : step === "sources" ? "Step 3 of 3 — optional." : `Step 2 of 3 — add terms to expand on your ${nounOf(type)}. Ticking six terms still spends one search.`;
+	const topSub = step === "subject" ? subheading : `Step 2 of 2 — add terms to expand on your ${nounOf(type)}. Ticking six terms still spends one search.`;
 	return /* @__PURE__ */ jsxs(Fragment$1, { children: [
 		step !== "running" && /* @__PURE__ */ jsxs("div", {
 			className: "top top--wizard",
@@ -7469,46 +7149,36 @@ function SearchWizard({ initialType = "brand", initialQuery = "", heading = "Sta
 			onAutoReturn: leaveRunningScreen
 		}) : /* @__PURE__ */ jsxs("div", {
 			className: "card card--search-wizard",
-			children: [
-				step === "subject" && /* @__PURE__ */ jsx(SearchLauncher, {
-					initialType: type,
-					initialQuery: phrase,
-					onSubmit: pickSubject,
-					suggestionsByType,
-					showProgress: false
-				}),
-				step === "keywords" && phrase && /* @__PURE__ */ jsx(KeywordsScreen, {
-					phrase,
-					noun: nounOf(type),
-					searchType: type,
-					nextLabel: "Continue",
-					submitting,
-					error,
-					onBack: () => {
-						if (!signedIn) {
-							if (typeof window !== "undefined") {
-								window.location.assign("/");
-								return;
-							}
-							router.visit("/", {
-								replace: true,
-								preserveState: false,
-								preserveScroll: false
-							});
+			children: [step === "subject" && /* @__PURE__ */ jsx(SearchLauncher, {
+				initialType: type,
+				initialQuery: phrase,
+				onSubmit: pickSubject,
+				suggestionsByType,
+				showProgress: false
+			}), step === "keywords" && phrase && /* @__PURE__ */ jsx(KeywordsScreen, {
+				phrase,
+				noun: nounOf(type),
+				searchType: type,
+				nextLabel: "Continue",
+				submitting,
+				error,
+				onBack: () => {
+					if (!signedIn) {
+						if (typeof window !== "undefined") {
+							window.location.assign("/");
 							return;
 						}
-						setStep("subject");
-					},
-					onSubmit: afterKeywords
-				}, `${type}:${phrase}`),
-				step === "sources" && /* @__PURE__ */ jsx(SourcesScreen, {
-					noun: nounOf(type),
-					submitting,
-					onBack: () => setStep("keywords"),
-					onSkip: () => runSearch(pending),
-					onRun: (sources) => runSearch(pending, sources)
-				})
-			]
+						router.visit("/", {
+							replace: true,
+							preserveState: false,
+							preserveScroll: false
+						});
+						return;
+					}
+					setStep("subject");
+				},
+				onSubmit: afterKeywords
+			}, `${type}:${phrase}`)]
 		}),
 		step === "subject" && subjectExtra,
 		confirmPayload && /* @__PURE__ */ jsx(UsageConfirmModal$2, {
@@ -7521,7 +7191,18 @@ function SearchWizard({ initialType = "brand", initialQuery = "", heading = "Sta
 			onConfirm: () => {
 				const next = confirmPayload;
 				setConfirmPayload(null);
-				doCreate(next.payload, next.sources);
+				doCreate(next.payload);
+			}
+		}),
+		duplicatePayload && /* @__PURE__ */ jsx(DuplicateSearchModal, {
+			search: duplicatePayload.search,
+			newKeywords: duplicatePayload.newKeywords,
+			busy: submitting,
+			onCancel: () => setDuplicatePayload(null),
+			onRefresh: () => {
+				const next = duplicatePayload;
+				setDuplicatePayload(null);
+				doCreate(next.payload, next.searchType, next.searchPhrase, true);
 			}
 		}),
 		authPromptPayload && /* @__PURE__ */ jsx(AuthPromptModal, {
@@ -11161,9 +10842,7 @@ function Index({ searches: initialSearches, bookmarkedVideos: initialBookmarkedV
 	});
 	const [formState, setFormState] = useState({
 		name: "",
-		frequency: "weekly",
-		tiktokHandle: "",
-		website: ""
+		frequency: "weekly"
 	});
 	const [submitting, setSubmitting] = useState(false);
 	const menuRef = useRef(null);
@@ -11189,7 +10868,7 @@ function Index({ searches: initialSearches, bookmarkedVideos: initialBookmarkedV
 	}, [modalState.type, submitting]);
 	useEffect(() => {
 		let cancelled = false;
-		if (tab === "videos" && !bookmarkedVideosLoaded && !bookmarkedVideosLoading) {
+		if (tab === "videos" && !bookmarkedVideosLoaded) {
 			setBookmarkedVideosLoading(true);
 			fetchBookmarkedVideos().then((payload) => {
 				if (cancelled) return;
@@ -11203,7 +10882,7 @@ function Index({ searches: initialSearches, bookmarkedVideos: initialBookmarkedV
 				if (!cancelled) setBookmarkedVideosLoading(false);
 			});
 		}
-		if (tab === "analysis" && !analysisHistoryLoaded && !analysisHistoryLoading) {
+		if (tab === "analysis" && !analysisHistoryLoaded) {
 			setAnalysisHistoryLoading(true);
 			fetchAnalysisHistory().then((payload) => {
 				if (cancelled) return;
@@ -11222,9 +10901,7 @@ function Index({ searches: initialSearches, bookmarkedVideos: initialBookmarkedV
 		};
 	}, [
 		analysisHistoryLoaded,
-		analysisHistoryLoading,
 		bookmarkedVideosLoaded,
-		bookmarkedVideosLoading,
 		tab
 	]);
 	const filteredSearches = useMemo(() => {
@@ -11330,9 +11007,7 @@ function Index({ searches: initialSearches, bookmarkedVideos: initialBookmarkedV
 		});
 		if (type === "edit") setFormState({
 			name: search.name ?? "",
-			frequency: search.frequency ?? "weekly",
-			tiktokHandle: search.source_tiktok_handle ?? "",
-			website: search.source_website ?? ""
+			frequency: search.frequency ?? "weekly"
 		});
 	};
 	const closeModal = () => {
@@ -11364,11 +11039,7 @@ function Index({ searches: initialSearches, bookmarkedVideos: initialBookmarkedV
 		try {
 			const { search: updated } = await savedSearch.update(modalState.search.id, {
 				name: formState.name.trim(),
-				frequency: formState.frequency,
-				sources: {
-					tiktokHandle: formState.tiktokHandle.trim(),
-					website: formState.website.trim()
-				}
+				frequency: formState.frequency
 			});
 			patchSearch(modalState.search.id, updated);
 			closeModal();
@@ -11844,80 +11515,13 @@ function Index({ searches: initialSearches, bookmarkedVideos: initialBookmarkedV
 								children: [/* @__PURE__ */ jsx("label", {
 									className: "lbl",
 									children: "Schedule"
-								}), /* @__PURE__ */ jsx("div", {
+								}), /* @__PURE__ */ jsx("output", {
+									className: "btn btn--y btn--w",
 									style: {
-										display: "flex",
-										gap: 8
+										cursor: "default",
+										userSelect: "none"
 									},
-									children: ["weekly", "monthly"].map((f) => /* @__PURE__ */ jsx("button", {
-										type: "button",
-										className: `btn ${formState.frequency === f ? "btn--y" : "btn--g"} btn--w`,
-										onClick: () => setFormState((c) => ({
-											...c,
-											frequency: f
-										})),
-										children: f === "weekly" ? "Weekly" : "Monthly"
-									}, f))
-								})]
-							}),
-							/* @__PURE__ */ jsxs("div", {
-								style: { marginTop: 20 },
-								children: [/* @__PURE__ */ jsx("label", {
-									className: "lbl",
-									children: "TikTok handle"
-								}), /* @__PURE__ */ jsxs("div", {
-									style: { position: "relative" },
-									children: [/* @__PURE__ */ jsx("span", {
-										style: {
-											position: "absolute",
-											left: 14,
-											top: "50%",
-											transform: "translateY(-50%)",
-											color: "var(--muted)",
-											pointerEvents: "none"
-										},
-										children: "@"
-									}), /* @__PURE__ */ jsx("input", {
-										className: "fld",
-										style: { paddingLeft: 28 },
-										value: formState.tiktokHandle,
-										onChange: (e) => setFormState((c) => ({
-											...c,
-											tiktokHandle: e.target.value.replace(/^@/, "")
-										})),
-										placeholder: "rhode",
-										"aria-label": "TikTok handle"
-									})]
-								})]
-							}),
-							/* @__PURE__ */ jsxs("div", {
-								style: { marginTop: 20 },
-								children: [/* @__PURE__ */ jsx("label", {
-									className: "lbl",
-									children: "Website"
-								}), /* @__PURE__ */ jsxs("div", {
-									style: { position: "relative" },
-									children: [/* @__PURE__ */ jsx("span", {
-										style: {
-											position: "absolute",
-											left: 14,
-											top: "50%",
-											transform: "translateY(-50%)",
-											color: "var(--muted)",
-											pointerEvents: "none"
-										},
-										children: "https://"
-									}), /* @__PURE__ */ jsx("input", {
-										className: "fld",
-										style: { paddingLeft: 72 },
-										value: formState.website,
-										onChange: (e) => setFormState((c) => ({
-											...c,
-											website: e.target.value
-										})),
-										placeholder: "rhodeskin.com",
-										"aria-label": "Website"
-									})]
+									children: formState.frequency === "monthly" ? "Monthly" : "Weekly"
 								})]
 							}),
 							/* @__PURE__ */ jsxs("div", {
@@ -17902,7 +17506,7 @@ function Stepper({ step }) {
 		"aria-label": `Step ${step} of 3`,
 		children: [
 			"Subject",
-			"Refine",
+			"Keywords",
 			"Results"
 		].map((label, index) => {
 			const number = index + 1;
@@ -17927,8 +17531,6 @@ function Free({ phrase = "", type = "brand", error = null }) {
 	const [subjectSuggestions, setSubjectSuggestions] = useState([]);
 	const [activeSuggestion, setActiveSuggestion] = useState(-1);
 	const [showSuggestions, setShowSuggestions] = useState(false);
-	const [handle, setHandle] = useState("");
-	const [website, setWebsite] = useState("");
 	const [draft, setDraft] = useState("");
 	const [adding, setAdding] = useState(false);
 	const [loading, setLoading] = useState(false);
@@ -18036,11 +17638,7 @@ function Free({ phrase = "", type = "brand", error = null }) {
 					type: kind,
 					phrase: subject,
 					keywords: selected,
-					frequency: "weekly",
-					...kind === "brand" ? { sources: {
-						tiktokHandle: handle.trim().replace(/^@/, ""),
-						website: website.trim()
-					} } : {}
+					frequency: "weekly"
 				})
 			})).ok) throw new Error("We could not save your search. Please try again.");
 			window.location.assign(destination);
@@ -18145,12 +17743,11 @@ function Free({ phrase = "", type = "brand", error = null }) {
       .ff-subject-suggest__copy{display:flex;min-width:0;flex-direction:column;gap:3px}
       .ff-subject-suggest__copy strong{font-size:.92rem;font-weight:700;letter-spacing:-.02em;color:#181614}
       .ff-subject-suggest__copy em{font-style:normal;font-size:.74rem;font-weight:600;color:#8b8577}
-      .ff-shell{max-width:594px;margin:0 auto;padding-top:28px}.fs-stepper{display:flex;align-items:center;justify-content:center;margin:0 0 28px}.fs-step{display:flex;align-items:center;gap:8px;color:#77726b;font-size:11px}.fs-step i{width:23px;height:23px;border:1px solid #ddd8cf;border-radius:50%;display:grid;place-items:center;font-size:11px;font-style:normal}.fs-step.done,.fs-step.now{color:#151515}.fs-step.done i{background:#111;color:#fff;border-color:#111}.fs-step.now i{background:#ffc629;border-color:#ffc629}.fs-step i svg{width:11px;height:11px}.fs-step em{width:27px;height:1px;background:#ddd8cf;margin:0 9px;font-style:normal}.ff-card{border:1px solid #e4e0d8;border-radius:20px;overflow:hidden;background:#fff;box-shadow:0 12px 32px -30px rgba(0,0,0,.3)}.ff-subject{height:66px;padding:0 21px;display:flex;align-items:center;border-bottom:1px solid #e4e0d8}.ff-subject__label,.ff-eyebrow{font-size:10px;font-weight:850;color:#a16d00;letter-spacing:.13em;text-transform:uppercase}.ff-subject strong{margin-left:12px;font-size:15px;letter-spacing:-.03em}.ff-edit{margin-left:auto;width:30px;height:30px;border:1px solid #e4e0d8;border-radius:50%;background:#fff;color:#777;display:grid;place-items:center;cursor:pointer}.ff-edit svg{width:14px;height:14px}.ff-section{padding:23px 21px 24px}.ff-section--sources{border-top:1px solid #e4e0d8}.ff-section h1{margin:10px 0 0;font-size:17px;line-height:1.25;letter-spacing:-.035em}.ff-section>p{margin:10px 0 0;font-size:13px;line-height:1.55;color:#625e58}.ff-chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:18px}.ff-chip{height:37px;padding:0 14px;border:1.5px solid #b8b1a2 !important;border-radius:999px;background:#fff;color:#302d29;font:inherit;font-size:12px;font-weight:700;display:inline-flex;align-items:center;gap:8px;cursor:pointer;transition:border-color .15s,background .15s,box-shadow .15s}.ff-chip:hover:not(:disabled){border-color:#8a8271 !important}.ff-chip:disabled{cursor:default}.ff-chip.on{border-color:#ffc629 !important;box-shadow:0 0 0 1.5px #ffc629 inset}.ff-check{width:15px;height:15px;border:1px solid #d9d4ca;border-radius:50%;display:grid;place-items:center}.ff-chip.on .ff-check{background:#ffc629;border-color:#ffc629}.ff-check svg{width:9px;height:9px}.ff-add{border-style:dashed;color:#9d6900}.ff-add svg{width:13px;height:13px}.ff-add-input{height:37px;width:130px;padding:0 12px;border:1px solid #ffc629;border-radius:999px;outline:0;font:inherit;font-size:12px;font-weight:700}.ff-count{margin:14px 0 0!important;font-size:11px!important;color:#756f68!important}.ff-count b{color:#111}.ff-source{margin-top:13px;padding:12px;border:1px solid #ddd8cf;border-radius:11px}.ff-source__head{display:flex;align-items:center;justify-content:space-between;font-size:11px;font-weight:800}.ff-source__head span:last-child{font-size:8px;color:#9d6900;letter-spacing:.08em}.ff-source input{box-sizing:border-box;width:100%;height:36px;margin-top:10px;padding:0 11px;border:1px solid #d9d4ca;border-radius:999px;font:inherit;font-size:11px;font-weight:600;outline:0}.ff-source input:focus{border-color:#ffc629}.ff-footer{min-height:85px;padding:0 21px;border-top:1px solid #e4e0d8;display:flex;align-items:center;justify-content:space-between;gap:12px}.ff-back,.ff-run{height:41px;padding:0 20px;border-radius:10px;font:inherit;font-size:13px;font-weight:800;cursor:pointer}.ff-back{border:1px solid #ddd8cf;background:#fff;color:#111}.ff-run{border:0;background:#ffc629;color:#1a1400;display:inline-flex;align-items:center;gap:10px;box-shadow:0 1px 2px rgba(20,15,0,.1),0 10px 24px -8px rgba(255,198,41,.72)}.ff-run:hover:not(:disabled){background:#ffd84d;transform:translateY(-1px);box-shadow:0 2px 4px rgba(20,15,0,.1),0 16px 30px -10px rgba(255,198,41,.85)}.ff-run svg{width:15px;height:15px}.ff-run:disabled{opacity:.55;cursor:not-allowed}.ff-subject-form{max-width:520px;margin:66px auto;border:1px solid #e4e0d8;border-radius:20px;padding:26px}.ff-subject-form h1{margin:0;font-size:25px;letter-spacing:-.05em}.ff-modes{display:grid;grid-template-columns:repeat(2,1fr);gap:7px;margin-top:22px}.ff-mode{height:45px;border:1px solid #ddd8cf;border-radius:10px;background:#fff;font:inherit;font-size:12px;font-weight:750;cursor:pointer}.ff-mode.is-on{background:#111;border-color:#111;color:#fff}.ff-mode svg{width:14px;height:14px;vertical-align:-2px;margin-right:5px}.ff-input{width:100%;box-sizing:border-box;height:48px;margin-top:16px;padding:0 13px;border:1px solid #d9d4ca;border-radius:10px;font:inherit;font-weight:650;outline:0}.ff-input:focus{border-color:#ffc629;box-shadow:0 0 0 4px rgba(255,198,41,.2)}
+      .ff-shell{max-width:594px;margin:0 auto;padding-top:28px}.fs-stepper{display:flex;align-items:center;justify-content:center;margin:0 0 28px}.fs-step{display:flex;align-items:center;gap:8px;color:#77726b;font-size:11px}.fs-step i{width:23px;height:23px;border:1px solid #ddd8cf;border-radius:50%;display:grid;place-items:center;font-size:11px;font-style:normal}.fs-step.done,.fs-step.now{color:#151515}.fs-step.done i{background:#111;color:#fff;border-color:#111}.fs-step.now i{background:#ffc629;border-color:#ffc629}.fs-step i svg{width:11px;height:11px}.fs-step em{width:27px;height:1px;background:#ddd8cf;margin:0 9px;font-style:normal}.ff-card{border:1px solid #e4e0d8;border-radius:20px;overflow:hidden;background:#fff;box-shadow:0 12px 32px -30px rgba(0,0,0,.3)}.ff-subject{height:66px;padding:0 21px;display:flex;align-items:center;border-bottom:1px solid #e4e0d8}.ff-subject__label,.ff-eyebrow{font-size:10px;font-weight:850;color:#a16d00;letter-spacing:.13em;text-transform:uppercase}.ff-subject strong{margin-left:12px;font-size:15px;letter-spacing:-.03em}.ff-edit{margin-left:auto;width:30px;height:30px;border:1px solid #e4e0d8;border-radius:50%;background:#fff;color:#777;display:grid;place-items:center;cursor:pointer}.ff-edit svg{width:14px;height:14px}.ff-section{padding:23px 21px 24px}.ff-section h1{margin:10px 0 0;font-size:17px;line-height:1.25;letter-spacing:-.035em}.ff-section>p{margin:10px 0 0;font-size:13px;line-height:1.55;color:#625e58}.ff-chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:18px}.ff-chip{height:37px;padding:0 14px;border:1.5px solid #b8b1a2 !important;border-radius:999px;background:#fff;color:#302d29;font:inherit;font-size:12px;font-weight:700;display:inline-flex;align-items:center;gap:8px;cursor:pointer;transition:border-color .15s,background .15s,box-shadow .15s}.ff-chip:hover:not(:disabled){border-color:#8a8271 !important}.ff-chip:disabled{cursor:default}.ff-chip.on{border-color:#ffc629 !important;box-shadow:0 0 0 1.5px #ffc629 inset}.ff-check{width:15px;height:15px;border:1px solid #d9d4ca;border-radius:50%;display:grid;place-items:center}.ff-chip.on .ff-check{background:#ffc629;border-color:#ffc629}.ff-check svg{width:9px;height:9px}.ff-add{border-style:dashed;color:#9d6900}.ff-add svg{width:13px;height:13px}.ff-add-input{height:37px;width:130px;padding:0 12px;border:1px solid #ffc629;border-radius:999px;outline:0;font:inherit;font-size:12px;font-weight:700}.ff-count{margin:14px 0 0!important;font-size:11px!important;color:#756f68!important}.ff-count b{color:#111}.ff-footer{min-height:85px;padding:0 21px;border-top:1px solid #e4e0d8;display:flex;align-items:center;justify-content:space-between;gap:12px}.ff-back,.ff-run{height:41px;padding:0 20px;border-radius:10px;font:inherit;font-size:13px;font-weight:800;cursor:pointer}.ff-back{border:1px solid #ddd8cf;background:#fff;color:#111}.ff-run{border:0;background:#ffc629;color:#1a1400;display:inline-flex;align-items:center;gap:10px;box-shadow:0 1px 2px rgba(20,15,0,.1),0 10px 24px -8px rgba(255,198,41,.72)}.ff-run:hover:not(:disabled){background:#ffd84d;transform:translateY(-1px);box-shadow:0 2px 4px rgba(20,15,0,.1),0 16px 30px -10px rgba(255,198,41,.85)}.ff-run svg{width:15px;height:15px}.ff-run:disabled{opacity:.55;cursor:not-allowed}.ff-subject-form{max-width:520px;margin:66px auto;border:1px solid #e4e0d8;border-radius:20px;padding:26px}.ff-subject-form h1{margin:0;font-size:25px;letter-spacing:-.05em}.ff-modes{display:grid;grid-template-columns:repeat(2,1fr);gap:7px;margin-top:22px}.ff-mode{height:45px;border:1px solid #ddd8cf;border-radius:10px;background:#fff;font:inherit;font-size:12px;font-weight:750;cursor:pointer}.ff-mode.is-on{background:#111;border-color:#111;color:#fff}.ff-mode svg{width:14px;height:14px;vertical-align:-2px;margin-right:5px}.ff-input{width:100%;box-sizing:border-box;height:48px;margin-top:16px;padding:0 13px;border:1px solid #d9d4ca;border-radius:10px;font:inherit;font-weight:650;outline:0}.ff-input:focus{border-color:#ffc629;box-shadow:0 0 0 4px rgba(255,198,41,.2)}
       .free-flow--gate{padding:0;background:#fff}.ff-gate{min-height:calc(100vh - 72px);display:grid;grid-template-columns:1fr 1fr}.ff-gate__copy{padding:clamp(48px,11vh,120px) clamp(29px,5vw,90px);display:flex;align-items:center}.ff-gate__inner{max-width:420px}.ff-gate h1{margin:12px 0 0;font-size:clamp(27px,3vw,38px);line-height:1.08;letter-spacing:-.065em}.ff-gate__copy>div>p{font-size:13px;line-height:1.55;color:#625e58;margin:15px 0 0}.ff-stages{margin-top:35px;display:flex;flex-direction:column;gap:12px}.ff-stage{min-height:34px;padding:0 10px;display:flex;align-items:center;gap:11px;border-radius:9px;font-size:12px;font-weight:650}.ff-stage i{width:15px;height:15px;border-radius:50%;background:#111;color:#fff;display:grid;place-items:center}.ff-stage i svg{width:9px;height:9px}.ff-stage.now{background:#fff5da}.ff-stage.now i{background:transparent;border:1.5px solid #ffc629;border-top-color:transparent;animation:ff-spin .8s linear infinite}.ff-email{display:flex;align-items:center;gap:9px;margin-top:20px;padding:12px;border:1px solid #f1d798;border-radius:10px;background:#fffaf0;color:#9d6900;font-size:11px;font-weight:750}.ff-email svg{width:15px;height:15px}@keyframes ff-spin{to{transform:rotate(360deg)}}.ff-gate__visual{padding:28px 30px;background:#faf9f6;border-left:1px solid #ece8df;display:flex;align-items:center;justify-content:center}.ff-preview{width:min(100%,560px)}.ff-videos{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}.ff-video{height:200px;width:100%;border-radius:10px;object-fit:cover;filter:blur(3px);opacity:.75}.ff-gate__sheet--desktop{display:block}.ff-gate__sheet--mobile{display:none}.ff-signup{margin:18px auto 0;padding:23px;border:1px solid #e4e0d8;border-radius:16px;background:#fff;text-align:center;box-shadow:0 20px 35px -30px rgba(0,0,0,.25);max-width:100%}.ff-signup h2{font-size:16px;letter-spacing:-.035em;margin:0}.ff-signup p{font-size:11px!important;line-height:1.55!important;margin:13px auto 0!important;color:#756f68!important}.ff-google{appearance:none;-webkit-appearance:none;height:50px;width:100%;margin-top:18px;border:1px solid #111!important;border-radius:9px;background:#111!important;color:#fff!important;font:inherit;font-size:12px;font-weight:800;display:flex;align-items:center;justify-content:center;gap:9px;cursor:pointer;box-shadow:0 8px 16px -10px rgba(0,0,0,.7);transition:transform .16s,background .16s,box-shadow .16s}.ff-google:hover:not(:disabled){background:#292929!important;box-shadow:0 11px 20px -10px rgba(0,0,0,.65);transform:translateY(-1px)}.ff-google svg{width:19px;height:19px;background:#fff;border-radius:50%;padding:2px}.ff-google:disabled{opacity:.6}.ff-trust{font-size:10px!important;margin-top:12px!important}.ff-error{margin-top:12px!important;color:#aa3820!important;font-weight:700}
       @media(max-width:720px){.free-flow--gate{padding:0;background:#f7f4ed}.ff-gate{position:relative;display:block;min-height:calc(100vh - 72px);padding:44px 16px 250px;overflow:hidden}.ff-gate__copy{display:flex;justify-content:center;padding:0;text-align:center}.ff-gate__inner{max-width:430px}.ff-gate h1{margin:14px 0 0;font-size:clamp(26px,8vw,36px);line-height:1.04}.ff-gate__copy>div>p{max-width:280px;margin-left:auto;margin-right:auto}.ff-stages{margin:32px auto 0;max-width:none}.ff-stage{text-align:left}.ff-stage i{flex:none}.ff-email{margin:20px auto 0;max-width:none;text-align:left}.ff-email svg{flex:none}.ff-gate__visual{display:none}.ff-gate__sheet--desktop{display:none}.ff-gate__sheet--mobile{position:fixed;left:0;right:0;bottom:0;z-index:20;display:flex;justify-content:center;padding:0 6px;pointer-events:none}.ff-gate__sheet--mobile.is-open .ff-signup{transform:translateY(0);opacity:1}.ff-signup{width:min(100%,560px);margin-top:0;padding:18px 18px 22px;border-bottom:0;border-radius:18px 18px 0 0;box-shadow:0 -12px 40px rgba(0,0,0,.10);transform:translateY(110%);opacity:0;transition:transform .34s ease,opacity .24s ease;pointer-events:auto}.ff-signup::before{content:'';display:block;width:46px;height:4px;border-radius:999px;background:#d7d2c8;margin:0 auto 16px}}@media(max-width:500px){.free-flow{padding:0 12px 35px}.free-flow--gate{padding:0}.ff-shell{padding-top:20px}.fs-step b{display:none}.fs-step em{width:20px;margin:0 5px}.ff-card{border-radius:16px}.ff-section{padding:20px 17px}.ff-subject{padding:0 17px}.ff-footer{padding:0 17px}.ff-run{padding:0 14px}.ff-modes{grid-template-columns:1fr}.ff-subject-form{margin:32px auto}.ff-gate{padding:38px 10px 248px}.ff-signup{padding:16px 14px 20px}.ff-subject-suggest{top:calc(100% + 8px);border-radius:16px}.ff-subject-suggest__head{padding:10px 12px 9px;font-size:.62rem}.ff-subject-suggest__item{padding:10px}.ff-subject-suggest__copy strong{font-size:.86rem}}
     ` }),
 				/* @__PURE__ */ jsx("style", { children: `
-      .ff-source{display:block}
       .ff-chip.on{background:#fff8e1}
       .ff-chips .ff-add{flex:0 0 auto;margin-right:100%;white-space:nowrap}
       .ff-subject{background:#fffaea}
@@ -18159,10 +17756,6 @@ function Free({ phrase = "", type = "brand", error = null }) {
       .ff-topbar__back:hover{color:#111}
       .ff-topbar__free{display:inline-flex;align-items:center;gap:7px;height:28px;padding:0 12px;background:#fff5da;color:#9d6900;border-radius:999px;font-size:10.5px;font-weight:800;letter-spacing:.02em}
       .ff-topbar__free::before{content:'\\2726';font-size:10px}
-      .ff-source__head{align-items:center}
-      .ff-source__head>span:first-child{display:inline-flex;align-items:center;gap:8px}
-      .ff-source__ic{width:16px;height:16px;color:#9d6900;flex:none;display:inline-grid;place-items:center}
-      .ff-source__ic svg{width:16px;height:16px;display:block}
       .ff-signup--m5{text-align:left;padding:24px}
       .ff-signup--m5 h2{font-size:19px;letter-spacing:-.03em}
       .ff-signup--m5>p{text-align:left!important;margin:8px 0 0!important;font-size:12px!important;color:#5a5651!important}
@@ -18357,71 +17950,6 @@ function Free({ phrase = "", type = "brand", error = null }) {
 										message && /* @__PURE__ */ jsx("p", {
 											className: "ff-error",
 											children: message
-										})
-									]
-								}),
-								kind === "brand" && /* @__PURE__ */ jsxs("div", {
-									className: "ff-section ff-section--sources",
-									children: [
-										/* @__PURE__ */ jsx("span", {
-											className: "ff-eyebrow",
-											children: "Optional"
-										}),
-										/* @__PURE__ */ jsx("h1", { children: "Add your brand's TikTok handle or website" }),
-										/* @__PURE__ */ jsx("p", { children: "Not required. It helps us match videos more accurately and sharpen the results." }),
-										/* @__PURE__ */ jsxs("label", {
-											className: "ff-source",
-											children: [/* @__PURE__ */ jsxs("span", {
-												className: "ff-source__head",
-												children: [/* @__PURE__ */ jsxs("span", { children: [/* @__PURE__ */ jsx("span", {
-													className: "ff-source__ic",
-													children: /* @__PURE__ */ jsx("svg", {
-														viewBox: "0 0 24 24",
-														fill: "currentColor",
-														children: /* @__PURE__ */ jsx("path", { d: "M8 5v14l11-7z" })
-													})
-												}), "TikTok handle"] }), /* @__PURE__ */ jsx("span", { children: "OPTIONAL" })]
-											}), /* @__PURE__ */ jsx("input", {
-												value: handle,
-												onChange: (event) => setHandle(event.target.value),
-												placeholder: "@yourhandle"
-											})]
-										}),
-										/* @__PURE__ */ jsxs("label", {
-											className: "ff-source",
-											children: [/* @__PURE__ */ jsxs("span", {
-												className: "ff-source__head",
-												children: [/* @__PURE__ */ jsxs("span", { children: [/* @__PURE__ */ jsx("span", {
-													className: "ff-source__ic",
-													children: /* @__PURE__ */ jsxs("svg", {
-														viewBox: "0 0 24 24",
-														fill: "none",
-														stroke: "currentColor",
-														strokeWidth: "2",
-														strokeLinecap: "round",
-														strokeLinejoin: "round",
-														children: [
-															/* @__PURE__ */ jsx("rect", {
-																x: "3",
-																y: "4",
-																width: "18",
-																height: "16",
-																rx: "2"
-															}),
-															/* @__PURE__ */ jsx("circle", {
-																cx: "9",
-																cy: "10",
-																r: "2"
-															}),
-															/* @__PURE__ */ jsx("path", { d: "m3 18 6-6 5 5 3-3 4 4" })
-														]
-													})
-												}), "Website"] }), /* @__PURE__ */ jsx("span", { children: "OPTIONAL" })]
-											}), /* @__PURE__ */ jsx("input", {
-												value: website,
-												onChange: (event) => setWebsite(event.target.value),
-												placeholder: "https://yourbrand.com"
-											})]
 										})
 									]
 								}),
@@ -20173,6 +19701,7 @@ createServer((page) => createInertiaApp({
 			"./Pages/components/AppFooter.jsx": AppFooter_exports,
 			"./Pages/components/AppLayout.jsx": AppLayout_exports,
 			"./Pages/components/BrandInlineFlow.jsx": BrandInlineFlow_exports,
+			"./Pages/components/DuplicateSearchModal.jsx": DuplicateSearchModal_exports,
 			"./Pages/components/EntitlementsBar.jsx": EntitlementsBar_exports,
 			"./Pages/components/SavedSearchRow.jsx": SavedSearchRow_exports,
 			"./Pages/components/SearchLauncher.jsx": SearchLauncher_exports,

@@ -8,12 +8,65 @@ use App\Models\User;
 use App\Models\VideoAnalysis;
 use App\Models\ViralVideo;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Queue;
 use Inertia\Testing\AssertableInertia as Assert;
 use Tests\TestCase;
 
 class SavedSearchLibraryTest extends TestCase
 {
     use RefreshDatabase;
+
+    public function test_matching_primary_keywords_require_confirmation_before_merging_and_refreshing(): void
+    {
+        Queue::fake();
+
+        $user = User::factory()->create([
+            'current_plan_slug' => 'free',
+            'monthly_credits_remaining' => 5,
+            'plan_renews_at' => null,
+        ]);
+
+        $search = CustomKeywordSearch::query()->create([
+            'user_id' => $user->id,
+            'name' => 'Existing Rhode search',
+            'phrase' => 'rhode skin',
+            'search_type' => CustomKeywordSearch::TYPE_COMPETITOR,
+            'keywords' => ['rhode skin', 'rhode review'],
+            'keyword_signature' => "rhode review\nrhode skin",
+            'frequency' => CustomKeywordSearch::FREQUENCY_MONTHLY,
+            'status' => CustomKeywordSearch::STATUS_DONE,
+        ]);
+
+        $payload = [
+            'type' => CustomKeywordSearch::TYPE_BRAND,
+            'phrase' => 'rhode skin',
+            'name' => 'A new label',
+            'keywords' => ['rhode vlog', 'rhode skin'],
+            'frequency' => CustomKeywordSearch::FREQUENCY_WEEKLY,
+        ];
+
+        $search->delete();
+
+        $this->actingAs($user)
+            ->postJson('/api/v1/saved-searches', $payload)
+            ->assertConflict()
+            ->assertJsonPath('code', 'existing_search')
+            ->assertJsonPath('search.id', $search->id)
+            ->assertJsonPath('new_keywords.0', 'rhode vlog');
+
+        $this->actingAs($user)
+            ->postJson('/api/v1/saved-searches', [...$payload, 'refresh_existing' => true])
+            ->assertCreated()
+            ->assertJsonPath('id', $search->id);
+
+        $search->refresh();
+        $this->assertFalse($search->trashed());
+        $this->assertSame('Existing Rhode search', $search->name);
+        $this->assertSame(CustomKeywordSearch::FREQUENCY_MONTHLY, $search->frequency);
+        $this->assertSame(['rhode skin', 'rhode review', 'rhode vlog'], $search->keywords);
+        $this->assertSame(1, $search->runs()->count());
+        $this->assertSame(4, (int) $user->fresh()->monthly_credits_remaining);
+    }
 
     public function test_library_page_includes_analysis_history_rows_for_signed_in_user(): void
     {

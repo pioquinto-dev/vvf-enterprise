@@ -26,6 +26,7 @@ class StoreSavedSearchRequest extends FormRequest
             'keywords' => ['required', 'array', 'min:1', 'max:'.config('custom_keyword_search.limits.max_keywords', 12)],
             'keywords.*' => ['string', 'max:'.$maxPhrase],
             'frequency' => ['required', 'in:'.CustomKeywordSearch::FREQUENCY_WEEKLY],
+            'refresh_existing' => ['nullable', 'boolean'],
             'sources' => ['nullable', 'array'],
             'sources.tiktokHandle' => ['nullable', 'string', 'max:120'],
             'sources.website' => ['nullable', 'string', 'max:255'],

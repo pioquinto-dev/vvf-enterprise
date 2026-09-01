@@ -12,6 +12,7 @@ Route::prefix('saved-searches')->group(function (): void {
     Route::get('/recent', [SavedSearchController::class, 'recent'])->name('api.v1.saved-searches.recent');
     Route::get('/bookmarked-videos', [SavedSearchController::class, 'bookmarkedVideos'])->name('api.v1.saved-searches.bookmarked-videos');
     Route::get('/analysis-history', [SavedSearchController::class, 'analysisHistoryJson'])->name('api.v1.saved-searches.analysis-history');
+    Route::post('/check-duplicate', [SavedSearchController::class, 'checkDuplicate'])->name('api.v1.saved-searches.check-duplicate');
     Route::post('/', [SavedSearchController::class, 'store'])->name('api.v1.saved-searches.store');
     Route::get('/{id}/json', [SavedSearchController::class, 'showJson'])->whereNumber('id')->name('api.v1.saved-searches.json');
     Route::patch('/{id}/bookmark', [SavedSearchController::class, 'bookmark'])->whereNumber('id')->name('api.v1.saved-searches.bookmark');

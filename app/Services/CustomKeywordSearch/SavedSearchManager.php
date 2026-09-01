@@ -67,41 +67,12 @@ class SavedSearchManager
         $sourceHandle = $this->normalizeSourceHandle($sources['tiktokHandle'] ?? null);
         $sourceWebsite = $this->normalizeSourceWebsite($sources['website'] ?? null);
 
-        // Same keywords in any order means the same saved search. The record
-        // is reused so the list stays clean — but re-searching is a real
-        // scrape, so it costs a credit like any other run. New results merge
-        // into the existing rows (persist() updates videos in place) rather
-        // than duplicating them.
-        $existing = CustomKeywordSearch::query()
-            ->ownedBy($userId, $guestToken)
-            ->where('search_type', $type)
-            ->where('keyword_signature', $signature)
-            ->first();
+        // Reuse a matching phrase from the account's full history, including
+        // legacy search types, instead of creating a second tracking record.
+        $existing = $this->findExistingByPhrase($userId, $guestToken, $phrase);
 
         if ($existing !== null) {
-            $existing->update([
-                'name' => $name,
-                'frequency' => $frequency,
-                'source_tiktok_handle' => $sourceHandle,
-                'source_website' => $sourceWebsite,
-            ]);
-
-            // An already-active run means no new scrape starts, so nothing is
-            // charged — the user is just brought back to the search in flight.
-            if (! $existing->hasActiveRun()) {
-                if ($user !== null) {
-                    $this->billing->consumeSearchCredit($user);
-                } elseif ($chargeGuest !== null) {
-                    // A guest re-running the same keywords is still a fresh
-                    // scrape, so it costs them their allowance too.
-                    $chargeGuest();
-                }
-
-                $this->queueRun($existing, $user !== null);
-                $this->recordSearch($user, $existing);
-            }
-
-            return $existing->refresh();
+            return $this->refreshWithKeywords($existing, $user, $keywords, $chargeGuest);
         }
 
         $search = CustomKeywordSearch::create([
@@ -133,12 +104,88 @@ class SavedSearchManager
         return $search;
     }
 
+    /**
+     * Find a user's historical search for the same normalized primary phrase.
+     */
+    public function findExisting(?User $user, ?string $guestToken, string $phrase): ?CustomKeywordSearch
+    {
+        $phrase = $this->normalizer->keyword($phrase);
+        if ($phrase === '') {
+            return null;
+        }
+
+        return $this->findExistingByPhrase(
+            $user?->id,
+            $guestToken,
+            $phrase,
+        );
+    }
+
+    /**
+     * @param  array<int, string>  $keywords
+     * @return array<int, string>
+     */
+    public function mergedKeywords(CustomKeywordSearch $search, array $keywords): array
+    {
+        return $this->normalizer->keywordSet(
+            $search->phrase,
+            array_merge((array) $search->keywords, $keywords),
+        );
+    }
+
+    /**
+     * Merge selected terms into an existing search and start one paid manual refresh.
+     *
+     * @param  array<int, string>  $keywords
+     * @param  ?Closure():void  $chargeGuest
+     */
+    public function refreshWithKeywords(CustomKeywordSearch $search, ?User $user, array $keywords, ?Closure $chargeGuest = null): CustomKeywordSearch
+    {
+        if ($search->trashed()) {
+            $search->restore();
+        }
+
+        $mergedKeywords = $this->mergedKeywords($search, $keywords);
+        $signature = $this->normalizer->signature($mergedKeywords);
+
+        if ($search->keywords !== $mergedKeywords || $search->keyword_signature !== $signature) {
+            $search->update([
+                'keywords' => $mergedKeywords,
+                'keyword_signature' => $signature,
+            ]);
+        }
+
+        // An already-active run means no new scrape starts, so nothing is
+        // charged — the user is just brought back to the search in flight.
+        if (! $search->hasActiveRun()) {
+            if ($user !== null) {
+                $this->billing->consumeSearchCredit($user);
+            } elseif ($chargeGuest !== null) {
+                $chargeGuest();
+            }
+
+            $this->queueRun($search, $user !== null);
+            $this->recordSearch($user, $search);
+        }
+
+        return $search->refresh();
+    }
+
     private function normalizeSourceHandle(mixed $value): ?string
     {
         $handle = trim((string) ($value ?? ''));
         $handle = ltrim($handle, '@');
 
         return $handle === '' ? null : $handle;
+    }
+
+    private function findExistingByPhrase(?int $userId, ?string $guestToken, string $phrase): ?CustomKeywordSearch
+    {
+        return CustomKeywordSearch::withTrashed()
+            ->ownedBy($userId, $guestToken)
+            ->whereRaw('LOWER(phrase) = ?', [mb_strtolower($phrase)])
+            ->latest('updated_at')
+            ->first();
     }
 
     private function normalizeSourceWebsite(mixed $value): ?string

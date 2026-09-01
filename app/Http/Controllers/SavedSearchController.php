@@ -77,25 +77,46 @@ class SavedSearchController extends Controller
      */
     public function store(StoreSavedSearchRequest $request): JsonResponse
     {
+        $user = $request->user();
+        $guestToken = $user ? null : GuestIdentity::token($request, create: true);
+        $duplicate = $this->duplicatePayload($request, $user, $guestToken);
+        $existing = $duplicate['search'] ?? null;
+
+        if ($existing !== null && ! $request->boolean('refresh_existing')) {
+            return response()->json([
+                'code' => 'existing_search',
+                'message' => 'This keyword already has a search in your history.',
+                'search' => SavedSearchPresenter::summary($existing),
+                'new_keywords' => $duplicate['new_keywords'],
+            ], 409);
+        }
+
         // A scrape costs real money whoever starts it, so both branches are
         // checked here. Guests used to fall through unchecked entirely.
-        if ($request->user() !== null) {
-            $this->billing->ensureCanCreateSearch($request->user());
+        if ($user !== null) {
+            $this->billing->ensureCanCreateSearch($user);
         } else {
             $this->guestQuota->ensureCanCreateSearch($request);
         }
 
-        $search = $this->manager->create(
-            user: $request->user(),
-            guestToken: $request->user() ? null : GuestIdentity::token($request, create: true),
-            type: $request->string('type')->toString(),
-            phrase: $request->string('phrase')->toString(),
-            keywords: $request->input('keywords', []),
-            name: $request->input('name'),
-            frequency: $request->string('frequency')->toString(),
-            sources: $request->input('sources'),
-            chargeGuest: fn () => $this->guestQuota->consume($request),
-        );
+        $search = $existing !== null
+            ? $this->manager->refreshWithKeywords(
+                $existing,
+                $user,
+                $request->input('keywords', []),
+                fn () => $this->guestQuota->consume($request),
+            )
+            : $this->manager->create(
+                user: $user,
+                guestToken: $guestToken,
+                type: $request->string('type')->toString(),
+                phrase: $request->string('phrase')->toString(),
+                keywords: $request->input('keywords', []),
+                name: $request->input('name'),
+                frequency: $request->string('frequency')->toString(),
+                sources: $request->input('sources'),
+                chargeGuest: fn () => $this->guestQuota->consume($request),
+            );
 
         return response()->json([
             'id' => $search->id,
@@ -109,10 +130,47 @@ class SavedSearchController extends Controller
                     'search_type' => $search->search_type,
                     'search_phrase' => $search->phrase,
                     'search_frequency' => $search->frequency,
-                    'is_authenticated' => $request->user() !== null,
+                    'is_authenticated' => $user !== null,
                 ]),
             ],
         ], 201);
+    }
+
+    /** Check the full account history before asking the user to spend a credit. */
+    public function checkDuplicate(StoreSavedSearchRequest $request): JsonResponse
+    {
+        $user = $request->user();
+        $guestToken = $user ? null : GuestIdentity::token($request, create: true);
+        $duplicate = $this->duplicatePayload($request, $user, $guestToken);
+
+        if ($duplicate['search'] === null) {
+            return response()->json(['existing' => false]);
+        }
+
+        return response()->json([
+            'existing' => true,
+            'search' => SavedSearchPresenter::summary($duplicate['search']),
+            'new_keywords' => $duplicate['new_keywords'],
+        ]);
+    }
+
+    /** @return array{search: ?CustomKeywordSearch, new_keywords: array<int, string>} */
+    private function duplicatePayload(Request $request, ?\App\Models\User $user, ?string $guestToken): array
+    {
+        $existing = $this->manager->findExisting($user, $guestToken, $request->string('phrase')->toString());
+
+        if ($existing === null) {
+            return ['search' => null, 'new_keywords' => []];
+        }
+
+        $mergedKeywords = $this->manager->mergedKeywords($existing, $request->input('keywords', []));
+        $existingKeywordKeys = array_map('mb_strtolower', (array) $existing->keywords);
+        $newKeywords = array_values(array_filter(
+            $mergedKeywords,
+            fn (string $keyword): bool => ! in_array(mb_strtolower($keyword), $existingKeywordKeys, true),
+        ));
+
+        return ['search' => $existing, 'new_keywords' => $newKeywords];
     }
 
     /**

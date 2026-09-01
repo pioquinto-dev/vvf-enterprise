@@ -2,9 +2,12 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { router, usePage } from '@inertiajs/react';
 
 import { Arrow, Check, Close, Search, Plus, Refresh } from '../../landing/components/Icons.jsx';
+import DuplicateSearchModal from './DuplicateSearchModal.jsx';
+import SearchCreditConfirmModal from './SearchCreditConfirmModal.jsx';
 import UpgradePromptModal from './UpgradePromptModal.jsx';
 import {
   createSavedSearch,
+  checkDuplicateSavedSearch,
   expandKeywords,
   fetchKeywordSuggestions,
   fetchNotifications,
@@ -100,6 +103,8 @@ export default function BrandInlineFlow({
   const [expanding, setExpanding] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
+  const [duplicateSearch, setDuplicateSearch] = useState(null);
+  const [confirmRefresh, setConfirmRefresh] = useState(null);
   const [searchResult, setSearchResult] = useState(null); // {id, name, url, status, initial_count, top_score}
   const [runDone, setRunDone] = useState(false);
   const [upgradeModalOpen, setUpgradeModalOpen] = useState(false);
@@ -232,7 +237,7 @@ export default function BrandInlineFlow({
   };
 
   /* -------- create + run -------- */
-  const runSearch = async () => {
+  const startSearch = async (refreshExisting = false) => {
     if (!signedIn) {
       // fall back to the normal flow if not signed in
       window.location.assign(`/search?type=${kind}&q=${encodeURIComponent(subject)}`);
@@ -256,14 +261,56 @@ export default function BrandInlineFlow({
         name: subject,
         keywords: selected,
         frequency: 'weekly',
+        refreshExisting,
       });
       trackSearch({ id: created.id, name: created.name, url: created.url });
       setSearchResult(created);
       onCreated?.(created);
     } catch (e) {
+      if (e.status === 409 && e.payload?.code === 'existing_search') {
+        setDuplicateSearch({ search: e.payload.search, newKeywords: e.payload.new_keywords });
+        setState('keywords');
+        setSubmitting(false);
+        return;
+      }
+
       setError(e.message || 'Could not start the search.');
         setState('keywords');
         setSubmitting(false);
+    }
+  };
+
+  const checkAndConfirmSearch = async () => {
+    if (!signedIn) {
+      window.location.assign(`/search?type=${kind}&q=${encodeURIComponent(subject)}`);
+      return;
+    }
+
+    const selected = keywords.filter((k) => k.selected).map((k) => k.label);
+    if (selected.length === 0) {
+      setError('Pick at least one keyword.');
+      return;
+    }
+
+    setSubmitting(true);
+    setError(null);
+    try {
+      const duplicate = await checkDuplicateSavedSearch({
+        type: kind,
+        phrase: subject,
+        name: subject,
+        keywords: selected,
+        frequency: 'weekly',
+      });
+      if (duplicate.existing) {
+        setDuplicateSearch({ search: duplicate.search, newKeywords: duplicate.new_keywords });
+      } else {
+        setConfirmRefresh(false);
+      }
+    } catch (e) {
+      setError(e.message || 'Could not check your search history. Try again.');
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -653,7 +700,7 @@ export default function BrandInlineFlow({
               <button
                 type="button"
                 className="btn btn--y"
-                onClick={runSearch}
+                onClick={checkAndConfirmSearch}
                 disabled={kwCount === 0 || submitting}
               >
                 {submitting ? 'Starting…' : 'Run the search'} <Arrow />
@@ -722,6 +769,31 @@ export default function BrandInlineFlow({
           </div>
         )}
       </section>
+      {duplicateSearch && (
+        <DuplicateSearchModal
+          search={duplicateSearch.search}
+          newKeywords={duplicateSearch.newKeywords}
+          busy={submitting}
+          onCancel={() => setDuplicateSearch(null)}
+          onRefresh={() => {
+            setDuplicateSearch(null);
+            startSearch(true);
+          }}
+        />
+      )}
+      {confirmRefresh !== null && (
+        <SearchCreditConfirmModal
+          body={`This will use 1 search credit. You will have ${searchLimit === -1 ? 'unlimited' : Math.max(0, Number(searchLeft ?? 0) - 1)} search credits remaining after this run starts.`}
+          subject={subject}
+          busy={submitting}
+          onCancel={() => setConfirmRefresh(null)}
+          onConfirm={() => {
+            const refreshExisting = confirmRefresh;
+            setConfirmRefresh(null);
+            startSearch(refreshExisting);
+          }}
+        />
+      )}
     </>
   );
 }

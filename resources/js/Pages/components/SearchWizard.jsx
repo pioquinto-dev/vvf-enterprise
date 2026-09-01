@@ -2,11 +2,13 @@ import { useCallback, useEffect, useState } from 'react';
 import { router, usePage } from '@inertiajs/react';
 
 import SearchLauncher from './SearchLauncher.jsx';
+import DuplicateSearchModal from './DuplicateSearchModal.jsx';
+import SearchCreditConfirmModal from './SearchCreditConfirmModal.jsx';
 import EntitlementsBar from './EntitlementsBar.jsx';
 import UpgradePromptModal from './UpgradePromptModal.jsx';
 import KeywordsScreen from '../../landing/flow/screens/KeywordsScreen.jsx';
 import RunningScreen from '../../landing/flow/screens/RunningScreen.jsx';
-import { createSavedSearch, trackSearch } from '../../landing/flow/api.js';
+import { checkDuplicateSavedSearch, createSavedSearch, trackSearch } from '../../landing/flow/api.js';
 
 /**
  * The whole in-app search flow on one page (Dashboard and /search share it).
@@ -28,29 +30,6 @@ function readRunParam() {
     if (typeof window === 'undefined') return null;
     const id = new URLSearchParams(window.location.search).get('run');
     return id && /^\d+$/.test(id) ? Number(id) : null;
-}
-
-function UsageConfirmModal({ title, body, subject, confirmLabel, busy = false, onConfirm, onCancel }) {
-    return (
-        <div className="bb">
-            <div className="bb-modal">
-                <button className="bb-modal__bg" aria-label="Close" onClick={onCancel} />
-                <div className="bb-modal__box">
-                    <h2>{title}</h2>
-                    <p className="sub">{body}</p>
-                    {subject && <p style={{ marginTop: 16, fontWeight: 700, color: 'var(--ink)' }}>{subject}</p>}
-                    <div className="actrow__r" style={{ marginTop: 24, justifyContent: 'flex-end' }}>
-                        <button type="button" className="btn btn--g" onClick={onCancel} disabled={busy}>
-                            Cancel
-                        </button>
-                        <button type="button" className="btn btn--y" onClick={onConfirm} disabled={busy}>
-                            {busy ? 'Starting…' : confirmLabel}
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    );
 }
 
 function AuthPromptModal({ type, phrase, onClose }) {
@@ -132,6 +111,7 @@ export default function SearchWizard({
     const [submitting, setSubmitting] = useState(false);
     const [error, setError] = useState(null);
     const [confirmPayload, setConfirmPayload] = useState(null);
+    const [duplicatePayload, setDuplicatePayload] = useState(null);
     const [authPromptPayload, setAuthPromptPayload] = useState(null);
     const [upgradeModalOpen, setUpgradeModalOpen] = useState(false);
 
@@ -162,7 +142,7 @@ export default function SearchWizard({
         setStep('keywords');
     };
 
-    const doCreate = async (payload, searchType = type, searchPhrase = payload.phrase || phrase) => {
+    const doCreate = async (payload, searchType = type, searchPhrase = payload.phrase || phrase, refreshExisting = false) => {
         setSubmitting(true);
         setError(null);
 
@@ -173,6 +153,7 @@ export default function SearchWizard({
                 name: payload.name,
                 keywords: payload.keywords,
                 frequency: payload.frequency,
+                refreshExisting,
             });
 
             clearPendingSearch();
@@ -182,6 +163,13 @@ export default function SearchWizard({
             stampUrl(created.id);
             setStep('running');
         } catch (e) {
+            if (e.status === 409 && e.payload?.code === 'existing_search') {
+                clearPendingSearch();
+                setDuplicatePayload({ payload, searchType, searchPhrase, search: e.payload.search, newKeywords: e.payload.new_keywords });
+                setStep('keywords');
+                return;
+            }
+
             const pendingSearch = readPendingSearch();
             if (pendingSearch?.started) {
                 writePendingSearch({ ...pendingSearch, started: false });
@@ -221,7 +209,7 @@ export default function SearchWizard({
 
     const needsSearchConfirm = signedIn && searchLimit !== 0;
 
-    const runSearch = (payload) => {
+    const runSearch = async (payload) => {
         if (!signedIn) {
             writePendingSearch({
                 type,
@@ -234,12 +222,29 @@ export default function SearchWizard({
             return;
         }
 
-        if (! needsSearchConfirm) {
-            doCreate(payload);
-            return;
-        }
+        setSubmitting(true);
+        setError(null);
+        try {
+            const duplicate = await checkDuplicateSavedSearch({
+                type,
+                phrase: payload.phrase || phrase,
+                name: payload.name,
+                keywords: payload.keywords,
+                frequency: payload.frequency,
+            });
 
-        setConfirmPayload({ payload });
+            if (duplicate.existing) {
+                setDuplicatePayload({ payload, searchType: type, searchPhrase: payload.phrase || phrase, search: duplicate.search, newKeywords: duplicate.new_keywords });
+            } else if (!needsSearchConfirm) {
+                doCreate(payload);
+            } else {
+                setConfirmPayload({ payload });
+            }
+        } catch (e) {
+            setError(e.message || 'Could not check your search history. Try again.');
+        } finally {
+            setSubmitting(false);
+        }
     };
 
     const afterKeywords = (payload) => {
@@ -330,17 +335,29 @@ export default function SearchWizard({
             {step === 'subject' && subjectExtra}
 
             {confirmPayload && (
-                <UsageConfirmModal
-                    title="Start this search?"
+                <SearchCreditConfirmModal
                     body={`This will use 1 search credit. You will have ${searchRemainingAfterUse} search credits remaining after this run starts. Search credits are not restored later, even if you pause, delete, or rerun the search.`}
                     subject={confirmPayload.payload?.name ?? confirmPayload.payload?.phrase ?? phrase}
-                    confirmLabel="Start search"
                     busy={submitting}
                     onCancel={() => setConfirmPayload(null)}
                     onConfirm={() => {
                         const next = confirmPayload;
                         setConfirmPayload(null);
-                        doCreate(next.payload);
+                        doCreate(next.payload, type, next.payload.phrase || phrase, next.refreshExisting ?? false);
+                    }}
+                />
+            )}
+
+            {duplicatePayload && (
+                <DuplicateSearchModal
+                    search={duplicatePayload.search}
+                    newKeywords={duplicatePayload.newKeywords}
+                    busy={submitting}
+                    onCancel={() => setDuplicatePayload(null)}
+                    onRefresh={() => {
+                        const next = duplicatePayload;
+                        setDuplicatePayload(null);
+                        doCreate(next.payload, next.searchType, next.searchPhrase, true);
                     }}
                 />
             )}
