@@ -48,6 +48,13 @@ function compact(n) {
   return String(Math.round(n));
 }
 
+// Breakout Score is the weighted engagement-per-follower score assigned when
+// the search ranks the video. The search-relative multiple is a separate metric.
+function breakoutScore(video) {
+  const value = Number(video?.score ?? video?.viral_score ?? video?.virality_score ?? 0);
+  return Number.isFinite(value) && value > 0 ? value : 0;
+}
+
 function formatDate(iso) {
   if (!iso) return null;
   const d = new Date(iso);
@@ -537,16 +544,16 @@ export default function DetailScreen({
         const bt = b.posted_at ? new Date(b.posted_at).getTime() : 0;
         return bt - at;
       }
-      return (b.multiple ?? b.score ?? 0) - (a.multiple ?? a.score ?? 0);
+      return breakoutScore(b) - breakoutScore(a);
     });
     return arr;
   }, [rest, sortKey, runFilter, latestRunId, previousRunId]);
 
   /* ------------- stats ------------- */
   const tileByKey = (k) => (insights.tiles ?? []).find((t) => t.key === k) ?? {};
-  const outlierCount = tileByKey('outliers').value ?? results.filter((r) => (r.multiple ?? 0) >= 3).length;
+  const outlierCount = tileByKey('outliers').value ?? results.filter((r) => Number(r.outlier_multiple ?? r.multiple ?? 0) >= 3).length;
   const videosInRun = search?.scanned_count ?? results.length;
-  const topMultiple = tileByKey('top_multiple').value ?? (winner?.multiple ?? winner?.score ?? 0);
+  const topBreakoutScore = breakoutScore(winner);
   const avgEng = tileByKey('avg_engagement').value ?? null;
   const medianViews = insights?.baseline?.median_views ?? null;
 
@@ -991,7 +998,7 @@ export default function DetailScreen({
         </div>
         <div className="rs-stt hi">
           <span className="rs-stt__k">Top Breakout Score</span>
-          <span className="rs-stt__v">{compact(topMultiple ?? 0)}<small>×</small></span>
+          <span className="rs-stt__v">{compact(topBreakoutScore)}<small>×</small></span>
           <span className="rs-stt__d">{medianViews ? `vs ${compact(medianViews)} median views` : '—'}</span>
         </div>
         <div className="rs-stt">
@@ -1016,14 +1023,14 @@ export default function DetailScreen({
             : '3rd run+';
         return (
         <>
-          <div className="rs-sh"><h2>Outlier videos</h2><span className="rs-note">Their posts that beat the search median, ranked by Breakout Score.</span></div>
+          <div className="rs-sh"><h2>Outlier videos</h2><span className="rs-note">Videos with unusually strong engagement for their creator&rsquo;s audience, ranked by Breakout Score.</span></div>
           <div className={`rs-winner rs-winner--run-${winnerBucket}`}>
             <div className="rs-wmedia">
               <VideoFrame video={winner} winner showStats={false} isPlaying={videoPlayingId === winner.id} onTogglePlay={() => setVideoPlayingId((v) => v === winner.id ? null : winner.id)} />
               <div className="rs-oc__ov">
                 <div className="rs-ovchip rs-ovchip--out">
                   <div className="rs-ovchip__l">Breakout Score</div>
-                  <div className="rs-ovchip__n">{compact(winner.multiple ?? winner.score ?? 0)}×</div>
+                  <div className="rs-ovchip__n">{compact(breakoutScore(winner))}×</div>
                 </div>
                 <div className="rs-ovchip rs-ovchip--views">
                   <div className="rs-ovchip__l">Views</div>
@@ -1418,7 +1425,7 @@ export default function DetailScreen({
             </div>
             <div className="rs-weekmodal__list">
               {selectedWeekVideos.map((video) => {
-                const multiple = Number(video.outlier_multiple ?? video.multiple ?? video.score ?? 0);
+                const multiple = breakoutScore(video);
                 // The row is the whole target — clicking it closes the week
                 // list and hands the video to the breakdown modal.
                 const openBreakdown = () => {
@@ -1602,7 +1609,7 @@ function VideoFrame({ video, winner = false, showStats = true, isPlaying, onTogg
       {!isPlaying && showStats && <div className="rs-vf__stats">
         <div className="rs-vchip rs-vchip--out">
           <div className="rs-vchip__l">Breakout Score</div>
-          <div className="rs-vchip__n">{compact(video.multiple ?? video.score ?? 0)}×</div>
+          <div className="rs-vchip__n">{compact(breakoutScore(video))}×</div>
         </div>
         <div className="rs-vchip rs-vchip--views">
           <div className="rs-vchip__l">Views</div>
@@ -1643,8 +1650,8 @@ function VideoTags({ video }) {
 function AutoAnalysis({ video }) {
   const rows = [];
   if (video.why_broke_out)    rows.push(['Why it broke out', video.why_broke_out]);
-  if (!video.why_broke_out && video.outlier_multiple != null) {
-    rows.push(['Performance signal', `${compact(video.views)} views, ${compact(video.outlier_multiple)}× the search median.`]);
+  if (!video.why_broke_out && breakoutScore(video) > 0) {
+    rows.push(['Performance signal', `${compact(video.views)} views, ${compact(breakoutScore(video))}× Breakout Score relative to the creator's audience.`]);
   }
   if (video.content_format)   rows.push(['Format', video.content_format]);
   if (video.replicate_with)   rows.push(['Replicate with', video.replicate_with]);
@@ -1673,7 +1680,7 @@ function OutlierCard({ video, runBucket = 'old', expanded, locked = false, onTog
         <div className="rs-oc__ov">
           <div className="rs-ovchip rs-ovchip--out">
           <div className="rs-ovchip__l">Breakout Score</div>
-            <div className="rs-ovchip__n">{compact(video.multiple ?? video.score ?? 0)}×</div>
+            <div className="rs-ovchip__n">{compact(breakoutScore(video))}×</div>
           </div>
           <div className="rs-ovchip rs-ovchip--views">
             <div className="rs-ovchip__l">Views</div>

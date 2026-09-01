@@ -38,21 +38,10 @@ function initials(name) {
   return source.slice(0, 2).toUpperCase() || '?';
 }
 
-/*
- * How far past the baseline this video landed. The search pipeline writes
- * `outlier_multiple`; the older keys are kept so a video handed in from another
- * screen still resolves. Null means "we do not know" — never a stand-in number.
- */
-function outlierMultiple(video) {
-  const value = Number(video?.outlier_multiple ?? video?.multiple ?? video?.score ?? video?.virality_score ?? 0);
+/* The weighted engagement-per-follower score used to rank Breakout videos. */
+function breakoutScore(video) {
+  const value = Number(video?.score ?? video?.viral_score ?? video?.virality_score ?? 0);
   return Number.isFinite(value) && value > 0 ? value : null;
-}
-
-/* The creator's own median, which is what the multiple is measured against. */
-function baselineMedian(video) {
-  const multiple = outlierMultiple(video);
-  const views = Number(video?.views ?? 0);
-  return multiple && views > 0 ? Math.round(views / multiple) : null;
 }
 
 function usePolling(videoId, initial, open) {
@@ -85,22 +74,22 @@ function usePolling(videoId, initial, open) {
 }
 
 /*
- * The four numbers that make the comparison legible: what this video did, the
- * creator's own median it is measured against, how hard it engaged, and the
- * resulting multiple. Anything we cannot compute renders as an em dash — the
+ * The four numbers that make the comparison legible: reach, audience size,
+ * engagement rate, and the resulting Breakout Score. Anything we cannot
+ * compute renders as an em dash — the
  * old placeholder values (18x, 12.2%) read as real data and were not.
  */
 function statCards(video) {
   const views = Number(video?.views ?? 0);
+  const followers = Number(video?.followers ?? 0);
   const rate = Number(video?.engagement_rate ?? 0);
-  const median = baselineMedian(video);
-  const multiple = outlierMultiple(video);
+  const score = breakoutScore(video);
 
   return [
     { label: 'Views', value: views > 0 ? compactNumber(views) : '—' },
-    { label: 'Median', value: median ? compactNumber(median) : '—' },
+    { label: 'Followers', value: followers > 0 ? compactNumber(followers) : '—' },
     { label: 'Engaged', value: rate > 0 ? `${formatMetric(rate)}%` : '—' },
-    { label: 'Baseline', value: multiple ? `${formatMetric(multiple)}x` : '—', good: true },
+    { label: 'Breakout Score', value: score ? `${formatMetric(score)}x` : '—', good: true },
   ];
 }
 
@@ -313,7 +302,7 @@ function LeftSidebar({
   showExternalLink = true,
 }) {
   const metrics = statCards(video);
-  const multiple = outlierMultiple(video);
+  const score = breakoutScore(video);
   const followers = Number(video?.followers ?? 0);
   const runtime = formatDuration(video.duration);
   const [playing, setPlaying] = useState(false);
@@ -388,9 +377,9 @@ function LeftSidebar({
             ) : (
               <div className="aspect-[9/13] w-full bg-[linear-gradient(165deg,#cfb396,#a98069)]" />
             )}
-            {multiple && (
+            {score && (
               <span className="absolute bottom-[9px] left-[9px] z-[2] rounded-[8px] bg-[rgba(11,11,11,0.82)] px-[9px] py-1 text-[12px] font-extrabold tracking-[-0.01em] text-[#FFC629] backdrop-blur-[2px]">
-                {formatMetric(multiple)}x
+                {formatMetric(score)}x
               </span>
             )}
             {embed && (
@@ -450,7 +439,7 @@ function LeftSidebar({
             <span className={`block text-[15px] font-extrabold leading-[1.1] tracking-[-0.03em] [font-variant-numeric:tabular-nums] ${item.good ? 'text-[#1F7A4D]' : 'text-[#0B0B0B]'} min-[640px]:text-[16.5px]`}>
               {item.value}
             </span>
-            <span className="mt-[3px] block whitespace-nowrap text-[8.5px] font-extrabold uppercase tracking-[0.02em] text-[#74716A]">
+            <span className="mt-[3px] block break-words text-[8.5px] font-extrabold uppercase leading-[1.15] tracking-[0.02em] text-[#74716A]">
               {item.label}
             </span>
           </div>
@@ -514,17 +503,16 @@ function LeftSidebar({
 
 /*
  * Right-column lead. The caption is the headline because it is the thing the
- * viewer actually saw, and the callout heads off the one number people misread:
- * the multiple is against this creator's own median, not the category's.
+ * viewer actually saw, and the callout explains the score's audience-relative
+ * calculation.
  *
  * This replaced a "Summary" card whose only content, before an analysis exists,
  * was a placeholder sentence about assembling one.
  */
 function VideoHeadline({ video, calloutDismissed, onDismissCallout }) {
   const caption = String(video?.title || video?.caption || '').trim();
-  const multiple = outlierMultiple(video);
-  const median = baselineMedian(video);
-  const showCallout = !calloutDismissed && Boolean(multiple && median);
+  const score = breakoutScore(video);
+  const showCallout = !calloutDismissed && Boolean(score);
 
   if (!caption && !showCallout) return null;
 
@@ -546,9 +534,9 @@ function VideoHeadline({ video, calloutDismissed, onDismissCallout }) {
           </span>
           <p className="min-w-0 flex-1 break-words text-[13px] leading-[1.45] text-[#5C5A54]">
             <b className="font-bold text-[#0B0B0B]">
-              {formatMetric(multiple)}x is against their own median of {compactNumber(median)},
+              {formatMetric(score)}x is this video&rsquo;s weighted engagement relative to its creator&rsquo;s follower count.
             </b>{' '}
-            not the category.
+            Views, likes, and comments contribute to the score.
           </p>
           <button
             type="button"
@@ -610,7 +598,7 @@ function ProcessingState({ status, error }) {
         : (
             <>
               Analysis hasn&rsquo;t started yet. Run <b className="font-bold text-[#1a1a1a]">Analyze video</b> to break down
-              what carried this past the search median — and get a playbook you can hand to your creators.
+              what made this video outperform its audience size — and get a playbook you can hand to your creators.
             </>
           );
 
@@ -662,8 +650,8 @@ function ErrorStateModal({ message, retrying, onRetry, onDismiss }) {
 function WhyTab({ result, video }) {
   const drivers = whyDrivers(result);
   // Same source as the sidebar chips, so the panel and the numbers agree.
-  const baseline = outlierMultiple(video);
-  const subtitle = baseline ? `${formatMetric(baseline)}x baseline` : 'Outlier drivers';
+  const score = breakoutScore(video);
+  const subtitle = score ? `${formatMetric(score)}x Breakout Score` : 'Outlier drivers';
 
   return (
     <PanelShell
