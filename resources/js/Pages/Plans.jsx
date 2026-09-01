@@ -12,6 +12,10 @@ export default function Plans() {
   const current = String(billingState.currentPlan ?? 'free').toLowerCase();
   const isTrialing = Boolean(billingState.isTrialing);
   const hasUsedTrial = Boolean(billingState.hasUsedTrial);
+  // A gated plan (Scale) only routes to "Contact Us" for a subscriber already on
+  // an active, paid Growth plan — that jump is a mid-cycle upgrade needing
+  // proration we don't run yet. Free/trialing accounts self-serve as normal.
+  const isActivePaidGrowth = current.startsWith('growth') && Boolean(billingState.hasPaidPlan) && !isTrialing;
   const [trialPromptOpen, setTrialPromptOpen] = useState(Boolean(flash.trialAccessPrompt));
   const orderedPlans = [...pricingPlans].sort((a, b) => {
     const aKey = a.slug ?? a.name?.toLowerCase();
@@ -105,9 +109,11 @@ export default function Plans() {
           {visiblePlans.map((plan) => {
             const isCurrent = plan.slug === current;
             const isFree = plan.slug === 'free';
-            // Scale is not self-serve yet — its CTA collects interest via the
-            // contact form instead of starting a checkout.
+            // Scale is gated behind "Contact Us" only for an existing active,
+            // paid Growth subscriber (mid-cycle upgrade). Everyone else — free
+            // and trialing accounts — checks out into it directly.
             const isScale = plan.planType === 'scale' || plan.slug === 'scale' || plan.slug === 'scale-annual';
+            const isContactGated = isScale && isActivePaidGrowth;
             const contactHref = `/contact?category=plan-upgrade&subject=${encodeURIComponent(`Interested in the ${plan.name} plan`)}`;
             const price = priceLine(plan);
 
@@ -141,7 +147,7 @@ export default function Plans() {
                   <button type="button" className="btn btn--g btn--w" disabled>
                     Free plan unavailable
                   </button>
-                ) : isScale ? (
+                ) : isContactGated ? (
                   <Link href={contactHref} className="btn btn--y btn--w">
                     Contact Us <Arrow />
                   </Link>
