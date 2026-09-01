@@ -44,11 +44,18 @@ export default function KeywordsScreen({
 }) {
   const [terms, setTerms] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [refining, setRefining] = useState(false);
   const [regenerating, setRegenerating] = useState(false);
   const [expansionSource, setExpansionSource] = useState(null);
   const [adding, setAdding] = useState(false);
   const [draft, setDraft] = useState('');
   const requested = useRef(false);
+  // Once the AI list lands it is authoritative; the instant preview must not
+  // clobber it if it happens to resolve later.
+  const aiApplied = useRef(false);
+  // Whether the user has touched the list — if so, the AI pass folds its new
+  // terms in as additions instead of replacing their work.
+  const interacted = useRef(false);
 
   /**
    * Build a term list from an expansion payload, keeping anything the user
@@ -74,22 +81,67 @@ export default function KeywordsScreen({
     ].slice(0, KEYWORD_CAP);
   };
 
+  /**
+   * Fold a fresh set of suggestions in without discarding the user's work:
+   * anything they added or removed stays, existing selections are preserved,
+   * and only genuinely new terms are appended (respecting the cap).
+   */
+  const mergeExpansion = (keywords, forPhrase, previous = []) => {
+    const present = new Set(previous.map((t) => t.value.toLowerCase()));
+    const additions = keywords
+      .filter((value) => {
+        const key = value.toLowerCase();
+        if (key === forPhrase.toLowerCase() || present.has(key)) return false;
+        present.add(key);
+        return true;
+      })
+      .map((value) => ({ value, selected: false, custom: false }));
+
+    return [...previous, ...additions].slice(0, KEYWORD_CAP);
+  };
+
   useEffect(() => {
     if (requested.current) return undefined;
     requested.current = true;
 
     const controller = new AbortController();
 
-    expandKeywords(phrase, { signal: controller.signal, type: searchType })
+    // Phase 1 — instant, OpenAI-free suggestions so chips paint immediately
+    // instead of sitting on a skeleton for the seconds the model takes.
+    expandKeywords(phrase, { signal: controller.signal, instant: true, type: searchType })
       .then((payload) => {
+        if (aiApplied.current) return; // AI already won the race — leave it be.
         const keywords = Array.isArray(payload?.keywords) ? payload.keywords : [phrase];
         setExpansionSource(payload?.source ?? null);
         setTerms(applyExpansion(keywords, phrase));
+        setLoading(false);
+        // 'preview'/'fallback' means the model is still refining in phase 2.
+        setRefining(payload?.source === 'preview');
       })
       .catch(() => {
-        setTerms([{ value: phrase, selected: true, locked: true }]);
+        /* the AI pass below is the real result — let it drive on its own */
+      });
+
+    // Phase 2 — the full AI expansion. It replaces the preview when the user
+    // has not touched anything yet, otherwise it only appends new terms.
+    expandKeywords(phrase, { signal: controller.signal, type: searchType })
+      .then((payload) => {
+        aiApplied.current = true;
+        const keywords = Array.isArray(payload?.keywords) ? payload.keywords : [phrase];
+        setExpansionSource(payload?.source ?? null);
+        setTerms((prev) =>
+          interacted.current && prev.length > 0
+            ? mergeExpansion(keywords, phrase, prev)
+            : applyExpansion(keywords, phrase, prev),
+        );
       })
-      .finally(() => setLoading(false));
+      .catch(() => {
+        setTerms((prev) => (prev.length > 0 ? prev : [{ value: phrase, selected: true, locked: true }]));
+      })
+      .finally(() => {
+        setLoading(false);
+        setRefining(false);
+      });
 
     return () => controller.abort();
   }, [phrase]);
@@ -113,12 +165,18 @@ export default function KeywordsScreen({
   const busy = loading || regenerating;
   const atKeywordCap = terms.length >= KEYWORD_CAP;
 
-  const toggle = (value) =>
+  const toggle = (value) => {
+    interacted.current = true;
     setTerms((prev) => prev.map((t) => (t.value === value && !t.locked ? { ...t, selected: !t.selected } : t)));
+  };
 
-  const remove = (value) => setTerms((prev) => prev.filter((t) => t.value !== value || t.locked));
+  const remove = (value) => {
+    interacted.current = true;
+    setTerms((prev) => prev.filter((t) => t.value !== value || t.locked));
+  };
 
   const commitAdd = () => {
+    interacted.current = true;
     const value = draft.trim().replace(/\s+/g, ' ');
     setDraft('');
     setAdding(false);
@@ -231,7 +289,16 @@ export default function KeywordsScreen({
             </div>
 
             <p className="hint">
-              {selected.length} of {terms.length} selected · each keyword widens the same single search.
+              {refining ? (
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, color: 'var(--amber-ink)', fontWeight: 600 }}>
+                  <span className="chip-spin" aria-hidden />
+                  Sharpening suggestions…
+                </span>
+              ) : (
+                <>
+                  {selected.length} of {terms.length} selected · each keyword widens the same single search.
+                </>
+              )}
             </p>
             {expansionSource === 'fallback' && (
               <p className="hint">Suggestions came from templates this time — edit them freely.</p>

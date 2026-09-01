@@ -39,7 +39,7 @@ async function request(url, { method = 'GET', body, signal } = {}) {
   return payload;
 }
 
-export function expandKeywords(phrase, { signal, fresh = false, type = 'brand' } = {}) {
+export function expandKeywords(phrase, { signal, fresh = false, instant = false, type = 'brand' } = {}) {
   return fetch(`${API_V1}/saved-searches/expand`, {
     method: 'POST',
     credentials: 'same-origin',
@@ -50,7 +50,7 @@ export function expandKeywords(phrase, { signal, fresh = false, type = 'brand' }
       'X-Requested-With': 'XMLHttpRequest',
       'X-CSRF-TOKEN': csrfToken(),
     },
-    body: JSON.stringify({ phrase, type, ...(fresh ? { fresh: true } : {}) }),
+    body: JSON.stringify({ phrase, type, ...(fresh ? { fresh: true } : {}), ...(instant ? { instant: true } : {}) }),
   }).then(async (response) => {
     const payload = await response.json().catch(() => null);
     if (!response.ok) throw new Error(payload?.message || 'Could not suggest keywords.');

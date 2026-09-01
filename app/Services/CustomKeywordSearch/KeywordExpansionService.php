@@ -76,6 +76,38 @@ class KeywordExpansionService
         }
     }
 
+    /**
+     * Instant, OpenAI-free suggestions for the first paint of the expand step.
+     *
+     * Returns a ready cached result when one exists (so a warm phrase shows the
+     * good AI list immediately), otherwise a fast template + indexed blend. It
+     * deliberately does NOT write the cache, so the real AI pass still runs and
+     * caches on the follow-up request.
+     *
+     * @return array{phrase: string, keywords: array<int, string>, source: string}
+     */
+    public function preview(string $phrase, string $type = 'brand'): array
+    {
+        $phrase = $this->normalizer->keyword($phrase);
+
+        if ($phrase === '') {
+            return ['phrase' => '', 'keywords' => [], 'source' => 'empty'];
+        }
+
+        $cacheKey = 'cks:expand:'.sha1(mb_strtolower($type.'|'.$phrase));
+        $cached = Cache::get($cacheKey);
+
+        if (is_array($cached)) {
+            return $cached;
+        }
+
+        return [
+            'phrase' => $phrase,
+            'keywords' => $this->mergeWithIndexedSuggestions($phrase, $type, $this->fromTemplates($phrase)),
+            'source' => 'preview',
+        ];
+    }
+
     private function canUseAi(): bool
     {
         return ! blank(config('services.openai.api_key'));

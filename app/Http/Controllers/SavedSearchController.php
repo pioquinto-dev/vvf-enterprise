@@ -50,8 +50,17 @@ class SavedSearchController extends Controller
         $validated = $request->validate([
             'phrase' => ['required', 'string', 'max:'.config('custom_keyword_search.limits.max_phrase_length', 120)],
             'fresh' => ['nullable', 'boolean'],
+            'instant' => ['nullable', 'boolean'],
             'type' => ['nullable', 'in:brand,product'],
         ]);
+
+        $type = (string) ($validated['type'] ?? 'brand');
+
+        // The instant pass is OpenAI-free (templates + indexed terms) and only
+        // paints the first frame, so it skips the AI rate limiter entirely.
+        if ((bool) ($validated['instant'] ?? false)) {
+            return response()->json($this->expansion->preview($validated['phrase'], $type));
+        }
 
         // Expansion hits OpenAI on a cache miss, so keep it from being hammered.
         $key = 'cks-expand:'.($request->user()?->id ?? $request->ip());
@@ -68,7 +77,7 @@ class SavedSearchController extends Controller
             $validated['phrase'],
             (bool) ($validated['fresh'] ?? false),
             true,
-            (string) ($validated['type'] ?? 'brand'),
+            $type,
         ));
     }
 
