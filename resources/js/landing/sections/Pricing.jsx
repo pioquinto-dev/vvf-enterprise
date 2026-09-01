@@ -46,6 +46,9 @@ export default function Pricing({ plans = [], onStart, onTrial }) {
         <div className="plans">
           {visiblePlans.map((plan) => {
             const free = plan.slug === 'free';
+            // Scale is not self-serve yet — collect interest via the contact form.
+            const isScale = plan.planType === 'scale' || plan.slug === 'scale' || plan.slug === 'scale-annual';
+            const contactHref = `/contact?category=plan-upgrade&subject=${encodeURIComponent(`Interested in the ${plan.name} plan`)}`;
             return (
               <div className={`plan${plan.popular ? ' plan--pop' : ''}`} key={plan.slug}>
                 {plan.popular && <span className="plan__pop">Most popular</span>}
@@ -76,6 +79,10 @@ export default function Pricing({ plans = [], onStart, onTrial }) {
                   <button type="button" className="btn btn--ghost btn--wide" onClick={() => onStart()}>
                     Run a free search
                   </button>
+                ) : isScale ? (
+                  <a href={contactHref} className={`btn btn--wide ${plan.popular ? 'btn--primary' : 'btn--ghost'}`}>
+                    Contact Us
+                  </a>
                 ) : (
                   <button
                     type="button"

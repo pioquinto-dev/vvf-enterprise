@@ -51,6 +51,50 @@ class ContactInquiryTest extends TestCase
         ]);
     }
 
+    public function test_contact_page_prefills_from_query_for_scale_interest(): void
+    {
+        $user = User::factory()->create();
+
+        $this->actingAs($user)
+            ->get('/contact?category=plan-upgrade&subject='.urlencode('Interested in the Scale plan'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Contact')
+                ->where('defaults.category', 'plan-upgrade')
+                ->where('defaults.subject', 'Interested in the Scale plan'));
+    }
+
+    public function test_unknown_prefill_category_is_dropped(): void
+    {
+        $user = User::factory()->create();
+
+        $this->actingAs($user)
+            ->get('/contact?category=not-a-real-category')
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page->where('defaults.category', null));
+    }
+
+    public function test_user_can_submit_a_plan_upgrade_inquiry(): void
+    {
+        $user = User::factory()->create();
+
+        $this->actingAs($user)
+            ->post('/contact', [
+                'name' => 'Taylor',
+                'email' => 'taylor@example.com',
+                'category' => 'plan-upgrade',
+                'subject' => 'Interested in the Scale plan',
+                'message' => 'We want to move up to Scale.',
+            ])
+            ->assertRedirect('/contact');
+
+        $this->assertDatabaseHas('inquiries', [
+            'user_id' => $user->id,
+            'category' => 'plan-upgrade',
+            'subject' => 'Interested in the Scale plan',
+        ]);
+    }
+
     public function test_admin_inquiries_listing_renders_saved_rows(): void
     {
         config()->set('admin.root_name', 'Root Admin');

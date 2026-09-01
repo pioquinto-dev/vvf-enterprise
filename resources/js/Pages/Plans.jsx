@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Head, usePage } from '@inertiajs/react';
+import { Head, Link, usePage } from '@inertiajs/react';
 
 import SettingsShell from './Settings/SettingsShell.jsx';
 import { billing } from '../landing/flow/api.js';
@@ -105,6 +105,10 @@ export default function Plans() {
           {visiblePlans.map((plan) => {
             const isCurrent = plan.slug === current;
             const isFree = plan.slug === 'free';
+            // Scale is not self-serve yet — its CTA collects interest via the
+            // contact form instead of starting a checkout.
+            const isScale = plan.planType === 'scale' || plan.slug === 'scale' || plan.slug === 'scale-annual';
+            const contactHref = `/contact?category=plan-upgrade&subject=${encodeURIComponent(`Interested in the ${plan.name} plan`)}`;
             const price = priceLine(plan);
 
             return (
@@ -137,6 +141,10 @@ export default function Plans() {
                   <button type="button" className="btn btn--g btn--w" disabled>
                     Free plan unavailable
                   </button>
+                ) : isScale ? (
+                  <Link href={contactHref} className="btn btn--y btn--w">
+                    Contact Us <Arrow />
+                  </Link>
                 ) : (
                   <button type="button" className="btn btn--y btn--w" onClick={() => startPlan(plan.slug, billingCycle)}>
                     {canOfferTrial ? 'Try free for 8 days' : `Upgrade to ${plan.name}`}{' '}

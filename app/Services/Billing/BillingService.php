@@ -39,6 +39,16 @@ class BillingService
             ]);
         }
 
+        // Some plans (e.g. Scale) are gated behind a "Contact Us" flow and are
+        // not self-serve. This is the single chokepoint every checkout entry
+        // point funnels through, so blocking here closes the direct-API backdoor
+        // regardless of what the front-end shows.
+        if (! (bool) data_get($plan->metadata, 'settings.self_serve', true)) {
+            throw ValidationException::withMessages([
+                'plan' => 'This plan is not available for self-serve checkout yet. Contact us to upgrade.',
+            ]);
+        }
+
         if ($withTrial && ! $this->canStartTrial($user)) {
             throw ValidationException::withMessages([
                 'trial' => 'This account has already used its trial. Upgrade to continue with a paid plan.',

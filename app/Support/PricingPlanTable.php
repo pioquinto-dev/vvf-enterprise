@@ -154,9 +154,11 @@ class PricingPlanTable
                 ],
                 'metadata' => [
                     'settings' => [
-                        'cta' => 'Choose Scale',
+                        'cta' => 'Contact Us',
                         'popular' => false,
                         'annualSavingsPercent' => 45,
+                        // Scale is gated behind a Contact Us flow — not self-serve.
+                        'self_serve' => false,
                     ],
                     'subscription' => [
                         'trialEnabled' => true,
@@ -195,9 +197,11 @@ class PricingPlanTable
                 ],
                 'metadata' => [
                     'settings' => [
-                        'cta' => 'Choose Scale Annual',
+                        'cta' => 'Contact Us',
                         'popular' => false,
                         'annualSavingsPercent' => 45,
+                        // Scale is gated behind a Contact Us flow — not self-serve.
+                        'self_serve' => false,
                     ],
                     'subscription' => [
                         'trialEnabled' => true,

@@ -22,9 +22,9 @@ export default function ContactFormCard({ categories = [], defaults = {}, classN
     const form = useForm({
         name: defaults.name ?? '',
         email: defaults.email ?? '',
-        category: categories[0]?.value ?? 'general',
-        subject: '',
-        message: '',
+        category: defaults.category ?? categories[0]?.value ?? 'general',
+        subject: defaults.subject ?? '',
+        message: defaults.message ?? '',
     });
 
     const submit = (event) => {
