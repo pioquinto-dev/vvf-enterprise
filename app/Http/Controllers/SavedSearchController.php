@@ -841,23 +841,40 @@ class SavedSearchController extends Controller
         return response()->json(['search' => SavedSearchPresenter::summary($search)]);
     }
 
-    /** Name, schedule, and brand account metadata only — keywords are fixed once a search exists. */
+    /** Name, schedule, type, and brand account metadata only — keywords are fixed once a search exists. */
     public function updateFrequency(Request $request, int $id): JsonResponse
     {
         $validated = $request->validate([
             'name' => ['nullable', 'string', 'max:'.config('custom_keyword_search.limits.max_name_length', 80)],
             'frequency' => ['nullable', 'in:'.CustomKeywordSearch::FREQUENCY_WEEKLY.','.CustomKeywordSearch::FREQUENCY_MONTHLY],
+            'type' => ['nullable', 'in:'.implode(',', CustomKeywordSearch::allowedTypes())],
             'sources' => ['nullable', 'array'],
             'sources.tiktokHandle' => ['nullable', 'string', 'max:120'],
             'sources.website' => ['nullable', 'string', 'max:255'],
         ]);
 
+        $search = $this->searches->resolve($request, $id);
+        $requestedFrequency = $validated['frequency'] ?? null;
+
+        // Everyone can rename and re-type a search, but changing the refresh
+        // schedule stays a paid feature. A no-op frequency (unchanged) passes.
+        if ($requestedFrequency !== null
+            && $requestedFrequency !== $search->frequency
+            && ! (bool) config('features.bypass_paid_features', false)
+            && ! $this->billing->hasPaidPlan($request->user())
+        ) {
+            return response()->json([
+                'message' => 'Upgrade to Growth or Scale to change the refresh schedule.',
+            ], 403);
+        }
+
         $search = $this->manager->updateSettings(
-            $this->searches->resolve($request, $id),
+            $search,
             $validated['name'] ?? null,
-            $validated['frequency'] ?? null,
+            $requestedFrequency,
             data_get($validated, 'sources.tiktokHandle'),
             data_get($validated, 'sources.website'),
+            $validated['type'] ?? null,
         );
 
         return response()->json(['search' => SavedSearchPresenter::summary($search)]);

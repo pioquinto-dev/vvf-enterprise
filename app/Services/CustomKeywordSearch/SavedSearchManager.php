@@ -247,11 +247,29 @@ class SavedSearchManager
         ?string $frequency,
         ?string $sourceTikTokHandle = null,
         ?string $sourceWebsite = null,
+        ?string $searchType = null,
     ): CustomKeywordSearch {
         $changes = [];
 
         if ($name !== null) {
             $changes['name'] = $this->normalizer->name($name, $search->phrase);
+        }
+
+        // Switching Brand <-> Product only re-labels the tracker: the scrape and
+        // matching ignore the type, so the videos already collected stay valid.
+        // It only changes how future keyword expansion, brand-handle detection,
+        // and AI insights treat the search. Product searches carry no source
+        // handle/site, so those are cleared on the way over.
+        if ($searchType !== null
+            && in_array($searchType, CustomKeywordSearch::allowedTypes(), true)
+            && $searchType !== $search->search_type
+        ) {
+            $changes['search_type'] = $searchType;
+
+            if ($searchType === CustomKeywordSearch::TYPE_PRODUCT) {
+                $changes['source_tiktok_handle'] = null;
+                $changes['source_website'] = null;
+            }
         }
 
         if ($frequency !== null && in_array($frequency, [CustomKeywordSearch::FREQUENCY_WEEKLY, CustomKeywordSearch::FREQUENCY_MONTHLY], true)) {

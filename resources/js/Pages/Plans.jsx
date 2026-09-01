@@ -34,8 +34,13 @@ export default function Plans() {
   }, [orderedPlans]);
 
   const upgrade = (slug, cycle = billingCycle) => billing.checkout(slug, cycle);
+  // Trial-eligible accounts see a "Try free for 8 days" CTA, so the click has to
+  // start a trial checkout — not a straight paid one.
+  const canOfferTrial = !hasUsedTrial && !isTrialing;
+  const startPlan = (slug, cycle = billingCycle) =>
+    canOfferTrial ? billing.trialCheckout(slug, cycle) : billing.checkout(slug, cycle);
   const promptPlanSlug =
-    flash.trialAccessPrompt?.plan_slug ?? visiblePlans.find((plan) => plan.planType === 'growth')?.slug ?? 'basic';
+    flash.trialAccessPrompt?.plan_slug ?? visiblePlans.find((plan) => plan.planType === 'growth')?.slug ?? 'growth';
 
   useEffect(() => {
     setTrialPromptOpen(Boolean(flash.trialAccessPrompt));
@@ -133,10 +138,8 @@ export default function Plans() {
                     Free plan unavailable
                   </button>
                 ) : (
-                  <button type="button" className="btn btn--y btn--w" onClick={() => upgrade(plan.slug, billingCycle)}>
-                    {!hasUsedTrial && !isTrialing
-                      ? 'Try free for 8 days'
-                      : `Upgrade to ${plan.name}`}{' '}
+                  <button type="button" className="btn btn--y btn--w" onClick={() => startPlan(plan.slug, billingCycle)}>
+                    {canOfferTrial ? 'Try free for 8 days' : `Upgrade to ${plan.name}`}{' '}
                     <Arrow />
                   </button>
                 )}

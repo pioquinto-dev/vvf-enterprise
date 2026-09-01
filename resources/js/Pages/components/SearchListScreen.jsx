@@ -130,11 +130,14 @@ export default function SearchListScreen({ kind = 'brand', searches = [], moving
     : `${window.location.pathname}${window.location.search}`;
 
   const [searchList, setSearchList] = useState(searches);
+  // Keep the list in sync when the page props are refreshed (e.g. after an
+  // edit reloads the listing) so a re-typed search reflows in or out of view.
+  useEffect(() => setSearchList(searches), [searches]);
   const [query, setQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [sortBy, setSortBy] = useState('recent');
   const [modalSearch, setModalSearch] = useState(null);
-  const [formState, setFormState] = useState({ name: '', frequency: 'weekly' });
+  const [formState, setFormState] = useState({ name: '', frequency: 'weekly', type: 'brand' });
   const [submitting, setSubmitting] = useState(false);
   const [prefillSubject, setPrefillSubject] = useState('');
   const [prefillNonce, setPrefillNonce] = useState(0);
@@ -187,6 +190,7 @@ export default function SearchListScreen({ kind = 'brand', searches = [], moving
     setFormState({
       name: search.name ?? '',
       frequency: search.frequency ?? 'weekly',
+      type: search.search_type === 'product' ? 'product' : 'brand',
     });
   };
 
@@ -195,21 +199,19 @@ export default function SearchListScreen({ kind = 'brand', searches = [], moving
     setModalSearch(null);
   };
 
-  const patchSearch = (id, patch) => {
-    setSearchList((current) => current.map((s) => (s.id === id ? { ...s, ...patch } : s)));
-    setModalSearch((current) => (current?.id === id ? { ...current, ...patch } : current));
-  };
-
   const submitEdit = async () => {
     if (!modalSearch) return;
     setSubmitting(true);
     try {
-      const { search: updated } = await api.update(modalSearch.id, {
+      await api.update(modalSearch.id, {
         name: formState.name.trim(),
         frequency: formState.frequency,
+        type: formState.type,
       });
-      patchSearch(modalSearch.id, updated);
       setModalSearch(null);
+      // Re-render the whole listing from the server: a Brand<->Product switch
+      // moves the search out of this type-scoped list entirely.
+      router.reload({ only: ['searches', 'moving', 'suggestions'], preserveScroll: true });
     } finally {
       setSubmitting(false);
     }
@@ -369,6 +371,24 @@ export default function SearchListScreen({ kind = 'brand', searches = [], moving
               <div style={{ marginTop: 20 }}>
                 <label className="lbl">Label</label>
                 <input className="fld" value={formState.name} onChange={(e) => setFormState((c) => ({ ...c, name: e.target.value }))} />
+              </div>
+
+              <div style={{ marginTop: 20 }}>
+                <label className="lbl" htmlFor="edit-search-type">Type</label>
+                <select
+                  id="edit-search-type"
+                  className="fld"
+                  value={formState.type}
+                  onChange={(e) => setFormState((c) => ({ ...c, type: e.target.value }))}
+                >
+                  <option value="brand">Brand</option>
+                  <option value="product">Product</option>
+                </select>
+                {formState.type !== (modalSearch.search_type === 'product' ? 'product' : 'brand') && (
+                  <p className="hint" style={{ marginTop: 8 }}>
+                    Your existing results stay — only how we tune keywords and insights changes going forward.
+                  </p>
+                )}
               </div>
 
               <div style={{ marginTop: 20 }}>

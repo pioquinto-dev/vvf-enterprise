@@ -203,6 +203,8 @@ export default function Index({
   const showTabs = bookmarkedOnly && !filterType;
 
   const [searches, setSearches] = useState(initialSearches);
+  // Re-sync when the listing prop is refreshed after an edit reload.
+  useEffect(() => setSearches(initialSearches), [initialSearches]);
   const [tab, setTab] = useState('searches');
   const [openMenuId, setOpenMenuId] = useState(null);
   const [bookmarkedVideos, setBookmarkedVideos] = useState(initialBookmarkedVideos);
@@ -229,6 +231,7 @@ export default function Index({
   const [formState, setFormState] = useState({
     name: '',
     frequency: 'weekly',
+    type: 'brand',
   });
   const [submitting, setSubmitting] = useState(false);
   const menuRef = useRef(null);
@@ -429,6 +432,7 @@ export default function Index({
       setFormState({
         name: search.name ?? '',
         frequency: search.frequency ?? 'weekly',
+        type: search.search_type === 'product' ? 'product' : 'brand',
       });
     }
   };
@@ -459,12 +463,14 @@ export default function Index({
     if (!modalState.search) return;
     setSubmitting(true);
     try {
-      const { search: updated } = await api.update(modalState.search.id, {
+      await api.update(modalState.search.id, {
         name: formState.name.trim(),
         frequency: formState.frequency,
+        type: formState.type,
       });
-      patchSearch(modalState.search.id, updated);
-      closeModal();
+      setModalState({ type: null, search: null });
+      // Reload the whole listing so a Brand<->Product switch reflows the view.
+      router.reload({ only: ['searches'], preserveScroll: true });
     } finally {
       setSubmitting(false);
     }
@@ -805,6 +811,24 @@ export default function Index({
                       value={formState.name}
                       onChange={(e) => setFormState((c) => ({ ...c, name: e.target.value }))}
                     />
+                  </div>
+
+                  <div style={{ marginTop: 20 }}>
+                    <label className="lbl" htmlFor="edit-search-type">Type</label>
+                    <select
+                      id="edit-search-type"
+                      className="fld"
+                      value={formState.type}
+                      onChange={(e) => setFormState((c) => ({ ...c, type: e.target.value }))}
+                    >
+                      <option value="brand">Brand</option>
+                      <option value="product">Product</option>
+                    </select>
+                    {formState.type !== (modalState.search.search_type === 'product' ? 'product' : 'brand') && (
+                      <p className="hint" style={{ marginTop: 8 }}>
+                        Your existing results stay — only how we tune keywords and insights changes going forward.
+                      </p>
+                    )}
                   </div>
 
                   <div style={{ marginTop: 20 }}>

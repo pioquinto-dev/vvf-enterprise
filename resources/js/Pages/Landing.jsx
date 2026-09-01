@@ -27,7 +27,7 @@ export default function Landing() {
   };
 
   const startTrial = (plan, cycle = 'monthly') =>
-    window.location.assign(`/login?redirect=trial_checkout&plan=${encodeURIComponent(plan?.slug ?? 'basic')}&trial=1&cycle=${encodeURIComponent(cycle)}`);
+    window.location.assign(`/login?redirect=trial_checkout&plan=${encodeURIComponent(plan?.slug ?? 'growth')}&trial=1&cycle=${encodeURIComponent(cycle)}`);
 
   return (
     <>

@@ -164,7 +164,7 @@ export const PRICING = {
       trialEnabled: true,
     },
     {
-      slug: 'basic',
+      slug: 'growth',
       planType: 'growth',
       duration: 'monthly',
       name: 'Growth',
@@ -193,7 +193,7 @@ export const PRICING = {
       trialEnabled: true,
     },
     {
-      slug: 'premium',
+      slug: 'scale',
       planType: 'scale',
       duration: 'monthly',
       name: 'Scale',
@@ -223,7 +223,7 @@ export const PRICING = {
   ],
   annual: [
     {
-      slug: 'basic-annual',
+      slug: 'growth-annual',
       planType: 'growth',
       duration: 'annual',
       name: 'Growth',
@@ -252,7 +252,7 @@ export const PRICING = {
       trialEnabled: true,
     },
     {
-      slug: 'premium-annual',
+      slug: 'scale-annual',
       planType: 'scale',
       duration: 'annual',
       name: 'Scale',
@@ -282,7 +282,7 @@ export const PRICING = {
   ],
 };
 
-export const PRICING_PLAN_ORDER = ['free', 'basic', 'basic-annual', 'premium', 'premium-annual'];
+export const PRICING_PLAN_ORDER = ['free', 'growth', 'growth-annual', 'scale', 'scale-annual'];
 
 export const FAQS = [
 	{

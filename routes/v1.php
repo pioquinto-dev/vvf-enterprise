@@ -18,7 +18,9 @@ Route::prefix('saved-searches')->group(function (): void {
     Route::patch('/{id}/bookmark', [SavedSearchController::class, 'bookmark'])->whereNumber('id')->name('api.v1.saved-searches.bookmark');
     Route::patch('/{id}/pause', [SavedSearchController::class, 'pause'])->whereNumber('id')->middleware('paid')->name('api.v1.saved-searches.pause');
     Route::patch('/{id}/resume', [SavedSearchController::class, 'resume'])->whereNumber('id')->middleware('paid')->name('api.v1.saved-searches.resume');
-    Route::patch('/{id}/frequency', [SavedSearchController::class, 'updateFrequency'])->whereNumber('id')->middleware('paid')->name('api.v1.saved-searches.frequency');
+    // Name/type/handle editing is open to everyone; the schedule change inside
+    // is what stays paid, enforced in the controller.
+    Route::patch('/{id}/frequency', [SavedSearchController::class, 'updateFrequency'])->whereNumber('id')->name('api.v1.saved-searches.frequency');
     Route::post('/{id}/refresh', [SavedSearchController::class, 'refresh'])->whereNumber('id')->middleware('paid')->name('api.v1.saved-searches.refresh');
     Route::post('/{id}/retry', [SavedSearchController::class, 'retryInitial'])->whereNumber('id')->name('api.v1.saved-searches.retry');
     Route::delete('/{id}', [SavedSearchController::class, 'destroy'])->whereNumber('id')->middleware('paid')->name('api.v1.saved-searches.destroy');
