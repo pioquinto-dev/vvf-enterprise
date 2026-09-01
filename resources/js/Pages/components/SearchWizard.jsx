@@ -8,7 +8,7 @@ import EntitlementsBar from './EntitlementsBar.jsx';
 import UpgradePromptModal from './UpgradePromptModal.jsx';
 import KeywordsScreen from '../../landing/flow/screens/KeywordsScreen.jsx';
 import RunningScreen from '../../landing/flow/screens/RunningScreen.jsx';
-import { checkDuplicateSavedSearch, createSavedSearch, trackSearch } from '../../landing/flow/api.js';
+import { billing as billingApi, checkDuplicateSavedSearch, createSavedSearch, trackSearch } from '../../landing/flow/api.js';
 
 /**
  * The whole in-app search flow on one page (Dashboard and /search share it).
@@ -381,7 +381,13 @@ export default function SearchWizard({
                         ? "You've already used the search credits on Free. Start your trial to keep finding new outliers."
                         : "You've already used the search credits available on your current plan. Upgrade to Growth or Scale to keep finding new outliers."}
                     primaryLabel={(billing.trialEligible ?? true) && !(billing.hasUsedTrial ?? false) ? 'Start 8-day Growth trial' : 'Upgrade to Growth'}
-                    onPrimary={() => router.visit((billing.trialEligible ?? true) && !(billing.hasUsedTrial ?? false) ? '/trial' : '/plans')}
+                    onPrimary={() => {
+                        if ((billing.trialEligible ?? true) && !(billing.hasUsedTrial ?? false)) {
+                            billingApi.trialCheckout('growth');
+                        } else {
+                            router.visit('/plans');
+                        }
+                    }}
                     onClose={() => setUpgradeModalOpen(false)}
                 />
             )}

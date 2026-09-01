@@ -677,7 +677,10 @@ export default function DetailScreen({
   };
   const openUpgradeModal = (type = 'analysis') => setUpgradeModalType(type);
   const closeUpgradeModal = () => setUpgradeModalType(null);
-  const openUpgradeForAnalysis = () => billingApi.checkout('basic');
+  const openUpgradeForAnalysis = () =>
+    (billing?.trialEligible ?? true) && !(billing?.hasUsedTrial ?? false)
+      ? billingApi.trialCheckout('growth')
+      : billingApi.checkout('growth');
   const videoLabel = (videoId) => {
     const video = results.find((entry) => String(entry.id) === String(videoId));
     return video?.handle || video?.username || video?.title || 'This video';

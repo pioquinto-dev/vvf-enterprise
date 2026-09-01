@@ -7,6 +7,7 @@ import UpgradePromptModal from './components/UpgradePromptModal.jsx';
 import { Arrow } from '../landing/components/Icons.jsx';
 import { withReturnTo } from './utils/navigation.js';
 import {
+  billing as billingApi,
   fetchRecentSearches,
   readTracked,
   savedSearch as savedSearchApi,
@@ -571,7 +572,11 @@ export default function Dashboard() {
   };
   const openSearchUpgrade = () => {
     setSearchAccessPrompt(null);
-    router.visit((billing.trialEligible ?? true) && !(billing.hasUsedTrial ?? false) ? '/trial' : '/plans');
+    if ((billing.trialEligible ?? true) && !(billing.hasUsedTrial ?? false)) {
+      billingApi.trialCheckout('growth');
+    } else {
+      router.visit('/plans');
+    }
   };
 
   const dashboardExtras = (

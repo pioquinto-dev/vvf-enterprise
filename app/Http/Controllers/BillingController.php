@@ -11,7 +11,7 @@ use Illuminate\Validation\ValidationException;
 
 class BillingController extends Controller
 {
-    private const CHECKOUT_PLAN_SLUGS = ['basic', 'basic-annual', 'premium', 'premium-annual'];
+    private const CHECKOUT_PLAN_SLUGS = ['growth', 'growth-annual', 'scale', 'scale-annual'];
     private const PORTAL_ACTIONS = ['manage', 'payment_method', 'cancel'];
 
     public function __construct(private readonly BillingService $billing) {}

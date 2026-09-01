@@ -290,10 +290,10 @@ class SettingsController extends Controller
     private function formatPlanDisplayName(string $planSlug, ?string $fallbackName = null): string
     {
         return match ($planSlug) {
-            'basic' => 'Basic',
-            'basic-annual' => 'Basic (Annual)',
-            'premium' => 'Premium',
-            'premium-annual' => 'Premium (Annual)',
+            'growth' => 'Growth',
+            'growth-annual' => 'Growth (Annual)',
+            'scale' => 'Scale',
+            'scale-annual' => 'Scale (Annual)',
             default => $fallbackName ?? ucfirst($planSlug),
         };
     }

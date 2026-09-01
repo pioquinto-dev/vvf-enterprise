@@ -54,7 +54,7 @@ class PricingPlanTable
             ],
             [
                 'id' => (string) Str::ulid(),
-                'slug' => 'basic',
+                'slug' => 'growth',
                 'name' => 'Growth',
                 'stripe_product_id' => null,
                 'stripe_price_id' => null,
@@ -95,7 +95,7 @@ class PricingPlanTable
             ],
             [
                 'id' => (string) Str::ulid(),
-                'slug' => 'basic-annual',
+                'slug' => 'growth-annual',
                 'name' => 'Growth',
                 'stripe_product_id' => null,
                 'stripe_price_id' => null,
@@ -136,7 +136,7 @@ class PricingPlanTable
             ],
             [
                 'id' => (string) Str::ulid(),
-                'slug' => 'premium',
+                'slug' => 'scale',
                 'name' => 'Scale',
                 'stripe_product_id' => null,
                 'stripe_price_id' => null,
@@ -177,7 +177,7 @@ class PricingPlanTable
             ],
             [
                 'id' => (string) Str::ulid(),
-                'slug' => 'premium-annual',
+                'slug' => 'scale-annual',
                 'name' => 'Scale',
                 'stripe_product_id' => null,
                 'stripe_price_id' => null,

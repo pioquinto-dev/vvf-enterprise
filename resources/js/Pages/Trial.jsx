@@ -37,7 +37,7 @@ export default function Trial() {
                             body="This account already finished its free trial, so the next step is a paid upgrade."
                             detail="Upgrade to Growth to turn scheduled tracking, bookmarks, and analysis back on."
                             primaryLabel="Upgrade to Growth"
-                            onPrimary={() => billingApi.checkout('basic')}
+                            onPrimary={() => billingApi.checkout('growth')}
                             secondaryLabel="Maybe later"
                             onSecondary={() => setTrialPromptOpen(false)}
                             onClose={() => setTrialPromptOpen(false)}

@@ -9,7 +9,7 @@ use Illuminate\Http\Request;
 
 class PostAuthenticationRedirector
 {
-    private const CHECKOUT_PLAN_SLUGS = ['basic', 'basic-annual', 'premium', 'premium-annual'];
+    private const CHECKOUT_PLAN_SLUGS = ['growth', 'growth-annual', 'scale', 'scale-annual'];
 
     public function destination(Request $request, string $fallback = '/dashboard'): string
     {

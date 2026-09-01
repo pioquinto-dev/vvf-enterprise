@@ -1173,7 +1173,7 @@ class AdminListingRepository
             })
             ->all();
 
-        return $options === [] ? [['value' => 'basic', 'label' => 'basic']] : $options;
+        return $options === [] ? [['value' => 'growth', 'label' => 'growth']] : $options;
     }
 
     /**
@@ -1607,7 +1607,7 @@ class AdminListingRepository
             'coupon-programs' => [
                 'code' => '',
                 'name' => '',
-                'plan_slug' => (string) (PricingPlan::query()->orderBy('amount')->value('slug') ?? 'basic'),
+                'plan_slug' => (string) (PricingPlan::query()->orderBy('amount')->value('slug') ?? 'growth'),
                 'billing_cycle' => 'monthly',
                 'max_redemptions' => 0,
                 'allowed_domain' => '',

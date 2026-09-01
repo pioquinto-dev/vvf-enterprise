@@ -9,12 +9,12 @@ use Symfony\Component\HttpFoundation\Response;
 
 class RememberTrialCheckoutIntent
 {
-    private const CHECKOUT_PLAN_SLUGS = ['basic', 'basic-annual', 'premium', 'premium-annual'];
+    private const CHECKOUT_PLAN_SLUGS = ['growth', 'growth-annual', 'scale', 'scale-annual'];
 
     public function handle(Request $request, Closure $next): Response
     {
         if ($request->user() === null && $request->query('redirect') === 'trial_checkout') {
-            $plan = (string) $request->query('plan', 'basic');
+            $plan = (string) $request->query('plan', 'growth');
             $withTrial = $request->boolean('trial');
             $cycle = (string) $request->query('cycle', 'monthly');
 

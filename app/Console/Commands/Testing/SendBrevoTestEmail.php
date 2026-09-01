@@ -97,7 +97,7 @@ class SendBrevoTestEmail extends Command
         $plan = (new PricingPlan())->forceFill([
             'id' => 'test-plan',
             'name' => 'Scale',
-            'slug' => 'premium',
+            'slug' => 'scale',
             'metadata' => [],
         ]);
 

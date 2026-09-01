@@ -28,7 +28,7 @@ use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
 
 class RegisteredUserController extends Controller
 {
-    private const CHECKOUT_PLAN_SLUGS = ['basic', 'basic-annual', 'premium', 'premium-annual'];
+    private const CHECKOUT_PLAN_SLUGS = ['growth', 'growth-annual', 'scale', 'scale-annual'];
 
     public function __construct(
         private readonly PostAuthenticationRedirector $redirector,
@@ -93,7 +93,7 @@ class RegisteredUserController extends Controller
             return;
         }
 
-        $plan = (string) $request->query('plan', 'basic');
+        $plan = (string) $request->query('plan', 'growth');
         $withTrial = $request->boolean('trial');
         $cycle = (string) $request->query('cycle', 'monthly');
 

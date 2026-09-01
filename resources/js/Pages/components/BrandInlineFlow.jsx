@@ -6,6 +6,7 @@ import DuplicateSearchModal from './DuplicateSearchModal.jsx';
 import SearchCreditConfirmModal from './SearchCreditConfirmModal.jsx';
 import UpgradePromptModal from './UpgradePromptModal.jsx';
 import {
+  billing as billingApi,
   createSavedSearch,
   checkDuplicateSavedSearch,
   expandKeywords,
@@ -510,7 +511,7 @@ export default function BrandInlineFlow({
             ? "You've already used the search credits on Free. Start your trial to keep finding new outliers."
             : "You've already used the search credits available on your current plan. Upgrade to Growth or Scale to keep finding new outliers."}
           primaryLabel={shouldOfferTrial ? 'Start 8-day Growth trial' : 'Upgrade to Growth'}
-          onPrimary={() => router.visit(shouldOfferTrial ? '/trial' : '/plans')}
+          onPrimary={() => (shouldOfferTrial ? billingApi.trialCheckout('growth') : router.visit('/plans'))}
           onClose={() => setUpgradeModalOpen(false)}
         />
       )}
