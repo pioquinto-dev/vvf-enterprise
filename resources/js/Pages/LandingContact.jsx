@@ -26,7 +26,10 @@ export default function LandingContact({ categories = [], defaults = {} }) {
             <Head title="Contact Us - Outlier Vault" />
 
             <div ref={revealRoot} className="vvf-landing min-h-screen font-body">
-                <Nav theme={theme} onToggleTheme={toggle} onStart={startSearch} />
+                {/* Nav styles live under the landing (.bbh) design scope. */}
+                <div className="bbh">
+                    <Nav theme={theme} onToggleTheme={toggle} onStart={startSearch} />
+                </div>
 
                 <main className="relative overflow-hidden px-4 py-10 sm:px-6 lg:px-8 lg:py-16">
                     <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
@@ -39,7 +42,10 @@ export default function LandingContact({ categories = [], defaults = {} }) {
                     </div>
                 </main>
 
-                <Footer />
+                {/* Footer styles live under the landing (.bbh) design scope. */}
+                <div className="bbh">
+                    <Footer />
+                </div>
             </div>
         </>
     );

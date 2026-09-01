@@ -6124,6 +6124,9 @@
     .bbh .hero-suggest__item { padding: 10px; }
     .bbh .hero-suggest__text strong { font-size: .87rem; }
     .bbh .ftr__cols { grid-template-columns: repeat(2, 1fr); }
+    /* The bottom Terms/Privacy/Security/Contact row duplicates the Legal and
+       Company columns above, so drop it on mobile — keep only the copyright. */
+    .bbh .ftr__btm nav { display: none; }
     .bbh .final { margin-top: 80px; padding: 68px 0; }
     .bbh .hero__ctas .btn { width: 100%; }
 }
