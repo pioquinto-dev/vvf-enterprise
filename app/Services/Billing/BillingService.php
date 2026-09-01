@@ -742,9 +742,19 @@ class BillingService
             ]);
         }
 
-        $this->stripe->updateSubscription($subscription->stripe_subscription_id, [
+        $updated = $this->stripe->updateSubscription($subscription->stripe_subscription_id, [
             'cancel_at_period_end' => true,
         ]);
+
+        // Mirror the cancellation onto our record immediately. The
+        // customer.subscription.updated webhook writes the same keys, but it may
+        // be delayed or (in local/dev) never fire, so the UI must not depend on
+        // it to reflect a change the user just made.
+        $cancelAtTs = data_get($updated, 'cancel_at') ?? data_get($updated, 'current_period_end');
+        $cancelAt = is_numeric($cancelAtTs)
+            ? CarbonImmutable::createFromTimestampUTC((int) $cancelAtTs)
+            : ($subscription->current_period_ends_at !== null ? CarbonImmutable::instance($subscription->current_period_ends_at) : null);
+        $this->applyCancellationState($subscription, true, $cancelAt);
 
         $this->activity?->record(
             $user,
@@ -780,6 +790,9 @@ class BillingService
             'cancel_at_period_end' => false,
         ]);
 
+        // Clear the local cancellation flags right away (see cancelSubscription).
+        $this->applyCancellationState($subscription, false, null);
+
         $this->activity?->record(
             $user,
             'subscription',
@@ -793,6 +806,21 @@ class BillingService
             'subscription:reactivation-request:'.$subscription->id
         );
 
+    }
+
+    /**
+     * Persist the cancel-at-period-end state onto our local record so the UI
+     * reflects it without waiting on the Stripe webhook. Uses the same metadata
+     * keys the webhook writes, so a later webhook is idempotent.
+     */
+    private function applyCancellationState(Subscription $subscription, bool $cancelAtPeriodEnd, ?CarbonImmutable $cancelAt): void
+    {
+        $metadata = is_array($subscription->metadata) ? $subscription->metadata : [];
+
+        data_set($metadata, 'subscription.cancel_at_period_end', $cancelAtPeriodEnd);
+        data_set($metadata, 'subscription.cancel_at', $cancelAtPeriodEnd ? $cancelAt?->toIso8601String() : null);
+
+        $subscription->forceFill(['metadata' => $metadata])->save();
     }
 
     public function ensureSubscriptionRecord(User $user): Subscription
