@@ -3185,6 +3185,28 @@ function EntitlementsBar({ variant = "default" }) {
 	});
 }
 //#endregion
+//#region resources/js/lib/analytics.js
+function canTrack() {
+	return typeof window !== "undefined" && Array.isArray(window.dataLayer);
+}
+function normalizeEvent(entry) {
+	if (!entry || typeof entry !== "object") return null;
+	if (!entry.event || typeof entry.event !== "string") return null;
+	return {
+		event: entry.event,
+		...entry.parameters && typeof entry.parameters === "object" ? entry.parameters : {}
+	};
+}
+function pushAnalyticsEvent(entry) {
+	const normalized = normalizeEvent(entry);
+	if (!normalized || !canTrack()) return;
+	window.dataLayer.push(normalized);
+}
+function pushAnalyticsEvents(entries) {
+	if (!Array.isArray(entries)) return;
+	entries.forEach(pushAnalyticsEvent);
+}
+//#endregion
 //#region resources/js/landing/flow/api.js
 /**
 * Small fetch wrapper for the saved-search endpoints. Inertia handles page
@@ -3215,6 +3237,7 @@ async function request(url, { method = "GET", body, signal } = {}) {
 		error.payload = payload;
 		throw error;
 	}
+	pushAnalyticsEvents(payload?.analytics);
 	return payload;
 }
 function expandKeywords(phrase, { signal, fresh = false, type = "brand" } = {}) {

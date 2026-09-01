@@ -15,7 +15,7 @@ import {
  * The brand/product page's expand-in-place search flow (matches the
  * "Brand Beacon — Inline search flow" mockup).
  *
- * States: collapsed → keywords → sources → running → done. The card sits at
+ * States: collapsed → keywords → running → done. The card sits at
  * the top of the page and expands in-place — the page context beneath it
  * (moving-this-week, suggested-to-track, all-searches) never unmounts.
  *
@@ -51,11 +51,9 @@ function useRunStages(active, done) {
 }
 
 function MiniStepper({ current }) {
-  const steps = current === 'sources'
-    ? [{ key: 'keywords', label: 'Keywords' }, { key: 'sources', label: 'Sources' }]
-    : [{ key: 'keywords', label: 'Keywords' }];
+  const steps = [{ key: 'keywords', label: 'Keywords' }];
   const activeIdx = steps.findIndex((s) => s.key === current);
-  const shown = current === 'sources' || current === 'keywords';
+  const shown = current === 'keywords';
   if (!shown) return null;
 
   return (
@@ -91,15 +89,12 @@ export default function BrandInlineFlow({
   const { billing = {}, auth = {} } = usePage().props;
   const signedIn = auth.signedIn ?? Boolean(auth.user);
 
-  const [state, setState] = useState('collapsed'); // collapsed|keywords|sources|running|done
+  const [state, setState] = useState('collapsed'); // collapsed|keywords|running|done
   const [subject, setSubject] = useState('');
   const [subjectSuggestions, setSubjectSuggestions] = useState([]);
   const [activeSuggestion, setActiveSuggestion] = useState(-1);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [keywords, setKeywords] = useState([]); // [{label, selected, source: 'ai'|'yours'}]
-  const [frequency, setFrequency] = useState('weekly');
-  const [tiktokHandle, setTiktokHandle] = useState('');
-  const [website, setWebsite] = useState('');
   const [emailWhenReady, setEmailWhenReady] = useState(true);
   const [addKeyword, setAddKeyword] = useState('');
   const [expanding, setExpanding] = useState(false);
@@ -119,7 +114,6 @@ export default function BrandInlineFlow({
   const searchLeft = billing.searchCreditsRemaining;
   const searchLimit = billing.searchCreditsLimit;
   const searchCreditsAvailable = !signedIn || searchLimit === -1 || Number(searchLeft ?? 0) > 0;
-  const supportsSources = kind !== 'product';
   const shouldOfferTrial = (billing.trialEligible ?? true) && !(billing.hasUsedTrial ?? false);
 
   useEffect(() => {
@@ -261,18 +255,14 @@ export default function BrandInlineFlow({
         phrase: subject,
         name: subject,
         keywords: selected,
-        frequency,
-        sources: {
-          tiktokHandle: tiktokHandle.trim().replace(/^@/, ''),
-          website: website.trim(),
-        },
+        frequency: 'weekly',
       });
       trackSearch({ id: created.id, name: created.name, url: created.url });
       setSearchResult(created);
       onCreated?.(created);
     } catch (e) {
       setError(e.message || 'Could not start the search.');
-        setState(supportsSources ? 'sources' : 'keywords');
+        setState('keywords');
         setSubmitting(false);
     }
   };
@@ -299,7 +289,7 @@ export default function BrandInlineFlow({
         if (!cancelled && s?.status === 'failed') {
           setError('The search failed to complete.');
           setSubmitting(false);
-          setState(supportsSources ? 'sources' : 'keywords');
+          setState('keywords');
           return;
         }
       } catch {
@@ -313,7 +303,7 @@ export default function BrandInlineFlow({
       cancelled = true;
       window.clearTimeout(timer);
     };
-  }, [state, searchResult?.id, supportsSources]);
+  }, [state, searchResult?.id]);
 
   const viewResults = () => {
     if (searchResult?.url) router.visit(searchResult.url);
@@ -656,24 +646,6 @@ export default function BrandInlineFlow({
             </div>
             <p className="khint"><b>{kwCount}</b> selected · each keyword widens the same single search.</p>
 
-            <p className="schead">How often should we re-run it?</p>
-            <div className="freq">
-              {[
-                { key: 'weekly',  label: 'Weekly',  desc: 'Fresh viral videos every week. Best for fast-moving categories.' },
-                { key: 'monthly', label: 'Monthly', desc: 'A lighter monthly pull for slower niches.' },
-              ].map((f) => (
-                <button
-                  key={f.key}
-                  type="button"
-                  className={`fq${frequency === f.key ? ' on' : ''}`}
-                  onClick={() => setFrequency(f.key)}
-                >
-                  <span className="fq__t"><span className="fq__r" />{f.label}</span>
-                  <p>{f.desc}</p>
-                </button>
-              ))}
-            </div>
-
             {error && <div className="bif__err">{error}</div>}
 
             <div className="biffoot">
@@ -681,74 +653,11 @@ export default function BrandInlineFlow({
               <button
                 type="button"
                 className="btn btn--y"
-                onClick={() => (supportsSources ? setState('sources') : runSearch())}
+                onClick={runSearch}
                 disabled={kwCount === 0 || submitting}
               >
-                {supportsSources ? <>Continue <Arrow /></> : <>{submitting ? 'Starting…' : 'Run the search'} <Arrow /></>}
+                {submitting ? 'Starting…' : 'Run the search'} <Arrow />
               </button>
-            </div>
-          </div>
-        )}
-
-        {/* ---------- SOURCES ---------- */}
-        {supportsSources && state === 'sources' && (
-          <div>
-            <div className="ph">
-              <p className="ph__k">Optional</p>
-              <h3>Add the {kind === 'product' ? 'product' : 'brand'}'s handle or website</h3>
-              <p className="sub">Helps us match videos more accurately and unlock better insights.</p>
-            </div>
-
-            <div className="srcs">
-              <div className="src">
-                <div className="src__h">
-                  <span className="src__i">
-                    <svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z" /></svg>
-                  </span>
-                  <span className="src__t">TikTok handle</span>
-                </div>
-                <div className="src__f">
-                  <span className="src__pre">@</span>
-                  <input
-                    value={tiktokHandle}
-                    onChange={(e) => setTiktokHandle(e.target.value.replace(/^@/, ''))}
-                    placeholder={sample.split(' ')[0]}
-                  />
-                </div>
-                <p className="src__m faint">Optional</p>
-              </div>
-
-              <div className="src">
-                <div className="src__h">
-                  <span className="src__i">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M3 9l1.5-5h15L21 9M3 9v10a1 1 0 0 0 1 1h16a1 1 0 0 0 1-1V9M3 9h18M9 20v-6h6v6" />
-                    </svg>
-                  </span>
-                  <span className="src__t">Website</span>
-                </div>
-                <div className="src__f">
-                  <span className="src__pre">https://</span>
-                  <input
-                    value={website}
-                    onChange={(e) => setWebsite(e.target.value)}
-                    placeholder={`${sample.split(' ')[0]}.com`}
-                  />
-                </div>
-                <p className="src__m faint">Optional</p>
-              </div>
-            </div>
-
-            {error && <div className="bif__err">{error}</div>}
-
-            <div className="biffoot">
-              <button type="button" className="btn btn--g" onClick={() => setState('keywords')}>Back</button>
-              <div className="biffoot__r">
-                <button type="button" className="btn btn--g" onClick={runSearch} disabled={submitting}>Skip</button>
-                <button type="button" className="btn btn--y" onClick={runSearch} disabled={submitting}>
-                  {submitting ? 'Starting…' : 'Run the search'} <Arrow />
-                </button>
-              </div>
             </div>
           </div>
         )}
@@ -758,7 +667,7 @@ export default function BrandInlineFlow({
           <div className="run">
             <div className="run__ring" />
             <h3>Scanning TikTok for {subject}</h3>
-            <p className="sub">Widening with {kwCount} keyword{kwCount === 1 ? '' : 's'} · {frequency} schedule</p>
+            <p className="sub">Widening with {kwCount} keyword{kwCount === 1 ? '' : 's'} · weekly schedule</p>
             <div className="pbar"><div className="pbar__f" style={{ width: pFillWidth }} /></div>
             <div className="stages">
               {STAGE_LIST.map((s, i) => {

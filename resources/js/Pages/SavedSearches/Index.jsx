@@ -229,8 +229,6 @@ export default function Index({
   const [formState, setFormState] = useState({
     name: '',
     frequency: 'weekly',
-    tiktokHandle: '',
-    website: '',
   });
   const [submitting, setSubmitting] = useState(false);
   const menuRef = useRef(null);
@@ -433,8 +431,6 @@ export default function Index({
       setFormState({
         name: search.name ?? '',
         frequency: search.frequency ?? 'weekly',
-        tiktokHandle: search.source_tiktok_handle ?? '',
-        website: search.source_website ?? '',
       });
     }
   };
@@ -468,10 +464,6 @@ export default function Index({
       const { search: updated } = await api.update(modalState.search.id, {
         name: formState.name.trim(),
         frequency: formState.frequency,
-        sources: {
-          tiktokHandle: formState.tiktokHandle.trim(),
-          website: formState.website.trim(),
-        },
       });
       patchSearch(modalState.search.id, updated);
       closeModal();
@@ -819,70 +811,9 @@ export default function Index({
 
                   <div style={{ marginTop: 20 }}>
                     <label className="lbl">Schedule</label>
-                    <div style={{ display: 'flex', gap: 8 }}>
-                      {['weekly', 'monthly'].map((f) => (
-                        <button
-                          key={f}
-                          type="button"
-                          className={`btn ${formState.frequency === f ? 'btn--y' : 'btn--g'} btn--w`}
-                          onClick={() => setFormState((c) => ({ ...c, frequency: f }))}
-                        >
-                          {f === 'weekly' ? 'Weekly' : 'Monthly'}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div style={{ marginTop: 20 }}>
-                    <label className="lbl">TikTok handle</label>
-                    <div style={{ position: 'relative' }}>
-                      <span
-                        style={{
-                          position: 'absolute',
-                          left: 14,
-                          top: '50%',
-                          transform: 'translateY(-50%)',
-                          color: 'var(--muted)',
-                          pointerEvents: 'none',
-                        }}
-                      >
-                        @
-                      </span>
-                      <input
-                        className="fld"
-                        style={{ paddingLeft: 28 }}
-                        value={formState.tiktokHandle}
-                        onChange={(e) => setFormState((c) => ({ ...c, tiktokHandle: e.target.value.replace(/^@/, '') }))}
-                        placeholder="rhode"
-                        aria-label="TikTok handle"
-                      />
-                    </div>
-                  </div>
-
-                  <div style={{ marginTop: 20 }}>
-                    <label className="lbl">Website</label>
-                    <div style={{ position: 'relative' }}>
-                      <span
-                        style={{
-                          position: 'absolute',
-                          left: 14,
-                          top: '50%',
-                          transform: 'translateY(-50%)',
-                          color: 'var(--muted)',
-                          pointerEvents: 'none',
-                        }}
-                      >
-                        https://
-                      </span>
-                      <input
-                        className="fld"
-                        style={{ paddingLeft: 72 }}
-                        value={formState.website}
-                        onChange={(e) => setFormState((c) => ({ ...c, website: e.target.value }))}
-                        placeholder="rhodeskin.com"
-                        aria-label="Website"
-                      />
-                    </div>
+                    <output className="btn btn--y btn--w" style={{ cursor: 'default', userSelect: 'none' }}>
+                      {formState.frequency === 'monthly' ? 'Monthly' : 'Weekly'}
+                    </output>
                   </div>
 
                   <div className="actrow__r" style={{ marginTop: 24, justifyContent: 'flex-end' }}>

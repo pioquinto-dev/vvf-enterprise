@@ -5,16 +5,14 @@ import SearchLauncher from './SearchLauncher.jsx';
 import EntitlementsBar from './EntitlementsBar.jsx';
 import UpgradePromptModal from './UpgradePromptModal.jsx';
 import KeywordsScreen from '../../landing/flow/screens/KeywordsScreen.jsx';
-import SourcesScreen from '../../landing/flow/screens/SourcesScreen.jsx';
 import RunningScreen from '../../landing/flow/screens/RunningScreen.jsx';
 import { createSavedSearch, trackSearch } from '../../landing/flow/api.js';
 
 /**
  * The whole in-app search flow on one page (Dashboard and /search share it).
  *
- * The wizard branches by search kind, but every search can now optionally add
- * source context before it runs:
- *   - product / brand → Subject → Keywords → Sources → run
+ * The wizard branches by search kind:
+ *   - product / brand → Subject → Keywords → run
  * The run/loading screen is *not* a wizard step and has no stepper.
  *
  * Steps advance in local state so keyword work survives a step back, and a
@@ -130,7 +128,6 @@ export default function SearchWizard({
     const [step, setStep] = useState(resumeId ? 'running' : initialQuery ? 'keywords' : 'subject');
     const [type, setType] = useState(initialType);
     const [phrase, setPhrase] = useState(initialQuery);
-    const [pending, setPending] = useState(null); // keyword payload awaiting sources/create
     const [searchId, setSearchId] = useState(resumeId);
     const [submitting, setSubmitting] = useState(false);
     const [error, setError] = useState(null);
@@ -165,7 +162,7 @@ export default function SearchWizard({
         setStep('keywords');
     };
 
-    const doCreate = async (payload, sources, searchType = type, searchPhrase = payload.phrase || phrase) => {
+    const doCreate = async (payload, searchType = type, searchPhrase = payload.phrase || phrase) => {
         setSubmitting(true);
         setError(null);
 
@@ -176,7 +173,6 @@ export default function SearchWizard({
                 name: payload.name,
                 keywords: payload.keywords,
                 frequency: payload.frequency,
-                sources,
             });
 
             clearPendingSearch();
@@ -211,49 +207,43 @@ export default function SearchWizard({
             return;
         }
 
+        const restoredType = pendingSearch.type === 'competitor' ? 'brand' : pendingSearch.type;
+        const restoredPhrase = pendingSearch.phrase ?? '';
+
         writePendingSearch({ ...pendingSearch, started: true });
-        setType(pendingSearch.type === 'competitor' ? 'brand' : pendingSearch.type);
-        setPhrase(pendingSearch.phrase ?? '');
-        setPending(pendingSearch.payload);
+        setType(restoredType);
+        setPhrase(restoredPhrase);
         setError(null);
         setAuthPromptPayload(null);
 
-        setStep('sources');
+        doCreate(pendingSearch.payload, restoredType, restoredPhrase);
     }, [signedIn]);
 
     const needsSearchConfirm = signedIn && searchLimit !== 0;
 
-    const runSearch = (payload, sources) => {
+    const runSearch = (payload) => {
         if (!signedIn) {
             writePendingSearch({
                 type,
                 kind,
                 phrase: payload.phrase || phrase,
                 payload,
-                sources: sources ?? null,
                 started: false,
             });
-            setPending(payload);
             setAuthPromptPayload({ type, phrase: payload.phrase || phrase });
             return;
         }
 
         if (! needsSearchConfirm) {
-            doCreate(payload, sources);
+            doCreate(payload);
             return;
         }
 
-        setConfirmPayload({ payload, sources });
+        setConfirmPayload({ payload });
     };
 
     const afterKeywords = (payload) => {
-        setPending(payload);
-        if (!signedIn) {
-            runSearch(payload);
-            return;
-        }
-
-        setStep('sources');
+        runSearch(payload);
     };
 
     const backToKeywords = () => {
@@ -275,9 +265,7 @@ export default function SearchWizard({
     const topSub =
         step === 'subject'
             ? subheading
-            : step === 'sources'
-              ? 'Step 3 of 3 — optional.'
-              : `Step 2 of 3 — add terms to expand on your ${nounOf(type)}. Ticking six terms still spends one search.`;
+            : `Step 2 of 2 — add terms to expand on your ${nounOf(type)}. Ticking six terms still spends one search.`;
 
     return (
         <>
@@ -336,15 +324,6 @@ export default function SearchWizard({
                         />
                     )}
 
-                    {step === 'sources' && (
-                        <SourcesScreen
-                            noun={nounOf(type)}
-                            submitting={submitting}
-                            onBack={() => setStep('keywords')}
-                            onSkip={() => runSearch(pending)}
-                            onRun={(sources) => runSearch(pending, sources)}
-                        />
-                    )}
                 </div>
             )}
 
@@ -361,7 +340,7 @@ export default function SearchWizard({
                     onConfirm={() => {
                         const next = confirmPayload;
                         setConfirmPayload(null);
-                        doCreate(next.payload, next.sources);
+                        doCreate(next.payload);
                     }}
                 />
             )}

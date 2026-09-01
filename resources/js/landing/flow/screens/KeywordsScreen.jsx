@@ -4,11 +4,6 @@ import { expandKeywords } from '../api.js';
 
 const KEYWORD_CAP = 12;
 
-const FREQUENCIES = [
-  { value: 'weekly', label: 'Weekly', hint: 'Fresh viral videos every week. Best for fast-moving categories.' },
-  { value: 'monthly', label: 'Monthly', hint: 'A monthly pull. Lighter cadence for slower niches.' },
-];
-
 function SkeletonChips() {
   return (
     <>
@@ -26,7 +21,7 @@ function SkeletonChips() {
 }
 
 /**
- * Step two — widen the single scrape with keywords and set the cadence.
+ * Step two — widen the single scrape with keywords.
  *
  * The scrape is sent only the primary phrase; every ticked keyword filters the
  * results locally, so "1 search covers everything you select" is literally true.
@@ -48,7 +43,6 @@ export default function KeywordsScreen({
   const [expansionSource, setExpansionSource] = useState(null);
   const [adding, setAdding] = useState(false);
   const [draft, setDraft] = useState('');
-  const [frequency, setFrequency] = useState('weekly');
   const requested = useRef(false);
 
   /**
@@ -241,33 +235,6 @@ export default function KeywordsScreen({
         )}
       </div>
 
-      {/* ---------------- schedule ---------------- */}
-      <div className="sect">
-        <div className="sect__h">
-          <div>
-            <p className="sect__n">Schedule</p>
-            <h2>How often should we re-run it?</h2>
-          </div>
-        </div>
-        <div className="freq">
-          {FREQUENCIES.map((f) => (
-            <button
-              key={f.value}
-              type="button"
-              className={`fq${frequency === f.value ? ' on' : ''}`}
-              aria-pressed={frequency === f.value}
-              onClick={() => setFrequency(f.value)}
-            >
-              <span className="fq__t">
-                <span className="fq__r" />
-                {f.label}
-              </span>
-              <p>{f.hint}</p>
-            </button>
-          ))}
-        </div>
-      </div>
-
       {error && (
         <div className="sect">
           <p className="pill pill--bad" style={{ height: 'auto', padding: '8px 12px' }}>
@@ -285,7 +252,7 @@ export default function KeywordsScreen({
           type="button"
           className="btn btn--y"
           disabled={busy || submitting || selected.length === 0}
-          onClick={() => onSubmit({ phrase, keywords: selected, frequency, name: phrase })}
+          onClick={() => onSubmit({ phrase, keywords: selected, frequency: 'weekly', name: phrase })}
         >
           {submitting ? 'Starting…' : nextLabel} <Arrow />
         </button>

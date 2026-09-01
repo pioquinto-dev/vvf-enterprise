@@ -81,5 +81,6 @@
   "resources/js/landing/sections/Nav.jsx": [],
   "resources/js/landing/sections/Pricing.jsx": [],
   "resources/js/landing/sections/Testimonials.jsx": [],
+  "resources/js/lib/analytics.js": [],
   "resources/js/ssr.jsx": []
 }

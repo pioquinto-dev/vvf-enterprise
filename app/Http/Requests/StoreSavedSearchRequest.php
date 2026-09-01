@@ -25,7 +25,7 @@ class StoreSavedSearchRequest extends FormRequest
             'name' => ['nullable', 'string', 'max:'.config('custom_keyword_search.limits.max_name_length', 80)],
             'keywords' => ['required', 'array', 'min:1', 'max:'.config('custom_keyword_search.limits.max_keywords', 12)],
             'keywords.*' => ['string', 'max:'.$maxPhrase],
-            'frequency' => ['required', 'in:'.CustomKeywordSearch::FREQUENCY_WEEKLY.','.CustomKeywordSearch::FREQUENCY_MONTHLY],
+            'frequency' => ['required', 'in:'.CustomKeywordSearch::FREQUENCY_WEEKLY],
             'sources' => ['nullable', 'array'],
             'sources.tiktokHandle' => ['nullable', 'string', 'max:120'],
             'sources.website' => ['nullable', 'string', 'max:255'],
@@ -39,7 +39,7 @@ class StoreSavedSearchRequest extends FormRequest
     {
         return [
             'keywords.max' => 'A search can carry at most :max keywords.',
-            'frequency.in' => 'Choose either a weekly or monthly refresh.',
+            'frequency.in' => 'Choose the weekly refresh.',
         ];
     }
 }
