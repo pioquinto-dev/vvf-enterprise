@@ -138,7 +138,7 @@ function PaymentMethodModal({ open, busy, saving, error, onClose, onSubmit }) {
   );
 }
 
-function CancelConfirmModal({ open, busy, planName, periodEnd, onConfirm, onClose }) {
+function CancelConfirmModal({ open, busy, error, planName, periodEnd, onConfirm, onClose }) {
   if (!open) return null;
 
   return (
@@ -158,6 +158,12 @@ function CancelConfirmModal({ open, busy, planName, periodEnd, onConfirm, onClos
             {periodEnd ? <> until <b style={{ color: 'var(--ink)' }}>{periodEnd}</b></> : ' until the end of your current billing period'}
             , then move to the free plan. You can resubscribe anytime.
           </p>
+
+          {error && (
+            <p className="subx-error" role="alert" style={{ color: 'var(--bad, #d64545)', marginTop: 14 }}>
+              {error}
+            </p>
+          )}
 
           <div className="actrow__r" style={{ marginTop: 22, justifyContent: 'flex-end' }}>
             <button type="button" className="btn btn--g" onClick={onClose} disabled={busy}>
@@ -205,6 +211,7 @@ export default function Subscription({ subscription, stripePublishableKey = null
   const [paymentSaving, setPaymentSaving] = useState(false);
   const [paymentError, setPaymentError] = useState(null);
   const [cancelBusy, setCancelBusy] = useState(false);
+  const [cancelError, setCancelError] = useState(null);
   const [reactivateBusy, setReactivateBusy] = useState(false);
   const [cancelModalOpen, setCancelModalOpen] = useState(false);
   const [elementsState, setElementsState] = useState(null);
@@ -296,11 +303,16 @@ export default function Subscription({ subscription, stripePublishableKey = null
 
   const cancelSubscription = async () => {
     setCancelBusy(true);
+    setCancelError(null);
     try {
       const response = await billing.cancelSubscription();
       setStatusMessage(response?.message || 'Subscription cancellation scheduled.');
       setCancelModalOpen(false);
       router.reload({ only: ['subscription'] });
+    } catch (error) {
+      // Surface the failure instead of swallowing it — otherwise the button
+      // just resets and it looks like nothing happened.
+      setCancelError(error?.message || 'We could not cancel your subscription. Please try again.');
     } finally {
       setCancelBusy(false);
     }
@@ -509,10 +521,15 @@ export default function Subscription({ subscription, stripePublishableKey = null
       <CancelConfirmModal
         open={cancelModalOpen}
         busy={cancelBusy}
+        error={cancelError}
         planName={planName}
         periodEnd={renews || trialEnds}
         onConfirm={cancelSubscription}
-        onClose={() => (cancelBusy ? undefined : setCancelModalOpen(false))}
+        onClose={() => {
+          if (cancelBusy) return;
+          setCancelError(null);
+          setCancelModalOpen(false);
+        }}
       />
     </>
   );

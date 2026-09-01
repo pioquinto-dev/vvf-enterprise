@@ -12,6 +12,7 @@ use Carbon\CarbonImmutable;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -163,7 +164,19 @@ class SettingsController extends Controller
 
     public function cancelSubscription(Request $request): JsonResponse
     {
-        $this->billingService->cancelSubscription($request->user());
+        try {
+            $this->billingService->cancelSubscription($request->user());
+        } catch (ValidationException $exception) {
+            return response()->json([
+                'message' => collect($exception->errors())->flatten()->first() ?? 'We could not cancel your subscription.',
+            ], 422);
+        } catch (\Throwable $exception) {
+            report($exception);
+
+            return response()->json([
+                'message' => 'We could not cancel your subscription right now. Please try again in a moment.',
+            ], 502);
+        }
 
         return response()->json([
             'message' => 'Subscription cancellation scheduled. Access stays active until the end of the current billing period.',
@@ -177,7 +190,19 @@ class SettingsController extends Controller
 
     public function reactivateSubscription(Request $request): JsonResponse
     {
-        $this->billingService->reactivateSubscription($request->user());
+        try {
+            $this->billingService->reactivateSubscription($request->user());
+        } catch (ValidationException $exception) {
+            return response()->json([
+                'message' => collect($exception->errors())->flatten()->first() ?? 'We could not reactivate your subscription.',
+            ], 422);
+        } catch (\Throwable $exception) {
+            report($exception);
+
+            return response()->json([
+                'message' => 'We could not reactivate your subscription right now. Please try again in a moment.',
+            ], 502);
+        }
 
         return response()->json([
             'message' => 'Subscription reactivated. Auto-renew is back on.',
