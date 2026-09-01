@@ -61,8 +61,6 @@ class AdminListingsTest extends TestCase
         $user = User::factory()->create([
             'name' => 'Jules',
             'email' => 'jules@example.com',
-            'current_plan_slug' => 'growth',
-            'monthly_credits_remaining' => 7,
         ]);
 
         Subscription::query()->create([
@@ -136,10 +134,7 @@ class AdminListingsTest extends TestCase
             'name' => 'Starter',
             'slug' => 'starter',
         ]));
-        $user = User::factory()->create([
-            'monthly_credits_remaining' => 6,
-            'current_plan_slug' => 'starter',
-        ]);
+        $user = User::factory()->create();
         $subscription = Subscription::query()->create([
             'id' => (string) Str::ulid(),
             'user_id' => $user->id,
@@ -163,7 +158,7 @@ class AdminListingsTest extends TestCase
         ])->assertRedirect();
 
         $this->assertSame('past_due', $subscription->fresh()->status);
-        $this->assertSame(11, (int) $user->fresh()->monthly_credits_remaining);
+        $this->assertSame(11, (int) data_get($subscription->fresh()->metadata, 'subscription.search_limits.limit') - (int) data_get($subscription->fresh()->metadata, 'subscription.search_limits.used'));
         $this->assertSame(25, (int) data_get($plan->fresh()->metadata, 'subscription.search_limits.limit'));
         $this->assertSame(9, (int) data_get($plan->fresh()->metadata, 'subscription.video_analysis.limit'));
     }

@@ -4,16 +4,21 @@ import { expandKeywords } from '../api.js';
 
 const KEYWORD_CAP = 12;
 
-function SkeletonChips() {
+function SkeletonChips({ phrase }) {
   return (
     <>
-      <p className="hint" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, marginBottom: 12, color: 'var(--amber-ink)', fontWeight: 600 }}>
+      <p className="hint" role="status" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, marginBottom: 12, color: 'var(--amber-ink)', fontWeight: 600 }}>
         <span className="chip-spin" aria-hidden />
-        Suggesting keywords…
+        Finding related keywords…
       </p>
-      <div className="chips" aria-hidden>
-        {[132, 108, 156, 96, 140, 118].map((width, i) => (
-          <span key={i} className="chip-skel" style={{ width }} />
+      <div className="chips">
+        <span className="chip on chip--expand-in">
+          <span className="chip__b"><Check /></span>
+          {phrase}
+          <span className="chip__y">main</span>
+        </span>
+        {[132, 108, 156, 96, 140].map((width, i) => (
+          <span key={i} className="chip-skel" style={{ width, animationDelay: `${i * 70}ms` }} />
         ))}
       </div>
     </>
@@ -145,14 +150,14 @@ export default function KeywordsScreen({
           </button>
         </div>
 
-        {busy ? (
-          <SkeletonChips />
+        {loading ? (
+          <SkeletonChips phrase={phrase} />
         ) : (
           <>
             <div className="chips">
-              {terms.map(({ value, selected: on, locked, custom }) =>
+              {terms.map(({ value, selected: on, locked, custom }, index) =>
                 locked ? (
-                  <span key={value} className="chip on" title="The main keyword is always included">
+                  <span key={value} className="chip on chip--expand-in" style={{ animationDelay: `${index * 45}ms` }} title="The main keyword is always included">
                     <span className="chip__b">
                       <Check />
                     </span>
@@ -172,8 +177,8 @@ export default function KeywordsScreen({
                         toggle(value);
                       }
                     }}
-                    className={`chip${on ? ' on' : ''}`}
-                    style={{ cursor: 'pointer' }}
+                    className={`chip chip--expand-in${on ? ' on' : ''}`}
+                    style={{ cursor: 'pointer', animationDelay: `${index * 45}ms` }}
                   >
                     <span className="chip__b">
                       <Check />

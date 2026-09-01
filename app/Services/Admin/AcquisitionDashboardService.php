@@ -59,7 +59,7 @@ class AcquisitionDashboardService
             ->with(['utmAttributions' => fn ($query) => $query->whereNull('subscription_id')->latest('id')])
             ->latest('created_at')->get()
             ->map(function (User $user): array {
-                return $this->userRow($user, $user->utmAttributions->first(), $user->created_at, $user->current_plan_slug ?? 'Free');
+                return $this->userRow($user, $user->utmAttributions->first(), $user->created_at, $user->subscriptions()->latest('created_at')->first()?->plan?->slug ?? 'Free');
             });
     }
 

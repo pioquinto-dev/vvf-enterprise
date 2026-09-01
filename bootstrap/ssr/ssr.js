@@ -3282,6 +3282,18 @@ function createSavedSearch({ type, phrase, name, keywords, frequency, sources, r
 		}
 	});
 }
+function checkDuplicateSavedSearch({ type, phrase, name, keywords, frequency }) {
+	return request(`${API_V1}/saved-searches/check-duplicate`, {
+		method: "POST",
+		body: {
+			type,
+			phrase,
+			name,
+			keywords,
+			frequency
+		}
+	});
+}
 function fetchNotifications(ids) {
 	return request(`${API_V1}/saved-searches/notifications?${ids.map((id) => `ids[]=${encodeURIComponent(id)}`).join("&")}`);
 }
@@ -3805,6 +3817,14 @@ function DuplicateSearchModal({ search, newKeywords = [], busy = false, onRefres
 			}), /* @__PURE__ */ jsxs("div", {
 				className: "bb-modal__box",
 				children: [
+					/* @__PURE__ */ jsx("button", {
+						type: "button",
+						className: "bb-modal__close",
+						"aria-label": "Close",
+						onClick: onCancel,
+						disabled: busy,
+						children: /* @__PURE__ */ jsx(Close, {})
+					}),
 					/* @__PURE__ */ jsx("h2", { children: "Already in your history" }),
 					/* @__PURE__ */ jsxs("p", {
 						className: "sub",
@@ -3819,18 +3839,23 @@ function DuplicateSearchModal({ search, newKeywords = [], busy = false, onRefres
 						children: search.name
 					}),
 					hasAdditions && /* @__PURE__ */ jsxs("div", {
-						className: "chips",
-						style: { marginTop: 12 },
-						children: [additions.map((keyword) => /* @__PURE__ */ jsx("span", {
-							className: "chip",
-							children: keyword
-						}, keyword)), newKeywords.length > additions.length && /* @__PURE__ */ jsxs("span", {
-							className: "chip",
-							children: [
-								"+",
-								newKeywords.length - additions.length,
-								" more"
-							]
+						style: { marginTop: 14 },
+						children: [/* @__PURE__ */ jsx("p", {
+							className: "sect__n",
+							children: "New terms to merge"
+						}), /* @__PURE__ */ jsxs("div", {
+							className: "chips",
+							children: [additions.map((keyword) => /* @__PURE__ */ jsxs("span", {
+								className: "chip on",
+								children: ["+ ", keyword]
+							}, keyword)), newKeywords.length > additions.length && /* @__PURE__ */ jsxs("span", {
+								className: "chip on",
+								children: [
+									"+",
+									newKeywords.length - additions.length,
+									" more"
+								]
+							})]
 						})]
 					}),
 					/* @__PURE__ */ jsx("p", {
@@ -3847,6 +3872,59 @@ function DuplicateSearchModal({ search, newKeywords = [], busy = false, onRefres
 							marginTop: 24,
 							justifyContent: "flex-end"
 						},
+						children: [search?.url && /* @__PURE__ */ jsx("button", {
+							type: "button",
+							className: "btn btn--g",
+							onClick: () => router.visit(search.url),
+							disabled: busy,
+							children: "View existing results"
+						}), /* @__PURE__ */ jsx("button", {
+							type: "button",
+							className: "btn btn--y",
+							onClick: onRefresh,
+							disabled: busy,
+							children: busy ? "Refreshing…" : hasAdditions ? "Merge & refresh" : "Refresh search"
+						})]
+					})
+				]
+			})]
+		})
+	});
+}
+//#endregion
+//#region resources/js/Pages/components/SearchCreditConfirmModal.jsx
+var SearchCreditConfirmModal_exports = /* @__PURE__ */ __exportAll({ default: () => SearchCreditConfirmModal });
+function SearchCreditConfirmModal({ body, subject, busy = false, onConfirm, onCancel }) {
+	return /* @__PURE__ */ jsx("div", {
+		className: "bb",
+		children: /* @__PURE__ */ jsxs("div", {
+			className: "bb-modal",
+			children: [/* @__PURE__ */ jsx("button", {
+				className: "bb-modal__bg",
+				"aria-label": "Close",
+				onClick: onCancel
+			}), /* @__PURE__ */ jsxs("div", {
+				className: "bb-modal__box",
+				children: [
+					/* @__PURE__ */ jsx("h2", { children: "Start this search?" }),
+					/* @__PURE__ */ jsx("p", {
+						className: "sub",
+						children: body
+					}),
+					subject && /* @__PURE__ */ jsx("p", {
+						style: {
+							marginTop: 16,
+							fontWeight: 700,
+							color: "var(--ink)"
+						},
+						children: subject
+					}),
+					/* @__PURE__ */ jsxs("div", {
+						className: "actrow__r",
+						style: {
+							marginTop: 24,
+							justifyContent: "flex-end"
+						},
 						children: [/* @__PURE__ */ jsx("button", {
 							type: "button",
 							className: "btn btn--g",
@@ -3856,9 +3934,9 @@ function DuplicateSearchModal({ search, newKeywords = [], busy = false, onRefres
 						}), /* @__PURE__ */ jsx("button", {
 							type: "button",
 							className: "btn btn--y",
-							onClick: onRefresh,
+							onClick: onConfirm,
 							disabled: busy,
-							children: busy ? "Refreshing…" : hasAdditions ? "Merge & refresh" : "Refresh search"
+							children: busy ? "Starting…" : "Start search"
 						})]
 					})
 				]
@@ -3978,7 +4056,7 @@ var STAGE_LIST = [
 	},
 	{
 		key: "rank",
-		label: "Ranking by outlier score"
+		label: "Ranking by Breakout Score"
 	}
 ];
 function useRunStages(active, done) {
@@ -4050,6 +4128,7 @@ function BrandInlineFlow({ kind = "brand", placeholder = "Which brand do you wan
 	const [submitting, setSubmitting] = useState(false);
 	const [error, setError] = useState(null);
 	const [duplicateSearch, setDuplicateSearch] = useState(null);
+	const [confirmRefresh, setConfirmRefresh] = useState(null);
 	const [searchResult, setSearchResult] = useState(null);
 	const [runDone, setRunDone] = useState(false);
 	const [upgradeModalOpen, setUpgradeModalOpen] = useState(false);
@@ -4176,7 +4255,7 @@ function BrandInlineFlow({ kind = "brand", placeholder = "Which brand do you wan
 			setExpanding(false);
 		}
 	};
-	const runSearch = async (refreshExisting = false) => {
+	const startSearch = async (refreshExisting = false) => {
 		if (!signedIn) {
 			window.location.assign(`/search?type=${kind}&q=${encodeURIComponent(subject)}`);
 			return;
@@ -4218,6 +4297,37 @@ function BrandInlineFlow({ kind = "brand", placeholder = "Which brand do you wan
 			}
 			setError(e.message || "Could not start the search.");
 			setState("keywords");
+			setSubmitting(false);
+		}
+	};
+	const checkAndConfirmSearch = async () => {
+		if (!signedIn) {
+			window.location.assign(`/search?type=${kind}&q=${encodeURIComponent(subject)}`);
+			return;
+		}
+		const selected = keywords.filter((k) => k.selected).map((k) => k.label);
+		if (selected.length === 0) {
+			setError("Pick at least one keyword.");
+			return;
+		}
+		setSubmitting(true);
+		setError(null);
+		try {
+			const duplicate = await checkDuplicateSavedSearch({
+				type: kind,
+				phrase: subject,
+				name: subject,
+				keywords: selected,
+				frequency: "weekly"
+			});
+			if (duplicate.existing) setDuplicateSearch({
+				search: duplicate.search,
+				newKeywords: duplicate.new_keywords
+			});
+			else setConfirmRefresh(false);
+		} catch (e) {
+			setError(e.message || "Could not check your search history. Try again.");
+		} finally {
 			setSubmitting(false);
 		}
 	};
@@ -4646,7 +4756,7 @@ function BrandInlineFlow({ kind = "brand", placeholder = "Which brand do you wan
 						}), /* @__PURE__ */ jsxs("button", {
 							type: "button",
 							className: "btn btn--y",
-							onClick: runSearch,
+							onClick: checkAndConfirmSearch,
 							disabled: kwCount === 0 || submitting,
 							children: [
 								submitting ? "Starting…" : "Run the search",
@@ -4758,7 +4868,18 @@ function BrandInlineFlow({ kind = "brand", placeholder = "Which brand do you wan
 			onCancel: () => setDuplicateSearch(null),
 			onRefresh: () => {
 				setDuplicateSearch(null);
-				runSearch(true);
+				startSearch(true);
+			}
+		}),
+		confirmRefresh !== null && /* @__PURE__ */ jsx(SearchCreditConfirmModal, {
+			body: `This will use 1 search credit. You will have ${searchLimit === -1 ? "unlimited" : Math.max(0, Number(searchLeft ?? 0) - 1)} search credits remaining after this run starts.`,
+			subject,
+			busy: submitting,
+			onCancel: () => setConfirmRefresh(null),
+			onConfirm: () => {
+				const refreshExisting = confirmRefresh;
+				setConfirmRefresh(null);
+				startSearch(refreshExisting);
 			}
 		})
 	] });
@@ -6278,9 +6399,10 @@ function SearchLauncher({ initialType = "brand", initialQuery = "", onSubmit, su
 //#endregion
 //#region resources/js/landing/flow/screens/KeywordsScreen.jsx
 var KEYWORD_CAP = 12;
-function SkeletonChips() {
+function SkeletonChips({ phrase }) {
 	return /* @__PURE__ */ jsxs(Fragment$1, { children: [/* @__PURE__ */ jsxs("p", {
 		className: "hint",
+		role: "status",
 		style: {
 			display: "inline-flex",
 			alignItems: "center",
@@ -6292,21 +6414,35 @@ function SkeletonChips() {
 		children: [/* @__PURE__ */ jsx("span", {
 			className: "chip-spin",
 			"aria-hidden": true
-		}), "Suggesting keywords…"]
-	}), /* @__PURE__ */ jsx("div", {
+		}), "Finding related keywords…"]
+	}), /* @__PURE__ */ jsxs("div", {
 		className: "chips",
-		"aria-hidden": true,
-		children: [
+		children: [/* @__PURE__ */ jsxs("span", {
+			className: "chip on chip--expand-in",
+			children: [
+				/* @__PURE__ */ jsx("span", {
+					className: "chip__b",
+					children: /* @__PURE__ */ jsx(Check, {})
+				}),
+				phrase,
+				/* @__PURE__ */ jsx("span", {
+					className: "chip__y",
+					children: "main"
+				})
+			]
+		}), [
 			132,
 			108,
 			156,
 			96,
-			140,
-			118
+			140
 		].map((width, i) => /* @__PURE__ */ jsx("span", {
 			className: "chip-skel",
-			style: { width }
-		}, i))
+			style: {
+				width,
+				animationDelay: `${i * 70}ms`
+			}
+		}, i))]
 	})] });
 }
 /**
@@ -6436,11 +6572,12 @@ function KeywordsScreen({ phrase, noun = "brand", searchType = "brand", nextLabe
 					disabled: busy,
 					children: [/* @__PURE__ */ jsx(Refresh, { className: regenerating ? "h-[15px] w-[15px] animate-spin" : "h-[15px] w-[15px]" }), regenerating ? "Regenerating…" : "Regenerate"]
 				})]
-			}), busy ? /* @__PURE__ */ jsx(SkeletonChips, {}) : /* @__PURE__ */ jsxs(Fragment$1, { children: [
+			}), loading ? /* @__PURE__ */ jsx(SkeletonChips, { phrase }) : /* @__PURE__ */ jsxs(Fragment$1, { children: [
 				/* @__PURE__ */ jsxs("div", {
 					className: "chips",
-					children: [terms.map(({ value, selected: on, locked, custom }) => locked ? /* @__PURE__ */ jsxs("span", {
-						className: "chip on",
+					children: [terms.map(({ value, selected: on, locked, custom }, index) => locked ? /* @__PURE__ */ jsxs("span", {
+						className: "chip on chip--expand-in",
+						style: { animationDelay: `${index * 45}ms` },
 						title: "The main keyword is always included",
 						children: [
 							/* @__PURE__ */ jsx("span", {
@@ -6464,8 +6601,11 @@ function KeywordsScreen({ phrase, noun = "brand", searchType = "brand", nextLabe
 								toggle(value);
 							}
 						},
-						className: `chip${on ? " on" : ""}`,
-						style: { cursor: "pointer" },
+						className: `chip chip--expand-in${on ? " on" : ""}`,
+						style: {
+							cursor: "pointer",
+							animationDelay: `${index * 45}ms`
+						},
 						children: [
 							/* @__PURE__ */ jsx("span", {
 								className: "chip__b",
@@ -6575,7 +6715,7 @@ var STAGES = [
 	"Starting the scrape",
 	"Pulling videos from TikTok",
 	"Filtering against your keywords",
-	"Ranking by outlier score"
+	"Ranking by Breakout Score"
 ];
 /**
 * The transitional loading state after a run is dispatched. Not a wizard step —
@@ -6857,56 +6997,6 @@ function readRunParam() {
 	const id = new URLSearchParams(window.location.search).get("run");
 	return id && /^\d+$/.test(id) ? Number(id) : null;
 }
-function UsageConfirmModal$2({ title, body, subject, confirmLabel, busy = false, onConfirm, onCancel }) {
-	return /* @__PURE__ */ jsx("div", {
-		className: "bb",
-		children: /* @__PURE__ */ jsxs("div", {
-			className: "bb-modal",
-			children: [/* @__PURE__ */ jsx("button", {
-				className: "bb-modal__bg",
-				"aria-label": "Close",
-				onClick: onCancel
-			}), /* @__PURE__ */ jsxs("div", {
-				className: "bb-modal__box",
-				children: [
-					/* @__PURE__ */ jsx("h2", { children: title }),
-					/* @__PURE__ */ jsx("p", {
-						className: "sub",
-						children: body
-					}),
-					subject && /* @__PURE__ */ jsx("p", {
-						style: {
-							marginTop: 16,
-							fontWeight: 700,
-							color: "var(--ink)"
-						},
-						children: subject
-					}),
-					/* @__PURE__ */ jsxs("div", {
-						className: "actrow__r",
-						style: {
-							marginTop: 24,
-							justifyContent: "flex-end"
-						},
-						children: [/* @__PURE__ */ jsx("button", {
-							type: "button",
-							className: "btn btn--g",
-							onClick: onCancel,
-							disabled: busy,
-							children: "Cancel"
-						}), /* @__PURE__ */ jsx("button", {
-							type: "button",
-							className: "btn btn--y",
-							onClick: onConfirm,
-							disabled: busy,
-							children: busy ? "Starting…" : confirmLabel
-						})]
-					})
-				]
-			})]
-		})
-	});
-}
 function AuthPromptModal({ type, phrase, onClose }) {
 	const noun = nounOf(type);
 	const goTo = (path) => {
@@ -7100,7 +7190,7 @@ function SearchWizard({ initialType = "brand", initialQuery = "", heading = "Sta
 		doCreate(pendingSearch.payload, restoredType, restoredPhrase);
 	}, [signedIn]);
 	const needsSearchConfirm = signedIn && searchLimit !== 0;
-	const runSearch = (payload) => {
+	const runSearch = async (payload) => {
 		if (!signedIn) {
 			writePendingSearch({
 				type,
@@ -7115,11 +7205,30 @@ function SearchWizard({ initialType = "brand", initialQuery = "", heading = "Sta
 			});
 			return;
 		}
-		if (!needsSearchConfirm) {
-			doCreate(payload);
-			return;
+		setSubmitting(true);
+		setError(null);
+		try {
+			const duplicate = await checkDuplicateSavedSearch({
+				type,
+				phrase: payload.phrase || phrase,
+				name: payload.name,
+				keywords: payload.keywords,
+				frequency: payload.frequency
+			});
+			if (duplicate.existing) setDuplicatePayload({
+				payload,
+				searchType: type,
+				searchPhrase: payload.phrase || phrase,
+				search: duplicate.search,
+				newKeywords: duplicate.new_keywords
+			});
+			else if (!needsSearchConfirm) doCreate(payload);
+			else setConfirmPayload({ payload });
+		} catch (e) {
+			setError(e.message || "Could not check your search history. Try again.");
+		} finally {
+			setSubmitting(false);
 		}
-		setConfirmPayload({ payload });
 	};
 	const afterKeywords = (payload) => {
 		runSearch(payload);
@@ -7181,17 +7290,15 @@ function SearchWizard({ initialType = "brand", initialQuery = "", heading = "Sta
 			}, `${type}:${phrase}`)]
 		}),
 		step === "subject" && subjectExtra,
-		confirmPayload && /* @__PURE__ */ jsx(UsageConfirmModal$2, {
-			title: "Start this search?",
+		confirmPayload && /* @__PURE__ */ jsx(SearchCreditConfirmModal, {
 			body: `This will use 1 search credit. You will have ${searchRemainingAfterUse} search credits remaining after this run starts. Search credits are not restored later, even if you pause, delete, or rerun the search.`,
 			subject: confirmPayload.payload?.name ?? confirmPayload.payload?.phrase ?? phrase,
-			confirmLabel: "Start search",
 			busy: submitting,
 			onCancel: () => setConfirmPayload(null),
 			onConfirm: () => {
 				const next = confirmPayload;
 				setConfirmPayload(null);
-				doCreate(next.payload);
+				doCreate(next.payload, type, next.payload.phrase || phrase, next.refreshExisting ?? false);
 			}
 		}),
 		duplicatePayload && /* @__PURE__ */ jsx(DuplicateSearchModal, {
@@ -7453,7 +7560,7 @@ function GlanceStrip({ stats }) {
 				children: [
 					/* @__PURE__ */ jsx("div", {
 						className: "gl__l",
-						children: "Avg outlier score"
+						children: "Avg Breakout Score"
 					}),
 					/* @__PURE__ */ jsxs("div", {
 						className: "gl__v",
@@ -7845,7 +7952,12 @@ function Dashboard() {
 		if (trackedChanges.finished.length > 0 || trackedChanges.failed.length > 0) {
 			if (trackedChanges.finished.length > 0) markTrackedAsPrompted(trackedChanges.finished, { completedPromptShown: true });
 			if (trackedChanges.failed.length > 0) markTrackedAsPrompted(trackedChanges.failed, { failedPromptShown: true });
-			setCompletionModal(trackedChanges);
+			router.reload({
+				only: ["billing"],
+				preserveScroll: true,
+				preserveState: true,
+				onFinish: () => setCompletionModal(trackedChanges)
+			});
 		}
 	};
 	const refreshRecent = async (notifyOnTerminal = false) => {
@@ -9167,7 +9279,7 @@ var FEATURES = [
 		title: "Outlier Vault",
 		body: "Surface the TikToks in your category that broke out this week. The ones running 10× above the creator's own baseline, not just the ones with big follower counts.",
 		bullets: [
-			"Outlier scoring vs creator baseline",
+			"Breakout Score vs creator baseline",
 			"Last 7 / 30 / 90 day windows",
 			"Sound, hashtag and format tags"
 		],
@@ -9259,7 +9371,7 @@ var TESTIMONIALS = [
 		avatar: "/images/landing/testimonials/marcus-idowu.png"
 	},
 	{
-		quote: "The outlier scoring is the part that matters. Big accounts posting mediocre videos are noise. Brand Beacon filters those out by default.",
+		quote: "The Breakout Score is the part that matters. Big accounts posting mediocre videos are noise. Brand Beacon filters those out by default.",
 		name: "Nina Sethi",
 		role: "Social Director",
 		company: "Sunset Soda Co.",
@@ -9454,7 +9566,7 @@ var FAQS = [
 	},
 	{
 		q: "Is the data real-time?",
-		a: "Effectively, yes. Our collection infrastructure tracks Tiktok at scale and routes new videos through the index within hours of them going live. Every index video is continuously re-evaluated against our outlier scoring engine, so the rankings you see are always tied to live performance."
+		a: "Effectively, yes. Our collection infrastructure tracks Tiktok at scale and routes new videos through the index within hours of them going live. Every index video is continuously re-evaluated by our Breakout Score engine, so the rankings you see are always tied to live performance."
 	}
 ];
 //#endregion
@@ -10661,7 +10773,7 @@ var SORT_OPTIONS = {
 	za: "Name Z-A"
 };
 var VIDEO_SORT = {
-	score: "Outlier score",
+	score: "Breakout Score",
 	views: "Views",
 	recent: "Most recent"
 };
@@ -10673,7 +10785,7 @@ var ANALYSIS_STATUS_LABELS = {
 var ANALYSIS_SORT = {
 	recent: "Most Recent",
 	oldest: "Oldest First",
-	outlier: "Outlier Score",
+	outlier: "Breakout Score",
 	az: "A-Z (by title)",
 	za: "Z-A (by title)"
 };
@@ -11657,14 +11769,9 @@ function formatDuration$2(seconds) {
 function initials$1(name) {
 	return String(name || "").replace(/^@/, "").trim().slice(0, 2).toUpperCase() || "?";
 }
-function outlierMultiple(video) {
-	const value = Number(video?.outlier_multiple ?? video?.multiple ?? video?.score ?? video?.virality_score ?? 0);
+function breakoutScore$1(video) {
+	const value = Number(video?.score ?? video?.viral_score ?? video?.virality_score ?? 0);
 	return Number.isFinite(value) && value > 0 ? value : null;
-}
-function baselineMedian(video) {
-	const multiple = outlierMultiple(video);
-	const views = Number(video?.views ?? 0);
-	return multiple && views > 0 ? Math.round(views / multiple) : null;
 }
 function usePolling(videoId, initial, open) {
 	const [analysis, setAnalysis] = useState(initial);
@@ -11693,25 +11800,25 @@ function usePolling(videoId, initial, open) {
 }
 function statCards(video) {
 	const views = Number(video?.views ?? 0);
+	const followers = Number(video?.followers ?? 0);
 	const rate = Number(video?.engagement_rate ?? 0);
-	const median = baselineMedian(video);
-	const multiple = outlierMultiple(video);
+	const score = breakoutScore$1(video);
 	return [
 		{
 			label: "Views",
 			value: views > 0 ? compactNumber$1(views) : "—"
 		},
 		{
-			label: "Median",
-			value: median ? compactNumber$1(median) : "—"
+			label: "Followers",
+			value: followers > 0 ? compactNumber$1(followers) : "—"
 		},
 		{
 			label: "Engaged",
 			value: rate > 0 ? `${formatMetric(rate)}%` : "—"
 		},
 		{
-			label: "Baseline",
-			value: multiple ? `${formatMetric(multiple)}x` : "—",
+			label: "Breakout Score",
+			value: score ? `${formatMetric(score)}x` : "—",
 			good: true
 		}
 	];
@@ -11859,7 +11966,7 @@ function AnalyzeButton$1({ state, onClick }) {
 }
 function LeftSidebar({ video, canRegenerate = false, regenerating = false, disabledRegenerate = false, onRegenerate, analyzeState = "idle", onAnalyze, saved = false, saving = false, onToggleSave, showExternalLink = true }) {
 	const metrics = statCards(video);
-	const multiple = outlierMultiple(video);
+	const score = breakoutScore$1(video);
 	const followers = Number(video?.followers ?? 0);
 	const runtime = formatDuration$2(video.duration);
 	const [playing, setPlaying] = useState(false);
@@ -11933,9 +12040,9 @@ function LeftSidebar({ video, canRegenerate = false, regenerating = false, disab
 							onError: () => setThumbBroken(true),
 							className: "aspect-[9/13] w-full object-cover"
 						}) : /* @__PURE__ */ jsx("div", { className: "aspect-[9/13] w-full bg-[linear-gradient(165deg,#cfb396,#a98069)]" }),
-						multiple && /* @__PURE__ */ jsxs("span", {
+						score && /* @__PURE__ */ jsxs("span", {
 							className: "absolute bottom-[9px] left-[9px] z-[2] rounded-[8px] bg-[rgba(11,11,11,0.82)] px-[9px] py-1 text-[12px] font-extrabold tracking-[-0.01em] text-[#FFC629] backdrop-blur-[2px]",
-							children: [formatMetric(multiple), "x"]
+							children: [formatMetric(score), "x"]
 						}),
 						embed && /* @__PURE__ */ jsx("button", {
 							type: "button",
@@ -11991,7 +12098,7 @@ function LeftSidebar({ video, canRegenerate = false, regenerating = false, disab
 						className: `block text-[15px] font-extrabold leading-[1.1] tracking-[-0.03em] [font-variant-numeric:tabular-nums] ${item.good ? "text-[#1F7A4D]" : "text-[#0B0B0B]"} min-[640px]:text-[16.5px]`,
 						children: item.value
 					}), /* @__PURE__ */ jsx("span", {
-						className: "mt-[3px] block whitespace-nowrap text-[8.5px] font-extrabold uppercase tracking-[0.02em] text-[#74716A]",
+						className: "mt-[3px] block break-words text-[8.5px] font-extrabold uppercase leading-[1.15] tracking-[0.02em] text-[#74716A]",
 						children: item.label
 					})]
 				}, item.label))
@@ -12053,9 +12160,8 @@ function LeftSidebar({ video, canRegenerate = false, regenerating = false, disab
 }
 function VideoHeadline({ video, calloutDismissed, onDismissCallout }) {
 	const caption = String(video?.title || video?.caption || "").trim();
-	const multiple = outlierMultiple(video);
-	const median = baselineMedian(video);
-	const showCallout = !calloutDismissed && Boolean(multiple && median);
+	const score = breakoutScore$1(video);
+	const showCallout = !calloutDismissed && Boolean(score);
 	if (!caption && !showCallout) return null;
 	return /* @__PURE__ */ jsxs(Fragment$1, { children: [caption && /* @__PURE__ */ jsxs("p", {
 		className: "min-w-0 break-words px-0.5 pt-0.5 pr-10 text-[15.5px] font-extrabold leading-[1.4] tracking-[-0.01em] text-[#0B0B0B] min-[640px]:text-[16.5px]",
@@ -12089,15 +12195,10 @@ function VideoHeadline({ video, calloutDismissed, onDismissCallout }) {
 				children: [
 					/* @__PURE__ */ jsxs("b", {
 						className: "font-bold text-[#0B0B0B]",
-						children: [
-							formatMetric(multiple),
-							"x is against their own median of ",
-							compactNumber$1(median),
-							","
-						]
+						children: [formatMetric(score), "x is this video’s weighted engagement relative to its creator’s follower count."]
 					}),
 					" ",
-					"not the category."
+					"Views, likes, and comments contribute to the score."
 				]
 			}),
 			/* @__PURE__ */ jsx("button", {
@@ -12170,7 +12271,7 @@ function ProcessingState({ status, error }) {
 					className: "font-bold text-[#1a1a1a]",
 					children: "Analyze video"
 				}),
-				" to break down what carried this past the search median — and get a playbook you can hand to your creators."
+				" to break down what made this video outperform its audience size — and get a playbook you can hand to your creators."
 			] })
 		})]
 	});
@@ -12226,8 +12327,8 @@ function ErrorStateModal({ message, retrying, onRetry, onDismiss }) {
 }
 function WhyTab({ result, video }) {
 	const drivers = whyDrivers(result);
-	const baseline = outlierMultiple(video);
-	const subtitle = baseline ? `${formatMetric(baseline)}x baseline` : "Outlier drivers";
+	const score = breakoutScore$1(video);
+	const subtitle = score ? `${formatMetric(score)}x Breakout Score` : "Outlier drivers";
 	return /* @__PURE__ */ jsxs(PanelShell, {
 		title: "Analysis",
 		subtitle,
@@ -12681,6 +12782,10 @@ function compact(n) {
 	if (n >= 1e6) return `${(n / 1e6).toFixed(n >= 1e7 ? 0 : 1)}M`;
 	if (n >= 1e3) return `${(n / 1e3).toFixed(n >= 1e4 ? 0 : 1)}K`;
 	return String(Math.round(n));
+}
+function breakoutScore(video) {
+	const value = Number(video?.score ?? video?.viral_score ?? video?.virality_score ?? 0);
+	return Number.isFinite(value) && value > 0 ? value : 0;
 }
 function formatDate$2(iso) {
 	if (!iso) return null;
@@ -13258,7 +13363,7 @@ function DetailScreen({ search, isAuthenticated = false, billing: billing$2, ref
 				const at = a.posted_at ? new Date(a.posted_at).getTime() : 0;
 				return (b.posted_at ? new Date(b.posted_at).getTime() : 0) - at;
 			}
-			return (b.multiple ?? b.score ?? 0) - (a.multiple ?? a.score ?? 0);
+			return breakoutScore(b) - breakoutScore(a);
 		});
 		return arr;
 	}, [
@@ -13269,9 +13374,9 @@ function DetailScreen({ search, isAuthenticated = false, billing: billing$2, ref
 		previousRunId
 	]);
 	const tileByKey = (k) => (insights.tiles ?? []).find((t) => t.key === k) ?? {};
-	const outlierCount = tileByKey("outliers").value ?? results.filter((r) => (r.multiple ?? 0) >= 3).length;
+	const outlierCount = tileByKey("outliers").value ?? results.filter((r) => Number(r.outlier_multiple ?? r.multiple ?? 0) >= 3).length;
 	const videosInRun = search?.scanned_count ?? results.length;
-	const topMultiple = tileByKey("top_multiple").value ?? winner?.multiple ?? winner?.score ?? 0;
+	const topBreakoutScore = breakoutScore(winner);
 	const avgEng = tileByKey("avg_engagement").value ?? null;
 	const medianViews = insights?.baseline?.median_views ?? null;
 	const saveHandle = async () => {
@@ -13811,11 +13916,11 @@ function DetailScreen({ search, isAuthenticated = false, billing: billing$2, ref
 					children: [
 						/* @__PURE__ */ jsx("span", {
 							className: "rs-stt__k",
-							children: "Top outlier score"
+							children: "Top Breakout Score"
 						}),
 						/* @__PURE__ */ jsxs("span", {
 							className: "rs-stt__v",
-							children: [compact(topMultiple ?? 0), /* @__PURE__ */ jsx("small", { children: "×" })]
+							children: [compact(topBreakoutScore), /* @__PURE__ */ jsx("small", { children: "×" })]
 						}),
 						/* @__PURE__ */ jsx("span", {
 							className: "rs-stt__d",
@@ -13854,7 +13959,7 @@ function DetailScreen({ search, isAuthenticated = false, billing: billing$2, ref
 				className: "rs-sh",
 				children: [/* @__PURE__ */ jsx("h2", { children: "Outlier videos" }), /* @__PURE__ */ jsx("span", {
 					className: "rs-note",
-					children: "Their posts that beat the search median, ranked by outlier score."
+					children: "Videos with unusually strong engagement for their creator’s audience, ranked by Breakout Score."
 				})]
 			}), /* @__PURE__ */ jsxs("div", {
 				className: `rs-winner rs-winner--run-${winnerBucket}`,
@@ -13872,10 +13977,10 @@ function DetailScreen({ search, isAuthenticated = false, billing: billing$2, ref
 							className: "rs-ovchip rs-ovchip--out",
 							children: [/* @__PURE__ */ jsx("div", {
 								className: "rs-ovchip__l",
-								children: "Outlier score"
+								children: "Breakout Score"
 							}), /* @__PURE__ */ jsxs("div", {
 								className: "rs-ovchip__n",
-								children: [compact(winner.multiple ?? winner.score ?? 0), "×"]
+								children: [compact(breakoutScore(winner)), "×"]
 							})]
 						}), /* @__PURE__ */ jsxs("div", {
 							className: "rs-ovchip rs-ovchip--views",
@@ -14035,7 +14140,7 @@ function DetailScreen({ search, isAuthenticated = false, billing: billing$2, ref
 								children: [
 									/* @__PURE__ */ jsx("option", {
 										value: "outlier",
-										children: "Outlier score"
+										children: "Breakout Score"
 									}),
 									/* @__PURE__ */ jsx("option", {
 										value: "views",
@@ -14480,7 +14585,7 @@ function DetailScreen({ search, isAuthenticated = false, billing: billing$2, ref
 				}), /* @__PURE__ */ jsxs("div", {
 					className: "rs-weekmodal__list",
 					children: [selectedWeekVideos.map((video) => {
-						const multiple = Number(video.outlier_multiple ?? video.multiple ?? video.score ?? 0);
+						const multiple = breakoutScore(video);
 						const openBreakdown = () => {
 							setSelectedWeekKey(null);
 							openAnalysis(video);
@@ -14692,10 +14797,10 @@ function VideoFrame({ video, winner = false, showStats = true, isPlaying, onTogg
 					className: "rs-vchip rs-vchip--out",
 					children: [/* @__PURE__ */ jsx("div", {
 						className: "rs-vchip__l",
-						children: "Outlier score"
+						children: "Breakout Score"
 					}), /* @__PURE__ */ jsxs("div", {
 						className: "rs-vchip__n",
-						children: [compact(video.multiple ?? video.score ?? 0), "×"]
+						children: [compact(breakoutScore(video)), "×"]
 					})]
 				}), /* @__PURE__ */ jsxs("div", {
 					className: "rs-vchip rs-vchip--views",
@@ -14734,7 +14839,7 @@ function VideoTags({ video }) {
 function AutoAnalysis({ video }) {
 	const rows = [];
 	if (video.why_broke_out) rows.push(["Why it broke out", video.why_broke_out]);
-	if (!video.why_broke_out && video.outlier_multiple != null) rows.push(["Performance signal", `${compact(video.views)} views, ${compact(video.outlier_multiple)}× the search median.`]);
+	if (!video.why_broke_out && breakoutScore(video) > 0) rows.push(["Performance signal", `${compact(video.views)} views, ${compact(breakoutScore(video))}× Breakout Score relative to the creator's audience.`]);
 	if (video.content_format) rows.push(["Format", video.content_format]);
 	if (video.replicate_with) rows.push(["Replicate with", video.replicate_with]);
 	if (rows.length === 0) return null;
@@ -14763,10 +14868,10 @@ function OutlierCard$1({ video, runBucket = "old", expanded, locked = false, onT
 						className: "rs-ovchip rs-ovchip--out",
 						children: [/* @__PURE__ */ jsx("div", {
 							className: "rs-ovchip__l",
-							children: "Outlier score"
+							children: "Breakout Score"
 						}), /* @__PURE__ */ jsxs("div", {
 							className: "rs-ovchip__n",
-							children: [compact(video.multiple ?? video.score ?? 0), "×"]
+							children: [compact(breakoutScore(video)), "×"]
 						})]
 					}), /* @__PURE__ */ jsxs("div", {
 						className: "rs-ovchip rs-ovchip--views",
@@ -16755,7 +16860,7 @@ function WinnerVideo({ video, onToggleBookmark, onAnalyze, bookmarking = false, 
 						className: "ovchip ovchip--score",
 						children: [/* @__PURE__ */ jsxs("span", {
 							className: "lab",
-							children: [/* @__PURE__ */ jsx("i", {}), "Outlier score"]
+							children: [/* @__PURE__ */ jsx("i", {}), "Breakout Score"]
 						}), /* @__PURE__ */ jsx("span", {
 							className: "num",
 							children: outlierLabel(video.outlier_multiple) ?? "—"
@@ -16906,7 +17011,7 @@ function OutlierCard({ video, rank, onToggleBookmark, onAnalyze, bookmarking = f
 						className: "bbchip bbchip--score",
 						children: [/* @__PURE__ */ jsxs("span", {
 							className: "lab",
-							children: [/* @__PURE__ */ jsx("i", {}), "Outlier score"]
+							children: [/* @__PURE__ */ jsx("i", {}), "Breakout Score"]
 						}), /* @__PURE__ */ jsx("span", {
 							className: "num",
 							children: outlierLabel(video.outlier_multiple) ?? "—"
@@ -19704,6 +19809,7 @@ createServer((page) => createInertiaApp({
 			"./Pages/components/DuplicateSearchModal.jsx": DuplicateSearchModal_exports,
 			"./Pages/components/EntitlementsBar.jsx": EntitlementsBar_exports,
 			"./Pages/components/SavedSearchRow.jsx": SavedSearchRow_exports,
+			"./Pages/components/SearchCreditConfirmModal.jsx": SearchCreditConfirmModal_exports,
 			"./Pages/components/SearchLauncher.jsx": SearchLauncher_exports,
 			"./Pages/components/SearchListScreen.jsx": SearchListScreen_exports,
 			"./Pages/components/SearchWizard.jsx": SearchWizard_exports,

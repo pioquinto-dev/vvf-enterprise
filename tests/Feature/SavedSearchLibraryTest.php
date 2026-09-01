@@ -20,11 +20,8 @@ class SavedSearchLibraryTest extends TestCase
     {
         Queue::fake();
 
-        $user = User::factory()->create([
-            'current_plan_slug' => 'free',
-            'monthly_credits_remaining' => 5,
-            'plan_renews_at' => null,
-        ]);
+        $user = User::factory()->create();
+        $this->setSearchCredits($user, 5);
 
         $search = CustomKeywordSearch::query()->create([
             'user_id' => $user->id,
@@ -65,7 +62,7 @@ class SavedSearchLibraryTest extends TestCase
         $this->assertSame(CustomKeywordSearch::FREQUENCY_MONTHLY, $search->frequency);
         $this->assertSame(['rhode skin', 'rhode review', 'rhode vlog'], $search->keywords);
         $this->assertSame(1, $search->runs()->count());
-        $this->assertSame(4, (int) $user->fresh()->monthly_credits_remaining);
+        $this->assertSame(4, $this->searchCreditsRemaining($user));
     }
 
     public function test_library_page_includes_analysis_history_rows_for_signed_in_user(): void

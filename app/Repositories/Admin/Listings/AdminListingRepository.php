@@ -734,7 +734,7 @@ class AdminListingRepository
                         'title' => 'Stripe',
                         'fields' => [
                             ['label' => 'Stripe subscription ID', 'value' => $record->stripe_subscription_id],
-                            ['label' => 'Stripe customer ID', 'value' => $record->stripe_customer_id ?: $record->user?->stripe_customer_id],
+                            ['label' => 'Stripe customer ID', 'value' => $record->stripe_customer_id],
                         ],
                     ],
                 ],
@@ -753,7 +753,7 @@ class AdminListingRepository
             'id' => $record->id,
             'user' => $record->name ?: $record->email,
             'email' => $record->email ?: '-',
-            'plan' => $record->current_plan_slug ?? 'free',
+            'plan' => $record->subscriptions()->latest('created_at')->first()?->plan?->slug ?? 'free',
             'credits' => $this->creditSummary($usage['search']),
             'status' => $record->trashed() ? 'deleted' : 'active',
             'joined_at' => $record->created_at?->format('M j, Y') ?? '-',
@@ -766,7 +766,7 @@ class AdminListingRepository
                         'fields' => [
                             ['label' => 'Name', 'value' => $record->name],
                             ['label' => 'Email', 'value' => $record->email],
-                            ['label' => 'Current plan', 'value' => $record->current_plan_slug ?? 'free'],
+                            ['label' => 'Current plan', 'value' => $record->subscriptions()->latest('created_at')->first()?->plan?->slug ?? 'free'],
                             ['label' => 'Status', 'value' => $record->trashed() ? 'deleted' : 'active'],
                             ['label' => 'Email verified', 'value' => $this->yesNo($record->email_verified_at !== null)],
                             ['label' => 'Free search used', 'value' => $this->yesNo($record->free_search_used_at !== null)],
@@ -1261,7 +1261,7 @@ class AdminListingRepository
             'search' => [
                 'used' => $searchUsed,
                 'limit' => $searchLimit,
-                'remaining' => max(0, (int) ($subscription->user?->monthly_credits_remaining ?? 0)),
+                'remaining' => $searchLimit === -1 ? -1 : max(0, $searchLimit - $searchUsed),
             ],
             'video_bookmarks' => [
                 'used' => max(0, (int) data_get($metadata, 'subscription.viral_video_bookmarks.used', 0)),
@@ -1294,8 +1294,8 @@ class AdminListingRepository
             return [
                 'search' => [
                     'used' => 0,
-                    'limit' => max(0, (int) $user->monthly_credits_remaining),
-                    'remaining' => max(0, (int) $user->monthly_credits_remaining),
+                    'limit' => 0,
+                    'remaining' => 0,
                 ],
                 'video_bookmarks' => ['used' => $videoBookmarksUsed, 'limit' => 0],
                 'search_bookmarks' => ['used' => 0, 'limit' => 0],
@@ -1422,9 +1422,7 @@ class AdminListingRepository
             'users' => [
                 ['name' => 'name', 'label' => 'Name', 'type' => 'text'],
                 ['name' => 'email', 'label' => 'Email', 'type' => 'text', 'rules' => ['required', 'email', 'max:255', 'unique:users,email,{id}']],
-                ['name' => 'current_plan_slug', 'label' => 'Current plan', 'type' => 'select', 'options' => $this->planSlugOptions()],
                 ['name' => 'credits', 'label' => 'Search credits remaining', 'type' => 'number'],
-                ['name' => 'stripe_customer_id', 'label' => 'Stripe customer ID', 'type' => 'text'],
                 ['name' => 'email_verified', 'label' => 'Email verified', 'type' => 'toggle', 'help' => 'Stored as a timestamp; turning this off clears the verification date.'],
                 ['name' => 'free_search_used', 'label' => 'Free search used', 'type' => 'toggle', 'help' => 'Turning this off gives the account its one free search back.'],
                 ['name' => 'password', 'label' => 'Set new password', 'type' => 'password', 'help' => 'Leave blank to keep the current password.', 'rules' => ['nullable', 'string', 'min:8']],
@@ -1506,7 +1504,9 @@ class AdminListingRepository
             'subscription' => [
                 'status' => $record->status,
                 'plan_id' => (string) ($record->plan_id ?? ''),
-                'credits' => (int) ($record->user?->monthly_credits_remaining ?? 0),
+                'credits' => (int) data_get($record->metadata, 'subscription.search_limits.limit', 0) === -1
+                    ? -1
+                    : max(0, (int) data_get($record->metadata, 'subscription.search_limits.limit', 0) - (int) data_get($record->metadata, 'subscription.search_limits.used', 0)),
                 'cta' => (string) data_get($record->plan?->metadata, 'settings.cta', 'Choose plan'),
                 'popular' => (bool) data_get($record->plan?->metadata, 'settings.popular', false),
                 'trial_enabled' => (bool) data_get($record->plan?->metadata, 'subscription.trialEnabled', false),
@@ -1520,9 +1520,11 @@ class AdminListingRepository
             'users' => [
                 'name' => $record->name,
                 'email' => $record->email,
-                'current_plan_slug' => $record->current_plan_slug ?? 'free',
-                'credits' => (int) ($record->monthly_credits_remaining ?? 0),
-                'stripe_customer_id' => $record->stripe_customer_id,
+                'credits' => ($subscription = $record->subscriptions()->latest('created_at')->first())
+                    ? ((int) data_get($subscription->metadata, 'subscription.search_limits.limit', 0) === -1
+                        ? -1
+                        : max(0, (int) data_get($subscription->metadata, 'subscription.search_limits.limit', 0) - (int) data_get($subscription->metadata, 'subscription.search_limits.used', 0)))
+                    : 0,
                 'email_verified' => $record->email_verified_at !== null,
                 'free_search_used' => $record->free_search_used_at !== null,
                 // Never round-trips the hash - the field is write-only.

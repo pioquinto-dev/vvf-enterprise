@@ -246,13 +246,6 @@ class BillingService
         $searchBookmarksUsed = $this->entitlements->searchBookmarkCount($user);
         $videoAnalysisUsed = 0;
 
-        $user->forceFill([
-            'stripe_customer_id' => $customerId !== '' ? $customerId : $user->stripe_customer_id,
-            'current_plan_slug' => $plan->slug,
-            'monthly_credits_remaining' => max(0, $this->remainingSearchCreditsFrom($limits, $searchCreditsUsed)),
-            'plan_renews_at' => $endsAt,
-        ])->save();
-
         $existingSubscription = Subscription::query()->where('user_id', $user->id)->first();
 
         $subscription = $this->upsertUserSubscription($user, [
@@ -413,8 +406,10 @@ class BillingService
 
     private function ensureCustomer(User $user): string
     {
-        if (filled($user->stripe_customer_id)) {
-            return $user->stripe_customer_id;
+        $subscription = $this->entitlements->activeSubscriptionFor($user);
+
+        if (filled($subscription?->stripe_customer_id)) {
+            return $subscription->stripe_customer_id;
         }
 
         $customer = $this->stripe->createCustomer([
@@ -423,7 +418,9 @@ class BillingService
             'metadata' => ['user_id' => (string) $user->id],
         ]);
 
-        $user->forceFill(['stripe_customer_id' => $customer->id])->save();
+        $this->ensureSubscriptionRecord($user)->forceFill([
+            'stripe_customer_id' => $customer->id,
+        ])->save();
 
         return $customer->id;
     }
@@ -442,6 +439,20 @@ class BillingService
     public function searchCreditsRemaining(?User $user): int
     {
         return $this->entitlements->searchCreditsRemaining($user);
+    }
+
+    public function currentPlanSlug(?User $user): string
+    {
+        if ($user === null) {
+            return 'free';
+        }
+
+        return $this->entitlements->currentPlanSlug($user);
+    }
+
+    private function stripeCustomerId(User $user): ?string
+    {
+        return $this->entitlements->activeSubscriptionFor($user)?->stripe_customer_id;
     }
 
     public function searchCreditsUsed(?User $user): int
@@ -514,12 +525,14 @@ class BillingService
      */
     public function invoiceHistory(User $user, int $limit = 12): array
     {
-        if (blank($user->stripe_customer_id)) {
+        $customerId = $this->stripeCustomerId($user);
+
+        if (blank($customerId)) {
             return [];
         }
 
         $invoices = $this->stripe->listInvoices([
-            'customer' => $user->stripe_customer_id,
+            'customer' => $customerId,
             'limit' => max(1, min($limit, 24)),
         ]);
 
@@ -550,7 +563,9 @@ class BillingService
      */
     public function receiptDetails(User $user, string $invoiceId): ?array
     {
-        if (blank($user->stripe_customer_id) || blank($invoiceId)) {
+        $customerId = $this->stripeCustomerId($user);
+
+        if (blank($customerId) || blank($invoiceId)) {
             return null;
         }
 
@@ -563,7 +578,7 @@ class BillingService
         }
 
         // Guard against reading another customer's invoice by id-guessing.
-        if ((string) ($invoice->customer ?? '') !== (string) $user->stripe_customer_id) {
+        if ((string) ($invoice->customer ?? '') !== $customerId) {
             return null;
         }
 
@@ -615,12 +630,14 @@ class BillingService
      */
     public function paymentMethodSummary(User $user): ?array
     {
-        if (blank($user->stripe_customer_id)) {
+        $customerId = $this->stripeCustomerId($user);
+
+        if (blank($customerId)) {
             return null;
         }
 
         $methods = $this->stripe->listPaymentMethods([
-            'customer' => $user->stripe_customer_id,
+            'customer' => $customerId,
             'type' => 'card',
             'limit' => 1,
         ]);
@@ -707,7 +724,7 @@ class BillingService
             'Requested subscription cancellation at period end.',
             [
                 'subscription_id' => $subscription->id,
-                'plan' => data_get($subscription->metadata, 'plan_slug', $user->current_plan_slug),
+                'plan' => data_get($subscription->metadata, 'plan_slug', 'free'),
                 'stripe_subscription_id' => $subscription->stripe_subscription_id,
             ],
             'subscription:cancel-request:'.$subscription->id
@@ -741,7 +758,7 @@ class BillingService
             'Requested subscription reactivation.',
             [
                 'subscription_id' => $subscription->id,
-                'plan' => data_get($subscription->metadata, 'plan_slug', $user->current_plan_slug),
+                'plan' => data_get($subscription->metadata, 'plan_slug', 'free'),
                 'stripe_subscription_id' => $subscription->stripe_subscription_id,
             ],
             'subscription:reactivation-request:'.$subscription->id
@@ -754,18 +771,32 @@ class BillingService
         $existing = Subscription::query()
             ->where('user_id', $user->id)
             ->whereNull('deleted_at')
+            ->whereIn('status', ['active', 'trialing', 'pending', 'paid', 'free'])
+            ->orderByRaw("case when status = 'active' then 0 when status = 'trialing' then 1 when status = 'pending' then 2 when status = 'paid' then 3 else 4 end")
             ->first();
 
         if ($existing !== null) {
             return $existing;
         }
 
-        $plan = PricingPlan::query()->where('slug', $user->current_plan_slug)->first();
+        $plan = PricingPlan::query()->where('slug', 'free')->first();
         $searchCreditsUsed = $this->entitlements->searchCreditsUsed($user);
         $videoBookmarksUsed = $this->entitlements->videoBookmarkCount($user);
         $searchBookmarksUsed = $this->entitlements->searchBookmarkCount($user);
         $videoAnalysisUsed = $this->entitlements->videoAnalysisUsed($user);
-        $status = $user->current_plan_slug === 'free' ? 'free' : 'pending';
+        $status = 'free';
+
+        // The entitlement service may have created the missing metadata row
+        // while deriving usage. Reuse it rather than creating a duplicate.
+        $existing = Subscription::query()
+            ->where('user_id', $user->id)
+            ->whereNull('deleted_at')
+            ->whereIn('status', ['active', 'trialing', 'pending', 'paid', 'free'])
+            ->first();
+
+        if ($existing !== null) {
+            return $existing;
+        }
 
         return Subscription::query()->create([
             'id' => (string) Str::ulid(),
@@ -773,7 +804,7 @@ class BillingService
             'plan_id' => $plan?->id,
             'status' => $status,
             'current_period_starts_at' => CarbonImmutable::now(),
-            'current_period_ends_at' => $user->plan_renews_at,
+            'current_period_ends_at' => CarbonImmutable::now()->addMonth(),
             'metadata' => $plan !== null
                 ? $this->subscriptionMetadata($plan, $searchCreditsUsed, $videoBookmarksUsed, $searchBookmarksUsed, $videoAnalysisUsed)
                 : null,

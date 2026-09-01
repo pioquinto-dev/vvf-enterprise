@@ -89,9 +89,6 @@ class SendBrevoTestEmail extends Command
             'id' => 999999,
             'name' => $name,
             'email' => $email,
-            'current_plan_slug' => 'premium',
-            'monthly_credits_remaining' => 18,
-            'plan_renews_at' => CarbonImmutable::now()->addDays(14),
         ]);
     }
 

@@ -3945,7 +3945,20 @@
     border: 1px solid var(--line);
     background: linear-gradient(100deg, var(--paper) 30%, #fffdf5 50%, var(--paper) 70%);
     background-size: 220% 100%;
-    animation: bbShimmer 1.25s ease-in-out infinite;
+    animation: bbChipEnter 0.28s ease-out both, bbShimmer 1.25s ease-in-out infinite;
+}
+@keyframes bbChipEnter {
+    from {
+        opacity: 0;
+        transform: translateY(6px) scale(0.97);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+.bb .chip--expand-in {
+    animation: bbChipEnter 0.32s cubic-bezier(0.22, 0.61, 0.36, 1) both;
 }
 @keyframes bbShimmer {
     0% {
@@ -3962,6 +3975,13 @@
     border: 2px solid color-mix(in srgb, var(--yellow) 55%, transparent);
     border-top-color: var(--amber-ink);
     animation: bbSpin 0.8s linear infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+    .bb .chip-skel,
+    .bb .chip--expand-in,
+    .bb .chip-spin {
+        animation: none;
+    }
 }
 
 /* cadence */

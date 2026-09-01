@@ -23,11 +23,7 @@ class StripeWebhookProcessorBrevoTest extends TestCase
     {
         CarbonImmutable::setTestNow('2026-08-17 09:00:00');
 
-        $user = User::factory()->create([
-            'current_plan_slug' => 'basic',
-            'monthly_credits_remaining' => 8,
-            'plan_renews_at' => CarbonImmutable::now()->addMonth(),
-        ]);
+        $user = User::factory()->create();
 
         $plan = PricingPlan::query()->create([
             'id' => (string) str()->ulid(),
@@ -98,7 +94,7 @@ class StripeWebhookProcessorBrevoTest extends TestCase
 
         $processor->handle($event);
 
-        $this->assertSame('free', $user->fresh()->current_plan_slug);
+        $this->assertSame('free', app(\App\Services\Billing\BillingEntitlementService::class)->currentPlanSlug($user->fresh()));
         $this->assertSame('canceled', $subscription->fresh()->status);
     }
 
@@ -106,11 +102,7 @@ class StripeWebhookProcessorBrevoTest extends TestCase
     {
         CarbonImmutable::setTestNow('2026-08-29 01:13:19');
 
-        $user = User::factory()->create([
-            'current_plan_slug' => 'basic',
-            'monthly_credits_remaining' => 8,
-            'plan_renews_at' => CarbonImmutable::now()->addDays(14),
-        ]);
+        $user = User::factory()->create();
 
         $plan = PricingPlan::query()->create([
             'id' => (string) str()->ulid(),
@@ -186,18 +178,14 @@ class StripeWebhookProcessorBrevoTest extends TestCase
         $this->assertSame('active', $freshSubscription->status);
         $this->assertTrue((bool) data_get($freshSubscription->metadata, 'subscription.cancel_at_period_end'));
         $this->assertSame($cancelAt->toIso8601String(), data_get($freshSubscription->metadata, 'subscription.cancel_at'));
-        $this->assertSame('basic', $freshUser->current_plan_slug);
+        $this->assertSame('basic', app(\App\Services\Billing\BillingEntitlementService::class)->currentPlanSlug($freshUser));
     }
 
     public function test_final_failed_payment_transition_sends_failed_payment_email_instead_of_generic_cancellation(): void
     {
         CarbonImmutable::setTestNow('2026-08-29 01:13:19');
 
-        $user = User::factory()->create([
-            'current_plan_slug' => 'basic',
-            'monthly_credits_remaining' => 8,
-            'plan_renews_at' => CarbonImmutable::now()->addDays(14),
-        ]);
+        $user = User::factory()->create();
 
         $plan = PricingPlan::query()->create([
             'id' => (string) str()->ulid(),
@@ -268,15 +256,13 @@ class StripeWebhookProcessorBrevoTest extends TestCase
 
         $processor->handle($event);
 
-        $this->assertSame('free', $user->fresh()->current_plan_slug);
+        $this->assertSame('free', app(\App\Services\Billing\BillingEntitlementService::class)->currentPlanSlug($user->fresh()));
         $this->assertSame('unpaid', $subscription->fresh()->status);
     }
 
     public function test_checkout_finalization_copies_signup_utm_to_subscription_attribution(): void
     {
-        $user = User::factory()->create([
-            'stripe_customer_id' => 'cus_test_123',
-        ]);
+        $user = User::factory()->create();
 
         $plan = PricingPlan::query()->create([
             'id' => (string) str()->ulid(),

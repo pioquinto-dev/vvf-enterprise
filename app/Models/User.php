@@ -12,7 +12,7 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Notifications\Notifiable;
 
-#[Fillable(['name', 'email', 'password', 'stripe_customer_id', 'current_plan_slug', 'monthly_credits_remaining', 'plan_renews_at', 'free_search_used_at', 'preferences', 'deletion_requested_at', 'deletion_scheduled_for'])]
+#[Fillable(['name', 'email', 'password', 'free_search_used_at', 'preferences', 'deletion_requested_at', 'deletion_scheduled_for'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
@@ -29,7 +29,6 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
-            'plan_renews_at' => 'datetime',
             'free_search_used_at' => 'datetime',
             'preferences' => 'array',
             'deletion_requested_at' => 'datetime',

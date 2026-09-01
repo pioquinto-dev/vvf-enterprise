@@ -169,7 +169,7 @@ class SettingsController extends Controller
             'message' => 'Subscription cancellation scheduled. Access stays active until the end of the current billing period.',
             'analytics' => [
                 AnalyticsEvent::make('subscription_cancellation_requested', [
-                    'plan_slug' => (string) ($request->user()?->current_plan_slug ?? 'free'),
+                    'plan_slug' => $this->billingService->currentPlanSlug($request->user()),
                 ]),
             ],
         ]);
@@ -183,7 +183,7 @@ class SettingsController extends Controller
             'message' => 'Subscription reactivated. Auto-renew is back on.',
             'analytics' => [
                 AnalyticsEvent::make('subscription_reactivation_requested', [
-                    'plan_slug' => (string) ($request->user()?->current_plan_slug ?? 'free'),
+                    'plan_slug' => $this->billingService->currentPlanSlug($request->user()),
                 ]),
             ],
         ]);
@@ -218,13 +218,13 @@ class SettingsController extends Controller
             ->first();
 
         $limits = $this->billing->limitsForUser($user);
-        $fallbackPlan = PricingPlan::query()->where('slug', $user->current_plan_slug)->first();
-        $plan = $subscription?->status === 'pending' ? $fallbackPlan : ($subscription?->plan ?? $fallbackPlan);
+        $fallbackPlan = PricingPlan::query()->where('slug', $this->billing->currentPlanSlug($user))->first();
+        $plan = $subscription?->plan ?? $fallbackPlan;
         $billingCycle = (string) data_get($subscription?->metadata, 'settings.billing_cycle', 'monthly');
         $price = $billingCycle === 'annual'
             ? ($plan?->annual_amount ?? null)
             : ($plan?->amount ?? ($plan?->price_cents !== null ? ((int) $plan->price_cents / 100) : null));
-        $status = $subscription?->status === 'pending' ? ($user->current_plan_slug === 'free' ? 'free' : 'active') : ($subscription?->status ?? 'free');
+        $status = $subscription?->status ?? 'free';
         $videoAnalysisUsed = max(0, (int) data_get($subscription?->metadata, 'subscription.video_analysis.used', $limits['videoAnalysisUsed'] ?? 0));
         $cancelAtPeriodEnd = (bool) data_get($subscription?->metadata, 'subscription.cancel_at_period_end', false);
         $cancelAt = data_get($subscription?->metadata, 'subscription.cancel_at');
@@ -234,8 +234,8 @@ class SettingsController extends Controller
             : null;
         $renewsAt = $status === 'pending'
             ? null
-            : ($trialEndsAt ?? $subscription?->current_period_ends_at ?? $user->plan_renews_at);
-        $planSlug = $plan?->slug ?? ($user->current_plan_slug ?? 'free');
+            : ($trialEndsAt ?? $subscription?->current_period_ends_at);
+        $planSlug = $plan?->slug ?? $this->billing->currentPlanSlug($user);
         $paymentMethod = $this->safePaymentMethodSummary($user);
         $invoices = $this->safeInvoiceHistory($user);
 

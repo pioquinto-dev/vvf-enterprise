@@ -96,7 +96,7 @@ class HandleInertiaRequests extends Middleware
                 'events' => fn () => $analytics->pullForRequest($request),
             ],
             'billing' => [
-                'currentPlan' => $request->user()?->current_plan_slug ?? 'free',
+                'currentPlan' => $billing->currentPlanSlug($request->user()),
                 'searchCreditsRemaining' => $billing->searchCreditsRemaining($request->user()),
                 'searchCreditsUsed' => $billing->searchCreditsUsed($request->user()),
                 'searchCreditsLimit' => $limits['searchCreditsLimit'] ?? 0,

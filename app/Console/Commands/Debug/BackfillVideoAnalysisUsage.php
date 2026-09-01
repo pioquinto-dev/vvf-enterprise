@@ -93,10 +93,7 @@ class BackfillVideoAnalysisUsage extends Command
     private function usersToProcess(mixed $userArg)
     {
         if ($userArg === null || $userArg === '') {
-            return User::query()
-                ->whereNotNull('current_plan_slug')
-                ->orderBy('id')
-                ->get();
+            return User::query()->orderBy('id')->get();
         }
 
         $query = User::query();

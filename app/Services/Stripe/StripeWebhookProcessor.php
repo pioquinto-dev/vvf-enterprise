@@ -396,28 +396,16 @@ class StripeWebhookProcessor
         }
 
         if ($status === 'active' && $periodEnd !== null) {
-            $user->forceFill([
-                'current_plan_slug' => $plan->slug,
-                'monthly_credits_remaining' => $renewed
-                    ? max(0, (int) ($limits['searchLimit'] ?? 0))
-                    : $user->monthly_credits_remaining,
-                'plan_renews_at' => $periodEnd,
-            ])->save();
-
-            if ($renewed) {
-                $user->forceFill([
-                    'monthly_credits_remaining' => max(0, (int) ($limits['searchLimit'] ?? 0)),
-                ])->save();
-            }
-
             $this->billing->syncSubscriptionUsage($user, $plan);
         }
 
         if (in_array($status, ['canceled', 'unpaid', 'incomplete_expired'], true)) {
-            $user->forceFill([
-                'current_plan_slug' => 'free',
-                'monthly_credits_remaining' => 1,
-                'plan_renews_at' => CarbonImmutable::now()->addMonth(),
+            $freeSubscription = $this->billing->ensureSubscriptionRecord($user);
+            $freeMetadata = (array) $freeSubscription->metadata;
+            data_set($freeMetadata, 'subscription.search_limits.used', 0);
+            $freeSubscription->forceFill([
+                'stripe_customer_id' => $freeSubscription->stripe_customer_id ?: $subscription->stripe_customer_id,
+                'metadata' => $freeMetadata,
             ])->save();
 
             $this->activity?->record(

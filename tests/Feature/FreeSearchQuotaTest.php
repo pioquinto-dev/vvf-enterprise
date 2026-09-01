@@ -41,12 +41,8 @@ class FreeSearchQuotaTest extends TestCase
     {
         $user = User::factory()->create();
 
-        $user->forceFill([
-            'current_plan_slug' => 'free',
-            'monthly_credits_remaining' => 0,
-            'plan_renews_at' => null,
-            'free_search_used_at' => null,
-        ])->save();
+        $user->forceFill(['free_search_used_at' => null])->save();
+        $this->setSearchCredits($user, 0);
 
         return $user;
     }
@@ -93,7 +89,7 @@ class FreeSearchQuotaTest extends TestCase
 
         $this->assertSame(1, CustomKeywordSearch::where('user_id', $user->id)->count());
         $this->assertNotNull($user->refresh()->free_search_used_at);
-        $this->assertSame(0, (int) $user->monthly_credits_remaining);
+        $this->assertSame(0, $this->searchCreditsRemaining($user));
 
         // Round two: sign out, try the whole cycle again.
         Auth::logout();
@@ -131,7 +127,7 @@ class FreeSearchQuotaTest extends TestCase
 
         $id = $this->actingAs($user)->search()->assertCreated()->json('id');
 
-        $this->assertSame(0, (int) $user->refresh()->monthly_credits_remaining);
+        $this->assertSame(0, $this->searchCreditsRemaining($user));
         $this->assertNotNull($user->free_search_used_at);
 
         // Searches are soft-deleted, so the old "do any rows exist?" check came
@@ -150,41 +146,39 @@ class FreeSearchQuotaTest extends TestCase
 
         $this->actingAs($user)->search()->assertCreated();
 
-        // Simulate a plan that has expired and needs resetting.
-        $user->forceFill([
-            'current_plan_slug' => 'basic',
-            'plan_renews_at' => now()->subDay(),
-        ])->save();
+        // Simulate a billing period that has expired and needs resetting.
+        $user->subscriptions()->update(['current_period_ends_at' => now()->subDay()]);
 
         $this->actingAs($user)
             ->search(['phrase' => 'korean skincare', 'keywords' => ['korean skincare']])
             ->assertCreated();
 
-        $this->assertSame('free', $user->refresh()->current_plan_slug);
-        $this->assertSame(0, (int) $user->monthly_credits_remaining);
-        $this->assertNotNull($user->plan_renews_at);
+        $this->assertSame('free', app(\App\Services\Billing\BillingService::class)->currentPlanSlug($user));
+        $this->assertSame(0, $this->searchCreditsRemaining($user));
+
+        $subscription = $user->subscriptions()->first();
+        $this->assertNotNull($subscription->current_period_ends_at);
+        $this->assertTrue($subscription->current_period_ends_at->isFuture());
     }
 
     public function test_a_free_user_gets_one_new_search_when_the_month_renews(): void
     {
         $user = $this->freeUser();
 
-        $user->forceFill([
-            'monthly_credits_remaining' => 0,
-            'free_search_used_at' => now()->subMonth(),
-            'plan_renews_at' => now()->subDay(),
-        ])->save();
+        $user->forceFill(['free_search_used_at' => now()->subMonth()])->save();
+        $user->subscriptions()->update(['current_period_ends_at' => now()->subDay()]);
+        $this->setSearchCredits($user, 0);
 
         $this->actingAs($user)
             ->search(['phrase' => 'korean skincare', 'keywords' => ['korean skincare']])
             ->assertCreated();
 
-        $user->refresh();
+        $this->assertSame('free', app(\App\Services\Billing\BillingService::class)->currentPlanSlug($user));
+        $this->assertSame(0, $this->searchCreditsRemaining($user));
 
-        $this->assertSame('free', $user->current_plan_slug);
-        $this->assertSame(0, (int) $user->monthly_credits_remaining);
-        $this->assertNotNull($user->plan_renews_at);
-        $this->assertTrue($user->plan_renews_at->isFuture());
+        $subscription = $user->subscriptions()->first();
+        $this->assertNotNull($subscription->current_period_ends_at);
+        $this->assertTrue($subscription->current_period_ends_at->isFuture());
     }
 
     public function test_a_guest_cannot_re_search_the_same_keywords_for_free(): void
@@ -207,15 +201,15 @@ class FreeSearchQuotaTest extends TestCase
         config()->set('features.bypass_paid_features', true);
 
         $user = $this->freeUser();
-        $user->forceFill(['monthly_credits_remaining' => 2])->save();
+        $this->setSearchCredits($user, 2);
 
         $id = $this->actingAs($user)->search()->assertCreated()->json('id');
 
         CustomKeywordSearch::findOrFail($id)->runs()->update(['status' => 'done', 'completed_at' => now()]);
-        $this->assertSame(1, (int) $user->refresh()->monthly_credits_remaining);
+        $this->assertSame(1, $this->searchCreditsRemaining($user));
 
         $this->actingAs($user)->postJson("/saved-searches/{$id}/refresh")->assertOk();
-        $this->assertSame(0, (int) $user->refresh()->monthly_credits_remaining);
+        $this->assertSame(0, $this->searchCreditsRemaining($user));
 
         CustomKeywordSearch::findOrFail($id)->runs()->update(['status' => 'done', 'completed_at' => now()]);
 

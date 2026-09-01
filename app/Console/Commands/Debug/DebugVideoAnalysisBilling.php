@@ -30,8 +30,8 @@ class DebugVideoAnalysisBilling extends Command
 
         $this->info("Video analysis billing debug for {$user->email} ({$user->id})");
         $this->table(['Field', 'Value'], [
-            ['current_plan_slug', $user->current_plan_slug ?? '(null)'],
-            ['plan_renews_at', $user->plan_renews_at?->toIso8601String() ?? '(null)'],
+            ['current_plan_slug', $billing->currentPlanSlug($user)],
+            ['plan_renews_at', $billing->ensureSubscriptionRecord($user)->current_period_ends_at?->toIso8601String() ?? '(null)'],
             ['billing.videoAnalysisLimit', (string) ($limits['videoAnalysisLimit'] ?? 0)],
             ['billing.videoAnalysisUsed', (string) ($limits['videoAnalysisUsed'] ?? 0)],
             ['billing.searchCreditsLimit', (string) ($limits['searchCreditsLimit'] ?? 0)],

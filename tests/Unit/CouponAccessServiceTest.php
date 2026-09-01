@@ -152,10 +152,12 @@ class CouponAccessServiceTest extends TestCase
     public function test_paid_account_is_blocked_with_contact_prompt_copy(): void
     {
         $program = $this->vip();
-        $user = User::factory()->create([
-            'email' => 'exec@vip.com',
-            'current_plan_slug' => 'basic',
-            'plan_renews_at' => now()->addMonth(),
+        $user = User::factory()->create(['email' => 'exec@vip.com']);
+        Subscription::create([
+            'id' => (string) \Illuminate\Support\Str::ulid(),
+            'user_id' => $user->id,
+            'status' => 'active',
+            'current_period_ends_at' => now()->addMonth(),
         ]);
         $program->whitelistEntries()->create(['email' => 'exec@vip.com']);
 
@@ -198,7 +200,7 @@ class CouponAccessServiceTest extends TestCase
     public function test_vip_blocks_reverted_to_free(): void
     {
         $program = $this->vip();
-        $user = User::factory()->create(['email' => 'exec@vip.com', 'current_plan_slug' => 'free']);
+        $user = User::factory()->create(['email' => 'exec@vip.com']);
         $program->whitelistEntries()->create(['email' => 'exec@vip.com']);
         Subscription::create([
             'user_id' => $user->id,

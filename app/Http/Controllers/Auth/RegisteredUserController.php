@@ -59,9 +59,6 @@ class RegisteredUserController extends Controller
             'name' => $validated['name'],
             'email' => $validated['email'],
             'password' => Hash::make($validated['password']),
-            'current_plan_slug' => 'free',
-            'monthly_credits_remaining' => 1,
-            'plan_renews_at' => CarbonImmutable::now()->addMonth(),
         ]);
 
         event(new Registered($user));

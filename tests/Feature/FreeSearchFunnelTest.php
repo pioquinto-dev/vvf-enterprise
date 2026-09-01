@@ -52,8 +52,6 @@ class FreeSearchFunnelTest extends TestCase
     {
         $user = User::factory()->create([
             'email' => 'existing@example.com',
-            'current_plan_slug' => 'free',
-            'monthly_credits_remaining' => 0,
             'free_search_used_at' => now()->subDay(),
         ]);
 

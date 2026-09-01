@@ -156,10 +156,7 @@ class UserVideoAnalysisProcessorTest extends TestCase
             ],
         ]);
 
-        $user = User::factory()->create([
-            'current_plan_slug' => 'basic',
-            'plan_renews_at' => now()->addMonth(),
-        ]);
+        $user = User::factory()->create();
 
         Subscription::query()->create([
             'id' => (string) Str::ulid(),

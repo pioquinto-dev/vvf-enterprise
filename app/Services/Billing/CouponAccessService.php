@@ -143,7 +143,7 @@ class CouponAccessService
      */
     public function hasRevertedToFreeAfterFailedPayment(User $user): bool
     {
-        if (($user->current_plan_slug ?? 'free') !== 'free') {
+        if ($this->billing->currentPlanSlug($user) !== 'free') {
             return false;
         }
 

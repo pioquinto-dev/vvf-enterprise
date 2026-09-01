@@ -238,11 +238,8 @@ class AdminListingMutator
 
         $subscription->save();
 
-        // Credits live on the account, not the subscription row.
-        if (array_key_exists('credits', $input) && $input['credits'] !== null && $subscription->user) {
-            $subscription->user->forceFill([
-                'monthly_credits_remaining' => max(0, (int) $input['credits']),
-            ])->save();
+        if (array_key_exists('credits', $input) && $input['credits'] !== null) {
+            $this->setSearchCreditsRemaining($subscription, (int) $input['credits']);
         }
 
         // The allowance fields belong to the plan, so editing them here changes
@@ -265,14 +262,22 @@ class AdminListingMutator
      */
     private function updateUser(User $user, array $input): void
     {
-        foreach (['name', 'email', 'current_plan_slug', 'stripe_customer_id'] as $field) {
+        foreach (['name', 'email'] as $field) {
             if (array_key_exists($field, $input) && $input[$field] !== null) {
                 $user->{$field} = (string) $input[$field];
             }
         }
 
         if (array_key_exists('credits', $input) && $input['credits'] !== null) {
-            $user->monthly_credits_remaining = max(0, (int) $input['credits']);
+            $subscription = $user->subscriptions()
+                ->whereIn('status', ['active', 'trialing', 'pending', 'paid', 'free'])
+                ->orderByRaw("case when status = 'active' then 0 when status = 'trialing' then 1 when status = 'pending' then 2 when status = 'paid' then 3 else 4 end")
+                ->latest('created_at')
+                ->first();
+
+            if ($subscription !== null) {
+                $this->setSearchCreditsRemaining($subscription, (int) $input['credits']);
+            }
         }
 
         // These two are timestamps the product reads as flags. Toggling one on
@@ -293,6 +298,20 @@ class AdminListingMutator
         }
 
         $user->save();
+    }
+
+    private function setSearchCreditsRemaining(Subscription $subscription, int $remaining): void
+    {
+        $metadata = (array) $subscription->metadata;
+        $limit = max($remaining, (int) data_get($metadata, 'subscription.search_limits.limit', 0));
+
+        if ($limit === -1) {
+            return;
+        }
+
+        data_set($metadata, 'subscription.search_limits.used', max(0, $limit - max(0, min($limit, $remaining))));
+
+        $subscription->forceFill(['metadata' => $metadata])->save();
     }
 
     /**
