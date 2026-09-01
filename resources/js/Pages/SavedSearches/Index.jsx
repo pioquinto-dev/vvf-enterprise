@@ -260,7 +260,7 @@ export default function Index({
   useEffect(() => {
     let cancelled = false;
 
-    if (tab === 'videos' && !bookmarkedVideosLoaded && !bookmarkedVideosLoading) {
+    if (tab === 'videos' && !bookmarkedVideosLoaded) {
       setBookmarkedVideosLoading(true);
       fetchBookmarkedVideos()
         .then((payload) => {
@@ -278,7 +278,7 @@ export default function Index({
         });
     }
 
-    if (tab === 'analysis' && !analysisHistoryLoaded && !analysisHistoryLoading) {
+    if (tab === 'analysis' && !analysisHistoryLoaded) {
       setAnalysisHistoryLoading(true);
       fetchAnalysisHistory()
         .then((payload) => {
@@ -301,9 +301,7 @@ export default function Index({
     };
   }, [
     analysisHistoryLoaded,
-    analysisHistoryLoading,
     bookmarkedVideosLoaded,
-    bookmarkedVideosLoading,
     tab,
   ]);
 
