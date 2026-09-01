@@ -153,7 +153,7 @@ function GlanceStrip({ stats }) {
           <div className={`gl__d${outliersDelta >= 0 ? ' up' : ''}`}>{upArrow}{fmtDelta(outliersDelta)} vs last</div>
         </div>
         <div className="gl">
-          <div className="gl__l">Avg outlier score</div>
+          <div className="gl__l">Avg Breakout Score</div>
           <div className="gl__v">{avgScore}×</div>
           <div className="gl__d">above baseline</div>
         </div>
@@ -456,7 +456,15 @@ export default function Dashboard() {
         markTrackedAsPrompted(trackedChanges.failed, { failedPromptShown: true });
       }
 
-      setCompletionModal(trackedChanges);
+      // Search usage is charged when the run starts, but this dashboard is
+      // already mounted when it finishes. Refresh the shared entitlement prop
+      // before showing the completion prompt so the header is immediately true.
+      router.reload({
+        only: ['billing'],
+        preserveScroll: true,
+        preserveState: true,
+        onFinish: () => setCompletionModal(trackedChanges),
+      });
     }
   };
 

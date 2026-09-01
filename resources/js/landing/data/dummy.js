@@ -30,7 +30,7 @@ export const FEATURES = [
     tag: 'Discovery',
     title: 'Outlier Vault',
     body: "Surface the TikToks in your category that broke out this week. The ones running 10× above the creator's own baseline, not just the ones with big follower counts.",
-    bullets: ['Outlier scoring vs creator baseline', 'Last 7 / 30 / 90 day windows', 'Sound, hashtag and format tags'],
+    bullets: ['Breakout Score vs creator baseline', 'Last 7 / 30 / 90 day windows', 'Sound, hashtag and format tags'],
     accent: 'from-[#3a2b6b] to-[#8b3df0]',
   },
   {
@@ -110,7 +110,7 @@ export const TESTIMONIALS = [
   },
   {
     quote:
-      'The outlier scoring is the part that matters. Big accounts posting mediocre videos are noise. Brand Beacon filters those out by default.',
+      'The Breakout Score is the part that matters. Big accounts posting mediocre videos are noise. Brand Beacon filters those out by default.',
     name: 'Nina Sethi',
     role: 'Social Director',
     company: 'Sunset Soda Co.',
@@ -307,7 +307,7 @@ export const FAQS = [
   },
   {
     q: 'Is the data real-time?',
-    a: 'Effectively, yes. Our collection infrastructure tracks Tiktok at scale and routes new videos through the index within hours of them going live. Every index video is continuously re-evaluated against our outlier scoring engine, so the rankings you see are always tied to live performance.',
+    a: 'Effectively, yes. Our collection infrastructure tracks Tiktok at scale and routes new videos through the index within hours of them going live. Every index video is continuously re-evaluated by our Breakout Score engine, so the rankings you see are always tied to live performance.',
   }
 ];
 

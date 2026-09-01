@@ -990,7 +990,7 @@ export default function DetailScreen({
           <span className="rs-stt__d">{search?.last_run_at ? `all from the ${formatDate(search.last_run_at)} refresh` : 'this run'}</span>
         </div>
         <div className="rs-stt hi">
-          <span className="rs-stt__k">Top outlier score</span>
+          <span className="rs-stt__k">Top Breakout Score</span>
           <span className="rs-stt__v">{compact(topMultiple ?? 0)}<small>×</small></span>
           <span className="rs-stt__d">{medianViews ? `vs ${compact(medianViews)} median views` : '—'}</span>
         </div>
@@ -1016,13 +1016,13 @@ export default function DetailScreen({
             : '3rd run+';
         return (
         <>
-          <div className="rs-sh"><h2>Outlier videos</h2><span className="rs-note">Their posts that beat the search median, ranked by outlier score.</span></div>
+          <div className="rs-sh"><h2>Outlier videos</h2><span className="rs-note">Their posts that beat the search median, ranked by Breakout Score.</span></div>
           <div className={`rs-winner rs-winner--run-${winnerBucket}`}>
             <div className="rs-wmedia">
               <VideoFrame video={winner} winner showStats={false} isPlaying={videoPlayingId === winner.id} onTogglePlay={() => setVideoPlayingId((v) => v === winner.id ? null : winner.id)} />
               <div className="rs-oc__ov">
                 <div className="rs-ovchip rs-ovchip--out">
-                  <div className="rs-ovchip__l">Outlier score</div>
+                  <div className="rs-ovchip__l">Breakout Score</div>
                   <div className="rs-ovchip__n">{compact(winner.multiple ?? winner.score ?? 0)}×</div>
                 </div>
                 <div className="rs-ovchip rs-ovchip--views">
@@ -1099,7 +1099,7 @@ export default function DetailScreen({
               <span className="rs-sortsel">
                 <span className="rs-sortsel__pre">Sort:</span>
                 <select value={sortKey} onChange={(e) => setSortKey(e.target.value)}>
-                  <option value="outlier">Outlier score</option>
+                  <option value="outlier">Breakout Score</option>
                   <option value="views">Views</option>
                   <option value="date">Date posted</option>
                 </select>
@@ -1601,7 +1601,7 @@ function VideoFrame({ video, winner = false, showStats = true, isPlaying, onTogg
       {isPlaying && <button className="rs-vf__close" onClick={onTogglePlay} aria-label="Close video preview">×</button>}
       {!isPlaying && showStats && <div className="rs-vf__stats">
         <div className="rs-vchip rs-vchip--out">
-          <div className="rs-vchip__l">Outlier score</div>
+          <div className="rs-vchip__l">Breakout Score</div>
           <div className="rs-vchip__n">{compact(video.multiple ?? video.score ?? 0)}×</div>
         </div>
         <div className="rs-vchip rs-vchip--views">
@@ -1672,7 +1672,7 @@ function OutlierCard({ video, runBucket = 'old', expanded, locked = false, onTog
       <div className="rs-oc__b">
         <div className="rs-oc__ov">
           <div className="rs-ovchip rs-ovchip--out">
-            <div className="rs-ovchip__l">Outlier score</div>
+          <div className="rs-ovchip__l">Breakout Score</div>
             <div className="rs-ovchip__n">{compact(video.multiple ?? video.score ?? 0)}×</div>
           </div>
           <div className="rs-ovchip rs-ovchip--views">

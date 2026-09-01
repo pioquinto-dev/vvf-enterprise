@@ -10,7 +10,7 @@ const STAGES = [
   'Starting the scrape',
   'Pulling videos from TikTok',
   'Filtering against your keywords',
-  'Ranking by outlier score',
+  'Ranking by Breakout Score',
 ];
 
 /**

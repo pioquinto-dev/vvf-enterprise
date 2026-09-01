@@ -30,7 +30,7 @@ const STAGE_LIST = [
   { key: 'start',   label: 'Starting the scrape' },
   { key: 'pull',    label: 'Pulling videos from TikTok' },
   { key: 'filter',  label: 'Filtering against your keywords' },
-  { key: 'rank',    label: 'Ranking by outlier score' },
+  { key: 'rank',    label: 'Ranking by Breakout Score' },
 ];
 
 /* animate the stages while a run is in flight — the API's status text is

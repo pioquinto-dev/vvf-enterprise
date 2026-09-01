@@ -28,7 +28,7 @@ const SORT_OPTIONS = {
 };
 
 const VIDEO_SORT = {
-  score: 'Outlier score',
+  score: 'Breakout Score',
   views: 'Views',
   recent: 'Most recent',
 };
@@ -42,7 +42,7 @@ const ANALYSIS_STATUS_LABELS = {
 const ANALYSIS_SORT = {
   recent: 'Most Recent',
   oldest: 'Oldest First',
-  outlier: 'Outlier Score',
+  outlier: 'Breakout Score',
   az: 'A-Z (by title)',
   za: 'Z-A (by title)',
 };

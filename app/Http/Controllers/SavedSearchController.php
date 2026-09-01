@@ -265,7 +265,7 @@ class SavedSearchController extends Controller
             ->whereBetween('created_at', [$twoWeeksAgo, $weekAgo])
             ->count();
 
-        // Avg outlier score = average of each search's most recent snapshot
+        // Average Breakout Score = each search's most recent snapshot
         // `top_multiple`, rounded to a whole "N×".
         $latestPerSearch = CustomKeywordSearchSnapshot::query()
             ->selectRaw('custom_keyword_search_id, MAX(captured_at) as latest_at')

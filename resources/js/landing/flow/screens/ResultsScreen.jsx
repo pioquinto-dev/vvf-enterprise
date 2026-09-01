@@ -274,7 +274,7 @@ export default function ResultsScreen({
           <b className="muted">{results.length}</b> matched your keywords
         </p>
         <span className="inline-flex items-center gap-2 rounded-lg border border-black/[.08] px-3 py-1.5 text-[12.5px] font-semibold dark:border-white/[.12]">
-          <Trend className="h-3 w-3 text-hot" /> Sorted by outlier score
+          <Trend className="h-3 w-3 text-hot" /> Sorted by Breakout Score
         </span>
       </div>
 
