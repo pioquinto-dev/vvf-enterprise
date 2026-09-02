@@ -740,14 +740,33 @@ class BillingEntitlementService
             'metadata' => $this->subscriptionMetadata(
                 $plan,
                 $searchCreditsUsed,
-                $this->derivedVideoBookmarkUsed($user),
+                // A subscription does not exist yet, so these must not use
+                // entitlement helpers that resolve the user's subscription.
+                $user->videoBookmarks()->count(),
                 $this->searchBookmarkCount($user),
-                $this->derivedVideoAnalysisUsed($user),
+                $this->bootstrapVideoAnalysisUsed($user),
                 'monthly',
                 $now,
                 $endsAt,
             ),
         ]);
+    }
+
+    private function bootstrapVideoAnalysisUsed(User $user): int
+    {
+        return VideoAnalysis::query()
+            ->where('user_id', $user->id)
+            ->where('counts_toward_quota', true)
+            ->where(function ($builder): void {
+                $builder
+                    ->where(function ($complete): void {
+                        $complete
+                            ->where('status', VideoAnalysis::STATUS_COMPLETE)
+                            ->whereNotNull('analyzed_at');
+                    })
+                    ->orWhere('status', VideoAnalysis::STATUS_PROCESSING);
+            })
+            ->count();
     }
 
     private function subscriptionMetadata(PricingPlan $plan, int $searchCreditsUsed, int $videoBookmarksUsed, int $searchBookmarksUsed, int $videoAnalysisUsed, string $billingCycle = 'monthly', ?CarbonImmutable $periodStart = null, ?CarbonImmutable $periodEnd = null, array $existingMetadata = []): array

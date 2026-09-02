@@ -44,6 +44,8 @@ return [
         'client_id' => env('GOOGLE_CLIENT_ID'),
         'client_secret' => env('GOOGLE_CLIENT_SECRET'),
         'redirect' => env('GOOGLE_REDIRECT_URI'),
+        'connect_timeout' => (float) env('GOOGLE_CONNECT_TIMEOUT', 3),
+        'timeout' => (float) env('GOOGLE_TIMEOUT', 12),
     ],
 
     'analytics' => [

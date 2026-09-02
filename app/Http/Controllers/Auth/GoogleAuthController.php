@@ -3,16 +3,17 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\FreeSearchFunnelController;
+use App\Jobs\SendRegistrationEmails;
+use App\Models\PricingPlan;
 use App\Models\User;
+use App\Services\Admin\UserActivityService;
 use App\Services\Analytics\AnalyticsEvent;
 use App\Services\Analytics\AnalyticsEventManager;
-use App\Services\Admin\UserActivityService;
 use App\Services\Auth\PostAuthenticationRedirector;
-use App\Services\Brevo\BrevoLifecycleEmailService;
 use App\Services\Billing\BillingService;
 use App\Services\CustomKeywordSearch\SavedSearchManager;
 use App\Support\TrialCheckoutIntent;
-use Carbon\CarbonImmutable;
+use GuzzleHttp\Client;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -20,7 +21,9 @@ use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 use Laravel\Socialite\Facades\Socialite;
+use Laravel\Socialite\Two\GoogleProvider;
 use Throwable;
 
 class GoogleAuthController extends Controller
@@ -29,7 +32,6 @@ class GoogleAuthController extends Controller
 
     public function __construct(
         private readonly PostAuthenticationRedirector $redirector,
-        private readonly BrevoLifecycleEmailService $emails,
         private readonly UserActivityService $activity,
         private readonly SavedSearchManager $searches,
         private readonly BillingService $billing,
@@ -38,17 +40,14 @@ class GoogleAuthController extends Controller
 
     public function redirect(Request $request): RedirectResponse
     {
-        return Socialite::driver('google')
-            ->redirectUrl($this->redirectUrl($request))
+        return $this->googleDriver($request)
             ->redirect();
     }
 
     public function callback(Request $request): RedirectResponse
     {
         try {
-            $googleUser = Socialite::driver('google')
-                ->redirectUrl($this->redirectUrl($request))
-                ->user();
+            $googleUser = $this->googleDriver($request)->user();
         } catch (Throwable) {
             return redirect()->route('login')->withErrors([
                 'email' => 'Google sign-in could not be completed. Please try again.',
@@ -64,7 +63,6 @@ class GoogleAuthController extends Controller
         }
 
         $user = User::withTrashed()->firstWhere('email', $email);
-
         if ($user?->trashed()) {
             return redirect()->route('login')->withErrors([
                 'email' => 'This account has already been deleted.',
@@ -81,7 +79,7 @@ class GoogleAuthController extends Controller
             ]);
 
             event(new Registered($user));
-            $this->emails->sendNewRegistration($user);
+            SendRegistrationEmails::dispatch($user->id);
             $this->billing->ensureSubscriptionRecord($user);
         } elseif (! $user->email_verified_at) {
             $user->forceFill([
@@ -99,7 +97,6 @@ class GoogleAuthController extends Controller
         }
         $this->activity->record($user, 'engagement', 'logged_in', 'Logged in.');
         $request->session()->regenerate();
-
         if ($checkoutRedirect = $this->checkoutRedirect($request, $user)) {
             return $checkoutRedirect;
         }
@@ -124,7 +121,7 @@ class GoogleAuthController extends Controller
                 // "report is still building" popup on first arrival.
                 return redirect()->to($search->url())
                     ->with('free_search_new', true);
-            } catch (\Illuminate\Validation\ValidationException $exception) {
+            } catch (ValidationException $exception) {
                 return redirect()->route('dashboard')->with('search_access_prompt', [
                     'reason' => 'search_credit_exhausted',
                     'phrase' => $pending['phrase'] ?? '',
@@ -138,7 +135,30 @@ class GoogleAuthController extends Controller
 
     private function redirectUrl(Request $request): string
     {
+        $configuredUrl = trim((string) config('services.google.redirect', ''));
+
+        if (filter_var($configuredUrl, FILTER_VALIDATE_URL) !== false) {
+            return $configuredUrl;
+        }
+
+        // Local development can omit GOOGLE_REDIRECT_URI. Production must use
+        // the configured value because Google requires an exact URI match.
         return $request->getSchemeAndHttpHost().'/auth/google/callback';
+    }
+
+    private function googleDriver(Request $request): GoogleProvider
+    {
+        /** @var GoogleProvider $provider */
+        $provider = Socialite::driver('google');
+
+        // Google is required for sign-in, but an unbounded token exchange can
+        // otherwise hold the PHP-FPM request until Nginx returns a 504.
+        $provider->setHttpClient(new Client([
+            'connect_timeout' => (float) config('services.google.connect_timeout', 3),
+            'timeout' => (float) config('services.google.timeout', 12),
+        ]));
+
+        return $provider->redirectUrl($this->redirectUrl($request));
     }
 
     private function checkoutRedirect(Request $request, User $user): ?RedirectResponse
@@ -149,7 +169,7 @@ class GoogleAuthController extends Controller
             return null;
         }
 
-        $plan = \App\Models\PricingPlan::query()->where('slug', $intent['plan_slug'])->first();
+        $plan = PricingPlan::query()->where('slug', $intent['plan_slug'])->first();
 
         if ($plan === null) {
             return null;
@@ -160,7 +180,7 @@ class GoogleAuthController extends Controller
 
         try {
             return redirect()->away($this->billing->checkout($user, $plan, $withTrial, $cycle));
-        } catch (\Illuminate\Validation\ValidationException $exception) {
+        } catch (ValidationException $exception) {
             if ($withTrial && isset($exception->errors()['trial'])) {
                 return redirect()->route('plans')->with('trial_access_prompt', [
                     'reason' => 'already_used',

@@ -67,6 +67,7 @@ Notes:
 
 - Requires ngrok to be installed and authenticated.
 - On Windows it also opens helper consoles for Stripe forwarding, queue/server logs, and formatted error tails.
+- `composer dev` keeps `GOOGLE_REDIRECT_URI` aligned with its current ngrok URL.
 
 ### Testing and diagnostics
 
@@ -103,7 +104,7 @@ Inspect scheduler entries.
 
 #### `php artisan queue:work`
 
-Required for queued flows like saved-search refreshes, media archiving, and video-analysis jobs.
+Required for queued flows like registration emails, saved-search refreshes, media archiving, and video-analysis jobs.
 
 ### Domain-specific Artisan commands
 
@@ -598,6 +599,11 @@ Important:
 ## Environment variables to know
 
 - `APP_URL`
+- `GOOGLE_CLIENT_ID`
+- `GOOGLE_CLIENT_SECRET`
+- `GOOGLE_REDIRECT_URI`
+- `GOOGLE_CONNECT_TIMEOUT`
+- `GOOGLE_TIMEOUT`
 - `DB_*`
 - `APIFY_TOKEN`
 - `APIFY_TASK_IDS`

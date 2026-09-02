@@ -3,18 +3,17 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\FreeSearchFunnelController;
+use App\Jobs\SendRegistrationEmails;
 use App\Models\PricingPlan;
 use App\Models\User;
+use App\Services\Admin\UserActivityService;
 use App\Services\Analytics\AnalyticsEvent;
 use App\Services\Analytics\AnalyticsEventManager;
-use App\Services\Admin\UserActivityService;
 use App\Services\Auth\PostAuthenticationRedirector;
 use App\Services\Billing\BillingService;
-use App\Services\Brevo\BrevoLifecycleEmailService;
 use App\Services\CustomKeywordSearch\SavedSearchManager;
 use App\Services\Utm\UtmAttributionService;
 use App\Support\TrialCheckoutIntent;
-use Carbon\CarbonImmutable;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -22,6 +21,7 @@ use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rules;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
@@ -33,7 +33,6 @@ class RegisteredUserController extends Controller
     public function __construct(
         private readonly PostAuthenticationRedirector $redirector,
         private readonly BillingService $billing,
-        private readonly BrevoLifecycleEmailService $emails,
         private readonly SavedSearchManager $searches,
         private readonly UtmAttributionService $utmAttributionService,
         private readonly UserActivityService $activity,
@@ -63,8 +62,7 @@ class RegisteredUserController extends Controller
 
         event(new Registered($user));
         $this->utmAttributionService->createSignupAttribution($user, $request);
-        $this->emails->sendNewRegistration($user);
-        $this->emails->sendVerifyEmail($user);
+        SendRegistrationEmails::dispatch($user->id, sendVerificationEmail: true);
         $this->billing->ensureSubscriptionRecord($user);
         Auth::login($user);
         $this->activity->record($user, 'sign_up', 'account_created', 'Created account.');
@@ -127,7 +125,7 @@ class RegisteredUserController extends Controller
 
         try {
             return Inertia::location($this->billing->checkout($user, $plan, $withTrial, $cycle));
-        } catch (\Illuminate\Validation\ValidationException $exception) {
+        } catch (ValidationException $exception) {
             if ($withTrial && isset($exception->errors()['trial'])) {
                 return redirect()->route('plans')->with('trial_access_prompt', [
                     'reason' => 'already_used',
@@ -178,7 +176,7 @@ class RegisteredUserController extends Controller
             return redirect()->route('dashboard')
                 ->with('tracked_searches', $tracked)
                 ->with('processing_searches', $tracked);
-        } catch (\Illuminate\Validation\ValidationException $exception) {
+        } catch (ValidationException $exception) {
             return redirect()->route('dashboard')->with('search_access_prompt', [
                 'reason' => 'search_credit_exhausted',
                 'phrase' => $pending['phrase'] ?? '',

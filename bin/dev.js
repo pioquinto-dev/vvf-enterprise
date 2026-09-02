@@ -93,7 +93,9 @@ async function waitForNgrokUrl() {
 
 async function updateAppUrl(url) {
     const current = await readFile(envPath, 'utf8');
-    const next = upsertEnvValue(current, 'APP_URL', url);
+    let next = upsertEnvValue(current, 'APP_URL', url);
+    next = upsertEnvValue(next, 'GOOGLE_REDIRECT_URI', `${url}/auth/google/callback`);
+
     await writeFile(envPath, next, 'utf8');
 }
 
