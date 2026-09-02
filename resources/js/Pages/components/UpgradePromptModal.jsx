@@ -53,9 +53,11 @@ export default function UpgradePromptModal({
             <button type="button" className="btn btn--y" onClick={onPrimary}>
               {primaryLabel}
             </button>
-            <button type="button" className="btn btn--g" onClick={handleSecondary}>
-              {secondaryLabel}
-            </button>
+            {secondaryLabel && (
+              <button type="button" className="btn btn--g" onClick={handleSecondary}>
+                {secondaryLabel}
+              </button>
+            )}
           </div>
         </div>
       </div>

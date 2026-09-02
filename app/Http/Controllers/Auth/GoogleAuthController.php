@@ -102,6 +102,13 @@ class GoogleAuthController extends Controller
         }
 
         if ($pending = FreeSearchFunnelController::pull($request)) {
+            if ($this->billing->hasPaidPlan($user)) {
+                return redirect()->route('dashboard')->with('search_access_prompt', [
+                    'reason' => 'public_free_search_unavailable',
+                    'message' => 'This public free search is only available before starting a subscription. Use your plan\'s search credits from the dashboard.',
+                ]);
+            }
+
             try {
                 $this->billing->ensureCanCreateSearch($user);
                 $search = $this->searches->create(

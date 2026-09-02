@@ -6,9 +6,9 @@ use App\Models\ManagedCouponProgram;
 use App\Models\PricingPlan;
 use App\Models\Subscription;
 use App\Models\User;
+use App\Services\Admin\UserActivityService;
 use App\Services\Analytics\AnalyticsEvent;
 use App\Services\Analytics\AnalyticsEventManager;
-use App\Services\Admin\UserActivityService;
 use App\Services\Brevo\BrevoLifecycleEmailService;
 use App\Services\Stripe\StripeClient;
 use App\Services\Utm\UtmAttributionService;
@@ -274,6 +274,9 @@ class BillingService
             'trial_ends_at' => $trialEndsAt,
             'metadata' => $this->subscriptionMetadata($plan, $searchCreditsUsed, $videoBookmarksUsed, $searchBookmarksUsed, $videoAnalysisUsed, $billingCycle, $now, $endsAt),
         ]);
+
+        // A subscription replaces the one-time public free-search offer.
+        $this->markFreeSearchUsed($user);
 
         $this->utmAttributionService->createSubscriptionAttribution($user, $subscriptionId);
         $this->activity?->record($user, 'subscription', $status === 'trialing' ? 'trial_started' : 'subscription_paid', $status === 'trialing' ? "Started a trial on {$plan->name}." : "Started a paid subscription on {$plan->name}.", ['plan' => $plan->slug], 'subscription:'.$sessionId.':'.$status);

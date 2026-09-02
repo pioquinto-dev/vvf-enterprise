@@ -5,9 +5,9 @@ namespace App\Services\Stripe;
 use App\Models\CustomKeywordSearch;
 use App\Models\Subscription;
 use App\Models\User;
+use App\Services\Admin\UserActivityService;
 use App\Services\Analytics\AnalyticsEvent;
 use App\Services\Analytics\AnalyticsEventManager;
-use App\Services\Admin\UserActivityService;
 use App\Services\Billing\BillingService;
 use App\Services\Brevo\BrevoLifecycleEmailService;
 use App\Support\AppEventLogger;
@@ -326,6 +326,10 @@ class StripeWebhookProcessor
                 ],
             ],
         ])->save();
+
+        if (in_array($status, ['trialing', 'active', 'paid'], true)) {
+            $this->billing->markFreeSearchUsed($user);
+        }
 
         if ($status === 'trialing' && $previousStatus !== 'trialing') {
             $this->activity?->record($user, 'subscription', 'trial_started', "Started a trial on {$plan->name}.", ['plan' => $plan->slug], 'stripe:'.(string) $event->id.':trial');

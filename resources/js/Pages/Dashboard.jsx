@@ -328,6 +328,20 @@ function SearchProcessingModal({ searches, onClose }) {
 function SearchAccessPromptModal({ prompt, billing, onClose, onUpgrade }) {
   if (!prompt) return null;
 
+  if (prompt.reason === 'public_free_search_unavailable') {
+    return (
+      <UpgradePromptModal
+        eyebrow="Free Search"
+        title="This free search is unavailable"
+        body={prompt.message}
+        primaryLabel="Got it"
+        secondaryLabel={null}
+        onPrimary={onClose}
+        onClose={onClose}
+      />
+    );
+  }
+
   const trialEligible = billing?.trialEligible ?? true;
   const hasUsedTrial = billing?.hasUsedTrial ?? false;
   const ctaLabel = trialEligible && !hasUsedTrial ? 'Start 8-day trial' : 'View Growth plan';
