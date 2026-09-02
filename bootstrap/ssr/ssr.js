@@ -3509,6 +3509,7 @@ var billing = {
 		if (cycle === "annual") params.set("cycle", "annual");
 		window.location.assign(`/billing/checkout/${encodeURIComponent(slug)}?${params.toString()}`);
 	},
+	upgrade: (slug) => request(`/billing/upgrade/${encodeURIComponent(slug)}`, { method: "POST" }),
 	createPaymentMethodSetup: () => request("/settings/subscription/payment-method/setup", { method: "POST" }),
 	updatePaymentMethod: (paymentMethodId) => request("/settings/subscription/payment-method", {
 		method: "PATCH",
@@ -4190,7 +4191,7 @@ function UpgradePromptModal({ open = true, eyebrow = null, title, body, detail =
 							className: "btn btn--y",
 							onClick: onPrimary,
 							children: primaryLabel
-						}), /* @__PURE__ */ jsx("button", {
+						}), secondaryLabel && /* @__PURE__ */ jsx("button", {
 							type: "button",
 							className: "btn btn--g",
 							onClick: onSecondary ?? onClose,
@@ -8093,6 +8094,15 @@ function SearchProcessingModal({ searches, onClose }) {
 }
 function SearchAccessPromptModal({ prompt, billing, onClose, onUpgrade }) {
 	if (!prompt) return null;
+	if (prompt.reason === "public_free_search_unavailable") return /* @__PURE__ */ jsx(UpgradePromptModal, {
+		eyebrow: "Free Search",
+		title: "This free search is unavailable",
+		body: prompt.message,
+		primaryLabel: "Got it",
+		secondaryLabel: null,
+		onPrimary: onClose,
+		onClose
+	});
 	const trialEligible = billing?.trialEligible ?? true;
 	const hasUsedTrial = billing?.hasUsedTrial ?? false;
 	return /* @__PURE__ */ jsx(UpgradePromptModal, {
@@ -10813,8 +10823,9 @@ function Plans() {
 	const current = String(billingState.currentPlan ?? "free").toLowerCase();
 	const isTrialing = Boolean(billingState.isTrialing);
 	const hasUsedTrial = Boolean(billingState.hasUsedTrial);
-	const isActivePaidGrowth = current.startsWith("growth") && Boolean(billingState.hasPaidPlan) && !isTrialing;
+	const isActivePaidGrowth = current.startsWith("growth") && !isTrialing;
 	const [trialPromptOpen, setTrialPromptOpen] = useState(Boolean(flash.trialAccessPrompt));
+	const [upgradeError, setUpgradeError] = useState(null);
 	const orderedPlans = [...pricingPlans].sort((a, b) => {
 		const aKey = a.slug ?? a.name?.toLowerCase();
 		const bKey = b.slug ?? b.name?.toLowerCase();
@@ -10830,6 +10841,14 @@ function Plans() {
 		return percents.length > 0 ? Math.max(...percents) : 0;
 	}, [orderedPlans]);
 	const upgrade = (slug, cycle = billingCycle) => billing.checkout(slug, cycle);
+	const upgradeToScale = async (slug) => {
+		try {
+			await billing.upgrade(slug);
+			window.location.assign("/settings/subscription");
+		} catch (error) {
+			setUpgradeError(error.message || "The Scale upgrade could not be completed.");
+		}
+	};
 	const canOfferTrial = !hasUsedTrial && !isTrialing;
 	const startPlan = (slug, cycle = billingCycle) => canOfferTrial ? billing.trialCheckout(slug, cycle) : billing.checkout(slug, cycle);
 	const promptPlanSlug = flash.trialAccessPrompt?.plan_slug ?? visiblePlans.find((plan) => plan.planType === "growth")?.slug ?? "growth";
@@ -10869,6 +10888,16 @@ function Plans() {
 				onSecondary: () => setTrialPromptOpen(false),
 				onClose: () => setTrialPromptOpen(false)
 			}),
+			/* @__PURE__ */ jsx(UpgradePromptModal, {
+				open: Boolean(upgradeError),
+				eyebrow: "Scale upgrade",
+				title: "Upgrade not completed",
+				body: upgradeError,
+				primaryLabel: "Got it",
+				secondaryLabel: null,
+				onPrimary: () => setUpgradeError(null),
+				onClose: () => setUpgradeError(null)
+			}),
 			/* @__PURE__ */ jsxs("div", {
 				style: { marginBottom: 18 },
 				children: [
@@ -10903,8 +10932,7 @@ function Plans() {
 				children: visiblePlans.map((plan) => {
 					const isCurrent = plan.slug === current;
 					const isFree = plan.slug === "free";
-					const isContactGated = (plan.planType === "scale" || plan.slug === "scale" || plan.slug === "scale-annual") && isActivePaidGrowth;
-					const contactHref = `/contact?category=plan-upgrade&subject=${encodeURIComponent(`Interested in the ${plan.name} plan`)}`;
+					const isGrowthToScaleUpgrade = (plan.planType === "scale" || plan.slug === "scale" || plan.slug === "scale-annual") && isActivePaidGrowth;
 					const price = priceLine(plan);
 					return /* @__PURE__ */ jsxs("div", {
 						className: `plan${isCurrent ? " plan--on" : ""}`,
@@ -10940,10 +10968,16 @@ function Plans() {
 								className: "btn btn--g btn--w",
 								disabled: true,
 								children: "Free plan unavailable"
-							}) : isContactGated ? /* @__PURE__ */ jsxs(Link, {
-								href: contactHref,
+							}) : isGrowthToScaleUpgrade ? /* @__PURE__ */ jsxs("button", {
+								type: "button",
 								className: "btn btn--y btn--w",
-								children: ["Contact Us ", /* @__PURE__ */ jsx(Arrow, {})]
+								onClick: () => upgradeToScale(plan.slug),
+								children: [
+									"Upgrade to ",
+									plan.name,
+									" ",
+									/* @__PURE__ */ jsx(Arrow, {})
+								]
 							}) : /* @__PURE__ */ jsxs("button", {
 								type: "button",
 								className: "btn btn--y btn--w",

@@ -1,10 +1,10 @@
 <?php
 
+use App\Http\Controllers\BillingController;
+use App\Http\Controllers\SavedSearchController;
 use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\VideoAnalysisPageController;
-use App\Http\Controllers\BillingController;
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\SavedSearchController;
 
 Route::middleware('auth')->group(function (): void {
     Route::get('/dashboard', [SavedSearchController::class, 'dashboard'])->name('dashboard');
@@ -29,6 +29,7 @@ Route::middleware('auth')->group(function (): void {
     Route::get('/settings/subscription/receipt/{invoice}', [SettingsController::class, 'receipt'])->name('settings.subscription.receipt');
     Route::get('/settings/subscription/portal', [BillingController::class, 'portal'])->name('settings.subscription.portal');
     Route::get('/plans', [SettingsController::class, 'plans'])->name('plans');
+    Route::post('/billing/upgrade/{slug}', [BillingController::class, 'upgrade'])->name('billing.upgrade');
     Route::get('/videos/{id}/analysis', [VideoAnalysisPageController::class, 'show'])->name('videos.analysis.show');
 });
 

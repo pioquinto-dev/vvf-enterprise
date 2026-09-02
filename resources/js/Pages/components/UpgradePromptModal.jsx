@@ -23,6 +23,7 @@ export default function UpgradePromptModal({
   emphasis = null,
   primaryLabel,
   onPrimary,
+  primaryDisabled = false,
   secondaryLabel = 'Maybe later',
   onSecondary,
   onClose,
@@ -50,7 +51,7 @@ export default function UpgradePromptModal({
           {detail && <p className="bb-modal__detail">{detail}</p>}
           {emphasis && <p className="bb-modal__emphasis">{emphasis}</p>}
           <div className="bb-modal__actions">
-            <button type="button" className="btn btn--y" onClick={onPrimary}>
+            <button type="button" className="btn btn--y" onClick={onPrimary} disabled={primaryDisabled}>
               {primaryLabel}
             </button>
             {secondaryLabel && (

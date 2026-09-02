@@ -14,6 +14,7 @@ use App\Services\Stripe\StripeClient;
 use App\Services\Utm\UtmAttributionService;
 use App\Support\AppEventLogger;
 use Carbon\CarbonImmutable;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
@@ -36,6 +37,24 @@ class BillingService
         if (! $plan->is_active || $plan->archived_at !== null) {
             throw ValidationException::withMessages([
                 'plan' => 'This plan is not purchasable yet.',
+            ]);
+        }
+
+        $activeSubscription = $this->entitlements->activeSubscriptionFor($user);
+        $activePlan = $activeSubscription?->plan;
+
+        if ($activeSubscription !== null
+            && $activePlan !== null
+            && in_array((string) $activeSubscription->status, ['active', 'paid'], true)
+            && $this->planTier($plan) < $this->planTier($activePlan)) {
+            throw ValidationException::withMessages([
+                'plan' => 'Your account already has a higher plan. Lower-tier checkout is unavailable.',
+            ]);
+        }
+
+        if ($this->isActivePaidGrowthSubscriber($user) && str_starts_with($plan->slug, 'scale')) {
+            throw ValidationException::withMessages([
+                'plan' => 'Use the in-app Scale upgrade to preserve your current billing period and charge only the plan difference.',
             ]);
         }
 
@@ -145,6 +164,142 @@ class BillingService
         ]));
 
         return $session->url;
+    }
+
+    public function upgradeGrowthToScale(User $user, PricingPlan $targetPlan): Subscription
+    {
+        $subscription = $this->entitlements->activeSubscriptionFor($user);
+        $sourcePlan = $subscription?->plan;
+
+        if ($subscription === null || $sourcePlan === null
+            || ! in_array((string) $subscription->status, ['active', 'paid'], true)
+            || ! str_starts_with($sourcePlan->slug, 'growth')
+            || ! str_starts_with($targetPlan->slug, 'scale')) {
+            throw ValidationException::withMessages(['plan' => 'This account is not eligible for a Scale upgrade.']);
+        }
+
+        if ($sourcePlan->currency !== $targetPlan->currency
+            || $sourcePlan->interval !== $targetPlan->interval
+            || $sourcePlan->interval_count !== $targetPlan->interval_count) {
+            throw ValidationException::withMessages(['plan' => 'Choose the Scale plan with the same billing cycle as your Growth subscription.']);
+        }
+
+        $sourcePriceId = $this->stripePriceIdFor($sourcePlan);
+        $targetPriceId = $this->stripePriceIdFor($targetPlan);
+        $chargeCents = (int) $targetPlan->price_cents - (int) $sourcePlan->price_cents;
+
+        if (blank($sourcePriceId) || blank($targetPriceId)
+            || blank($subscription->stripe_subscription_id) || blank($subscription->stripe_customer_id) || $chargeCents <= 0) {
+            throw ValidationException::withMessages(['plan' => 'This plan upgrade is not configured correctly yet.']);
+        }
+
+        $remote = $this->stripe->retrieveSubscription($subscription->stripe_subscription_id);
+        $item = collect($remote->items->data ?? [])->first();
+        $itemId = (string) ($item->id ?? '');
+
+        if ($itemId === '') {
+            throw ValidationException::withMessages(['plan' => 'The current Stripe subscription could not be updated.']);
+        }
+
+        $invoiceItem = null;
+        $invoice = null;
+
+        try {
+            // Switch the renewal price without moving the current billing anchor.
+            $this->stripe->updateSubscription($subscription->stripe_subscription_id, [
+                'items' => [[
+                    'id' => $itemId,
+                    'price' => $targetPriceId,
+                    'quantity' => (int) ($item->quantity ?? 1),
+                ]],
+                'proration_behavior' => 'none',
+                'metadata' => ['plan_slug' => $targetPlan->slug],
+            ]);
+
+            // Charge the stated full plan difference once, independently of how
+            // much of the current Growth period has elapsed.
+            $invoiceItem = $this->stripe->createInvoiceItem([
+                'customer' => $subscription->stripe_customer_id,
+                'subscription' => $subscription->stripe_subscription_id,
+                'currency' => strtolower($targetPlan->currency),
+                'amount' => $chargeCents,
+                'description' => "Upgrade from {$sourcePlan->name} to {$targetPlan->name}",
+                'metadata' => ['upgrade_from' => $sourcePlan->slug, 'upgrade_to' => $targetPlan->slug],
+            ]);
+            $invoice = $this->stripe->createInvoice([
+                'customer' => $subscription->stripe_customer_id,
+                'subscription' => $subscription->stripe_subscription_id,
+                'collection_method' => 'charge_automatically',
+                'auto_advance' => false,
+                'metadata' => ['upgrade_from' => $sourcePlan->slug, 'upgrade_to' => $targetPlan->slug],
+            ]);
+            $paidInvoice = $this->stripe->payInvoice($this->stripe->finalizeInvoice((string) $invoice->id)->id);
+
+            if (($paidInvoice->status ?? null) !== 'paid') {
+                throw ValidationException::withMessages(['plan' => 'The upgrade payment could not be completed.']);
+            }
+        } catch (\Throwable $exception) {
+            AppEventLogger::error('billing.upgrade.failed', $exception->getMessage(), [
+                'user_id' => $user->id,
+                'subscription_id' => $subscription->id,
+                'stripe_subscription_id' => $subscription->stripe_subscription_id,
+                'from_plan' => $sourcePlan->slug,
+                'to_plan' => $targetPlan->slug,
+                'charge_cents' => $chargeCents,
+                'invoice_item_created' => $invoiceItem !== null,
+                'invoice_created' => $invoice !== null,
+            ]);
+
+            // Remove an unpaid difference item so retrying cannot bill it twice.
+            try {
+                if ($invoice !== null) {
+                    $this->stripe->voidInvoice((string) $invoice->id);
+                } elseif ($invoiceItem !== null) {
+                    $this->stripe->deleteInvoiceItem((string) $invoiceItem->id);
+                }
+            } catch (\Throwable) {
+                // The original payment/update failure is more actionable.
+            }
+
+            // Avoid leaving Stripe on Scale when the one-time difference charge fails.
+            try {
+                $this->stripe->updateSubscription($subscription->stripe_subscription_id, [
+                    'items' => [['id' => $itemId, 'price' => $sourcePriceId, 'quantity' => (int) ($item->quantity ?? 1)]],
+                    'proration_behavior' => 'none',
+                    'metadata' => ['plan_slug' => $sourcePlan->slug],
+                ]);
+            } catch (\Throwable $rollbackException) {
+                AppEventLogger::error('billing.upgrade.rollback_failed', $rollbackException->getMessage(), [
+                    'user_id' => $user->id,
+                    'stripe_subscription_id' => $subscription->stripe_subscription_id,
+                    'from_plan' => $sourcePlan->slug,
+                    'to_plan' => $targetPlan->slug,
+                ]);
+            }
+
+            throw $exception;
+        }
+
+        return DB::transaction(function () use ($user, $subscription, $sourcePlan, $targetPlan, $chargeCents): Subscription {
+            $metadata = $this->subscriptionMetadata(
+                $targetPlan,
+                (int) data_get($subscription->metadata, 'subscription.search_limits.used', 0),
+                (int) data_get($subscription->metadata, 'subscription.viral_video_bookmarks.used', 0),
+                (int) data_get($subscription->metadata, 'subscription.search_bookmarks.used', 0),
+                (int) data_get($subscription->metadata, 'subscription.video_analysis.used', 0),
+                (string) data_get($subscription->metadata, 'settings.billing_cycle', 'monthly'),
+                $subscription->current_period_starts_at ? CarbonImmutable::instance($subscription->current_period_starts_at) : null,
+                $subscription->current_period_ends_at ? CarbonImmutable::instance($subscription->current_period_ends_at) : null,
+            );
+            data_set($metadata, 'subscription.search_limits.window_starts_at', data_get($subscription->metadata, 'subscription.search_limits.window_starts_at'));
+            data_set($metadata, 'subscription.search_limits.window_ends_at', data_get($subscription->metadata, 'subscription.search_limits.window_ends_at'));
+
+            $subscription->forceFill(['plan_id' => $targetPlan->id, 'metadata' => $metadata])->save();
+            $this->activity()?->record($user, 'subscription', 'subscription_upgraded', "Upgraded from {$sourcePlan->name} to {$targetPlan->name}.", ['from_plan' => $sourcePlan->slug, 'to_plan' => $targetPlan->slug, 'charged_cents' => $chargeCents, 'subscription_id' => $subscription->id]);
+            $this->analytics()->queueForUser($user, AnalyticsEvent::make('subscription_upgraded', ['from_plan' => $sourcePlan->slug, 'to_plan' => $targetPlan->slug, 'charged_cents' => $chargeCents]));
+
+            return $subscription->refresh();
+        });
     }
 
     private function recordCouponRedemption(User $user, mixed $session, string $subscriptionId, string $status): void
@@ -388,6 +543,15 @@ class BillingService
             && in_array((string) $subscription->status, ['active', 'paid'], true)
             && str_starts_with((string) data_get($subscription->metadata, 'plan_slug', $subscription->plan?->slug ?? ''), 'growth')
             && $this->hasPaidPlan($user);
+    }
+
+    private function planTier(PricingPlan $plan): int
+    {
+        return match (true) {
+            $plan->plan_type === 'scale' || str_starts_with($plan->slug, 'scale') => 2,
+            $plan->plan_type === 'growth' || str_starts_with($plan->slug, 'growth') => 1,
+            default => 0,
+        };
     }
 
     public function canStartTrial(?User $user): bool

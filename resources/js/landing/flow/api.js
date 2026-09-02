@@ -123,6 +123,7 @@ export const billing = {
     if (cycle === 'annual') params.set('cycle', 'annual');
     window.location.assign(`/billing/checkout/${encodeURIComponent(slug)}?${params.toString()}`);
   },
+  upgrade: (slug) => request(`/billing/upgrade/${encodeURIComponent(slug)}`, { method: 'POST' }),
   createPaymentMethodSetup: () => request('/settings/subscription/payment-method/setup', { method: 'POST' }),
   updatePaymentMethod: (paymentMethodId) => request('/settings/subscription/payment-method', {
     method: 'PATCH',

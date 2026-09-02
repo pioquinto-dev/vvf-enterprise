@@ -57,9 +57,33 @@ class ScaleCheckoutGateTest extends TestCase
         ]);
 
         $this->expectException(ValidationException::class);
-        $this->expectExceptionMessage('self-serve');
+        $this->expectExceptionMessage('in-app Scale upgrade');
 
         app(BillingService::class)->checkout($user, $scale);
+    }
+
+    public function test_checkout_refuses_a_lower_tier_for_an_active_paid_scale_subscriber(): void
+    {
+        PricingPlanTable::seedDefaults();
+
+        $growth = PricingPlan::query()->where('slug', 'growth')->firstOrFail();
+        $scale = $this->makeScalePlan();
+        $user = User::factory()->create();
+
+        Subscription::query()->create([
+            'id' => (string) Str::ulid(),
+            'user_id' => $user->id,
+            'plan_id' => $scale->id,
+            'status' => 'active',
+            'current_period_starts_at' => now(),
+            'current_period_ends_at' => now()->addMonth(),
+            'metadata' => ['plan_slug' => 'scale'],
+        ]);
+
+        $this->expectException(ValidationException::class);
+        $this->expectExceptionMessage('already has a higher plan');
+
+        app(BillingService::class)->checkout($user, $growth);
     }
 
     public function test_free_user_can_start_a_scale_trial_checkout(): void

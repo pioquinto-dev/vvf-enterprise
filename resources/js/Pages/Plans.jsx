@@ -7,16 +7,31 @@ import { Check, Arrow } from '../landing/components/Icons.jsx';
 import { PRICING_PLAN_ORDER } from '../landing/data/dummy.js';
 import UpgradePromptModal from './components/UpgradePromptModal.jsx';
 
+function planTier(plan) {
+  const slug = String(plan?.slug ?? '').toLowerCase();
+  const type = String(plan?.planType ?? '').toLowerCase();
+
+  if (type === 'scale' || slug.startsWith('scale')) return 2;
+  if (type === 'growth' || slug.startsWith('growth')) return 1;
+
+  return 0;
+}
+
+function formatUsd(amount) {
+  return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount);
+}
+
 export default function Plans() {
   const { billing: billingState = {}, pricingPlans = [], flash = {} } = usePage().props;
   const current = String(billingState.currentPlan ?? 'free').toLowerCase();
   const isTrialing = Boolean(billingState.isTrialing);
   const hasUsedTrial = Boolean(billingState.hasUsedTrial);
-  // A gated plan (Scale) only routes to "Contact Us" for a subscriber already on
-  // an active, paid Growth plan — that jump is a mid-cycle upgrade needing
-  // proration we don't run yet. Free/trialing accounts self-serve as normal.
-  const isActivePaidGrowth = current.startsWith('growth') && Boolean(billingState.hasPaidPlan) && !isTrialing;
+  // Active Growth subscribers switch to Scale through the in-app upgrade path.
+  const isActivePaidGrowth = current.startsWith('growth') && !isTrialing;
   const [trialPromptOpen, setTrialPromptOpen] = useState(Boolean(flash.trialAccessPrompt));
+  const [upgradeError, setUpgradeError] = useState(null);
+  const [isUpgrading, setIsUpgrading] = useState(false);
+  const [pendingPlanChange, setPendingPlanChange] = useState(null);
   const orderedPlans = [...pricingPlans].sort((a, b) => {
     const aKey = a.slug ?? a.name?.toLowerCase();
     const bKey = b.slug ?? b.name?.toLowerCase();
@@ -26,7 +41,10 @@ export default function Plans() {
     return (aIndex === -1 ? Number.MAX_SAFE_INTEGER : aIndex) - (bIndex === -1 ? Number.MAX_SAFE_INTEGER : bIndex);
   });
   const currentPlan = orderedPlans.find((plan) => plan.slug === current);
+  const currentTier = planTier(currentPlan);
   const [billingCycle, setBillingCycle] = useState((currentPlan?.duration ?? 'monthly') === 'annual' ? 'annual' : 'monthly');
+  const monthlyCtasDisabled = (currentPlan?.duration ?? 'monthly') === 'annual' && billingCycle === 'monthly';
+  const isAnnualGrowth = current === 'growth-annual' && billingCycle === 'annual';
   const visiblePlans = orderedPlans.filter((plan) => plan.slug === 'free' || (plan.duration ?? 'monthly') === billingCycle);
   const annualBanner = useMemo(() => {
     const percents = orderedPlans
@@ -38,13 +56,65 @@ export default function Plans() {
   }, [orderedPlans]);
 
   const upgrade = (slug, cycle = billingCycle) => billing.checkout(slug, cycle);
+  const upgradeToScale = async (slug) => {
+    if (isUpgrading) return;
+
+    setIsUpgrading(true);
+
+    try {
+      await billing.upgrade(slug);
+      window.location.assign('/settings/subscription');
+    } catch (error) {
+      setUpgradeError(error.message || 'The Scale upgrade could not be completed.');
+    } finally {
+      setIsUpgrading(false);
+    }
+  };
   // Trial-eligible accounts see a "Try free for 8 days" CTA, so the click has to
   // start a trial checkout — not a straight paid one.
   const canOfferTrial = !hasUsedTrial && !isTrialing;
   const startPlan = (slug, cycle = billingCycle) =>
     canOfferTrial ? billing.trialCheckout(slug, cycle) : billing.checkout(slug, cycle);
+  const beginPlanChange = (plan) => {
+    const isInPlaceScaleUpgrade = currentTier === 1
+      && planTier(plan) === 2
+      && (plan.duration ?? 'monthly') === 'monthly';
+    const needsConfirmation = !isTrialing
+      && (currentPlan?.duration ?? 'monthly') === 'monthly'
+      && currentTier > 0
+      && (isInPlaceScaleUpgrade || (plan.duration ?? 'monthly') === 'annual');
+
+    if (needsConfirmation) {
+      setPendingPlanChange({ plan, isInPlaceScaleUpgrade });
+      return;
+    }
+
+    if (isInPlaceScaleUpgrade) {
+      upgradeToScale(plan.slug);
+      return;
+    }
+
+    startPlan(plan.slug, billingCycle);
+  };
+  const confirmPlanChange = () => {
+    if (pendingPlanChange === null) return;
+
+    const { plan, isInPlaceScaleUpgrade } = pendingPlanChange;
+    setPendingPlanChange(null);
+
+    if (isInPlaceScaleUpgrade) {
+      upgradeToScale(plan.slug);
+      return;
+    }
+
+    startPlan(plan.slug, billingCycle);
+  };
   const promptPlanSlug =
     flash.trialAccessPrompt?.plan_slug ?? visiblePlans.find((plan) => plan.planType === 'growth')?.slug ?? 'growth';
+  const pendingPlan = pendingPlanChange?.plan;
+  const pendingAdditionalCharge = pendingPlan && currentPlan
+    ? Math.max(0, Number(pendingPlan.price ?? 0) - Number(currentPlan.price ?? 0))
+    : 0;
 
   useEffect(() => {
     setTrialPromptOpen(Boolean(flash.trialAccessPrompt));
@@ -89,6 +159,34 @@ export default function Plans() {
           onSecondary={() => setTrialPromptOpen(false)}
           onClose={() => setTrialPromptOpen(false)}
         />
+        <UpgradePromptModal
+          open={Boolean(upgradeError)}
+          eyebrow="Scale upgrade"
+          title="Upgrade not completed"
+          body={upgradeError}
+          primaryLabel="Got it"
+          secondaryLabel={null}
+          onPrimary={() => setUpgradeError(null)}
+          onClose={() => setUpgradeError(null)}
+        />
+        <UpgradePromptModal
+          open={pendingPlanChange !== null}
+          eyebrow={pendingPlanChange?.isInPlaceScaleUpgrade ? 'Scale upgrade' : 'Annual plan review'}
+          title={pendingPlanChange?.isInPlaceScaleUpgrade ? 'Confirm your Scale upgrade' : `Continue to ${pendingPlan?.name ?? 'your'} annual plan`}
+          body={pendingPlanChange?.isInPlaceScaleUpgrade
+            ? `Charge today: ${formatUsd(pendingAdditionalCharge)} — the difference between Growth and Scale.`
+            : `You will continue to Stripe to review the ${pendingPlan?.name} annual plan and confirm payment.`}
+          detail={pendingPlanChange?.isInPlaceScaleUpgrade
+            ? 'Your renewal date and usage stay the same. Scale limits apply immediately.'
+            : `The annual plan is ${formatUsd(Number(pendingPlan?.price ?? 0))} per year. Stripe will show the final payment details before any charge is made.`}
+          emphasis={null}
+          primaryLabel={pendingPlanChange?.isInPlaceScaleUpgrade ? 'Confirm and charge' : 'Review in Stripe'}
+          primaryDisabled={isUpgrading}
+          onPrimary={confirmPlanChange}
+          secondaryLabel="Keep current plan"
+          onSecondary={() => setPendingPlanChange(null)}
+          onClose={() => setPendingPlanChange(null)}
+        />
 
         <div style={{ marginBottom: 18 }}>
           <h2>Plans</h2>
@@ -109,12 +207,13 @@ export default function Plans() {
           {visiblePlans.map((plan) => {
             const isCurrent = plan.slug === current;
             const isFree = plan.slug === 'free';
-            // Scale is gated behind "Contact Us" only for an existing active,
-            // paid Growth subscriber (mid-cycle upgrade). Everyone else — free
-            // and trialing accounts — checks out into it directly.
+            // A Growth subscriber upgrades the current Stripe subscription;
+            // everyone else uses the normal hosted checkout flow.
             const isScale = plan.planType === 'scale' || plan.slug === 'scale' || plan.slug === 'scale-annual';
-            const isContactGated = isScale && isActivePaidGrowth;
-            const contactHref = `/contact?category=plan-upgrade&subject=${encodeURIComponent(`Interested in the ${plan.name} plan`)}`;
+            const isGrowthToScaleUpgrade = isScale && isActivePaidGrowth && (plan.duration ?? 'monthly') === 'monthly';
+            const isAnnualGrowthToScale = isScale && isAnnualGrowth;
+            const isLowerTier = !isFree && !isTrialing && planTier(plan) < currentTier;
+            const contactHref = `/contact?category=plan-upgrade&subject=${encodeURIComponent(`Interested in the ${plan.name} annual plan`)}`;
             const price = priceLine(plan);
 
             return (
@@ -147,12 +246,25 @@ export default function Plans() {
                   <button type="button" className="btn btn--g btn--w" disabled>
                     Free plan unavailable
                   </button>
-                ) : isContactGated ? (
+                ) : isLowerTier ? (
+                  <button type="button" className="btn btn--g btn--w" disabled title="Your account already has a higher plan.">
+                    Lower plan locked
+                  </button>
+                ) : monthlyCtasDisabled ? (
+                  <button type="button" className="btn btn--g btn--w" disabled title="Your annual plan is active. Choose an annual plan to change tiers.">
+                    Annual plan active
+                  </button>
+                ) : isAnnualGrowthToScale ? (
                   <Link href={contactHref} className="btn btn--y btn--w">
                     Contact Us <Arrow />
                   </Link>
+                ) : isGrowthToScaleUpgrade ? (
+                  <button type="button" className="btn btn--y btn--w" disabled={isUpgrading} onClick={() => beginPlanChange(plan)}>
+                    {isUpgrading ? 'Upgrading...' : `Upgrade to ${plan.name}`}{' '}
+                    <Arrow />
+                  </button>
                 ) : (
-                  <button type="button" className="btn btn--y btn--w" onClick={() => startPlan(plan.slug, billingCycle)}>
+                  <button type="button" className="btn btn--y btn--w" onClick={() => beginPlanChange(plan)}>
                     {canOfferTrial ? 'Try free for 8 days' : `Upgrade to ${plan.name}`}{' '}
                     <Arrow />
                   </button>

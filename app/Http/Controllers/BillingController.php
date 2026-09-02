@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\PricingPlan;
 use App\Services\Billing\BillingService;
 use App\Support\TrialCheckoutIntent;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
@@ -12,6 +13,7 @@ use Illuminate\Validation\ValidationException;
 class BillingController extends Controller
 {
     private const CHECKOUT_PLAN_SLUGS = ['growth', 'growth-annual', 'scale', 'scale-annual'];
+
     private const PORTAL_ACTIONS = ['manage', 'payment_method', 'cancel'];
 
     public function __construct(private readonly BillingService $billing) {}
@@ -67,6 +69,36 @@ class BillingController extends Controller
         }
 
         return redirect('/library')->with('status', 'Subscription activated.');
+    }
+
+    public function upgrade(Request $request, string $slug): JsonResponse
+    {
+        $user = $request->user();
+        $plan = PricingPlan::query()
+            ->where('slug', $slug)
+            ->whereIn('slug', ['scale', 'scale-annual'])
+            ->firstOrFail();
+
+        try {
+            $subscription = $this->billing->upgradeGrowthToScale($user, $plan);
+
+            return response()->json([
+                'ok' => true,
+                'plan' => $subscription->plan?->slug,
+            ]);
+        } catch (ValidationException $exception) {
+            return response()->json([
+                'message' => collect($exception->errors())->flatten()->first()
+                    ?? 'The Scale upgrade could not be completed.',
+                'errors' => $exception->errors(),
+            ], 422);
+        } catch (\Throwable $exception) {
+            report($exception);
+
+            return response()->json([
+                'message' => 'The Scale upgrade could not be completed. Your subscription was not changed.',
+            ], 422);
+        }
     }
 
     public function portal(Request $request): RedirectResponse
