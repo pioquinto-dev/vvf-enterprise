@@ -26,6 +26,13 @@ class BrevoTransactionalEmailSender
         try {
             $response = $this->http
                 ->acceptJson()
+                // Bound the call so a slow/unreachable Brevo endpoint can never
+                // hang the HTTP request it runs inside. This send happens
+                // synchronously during the Google sign-in callback (new-user
+                // registration email), so an unbounded wait there surfaces to
+                // the user as a gateway (504) timeout.
+                ->connectTimeout(5)
+                ->timeout(15)
                 ->withHeaders([
                     'api-key' => $apiKey,
                 ])

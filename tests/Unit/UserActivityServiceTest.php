@@ -35,6 +35,7 @@ class UserActivityServiceTest extends TestCase
 
         $activity->record($user, 'engagement', 'logged_in', 'Logged in.');
         $activity->record($user, 'engagement', 'search_triggered', 'Triggered a product search with keyword serum.');
+        $activity->record($user, 'analysis', 'video_analysis_triggered', 'Triggered video analysis.');
         $activity->record($user, 'subscription', 'subscription_paid', 'Subscription is active.');
 
         $payload = $activity->activityLogPayload(Request::create('/x/admin/activity', 'GET', [
@@ -48,5 +49,16 @@ class UserActivityServiceTest extends TestCase
         $this->assertCount(1, $payload['rows']);
         $this->assertSame('search_triggered', $payload['rows'][0]['event']);
         $this->assertContains('subscription_paid', $payload['events']);
+        $this->assertContains('video_analysis_triggered', $payload['events']);
+
+        $analysisPayload = $activity->activityLogPayload(Request::create('/x/admin/activity', 'GET', [
+            'range' => '30D',
+            'category' => 'analysis',
+            'event' => 'video_analysis_triggered',
+        ]));
+
+        $this->assertSame('analysis', $analysisPayload['filters']['category']);
+        $this->assertCount(1, $analysisPayload['rows']);
+        $this->assertSame('video_analysis_triggered', $analysisPayload['rows'][0]['event']);
     }
 }

@@ -55,9 +55,9 @@ export default function AdminEditDrawer({ open, resource, title, fields = [], ro
         <div className="fixed inset-0 z-50 flex justify-end">
             <button type="button" aria-label="Close" onClick={onClose} className="absolute inset-0 bg-[rgba(11,11,11,.38)] backdrop-blur-[2px]" />
 
-            <aside className="relative flex h-full w-[min(420px,92vw)] flex-col border-l border-[var(--line)] bg-[var(--paper)] shadow-[0_0_60px_-10px_rgba(20,15,0,.24)]">
+            <aside className="relative flex h-full w-[min(420px,92vw)] max-w-[92vw] flex-col overflow-hidden border-l border-[var(--line)] bg-[var(--paper)] shadow-[0_0_60px_-10px_rgba(20,15,0,.24)]">
                 <header className="flex items-center justify-between border-b border-[var(--line)] px-4 py-3">
-                    <div>
+                    <div className="min-w-0">
                         <p className="text-[10px] font-semibold tracking-[.18em] text-[var(--faint)] uppercase">{mode === 'create' ? 'Create' : 'Edit'}</p>
                         <h2 className="mt-0.5 truncate text-[14px] font-semibold text-[var(--ink)]">{title}</h2>
                     </div>
@@ -73,7 +73,7 @@ export default function AdminEditDrawer({ open, resource, title, fields = [], ro
                 <form onSubmit={submit} className="flex min-h-0 flex-1 flex-col">
                     <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-4 py-4">
                         {fields.map((field) => (
-                            <div key={field.name}>
+                            <div key={field.name} className="min-w-0">
                                 {field.type === 'toggle' ? (
                                     <label className="flex cursor-pointer items-start gap-2.5">
                                         <input
@@ -94,7 +94,7 @@ export default function AdminEditDrawer({ open, resource, title, fields = [], ro
                                             <select
                                                 value={form.data[field.name] ?? ''}
                                                 onChange={(event) => form.setData(field.name, event.target.value)}
-                                                className="h-9 w-full rounded-lg border border-[var(--line)] bg-white px-2.5 text-[13px] text-[var(--ink)] outline-none focus:border-[var(--yellow)]"
+                                                className="h-9 min-w-0 w-full max-w-full rounded-lg border border-[var(--line)] bg-white px-2.5 text-[13px] text-[var(--ink)] outline-none focus:border-[var(--yellow)]"
                                             >
                                                 {(field.options ?? [])
                                                     .map((option) => (typeof option === 'string' ? { value: option, label: option } : option))
@@ -112,7 +112,7 @@ export default function AdminEditDrawer({ open, resource, title, fields = [], ro
                                                 min={field.type === 'number' ? (field.min ?? 0) : undefined}
                                                 value={form.data[field.name] ?? ''}
                                                 onChange={(event) => form.setData(field.name, event.target.value)}
-                                                className="h-9 w-full rounded-lg border border-[var(--line)] bg-white px-2.5 text-[13px] text-[var(--ink)] outline-none focus:border-[var(--yellow)]"
+                                                className="h-9 min-w-0 w-full max-w-full rounded-lg border border-[var(--line)] bg-white px-2.5 text-[13px] text-[var(--ink)] outline-none focus:border-[var(--yellow)]"
                                             />
                                         )}
                                         {field.help && <p className="mt-1 text-[11.5px] text-[var(--faint)]">{field.help}</p>}

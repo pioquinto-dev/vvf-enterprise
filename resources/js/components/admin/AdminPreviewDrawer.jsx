@@ -4,14 +4,14 @@ function PreviewField({ label, value, multiline = false }) {
     const displayValue = value === null || value === undefined || value === '' ? '-' : value;
 
     return (
-        <div>
+        <div className="min-w-0">
             <p className="mb-1.5 text-[11.5px] font-medium text-[var(--muted)]">{label}</p>
             {multiline ? (
-                <div className="min-h-[120px] rounded-lg border border-[var(--line)] bg-white px-3 py-2.5 text-[13px] leading-6 whitespace-pre-wrap text-[var(--body)]">
+                <div className="min-h-[120px] max-w-full break-words rounded-lg border border-[var(--line)] bg-white px-3 py-2.5 text-[13px] leading-6 whitespace-pre-wrap [overflow-wrap:anywhere] text-[var(--body)]">
                     {displayValue}
                 </div>
             ) : (
-                <div className="rounded-lg border border-[var(--line)] bg-white px-3 py-2.5 text-[13px] text-[var(--body)]">
+                <div className="max-w-full break-words rounded-lg border border-[var(--line)] bg-white px-3 py-2.5 text-[13px] [overflow-wrap:anywhere] text-[var(--body)]">
                     {displayValue}
                 </div>
             )}
@@ -44,12 +44,12 @@ export default function AdminPreviewDrawer({ open, title, row, onClose }) {
         <div className="fixed inset-0 z-50 flex justify-end">
             <button type="button" aria-label="Close" onClick={onClose} className="absolute inset-0 bg-[rgba(11,11,11,.38)] backdrop-blur-[2px]" />
 
-            <aside className="relative flex h-full w-[min(460px,92vw)] flex-col border-l border-[var(--line)] bg-[var(--paper)] shadow-[0_0_60px_-10px_rgba(20,15,0,.24)]">
+            <aside className="relative flex h-full w-[min(460px,92vw)] max-w-[92vw] flex-col overflow-hidden border-l border-[var(--line)] bg-[var(--paper)] shadow-[0_0_60px_-10px_rgba(20,15,0,.24)]">
                 <header className="flex items-center justify-between border-b border-[var(--line)] px-4 py-3">
-                    <div>
+                    <div className="min-w-0">
                         <p className="text-[10px] font-semibold tracking-[.18em] text-[var(--faint)] uppercase">{preview.eyebrow ?? 'Preview'}</p>
                         <h2 className="mt-0.5 truncate text-[14px] font-semibold text-[var(--ink)]">{title}</h2>
-                        {preview.summary && <p className="mt-1 text-[12px] text-[var(--muted)]">{preview.summary}</p>}
+                        {preview.summary && <p className="mt-1 break-words text-[12px] [overflow-wrap:anywhere] text-[var(--muted)]">{preview.summary}</p>}
                     </div>
                     <button
                         type="button"

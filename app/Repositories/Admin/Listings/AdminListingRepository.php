@@ -608,6 +608,13 @@ class AdminListingRepository
                                 ['label' => 'Video analysis limit', 'value' => $this->limitLabel((int) data_get($record->metadata, 'subscription.video_analysis.limit', 0))],
                             ],
                         ],
+                        [
+                            'title' => 'Stripe',
+                            'fields' => [
+                                ['label' => 'Stripe product ID', 'value' => $record->stripe_product_id],
+                                ['label' => 'Stripe price ID', 'value' => $record->stripe_price_id],
+                            ],
+                        ],
                     ],
                 ],
             ],
@@ -722,7 +729,7 @@ class AdminListingRepository
                         ],
                     ],
                     [
-                        'title' => 'Usage',
+                        'title' => 'Usage this cycle',
                         'fields' => [
                             ['label' => 'Search credits', 'value' => $this->usageSummary($usage['search'])],
                             ['label' => 'Video bookmarks', 'value' => $this->usageSummary($usage['video_bookmarks'])],
@@ -770,15 +777,6 @@ class AdminListingRepository
                             ['label' => 'Status', 'value' => $record->trashed() ? 'deleted' : 'active'],
                             ['label' => 'Email verified', 'value' => $this->yesNo($record->email_verified_at !== null)],
                             ['label' => 'Free search used', 'value' => $this->yesNo($record->free_search_used_at !== null)],
-                        ],
-                    ],
-                    [
-                        'title' => 'Usage',
-                        'fields' => [
-                            ['label' => 'Search credits', 'value' => $this->usageSummary($usage['search'])],
-                            ['label' => 'Video bookmarks', 'value' => $this->usageSummary($usage['video_bookmarks'])],
-                            ['label' => 'Search bookmarks', 'value' => $this->usageSummary($usage['search_bookmarks'])],
-                            ['label' => 'Video analysis', 'value' => $this->usageSummary($usage['video_analysis'])],
                         ],
                     ],
                     [

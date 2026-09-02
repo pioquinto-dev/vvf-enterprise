@@ -863,6 +863,7 @@ var CATEGORIES = [
 	["sign_up", "Sign ups"],
 	["subscription", "Subscription"],
 	["engagement", "Engagement"],
+	["analysis", "Analysis"],
 	["coupon_usage", "Coupon usage"]
 ];
 var EVENT_LABELS = {
@@ -901,6 +902,7 @@ var TONES = {
 	sign_up: "#20cfc2",
 	subscription: "#ee4393",
 	engagement: "#7b5cff",
+	analysis: "#25a6d9",
 	coupon_usage: "#f6a819"
 };
 function formatTimestamp$1(value) {
@@ -1505,10 +1507,159 @@ function ConversionFunnel({ funnel = {} }) {
 		})]
 	});
 }
+function EngagementInsights({ engagement = {} }) {
+	const adoption = engagement.adoption ?? [];
+	const frequency = engagement.frequency ?? [];
+	const trends = engagement.trends ?? [];
+	const suggestions = engagement.suggestions ?? [];
+	return /* @__PURE__ */ jsxs("section", {
+		className: "overflow-hidden rounded-2xl border border-[#dce4f0] bg-[linear-gradient(135deg,_#ffffff_0%,_#f5f8ff_55%,_#f2fffb_100%)] p-3.5 shadow-[0_18px_42px_-32px_rgba(50,85,150,.45)] min-[390px]:p-4 sm:p-5",
+		children: [
+			/* @__PURE__ */ jsxs("div", {
+				className: "flex items-start justify-between gap-3",
+				children: [/* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsx("p", {
+					className: "text-[10px] font-semibold tracking-[.16em] text-[#119d90] uppercase sm:tracking-[.22em]",
+					children: "Insights"
+				}), /* @__PURE__ */ jsx("h3", {
+					className: "mt-1 text-[18px] leading-tight font-semibold text-[var(--ink)] sm:text-[17px]",
+					children: "Engagement insights"
+				})] }), /* @__PURE__ */ jsxs("div", {
+					className: "text-right",
+					children: [/* @__PURE__ */ jsx("strong", {
+						className: "block text-[25px] leading-none tracking-[-.04em] text-[var(--ink)]",
+						children: (engagement.activeCreators ?? 0).toLocaleString()
+					}), /* @__PURE__ */ jsx("span", {
+						className: "mt-1 block text-[9px] font-semibold tracking-[.11em] text-[#718197] uppercase sm:tracking-[.15em]",
+						children: "Active creators"
+					})]
+				})]
+			}),
+			/* @__PURE__ */ jsxs("p", {
+				className: "mt-3 text-[12px] leading-relaxed text-[#55667d] sm:text-[11px]",
+				children: [
+					"Based on tracked activity in ",
+					engagement.rangeLabel?.toLowerCase() ?? "the selected range",
+					"."
+				]
+			}),
+			/* @__PURE__ */ jsxs("div", {
+				className: "mt-5 grid gap-5 lg:grid-cols-2 lg:gap-8",
+				children: [/* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsx("p", {
+					className: "text-[10px] font-semibold tracking-[.14em] text-[#7b8ba0] uppercase sm:tracking-[.2em]",
+					children: "How far active creators get"
+				}), /* @__PURE__ */ jsx("div", {
+					className: "mt-3 space-y-3.5",
+					children: adoption.map((row) => /* @__PURE__ */ jsx("div", { children: /* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsxs("div", {
+						className: "mb-1.5 flex items-baseline justify-between gap-2 text-[11.5px] text-[#55667d] sm:text-[10.5px]",
+						children: [/* @__PURE__ */ jsx("span", {
+							className: "min-w-0",
+							children: row.label
+						}), /* @__PURE__ */ jsxs("span", {
+							className: "shrink-0 font-semibold text-[var(--ink)]",
+							children: [
+								row.percentage,
+								"% ",
+								/* @__PURE__ */ jsxs("span", {
+									className: "font-normal text-[#718197]",
+									children: [
+										"(",
+										row.users,
+										")"
+									]
+								})
+							]
+						})]
+					}), /* @__PURE__ */ jsx("div", {
+						className: "h-2.5 overflow-hidden rounded-full bg-[#e8edf5] sm:h-2",
+						children: /* @__PURE__ */ jsx("span", {
+							className: `block h-full rounded-full ${row.tone === "rose" ? "bg-[#fb3f82]" : "bg-[#8986fb]"}`,
+							style: { width: `${row.percentage}%` }
+						})
+					})] }) }, row.label))
+				})] }), /* @__PURE__ */ jsxs("div", {
+					className: "space-y-5",
+					children: [/* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsx("p", {
+						className: "text-[10px] font-semibold tracking-[.14em] text-[#7b8ba0] uppercase sm:tracking-[.2em]",
+						children: "Usage frequency"
+					}), /* @__PURE__ */ jsx("div", {
+						className: "mt-3 divide-y divide-[#e8edf5] overflow-hidden rounded-xl border border-[#e8edf5] bg-white/70",
+						children: frequency.map((row) => /* @__PURE__ */ jsxs("div", {
+							className: "flex items-center justify-between gap-3 px-3 py-2.5 text-[11.5px] sm:text-[10.5px]",
+							children: [/* @__PURE__ */ jsx("span", {
+								className: "font-semibold text-[var(--ink)]",
+								children: row.label
+							}), /* @__PURE__ */ jsxs("span", {
+								className: "shrink-0 text-[#718197]",
+								children: [
+									/* @__PURE__ */ jsx("strong", {
+										className: "font-semibold text-[#55667d]",
+										children: row.average
+									}),
+									" per adopter ",
+									/* @__PURE__ */ jsxs("span", {
+										className: "hidden min-[390px]:inline",
+										children: [
+											"(",
+											row.adopters,
+											")"
+										]
+									})
+								]
+							})]
+						}, row.label))
+					})] }), /* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsx("p", {
+						className: "text-[10px] font-semibold tracking-[.14em] text-[#7b8ba0] uppercase sm:tracking-[.2em]",
+						children: "Trends vs previous range"
+					}), /* @__PURE__ */ jsx("div", {
+						className: "mt-2 divide-y divide-[#e8edf5] border-y border-[#e8edf5]",
+						children: trends.map((row) => {
+							const rising = row.change !== null && row.change >= 0;
+							return /* @__PURE__ */ jsxs("div", {
+								className: "flex items-center justify-between gap-3 py-2.5",
+								children: [/* @__PURE__ */ jsx("span", {
+									className: "text-[11.5px] text-[#55667d] sm:text-[10.5px]",
+									children: row.label
+								}), /* @__PURE__ */ jsxs("span", {
+									className: "shrink-0 text-right text-[11px] text-[#718197]",
+									children: [/* @__PURE__ */ jsx("strong", {
+										className: "mr-1 text-[14px] text-[var(--ink)]",
+										children: row.current.toLocaleString()
+									}), row.change === null ? "No prior data" : /* @__PURE__ */ jsxs("span", {
+										className: rising ? "text-[#159b67]" : "text-[#e94770]",
+										children: [
+											rising ? "↑" : "↓",
+											" ",
+											Math.abs(row.change),
+											"%"
+										]
+									})]
+								})]
+							}, row.label);
+						})
+					})] })]
+				})]
+			}),
+			/* @__PURE__ */ jsxs("div", {
+				className: "mt-5 border-t border-[#dce4f0] pt-4",
+				children: [/* @__PURE__ */ jsx("p", {
+					className: "text-[10px] font-semibold tracking-[.14em] text-[#7b8ba0] uppercase sm:tracking-[.2em]",
+					children: "Suggested actions"
+				}), /* @__PURE__ */ jsx("div", {
+					className: "mt-2.5 space-y-2",
+					children: suggestions.map((suggestion) => /* @__PURE__ */ jsxs("p", {
+						className: "flex gap-2 text-[11.5px] leading-relaxed text-[#55667d] sm:text-[10.5px]",
+						children: [/* @__PURE__ */ jsx("span", { className: "mt-[6px] h-1.5 w-1.5 shrink-0 rounded-full bg-[#fb3f82]" }), suggestion]
+					}, suggestion))
+				})]
+			})
+		]
+	});
+}
 var ACTIVITY_TONES = {
 	sign_up: "#20cfc2",
 	subscription: "#ee4393",
 	engagement: "#7b5cff",
+	analysis: "#25a6d9",
 	coupon_usage: "#f6a819"
 };
 var ACTIVITY_FILTERS = [
@@ -1516,6 +1667,7 @@ var ACTIVITY_FILTERS = [
 	["sign_up", "Sign up"],
 	["subscription", "Subscription"],
 	["engagement", "Engagement"],
+	["analysis", "Analysis"],
 	["coupon_usage", "Coupon"]
 ];
 function RecentActivity({ activity = {} }) {
@@ -1691,7 +1843,7 @@ function CouponProgramsPanel({ coupons = {} }) {
 		]
 	});
 }
-function Dashboard$1({ trend = [], stats = [], snapshot = {}, range = "30D", ranges = [], acquisition = {}, activity = {}, coupons = {} }) {
+function Dashboard$1({ trend = [], stats = [], snapshot = {}, range = "30D", ranges = [], acquisition = {}, activity = {}, engagement = {}, coupons = {} }) {
 	const refresh = useForm({});
 	const selectRange = (next) => {
 		router.get("/x/admin", { range: next }, {
@@ -1779,6 +1931,10 @@ function Dashboard$1({ trend = [], stats = [], snapshot = {}, range = "30D", ran
 			/* @__PURE__ */ jsx("div", {
 				className: "mt-3",
 				children: /* @__PURE__ */ jsx(ConversionFunnel, { funnel: acquisition.funnel })
+			}),
+			/* @__PURE__ */ jsx("div", {
+				className: "mt-3",
+				children: /* @__PURE__ */ jsx(EngagementInsights, { engagement })
 			}),
 			/* @__PURE__ */ jsxs("div", {
 				className: "mt-3 grid gap-3 xl:grid-cols-2",
@@ -2050,16 +2206,19 @@ function AdminEditDrawer({ open, resource, title, fields = [], row, createValues
 			onClick: onClose,
 			className: "absolute inset-0 bg-[rgba(11,11,11,.38)] backdrop-blur-[2px]"
 		}), /* @__PURE__ */ jsxs("aside", {
-			className: "relative flex h-full w-[min(420px,92vw)] flex-col border-l border-[var(--line)] bg-[var(--paper)] shadow-[0_0_60px_-10px_rgba(20,15,0,.24)]",
+			className: "relative flex h-full w-[min(420px,92vw)] max-w-[92vw] flex-col overflow-hidden border-l border-[var(--line)] bg-[var(--paper)] shadow-[0_0_60px_-10px_rgba(20,15,0,.24)]",
 			children: [/* @__PURE__ */ jsxs("header", {
 				className: "flex items-center justify-between border-b border-[var(--line)] px-4 py-3",
-				children: [/* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsx("p", {
-					className: "text-[10px] font-semibold tracking-[.18em] text-[var(--faint)] uppercase",
-					children: mode === "create" ? "Create" : "Edit"
-				}), /* @__PURE__ */ jsx("h2", {
-					className: "mt-0.5 truncate text-[14px] font-semibold text-[var(--ink)]",
-					children: title
-				})] }), /* @__PURE__ */ jsx("button", {
+				children: [/* @__PURE__ */ jsxs("div", {
+					className: "min-w-0",
+					children: [/* @__PURE__ */ jsx("p", {
+						className: "text-[10px] font-semibold tracking-[.18em] text-[var(--faint)] uppercase",
+						children: mode === "create" ? "Create" : "Edit"
+					}), /* @__PURE__ */ jsx("h2", {
+						className: "mt-0.5 truncate text-[14px] font-semibold text-[var(--ink)]",
+						children: title
+					})]
+				}), /* @__PURE__ */ jsx("button", {
 					type: "button",
 					onClick: onClose,
 					className: "flex h-7 w-7 items-center justify-center rounded-md text-[var(--faint)] transition hover:bg-white hover:text-[var(--ink)]",
@@ -2070,54 +2229,57 @@ function AdminEditDrawer({ open, resource, title, fields = [], row, createValues
 				className: "flex min-h-0 flex-1 flex-col",
 				children: [/* @__PURE__ */ jsx("div", {
 					className: "min-h-0 flex-1 space-y-4 overflow-y-auto px-4 py-4",
-					children: fields.map((field) => /* @__PURE__ */ jsxs("div", { children: [field.type === "toggle" ? /* @__PURE__ */ jsxs("label", {
-						className: "flex cursor-pointer items-start gap-2.5",
-						children: [/* @__PURE__ */ jsx("input", {
-							type: "checkbox",
-							checked: Boolean(form.data[field.name]),
-							onChange: (event) => form.setData(field.name, event.target.checked),
-							className: "mt-0.5 h-4 w-4 rounded border-[var(--line)] bg-white accent-[#ffc629]"
-						}), /* @__PURE__ */ jsxs("span", { children: [/* @__PURE__ */ jsx("span", {
-							className: "block text-[13px] text-[var(--ink)]",
-							children: field.label
-						}), field.help && /* @__PURE__ */ jsx("span", {
-							className: "mt-0.5 block text-[11.5px] text-[var(--faint)]",
-							children: field.help
-						})] })]
-					}) : /* @__PURE__ */ jsxs(Fragment$1, { children: [
-						/* @__PURE__ */ jsx("label", {
-							className: "mb-1.5 block text-[11.5px] font-medium text-[var(--muted)]",
-							children: field.label
-						}),
-						field.type === "select" ? /* @__PURE__ */ jsx("select", {
-							value: form.data[field.name] ?? "",
-							onChange: (event) => form.setData(field.name, event.target.value),
-							className: "h-9 w-full rounded-lg border border-[var(--line)] bg-white px-2.5 text-[13px] text-[var(--ink)] outline-none focus:border-[var(--yellow)]",
-							children: (field.options ?? []).map((option) => typeof option === "string" ? {
-								value: option,
-								label: option
-							} : option).map((option) => /* @__PURE__ */ jsx("option", {
-								value: option.value,
-								className: "bg-white",
-								children: option.label
-							}, option.value))
-						}) : /* @__PURE__ */ jsx("input", {
-							type: field.type === "number" ? "number" : field.type === "password" ? "password" : "text",
-							autoComplete: field.type === "password" ? "new-password" : void 0,
-							step: field.step,
-							min: field.type === "number" ? field.min ?? 0 : void 0,
-							value: form.data[field.name] ?? "",
-							onChange: (event) => form.setData(field.name, event.target.value),
-							className: "h-9 w-full rounded-lg border border-[var(--line)] bg-white px-2.5 text-[13px] text-[var(--ink)] outline-none focus:border-[var(--yellow)]"
-						}),
-						field.help && /* @__PURE__ */ jsx("p", {
-							className: "mt-1 text-[11.5px] text-[var(--faint)]",
-							children: field.help
-						})
-					] }), form.errors[field.name] && /* @__PURE__ */ jsx("p", {
-						className: "mt-1 text-[11.5px] text-[var(--warn)]",
-						children: form.errors[field.name]
-					})] }, field.name))
+					children: fields.map((field) => /* @__PURE__ */ jsxs("div", {
+						className: "min-w-0",
+						children: [field.type === "toggle" ? /* @__PURE__ */ jsxs("label", {
+							className: "flex cursor-pointer items-start gap-2.5",
+							children: [/* @__PURE__ */ jsx("input", {
+								type: "checkbox",
+								checked: Boolean(form.data[field.name]),
+								onChange: (event) => form.setData(field.name, event.target.checked),
+								className: "mt-0.5 h-4 w-4 rounded border-[var(--line)] bg-white accent-[#ffc629]"
+							}), /* @__PURE__ */ jsxs("span", { children: [/* @__PURE__ */ jsx("span", {
+								className: "block text-[13px] text-[var(--ink)]",
+								children: field.label
+							}), field.help && /* @__PURE__ */ jsx("span", {
+								className: "mt-0.5 block text-[11.5px] text-[var(--faint)]",
+								children: field.help
+							})] })]
+						}) : /* @__PURE__ */ jsxs(Fragment$1, { children: [
+							/* @__PURE__ */ jsx("label", {
+								className: "mb-1.5 block text-[11.5px] font-medium text-[var(--muted)]",
+								children: field.label
+							}),
+							field.type === "select" ? /* @__PURE__ */ jsx("select", {
+								value: form.data[field.name] ?? "",
+								onChange: (event) => form.setData(field.name, event.target.value),
+								className: "h-9 min-w-0 w-full max-w-full rounded-lg border border-[var(--line)] bg-white px-2.5 text-[13px] text-[var(--ink)] outline-none focus:border-[var(--yellow)]",
+								children: (field.options ?? []).map((option) => typeof option === "string" ? {
+									value: option,
+									label: option
+								} : option).map((option) => /* @__PURE__ */ jsx("option", {
+									value: option.value,
+									className: "bg-white",
+									children: option.label
+								}, option.value))
+							}) : /* @__PURE__ */ jsx("input", {
+								type: field.type === "number" ? "number" : field.type === "password" ? "password" : "text",
+								autoComplete: field.type === "password" ? "new-password" : void 0,
+								step: field.step,
+								min: field.type === "number" ? field.min ?? 0 : void 0,
+								value: form.data[field.name] ?? "",
+								onChange: (event) => form.setData(field.name, event.target.value),
+								className: "h-9 min-w-0 w-full max-w-full rounded-lg border border-[var(--line)] bg-white px-2.5 text-[13px] text-[var(--ink)] outline-none focus:border-[var(--yellow)]"
+							}),
+							field.help && /* @__PURE__ */ jsx("p", {
+								className: "mt-1 text-[11.5px] text-[var(--faint)]",
+								children: field.help
+							})
+						] }), form.errors[field.name] && /* @__PURE__ */ jsx("p", {
+							className: "mt-1 text-[11.5px] text-[var(--warn)]",
+							children: form.errors[field.name]
+						})]
+					}, field.name))
 				}), /* @__PURE__ */ jsxs("footer", {
 					className: "flex items-center justify-end gap-2 border-t border-[var(--line)] px-4 py-3",
 					children: [/* @__PURE__ */ jsx("button", {
@@ -2442,16 +2604,19 @@ function AdminPagination({ pagination, query = {} }) {
 //#region resources/js/components/admin/AdminPreviewDrawer.jsx
 function PreviewField({ label, value, multiline = false }) {
 	const displayValue = value === null || value === void 0 || value === "" ? "-" : value;
-	return /* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsx("p", {
-		className: "mb-1.5 text-[11.5px] font-medium text-[var(--muted)]",
-		children: label
-	}), multiline ? /* @__PURE__ */ jsx("div", {
-		className: "min-h-[120px] rounded-lg border border-[var(--line)] bg-white px-3 py-2.5 text-[13px] leading-6 whitespace-pre-wrap text-[var(--body)]",
-		children: displayValue
-	}) : /* @__PURE__ */ jsx("div", {
-		className: "rounded-lg border border-[var(--line)] bg-white px-3 py-2.5 text-[13px] text-[var(--body)]",
-		children: displayValue
-	})] });
+	return /* @__PURE__ */ jsxs("div", {
+		className: "min-w-0",
+		children: [/* @__PURE__ */ jsx("p", {
+			className: "mb-1.5 text-[11.5px] font-medium text-[var(--muted)]",
+			children: label
+		}), multiline ? /* @__PURE__ */ jsx("div", {
+			className: "min-h-[120px] max-w-full break-words rounded-lg border border-[var(--line)] bg-white px-3 py-2.5 text-[13px] leading-6 whitespace-pre-wrap [overflow-wrap:anywhere] text-[var(--body)]",
+			children: displayValue
+		}) : /* @__PURE__ */ jsx("div", {
+			className: "max-w-full break-words rounded-lg border border-[var(--line)] bg-white px-3 py-2.5 text-[13px] [overflow-wrap:anywhere] text-[var(--body)]",
+			children: displayValue
+		})]
+	});
 }
 function normalizeSections(preview) {
 	return (preview.sections ?? []).map((section) => ({
@@ -2474,24 +2639,27 @@ function AdminPreviewDrawer({ open, title, row, onClose }) {
 			onClick: onClose,
 			className: "absolute inset-0 bg-[rgba(11,11,11,.38)] backdrop-blur-[2px]"
 		}), /* @__PURE__ */ jsxs("aside", {
-			className: "relative flex h-full w-[min(460px,92vw)] flex-col border-l border-[var(--line)] bg-[var(--paper)] shadow-[0_0_60px_-10px_rgba(20,15,0,.24)]",
+			className: "relative flex h-full w-[min(460px,92vw)] max-w-[92vw] flex-col overflow-hidden border-l border-[var(--line)] bg-[var(--paper)] shadow-[0_0_60px_-10px_rgba(20,15,0,.24)]",
 			children: [
 				/* @__PURE__ */ jsxs("header", {
 					className: "flex items-center justify-between border-b border-[var(--line)] px-4 py-3",
-					children: [/* @__PURE__ */ jsxs("div", { children: [
-						/* @__PURE__ */ jsx("p", {
-							className: "text-[10px] font-semibold tracking-[.18em] text-[var(--faint)] uppercase",
-							children: preview.eyebrow ?? "Preview"
-						}),
-						/* @__PURE__ */ jsx("h2", {
-							className: "mt-0.5 truncate text-[14px] font-semibold text-[var(--ink)]",
-							children: title
-						}),
-						preview.summary && /* @__PURE__ */ jsx("p", {
-							className: "mt-1 text-[12px] text-[var(--muted)]",
-							children: preview.summary
-						})
-					] }), /* @__PURE__ */ jsx("button", {
+					children: [/* @__PURE__ */ jsxs("div", {
+						className: "min-w-0",
+						children: [
+							/* @__PURE__ */ jsx("p", {
+								className: "text-[10px] font-semibold tracking-[.18em] text-[var(--faint)] uppercase",
+								children: preview.eyebrow ?? "Preview"
+							}),
+							/* @__PURE__ */ jsx("h2", {
+								className: "mt-0.5 truncate text-[14px] font-semibold text-[var(--ink)]",
+								children: title
+							}),
+							preview.summary && /* @__PURE__ */ jsx("p", {
+								className: "mt-1 break-words text-[12px] [overflow-wrap:anywhere] text-[var(--muted)]",
+								children: preview.summary
+							})
+						]
+					}), /* @__PURE__ */ jsx("button", {
 						type: "button",
 						onClick: onClose,
 						className: "flex h-7 w-7 items-center justify-center rounded-md text-[var(--faint)] transition hover:bg-white hover:text-[var(--ink)]",
@@ -2667,9 +2835,9 @@ function PasswordField({ value, onChange }) {
 		})]
 	});
 }
-function Login$1({ adminRootEmail = "" }) {
+function Login$1() {
 	const form = useForm({
-		email: adminRootEmail,
+		email: "",
 		password: ""
 	});
 	useEffect(() => {
@@ -2682,80 +2850,86 @@ function Login$1({ adminRootEmail = "" }) {
 	};
 	return /* @__PURE__ */ jsxs(Fragment$1, { children: [/* @__PURE__ */ jsx(Head, { title: "Admin Login - Outlier Vault" }), /* @__PURE__ */ jsxs("div", {
 		className: "min-h-screen bg-[var(--canvas)] px-4 py-8 text-[var(--ink)] sm:px-6",
-		children: [/* @__PURE__ */ jsxs("div", {
-			"aria-hidden": true,
-			className: "pointer-events-none fixed inset-0 overflow-hidden",
-			children: [/* @__PURE__ */ jsx("div", { className: "absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(255,198,41,.22),_transparent_28%),linear-gradient(180deg,_#faf9f6,_#f5f4f0)]" }), /* @__PURE__ */ jsx("div", { className: "absolute inset-0 opacity-45 [background-image:linear-gradient(to_right,rgba(92,90,84,.06)_1px,transparent_1px),linear-gradient(to_bottom,rgba(92,90,84,.06)_1px,transparent_1px)] [background-size:44px_44px]" })]
-		}), /* @__PURE__ */ jsx("div", {
-			className: "relative mx-auto flex min-h-[calc(100vh-4rem)] max-w-6xl items-center justify-center",
-			children: /* @__PURE__ */ jsxs("section", {
-				className: "w-full max-w-[560px] rounded-[32px] border border-[var(--line)] bg-[rgba(250,249,246,.94)] p-7 shadow-[0_32px_120px_-52px_rgba(20,15,0,.28)] backdrop-blur-xl sm:p-8",
-				children: [/* @__PURE__ */ jsx("div", {
-					className: "mb-6 inline-flex items-center gap-3 rounded-full border border-[var(--line)] bg-white px-4 py-2 text-[11px] font-semibold tracking-[.18em] text-[var(--amber-ink)] uppercase",
-					children: /* @__PURE__ */ jsx(Logo, { className: "h-7 w-7" })
-				}), /* @__PURE__ */ jsxs("section", {
-					className: "rounded-[28px] border border-[var(--line)] bg-white p-6 shadow-[0_1px_2px_rgba(20,15,0,.04),0_20px_40px_-28px_rgba(20,15,0,.18)] sm:p-7",
-					children: [
-						/* @__PURE__ */ jsx("div", {
-							className: "inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-[var(--yellow)] shadow-[0_16px_40px_-20px_rgba(255,198,41,.85)]",
-							children: /* @__PURE__ */ jsx(Lock, { className: "h-6 w-6 text-[#1a1400]" })
-						}),
-						/* @__PURE__ */ jsx("h2", {
-							className: "mt-6 text-[34px] font-bold tracking-[-.05em] text-[var(--ink)]",
-							children: "Admin login"
-						}),
-						/* @__PURE__ */ jsx("p", {
-							className: "mt-2 text-[14px] leading-6 text-[var(--muted)]",
-							children: "Sign in with the root credentials from the environment configuration."
-						}),
-						/* @__PURE__ */ jsxs("form", {
-							onSubmit: submit,
-							className: "mt-8 space-y-4",
-							children: [
-								/* @__PURE__ */ jsxs("div", { children: [
-									/* @__PURE__ */ jsx("label", {
-										className: "mb-2 block text-[13px] font-semibold text-[var(--body)]",
-										children: "Email"
-									}),
-									/* @__PURE__ */ jsx("input", {
-										type: "email",
-										value: form.data.email,
-										onChange: (event) => form.setData("email", event.target.value),
-										className: "field h-12 rounded-2xl border-[var(--line)] bg-white text-[14px] text-[var(--ink)] placeholder:text-[var(--faint)]",
-										placeholder: "admin@example.com",
-										autoComplete: "email"
-									}),
-									form.errors.email && /* @__PURE__ */ jsx("p", {
-										className: "mt-2 text-sm text-[var(--warn)]",
-										children: form.errors.email
+		children: [
+			/* @__PURE__ */ jsx("style", { children: `@keyframes admin-login-drift { 0%, 100% { transform: translate3d(-4%, -3%, 0) scale(1); } 50% { transform: translate3d(5%, 4%, 0) scale(1.08); } } @keyframes admin-login-grid { 0% { transform: translate3d(0, 0, 0); } 100% { transform: translate3d(44px, 44px, 0); } }` }),
+			/* @__PURE__ */ jsxs("div", {
+				"aria-hidden": true,
+				className: "pointer-events-none fixed inset-0 overflow-hidden",
+				children: [
+					/* @__PURE__ */ jsx("div", { className: "absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(255,198,41,.22),_transparent_28%),linear-gradient(180deg,_#faf9f6,_#f5f4f0)]" }),
+					/* @__PURE__ */ jsx("div", { className: "absolute -top-28 -right-20 h-80 w-80 rounded-full bg-[rgba(255,198,41,.18)] blur-3xl [animation:admin-login-drift_15s_ease-in-out_infinite]" }),
+					/* @__PURE__ */ jsx("div", { className: "absolute -bottom-24 -left-20 h-72 w-72 rounded-full bg-[rgba(73,212,239,.13)] blur-3xl [animation:admin-login-drift_18s_ease-in-out_infinite_reverse]" }),
+					/* @__PURE__ */ jsx("div", { className: "absolute inset-[-44px] opacity-45 [animation:admin-login-grid_24s_linear_infinite] [background-image:linear-gradient(to_right,rgba(92,90,84,.06)_1px,transparent_1px),linear-gradient(to_bottom,rgba(92,90,84,.06)_1px,transparent_1px)] [background-size:44px_44px]" })
+				]
+			}),
+			/* @__PURE__ */ jsx("div", {
+				className: "relative mx-auto flex min-h-[calc(100vh-4rem)] max-w-6xl items-center justify-center",
+				children: /* @__PURE__ */ jsx("section", {
+					className: "w-full max-w-[560px] rounded-[32px] bg-[rgba(250,249,246,.78)] p-2 shadow-[0_32px_120px_-52px_rgba(20,15,0,.28)] backdrop-blur-xl sm:p-3",
+					children: /* @__PURE__ */ jsxs("section", {
+						className: "rounded-[28px] border border-[var(--line)] bg-white p-6 shadow-[0_1px_2px_rgba(20,15,0,.04),0_20px_40px_-28px_rgba(20,15,0,.18)] sm:p-7",
+						children: [
+							/* @__PURE__ */ jsx("div", {
+								className: "inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-[var(--yellow)] shadow-[0_16px_40px_-20px_rgba(255,198,41,.85)]",
+								children: /* @__PURE__ */ jsx(Logo, { className: "h-7 w-7 text-[#1a1400]" })
+							}),
+							/* @__PURE__ */ jsx("h2", {
+								className: "mt-6 text-[34px] font-bold tracking-[-.05em] text-[var(--ink)]",
+								children: "Admin login"
+							}),
+							/* @__PURE__ */ jsx("p", {
+								className: "mt-2 text-[14px] leading-6 text-[var(--muted)]",
+								children: "Sign in with the root credentials from the environment configuration."
+							}),
+							/* @__PURE__ */ jsxs("form", {
+								onSubmit: submit,
+								className: "mt-8 space-y-4",
+								children: [
+									/* @__PURE__ */ jsxs("div", { children: [
+										/* @__PURE__ */ jsx("label", {
+											className: "mb-2 block text-[13px] font-semibold text-[var(--body)]",
+											children: "Email"
+										}),
+										/* @__PURE__ */ jsx("input", {
+											type: "email",
+											value: form.data.email,
+											onChange: (event) => form.setData("email", event.target.value),
+											className: "field h-12 rounded-2xl border-[var(--line)] bg-white text-[14px] text-[var(--ink)] placeholder:text-[var(--faint)]",
+											placeholder: "admin@example.com",
+											autoComplete: "email"
+										}),
+										form.errors.email && /* @__PURE__ */ jsx("p", {
+											className: "mt-2 text-sm text-[var(--warn)]",
+											children: form.errors.email
+										})
+									] }),
+									/* @__PURE__ */ jsxs("div", { children: [
+										/* @__PURE__ */ jsx("label", {
+											className: "mb-2 block text-[13px] font-semibold text-[var(--body)]",
+											children: "Password"
+										}),
+										/* @__PURE__ */ jsx(PasswordField, {
+											value: form.data.password,
+											onChange: (event) => form.setData("password", event.target.value)
+										}),
+										form.errors.password && /* @__PURE__ */ jsx("p", {
+											className: "mt-2 text-sm text-[var(--warn)]",
+											children: form.errors.password
+										})
+									] }),
+									/* @__PURE__ */ jsx("button", {
+										type: "submit",
+										disabled: form.processing,
+										className: "inline-flex h-12 w-full items-center justify-center rounded-2xl bg-[var(--yellow)] text-[14px] font-semibold text-[#1a1400] shadow-[0_22px_46px_-26px_rgba(255,198,41,.9)] transition hover:brightness-105 disabled:opacity-50",
+										children: form.processing ? "Signing in..." : "Sign in to admin"
 									})
-								] }),
-								/* @__PURE__ */ jsxs("div", { children: [
-									/* @__PURE__ */ jsx("label", {
-										className: "mb-2 block text-[13px] font-semibold text-[var(--body)]",
-										children: "Password"
-									}),
-									/* @__PURE__ */ jsx(PasswordField, {
-										value: form.data.password,
-										onChange: (event) => form.setData("password", event.target.value)
-									}),
-									form.errors.password && /* @__PURE__ */ jsx("p", {
-										className: "mt-2 text-sm text-[var(--warn)]",
-										children: form.errors.password
-									})
-								] }),
-								/* @__PURE__ */ jsx("button", {
-									type: "submit",
-									disabled: form.processing,
-									className: "inline-flex h-12 w-full items-center justify-center rounded-2xl bg-[var(--yellow)] text-[14px] font-semibold text-[#1a1400] shadow-[0_22px_46px_-26px_rgba(255,198,41,.9)] transition hover:brightness-105 disabled:opacity-50",
-									children: form.processing ? "Signing in..." : "Sign in to admin"
-								})
-							]
-						})
-					]
-				})]
+								]
+							})
+						]
+					})
+				})
 			})
-		})]
+		]
 	})] });
 }
 //#endregion
@@ -18422,9 +18596,9 @@ function Free({ phrase = "", type = "brand", error = null }) {
 										type: "button",
 										className: "ff-run",
 										disabled: loading || selected.length === 0 || saving,
-										onClick: goLogin,
+										onClick: prepareAndSignIn,
 										children: [
-											saving && pendingRoute === "login" ? "Opening sign in…" : "Run my free search",
+											saving && pendingRoute === "google" ? "Opening Google…" : "Run my free search",
 											" ",
 											/* @__PURE__ */ jsx(Arrow, {})
 										]

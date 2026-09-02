@@ -204,12 +204,97 @@ function ConversionFunnel({ funnel = {} }) {
     );
 }
 
-const ACTIVITY_TONES = { sign_up: '#20cfc2', subscription: '#ee4393', engagement: '#7b5cff', coupon_usage: '#f6a819' };
+function EngagementInsights({ engagement = {} }) {
+    const adoption = engagement.adoption ?? [];
+    const frequency = engagement.frequency ?? [];
+    const trends = engagement.trends ?? [];
+    const suggestions = engagement.suggestions ?? [];
+
+    return (
+        <section className="overflow-hidden rounded-2xl border border-[#dce4f0] bg-[linear-gradient(135deg,_#ffffff_0%,_#f5f8ff_55%,_#f2fffb_100%)] p-3.5 shadow-[0_18px_42px_-32px_rgba(50,85,150,.45)] min-[390px]:p-4 sm:p-5">
+            <div className="flex items-start justify-between gap-3">
+                <div>
+                    <p className="text-[10px] font-semibold tracking-[.16em] text-[#119d90] uppercase sm:tracking-[.22em]">Insights</p>
+                    <h3 className="mt-1 text-[18px] leading-tight font-semibold text-[var(--ink)] sm:text-[17px]">Engagement insights</h3>
+                </div>
+                <div className="text-right">
+                    <strong className="block text-[25px] leading-none tracking-[-.04em] text-[var(--ink)]">{(engagement.activeCreators ?? 0).toLocaleString()}</strong>
+                    <span className="mt-1 block text-[9px] font-semibold tracking-[.11em] text-[#718197] uppercase sm:tracking-[.15em]">Active creators</span>
+                </div>
+            </div>
+
+            <p className="mt-3 text-[12px] leading-relaxed text-[#55667d] sm:text-[11px]">
+                Based on tracked activity in {engagement.rangeLabel?.toLowerCase() ?? 'the selected range'}.
+            </p>
+
+            <div className="mt-5 grid gap-5 lg:grid-cols-2 lg:gap-8">
+                <div>
+                    <p className="text-[10px] font-semibold tracking-[.14em] text-[#7b8ba0] uppercase sm:tracking-[.2em]">How far active creators get</p>
+                    <div className="mt-3 space-y-3.5">
+                        {adoption.map((row) => (
+                            <div key={row.label}>
+                                <div>
+                                    <div className="mb-1.5 flex items-baseline justify-between gap-2 text-[11.5px] text-[#55667d] sm:text-[10.5px]">
+                                        <span className="min-w-0">{row.label}</span>
+                                        <span className="shrink-0 font-semibold text-[var(--ink)]">{row.percentage}% <span className="font-normal text-[#718197]">({row.users})</span></span>
+                                    </div>
+                                    <div className="h-2.5 overflow-hidden rounded-full bg-[#e8edf5] sm:h-2">
+                                        <span className={`block h-full rounded-full ${row.tone === 'rose' ? 'bg-[#fb3f82]' : 'bg-[#8986fb]'}`} style={{ width: `${row.percentage}%` }} />
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+
+                <div className="space-y-5">
+                    <div>
+                        <p className="text-[10px] font-semibold tracking-[.14em] text-[#7b8ba0] uppercase sm:tracking-[.2em]">Usage frequency</p>
+                        <div className="mt-3 divide-y divide-[#e8edf5] overflow-hidden rounded-xl border border-[#e8edf5] bg-white/70">
+                            {frequency.map((row) => (
+                                <div key={row.label} className="flex items-center justify-between gap-3 px-3 py-2.5 text-[11.5px] sm:text-[10.5px]">
+                                    <span className="font-semibold text-[var(--ink)]">{row.label}</span>
+                                    <span className="shrink-0 text-[#718197]"><strong className="font-semibold text-[#55667d]">{row.average}</strong> per adopter <span className="hidden min-[390px]:inline">({row.adopters})</span></span>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                    <div>
+                        <p className="text-[10px] font-semibold tracking-[.14em] text-[#7b8ba0] uppercase sm:tracking-[.2em]">Trends vs previous range</p>
+                        <div className="mt-2 divide-y divide-[#e8edf5] border-y border-[#e8edf5]">
+                            {trends.map((row) => {
+                                const rising = row.change !== null && row.change >= 0;
+                                return (
+                                    <div key={row.label} className="flex items-center justify-between gap-3 py-2.5">
+                                        <span className="text-[11.5px] text-[#55667d] sm:text-[10.5px]">{row.label}</span>
+                                        <span className="shrink-0 text-right text-[11px] text-[#718197]"><strong className="mr-1 text-[14px] text-[var(--ink)]">{row.current.toLocaleString()}</strong>{row.change === null ? 'No prior data' : <span className={rising ? 'text-[#159b67]' : 'text-[#e94770]'}>{rising ? '↑' : '↓'} {Math.abs(row.change)}%</span>}</span>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div className="mt-5 border-t border-[#dce4f0] pt-4">
+                <p className="text-[10px] font-semibold tracking-[.14em] text-[#7b8ba0] uppercase sm:tracking-[.2em]">Suggested actions</p>
+                <div className="mt-2.5 space-y-2">
+                    {suggestions.map((suggestion) => (
+                        <p key={suggestion} className="flex gap-2 text-[11.5px] leading-relaxed text-[#55667d] sm:text-[10.5px]"><span className="mt-[6px] h-1.5 w-1.5 shrink-0 rounded-full bg-[#fb3f82]" />{suggestion}</p>
+                    ))}
+                </div>
+            </div>
+        </section>
+    );
+}
+
+const ACTIVITY_TONES = { sign_up: '#20cfc2', subscription: '#ee4393', engagement: '#7b5cff', analysis: '#25a6d9', coupon_usage: '#f6a819' };
 const ACTIVITY_FILTERS = [
     ['all', 'All'],
     ['sign_up', 'Sign up'],
     ['subscription', 'Subscription'],
     ['engagement', 'Engagement'],
+    ['analysis', 'Analysis'],
     ['coupon_usage', 'Coupon'],
 ];
 
@@ -346,7 +431,7 @@ function CouponProgramsPanel({ coupons = {} }) {
     );
 }
 
-export default function Dashboard({ trend = [], stats = [], snapshot = {}, range = '30D', ranges = [], acquisition = {}, activity = {}, coupons = {} }) {
+export default function Dashboard({ trend = [], stats = [], snapshot = {}, range = '30D', ranges = [], acquisition = {}, activity = {}, engagement = {}, coupons = {} }) {
     const refresh = useForm({});
 
     const selectRange = (next) => {
@@ -413,6 +498,9 @@ export default function Dashboard({ trend = [], stats = [], snapshot = {}, range
 
             <div className="mt-3">
                 <ConversionFunnel funnel={acquisition.funnel} />
+            </div>
+            <div className="mt-3">
+                <EngagementInsights engagement={engagement} />
             </div>
             <div className="mt-3 grid gap-3 xl:grid-cols-2">
                 <RecentActivity activity={activity} />

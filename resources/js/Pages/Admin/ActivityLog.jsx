@@ -7,6 +7,7 @@ const CATEGORIES = [
     ['sign_up', 'Sign ups'],
     ['subscription', 'Subscription'],
     ['engagement', 'Engagement'],
+    ['analysis', 'Analysis'],
     ['coupon_usage', 'Coupon usage'],
 ];
 const EVENT_LABELS = {
@@ -41,7 +42,7 @@ const EVENT_LABELS = {
     coupon_blocked_reverted_to_free: 'Coupon Blocked: Reverted To Free',
     coupon_blocked_program_inactive: 'Coupon Blocked: Program Inactive',
 };
-const TONES = { sign_up: '#20cfc2', subscription: '#ee4393', engagement: '#7b5cff', coupon_usage: '#f6a819' };
+const TONES = { sign_up: '#20cfc2', subscription: '#ee4393', engagement: '#7b5cff', analysis: '#25a6d9', coupon_usage: '#f6a819' };
 
 function formatTimestamp(value) {
     if (!value) return '-';

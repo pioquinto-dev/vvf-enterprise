@@ -1,7 +1,7 @@
 import { Head, useForm } from '@inertiajs/react';
 import { useEffect, useState } from 'react';
 
-import { Lock, Logo } from '../../landing/components/Icons.jsx';
+import { Logo } from '../../landing/components/Icons.jsx';
 
 function PasswordField({ value, onChange }) {
     const [visible, setVisible] = useState(false);
@@ -30,9 +30,9 @@ function PasswordField({ value, onChange }) {
     );
 }
 
-export default function Login({ adminRootEmail = '' }) {
+export default function Login() {
     const form = useForm({
-        email: adminRootEmail,
+        email: '',
         password: '',
     });
 
@@ -56,20 +56,19 @@ export default function Login({ adminRootEmail = '' }) {
             <Head title="Admin Login - Outlier Vault" />
 
             <div className="min-h-screen bg-[var(--canvas)] px-4 py-8 text-[var(--ink)] sm:px-6">
+                <style>{`@keyframes admin-login-drift { 0%, 100% { transform: translate3d(-4%, -3%, 0) scale(1); } 50% { transform: translate3d(5%, 4%, 0) scale(1.08); } } @keyframes admin-login-grid { 0% { transform: translate3d(0, 0, 0); } 100% { transform: translate3d(44px, 44px, 0); } }`}</style>
                 <div aria-hidden className="pointer-events-none fixed inset-0 overflow-hidden">
                     <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(255,198,41,.22),_transparent_28%),linear-gradient(180deg,_#faf9f6,_#f5f4f0)]" />
-                    <div className="absolute inset-0 opacity-45 [background-image:linear-gradient(to_right,rgba(92,90,84,.06)_1px,transparent_1px),linear-gradient(to_bottom,rgba(92,90,84,.06)_1px,transparent_1px)] [background-size:44px_44px]" />
+                    <div className="absolute -top-28 -right-20 h-80 w-80 rounded-full bg-[rgba(255,198,41,.18)] blur-3xl [animation:admin-login-drift_15s_ease-in-out_infinite]" />
+                    <div className="absolute -bottom-24 -left-20 h-72 w-72 rounded-full bg-[rgba(73,212,239,.13)] blur-3xl [animation:admin-login-drift_18s_ease-in-out_infinite_reverse]" />
+                    <div className="absolute inset-[-44px] opacity-45 [animation:admin-login-grid_24s_linear_infinite] [background-image:linear-gradient(to_right,rgba(92,90,84,.06)_1px,transparent_1px),linear-gradient(to_bottom,rgba(92,90,84,.06)_1px,transparent_1px)] [background-size:44px_44px]" />
                 </div>
 
                 <div className="relative mx-auto flex min-h-[calc(100vh-4rem)] max-w-6xl items-center justify-center">
-                    <section className="w-full max-w-[560px] rounded-[32px] border border-[var(--line)] bg-[rgba(250,249,246,.94)] p-7 shadow-[0_32px_120px_-52px_rgba(20,15,0,.28)] backdrop-blur-xl sm:p-8">
-                        <div className="mb-6 inline-flex items-center gap-3 rounded-full border border-[var(--line)] bg-white px-4 py-2 text-[11px] font-semibold tracking-[.18em] text-[var(--amber-ink)] uppercase">
-                            <Logo className="h-7 w-7" />
-                        </div>
-
+                    <section className="w-full max-w-[560px] rounded-[32px] bg-[rgba(250,249,246,.78)] p-2 shadow-[0_32px_120px_-52px_rgba(20,15,0,.28)] backdrop-blur-xl sm:p-3">
                         <section className="rounded-[28px] border border-[var(--line)] bg-white p-6 shadow-[0_1px_2px_rgba(20,15,0,.04),0_20px_40px_-28px_rgba(20,15,0,.18)] sm:p-7">
                             <div className="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-[var(--yellow)] shadow-[0_16px_40px_-20px_rgba(255,198,41,.85)]">
-                                <Lock className="h-6 w-6 text-[#1a1400]" />
+                                <Logo className="h-7 w-7 text-[#1a1400]" />
                             </div>
                             <h2 className="mt-6 text-[34px] font-bold tracking-[-.05em] text-[var(--ink)]">Admin login</h2>
                             <p className="mt-2 text-[14px] leading-6 text-[var(--muted)]">

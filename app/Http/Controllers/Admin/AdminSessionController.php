@@ -19,9 +19,7 @@ class AdminSessionController extends Controller
 
     public function create(Request $request): Response
     {
-        return Inertia::render('Admin/Login', [
-            'adminRootEmail' => (string) config('admin.root_email'),
-        ]);
+        return Inertia::render('Admin/Login');
     }
 
     public function store(Request $request): RedirectResponse
