@@ -19,12 +19,13 @@ export default function TrialScreen({ onBack, backLabel = 'Back to results' }) {
   const tiers = plans.filter((t) => t.price > 0 && (t.duration ?? 'monthly') === billingCycle);
   const trialTier = tiers.find((t) => t.popular) || tiers[0];
   const annualBanner = useMemo(() => {
-    const percents = tiers
+    const percents = plans
+      .filter((plan) => plan.price > 0 && (plan.duration ?? 'monthly') === 'annual')
       .map((plan) => Number(plan.annualSavingsPercent ?? 0))
       .filter((value) => value > 0);
 
     return percents.length > 0 ? Math.max(...percents) : 0;
-  }, [tiers]);
+  }, [plans]);
 
   const startCheckout = (slug, cycle = billingCycle) => {
     if (!auth.signedIn) {
@@ -87,7 +88,7 @@ export default function TrialScreen({ onBack, backLabel = 'Back to results' }) {
                 ${t.price}
               </p>
               <p className="mt-2 min-h-[32px] text-[11.5px] leading-[1.35] faint">
-                {billingCycle === 'annual' ? `Save ${t.annualSavingsPercent}% with annual billing` : '$0 for 8 days'}
+                {billingCycle === 'annual' ? `First 2 months free. Billed annually. Save ${t.annualSavingsPercent}%` : '$0 for 8 days'}
               </p>
 
               <p className="mt-4 text-[12px] faint">

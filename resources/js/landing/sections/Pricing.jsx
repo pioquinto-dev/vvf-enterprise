@@ -17,14 +17,14 @@ export default function Pricing({ plans = [], onStart, onTrial }) {
     () => sortedPlans.filter((plan) => plan.slug === 'free' || (plan.duration ?? 'monthly') === billingCycle),
     [billingCycle, sortedPlans],
   );
-  const paidPlans = useMemo(() => visiblePlans.filter((plan) => plan.price > 0), [visiblePlans]);
   const annualBanner = useMemo(() => {
-    const percents = paidPlans
+    const percents = sortedPlans
+      .filter((plan) => plan.price > 0 && (plan.duration ?? 'monthly') === 'annual')
       .map((plan) => Number(plan.annualSavingsPercent ?? 0))
       .filter((value) => value > 0);
 
     return percents.length > 0 ? Math.max(...percents) : 0;
-  }, [paidPlans]);
+  }, [sortedPlans]);
 
   return (
     <section className="sec--pad" id="pricing">
@@ -59,7 +59,7 @@ export default function Pricing({ plans = [], onStart, onTrial }) {
                   {free
                     ? ''
                     : billingCycle === 'annual'
-                      ? `Save ${plan.annualSavingsPercent}% with annual billing`
+                      ? `First 2 months free. Billed annually. Save ${plan.annualSavingsPercent}%`
                       : '$0 for 8 days'}
                 </p>
 

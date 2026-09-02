@@ -349,7 +349,7 @@ export default function ResultsScreen({
             <p className="font-display text-[17px] font-bold text-white">Want another search, or weekly tracking?</p>
             <p className="mt-1.5 text-[13.5px] text-white/60">
               Free includes 1 search and no search bookmarks or video analysis. Growth includes 100 searches, 100 viral
-              breakout video analyses, weekly + monthly scheduling, virality alerts, and unlimited bookmarks. Scale
+              breakout video analyses, weekly refresh scheduling, virality alerts, and unlimited bookmarks. Scale
               expands that to unlimited searches and unlimited viral breakout video analysis.
             </p>
           </div>

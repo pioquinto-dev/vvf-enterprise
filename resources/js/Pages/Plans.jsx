@@ -61,14 +61,14 @@ export default function Plans() {
       return {
         amount: `$${plan.price}`,
         suffix: annual ? '/yr' : '/mo',
-        subline: annual ? `Save ${plan.annualSavingsPercent}% with annual billing` : '$0 for 8 days',
+        subline: annual ? `First 2 months free. Billed annually. Save ${plan.annualSavingsPercent}%` : '$0 for 8 days',
       };
     }
 
     return {
       amount: `$${plan.price}`,
       suffix: annual ? '/yr' : '/mo',
-      subline: annual ? `Save ${plan.annualSavingsPercent}% with annual billing` : '',
+      subline: annual ? `First 2 months free. Billed annually. Save ${plan.annualSavingsPercent}%` : '',
     };
   };
 

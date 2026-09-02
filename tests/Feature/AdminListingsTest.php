@@ -110,7 +110,7 @@ class AdminListingsTest extends TestCase
             'interval' => 'month',
             'interval_count' => 1,
             'duration' => 'monthly',
-            'search_credits_limit' => 250,
+            'search_credits_limit' => -1,
             'video_bookmark_limit' => -1,
             'search_bookmark_limit' => -1,
             'video_analysis_limit' => 100,
@@ -123,7 +123,7 @@ class AdminListingsTest extends TestCase
         $plan = PricingPlan::query()->where('slug', 'scale')->firstOrFail();
 
         $this->assertSame('Scale', $plan->name);
-        $this->assertSame(250, (int) data_get($plan->metadata, 'subscription.search_limits.limit'));
+        $this->assertSame(-1, (int) data_get($plan->metadata, 'subscription.search_limits.limit'));
         $this->assertTrue((bool) data_get($plan->metadata, 'settings.popular'));
     }
 

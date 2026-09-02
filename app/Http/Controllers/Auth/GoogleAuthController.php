@@ -165,7 +165,7 @@ class GoogleAuthController extends Controller
         try {
             return redirect()->away($this->billing->checkout($user, $plan, $withTrial, $cycle));
         } catch (\Illuminate\Validation\ValidationException $exception) {
-            if ($withTrial && $exception->errors()['trial'] ?? false) {
+            if ($withTrial && isset($exception->errors()['trial'])) {
                 return redirect()->route('plans')->with('trial_access_prompt', [
                     'reason' => 'already_used',
                     'plan_slug' => $plan->slug,

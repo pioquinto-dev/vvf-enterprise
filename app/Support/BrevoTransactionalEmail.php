@@ -37,10 +37,10 @@ class BrevoTransactionalEmail
             'isTrial' => $isTrial ? 'yes' : 'no',
             'accessEndsAt' => $endsAt?->timezone(config('app.timezone'))->format('F j, Y') ?? 'your renewal date',
             'renewalLabel' => $isTrial ? 'Trial ends' : 'Renews',
-            'searchLimit' => (int) data_get($subscription->metadata, 'subscription.search_limits.limit', 0),
-            'videoBookmarkLimit' => (int) data_get($subscription->metadata, 'subscription.viral_video_bookmarks.limit', 0),
-            'searchBookmarkLimit' => (int) data_get($subscription->metadata, 'subscription.search_bookmarks.limit', 0),
-            'videoAnalysisLimit' => (int) data_get($subscription->metadata, 'subscription.video_analysis.limit', 0),
+            'searchLimit' => self::limitLabel(data_get($subscription->metadata, 'subscription.search_limits.limit', 0)),
+            'videoBookmarkLimit' => self::limitLabel(data_get($subscription->metadata, 'subscription.viral_video_bookmarks.limit', 0)),
+            'searchBookmarkLimit' => self::limitLabel(data_get($subscription->metadata, 'subscription.search_bookmarks.limit', 0)),
+            'videoAnalysisLimit' => self::limitLabel(data_get($subscription->metadata, 'subscription.video_analysis.limit', 0)),
             'dashboardUrl' => url('/dashboard'),
             'savedSearchesUrl' => url('/library'),
             'settingsUrl' => url('/settings/subscription'),
@@ -180,5 +180,12 @@ class BrevoTransactionalEmail
     private static function firstName(string $name): string
     {
         return str($name)->trim()->before(' ')->value() ?: 'there';
+    }
+
+    private static function limitLabel(mixed $limit): int|string
+    {
+        $limit = (int) $limit;
+
+        return $limit === -1 ? 'Unlimited' : $limit;
     }
 }

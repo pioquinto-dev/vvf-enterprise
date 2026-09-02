@@ -9525,14 +9525,14 @@ var PRICING = {
 			duration: "monthly",
 			name: "Growth",
 			price: 99,
-			annualSavingsPercent: 40,
+			annualSavingsPercent: 17,
 			tagline: "For a single brand.",
 			cta: "Choose Growth",
 			popular: true,
 			features: [
 				"100 searches",
 				"100 viral breakout video analysis",
-				"Weekly + monthly scheduling",
+				"Weekly Refresh Scheduling",
 				"Virality alerts",
 				"Unlimited bookmarks"
 			],
@@ -9554,14 +9554,14 @@ var PRICING = {
 			duration: "monthly",
 			name: "Scale",
 			price: 199,
-			annualSavingsPercent: 45,
+			annualSavingsPercent: 20,
 			tagline: "For brand and agency teams.",
 			cta: "Choose Scale",
 			features: [
 				"Unlimited searches",
 				"Unlimited viral breakout video analysis",
 				"Unlimited bookmarks",
-				"Weekly + monthly scheduling",
+				"Weekly Refresh Scheduling",
 				"Virality alerts"
 			],
 			searchCreditsLimit: -1,
@@ -9582,15 +9582,15 @@ var PRICING = {
 		planType: "growth",
 		duration: "annual",
 		name: "Growth",
-		price: 699,
-		annualSavingsPercent: 40,
+		price: 990,
+		annualSavingsPercent: 17,
 		tagline: "For a single brand.",
 		cta: "Choose Growth Annual",
 		popular: true,
 		features: [
 			"100 searches",
 			"100 viral breakout video analysis",
-			"Weekly + monthly scheduling",
+			"Weekly Refresh Scheduling",
 			"Virality alerts",
 			"Unlimited bookmarks"
 		],
@@ -9610,14 +9610,14 @@ var PRICING = {
 		planType: "scale",
 		duration: "annual",
 		name: "Scale",
-		price: 1299,
-		annualSavingsPercent: 45,
+		price: 1899,
+		annualSavingsPercent: 20,
 		tagline: "For brand and agency teams.",
 		cta: "Choose Scale Annual",
 		features: [
 			"Unlimited searches",
 			"Unlimited viral breakout video analysis",
-			"Weekly + monthly scheduling",
+			"Weekly Refresh Scheduling",
 			"Virality alerts",
 			"Unlimited bookmarks"
 		],
@@ -10236,11 +10236,10 @@ function Pricing({ plans = [], onStart, onTrial }) {
 		return (aIndex === -1 ? Number.MAX_SAFE_INTEGER : aIndex) - (bIndex === -1 ? Number.MAX_SAFE_INTEGER : bIndex);
 	});
 	const visiblePlans = useMemo(() => sortedPlans.filter((plan) => plan.slug === "free" || (plan.duration ?? "monthly") === billingCycle), [billingCycle, sortedPlans]);
-	const paidPlans = useMemo(() => visiblePlans.filter((plan) => plan.price > 0), [visiblePlans]);
 	const annualBanner = useMemo(() => {
-		const percents = paidPlans.map((plan) => Number(plan.annualSavingsPercent ?? 0)).filter((value) => value > 0);
+		const percents = sortedPlans.filter((plan) => plan.price > 0 && (plan.duration ?? "monthly") === "annual").map((plan) => Number(plan.annualSavingsPercent ?? 0)).filter((value) => value > 0);
 		return percents.length > 0 ? Math.max(...percents) : 0;
-	}, [paidPlans]);
+	}, [sortedPlans]);
 	return /* @__PURE__ */ jsx("section", {
 		className: "sec--pad",
 		id: "pricing",
@@ -10297,7 +10296,7 @@ function Pricing({ plans = [], onStart, onTrial }) {
 								}),
 								/* @__PURE__ */ jsx("p", {
 									className: "plan__s",
-									children: free ? "" : billingCycle === "annual" ? `Save ${plan.annualSavingsPercent}% with annual billing` : "$0 for 8 days"
+									children: free ? "" : billingCycle === "annual" ? `First 2 months free. Billed annually. Save ${plan.annualSavingsPercent}%` : "$0 for 8 days"
 								}),
 								/* @__PURE__ */ jsx("ul", { children: plan.features.map((feature) => /* @__PURE__ */ jsxs("li", { children: [/* @__PURE__ */ jsx(Check, { className: "h-[15px] w-[15px]" }), feature] }, feature)) }),
 								free ? /* @__PURE__ */ jsx("button", {
@@ -10673,12 +10672,12 @@ function Plans() {
 		if (!hasUsedTrial || isTrialing) return {
 			amount: `$${plan.price}`,
 			suffix: annual ? "/yr" : "/mo",
-			subline: annual ? `Save ${plan.annualSavingsPercent}% with annual billing` : "$0 for 8 days"
+			subline: annual ? `First 2 months free. Billed annually. Save ${plan.annualSavingsPercent}%` : "$0 for 8 days"
 		};
 		return {
 			amount: `$${plan.price}`,
 			suffix: annual ? "/yr" : "/mo",
-			subline: annual ? `Save ${plan.annualSavingsPercent}% with annual billing` : ""
+			subline: annual ? `First 2 months free. Billed annually. Save ${plan.annualSavingsPercent}%` : ""
 		};
 	};
 	return /* @__PURE__ */ jsxs(Fragment$1, { children: [/* @__PURE__ */ jsx(Head, { title: "Plans · Brand Beacon" }), /* @__PURE__ */ jsxs(SettingsShell, {
@@ -19733,18 +19732,19 @@ function TermsOfService() {
 function TrialScreen({ onBack, backLabel = "Back to results" }) {
 	const { pricingPlans = [], auth = {} } = usePage().props;
 	const [billingCycle, setBillingCycle] = useState("monthly");
-	const tiers = (pricingPlans.length > 0 ? [...pricingPlans] : [...PRICING.monthly, ...PRICING.annual]).sort((a, b) => {
+	const plans = (pricingPlans.length > 0 ? [...pricingPlans] : [...PRICING.monthly, ...PRICING.annual]).sort((a, b) => {
 		const aKey = a.slug ?? a.name?.toLowerCase();
 		const bKey = b.slug ?? b.name?.toLowerCase();
 		const aIndex = PRICING_PLAN_ORDER.indexOf(aKey);
 		const bIndex = PRICING_PLAN_ORDER.indexOf(bKey);
 		return (aIndex === -1 ? Number.MAX_SAFE_INTEGER : aIndex) - (bIndex === -1 ? Number.MAX_SAFE_INTEGER : bIndex);
-	}).filter((t) => t.price > 0 && (t.duration ?? "monthly") === billingCycle);
+	});
+	const tiers = plans.filter((t) => t.price > 0 && (t.duration ?? "monthly") === billingCycle);
 	const trialTier = tiers.find((t) => t.popular) || tiers[0];
 	const annualBanner = useMemo(() => {
-		const percents = tiers.map((plan) => Number(plan.annualSavingsPercent ?? 0)).filter((value) => value > 0);
+		const percents = plans.filter((plan) => plan.price > 0 && (plan.duration ?? "monthly") === "annual").map((plan) => Number(plan.annualSavingsPercent ?? 0)).filter((value) => value > 0);
 		return percents.length > 0 ? Math.max(...percents) : 0;
-	}, [tiers]);
+	}, [plans]);
 	const startCheckout = (slug, cycle = billingCycle) => {
 		if (!auth.signedIn) {
 			window.location.assign(`/login?redirect=trial_checkout&plan=${encodeURIComponent(slug)}&trial=1&cycle=${encodeURIComponent(cycle)}`);
@@ -19814,7 +19814,7 @@ function TrialScreen({ onBack, backLabel = "Back to results" }) {
 							}),
 							/* @__PURE__ */ jsx("p", {
 								className: "mt-2 min-h-[32px] text-[11.5px] leading-[1.35] faint",
-								children: billingCycle === "annual" ? `Save ${t.annualSavingsPercent}% with annual billing` : "$0 for 8 days"
+								children: billingCycle === "annual" ? `First 2 months free. Billed annually. Save ${t.annualSavingsPercent}%` : "$0 for 8 days"
 							}),
 							/* @__PURE__ */ jsxs("p", {
 								className: "mt-4 text-[12px] faint",

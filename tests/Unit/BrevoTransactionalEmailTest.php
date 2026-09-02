@@ -108,4 +108,5 @@ class BrevoTransactionalEmailTest extends TestCase
 
         BrevoTransactionalEmail::searchDone($user, $search);
     }
+
 }

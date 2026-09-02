@@ -195,7 +195,7 @@ class AdminListingMutator
         ];
 
         if (array_key_exists('search_credits_limit', $input) && $input['search_credits_limit'] !== null) {
-            $metadata['subscription']['search_limits']['limit'] = max(0, (int) $input['search_credits_limit']);
+            $metadata['subscription']['search_limits']['limit'] = max(-1, (int) $input['search_credits_limit']);
         }
 
         if (array_key_exists('cta', $input) && $input['cta'] !== null) {
@@ -211,15 +211,15 @@ class AdminListingMutator
         }
 
         if (array_key_exists('video_bookmark_limit', $input) && $input['video_bookmark_limit'] !== null) {
-            $metadata['subscription']['viral_video_bookmarks']['limit'] = (int) $input['video_bookmark_limit'];
+            $metadata['subscription']['viral_video_bookmarks']['limit'] = max(-1, (int) $input['video_bookmark_limit']);
         }
 
         if (array_key_exists('search_bookmark_limit', $input) && $input['search_bookmark_limit'] !== null) {
-            $metadata['subscription']['search_bookmarks']['limit'] = (int) $input['search_bookmark_limit'];
+            $metadata['subscription']['search_bookmarks']['limit'] = max(-1, (int) $input['search_bookmark_limit']);
         }
 
         if (array_key_exists('video_analysis_limit', $input) && $input['video_analysis_limit'] !== null) {
-            $metadata['subscription']['video_analysis']['limit'] = (int) $input['video_analysis_limit'];
+            $metadata['subscription']['video_analysis']['limit'] = max(-1, (int) $input['video_analysis_limit']);
         }
 
         return $metadata;

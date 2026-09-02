@@ -35,4 +35,17 @@ class PlanSlugRebrandTest extends TestCase
         $this->assertSame('Growth', PricingPlan::query()->where('slug', 'growth')->value('name'));
         $this->assertSame('Scale', PricingPlan::query()->where('slug', 'scale')->value('name'));
     }
+
+    public function test_seeded_annual_plans_include_two_free_months(): void
+    {
+        PricingPlanTable::seedDefaults();
+
+        $growth = PricingPlan::query()->where('slug', 'growth-annual')->firstOrFail();
+        $scale = PricingPlan::query()->where('slug', 'scale-annual')->firstOrFail();
+
+        $this->assertSame('990.00', $growth->amount);
+        $this->assertSame(17, data_get($growth->metadata, 'settings.annualSavingsPercent'));
+        $this->assertSame('1899.00', $scale->amount);
+        $this->assertSame(20, data_get($scale->metadata, 'settings.annualSavingsPercent'));
+    }
 }
