@@ -3948,7 +3948,7 @@ function SearchCreditConfirmModal({ body, subject, busy = false, onConfirm, onCa
 //#endregion
 //#region resources/js/Pages/components/UpgradePromptModal.jsx
 var UpgradePromptModal_exports = /* @__PURE__ */ __exportAll({ default: () => UpgradePromptModal });
-function SparkIcon() {
+function SparkIcon$1() {
 	return /* @__PURE__ */ jsx("svg", {
 		viewBox: "0 0 24 24",
 		"aria-hidden": "true",
@@ -3994,7 +3994,7 @@ function UpgradePromptModal({ open = true, eyebrow = null, title, body, detail =
 					}),
 					eyebrow && /* @__PURE__ */ jsxs("div", {
 						className: "bb-modal__eyebrow",
-						children: [/* @__PURE__ */ jsx(SparkIcon, {}), /* @__PURE__ */ jsx("span", { children: eyebrow })]
+						children: [/* @__PURE__ */ jsx(SparkIcon$1, {}), /* @__PURE__ */ jsx("span", { children: eyebrow })]
 					}),
 					/* @__PURE__ */ jsx("h2", { children: title }),
 					body && /* @__PURE__ */ jsx("p", {
@@ -15888,6 +15888,173 @@ var ACTIVE_SEARCH_STATUSES = /* @__PURE__ */ new Set([
 	"scraping"
 ]);
 var SEARCH_POLL_MS = 8e3;
+var SparkIcon = /* @__PURE__ */ jsx("svg", {
+	viewBox: "0 0 24 24",
+	fill: "currentColor",
+	"aria-hidden": "true",
+	width: "14",
+	height: "14",
+	children: /* @__PURE__ */ jsx("path", { d: "M12 2l1.8 6.2L20 10l-6.2 1.8L12 18l-1.8-6.2L4 10l6.2-1.8z" })
+});
+var ArrowIcon = /* @__PURE__ */ jsx("svg", {
+	viewBox: "0 0 24 24",
+	fill: "none",
+	stroke: "currentColor",
+	strokeWidth: "2.4",
+	strokeLinecap: "round",
+	strokeLinejoin: "round",
+	"aria-hidden": "true",
+	width: "14",
+	height: "14",
+	children: /* @__PURE__ */ jsx("path", { d: "M5 12h14M13 6l6 6-6 6" })
+});
+/**
+* Loading header that sits on top of the analytics page while a report is
+* still building. Once the run finishes it collapses to a slim
+* "Report complete" line for a moment before the caller drops it entirely.
+* Ported from the free-search-flow mockup's pending head.
+*/
+function BuildingHeader({ search, done = false }) {
+	const subject = search?.name || search?.phrase || "your search";
+	const scanned = Number(search?.scanned_count ?? 0);
+	return /* @__PURE__ */ jsxs("div", {
+		className: `bb-pend${done ? " is-done" : ""}`,
+		children: [/* @__PURE__ */ jsxs("div", {
+			className: "bb-pend__body",
+			children: [/* @__PURE__ */ jsxs("div", {
+				className: "bb-pend__t",
+				children: [
+					/* @__PURE__ */ jsxs("h2", { children: [
+						"Building your report for “",
+						subject,
+						"”"
+					] }),
+					/* @__PURE__ */ jsxs("span", {
+						className: "pill pill--run bb-pend__pill",
+						children: [/* @__PURE__ */ jsx("span", {
+							className: "bb-pend__spin",
+							"aria-hidden": "true"
+						}), "Scanning TikTok"]
+					}),
+					/* @__PURE__ */ jsx("span", {
+						className: "bb-pend__eta",
+						children: "usually ready within 20 minutes"
+					})
+				]
+			}), /* @__PURE__ */ jsxs("div", {
+				className: "bb-pend__cta",
+				children: [/* @__PURE__ */ jsxs("a", {
+					href: "/dashboard",
+					className: "btn btn--y btn--sm",
+					children: [
+						SparkIcon,
+						" Browse the search dashboard ",
+						ArrowIcon
+					]
+				}), /* @__PURE__ */ jsx("p", { children: "No need to wait here — we’ll email you the moment the full ranking is in. Early results fill in below as they land." })]
+			})]
+		}), /* @__PURE__ */ jsxs("div", {
+			className: "bb-pend__slim",
+			children: [/* @__PURE__ */ jsxs("span", {
+				className: "pill pill--ok",
+				children: [/* @__PURE__ */ jsx("i", {}), "Report complete"]
+			}), /* @__PURE__ */ jsxs("span", { children: [scanned > 0 ? /* @__PURE__ */ jsxs(Fragment$1, { children: [/* @__PURE__ */ jsx("b", { children: scanned.toLocaleString() }), " videos scanned · "] }) : null, "your ranking is ready."] })]
+		})]
+	});
+}
+function BuildingPopup({ subject, onDashboard, onClose }) {
+	return /* @__PURE__ */ jsx("div", {
+		className: "bb",
+		children: /* @__PURE__ */ jsxs("div", {
+			className: "bb-modal",
+			children: [/* @__PURE__ */ jsx("button", {
+				className: "bb-modal__bg",
+				"aria-label": "Close",
+				onClick: onClose
+			}), /* @__PURE__ */ jsxs("div", {
+				className: "bb-modal__box bb-buildpop",
+				role: "dialog",
+				"aria-modal": "true",
+				"aria-labelledby": "bb-buildpop-title",
+				children: [
+					/* @__PURE__ */ jsx("span", {
+						className: "bb-buildpop__i",
+						"aria-hidden": "true",
+						children: /* @__PURE__ */ jsxs("svg", {
+							viewBox: "0 0 24 24",
+							fill: "none",
+							stroke: "currentColor",
+							strokeWidth: "2",
+							strokeLinecap: "round",
+							children: [/* @__PURE__ */ jsx("circle", {
+								cx: "11",
+								cy: "11",
+								r: "7"
+							}), /* @__PURE__ */ jsx("path", { d: "m20 20-3.5-3.5" })]
+						})
+					}),
+					/* @__PURE__ */ jsx("h2", {
+						id: "bb-buildpop-title",
+						children: "Your report is still building"
+					}),
+					/* @__PURE__ */ jsxs("p", {
+						className: "sub",
+						children: [
+							"We’re scanning TikTok for ",
+							/* @__PURE__ */ jsx("b", { children: subject }),
+							" and filling this page in as results land. Check back in a few minutes — or browse the search dashboard while you wait. We’ll email you the moment it’s complete."
+						]
+					}),
+					/* @__PURE__ */ jsxs("div", {
+						className: "bb-buildpop__actions",
+						children: [/* @__PURE__ */ jsx("button", {
+							type: "button",
+							className: "btn btn--y btn--w",
+							onClick: onDashboard,
+							children: "Browse the search dashboard"
+						}), /* @__PURE__ */ jsx("button", {
+							type: "button",
+							className: "btn btn--g btn--w",
+							onClick: onClose,
+							children: "Stay on this page"
+						})]
+					}),
+					/* @__PURE__ */ jsx("p", {
+						className: "bb-buildpop__fine",
+						children: "Early results are already visible below."
+					})
+				]
+			})]
+		})
+	});
+}
+var buildingCss = `
+.bb-pend{border:1px solid var(--line);border-radius:var(--r-xl);background:var(--white);padding:22px 24px;margin-bottom:22px;box-shadow:0 1px 2px rgba(20,15,0,.04)}
+.bb-pend__t{display:flex;align-items:center;gap:11px;flex-wrap:wrap}
+.bb-pend__t h2{font-size:1.06rem;margin:0;letter-spacing:-.01em}
+.bb-pend__pill{display:inline-flex;align-items:center;gap:7px}
+.bb-pend__spin{width:11px;height:11px;border-radius:50%;border:2px solid currentColor;border-top-color:transparent;animation:bb-pend-spin .8s linear infinite;flex:none;opacity:.85}
+@keyframes bb-pend-spin{to{transform:rotate(360deg)}}
+.bb-pend__eta{margin-left:auto;font-size:.8rem;color:var(--faint);opacity:.7;font-variant-numeric:tabular-nums}
+.bb-pend__cta{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-top:16px;padding-top:16px;border-top:1px solid var(--line)}
+.bb-pend__cta .btn{display:inline-flex;align-items:center;gap:7px;white-space:nowrap}
+.bb-pend__cta p{margin:0;font-size:.84rem;color:var(--faint);opacity:.85;max-width:44ch;line-height:1.5}
+.bb-pend.is-done{padding:12px 20px;display:flex;align-items:center;gap:11px;flex-wrap:wrap;background:var(--ok-bg);border-color:#cde7d9;box-shadow:none;animation:bb-pend-fold .3s var(--ease)}
+@keyframes bb-pend-fold{from{opacity:.4;transform:translateY(-4px)}to{opacity:1;transform:none}}
+.bb-pend.is-done .bb-pend__body{display:none}
+.bb-pend__slim{display:none;align-items:center;gap:11px;flex-wrap:wrap;font-size:.85rem;color:var(--muted)}
+.bb-pend.is-done .bb-pend__slim{display:flex}
+.bb-pend__slim b{color:var(--ink);font-weight:700}
+.bb-partial{display:flex;align-items:center;gap:10px;padding:11px 15px;border:1px dashed var(--line-2);border-radius:var(--r);background:var(--paper);font-size:.83rem;color:var(--muted);margin-bottom:18px}
+.bb-partial svg{width:15px;height:15px;color:var(--amber-ink);flex:none}
+.bb-buildpop{max-width:420px;text-align:center}
+.bb-buildpop__i{width:52px;height:52px;margin:0 auto 16px;border-radius:50%;background:var(--wash);display:grid;place-items:center;color:var(--amber-ink);position:relative}
+.bb-buildpop__i::after{content:'';position:absolute;inset:-5px;border-radius:50%;border:2px solid var(--yellow);border-top-color:transparent;animation:bb-pend-spin 1.1s linear infinite}
+.bb-buildpop__i svg{width:22px;height:22px}
+.bb-buildpop .sub{margin:9px 0 0}
+.bb-buildpop__actions{display:flex;flex-direction:column;gap:9px;margin-top:20px}
+.bb-buildpop__fine{font-size:.78rem;color:var(--faint);opacity:.7;margin-top:12px}
+`;
 function UsageConfirmModal({ title, body, subject, confirmLabel, busy = false, onConfirm, onCancel }) {
 	return /* @__PURE__ */ jsx("div", {
 		className: "bb",
@@ -16047,14 +16214,20 @@ var DetailScreenBoundary = class extends Component {
 * product all render the same analytics tracker (the one design identity).
 */
 function Show$1({ search: initial, isAuthenticated = false, billing }) {
+	const page = usePage();
+	const freeSearchNew = Boolean(page?.props?.flash?.freeSearchNew);
 	const [search, setSearch] = useState(initial);
 	const [refreshing, setRefreshing] = useState(false);
 	const [bookmarkingSearch, setBookmarkingSearch] = useState(false);
 	const [bookmarkingVideoId, setBookmarkingVideoId] = useState(null);
 	const [confirmRefresh, setConfirmRefresh] = useState(false);
 	const [pollError, setPollError] = useState(false);
+	const [buildingPopupOpen, setBuildingPopupOpen] = useState(false);
+	const [justCompleted, setJustCompleted] = useState(false);
 	const isSearchProcessing = ACTIVE_SEARCH_STATUSES.has(String(search?.status ?? "").toLowerCase());
 	const hasProcessingFailure = String(search?.status ?? "").toLowerCase() === "failed";
+	const wasProcessingRef = useRef(isSearchProcessing);
+	const subjectLabel = search?.name || search?.phrase || "your search";
 	const searchLimit = billing?.searchCreditsLimit ?? 0;
 	const searchUsed = billing?.searchCreditsUsed ?? 0;
 	const searchRemainingAfterUse = searchLimit === -1 ? "unlimited" : Math.max(0, searchLimit - searchUsed - 1);
@@ -16124,6 +16297,21 @@ function Show$1({ search: initial, isAuthenticated = false, billing }) {
 		setSearch(initial);
 	}, [initial]);
 	useEffect(() => {
+		if (!freeSearchNew || !isSearchProcessing) return void 0;
+		const timer = window.setTimeout(() => setBuildingPopupOpen(true), 500);
+		return () => window.clearTimeout(timer);
+	}, []);
+	useEffect(() => {
+		if (wasProcessingRef.current && !isSearchProcessing && !hasProcessingFailure) {
+			setJustCompleted(true);
+			setBuildingPopupOpen(false);
+			const timer = window.setTimeout(() => setJustCompleted(false), 6e3);
+			wasProcessingRef.current = isSearchProcessing;
+			return () => window.clearTimeout(timer);
+		}
+		wasProcessingRef.current = isSearchProcessing;
+	}, [isSearchProcessing, hasProcessingFailure]);
+	useEffect(() => {
 		if (!search?.id || !isSearchProcessing) return void 0;
 		let cancelled = false;
 		let timerId = null;
@@ -16150,9 +16338,19 @@ function Show$1({ search: initial, isAuthenticated = false, billing }) {
 	}, [isSearchProcessing, search?.id]);
 	return /* @__PURE__ */ jsxs(Fragment$1, { children: [
 		/* @__PURE__ */ jsx(Head, { title: `${search.name} · Brand Beacon` }),
-		/* @__PURE__ */ jsx(AppLayout, {
+		/* @__PURE__ */ jsxs(AppLayout, {
 			width: "max-w-[1240px]",
-			children: /* @__PURE__ */ jsx(DetailScreenBoundary, { children: /* @__PURE__ */ jsx(DetailScreen, {
+			children: [(isSearchProcessing || justCompleted) && /* @__PURE__ */ jsxs(Fragment$1, { children: [
+				/* @__PURE__ */ jsx("style", { children: buildingCss }),
+				/* @__PURE__ */ jsx(BuildingHeader, {
+					search,
+					done: !isSearchProcessing && justCompleted
+				}),
+				isSearchProcessing && /* @__PURE__ */ jsxs("div", {
+					className: "bb-partial",
+					children: [SparkIcon, /* @__PURE__ */ jsx("span", { children: "Early results — ranking and outlier scores keep updating until the scan finishes." })]
+				})
+			] }), /* @__PURE__ */ jsx(DetailScreenBoundary, { children: /* @__PURE__ */ jsx(DetailScreen, {
 				search,
 				isAuthenticated,
 				billing,
@@ -16165,7 +16363,7 @@ function Show$1({ search: initial, isAuthenticated = false, billing }) {
 				bookmarkingVideoId,
 				onTogglePause: togglePause,
 				onDelete: remove
-			}) })
+			}) })]
 		}),
 		confirmRefresh && /* @__PURE__ */ jsx(UsageConfirmModal, {
 			title: "Refresh this search?",
@@ -16179,9 +16377,14 @@ function Show$1({ search: initial, isAuthenticated = false, billing }) {
 				await runRefresh();
 			}
 		}),
-		(isSearchProcessing || hasProcessingFailure && pollError) && /* @__PURE__ */ jsx(ProcessingOverlay, {
+		buildingPopupOpen && /* @__PURE__ */ jsxs(Fragment$1, { children: [/* @__PURE__ */ jsx("style", { children: buildingCss }), /* @__PURE__ */ jsx(BuildingPopup, {
+			subject: subjectLabel,
+			onDashboard: () => window.location.assign("/dashboard"),
+			onClose: () => setBuildingPopupOpen(false)
+		})] }),
+		hasProcessingFailure && pollError && /* @__PURE__ */ jsx(ProcessingOverlay, {
 			search,
-			failed: hasProcessingFailure && pollError,
+			failed: true,
 			onGoDashboard: () => window.location.assign("/dashboard")
 		})
 	] });

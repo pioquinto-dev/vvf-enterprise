@@ -79,6 +79,7 @@ class HandleInertiaRequests extends Middleware
                 'status' => fn () => $request->session()->get('status'),
                 'trackedSearches' => fn () => $request->session()->get('tracked_searches', []),
                 'processingSearches' => fn () => $request->session()->get('processing_searches', []),
+                'freeSearchNew' => fn () => (bool) $request->session()->get('free_search_new', false),
                 'searchAccessPrompt' => fn () => $request->session()->get('search_access_prompt'),
                 'trialAccessPrompt' => fn () => $request->session()->get('trial_access_prompt'),
                 'couponAccessPrompt' => fn () => $request->session()->get('coupon_access_prompt'),

@@ -118,16 +118,12 @@ class GoogleAuthController extends Controller
                     sources: $pending['sources'] ?? null,
                 );
 
-                $tracked = [[
-                    'id' => $search->id,
-                    'name' => $search->name,
-                    'url' => $search->url(),
-                    'status' => $search->status,
-                ]];
-
-                return redirect()->route('dashboard')
-                    ->with('tracked_searches', $tracked)
-                    ->with('processing_searches', $tracked);
+                // Free-search visitors now land straight on the search's own
+                // analytics page (still building), instead of the dashboard.
+                // The flash flag tells that page to greet them with the
+                // "report is still building" popup on first arrival.
+                return redirect()->to($search->url())
+                    ->with('free_search_new', true);
             } catch (\Illuminate\Validation\ValidationException $exception) {
                 return redirect()->route('dashboard')->with('search_access_prompt', [
                     'reason' => 'search_credit_exhausted',

@@ -2,9 +2,11 @@
 
 namespace Tests\Feature;
 
+use App\Jobs\RunCustomKeywordSearch;
 use App\Models\CustomKeywordSearch;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Queue;
 use Laravel\Socialite\Contracts\User as SocialiteUserContract;
 use Laravel\Socialite\Facades\Socialite;
 use Mockery;
@@ -46,6 +48,43 @@ class FreeSearchFunnelTest extends TestCase
         ])->assertOk();
 
         $this->assertNull(session('free_search.pending.sources'));
+    }
+
+    public function test_google_callback_lands_new_free_search_on_its_analytics_page(): void
+    {
+        Queue::fake();
+
+        $googleUser = Mockery::mock(SocialiteUserContract::class);
+        $googleUser->shouldReceive('getEmail')->andReturn('fresh@example.com');
+        $googleUser->shouldReceive('getName')->andReturn('Fresh User');
+        $googleUser->shouldReceive('getNickname')->andReturn(null);
+
+        $provider = Mockery::mock();
+        $provider->shouldReceive('redirectUrl')->andReturnSelf();
+        $provider->shouldReceive('user')->andReturn($googleUser);
+
+        Socialite::shouldReceive('driver')->with('google')->andReturn($provider);
+
+        $response = $this
+            ->withSession([
+                'free_search.pending' => [
+                    'type' => 'brand',
+                    'phrase' => 'rhode skin',
+                    'keywords' => ['rhode skin', 'skincare'],
+                    'frequency' => 'weekly',
+                ],
+            ])
+            ->get('/auth/google/callback');
+
+        $search = CustomKeywordSearch::firstWhere('phrase', 'rhode skin');
+
+        $this->assertNotNull($search);
+        $response->assertRedirect($search->url());
+        $response->assertSessionHas('free_search_new', true);
+        $response->assertSessionMissing('free_search.pending');
+        $this->assertAuthenticatedAs(User::firstWhere('email', 'fresh@example.com'));
+
+        Queue::assertPushed(RunCustomKeywordSearch::class);
     }
 
     public function test_google_callback_redirects_to_dashboard_with_upgrade_prompt_when_pending_search_cannot_start(): void
