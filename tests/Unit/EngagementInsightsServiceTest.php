@@ -22,6 +22,7 @@ class EngagementInsightsServiceTest extends TestCase
         $this->activity($first, 'video_analysis_triggered', now()->subDay());
         $this->activity($first, 'video_bookmarked', now()->subDay());
         $this->activity($second, 'search_triggered', now()->subDay());
+        $this->activity($second, 'trial_started', now()->subDay());
         $this->activity($second, 'subscription_paid', now()->subDay());
         $this->activity($first, 'logged_in', now()->subDays(10));
 
@@ -29,6 +30,8 @@ class EngagementInsightsServiceTest extends TestCase
 
         $this->assertSame(2, $payload['activeCreators']);
         $this->assertSame(50, $payload['adoption'][0]['percentage']);
+        $this->assertSame('Started a trial', $payload['adoption'][3]['label']);
+        $this->assertSame(1, $payload['trends'][2]['current']);
         $this->assertSame(2.0, $payload['frequency'][0]['average']);
         $this->assertSame(1, $payload['trends'][0]['current']);
         $this->assertSame(1, $payload['trends'][0]['previous']);

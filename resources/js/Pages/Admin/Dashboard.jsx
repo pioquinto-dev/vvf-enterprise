@@ -239,7 +239,7 @@ function EngagementInsights({ engagement = {} }) {
                                         <span className="shrink-0 font-semibold text-[var(--ink)]">{row.percentage}% <span className="font-normal text-[#718197]">({row.users})</span></span>
                                     </div>
                                     <div className="h-2.5 overflow-hidden rounded-full bg-[#e8edf5] sm:h-2">
-                                        <span className={`block h-full rounded-full ${row.tone === 'rose' ? 'bg-[#fb3f82]' : 'bg-[#8986fb]'}`} style={{ width: `${row.percentage}%` }} />
+                                        <span className={`block h-full rounded-full ${row.tone === 'rose' ? 'bg-[#fb3f82]' : row.tone === 'teal' ? 'bg-[#20cfc2]' : 'bg-[#8986fb]'}`} style={{ width: `${row.percentage}%` }} />
                                     </div>
                                 </div>
                             </div>

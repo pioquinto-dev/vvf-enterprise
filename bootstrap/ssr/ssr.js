@@ -1572,7 +1572,7 @@ function EngagementInsights({ engagement = {} }) {
 					}), /* @__PURE__ */ jsx("div", {
 						className: "h-2.5 overflow-hidden rounded-full bg-[#e8edf5] sm:h-2",
 						children: /* @__PURE__ */ jsx("span", {
-							className: `block h-full rounded-full ${row.tone === "rose" ? "bg-[#fb3f82]" : "bg-[#8986fb]"}`,
+							className: `block h-full rounded-full ${row.tone === "rose" ? "bg-[#fb3f82]" : row.tone === "teal" ? "bg-[#20cfc2]" : "bg-[#8986fb]"}`,
 							style: { width: `${row.percentage}%` }
 						})
 					})] }) }, row.label))

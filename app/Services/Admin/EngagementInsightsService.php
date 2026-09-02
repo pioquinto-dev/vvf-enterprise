@@ -18,6 +18,8 @@ class EngagementInsightsService
 
     private const PAID_EVENTS = ['subscription_paid'];
 
+    private const TRIAL_EVENTS = ['trial_started'];
+
     /**
      * Build a concise, selected-range view of the activity ledger. The ledger
      * is the source of truth here so the panel only reports tracked behavior.
@@ -43,6 +45,7 @@ class EngagementInsightsService
         $analysis = $this->eventStats($current, self::ANALYSIS_EVENTS);
         $bookmarks = $this->eventStats($current, self::BOOKMARK_EVENTS);
         $searches = $this->eventStats($current, self::SEARCH_EVENTS);
+        $trials = $this->eventStats($current, self::TRIAL_EVENTS);
         $paid = $this->eventStats($current, self::PAID_EVENTS);
 
         return [
@@ -52,6 +55,7 @@ class EngagementInsightsService
                 $this->adoptionRow('Ran an analysis', $analysis['users'], $activeCreators, 'violet'),
                 $this->adoptionRow('Saved a bookmark', $bookmarks['users'], $activeCreators, 'violet'),
                 $this->adoptionRow('Ran a keyword search', $searches['users'], $activeCreators, 'violet'),
+                $this->adoptionRow('Started a trial', $trials['users'], $activeCreators, 'teal'),
                 $this->adoptionRow('Converted to paid', $paid['users'], $activeCreators, 'rose'),
             ],
             'frequency' => [
@@ -61,6 +65,7 @@ class EngagementInsightsService
             'trends' => [
                 $this->trendRow('Logins', $this->eventStats($current, self::LOGIN_EVENTS)['count'], $this->eventStats($previous, self::LOGIN_EVENTS)['count']),
                 $this->trendRow('Active creators', $activeCreators, $this->uniqueUsers($previous)),
+                $this->trendRow('Trial starts', $trials['users'], $this->eventStats($previous, self::TRIAL_EVENTS)['users']),
                 $this->trendRow('Paid conversions', $paid['users'], $this->eventStats($previous, self::PAID_EVENTS)['users']),
             ],
             'suggestions' => $this->suggestions($activeCreators, $analysis, $bookmarks, $searches, $paid, $current, $previous),
