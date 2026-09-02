@@ -1,6 +1,7 @@
-import { Head, router } from '@inertiajs/react';
+import { router } from '@inertiajs/react';
 
 import ContactFormCard from '../components/ContactFormCard.jsx';
+import Seo from '../components/Seo.jsx';
 import { useTheme } from '../landing/components/useTheme.js';
 import { useReveal } from '../landing/components/Reveal.jsx';
 import Nav from '../landing/sections/Nav.jsx';
@@ -23,7 +24,10 @@ export default function LandingContact({ categories = [], defaults = {} }) {
 
     return (
         <>
-            <Head title="Contact Us - Outlier Vault" />
+            <Seo
+                title="Contact Brand Beacon | TikTok Trend Intelligence"
+                description="Contact the Brand Beacon team for product, account, billing, or partnership support."
+            />
 
             <div ref={revealRoot} className="vvf-landing min-h-screen font-body">
                 {/* Nav styles live under the landing (.bbh) design scope. */}

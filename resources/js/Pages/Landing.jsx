@@ -1,5 +1,8 @@
-import { Head, router, usePage } from '@inertiajs/react';
+import { router, usePage } from '@inertiajs/react';
 
+import Seo from '../components/Seo.jsx';
+
+import { FAQS } from '../landing/data/dummy.js';
 import Nav from '../landing/sections/Nav.jsx';
 import Hero from '../landing/sections/Hero.jsx';
 import BrandMarquee from '../landing/sections/BrandMarquee.jsx';
@@ -31,7 +34,18 @@ export default function Landing() {
 
   return (
     <>
-      <Head title="Brand Beacon — TikTok viral intelligence for brands" />
+      <Seo
+        title="TikTok Trend Intelligence for Brands | Brand Beacon"
+        description="Discover viral TikTok videos, track brand mentions, and spot breakout trends before they peak with Brand Beacon."
+        schema={{
+          organization: true,
+          webSite: true,
+          softwareApplication: {
+            description: 'Brand Beacon helps teams discover viral TikTok videos, track brand mentions, and identify breakout trends.',
+          },
+          faqs: FAQS,
+        }}
+      />
 
       <div className="bbh">
         <Nav />

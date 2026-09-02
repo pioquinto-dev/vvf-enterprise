@@ -3,13 +3,13 @@ import { useState } from 'react';
 import { Logo } from '../components/Icons.jsx';
 
 const COLS = [
-  { h: 'Product', links: [{ label: 'Outlier Vault', href: '#top' }, { label: 'Brand Tracking', href: '#top' }, { label: 'Creator Shortlists', href: '#top' }, { label: 'Virality Alerts', href: '#top' }, { label: 'Changelog', href: '#top' }] },
-  { h: 'Company', links: [{ label: 'About', href: '#top' }, { label: 'Careers', href: '#top' }, { label: 'Blog', href: '#top' }, { label: 'Press kit', href: '#top' }, { label: 'Contact', href: '/contact' }] },
-  { h: 'Resources', links: [{ label: 'TikTok benchmarks', href: '#top' }, { label: 'Category reports', href: '#top' }, { label: 'Help center', href: '#top' }, { label: 'API docs', href: '#top' }, { label: 'Status', href: '#top' }] },
+  { h: 'Product', links: [{ label: 'TikTok Brand Tracking', href: '/tiktok-brand-tracking' }, { label: 'TikTok Product Research', href: '/tiktok-product-research' }, { label: 'Viral Video Monitoring', href: '/viral-video-monitoring' }] },
+  { h: 'Company', links: [{ label: 'Blogs', href: '/#top' }, { label: 'Contact', href: '/contact' }] },
+  { h: 'Resources', links: [{ label: 'Brand Tracking', href: '/tiktok-brand-tracking' }, { label: 'UGC Trend Discovery', href: '/ugc-trend-discovery' }] },
   { h: 'Legal', links: [{ label: 'Terms', href: '/terms' }, { label: 'Privacy', href: '/privacy' }, { label: 'DPA', href: '/dpa' }, { label: 'Security', href: '/security' }] },
 ];
 
-export default function Footer() {
+export default function Footer({ homeHref = '#top' }) {
   const [subscribed, setSubscribed] = useState(false);
 
   return (
@@ -17,7 +17,7 @@ export default function Footer() {
       <div className="wrap">
         <div className="ftr__top">
           <div>
-            <a href="#top" className="brand">
+            <a href={homeHref} className="brand">
               <Logo className="h-8 w-8" />
               <span>Brand Beacon</span>
             </a>
@@ -61,12 +61,6 @@ export default function Footer() {
 
         <div className="ftr__btm">
           <p>© 2026 Brand Beacon. TikTok viral intelligence for brands.</p>
-          <nav>
-            <a href="/terms">Terms</a>
-            <a href="/privacy">Privacy</a>
-            <a href="/security">Security</a>
-            <a href="/contact">Contact</a>
-          </nav>
         </div>
       </div>
     </footer>

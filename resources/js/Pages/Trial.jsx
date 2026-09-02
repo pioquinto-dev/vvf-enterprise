@@ -1,8 +1,9 @@
 import { useState } from 'react';
-import { Head, router, usePage } from '@inertiajs/react';
+import { router, usePage } from '@inertiajs/react';
 
 import AppLayout from './components/AppLayout.jsx';
 import UpgradePromptModal from './components/UpgradePromptModal.jsx';
+import Seo from '../components/Seo.jsx';
 import TrialScreen from '../landing/flow/screens/TrialScreen.jsx';
 import { billing as billingApi } from '../landing/flow/api.js';
 
@@ -13,7 +14,7 @@ export default function Trial() {
 
     return (
         <>
-            <Head title="Start your 8-day trial - Outlier Vault" />
+            <Seo title="Start Your 8-Day Trial | Brand Beacon" description="Start an 8-day Brand Beacon trial to track TikTok trends and brand mentions." noIndex />
 
             <AppLayout pill={{ text: 'Trial', tone: 'accent' }} width="max-w-4xl">
                 {canOfferTrial ? (

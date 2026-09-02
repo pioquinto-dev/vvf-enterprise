@@ -57,6 +57,7 @@ class HandleInertiaRequests extends Middleware
             'app' => [
                 'name' => config('app.name'),
                 'env' => config('app.env'),
+                'url' => rtrim((string) config('app.url'), '/'),
             ],
             'features' => [
                 'videoAnalysisRefresh' => (bool) config('viral_video_analysis.allow_refresh'),

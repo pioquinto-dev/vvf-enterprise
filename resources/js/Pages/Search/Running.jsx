@@ -1,12 +1,13 @@
-import { Head, router } from '@inertiajs/react';
+import { router } from '@inertiajs/react';
 
+import Seo from '../../components/Seo.jsx';
 import RunningScreen from '../../landing/flow/screens/RunningScreen.jsx';
 import Nav from '../../landing/sections/Nav.jsx';
 
 export default function Running({ searchId }) {
     return (
         <>
-            <Head title="Search running · Brand Beacon" />
+            <Seo title="Search Running | Brand Beacon" description="Your Brand Beacon search is being prepared." noIndex />
 
             <div className="bbh">
                 <Nav homeHref="/" />
