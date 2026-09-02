@@ -3240,7 +3240,7 @@ async function request(url, { method = "GET", body, signal } = {}) {
 	pushAnalyticsEvents(payload?.analytics);
 	return payload;
 }
-function expandKeywords(phrase, { signal, fresh = false, type = "brand" } = {}) {
+function expandKeywords(phrase, { signal, fresh = false, instant = false, type = "brand" } = {}) {
 	return fetch(`${API_V1}/saved-searches/expand`, {
 		method: "POST",
 		credentials: "same-origin",
@@ -3254,7 +3254,8 @@ function expandKeywords(phrase, { signal, fresh = false, type = "brand" } = {}) 
 		body: JSON.stringify({
 			phrase,
 			type,
-			...fresh ? { fresh: true } : {}
+			...fresh ? { fresh: true } : {},
+			...instant ? { instant: true } : {}
 		})
 	}).then(async (response) => {
 		const payload = await response.json().catch(() => null);
@@ -4114,7 +4115,7 @@ function MiniStepper({ current }) {
 	});
 }
 function BrandInlineFlow({ kind = "brand", placeholder = "Which brand do you want to research?", sample = "rhode skin", eyebrow = "Start a brand search", hint = "One brand per search — we widen it with keywords next.", prefillSubject = "", prefillNonce = 0, onCreated = null }) {
-	const { billing = {}, auth = {} } = usePage().props;
+	const { billing: billing$5 = {}, auth = {} } = usePage().props;
 	const signedIn = auth.signedIn ?? Boolean(auth.user);
 	const [state, setState] = useState("collapsed");
 	const [subject, setSubject] = useState("");
@@ -4139,10 +4140,10 @@ function BrandInlineFlow({ kind = "brand", placeholder = "Which brand do you wan
 	const subjectFieldRef = useRef(null);
 	const rootRef = useRef(null);
 	const kwCount = useMemo(() => keywords.filter((k) => k.selected).length, [keywords]);
-	const searchLeft = billing.searchCreditsRemaining;
-	const searchLimit = billing.searchCreditsLimit;
+	const searchLeft = billing$5.searchCreditsRemaining;
+	const searchLimit = billing$5.searchCreditsLimit;
 	const searchCreditsAvailable = !signedIn || searchLimit === -1 || Number(searchLeft ?? 0) > 0;
-	const shouldOfferTrial = (billing.trialEligible ?? true) && !(billing.hasUsedTrial ?? false);
+	const shouldOfferTrial = (billing$5.trialEligible ?? true) && !(billing$5.hasUsedTrial ?? false);
 	useEffect(() => {
 		const controller = new AbortController();
 		fetchKeywordSuggestions(kind, subject.trim(), { signal: controller.signal }).then((payload) => setSubjectSuggestions(Array.isArray(payload?.suggestions) ? payload.suggestions : [])).catch(() => {});
@@ -4510,7 +4511,7 @@ function BrandInlineFlow({ kind = "brand", placeholder = "Which brand do you wan
 			title: shouldOfferTrial ? "Start your 8-day Growth trial" : "Upgrade to unlock more searches",
 			body: shouldOfferTrial ? "You've already used the search credits on Free. Start your trial to keep finding new outliers." : "You've already used the search credits available on your current plan. Upgrade to Growth or Scale to keep finding new outliers.",
 			primaryLabel: shouldOfferTrial ? "Start 8-day Growth trial" : "Upgrade to Growth",
-			onPrimary: () => router.visit(shouldOfferTrial ? "/trial" : "/plans"),
+			onPrimary: () => shouldOfferTrial ? billing.trialCheckout("growth") : router.visit("/plans"),
 			onClose: () => setUpgradeModalOpen(false)
 		}),
 		/* @__PURE__ */ jsxs("section", {
@@ -5489,13 +5490,15 @@ function SearchListScreen({ kind = "brand", searches = [], moving = [], suggesti
 	const { billing = {} } = usePage().props;
 	const currentPath = typeof window === "undefined" ? kind === "product" ? "/products" : "/brands" : `${window.location.pathname}${window.location.search}`;
 	const [searchList, setSearchList] = useState(searches);
+	useEffect(() => setSearchList(searches), [searches]);
 	const [query, setQuery] = useState("");
 	const [statusFilter, setStatusFilter] = useState("all");
 	const [sortBy, setSortBy] = useState("recent");
 	const [modalSearch, setModalSearch] = useState(null);
 	const [formState, setFormState] = useState({
 		name: "",
-		frequency: "weekly"
+		frequency: "weekly",
+		type: "brand"
 	});
 	const [submitting, setSubmitting] = useState(false);
 	const [prefillSubject, setPrefillSubject] = useState("");
@@ -5542,33 +5545,32 @@ function SearchListScreen({ kind = "brand", searches = [], moving = [], suggesti
 		setModalSearch(search);
 		setFormState({
 			name: search.name ?? "",
-			frequency: search.frequency ?? "weekly"
+			frequency: search.frequency ?? "weekly",
+			type: search.search_type === "product" ? "product" : "brand"
 		});
 	};
 	const closeEdit = () => {
 		if (submitting) return;
 		setModalSearch(null);
 	};
-	const patchSearch = (id, patch) => {
-		setSearchList((current) => current.map((s) => s.id === id ? {
-			...s,
-			...patch
-		} : s));
-		setModalSearch((current) => current?.id === id ? {
-			...current,
-			...patch
-		} : current);
-	};
 	const submitEdit = async () => {
 		if (!modalSearch) return;
 		setSubmitting(true);
 		try {
-			const { search: updated } = await savedSearch.update(modalSearch.id, {
+			await savedSearch.update(modalSearch.id, {
 				name: formState.name.trim(),
-				frequency: formState.frequency
+				frequency: formState.frequency,
+				type: formState.type
 			});
-			patchSearch(modalSearch.id, updated);
 			setModalSearch(null);
+			router.reload({
+				only: [
+					"searches",
+					"moving",
+					"suggestions"
+				],
+				preserveScroll: true
+			});
 		} finally {
 			setSubmitting(false);
 		}
@@ -5805,6 +5807,37 @@ function SearchListScreen({ kind = "brand", searches = [], moving = [], suggesti
 							}),
 							/* @__PURE__ */ jsxs("div", {
 								style: { marginTop: 20 },
+								children: [
+									/* @__PURE__ */ jsx("label", {
+										className: "lbl",
+										htmlFor: "edit-search-type",
+										children: "Type"
+									}),
+									/* @__PURE__ */ jsxs("select", {
+										id: "edit-search-type",
+										className: "fld",
+										value: formState.type,
+										onChange: (e) => setFormState((c) => ({
+											...c,
+											type: e.target.value
+										})),
+										children: [/* @__PURE__ */ jsx("option", {
+											value: "brand",
+											children: "Brand"
+										}), /* @__PURE__ */ jsx("option", {
+											value: "product",
+											children: "Product"
+										})]
+									}),
+									formState.type !== (modalSearch.search_type === "product" ? "product" : "brand") && /* @__PURE__ */ jsx("p", {
+										className: "hint",
+										style: { marginTop: 8 },
+										children: "Your existing results stay — only how we tune keywords and insights changes going forward."
+									})
+								]
+							}),
+							/* @__PURE__ */ jsxs("div", {
+								style: { marginTop: 20 },
 								children: [/* @__PURE__ */ jsx("label", {
 									className: "lbl",
 									children: "Schedule"
@@ -6000,9 +6033,9 @@ function ContactFormCard({ categories = [], defaults = {}, className = "" }) {
 	const form = useForm({
 		name: defaults.name ?? "",
 		email: defaults.email ?? "",
-		category: categories[0]?.value ?? "general",
-		subject: "",
-		message: ""
+		category: defaults.category ?? categories[0]?.value ?? "general",
+		subject: defaults.subject ?? "",
+		message: defaults.message ?? ""
 	});
 	const submit = (event) => {
 		event.preventDefault();
@@ -6455,11 +6488,14 @@ function SkeletonChips({ phrase }) {
 function KeywordsScreen({ phrase, noun = "brand", searchType = "brand", nextLabel = "Run search", onBack, onSubmit, submitting = false, error = null }) {
 	const [terms, setTerms] = useState([]);
 	const [loading, setLoading] = useState(true);
+	const [refining, setRefining] = useState(false);
 	const [regenerating, setRegenerating] = useState(false);
 	const [expansionSource, setExpansionSource] = useState(null);
 	const [adding, setAdding] = useState(false);
 	const [draft, setDraft] = useState("");
 	const requested = useRef(false);
+	const aiApplied = useRef(false);
+	const interacted = useRef(false);
 	/**
 	* Build a term list from an expansion payload, keeping anything the user
 	* typed themselves — regenerating suggestions must never quietly delete work.
@@ -6487,24 +6523,59 @@ function KeywordsScreen({ phrase, noun = "brand", searchType = "brand", nextLabe
 			...custom.filter((t) => !seen.has(t.value.toLowerCase()))
 		].slice(0, KEYWORD_CAP);
 	};
+	/**
+	* Fold a fresh set of suggestions in without discarding the user's work:
+	* anything they added or removed stays, existing selections are preserved,
+	* and only genuinely new terms are appended (respecting the cap).
+	*/
+	const mergeExpansion = (keywords, forPhrase, previous = []) => {
+		const present = new Set(previous.map((t) => t.value.toLowerCase()));
+		const additions = keywords.filter((value) => {
+			const key = value.toLowerCase();
+			if (key === forPhrase.toLowerCase() || present.has(key)) return false;
+			present.add(key);
+			return true;
+		}).map((value) => ({
+			value,
+			selected: false,
+			custom: false
+		}));
+		return [...previous, ...additions].slice(0, KEYWORD_CAP);
+	};
 	useEffect(() => {
 		if (requested.current) return void 0;
 		requested.current = true;
 		const controller = new AbortController();
 		expandKeywords(phrase, {
 			signal: controller.signal,
+			instant: true,
 			type: searchType
 		}).then((payload) => {
+			if (aiApplied.current) return;
 			const keywords = Array.isArray(payload?.keywords) ? payload.keywords : [phrase];
 			setExpansionSource(payload?.source ?? null);
 			setTerms(applyExpansion(keywords, phrase));
+			setLoading(false);
+			setRefining(payload?.source === "preview");
+		}).catch(() => {});
+		expandKeywords(phrase, {
+			signal: controller.signal,
+			type: searchType
+		}).then((payload) => {
+			aiApplied.current = true;
+			const keywords = Array.isArray(payload?.keywords) ? payload.keywords : [phrase];
+			setExpansionSource(payload?.source ?? null);
+			setTerms((prev) => interacted.current && prev.length > 0 ? mergeExpansion(keywords, phrase, prev) : applyExpansion(keywords, phrase, prev));
 		}).catch(() => {
-			setTerms([{
+			setTerms((prev) => prev.length > 0 ? prev : [{
 				value: phrase,
 				selected: true,
 				locked: true
 			}]);
-		}).finally(() => setLoading(false));
+		}).finally(() => {
+			setLoading(false);
+			setRefining(false);
+		});
 		return () => controller.abort();
 	}, [phrase]);
 	const regenerate = () => {
@@ -6521,12 +6592,19 @@ function KeywordsScreen({ phrase, noun = "brand", searchType = "brand", nextLabe
 	const selected = terms.filter((t) => t.selected).map((t) => t.value);
 	const busy = loading || regenerating;
 	const atKeywordCap = terms.length >= KEYWORD_CAP;
-	const toggle = (value) => setTerms((prev) => prev.map((t) => t.value === value && !t.locked ? {
-		...t,
-		selected: !t.selected
-	} : t));
-	const remove = (value) => setTerms((prev) => prev.filter((t) => t.value !== value || t.locked));
+	const toggle = (value) => {
+		interacted.current = true;
+		setTerms((prev) => prev.map((t) => t.value === value && !t.locked ? {
+			...t,
+			selected: !t.selected
+		} : t));
+	};
+	const remove = (value) => {
+		interacted.current = true;
+		setTerms((prev) => prev.filter((t) => t.value !== value || t.locked));
+	};
 	const commitAdd = () => {
+		interacted.current = true;
 		const value = draft.trim().replace(/\s+/g, " ");
 		setDraft("");
 		setAdding(false);
@@ -6655,14 +6733,26 @@ function KeywordsScreen({ phrase, noun = "brand", searchType = "brand", nextLabe
 						children: [/* @__PURE__ */ jsx(Plus, { className: "h-[13px] w-[13px]" }), " Add your own"]
 					})]
 				}),
-				/* @__PURE__ */ jsxs("p", {
+				/* @__PURE__ */ jsx("p", {
 					className: "hint",
-					children: [
+					children: refining ? /* @__PURE__ */ jsxs("span", {
+						style: {
+							display: "inline-flex",
+							alignItems: "center",
+							gap: 8,
+							color: "var(--amber-ink)",
+							fontWeight: 600
+						},
+						children: [/* @__PURE__ */ jsx("span", {
+							className: "chip-spin",
+							"aria-hidden": true
+						}), "Sharpening suggestions…"]
+					}) : /* @__PURE__ */ jsxs(Fragment$1, { children: [
 						selected.length,
 						" of ",
 						terms.length,
 						" selected · each keyword widens the same single search."
-					]
+					] })
 				}),
 				expansionSource === "fallback" && /* @__PURE__ */ jsx("p", {
 					className: "hint",
@@ -7084,7 +7174,7 @@ function clearPendingSearch() {
 	window.sessionStorage.removeItem(PENDING_SEARCH_KEY);
 }
 function SearchWizard({ initialType = "brand", initialQuery = "", heading = "Start a search", subheading = "Pick one brand or product — we widen it with smarter keywords on the next step.", subjectExtra = null, suggestionsByType = {}, onTrackedSearchChange = null }) {
-	const { auth = {}, billing = {} } = usePage().props;
+	const { auth = {}, billing: billing$4 = {} } = usePage().props;
 	const resumeId = readRunParam();
 	const [step, setStep] = useState(resumeId ? "running" : initialQuery ? "keywords" : "subject");
 	const [type, setType] = useState(initialType);
@@ -7098,9 +7188,9 @@ function SearchWizard({ initialType = "brand", initialQuery = "", heading = "Sta
 	const [upgradeModalOpen, setUpgradeModalOpen] = useState(false);
 	const kind = kindOf(type);
 	const signedIn = auth.signedIn ?? Boolean(auth.user);
-	const searchLimit = billing.searchCreditsLimit ?? 0;
-	const searchRemaining = billing.searchCreditsRemaining ?? 0;
-	const searchUsed = billing.searchCreditsUsed ?? 0;
+	const searchLimit = billing$4.searchCreditsLimit ?? 0;
+	const searchRemaining = billing$4.searchCreditsRemaining ?? 0;
+	const searchUsed = billing$4.searchCreditsUsed ?? 0;
 	const searchRemainingAfterUse = searchLimit === -1 ? "unlimited" : Math.max(0, searchLimit - searchUsed - 1);
 	const searchCreditsAvailable = !signedIn || searchLimit === -1 || searchRemaining > 0;
 	const stampUrl = (id) => {
@@ -7322,10 +7412,13 @@ function SearchWizard({ initialType = "brand", initialQuery = "", heading = "Sta
 		}),
 		upgradeModalOpen && /* @__PURE__ */ jsx(UpgradePromptModal, {
 			eyebrow: "Search credits",
-			title: (billing.trialEligible ?? true) && !(billing.hasUsedTrial ?? false) ? "Start your 8-day Growth trial" : "Upgrade to unlock more searches",
-			body: (billing.trialEligible ?? true) && !(billing.hasUsedTrial ?? false) ? "You've already used the search credits on Free. Start your trial to keep finding new outliers." : "You've already used the search credits available on your current plan. Upgrade to Growth or Scale to keep finding new outliers.",
-			primaryLabel: (billing.trialEligible ?? true) && !(billing.hasUsedTrial ?? false) ? "Start 8-day Growth trial" : "Upgrade to Growth",
-			onPrimary: () => router.visit((billing.trialEligible ?? true) && !(billing.hasUsedTrial ?? false) ? "/trial" : "/plans"),
+			title: (billing$4.trialEligible ?? true) && !(billing$4.hasUsedTrial ?? false) ? "Start your 8-day Growth trial" : "Upgrade to unlock more searches",
+			body: (billing$4.trialEligible ?? true) && !(billing$4.hasUsedTrial ?? false) ? "You've already used the search credits on Free. Start your trial to keep finding new outliers." : "You've already used the search credits available on your current plan. Upgrade to Growth or Scale to keep finding new outliers.",
+			primaryLabel: (billing$4.trialEligible ?? true) && !(billing$4.hasUsedTrial ?? false) ? "Start 8-day Growth trial" : "Upgrade to Growth",
+			onPrimary: () => {
+				if ((billing$4.trialEligible ?? true) && !(billing$4.hasUsedTrial ?? false)) billing.trialCheckout("growth");
+				else router.visit("/plans");
+			},
 			onClose: () => setUpgradeModalOpen(false)
 		})
 	] });
@@ -7897,7 +7990,7 @@ function CouponAccessPromptModal({ prompt, onClose }) {
 	});
 }
 function Dashboard() {
-	const { flash = {}, recent = [], stats = null, searchSuggestions = {}, billing = {} } = usePage().props;
+	const { flash = {}, recent = [], stats = null, searchSuggestions = {}, billing: billing$3 = {} } = usePage().props;
 	const currentPath = typeof window === "undefined" ? "/dashboard" : `${window.location.pathname}${window.location.search}`;
 	const [processingModal, setProcessingModal] = useState(null);
 	const [completionModal, setCompletionModal] = useState(null);
@@ -8038,7 +8131,8 @@ function Dashboard() {
 	};
 	const openSearchUpgrade = () => {
 		setSearchAccessPrompt(null);
-		router.visit((billing.trialEligible ?? true) && !(billing.hasUsedTrial ?? false) ? "/trial" : "/plans");
+		if ((billing$3.trialEligible ?? true) && !(billing$3.hasUsedTrial ?? false)) billing.trialCheckout("growth");
+		else router.visit("/plans");
 	};
 	const dashboardExtras = /* @__PURE__ */ jsxs(Fragment$1, { children: [/* @__PURE__ */ jsx(GlanceStrip, { stats }), /* @__PURE__ */ jsx(RecentCard, {
 		searches: recentSearches,
@@ -8195,7 +8289,7 @@ function Dashboard() {
 		}),
 		/* @__PURE__ */ jsx(SearchAccessPromptModal, {
 			prompt: searchAccessPrompt,
-			billing,
+			billing: billing$3,
 			onClose: () => setSearchAccessPrompt(null),
 			onUpgrade: openSearchUpgrade
 		})
@@ -9426,7 +9520,7 @@ var PRICING = {
 			trialEnabled: true
 		},
 		{
-			slug: "basic",
+			slug: "growth",
 			planType: "growth",
 			duration: "monthly",
 			name: "Growth",
@@ -9455,7 +9549,7 @@ var PRICING = {
 			trialEnabled: true
 		},
 		{
-			slug: "premium",
+			slug: "scale",
 			planType: "scale",
 			duration: "monthly",
 			name: "Scale",
@@ -9484,7 +9578,7 @@ var PRICING = {
 		}
 	],
 	annual: [{
-		slug: "basic-annual",
+		slug: "growth-annual",
 		planType: "growth",
 		duration: "annual",
 		name: "Growth",
@@ -9512,7 +9606,7 @@ var PRICING = {
 		videoAnalysisUsed: 0,
 		trialEnabled: true
 	}, {
-		slug: "premium-annual",
+		slug: "scale-annual",
 		planType: "scale",
 		duration: "annual",
 		name: "Scale",
@@ -9542,10 +9636,10 @@ var PRICING = {
 };
 var PRICING_PLAN_ORDER = [
 	"free",
-	"basic",
-	"basic-annual",
-	"premium",
-	"premium-annual"
+	"growth",
+	"growth-annual",
+	"scale",
+	"scale-annual"
 ];
 var FAQS = [
 	{
@@ -10331,7 +10425,7 @@ function Landing() {
 			q: phrase
 		});
 	};
-	const startTrial = (plan, cycle = "monthly") => window.location.assign(`/login?redirect=trial_checkout&plan=${encodeURIComponent(plan?.slug ?? "basic")}&trial=1&cycle=${encodeURIComponent(cycle)}`);
+	const startTrial = (plan, cycle = "monthly") => window.location.assign(`/login?redirect=trial_checkout&plan=${encodeURIComponent(plan?.slug ?? "growth")}&trial=1&cycle=${encodeURIComponent(cycle)}`);
 	return /* @__PURE__ */ jsxs(Fragment$1, { children: [/* @__PURE__ */ jsx(Head, { title: "Brand Beacon — TikTok viral intelligence for brands" }), /* @__PURE__ */ jsxs("div", {
 		className: "bbh",
 		children: [
@@ -10433,10 +10527,13 @@ function LandingContact({ categories = [], defaults = {} }) {
 		ref: revealRoot,
 		className: "vvf-landing min-h-screen font-body",
 		children: [
-			/* @__PURE__ */ jsx(Nav, {
-				theme,
-				onToggleTheme: toggle,
-				onStart: startSearch
+			/* @__PURE__ */ jsx("div", {
+				className: "bbh",
+				children: /* @__PURE__ */ jsx(Nav, {
+					theme,
+					onToggleTheme: toggle,
+					onStart: startSearch
+				})
 			}),
 			/* @__PURE__ */ jsxs("main", {
 				className: "relative overflow-hidden px-4 py-10 sm:px-6 lg:px-8 lg:py-16",
@@ -10452,7 +10549,10 @@ function LandingContact({ categories = [], defaults = {} }) {
 					})
 				})]
 			}),
-			/* @__PURE__ */ jsx(Footer, {})
+			/* @__PURE__ */ jsx("div", {
+				className: "bbh",
+				children: /* @__PURE__ */ jsx(Footer, {})
+			})
 		]
 	})] });
 }
@@ -10540,6 +10640,7 @@ function Plans() {
 	const current = String(billingState.currentPlan ?? "free").toLowerCase();
 	const isTrialing = Boolean(billingState.isTrialing);
 	const hasUsedTrial = Boolean(billingState.hasUsedTrial);
+	const isActivePaidGrowth = current.startsWith("growth") && Boolean(billingState.hasPaidPlan) && !isTrialing;
 	const [trialPromptOpen, setTrialPromptOpen] = useState(Boolean(flash.trialAccessPrompt));
 	const orderedPlans = [...pricingPlans].sort((a, b) => {
 		const aKey = a.slug ?? a.name?.toLowerCase();
@@ -10556,7 +10657,9 @@ function Plans() {
 		return percents.length > 0 ? Math.max(...percents) : 0;
 	}, [orderedPlans]);
 	const upgrade = (slug, cycle = billingCycle) => billing.checkout(slug, cycle);
-	const promptPlanSlug = flash.trialAccessPrompt?.plan_slug ?? visiblePlans.find((plan) => plan.planType === "growth")?.slug ?? "basic";
+	const canOfferTrial = !hasUsedTrial && !isTrialing;
+	const startPlan = (slug, cycle = billingCycle) => canOfferTrial ? billing.trialCheckout(slug, cycle) : billing.checkout(slug, cycle);
+	const promptPlanSlug = flash.trialAccessPrompt?.plan_slug ?? visiblePlans.find((plan) => plan.planType === "growth")?.slug ?? "growth";
 	useEffect(() => {
 		setTrialPromptOpen(Boolean(flash.trialAccessPrompt));
 	}, [flash.trialAccessPrompt]);
@@ -10627,6 +10730,8 @@ function Plans() {
 				children: visiblePlans.map((plan) => {
 					const isCurrent = plan.slug === current;
 					const isFree = plan.slug === "free";
+					const isContactGated = (plan.planType === "scale" || plan.slug === "scale" || plan.slug === "scale-annual") && isActivePaidGrowth;
+					const contactHref = `/contact?category=plan-upgrade&subject=${encodeURIComponent(`Interested in the ${plan.name} plan`)}`;
 					const price = priceLine(plan);
 					return /* @__PURE__ */ jsxs("div", {
 						className: `plan${isCurrent ? " plan--on" : ""}`,
@@ -10662,12 +10767,16 @@ function Plans() {
 								className: "btn btn--g btn--w",
 								disabled: true,
 								children: "Free plan unavailable"
+							}) : isContactGated ? /* @__PURE__ */ jsxs(Link, {
+								href: contactHref,
+								className: "btn btn--y btn--w",
+								children: ["Contact Us ", /* @__PURE__ */ jsx(Arrow, {})]
 							}) : /* @__PURE__ */ jsxs("button", {
 								type: "button",
 								className: "btn btn--y btn--w",
-								onClick: () => upgrade(plan.slug, billingCycle),
+								onClick: () => startPlan(plan.slug, billingCycle),
 								children: [
-									!hasUsedTrial && !isTrialing ? "Try free for 8 days" : `Upgrade to ${plan.name}`,
+									canOfferTrial ? "Try free for 8 days" : `Upgrade to ${plan.name}`,
 									" ",
 									/* @__PURE__ */ jsx(Arrow, {})
 								]
@@ -10930,6 +11039,7 @@ function Index({ searches: initialSearches, bookmarkedVideos: initialBookmarkedV
 	const isBrandCategoryView = filterType === "brand-group";
 	const showTabs = bookmarkedOnly && !filterType;
 	const [searches, setSearches] = useState(initialSearches);
+	useEffect(() => setSearches(initialSearches), [initialSearches]);
 	const [tab, setTab] = useState("searches");
 	const [openMenuId, setOpenMenuId] = useState(null);
 	const [bookmarkedVideos, setBookmarkedVideos] = useState(initialBookmarkedVideos);
@@ -10954,7 +11064,8 @@ function Index({ searches: initialSearches, bookmarkedVideos: initialBookmarkedV
 	});
 	const [formState, setFormState] = useState({
 		name: "",
-		frequency: "weekly"
+		frequency: "weekly",
+		type: "brand"
 	});
 	const [submitting, setSubmitting] = useState(false);
 	const menuRef = useRef(null);
@@ -11119,7 +11230,8 @@ function Index({ searches: initialSearches, bookmarkedVideos: initialBookmarkedV
 		});
 		if (type === "edit") setFormState({
 			name: search.name ?? "",
-			frequency: search.frequency ?? "weekly"
+			frequency: search.frequency ?? "weekly",
+			type: search.search_type === "product" ? "product" : "brand"
 		});
 	};
 	const closeModal = () => {
@@ -11149,12 +11261,19 @@ function Index({ searches: initialSearches, bookmarkedVideos: initialBookmarkedV
 		if (!modalState.search) return;
 		setSubmitting(true);
 		try {
-			const { search: updated } = await savedSearch.update(modalState.search.id, {
+			await savedSearch.update(modalState.search.id, {
 				name: formState.name.trim(),
-				frequency: formState.frequency
+				frequency: formState.frequency,
+				type: formState.type
 			});
-			patchSearch(modalState.search.id, updated);
-			closeModal();
+			setModalState({
+				type: null,
+				search: null
+			});
+			router.reload({
+				only: ["searches"],
+				preserveScroll: true
+			});
 		} finally {
 			setSubmitting(false);
 		}
@@ -11621,6 +11740,37 @@ function Index({ searches: initialSearches, bookmarkedVideos: initialBookmarkedV
 										name: e.target.value
 									}))
 								})]
+							}),
+							/* @__PURE__ */ jsxs("div", {
+								style: { marginTop: 20 },
+								children: [
+									/* @__PURE__ */ jsx("label", {
+										className: "lbl",
+										htmlFor: "edit-search-type",
+										children: "Type"
+									}),
+									/* @__PURE__ */ jsxs("select", {
+										id: "edit-search-type",
+										className: "fld",
+										value: formState.type,
+										onChange: (e) => setFormState((c) => ({
+											...c,
+											type: e.target.value
+										})),
+										children: [/* @__PURE__ */ jsx("option", {
+											value: "brand",
+											children: "Brand"
+										}), /* @__PURE__ */ jsx("option", {
+											value: "product",
+											children: "Product"
+										})]
+									}),
+									formState.type !== (modalState.search.search_type === "product" ? "product" : "brand") && /* @__PURE__ */ jsx("p", {
+										className: "hint",
+										style: { marginTop: 8 },
+										children: "Your existing results stay — only how we tune keywords and insights changes going forward."
+									})
+								]
 							}),
 							/* @__PURE__ */ jsxs("div", {
 								style: { marginTop: 20 },
@@ -13487,7 +13637,7 @@ function DetailScreen({ search, isAuthenticated = false, billing: billing$2, ref
 	};
 	const openUpgradeModal = (type = "analysis") => setUpgradeModalType(type);
 	const closeUpgradeModal = () => setUpgradeModalType(null);
-	const openUpgradeForAnalysis = () => billing.checkout("basic");
+	const openUpgradeForAnalysis = () => (billing$2?.trialEligible ?? true) && !(billing$2?.hasUsedTrial ?? false) ? billing.trialCheckout("growth") : billing.checkout("growth");
 	const videoLabel = (videoId) => {
 		const video = results.find((entry) => String(entry.id) === String(videoId));
 		return video?.handle || video?.username || video?.title || "This video";
@@ -19003,7 +19153,7 @@ function PaymentMethodModal({ open, busy, saving, error, onClose, onSubmit }) {
 		})
 	});
 }
-function CancelConfirmModal({ open, busy, planName, periodEnd, onConfirm, onClose }) {
+function CancelConfirmModal({ open, busy, error, planName, periodEnd, onConfirm, onClose }) {
 	if (!open) return null;
 	return /* @__PURE__ */ jsx("div", {
 		className: "bb",
@@ -19047,6 +19197,15 @@ function CancelConfirmModal({ open, busy, planName, periodEnd, onConfirm, onClos
 							})] }) : " until the end of your current billing period",
 							", then move to the free plan. You can resubscribe anytime."
 						]
+					}),
+					error && /* @__PURE__ */ jsx("p", {
+						className: "subx-error",
+						role: "alert",
+						style: {
+							color: "var(--bad, #d64545)",
+							marginTop: 14
+						},
+						children: error
 					}),
 					/* @__PURE__ */ jsxs("div", {
 						className: "actrow__r",
@@ -19103,6 +19262,7 @@ function Subscription({ subscription, stripePublishableKey = null }) {
 	const [paymentSaving, setPaymentSaving] = useState(false);
 	const [paymentError, setPaymentError] = useState(null);
 	const [cancelBusy, setCancelBusy] = useState(false);
+	const [cancelError, setCancelError] = useState(null);
 	const [reactivateBusy, setReactivateBusy] = useState(false);
 	const [cancelModalOpen, setCancelModalOpen] = useState(false);
 	const [elementsState, setElementsState] = useState(null);
@@ -19171,11 +19331,14 @@ function Subscription({ subscription, stripePublishableKey = null }) {
 	};
 	const cancelSubscription = async () => {
 		setCancelBusy(true);
+		setCancelError(null);
 		try {
 			const response = await billing.cancelSubscription();
 			setStatusMessage(response?.message || "Subscription cancellation scheduled.");
 			setCancelModalOpen(false);
 			router.reload({ only: ["subscription"] });
+		} catch (error) {
+			setCancelError(error?.message || "We could not cancel your subscription. Please try again.");
 		} finally {
 			setCancelBusy(false);
 		}
@@ -19481,10 +19644,15 @@ function Subscription({ subscription, stripePublishableKey = null }) {
 		/* @__PURE__ */ jsx(CancelConfirmModal, {
 			open: cancelModalOpen,
 			busy: cancelBusy,
+			error: cancelError,
 			planName,
 			periodEnd: renews || trialEnds,
 			onConfirm: cancelSubscription,
-			onClose: () => cancelBusy ? void 0 : setCancelModalOpen(false)
+			onClose: () => {
+				if (cancelBusy) return;
+				setCancelError(null);
+				setCancelModalOpen(false);
+			}
 		})
 	] });
 }
@@ -19729,7 +19897,7 @@ function Trial() {
 			body: "This account already finished its free trial, so the next step is a paid upgrade.",
 			detail: "Upgrade to Growth to turn scheduled tracking, bookmarks, and analysis back on.",
 			primaryLabel: "Upgrade to Growth",
-			onPrimary: () => billing.checkout("basic"),
+			onPrimary: () => billing.checkout("growth"),
 			secondaryLabel: "Maybe later",
 			onSecondary: () => setTrialPromptOpen(false),
 			onClose: () => setTrialPromptOpen(false)

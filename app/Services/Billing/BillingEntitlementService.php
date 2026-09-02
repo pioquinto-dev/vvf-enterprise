@@ -257,11 +257,18 @@ class BillingEntitlementService
             return false;
         }
 
-        $subscription = $this->activeSubscriptionFor($user);
-
-        return $subscription?->trial_started_at !== null
-            || $subscription?->trial_completed_at !== null
-            || $subscription?->trial_ends_at !== null;
+        // A completed or canceled trial is replaced by a free subscription
+        // record, so eligibility must be based on subscription history rather
+        // than only the current entitlement record.
+        return Subscription::query()
+            ->where('user_id', $user->id)
+            ->whereNull('deleted_at')
+            ->where(function ($query): void {
+                $query->whereNotNull('trial_started_at')
+                    ->orWhereNotNull('trial_completed_at')
+                    ->orWhereNotNull('trial_ends_at');
+            })
+            ->exists();
     }
 
     public function bookmarkLimit(?User $user): int

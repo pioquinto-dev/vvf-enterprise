@@ -47,7 +47,7 @@ class BillingService
         // the single chokepoint every checkout entry point funnels through, so
         // gating here closes the direct-API backdoor regardless of the front-end.
         if (! (bool) data_get($plan->metadata, 'settings.self_serve', true)
-            && $this->isActivePaidSubscriber($user)) {
+            && $this->isActivePaidGrowthSubscriber($user)) {
             throw ValidationException::withMessages([
                 'plan' => 'This plan is not available for self-serve checkout yet. Contact us to upgrade.',
             ]);
@@ -377,12 +377,13 @@ class BillingService
      * needs proration we do not run yet. Free and trialing accounts are excluded
      * so they can self-serve straight into the gated plan.
      */
-    private function isActivePaidSubscriber(User $user): bool
+    private function isActivePaidGrowthSubscriber(User $user): bool
     {
         $subscription = $this->entitlements->activeSubscriptionFor($user);
 
         return $subscription !== null
             && in_array((string) $subscription->status, ['active', 'paid'], true)
+            && str_starts_with((string) data_get($subscription->metadata, 'plan_slug', $subscription->plan?->slug ?? ''), 'growth')
             && $this->hasPaidPlan($user);
     }
 
