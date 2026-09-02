@@ -3387,7 +3387,7 @@ function pushAnalyticsEvents(entries) {
 * navigation; these calls are the in-page ones that should not re-render the
 * whole document.
 */
-function csrfToken$1() {
+function csrfToken$2() {
 	return document.querySelector("meta[name=\"csrf-token\"]")?.getAttribute("content") ?? "";
 }
 var API_V1 = "/api/v1";
@@ -3400,7 +3400,7 @@ async function request(url, { method = "GET", body, signal } = {}) {
 			Accept: "application/json",
 			"X-Requested-With": "XMLHttpRequest",
 			...body ? { "Content-Type": "application/json" } : {},
-			...method === "GET" ? {} : { "X-CSRF-TOKEN": csrfToken$1() }
+			...method === "GET" ? {} : { "X-CSRF-TOKEN": csrfToken$2() }
 		},
 		...body ? { body: JSON.stringify(body) } : {}
 	});
@@ -3423,7 +3423,7 @@ function expandKeywords(phrase, { signal, fresh = false, instant = false, type =
 			Accept: "application/json",
 			"Content-Type": "application/json",
 			"X-Requested-With": "XMLHttpRequest",
-			"X-CSRF-TOKEN": csrfToken$1()
+			"X-CSRF-TOKEN": csrfToken$2()
 		},
 		body: JSON.stringify({
 			phrase,
@@ -4144,7 +4144,7 @@ function CloseIcon() {
 		children: /* @__PURE__ */ jsx("path", { d: "M6 6l12 12M18 6L6 18" })
 	});
 }
-function UpgradePromptModal({ open = true, eyebrow = null, title, body, detail = null, emphasis = null, primaryLabel, onPrimary, secondaryLabel = "Maybe later", onSecondary, onClose }) {
+function UpgradePromptModal({ open = true, eyebrow = null, title, body, detail = null, emphasis = null, primaryLabel, onPrimary, primaryDisabled = false, secondaryLabel = "Maybe later", onSecondary, onClose }) {
 	if (!open) return null;
 	return /* @__PURE__ */ jsx("div", {
 		className: "bb",
@@ -4190,6 +4190,7 @@ function UpgradePromptModal({ open = true, eyebrow = null, title, body, detail =
 							type: "button",
 							className: "btn btn--y",
 							onClick: onPrimary,
+							disabled: primaryDisabled,
 							children: primaryLabel
 						}), secondaryLabel && /* @__PURE__ */ jsx("button", {
 							type: "button",
@@ -8480,6 +8481,132 @@ function Dashboard() {
 	] });
 }
 //#endregion
+//#region resources/js/components/Seo.jsx
+var BRAND_NAME = "Brand Beacon";
+function buildStructuredData({ siteUrl, canonical, schema }) {
+	if (!siteUrl || !schema) return null;
+	const organizationId = `${siteUrl}/#organization`;
+	const graph = [];
+	if (schema.organization) graph.push({
+		"@type": "Organization",
+		"@id": organizationId,
+		name: BRAND_NAME,
+		url: siteUrl,
+		logo: `${siteUrl}/brand-beacon-logo.png`,
+		email: "hello@brandbeacon.com"
+	});
+	if (schema.webSite) graph.push({
+		"@type": "WebSite",
+		"@id": `${siteUrl}/#website`,
+		name: BRAND_NAME,
+		url: siteUrl,
+		publisher: { "@id": organizationId }
+	});
+	if (schema.softwareApplication) graph.push({
+		"@type": "SoftwareApplication",
+		name: BRAND_NAME,
+		applicationCategory: "BusinessApplication",
+		operatingSystem: "Web",
+		url: canonical,
+		description: schema.softwareApplication.description,
+		provider: { "@id": organizationId }
+	});
+	const questions = Array.isArray(schema.faqs) ? schema.faqs : [];
+	if (questions.length > 0) graph.push({
+		"@type": "FAQPage",
+		mainEntity: questions.map(({ q, a }) => ({
+			"@type": "Question",
+			name: q,
+			acceptedAnswer: {
+				"@type": "Answer",
+				text: a
+			}
+		}))
+	});
+	if (graph.length === 0) return null;
+	return JSON.stringify({
+		"@context": "https://schema.org",
+		"@graph": graph
+	}).replace(/</g, "\\u003c");
+}
+function Seo({ title, description, noIndex = false, schema = null }) {
+	const { app = {}, url = "/" } = usePage();
+	const siteUrl = String(app.url ?? "").replace(/\/$/, "");
+	const path = String(url).split("?")[0] || "/";
+	const canonical = siteUrl ? new URL(path, `${siteUrl}/`).toString() : void 0;
+	const robots = noIndex ? "noindex,follow" : "index,follow";
+	const structuredData = buildStructuredData({
+		siteUrl,
+		canonical,
+		schema
+	});
+	return /* @__PURE__ */ jsxs(Head, {
+		title,
+		children: [
+			/* @__PURE__ */ jsx("meta", {
+				"head-key": "description",
+				name: "description",
+				content: description
+			}),
+			/* @__PURE__ */ jsx("meta", {
+				"head-key": "robots",
+				name: "robots",
+				content: robots
+			}),
+			canonical && /* @__PURE__ */ jsx("link", {
+				"head-key": "canonical",
+				rel: "canonical",
+				href: canonical
+			}),
+			/* @__PURE__ */ jsx("meta", {
+				"head-key": "og:type",
+				property: "og:type",
+				content: "website"
+			}),
+			/* @__PURE__ */ jsx("meta", {
+				"head-key": "og:site_name",
+				property: "og:site_name",
+				content: BRAND_NAME
+			}),
+			/* @__PURE__ */ jsx("meta", {
+				"head-key": "og:title",
+				property: "og:title",
+				content: title
+			}),
+			/* @__PURE__ */ jsx("meta", {
+				"head-key": "og:description",
+				property: "og:description",
+				content: description
+			}),
+			canonical && /* @__PURE__ */ jsx("meta", {
+				"head-key": "og:url",
+				property: "og:url",
+				content: canonical
+			}),
+			/* @__PURE__ */ jsx("meta", {
+				"head-key": "twitter:card",
+				name: "twitter:card",
+				content: "summary"
+			}),
+			/* @__PURE__ */ jsx("meta", {
+				"head-key": "twitter:title",
+				name: "twitter:title",
+				content: title
+			}),
+			/* @__PURE__ */ jsx("meta", {
+				"head-key": "twitter:description",
+				name: "twitter:description",
+				content: description
+			}),
+			structuredData && /* @__PURE__ */ jsx("script", {
+				"head-key": "structured-data",
+				type: "application/ld+json",
+				dangerouslySetInnerHTML: { __html: structuredData }
+			})
+		]
+	});
+}
+//#endregion
 //#region resources/js/landing/sections/Nav.jsx
 function Nav({ homeHref = "#top" }) {
 	const [stuck, setStuck] = useState(false);
@@ -8527,24 +8654,16 @@ var COLS = [
 		h: "Product",
 		links: [
 			{
-				label: "Outlier Vault",
-				href: "#top"
+				label: "TikTok Brand Tracking",
+				href: "/tiktok-brand-tracking"
 			},
 			{
-				label: "Brand Tracking",
-				href: "#top"
+				label: "TikTok Product Research",
+				href: "/tiktok-product-research"
 			},
 			{
-				label: "Creator Shortlists",
-				href: "#top"
-			},
-			{
-				label: "Virality Alerts",
-				href: "#top"
-			},
-			{
-				label: "Changelog",
-				href: "#top"
+				label: "Viral Video Monitoring",
+				href: "/viral-video-monitoring"
 			}
 		]
 	},
@@ -8552,20 +8671,12 @@ var COLS = [
 		h: "Company",
 		links: [
 			{
-				label: "About",
-				href: "#top"
+				label: "Blogs",
+				href: "/#top"
 			},
 			{
-				label: "Careers",
-				href: "#top"
-			},
-			{
-				label: "Blog",
-				href: "#top"
-			},
-			{
-				label: "Press kit",
-				href: "#top"
+				label: "Support",
+				href: "/support"
 			},
 			{
 				label: "Contact",
@@ -8575,28 +8686,13 @@ var COLS = [
 	},
 	{
 		h: "Resources",
-		links: [
-			{
-				label: "TikTok benchmarks",
-				href: "#top"
-			},
-			{
-				label: "Category reports",
-				href: "#top"
-			},
-			{
-				label: "Help center",
-				href: "#top"
-			},
-			{
-				label: "API docs",
-				href: "#top"
-			},
-			{
-				label: "Status",
-				href: "#top"
-			}
-		]
+		links: [{
+			label: "Brand Tracking",
+			href: "/tiktok-brand-tracking"
+		}, {
+			label: "UGC Trend Discovery",
+			href: "/ugc-trend-discovery"
+		}]
 	},
 	{
 		h: "Legal",
@@ -8620,7 +8716,7 @@ var COLS = [
 		]
 	}
 ];
-function Footer() {
+function Footer({ homeHref = "#top" }) {
 	const [subscribed, setSubscribed] = useState(false);
 	return /* @__PURE__ */ jsx("footer", {
 		className: "ftr",
@@ -8630,7 +8726,7 @@ function Footer() {
 				className: "ftr__top",
 				children: [/* @__PURE__ */ jsxs("div", { children: [
 					/* @__PURE__ */ jsxs("a", {
-						href: "#top",
+						href: homeHref,
 						className: "brand",
 						children: [/* @__PURE__ */ jsx(Logo, { className: "h-8 w-8" }), /* @__PURE__ */ jsx("span", { children: "Brand Beacon" })]
 					}),
@@ -8675,26 +8771,9 @@ function Footer() {
 						children: link.label
 					}) }, link.label)) })] }, col.h))
 				})]
-			}), /* @__PURE__ */ jsxs("div", {
+			}), /* @__PURE__ */ jsx("div", {
 				className: "ftr__btm",
-				children: [/* @__PURE__ */ jsx("p", { children: "© 2026 Brand Beacon. TikTok viral intelligence for brands." }), /* @__PURE__ */ jsxs("nav", { children: [
-					/* @__PURE__ */ jsx("a", {
-						href: "/terms",
-						children: "Terms"
-					}),
-					/* @__PURE__ */ jsx("a", {
-						href: "/privacy",
-						children: "Privacy"
-					}),
-					/* @__PURE__ */ jsx("a", {
-						href: "/security",
-						children: "Security"
-					}),
-					/* @__PURE__ */ jsx("a", {
-						href: "/contact",
-						children: "Contact"
-					})
-				] })]
+				children: /* @__PURE__ */ jsx("p", { children: "© 2026 Brand Beacon. TikTok viral intelligence for brands." })
 			})]
 		})
 	});
@@ -8702,9 +8781,18 @@ function Footer() {
 //#endregion
 //#region resources/js/Pages/LegalPage.jsx
 var LegalPage_exports = /* @__PURE__ */ __exportAll({ default: () => LegalPage });
+var descriptions = {
+	"Privacy Policy": "Learn how Brand Beacon collects, uses, and protects information when you use our TikTok trend intelligence platform.",
+	"Terms of Service": "Read the terms that govern use of Brand Beacon and its TikTok trend intelligence platform.",
+	"Data Processing Addendum": "Review Brand Beacon's Data Processing Addendum for customer personal data processing.",
+	Security: "Learn about the administrative, technical, and operational security practices used by Brand Beacon."
+};
 function LegalPage({ title, effectiveDate, sections }) {
 	return /* @__PURE__ */ jsxs(Fragment$1, { children: [
-		/* @__PURE__ */ jsx(Head, { title: `${title} · Brand Beacon` }),
+		/* @__PURE__ */ jsx(Seo, {
+			title: `${title} | Brand Beacon`,
+			description: descriptions[title] ?? "Legal information for Brand Beacon."
+		}),
 		/* @__PURE__ */ jsxs("div", {
 			className: "bbh",
 			children: [
@@ -9229,252 +9317,6 @@ function Home({ stack, integrations }) {
 	})] });
 }
 //#endregion
-//#region resources/js/landing/sections/Hero.jsx
-var MODES = [{
-	key: "brand",
-	label: "Brand",
-	icon: Store,
-	prompt: "Which brand do you want to research?",
-	sample: "rhode skin",
-	samples: [
-		"rhode skin",
-		"rare beauty",
-		"summer fridays"
-	]
-}, {
-	key: "product",
-	label: "A product",
-	icon: Search,
-	prompt: "Which product do you want to track?",
-	sample: "lip oil",
-	samples: [
-		"lip oil",
-		"blush stick",
-		"collagen mask"
-	]
-}];
-function Hero({ onStart }) {
-	const [type, setType] = useState("brand");
-	const [value, setValue] = useState("");
-	const [isFocused, setIsFocused] = useState(false);
-	const [typingText, setTypingText] = useState("");
-	const [subjectSuggestions, setSubjectSuggestions] = useState([]);
-	const [activeSuggestion, setActiveSuggestion] = useState(-1);
-	const [showSuggestions, setShowSuggestions] = useState(false);
-	const inputRef = useRef(null);
-	const fieldRef = useRef(null);
-	const mode = MODES.find((m) => m.key === type) ?? MODES[0];
-	const query = value.trim().replace(/\s+/g, " ");
-	const visibleSuggestions = subjectSuggestions.filter((suggestion) => suggestion.label?.trim());
-	useEffect(() => {
-		const controller = new AbortController();
-		fetchKeywordSuggestions(type, value.trim(), { signal: controller.signal }).then((payload) => setSubjectSuggestions(Array.isArray(payload?.suggestions) ? payload.suggestions : [])).catch(() => {});
-		return () => controller.abort();
-	}, [type, value]);
-	useEffect(() => {
-		const close = (event) => {
-			if (!fieldRef.current?.contains(event.target)) {
-				setShowSuggestions(false);
-				setActiveSuggestion(-1);
-			}
-		};
-		document.addEventListener("mousedown", close);
-		return () => document.removeEventListener("mousedown", close);
-	}, []);
-	useEffect(() => {
-		if (value) {
-			setTypingText("");
-			return;
-		}
-		const samples = mode.samples?.length ? mode.samples : [mode.sample];
-		let sampleIndex = 0;
-		let charIndex = 0;
-		let deleting = false;
-		let timeoutId;
-		const tick = () => {
-			const current = samples[sampleIndex] ?? "";
-			if (!deleting) {
-				charIndex += 1;
-				setTypingText(current.slice(0, charIndex));
-				if (charIndex >= current.length) {
-					deleting = true;
-					timeoutId = window.setTimeout(tick, 1300);
-					return;
-				}
-				timeoutId = window.setTimeout(tick, 75);
-				return;
-			}
-			charIndex -= 1;
-			setTypingText(current.slice(0, Math.max(0, charIndex)));
-			if (charIndex <= 0) {
-				deleting = false;
-				sampleIndex = (sampleIndex + 1) % samples.length;
-				timeoutId = window.setTimeout(tick, 260);
-				return;
-			}
-			timeoutId = window.setTimeout(tick, 38);
-		};
-		setTypingText("");
-		timeoutId = window.setTimeout(tick, 360);
-		return () => window.clearTimeout(timeoutId);
-	}, [mode, value]);
-	const submit = (e) => {
-		e?.preventDefault();
-		if (!query) {
-			inputRef.current?.focus();
-			return;
-		}
-		onStart(type, query);
-	};
-	const applySuggestion = (label) => {
-		setValue(label);
-		setShowSuggestions(false);
-		setActiveSuggestion(-1);
-		window.requestAnimationFrame(() => inputRef.current?.focus());
-	};
-	return /* @__PURE__ */ jsx("section", {
-		className: "hero",
-		id: "top",
-		children: /* @__PURE__ */ jsxs("div", {
-			className: "wrap",
-			children: [
-				/* @__PURE__ */ jsxs("h1", { children: ["TikTok Brand and Social Media ", /* @__PURE__ */ jsx("span", {
-					className: "hl",
-					children: "Intelligence Tool"
-				})] }),
-				/* @__PURE__ */ jsx("p", {
-					className: "hero__sub",
-					children: "Facebook has an ad library. Organic TikTok doesn't. So we built it."
-				}),
-				/* @__PURE__ */ jsxs("form", {
-					className: "box",
-					onSubmit: submit,
-					children: [
-						/* @__PURE__ */ jsxs("p", {
-							className: "box__label",
-							children: [/* @__PURE__ */ jsx("span", {
-								className: "box__step",
-								children: "1"
-							}), "Pick what you want to search"]
-						}),
-						/* @__PURE__ */ jsx("div", {
-							className: "modes",
-							role: "tablist",
-							"aria-label": "What to research",
-							children: MODES.map(({ key, label, icon: Icon }) => /* @__PURE__ */ jsxs("button", {
-								type: "button",
-								className: `mode${key === type ? " is-on" : ""}`,
-								role: "tab",
-								"aria-selected": key === type,
-								onClick: () => setType(key),
-								children: [/* @__PURE__ */ jsx(Icon, { className: "h-[15px] w-[15px]" }), label]
-							}, key))
-						}),
-						/* @__PURE__ */ jsxs("label", {
-							className: "box__label",
-							htmlFor: "search-subject",
-							children: [
-								/* @__PURE__ */ jsx("span", {
-									className: "box__step",
-									children: "2"
-								}),
-								"Type your ",
-								type === "product" ? "product" : "brand name"
-							]
-						}),
-						/* @__PURE__ */ jsxs("div", {
-							className: "box__field",
-							ref: fieldRef,
-							children: [
-								/* @__PURE__ */ jsx("input", {
-									ref: inputRef,
-									id: "search-subject",
-									maxLength: 80,
-									value,
-									autoComplete: "off",
-									onChange: (e) => {
-										setValue(e.target.value);
-										setShowSuggestions(true);
-									},
-									onFocus: () => {
-										setIsFocused(true);
-										setShowSuggestions(true);
-									},
-									onBlur: () => setIsFocused(false),
-									onKeyDown: (event) => {
-										if (!visibleSuggestions.length) return;
-										if (event.key === "ArrowDown") {
-											event.preventDefault();
-											setShowSuggestions(true);
-											setActiveSuggestion((current) => (current + 1) % visibleSuggestions.length);
-										}
-										if (event.key === "ArrowUp") {
-											event.preventDefault();
-											setShowSuggestions(true);
-											setActiveSuggestion((current) => current <= 0 ? visibleSuggestions.length - 1 : current - 1);
-										}
-										if (event.key === "Enter" && activeSuggestion >= 0 && visibleSuggestions[activeSuggestion]) {
-											event.preventDefault();
-											applySuggestion(visibleSuggestions[activeSuggestion].label);
-										}
-										if (event.key === "Escape") {
-											setShowSuggestions(false);
-											setActiveSuggestion(-1);
-										}
-									},
-									placeholder: "",
-									"aria-label": `Type your ${type === "product" ? "product" : "brand name"}`,
-									"aria-expanded": showSuggestions && visibleSuggestions.length > 0,
-									"aria-haspopup": "listbox"
-								}),
-								!value && /* @__PURE__ */ jsx("span", {
-									className: `box__ghost${isFocused ? " is-focused" : ""}`,
-									"aria-hidden": "true",
-									children: typingText || mode.sample
-								}),
-								showSuggestions && visibleSuggestions.length > 0 && /* @__PURE__ */ jsxs("div", {
-									className: "hero-suggest",
-									role: "listbox",
-									"aria-label": `${type} suggestions`,
-									children: [/* @__PURE__ */ jsxs("div", {
-										className: "hero-suggest__head",
-										children: [/* @__PURE__ */ jsxs("span", { children: ["Suggested ", type === "brand" ? "brands" : "products"] }), /* @__PURE__ */ jsx("span", { children: visibleSuggestions.length })]
-									}), /* @__PURE__ */ jsx("div", {
-										className: "hero-suggest__list",
-										children: visibleSuggestions.map((suggestion, index) => /* @__PURE__ */ jsx("button", {
-											type: "button",
-											className: `hero-suggest__item${index === activeSuggestion ? " is-active" : ""}`,
-											onMouseEnter: () => setActiveSuggestion(index),
-											onMouseDown: (event) => event.preventDefault(),
-											onClick: () => applySuggestion(suggestion.label),
-											children: /* @__PURE__ */ jsxs("span", {
-												className: "hero-suggest__text",
-												children: [/* @__PURE__ */ jsx("strong", { children: suggestion.label }), suggestion.sector && /* @__PURE__ */ jsx("em", { children: suggestion.sector })]
-											})
-										}, `${suggestion.type}-${suggestion.id}`))
-									})]
-								}),
-								/* @__PURE__ */ jsxs("button", {
-									type: "submit",
-									className: "btn btn--primary btn--lg btn--pulse",
-									children: ["Find outliers", /* @__PURE__ */ jsx(Arrow, { className: "btn__arrow h-[15px] w-[15px]" })]
-								})
-							]
-						}),
-						/* @__PURE__ */ jsxs("div", {
-							className: "box__foot",
-							children: [/* @__PURE__ */ jsx("span", { children: "1 free search · no credit card" }), /* @__PURE__ */ jsx("a", {
-								href: "#how",
-								children: "See how it works"
-							})]
-						})
-					]
-				})
-			]
-		})
-	});
-}
-//#endregion
 //#region resources/js/landing/data/dummy.js
 var BRANDS = [
 	{
@@ -9847,6 +9689,252 @@ var FAQS = [
 		a: "Effectively, yes. Our collection infrastructure tracks Tiktok at scale and routes new videos through the index within hours of them going live. Every index video is continuously re-evaluated by our Breakout Score engine, so the rankings you see are always tied to live performance."
 	}
 ];
+//#endregion
+//#region resources/js/landing/sections/Hero.jsx
+var MODES = [{
+	key: "brand",
+	label: "Brand",
+	icon: Store,
+	prompt: "Which brand do you want to research?",
+	sample: "rhode skin",
+	samples: [
+		"rhode skin",
+		"rare beauty",
+		"summer fridays"
+	]
+}, {
+	key: "product",
+	label: "A product",
+	icon: Search,
+	prompt: "Which product do you want to track?",
+	sample: "lip oil",
+	samples: [
+		"lip oil",
+		"blush stick",
+		"collagen mask"
+	]
+}];
+function Hero({ onStart }) {
+	const [type, setType] = useState("brand");
+	const [value, setValue] = useState("");
+	const [isFocused, setIsFocused] = useState(false);
+	const [typingText, setTypingText] = useState("");
+	const [subjectSuggestions, setSubjectSuggestions] = useState([]);
+	const [activeSuggestion, setActiveSuggestion] = useState(-1);
+	const [showSuggestions, setShowSuggestions] = useState(false);
+	const inputRef = useRef(null);
+	const fieldRef = useRef(null);
+	const mode = MODES.find((m) => m.key === type) ?? MODES[0];
+	const query = value.trim().replace(/\s+/g, " ");
+	const visibleSuggestions = subjectSuggestions.filter((suggestion) => suggestion.label?.trim());
+	useEffect(() => {
+		const controller = new AbortController();
+		fetchKeywordSuggestions(type, value.trim(), { signal: controller.signal }).then((payload) => setSubjectSuggestions(Array.isArray(payload?.suggestions) ? payload.suggestions : [])).catch(() => {});
+		return () => controller.abort();
+	}, [type, value]);
+	useEffect(() => {
+		const close = (event) => {
+			if (!fieldRef.current?.contains(event.target)) {
+				setShowSuggestions(false);
+				setActiveSuggestion(-1);
+			}
+		};
+		document.addEventListener("mousedown", close);
+		return () => document.removeEventListener("mousedown", close);
+	}, []);
+	useEffect(() => {
+		if (value) {
+			setTypingText("");
+			return;
+		}
+		const samples = mode.samples?.length ? mode.samples : [mode.sample];
+		let sampleIndex = 0;
+		let charIndex = 0;
+		let deleting = false;
+		let timeoutId;
+		const tick = () => {
+			const current = samples[sampleIndex] ?? "";
+			if (!deleting) {
+				charIndex += 1;
+				setTypingText(current.slice(0, charIndex));
+				if (charIndex >= current.length) {
+					deleting = true;
+					timeoutId = window.setTimeout(tick, 1300);
+					return;
+				}
+				timeoutId = window.setTimeout(tick, 75);
+				return;
+			}
+			charIndex -= 1;
+			setTypingText(current.slice(0, Math.max(0, charIndex)));
+			if (charIndex <= 0) {
+				deleting = false;
+				sampleIndex = (sampleIndex + 1) % samples.length;
+				timeoutId = window.setTimeout(tick, 260);
+				return;
+			}
+			timeoutId = window.setTimeout(tick, 38);
+		};
+		setTypingText("");
+		timeoutId = window.setTimeout(tick, 360);
+		return () => window.clearTimeout(timeoutId);
+	}, [mode, value]);
+	const submit = (e) => {
+		e?.preventDefault();
+		if (!query) {
+			inputRef.current?.focus();
+			return;
+		}
+		onStart(type, query);
+	};
+	const applySuggestion = (label) => {
+		setValue(label);
+		setShowSuggestions(false);
+		setActiveSuggestion(-1);
+		window.requestAnimationFrame(() => inputRef.current?.focus());
+	};
+	return /* @__PURE__ */ jsx("section", {
+		className: "hero",
+		id: "top",
+		children: /* @__PURE__ */ jsxs("div", {
+			className: "wrap",
+			children: [
+				/* @__PURE__ */ jsxs("h1", { children: ["TikTok Brand and Social Media ", /* @__PURE__ */ jsx("span", {
+					className: "hl",
+					children: "Intelligence Tool"
+				})] }),
+				/* @__PURE__ */ jsx("p", {
+					className: "hero__sub",
+					children: "Facebook has an ad library. Organic TikTok doesn't. So we built it."
+				}),
+				/* @__PURE__ */ jsxs("form", {
+					className: "box",
+					onSubmit: submit,
+					children: [
+						/* @__PURE__ */ jsxs("p", {
+							className: "box__label",
+							children: [/* @__PURE__ */ jsx("span", {
+								className: "box__step",
+								children: "1"
+							}), "Pick what you want to search"]
+						}),
+						/* @__PURE__ */ jsx("div", {
+							className: "modes",
+							role: "tablist",
+							"aria-label": "What to research",
+							children: MODES.map(({ key, label, icon: Icon }) => /* @__PURE__ */ jsxs("button", {
+								type: "button",
+								className: `mode${key === type ? " is-on" : ""}`,
+								role: "tab",
+								"aria-selected": key === type,
+								onClick: () => setType(key),
+								children: [/* @__PURE__ */ jsx(Icon, { className: "h-[15px] w-[15px]" }), label]
+							}, key))
+						}),
+						/* @__PURE__ */ jsxs("label", {
+							className: "box__label",
+							htmlFor: "search-subject",
+							children: [
+								/* @__PURE__ */ jsx("span", {
+									className: "box__step",
+									children: "2"
+								}),
+								"Type your ",
+								type === "product" ? "product" : "brand name"
+							]
+						}),
+						/* @__PURE__ */ jsxs("div", {
+							className: "box__field",
+							ref: fieldRef,
+							children: [
+								/* @__PURE__ */ jsx("input", {
+									ref: inputRef,
+									id: "search-subject",
+									maxLength: 80,
+									value,
+									autoComplete: "off",
+									onChange: (e) => {
+										setValue(e.target.value);
+										setShowSuggestions(true);
+									},
+									onFocus: () => {
+										setIsFocused(true);
+										setShowSuggestions(true);
+									},
+									onBlur: () => setIsFocused(false),
+									onKeyDown: (event) => {
+										if (!visibleSuggestions.length) return;
+										if (event.key === "ArrowDown") {
+											event.preventDefault();
+											setShowSuggestions(true);
+											setActiveSuggestion((current) => (current + 1) % visibleSuggestions.length);
+										}
+										if (event.key === "ArrowUp") {
+											event.preventDefault();
+											setShowSuggestions(true);
+											setActiveSuggestion((current) => current <= 0 ? visibleSuggestions.length - 1 : current - 1);
+										}
+										if (event.key === "Enter" && activeSuggestion >= 0 && visibleSuggestions[activeSuggestion]) {
+											event.preventDefault();
+											applySuggestion(visibleSuggestions[activeSuggestion].label);
+										}
+										if (event.key === "Escape") {
+											setShowSuggestions(false);
+											setActiveSuggestion(-1);
+										}
+									},
+									placeholder: "",
+									"aria-label": `Type your ${type === "product" ? "product" : "brand name"}`,
+									"aria-expanded": showSuggestions && visibleSuggestions.length > 0,
+									"aria-haspopup": "listbox"
+								}),
+								!value && /* @__PURE__ */ jsx("span", {
+									className: `box__ghost${isFocused ? " is-focused" : ""}`,
+									"aria-hidden": "true",
+									children: typingText || mode.sample
+								}),
+								showSuggestions && visibleSuggestions.length > 0 && /* @__PURE__ */ jsxs("div", {
+									className: "hero-suggest",
+									role: "listbox",
+									"aria-label": `${type} suggestions`,
+									children: [/* @__PURE__ */ jsxs("div", {
+										className: "hero-suggest__head",
+										children: [/* @__PURE__ */ jsxs("span", { children: ["Suggested ", type === "brand" ? "brands" : "products"] }), /* @__PURE__ */ jsx("span", { children: visibleSuggestions.length })]
+									}), /* @__PURE__ */ jsx("div", {
+										className: "hero-suggest__list",
+										children: visibleSuggestions.map((suggestion, index) => /* @__PURE__ */ jsx("button", {
+											type: "button",
+											className: `hero-suggest__item${index === activeSuggestion ? " is-active" : ""}`,
+											onMouseEnter: () => setActiveSuggestion(index),
+											onMouseDown: (event) => event.preventDefault(),
+											onClick: () => applySuggestion(suggestion.label),
+											children: /* @__PURE__ */ jsxs("span", {
+												className: "hero-suggest__text",
+												children: [/* @__PURE__ */ jsx("strong", { children: suggestion.label }), suggestion.sector && /* @__PURE__ */ jsx("em", { children: suggestion.sector })]
+											})
+										}, `${suggestion.type}-${suggestion.id}`))
+									})]
+								}),
+								/* @__PURE__ */ jsxs("button", {
+									type: "submit",
+									className: "btn btn--primary btn--lg btn--pulse",
+									children: ["Find outliers", /* @__PURE__ */ jsx(Arrow, { className: "btn__arrow h-[15px] w-[15px]" })]
+								})
+							]
+						}),
+						/* @__PURE__ */ jsxs("div", {
+							className: "box__foot",
+							children: [/* @__PURE__ */ jsx("span", { children: "1 free search · no credit card" }), /* @__PURE__ */ jsx("a", {
+								href: "#how",
+								children: "See how it works"
+							})]
+						})
+					]
+				})
+			]
+		})
+	});
+}
 //#endregion
 //#region resources/js/landing/sections/BrandMarquee.jsx
 function Chip({ brand }) {
@@ -10589,6 +10677,16 @@ function FinalCta({ onStart }) {
 	});
 }
 //#endregion
+//#region resources/js/landing/components/SupportLauncher.jsx
+function SupportLauncher() {
+	return /* @__PURE__ */ jsxs(Link, {
+		href: "/support",
+		className: "support-launcher",
+		"aria-label": "Open Brand Beacon support",
+		children: [/* @__PURE__ */ jsx("span", { children: "Quick FAQs" }), /* @__PURE__ */ jsx("i", { children: /* @__PURE__ */ jsx(Comment, { className: "h-5 w-5" }) })]
+	});
+}
+//#endregion
 //#region resources/js/Pages/Landing.jsx
 var Landing_exports = /* @__PURE__ */ __exportAll({ default: () => Landing });
 function Landing() {
@@ -10609,7 +10707,16 @@ function Landing() {
 		});
 	};
 	const startTrial = (plan, cycle = "monthly") => window.location.assign(`/login?redirect=trial_checkout&plan=${encodeURIComponent(plan?.slug ?? "growth")}&trial=1&cycle=${encodeURIComponent(cycle)}`);
-	return /* @__PURE__ */ jsxs(Fragment$1, { children: [/* @__PURE__ */ jsx(Head, { title: "Brand Beacon — TikTok viral intelligence for brands" }), /* @__PURE__ */ jsxs("div", {
+	return /* @__PURE__ */ jsxs(Fragment$1, { children: [/* @__PURE__ */ jsx(Seo, {
+		title: "TikTok Trend Intelligence for Brands | Brand Beacon",
+		description: "Discover viral TikTok videos, track brand mentions, and spot breakout trends before they peak with Brand Beacon.",
+		schema: {
+			organization: true,
+			webSite: true,
+			softwareApplication: { description: "Brand Beacon helps teams discover viral TikTok videos, track brand mentions, and identify breakout trends." },
+			faqs: FAQS
+		}
+	}), /* @__PURE__ */ jsxs("div", {
 		className: "bbh",
 		children: [
 			/* @__PURE__ */ jsx(Nav, {}),
@@ -10627,7 +10734,8 @@ function Landing() {
 				/* @__PURE__ */ jsx(Faq, {}),
 				/* @__PURE__ */ jsx(FinalCta, { onStart: startSearch })
 			] }),
-			/* @__PURE__ */ jsx(Footer, {})
+			/* @__PURE__ */ jsx(Footer, {}),
+			/* @__PURE__ */ jsx(SupportLauncher, {})
 		]
 	})] });
 }
@@ -10706,7 +10814,10 @@ function LandingContact({ categories = [], defaults = {} }) {
 			q: phrase
 		});
 	};
-	return /* @__PURE__ */ jsxs(Fragment$1, { children: [/* @__PURE__ */ jsx(Head, { title: "Contact Us - Outlier Vault" }), /* @__PURE__ */ jsxs("div", {
+	return /* @__PURE__ */ jsxs(Fragment$1, { children: [/* @__PURE__ */ jsx(Seo, {
+		title: "Contact Brand Beacon | TikTok Trend Intelligence",
+		description: "Contact the Brand Beacon team for product, account, billing, or partnership support."
+	}), /* @__PURE__ */ jsxs("div", {
 		ref: revealRoot,
 		className: "vvf-landing min-h-screen font-body",
 		children: [
@@ -10736,6 +10847,231 @@ function LandingContact({ categories = [], defaults = {} }) {
 				className: "bbh",
 				children: /* @__PURE__ */ jsx(Footer, {})
 			})
+		]
+	})] });
+}
+//#endregion
+//#region resources/js/landing/data/solutions.js
+var SOLUTIONS = {
+	"brand-tracking": {
+		path: "/tiktok-brand-tracking",
+		title: "TikTok Brand Tracking | Brand Beacon",
+		description: "Track TikTok brand mentions, breakout videos, and creator conversations with Brand Beacon.",
+		eyebrow: "TikTok brand tracking",
+		navLabel: "Brand Tracking",
+		heading: "Know when your brand starts moving on TikTok.",
+		intro: "Brand Beacon turns one brand name into a focused view of the videos, creators, and conversations gaining momentum around it.",
+		searchType: "brand",
+		searchLabel: "Track your brand",
+		signal: [
+			"Brand and product mentions",
+			"Breakout performance versus creator baseline",
+			"Weekly changes worth reviewing"
+		],
+		workflow: [
+			["Start with the name people use", "Search your brand, a product line, or the terms customers actually type in captions and hashtags."],
+			["Keep the context that matters", "Add supporting keywords to separate relevant creator posts, affiliate content, and reviews from unrelated mentions."],
+			["Review what broke out", "Prioritize unusual performance so your team can study the posts that are gaining traction, not just the largest accounts."]
+		],
+		outcomes: [
+			"Find emerging creator conversations before they become obvious.",
+			"Use real breakout posts to inform creative briefs and response plans.",
+			"Keep one repeatable research workflow for brand and product teams."
+		]
+	},
+	"product-research": {
+		path: "/tiktok-product-research",
+		title: "TikTok Product Research | Brand Beacon",
+		description: "Research product demand, reviews, and breakout TikTok creative with Brand Beacon.",
+		eyebrow: "TikTok product research",
+		navLabel: "Product Research",
+		heading: "Turn TikTok product chatter into research your team can use.",
+		intro: "Use Brand Beacon to see how a product is described, demonstrated, compared, and reviewed in the TikTok videos that are outperforming expectations.",
+		searchType: "product",
+		searchLabel: "Research a product",
+		signal: [
+			"Product demonstrations and reviews",
+			"Language customers use in the wild",
+			"High-performing creative patterns"
+		],
+		workflow: [
+			["Search one product concept", "Begin with the product name, category phrase, or problem the product solves."],
+			["Add the terms that define the angle", "Use supporting keywords for use cases, claims, ingredients, formats, comparisons, or customer objections."],
+			["Study the strongest evidence", "Review the breakout videos and their context to find useful creative language and product education angles."]
+		],
+		outcomes: [
+			"Ground product messaging in the language audiences already use.",
+			"Find demonstrations and reviews that make a product easier to understand.",
+			"Spot creative angles worth testing before they become familiar."
+		]
+	},
+	"viral-video-monitoring": {
+		path: "/viral-video-monitoring",
+		title: "Viral Video Monitoring for TikTok | Brand Beacon",
+		description: "Monitor viral TikTok videos and identify genuine breakouts with Brand Beacon.",
+		eyebrow: "Viral video monitoring",
+		navLabel: "Viral Video Monitoring",
+		heading: "Monitor the TikTok videos that are breaking out, not just getting views.",
+		intro: "A large view count alone does not tell you what is unusual. Brand Beacon helps you find videos performing well above a creator's typical baseline.",
+		searchType: "brand",
+		searchLabel: "Monitor a topic",
+		signal: [
+			"Outlier performance signals",
+			"Fresh videos around a defined subject",
+			"Creator, format, and caption context"
+		],
+		workflow: [
+			["Define the subject to watch", "Set a brand, product, or category phrase that gives the monitoring workflow a clear frame."],
+			["Collect relevant videos", "Use supporting context to improve relevance while keeping the search broad enough to surface unexpected creative."],
+			["Rank by unusual performance", "Review the strongest outliers first, then use the surrounding creator and post context to decide what matters."]
+		],
+		outcomes: [
+			"Spend less time sorting through ordinary high-view content.",
+			"Catch unusual momentum while it is still useful to your team.",
+			"Build a more consistent source of creative and category intelligence."
+		]
+	},
+	"ugc-trend-discovery": {
+		path: "/ugc-trend-discovery",
+		title: "TikTok UGC Trend Discovery | Brand Beacon",
+		description: "Discover TikTok UGC trends, breakout creators, and creative formats with Brand Beacon.",
+		eyebrow: "TikTok UGC trend discovery",
+		navLabel: "UGC Trend Discovery",
+		heading: "Find the creator-led TikTok trends behind the next creative brief.",
+		intro: "Brand Beacon helps teams discover breakout UGC patterns around a brand, product, or category, then study the videos that made those patterns travel.",
+		searchType: "product",
+		searchLabel: "Discover UGC trends",
+		signal: [
+			"Creator-led product storytelling",
+			"Repeatable hooks and demonstrations",
+			"Breakout posts around your category"
+		],
+		workflow: [
+			["Start with a product or category", "Use a phrase that reflects the audience, problem, or product story you want to explore."],
+			["Add the creative context", "Include supporting terms for routines, comparisons, demonstrations, reviews, or other relevant UGC formats."],
+			["Turn breakouts into patterns", "Review the strongest posts together to identify recurring hooks, claims, visual treatments, and creator perspectives."]
+		],
+		outcomes: [
+			"Find UGC inspiration grounded in current category behavior.",
+			"Give creators and marketers examples with real audience traction.",
+			"Separate repeatable patterns from one-off viral moments."
+		]
+	}
+};
+var SOLUTION_LINKS = Object.entries(SOLUTIONS).map(([key, solution]) => ({
+	key,
+	path: solution.path,
+	label: solution.navLabel
+}));
+//#endregion
+//#region resources/js/Pages/LandingSolution.jsx
+var LandingSolution_exports = /* @__PURE__ */ __exportAll({ default: () => LandingSolution });
+function LandingSolution({ topic }) {
+	const solution = SOLUTIONS[topic];
+	if (!solution) return null;
+	const related = SOLUTION_LINKS.filter((link) => link.key !== topic);
+	return /* @__PURE__ */ jsxs(Fragment$1, { children: [/* @__PURE__ */ jsx(Seo, {
+		title: solution.title,
+		description: solution.description
+	}), /* @__PURE__ */ jsxs("div", {
+		className: "bbh solution-page",
+		children: [
+			/* @__PURE__ */ jsx(Nav, { homeHref: "/" }),
+			/* @__PURE__ */ jsxs("main", { children: [
+				/* @__PURE__ */ jsx("section", {
+					className: "solution-hero",
+					children: /* @__PURE__ */ jsxs("div", {
+						className: "wrap solution-hero__grid",
+						children: [/* @__PURE__ */ jsxs("div", {
+							className: "solution-hero__copy",
+							children: [
+								/* @__PURE__ */ jsx("p", {
+									className: "eyebrow",
+									children: solution.eyebrow
+								}),
+								/* @__PURE__ */ jsx("h1", { children: solution.heading }),
+								/* @__PURE__ */ jsx("p", { children: solution.intro }),
+								/* @__PURE__ */ jsxs("div", {
+									className: "solution-hero__actions",
+									children: [/* @__PURE__ */ jsxs(Link, {
+										href: `/search?type=${solution.searchType}`,
+										className: "btn btn--primary btn--lg",
+										children: [solution.searchLabel, /* @__PURE__ */ jsx(Arrow, { className: "btn__arrow h-[15px] w-[15px]" })]
+									}), /* @__PURE__ */ jsx("a", {
+										href: "#workflow",
+										className: "solution-text-link",
+										children: "See the workflow"
+									})]
+								})
+							]
+						}), /* @__PURE__ */ jsxs("aside", {
+							className: "solution-signal",
+							"aria-label": "What you can monitor",
+							children: [
+								/* @__PURE__ */ jsxs("div", {
+									className: "solution-signal__head",
+									children: [/* @__PURE__ */ jsx(Trend, { className: "h-4 w-4" }), " Signal stack"]
+								}),
+								solution.signal.map((item, index) => /* @__PURE__ */ jsxs("div", {
+									className: "solution-signal__row",
+									children: [/* @__PURE__ */ jsx("span", { children: String(index + 1).padStart(2, "0") }), /* @__PURE__ */ jsx("p", { children: item })]
+								}, item)),
+								/* @__PURE__ */ jsxs("div", {
+									className: "solution-signal__foot",
+									children: [/* @__PURE__ */ jsx("i", {}), " Built for repeatable research"]
+								})
+							]
+						})]
+					})
+				}),
+				/* @__PURE__ */ jsxs("section", {
+					className: "solution-section wrap",
+					id: "workflow",
+					children: [/* @__PURE__ */ jsxs("div", {
+						className: "solution-section__head",
+						children: [/* @__PURE__ */ jsx("p", {
+							className: "eyebrow",
+							children: "A focused workflow"
+						}), /* @__PURE__ */ jsx("h2", { children: "From one subject to useful TikTok evidence." })]
+					}), /* @__PURE__ */ jsx("div", {
+						className: "solution-steps",
+						children: solution.workflow.map(([title, body], index) => /* @__PURE__ */ jsxs("article", {
+							className: "solution-step",
+							children: [
+								/* @__PURE__ */ jsx("span", { children: String(index + 1).padStart(2, "0") }),
+								/* @__PURE__ */ jsx("h3", { children: title }),
+								/* @__PURE__ */ jsx("p", { children: body })
+							]
+						}, title))
+					})]
+				}),
+				/* @__PURE__ */ jsx("section", {
+					className: "solution-outcomes",
+					children: /* @__PURE__ */ jsxs("div", {
+						className: "wrap solution-outcomes__grid",
+						children: [/* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsx("p", {
+							className: "eyebrow",
+							children: "What this unlocks"
+						}), /* @__PURE__ */ jsx("h2", { children: "Better questions, better creative decisions." })] }), /* @__PURE__ */ jsx("ul", { children: solution.outcomes.map((outcome) => /* @__PURE__ */ jsxs("li", { children: [/* @__PURE__ */ jsx(Check, { className: "h-4 w-4" }), outcome] }, outcome)) })]
+					})
+				}),
+				/* @__PURE__ */ jsxs("section", {
+					className: "solution-related wrap",
+					children: [
+						/* @__PURE__ */ jsx("p", {
+							className: "eyebrow",
+							children: "Explore more"
+						}),
+						/* @__PURE__ */ jsx("h2", { children: "More ways to research TikTok." }),
+						/* @__PURE__ */ jsx("div", { children: related.map((link) => /* @__PURE__ */ jsxs(Link, {
+							href: link.path,
+							className: "solution-related__link",
+							children: [link.label, /* @__PURE__ */ jsx(Arrow, { className: "h-4 w-4" })]
+						}, link.key)) })
+					]
+				})
+			] }),
+			/* @__PURE__ */ jsx(Footer, { homeHref: "/" })
 		]
 	})] });
 }
@@ -10818,6 +11154,19 @@ function SettingsShell({ section, children }) {
 //#endregion
 //#region resources/js/Pages/Plans.jsx
 var Plans_exports = /* @__PURE__ */ __exportAll({ default: () => Plans });
+function planTier(plan) {
+	const slug = String(plan?.slug ?? "").toLowerCase();
+	const type = String(plan?.planType ?? "").toLowerCase();
+	if (type === "scale" || slug.startsWith("scale")) return 2;
+	if (type === "growth" || slug.startsWith("growth")) return 1;
+	return 0;
+}
+function formatUsd(amount) {
+	return new Intl.NumberFormat("en-US", {
+		style: "currency",
+		currency: "USD"
+	}).format(amount);
+}
 function Plans() {
 	const { billing: billingState = {}, pricingPlans = [], flash = {} } = usePage().props;
 	const current = String(billingState.currentPlan ?? "free").toLowerCase();
@@ -10826,6 +11175,8 @@ function Plans() {
 	const isActivePaidGrowth = current.startsWith("growth") && !isTrialing;
 	const [trialPromptOpen, setTrialPromptOpen] = useState(Boolean(flash.trialAccessPrompt));
 	const [upgradeError, setUpgradeError] = useState(null);
+	const [isUpgrading, setIsUpgrading] = useState(false);
+	const [pendingPlanChange, setPendingPlanChange] = useState(null);
 	const orderedPlans = [...pricingPlans].sort((a, b) => {
 		const aKey = a.slug ?? a.name?.toLowerCase();
 		const bKey = b.slug ?? b.name?.toLowerCase();
@@ -10834,7 +11185,10 @@ function Plans() {
 		return (aIndex === -1 ? Number.MAX_SAFE_INTEGER : aIndex) - (bIndex === -1 ? Number.MAX_SAFE_INTEGER : bIndex);
 	});
 	const currentPlan = orderedPlans.find((plan) => plan.slug === current);
+	const currentTier = planTier(currentPlan);
 	const [billingCycle, setBillingCycle] = useState((currentPlan?.duration ?? "monthly") === "annual" ? "annual" : "monthly");
+	const monthlyCtasDisabled = (currentPlan?.duration ?? "monthly") === "annual" && billingCycle === "monthly";
+	const isAnnualGrowth = current === "growth-annual" && billingCycle === "annual";
 	const visiblePlans = orderedPlans.filter((plan) => plan.slug === "free" || (plan.duration ?? "monthly") === billingCycle);
 	const annualBanner = useMemo(() => {
 		const percents = orderedPlans.filter((plan) => (plan.duration ?? "monthly") === "annual").map((plan) => Number(plan.annualSavingsPercent ?? 0)).filter((value) => value > 0);
@@ -10842,16 +11196,47 @@ function Plans() {
 	}, [orderedPlans]);
 	const upgrade = (slug, cycle = billingCycle) => billing.checkout(slug, cycle);
 	const upgradeToScale = async (slug) => {
+		if (isUpgrading) return;
+		setIsUpgrading(true);
 		try {
 			await billing.upgrade(slug);
 			window.location.assign("/settings/subscription");
 		} catch (error) {
 			setUpgradeError(error.message || "The Scale upgrade could not be completed.");
+		} finally {
+			setIsUpgrading(false);
 		}
 	};
 	const canOfferTrial = !hasUsedTrial && !isTrialing;
 	const startPlan = (slug, cycle = billingCycle) => canOfferTrial ? billing.trialCheckout(slug, cycle) : billing.checkout(slug, cycle);
+	const beginPlanChange = (plan) => {
+		const isInPlaceScaleUpgrade = currentTier === 1 && planTier(plan) === 2 && (plan.duration ?? "monthly") === "monthly";
+		if (!isTrialing && (currentPlan?.duration ?? "monthly") === "monthly" && currentTier > 0 && (isInPlaceScaleUpgrade || (plan.duration ?? "monthly") === "annual")) {
+			setPendingPlanChange({
+				plan,
+				isInPlaceScaleUpgrade
+			});
+			return;
+		}
+		if (isInPlaceScaleUpgrade) {
+			upgradeToScale(plan.slug);
+			return;
+		}
+		startPlan(plan.slug, billingCycle);
+	};
+	const confirmPlanChange = () => {
+		if (pendingPlanChange === null) return;
+		const { plan, isInPlaceScaleUpgrade } = pendingPlanChange;
+		setPendingPlanChange(null);
+		if (isInPlaceScaleUpgrade) {
+			upgradeToScale(plan.slug);
+			return;
+		}
+		startPlan(plan.slug, billingCycle);
+	};
 	const promptPlanSlug = flash.trialAccessPrompt?.plan_slug ?? visiblePlans.find((plan) => plan.planType === "growth")?.slug ?? "growth";
+	const pendingPlan = pendingPlanChange?.plan;
+	const pendingAdditionalCharge = pendingPlan && currentPlan ? Math.max(0, Number(pendingPlan.price ?? 0) - Number(currentPlan.price ?? 0)) : 0;
 	useEffect(() => {
 		setTrialPromptOpen(Boolean(flash.trialAccessPrompt));
 	}, [flash.trialAccessPrompt]);
@@ -10898,6 +11283,20 @@ function Plans() {
 				onPrimary: () => setUpgradeError(null),
 				onClose: () => setUpgradeError(null)
 			}),
+			/* @__PURE__ */ jsx(UpgradePromptModal, {
+				open: pendingPlanChange !== null,
+				eyebrow: pendingPlanChange?.isInPlaceScaleUpgrade ? "Scale upgrade" : "Annual plan review",
+				title: pendingPlanChange?.isInPlaceScaleUpgrade ? "Confirm your Scale upgrade" : `Continue to ${pendingPlan?.name ?? "your"} annual plan`,
+				body: pendingPlanChange?.isInPlaceScaleUpgrade ? `Charge today: ${formatUsd(pendingAdditionalCharge)} — the difference between Growth and Scale.` : `You will continue to Stripe to review the ${pendingPlan?.name} annual plan and confirm payment.`,
+				detail: pendingPlanChange?.isInPlaceScaleUpgrade ? "Your renewal date and usage stay the same. Scale limits apply immediately." : `The annual plan is ${formatUsd(Number(pendingPlan?.price ?? 0))} per year. Stripe will show the final payment details before any charge is made.`,
+				emphasis: null,
+				primaryLabel: pendingPlanChange?.isInPlaceScaleUpgrade ? "Confirm and charge" : "Review in Stripe",
+				primaryDisabled: isUpgrading,
+				onPrimary: confirmPlanChange,
+				secondaryLabel: "Keep current plan",
+				onSecondary: () => setPendingPlanChange(null),
+				onClose: () => setPendingPlanChange(null)
+			}),
 			/* @__PURE__ */ jsxs("div", {
 				style: { marginBottom: 18 },
 				children: [
@@ -10932,7 +11331,11 @@ function Plans() {
 				children: visiblePlans.map((plan) => {
 					const isCurrent = plan.slug === current;
 					const isFree = plan.slug === "free";
-					const isGrowthToScaleUpgrade = (plan.planType === "scale" || plan.slug === "scale" || plan.slug === "scale-annual") && isActivePaidGrowth;
+					const isScale = plan.planType === "scale" || plan.slug === "scale" || plan.slug === "scale-annual";
+					const isGrowthToScaleUpgrade = isScale && isActivePaidGrowth && (plan.duration ?? "monthly") === "monthly";
+					const isAnnualGrowthToScale = isScale && isAnnualGrowth;
+					const isLowerTier = !isFree && !isTrialing && planTier(plan) < currentTier;
+					const contactHref = `/contact?category=plan-upgrade&subject=${encodeURIComponent(`Interested in the ${plan.name} annual plan`)}`;
 					const price = priceLine(plan);
 					return /* @__PURE__ */ jsxs("div", {
 						className: `plan${isCurrent ? " plan--on" : ""}`,
@@ -10968,20 +11371,36 @@ function Plans() {
 								className: "btn btn--g btn--w",
 								disabled: true,
 								children: "Free plan unavailable"
+							}) : isLowerTier ? /* @__PURE__ */ jsx("button", {
+								type: "button",
+								className: "btn btn--g btn--w",
+								disabled: true,
+								title: "Your account already has a higher plan.",
+								children: "Lower plan locked"
+							}) : monthlyCtasDisabled ? /* @__PURE__ */ jsx("button", {
+								type: "button",
+								className: "btn btn--g btn--w",
+								disabled: true,
+								title: "Your annual plan is active. Choose an annual plan to change tiers.",
+								children: "Annual plan active"
+							}) : isAnnualGrowthToScale ? /* @__PURE__ */ jsxs(Link, {
+								href: contactHref,
+								className: "btn btn--y btn--w",
+								children: ["Contact Us ", /* @__PURE__ */ jsx(Arrow, {})]
 							}) : isGrowthToScaleUpgrade ? /* @__PURE__ */ jsxs("button", {
 								type: "button",
 								className: "btn btn--y btn--w",
-								onClick: () => upgradeToScale(plan.slug),
+								disabled: isUpgrading,
+								onClick: () => beginPlanChange(plan),
 								children: [
-									"Upgrade to ",
-									plan.name,
+									isUpgrading ? "Upgrading..." : `Upgrade to ${plan.name}`,
 									" ",
 									/* @__PURE__ */ jsx(Arrow, {})
 								]
 							}) : /* @__PURE__ */ jsxs("button", {
 								type: "button",
 								className: "btn btn--y btn--w",
-								onClick: () => startPlan(plan.slug, billingCycle),
+								onClick: () => beginPlanChange(plan),
 								children: [
 									canOfferTrial ? "Try free for 8 days" : `Upgrade to ${plan.name}`,
 									" ",
@@ -18164,7 +18583,7 @@ var TYPES = [{
 	icon: Search,
 	placeholder: "e.g. lip oil"
 }];
-var csrfToken = () => document.querySelector("meta[name=\"csrf-token\"]")?.getAttribute("content") ?? "";
+var csrfToken$1 = () => document.querySelector("meta[name=\"csrf-token\"]")?.getAttribute("content") ?? "";
 function Stepper({ step }) {
 	return /* @__PURE__ */ jsx("div", {
 		className: "fs-stepper",
@@ -18297,7 +18716,7 @@ function Free({ phrase = "", type = "brand", error = null }) {
 					Accept: "application/json",
 					"Content-Type": "application/json",
 					"X-Requested-With": "XMLHttpRequest",
-					"X-CSRF-TOKEN": csrfToken()
+					"X-CSRF-TOKEN": csrfToken$1()
 				},
 				body: JSON.stringify({
 					type: kind,
@@ -18390,7 +18809,11 @@ function Free({ phrase = "", type = "brand", error = null }) {
 			})
 		]
 	});
-	return /* @__PURE__ */ jsxs(Fragment$1, { children: [/* @__PURE__ */ jsx(Head, { title: "Free TikTok search · Brand Beacon" }), /* @__PURE__ */ jsxs("div", {
+	return /* @__PURE__ */ jsxs(Fragment$1, { children: [/* @__PURE__ */ jsx(Seo, {
+		title: "Free TikTok Search | Brand Beacon",
+		description: "Start a TikTok brand or product search with Brand Beacon.",
+		noIndex: true
+	}), /* @__PURE__ */ jsxs("div", {
 		className: "bbh",
 		children: [/* @__PURE__ */ jsx(Nav, { homeHref: "/" }), /* @__PURE__ */ jsxs("main", {
 			className: `free-flow ${screen === "gate" ? "free-flow--gate" : ""}`,
@@ -18747,7 +19170,11 @@ function Keywords({ phrase = "", type = "brand" }) {
 //#region resources/js/Pages/Search/Running.jsx
 var Running_exports = /* @__PURE__ */ __exportAll({ default: () => Running });
 function Running({ searchId }) {
-	return /* @__PURE__ */ jsxs(Fragment$1, { children: [/* @__PURE__ */ jsx(Head, { title: "Search running · Brand Beacon" }), /* @__PURE__ */ jsxs("div", {
+	return /* @__PURE__ */ jsxs(Fragment$1, { children: [/* @__PURE__ */ jsx(Seo, {
+		title: "Search Running | Brand Beacon",
+		description: "Your Brand Beacon search is being prepared.",
+		noIndex: true
+	}), /* @__PURE__ */ jsxs("div", {
 		className: "bbh",
 		children: [/* @__PURE__ */ jsx(Nav, { homeHref: "/" }), /* @__PURE__ */ jsx("main", {
 			className: "bb",
@@ -20067,6 +20494,205 @@ function Subscription({ subscription, stripePublishableKey = null }) {
 	] });
 }
 //#endregion
+//#region resources/js/Pages/Support.jsx
+var Support_exports = /* @__PURE__ */ __exportAll({ default: () => Support });
+var csrfToken = () => document.querySelector("meta[name=\"csrf-token\"]")?.getAttribute("content") ?? "";
+function Support({ sessionAvailable, retryAfter = 0, commonQuestions = [] }) {
+	const [messages, setMessages] = useState([]);
+	const [question, setQuestion] = useState("");
+	const [sending, setSending] = useState(false);
+	const [error, setError] = useState("");
+	const inputRef = useRef(null);
+	const ask = async (rawQuestion) => {
+		const cleanQuestion = String(rawQuestion).trim();
+		if (!cleanQuestion || sending || !sessionAvailable) return;
+		setSending(true);
+		setError("");
+		setQuestion("");
+		setMessages((current) => [...current, {
+			role: "user",
+			text: cleanQuestion
+		}]);
+		try {
+			const response = await fetch("/support/chat", {
+				method: "POST",
+				credentials: "same-origin",
+				headers: {
+					Accept: "application/json",
+					"Content-Type": "application/json",
+					"X-Requested-With": "XMLHttpRequest",
+					"X-CSRF-TOKEN": csrfToken()
+				},
+				body: JSON.stringify({ question: cleanQuestion })
+			});
+			const payload = await response.json();
+			if (!response.ok) throw new Error(payload.message || "The support assistant could not answer right now.");
+			setMessages((current) => [...current, {
+				role: "assistant",
+				text: payload.answer,
+				needsContact: Boolean(payload.needsContact)
+			}]);
+		} catch (caught) {
+			setError(caught.message || "The support assistant could not answer right now.");
+		} finally {
+			setSending(false);
+		}
+	};
+	const submit = (event) => {
+		event.preventDefault();
+		ask(question);
+	};
+	const answerCommonQuestion = (entry) => {
+		if (sending || !sessionAvailable) return;
+		setError("");
+		setMessages((current) => [
+			...current,
+			{
+				role: "user",
+				text: entry.question
+			},
+			{
+				role: "assistant",
+				text: entry.answer,
+				needsContact: entry.question.includes("contact")
+			}
+		]);
+	};
+	return /* @__PURE__ */ jsxs(Fragment$1, { children: [/* @__PURE__ */ jsx(Seo, {
+		title: "Product Support | Brand Beacon",
+		description: "Get help using Brand Beacon's search, video analysis, bookmarks, and plans.",
+		noIndex: true
+	}), /* @__PURE__ */ jsxs("div", {
+		className: "bbh support-page",
+		children: [
+			/* @__PURE__ */ jsx(Nav, { homeHref: "/" }),
+			/* @__PURE__ */ jsxs("main", {
+				className: "support-main wrap",
+				children: [/* @__PURE__ */ jsxs("section", {
+					className: "support-hero",
+					children: [
+						/* @__PURE__ */ jsx("div", {
+							className: "support-hero__mark",
+							children: /* @__PURE__ */ jsx(Comment, { className: "h-6 w-6" })
+						}),
+						/* @__PURE__ */ jsx("p", {
+							className: "eyebrow",
+							children: "Brand Beacon support"
+						}),
+						/* @__PURE__ */ jsx("h1", { children: "Quick answers for getting the most out of Brand Beacon." }),
+						/* @__PURE__ */ jsx("p", { children: "Ask about searches, video analysis, bookmarks, plans, or how to use the product. This chat is not saved." })
+					]
+				}), sessionAvailable ? /* @__PURE__ */ jsxs("section", {
+					className: "support-chat",
+					"aria-label": "Product support assistant",
+					children: [
+						/* @__PURE__ */ jsx("div", {
+							className: "support-chat__head",
+							children: /* @__PURE__ */ jsxs("span", { children: [/* @__PURE__ */ jsx("i", {}), " Support assistant"] })
+						}),
+						/* @__PURE__ */ jsxs("div", {
+							className: "support-chat__body",
+							"aria-live": "polite",
+							children: [
+								messages.length === 0 && /* @__PURE__ */ jsxs("div", {
+									className: "support-welcome",
+									children: [/* @__PURE__ */ jsx("b", { children: "What can I help with?" }), /* @__PURE__ */ jsx("p", { children: "Choose a common question for an instant answer, or ask your own below." })]
+								}),
+								messages.map((message, index) => /* @__PURE__ */ jsxs("div", {
+									className: `support-message support-message--${message.role}`,
+									children: [/* @__PURE__ */ jsx("p", { children: message.text }), message.needsContact && /* @__PURE__ */ jsxs(Link, {
+										href: "/contact",
+										children: ["Contact the Brand Beacon team ", /* @__PURE__ */ jsx(Arrow, { className: "h-3.5 w-3.5" })]
+									})]
+								}, `${message.role}-${index}`)),
+								sending && /* @__PURE__ */ jsxs("div", {
+									className: "support-message support-message--assistant support-message--loading",
+									children: [
+										/* @__PURE__ */ jsx("span", {}),
+										/* @__PURE__ */ jsx("span", {}),
+										/* @__PURE__ */ jsx("span", {})
+									]
+								})
+							]
+						}),
+						/* @__PURE__ */ jsx("div", {
+							className: "support-quick",
+							"aria-label": "Common support questions",
+							children: commonQuestions.map((entry) => /* @__PURE__ */ jsx("button", {
+								type: "button",
+								onClick: () => answerCommonQuestion(entry),
+								disabled: sending,
+								children: entry.question
+							}, entry.question))
+						}),
+						/* @__PURE__ */ jsxs("form", {
+							className: "support-chat__form",
+							onSubmit: submit,
+							children: [
+								/* @__PURE__ */ jsx("label", {
+									className: "sr-only",
+									htmlFor: "support-question",
+									children: "Ask a product question"
+								}),
+								/* @__PURE__ */ jsx("input", {
+									ref: inputRef,
+									id: "support-question",
+									maxLength: 600,
+									value: question,
+									onChange: (event) => setQuestion(event.target.value),
+									placeholder: "Ask a product question...",
+									disabled: sending
+								}),
+								/* @__PURE__ */ jsxs("button", {
+									type: "submit",
+									className: "btn btn--primary",
+									disabled: sending || question.trim().length < 2,
+									children: ["Send ", /* @__PURE__ */ jsx(Arrow, { className: "h-3.5 w-3.5" })]
+								})
+							]
+						}),
+						error && /* @__PURE__ */ jsxs("p", {
+							className: "support-error",
+							role: "status",
+							children: [
+								error,
+								" ",
+								/* @__PURE__ */ jsx(Link, {
+									href: "/contact",
+									children: "Contact us instead."
+								})
+							]
+						})
+					]
+				}) : /* @__PURE__ */ jsxs("section", {
+					className: "support-limit",
+					role: "status",
+					children: [
+						/* @__PURE__ */ jsx("p", {
+							className: "eyebrow",
+							children: "Please pause a moment"
+						}),
+						/* @__PURE__ */ jsx("h2", { children: "Support chat opens twice per minute." }),
+						/* @__PURE__ */ jsxs("p", { children: [
+							"Try again in about ",
+							Math.max(1, Math.ceil(retryAfter / 60)),
+							" minute",
+							retryAfter > 60 ? "s" : "",
+							", or contact the Brand Beacon team now."
+						] }),
+						/* @__PURE__ */ jsxs(Link, {
+							href: "/contact",
+							className: "btn btn--primary",
+							children: ["Contact us ", /* @__PURE__ */ jsx(Arrow, { className: "h-3.5 w-3.5" })]
+						})
+					]
+				})]
+			}),
+			/* @__PURE__ */ jsx(Footer, { homeHref: "/" })
+		]
+	})] });
+}
+//#endregion
 //#region resources/js/Pages/TermsOfService.jsx
 var TermsOfService_exports = /* @__PURE__ */ __exportAll({ default: () => TermsOfService });
 var sections = [
@@ -20275,7 +20901,11 @@ function Trial() {
 	const { billing: billing$1 = {} } = usePage().props;
 	const [trialPromptOpen, setTrialPromptOpen] = useState(Boolean(billing$1.hasUsedTrial) && !billing$1.hasPaidPlan);
 	const canOfferTrial = billing$1.trialEligible ?? true;
-	return /* @__PURE__ */ jsxs(Fragment$1, { children: [/* @__PURE__ */ jsx(Head, { title: "Start your 8-day trial - Outlier Vault" }), /* @__PURE__ */ jsx(AppLayout, {
+	return /* @__PURE__ */ jsxs(Fragment$1, { children: [/* @__PURE__ */ jsx(Seo, {
+		title: "Start Your 8-Day Trial | Brand Beacon",
+		description: "Start an 8-day Brand Beacon trial to track TikTok trends and brand mentions.",
+		noIndex: true
+	}), /* @__PURE__ */ jsx(AppLayout, {
 		pill: {
 			text: "Trial",
 			tone: "accent"
@@ -20358,6 +20988,7 @@ createServer((page) => createInertiaApp({
 			"./Pages/Home.jsx": Home_exports,
 			"./Pages/Landing.jsx": Landing_exports,
 			"./Pages/LandingContact.jsx": LandingContact_exports,
+			"./Pages/LandingSolution.jsx": LandingSolution_exports,
 			"./Pages/LegalPage.jsx": LegalPage_exports,
 			"./Pages/Plans.jsx": Plans_exports,
 			"./Pages/PrivacyPolicy.jsx": PrivacyPolicy_exports,
@@ -20378,6 +21009,7 @@ createServer((page) => createInertiaApp({
 			"./Pages/Settings/Receipt.jsx": Receipt_exports,
 			"./Pages/Settings/SettingsShell.jsx": SettingsShell_exports,
 			"./Pages/Settings/Subscription.jsx": Subscription_exports,
+			"./Pages/Support.jsx": Support_exports,
 			"./Pages/TermsOfService.jsx": TermsOfService_exports,
 			"./Pages/Trial.jsx": Trial_exports,
 			"./Pages/VideoAnalysis/AnalysisModal.jsx": AnalysisModal_exports,

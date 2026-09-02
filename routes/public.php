@@ -10,6 +10,7 @@ use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\BillingController;
 use App\Http\Controllers\CouponSubscriptionController;
 use App\Http\Controllers\SeoDiscoveryController;
+use App\Http\Controllers\SupportAssistantController;
 use App\Http\Controllers\StripeWebhookController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -33,6 +34,8 @@ Route::get('/privacy', fn () => Inertia::render('PrivacyPolicy'))->name('privacy
 Route::get('/terms', fn () => Inertia::render('TermsOfService'))->name('terms');
 Route::get('/dpa', fn () => Inertia::render('DataProcessingAddendum'))->name('dpa');
 Route::get('/security', fn () => Inertia::render('SecurityPage'))->name('security');
+Route::get('/support', [SupportAssistantController::class, 'show'])->name('support');
+Route::post('/support/chat', [SupportAssistantController::class, 'reply'])->name('support.chat');
 Route::get('/tiktok-brand-tracking', fn () => Inertia::render('LandingSolution', ['topic' => 'brand-tracking']))->name('seo.brand-tracking');
 Route::get('/tiktok-product-research', fn () => Inertia::render('LandingSolution', ['topic' => 'product-research']))->name('seo.product-research');
 Route::get('/viral-video-monitoring', fn () => Inertia::render('LandingSolution', ['topic' => 'viral-video-monitoring']))->name('seo.viral-video-monitoring');

@@ -13,6 +13,7 @@ import Pricing from '../landing/sections/Pricing.jsx';
 import Faq from '../landing/sections/Faq.jsx';
 import FinalCta from '../landing/sections/FinalCta.jsx';
 import Footer from '../landing/sections/Footer.jsx';
+import SupportLauncher from '../landing/components/SupportLauncher.jsx';
 
 export default function Landing() {
   const { pricingPlans = [] } = usePage().props;
@@ -62,6 +63,7 @@ export default function Landing() {
         </main>
 
         <Footer />
+        <SupportLauncher />
       </div>
     </>
   );
