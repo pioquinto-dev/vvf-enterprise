@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\CustomKeywordSearch;
+use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -47,5 +48,11 @@ class FreeSearchFunnelController extends Controller
     public static function put(Request $request, array $payload): void
     {
         $request->session()->put(self::SESSION_KEY, $payload);
+    }
+
+    /** A pending funnel draft can only redeem an account's first free search. */
+    public static function canStartFor(User $user): bool
+    {
+        return $user->free_search_used_at === null;
     }
 }
