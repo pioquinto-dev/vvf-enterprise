@@ -32,10 +32,11 @@ return [
     |
     */
 
-    'lifetime' => (int) env('SESSION_LIFETIME', 120),
+    'lifetime' => (int) env('SESSION_LIFETIME', 1440),
 
-    // Authentication should require a fresh login after the browser closes.
-    'expire_on_close' => true,
+    // Let ordinary sessions survive browser restarts. Users who explicitly
+    // choose "Remember me" receive a separate 30-day recaller cookie.
+    'expire_on_close' => false,
 
     /*
     |--------------------------------------------------------------------------

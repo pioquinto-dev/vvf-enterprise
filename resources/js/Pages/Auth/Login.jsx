@@ -4,7 +4,7 @@ import { Logo, Google, Arrow } from '../../landing/components/Icons.jsx';
 
 export default function Login() {
   const { flash = {} } = usePage().props;
-  const form = useForm({ email: '', password: '' });
+  const form = useForm({ email: '', password: '', remember: false });
 
   const submit = (event) => {
     event.preventDefault();
@@ -82,6 +82,15 @@ export default function Login() {
                       <p className="hint" style={{ color: 'var(--warn)' }}>{form.errors.password}</p>
                     )}
                   </div>
+                  <label style={{ display: 'inline-flex', alignItems: 'center', gap: 9, cursor: 'pointer', width: 'fit-content' }}>
+                    <input
+                      type="checkbox"
+                      checked={form.data.remember}
+                      onChange={(e) => form.setData('remember', e.target.checked)}
+                      style={{ width: 16, height: 16, accentColor: 'var(--yellow)' }}
+                    />
+                    <span style={{ fontSize: '.83rem', fontWeight: 650, color: 'var(--ink)' }}>Remember me for 30 days</span>
+                  </label>
                 </div>
 
                 <button type="submit" className="btn btn--y btn--w" style={{ marginTop: 20, height: 48 }} disabled={form.processing}>

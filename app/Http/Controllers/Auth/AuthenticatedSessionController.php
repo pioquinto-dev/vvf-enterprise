@@ -41,10 +41,15 @@ class AuthenticatedSessionController extends Controller
 
     public function store(Request $request): RedirectResponse|SymfonyResponse
     {
-        $credentials = $request->validate([
+        $validated = $request->validate([
             'email' => ['required', 'email'],
             'password' => ['required', 'string'],
+            'remember' => ['nullable', 'boolean'],
         ]);
+        $credentials = [
+            'email' => $validated['email'],
+            'password' => $validated['password'],
+        ];
 
         $trashedUser = User::withTrashed()->firstWhere('email', strtolower(trim($credentials['email'])));
 
@@ -54,7 +59,10 @@ class AuthenticatedSessionController extends Controller
             ]);
         }
 
-        if (! Auth::attempt($credentials)) {
+        $remember = (bool) ($validated['remember'] ?? false);
+        Auth::guard('web')->setRememberDuration((int) config('auth.remember_duration', 43200));
+
+        if (! Auth::attempt($credentials, $remember)) {
             throw ValidationException::withMessages([
                 'email' => 'These credentials do not match our records.',
             ]);
