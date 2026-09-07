@@ -260,7 +260,7 @@ class SavedSearchController extends Controller
             ->where('created_at', '>=', $weekAgo)
             ->count();
 
-        // Outliers = breakout rows. Delta compares the current 7-day window to
+        // Breakouts are rows above the threshold. Delta compares the current 7-day window to
         // the prior 7-day window.
         $outliersThisWeek = CustomKeywordSearchVideo::query()
             ->whereIn('custom_keyword_search_id', $searchIds)
@@ -515,7 +515,7 @@ class SavedSearchController extends Controller
 
     /**
      * Shared body for the brand/product hubs: the tracked searches with their
-     * headline stats, plus the single best outlier across them ("Moving this
+     * headline stats, plus the single best breakout across them ("Moving this
      * week"). Stats are loaded as collection aggregates to avoid N+1.
      *
      * @param  array<int, string>  $types
@@ -711,7 +711,7 @@ class SavedSearchController extends Controller
     }
 
     /**
-     * Top outlier videos across a set of searches, newest-scored first.
+     * Top breakout videos across a set of searches, newest-scored first.
      *
      * @param  Collection<int, CustomKeywordSearch>  $searches
      * @return array<int, array<string, mixed>>

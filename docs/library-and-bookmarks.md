@@ -78,7 +78,7 @@ Each hub provides:
 
 - search cards
 - aggregate counts
-- a "moving this week" set of top outliers
+- a "moving this week" set of top breakouts
 - tracking suggestions
 
 Suggestions are built in tiers:
@@ -94,4 +94,3 @@ Suggestions are built in tiers:
 - Competitor searches currently roll up into the brand group.
 - The default library view is intentionally different from `/brands` and `/products`.
 - Bookmark limits and usage must stay in sync with subscription metadata after changes.
-

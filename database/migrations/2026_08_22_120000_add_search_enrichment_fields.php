@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\Schema;
  *     strings. Bolded fragments are wrapped in **double asterisks** so the
  *     UI can render them without HTML.
  *   custom_keyword_searches.best_post_time     — JSON {day, hour_local,
- *     sentence} derived from the outlier posting heatmap.
+ *     sentence} derived from the breakout posting heatmap.
  *
  *   viral_videos.content_why_broke_out         — one-sentence "why it went"
  *     line shown in the winner + per-card auto-analysis panel.

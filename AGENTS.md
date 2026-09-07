@@ -403,7 +403,7 @@ Current standard:
 3. Pull local corpus candidates from `viral_videos`.
 4. Filter local candidates through the same matcher rules.
 5. Combine both match sets, with Apify winning collisions because its stats are fresher.
-6. Rank the combined winners by strongest outlier signal first.
+6. Rank the combined winners by strongest breakout signal first.
 
 Filtering gates:
 

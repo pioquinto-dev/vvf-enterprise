@@ -159,7 +159,7 @@ function chartGeometry(values) {
 }
 
 function metricAxisLabel(metric) {
-  if (metric === 'outliers') return 'Outliers';
+  if (metric === 'outliers') return 'Breakouts';
   if (metric === 'posts') return 'Posts';
   if (metric === 'eng') return 'Engagement';
   if (metric === 'engrate') return 'Engagement rate';
@@ -236,7 +236,7 @@ function weekKeyFromIso(iso) {
 }
 
 function formatMetricValue(value, metric) {
-  if (metric === 'outliers') return `${Math.round(Number(value || 0))} outliers`;
+  if (metric === 'outliers') return `${Math.round(Number(value || 0))} breakouts`;
   if (metric === 'engrate') return `${Number(value || 0).toFixed(1)}%`;
   if (metric === 'posts') return `${Math.round(Number(value || 0))} posts`;
   if (metric === 'eng') return `${compact(Number(value || 0))} engagements`;
@@ -792,7 +792,7 @@ export default function DetailScreen({
         videoId: video.id,
         searchUrl: search?.url,
         searchName: search?.name || search?.phrase,
-        videoLabel: video.handle || video.username || video.title || video.caption || 'Outlier video',
+        videoLabel: video.handle || video.username || video.title || video.caption || 'Breakout video',
       });
     } catch (error) {
       setConfirmAnalysisVideo(video);
@@ -990,7 +990,7 @@ export default function DetailScreen({
       {/* STATS */}
       <div className="rs-stats">
         <div className="rs-stt">
-          <span className="rs-stt__k">Outliers found</span>
+          <span className="rs-stt__k">Breakouts found</span>
           <span className="rs-stt__v">{Number(outlierCount ?? 0).toLocaleString()}</span>
           <span className="rs-stt__d up">{Icons.UpTrend}<span>{outlierCount ?? 0} this cycle</span></span>
         </div>
@@ -1026,7 +1026,7 @@ export default function DetailScreen({
             : '3rd run+';
         return (
         <>
-          <div className="rs-sh"><h2>Outlier videos</h2><span className="rs-note">Videos with unusually strong engagement for their creator&rsquo;s audience, ranked by Breakout Score.</span></div>
+          <div className="rs-sh"><h2>Breakout videos</h2><span className="rs-note">Videos with unusually strong engagement for their creator&rsquo;s audience, ranked by Breakout Score.</span></div>
           <div className={`rs-winner rs-winner--run-${winnerBucket}`}>
             <div className="rs-wmedia">
               <VideoFrame video={winner} winner showStats={false} isPlaying={videoPlayingId === winner.id} onTogglePlay={() => setVideoPlayingId((v) => v === winner.id ? null : winner.id)} />
@@ -1090,7 +1090,7 @@ export default function DetailScreen({
       {rest.length > 0 && (
         <>
           <div className="rs-sh">
-            <h2>More outliers</h2>
+            <h2>More breakouts</h2>
             <span className="rs-sh__actions">
               <span className="rs-runfilter">
                 <span className="rs-runfilter__pre">Show:</span>
@@ -1160,7 +1160,7 @@ export default function DetailScreen({
       <div className="rs-acard">
         <div className="rs-mtabs">
           {[
-            ['views', 'views'], ['eng', 'engagement'], ['outliers', 'outliers'],
+            ['views', 'views'], ['eng', 'engagement'], ['outliers', 'breakouts'],
           ].map(([key, label]) => (
             <button key={key} className={`rs-mtab${metric === key ? ' on' : ''}`} onClick={() => setMetric(key)}>{label}</button>
           ))}
@@ -1360,7 +1360,7 @@ export default function DetailScreen({
           <div className="rs-sh"><h2>More data</h2><span className="rs-note">How the tracker is moving.</span></div>
           <div className="rs-two">
             <div className="rs-dcard">
-              <h3>Outliers per week</h3><p className="rs-sub">Their posts scoring 3× or higher.</p>
+              <h3>Breakouts per week</h3><p className="rs-sub">Their posts scoring 3× or higher.</p>
               <div className="rs-owk">
                 {weeklyBars.slice(-6).map((b, i) => {
                   const count = b.count ?? b.value ?? 0;
@@ -1377,7 +1377,7 @@ export default function DetailScreen({
               </div>
             </div>
             <div className="rs-dcard">
-              <h3>Score distribution</h3><p className="rs-sub">This search's {distribution.reduce((s, d) => s + (d.count ?? 0), 0)} outliers.</p>
+              <h3>Score distribution</h3><p className="rs-sub">This search's {distribution.reduce((s, d) => s + (d.count ?? 0), 0)} breakouts.</p>
               <div className="rs-dist">
                 {distribution.map((d) => {
                   const shade = d.count / distMax > 0.7 ? 'var(--a5)' : d.count / distMax > 0.4 ? 'var(--a4)' : d.count / distMax > 0.2 ? 'var(--a3)' : 'var(--a2)';
@@ -1398,7 +1398,7 @@ export default function DetailScreen({
       {/* HASHTAGS & SOUNDS */}
       {(hashtags.length > 0 || sounds.length > 0) && (
         <>
-          <div className="rs-sh"><h2>Hashtags &amp; sounds</h2><span className="rs-note">Across this search's outlier videos.</span></div>
+          <div className="rs-sh"><h2>Hashtags &amp; sounds</h2><span className="rs-note">Across this search's breakout videos.</span></div>
           <div className="rs-two">
             <ScrollPanel title="Hashtags they used" items={hashtags.map((h) => ({ label: h.tag, count: h.count, url: `https://www.tiktok.com/tag/${encodeURIComponent(String(h.tag).replace(/^#/, ''))}` }))} max={hashMax} />
             <ScrollPanel title="Sounds they used" items={sounds.map((s) => ({ label: s.label, count: s.count, icon: Icons.Music, url: `https://www.tiktok.com/search/sound?q=${encodeURIComponent(s.label)}` }))} max={soundMax} barColor="var(--a4)" />
@@ -1456,9 +1456,9 @@ export default function DetailScreen({
                     <span className="rs-weekmodal__body">
                       <strong>
                         <span className="rs-weekmodal__handle">{video.handle || video.username || video.title || 'Video'}</span>
-                        {multiple >= 3 && <em className="rs-weekmodal__ol">{compact(multiple)}× outlier</em>}
+                        {multiple >= 3 && <em className="rs-weekmodal__ol">{compact(multiple)}× breakout</em>}
                       </strong>
-                      <span className="rs-weekmodal__cap">{video.title || video.caption || 'Open this video from the outlier list.'}</span>
+                      <span className="rs-weekmodal__cap">{video.title || video.caption || 'Open this video from the breakout list.'}</span>
                       <span className="rs-weekmodal__meta">{compact(video.views)} views · uploaded {formatDate(video.uploaded_at) || '—'}</span>
                     </span>
                     <span className="rs-weekmodal__acts">
@@ -1736,7 +1736,7 @@ function UsageConfirmModal({ video, creditsRemaining, creditsRemainingAfterUse, 
     <div className="rs-modalback" onClick={onCancel}>
       <div className="rs-usage" onClick={(event) => event.stopPropagation()} role="dialog" aria-modal="true" aria-label="Confirm video analysis">
         <div className="rs-upg__eyebrow">{Icons.Spark}<span>Video analysis</span></div>
-        <h3>Analyze this outlier video?</h3>
+        <h3>Analyze this breakout video?</h3>
         <p>
           You currently have <b>{currentCredits}</b> video analysis {currentCredits === 1 ? 'credit' : 'credits'} remaining.
           This analysis will use <b>1 credit</b> when it completes successfully, leaving you with <b>{afterUseCredits}</b>.
@@ -1784,8 +1784,8 @@ function UpgradeModal({ mode = 'analysis', trialEligible = true, hasUsedTrial = 
         ? 'Start your 8-day Growth trial to pause, resume, or delete tracked searches from your dashboard.'
         : 'Upgrade to Growth or Scale to pause, resume, or delete tracked searches from your dashboard.'
       : shouldOfferTrial
-        ? 'Free searches include the top-video breakdown. Start your 8-day Growth trial to analyze more outliers.'
-        : 'Free searches include the top-video breakdown. Upgrade to Growth or Scale to analyze more outliers.';
+        ? 'Free searches include the top-video breakdown. Start your 8-day Growth trial to analyze more breakouts.'
+        : 'Free searches include the top-video breakdown. Upgrade to Growth or Scale to analyze more breakouts.';
   const ctaLabel = shouldOfferTrial ? 'Start 8-day Growth trial' : 'Upgrade to Growth';
 
   return (

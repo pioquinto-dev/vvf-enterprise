@@ -7,7 +7,7 @@ use Illuminate\Support\Collection;
 
 /**
  * Turns visible search results into the uploaded-at weekly chart, the
- * outliers-per-week bars, and the delta chips on the signal tiles.
+ * breakouts-per-week bars, and the delta chips on the signal tiles.
  *
  * The chart on the results page is intentionally based on when the matched
  * videos were uploaded, not when the search happened to refresh. That makes
@@ -28,7 +28,7 @@ class TrendBuilder
     public function build(array $results, Collection $snapshots): array
     {
         // Score every bucket against the whole search's median, not its own, so
-        // a quiet week does not manufacture outliers out of its three posts.
+        // a quiet week does not manufacture breakouts out of its three posts.
         $baseline = app(SearchInsights::class)->medianViews($results);
         $cohorts = $this->cohortsByWeek($results);
         $weeks = $this->lookbackWeeks();

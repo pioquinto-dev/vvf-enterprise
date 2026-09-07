@@ -52,7 +52,7 @@ class SupportKnowledgeBase
             ],
             [
                 'question' => 'Why is my search still running?',
-                'answer' => 'A search gathers TikTok videos, filters them against your selected context, scores likely outliers, and prepares the results. Most searches finish in around five minutes, though some can take up to twenty minutes.',
+                'answer' => 'A search gathers TikTok videos, filters them against your selected context, scores likely breakouts, and prepares the results. Most searches finish in around five minutes, though some can take up to twenty minutes.',
                 'phrases' => ['why is my search running', 'search still running', 'how long does a search take', 'search taking too long'],
             ],
             [

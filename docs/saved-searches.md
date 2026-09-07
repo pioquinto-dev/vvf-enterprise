@@ -74,7 +74,7 @@ This feature is user-facing under the "watchlist" concept, but the backend still
 4. The full keyword set is applied locally through `KeywordMatcher`.
 5. Apify matches and local-corpus matches are filtered through the same matcher gates.
 6. Both pools are merged, with Apify rows winning collisions because their stats are fresher.
-7. Results are ranked by strongest outlier signal and attached to the search.
+7. Results are ranked by strongest breakout signal and attached to the search.
 8. Snapshots are recorded after persistence.
 9. The top-ranked winner is analyzed automatically when applicable.
 10. Search enrichment runs synchronously before the run is marked done.
@@ -150,4 +150,3 @@ Rules:
 
 - `php artisan custom-keyword-search:dispatch-due`
 - `php artisan custom-keyword-search:fail-stale-runs`
-

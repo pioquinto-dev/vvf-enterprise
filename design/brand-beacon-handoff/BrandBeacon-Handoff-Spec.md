@@ -48,7 +48,7 @@ Typography: Figtree (400/500/600/700/800/900) for UI text, loaded from Google Fo
 | `products` | Product search list/entry |
 | `library` | Saved/completed searches list |
 | `library-videos` | Library — video grid sub-view |
-| `analytics` | Search detail — full analytics/tracker view (charts, top videos, outliers) |
+| `analytics` | Search detail — full analytics/tracker view (charts, top videos, breakouts) |
 | `results` | Search detail — simplified results view |
 | `settings` | Account settings |
 | `settings-appearance` | Settings sub-screen |

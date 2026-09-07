@@ -118,7 +118,7 @@ Use them as starting points and keep the variable names exactly aligned with `Ap
         </tr>
         <tr>
           <td style="padding:36px 40px 12px;">
-            <p style="margin:0 0 18px;font-size:16px;line-height:1.7;">Open the results page to review standout videos, creative patterns, and the top outlier from this run.</p>
+            <p style="margin:0 0 18px;font-size:16px;line-height:1.7;">Open the results page to review standout videos, creative patterns, and the top breakout from this run.</p>
             <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse:collapse;">
               <tr>
                 <td style="padding:0 0 12px;font-size:15px;line-height:1.7;">• Review the strongest videos from this completed run</td>
