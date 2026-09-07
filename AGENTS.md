@@ -208,6 +208,8 @@ Defined in `routes/frontend.php`.
 
 - `/dashboard`
   - Main signed-in dashboard.
+- `/search-history`
+  - Redirects to the Library's Search History tab, ordered by the date each search was created.
 - `/bookmark`
   - Watchlist index.
 - `/results/{search}`

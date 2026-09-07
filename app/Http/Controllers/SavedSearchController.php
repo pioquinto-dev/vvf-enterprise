@@ -354,6 +354,12 @@ class SavedSearchController extends Controller
         $searches = $this->searches->all($request, $queryType, $bookmarkedOnly)
             ->map(fn (CustomKeywordSearch $search): array => SavedSearchPresenter::summary($search))
             ->all();
+        $searchHistory = $bookmarkedOnly && $filterType === null
+            ? $this->searches->all($request, null, false)
+                ->map(fn (CustomKeywordSearch $search): array => SavedSearchPresenter::summary($search))
+                ->values()
+                ->all()
+            : [];
 
         // The Library "Saved videos" tab lives in the same default view.
         $videoIds = $bookmarkedOnly ? $this->bookmarks->idsForUser($request->user()) : [];
@@ -364,10 +370,19 @@ class SavedSearchController extends Controller
             'bookmarkedVideosCount' => count($videoIds),
             'analysisHistory' => [],
             'analysisHistoryCount' => $bookmarkedOnly ? $this->analysisHistoryCount($request) : 0,
+            'searchHistory' => $searchHistory,
             'filterType' => $filterType,
             'watchlistedOnly' => $bookmarkedOnly,
             'isAuthenticated' => $request->user() !== null,
         ]);
+    }
+
+    /**
+     * GET /search-history — every search, ordered by the date it was created.
+     */
+    public function history(Request $request): RedirectResponse
+    {
+        return redirect('/library?tab=history');
     }
 
     public function bookmarkedVideos(Request $request): JsonResponse

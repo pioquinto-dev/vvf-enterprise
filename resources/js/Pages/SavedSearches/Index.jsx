@@ -4,6 +4,7 @@ import { Head, Link, router } from '@inertiajs/react';
 import AppLayout from '../components/AppLayout.jsx';
 import EntitlementsBar from '../components/EntitlementsBar.jsx';
 import SavedSearchRow from '../components/SavedSearchRow.jsx';
+import SearchHistoryTab from '../components/SearchHistoryTab.jsx';
 import VideoCard from '../components/VideoCard.jsx';
 import { Arrow, Bookmark, Search, Chevron, Plus, Dots, Play } from '../../landing/components/Icons.jsx';
 import {
@@ -195,6 +196,7 @@ export default function Index({
   bookmarkedVideosCount = 0,
   analysisHistory: initialAnalysisHistory = [],
   analysisHistoryCount = 0,
+  searchHistory = [],
   filterType = null,
   watchlistedOnly: bookmarkedOnly = true,
 }) {
@@ -205,7 +207,8 @@ export default function Index({
   const [searches, setSearches] = useState(initialSearches);
   // Re-sync when the listing prop is refreshed after an edit reload.
   useEffect(() => setSearches(initialSearches), [initialSearches]);
-  const [tab, setTab] = useState('searches');
+  const requestedTab = typeof window === 'undefined' ? null : new URLSearchParams(window.location.search).get('tab');
+  const [tab, setTab] = useState(requestedTab === 'history' ? 'history' : 'searches');
   const [openMenuId, setOpenMenuId] = useState(null);
   const [bookmarkedVideos, setBookmarkedVideos] = useState(initialBookmarkedVideos);
   const [analysisHistory, setAnalysisHistory] = useState(initialAnalysisHistory);
@@ -570,6 +573,11 @@ export default function Index({
               <span>Analysis History</span>
               <span className="tab__c">{analysisHistoryCount}</span>
             </button>
+            <button type="button" className={`tab${tab === 'history' ? ' is-on' : ''}`} onClick={() => setTab('history')}>
+              <Search className="h-[15px] w-[15px]" />
+              <span>Search History</span>
+              <span className="tab__c">{searchHistory.length}</span>
+            </button>
           </div>
         )}
 
@@ -700,6 +708,8 @@ export default function Index({
               </div>
             )}
           </>
+        ) : tab === 'history' ? (
+          <SearchHistoryTab searches={searchHistory} />
         ) : (
           <>
             <div className="tools" style={{ display: 'grid', gap: 10 }}>
