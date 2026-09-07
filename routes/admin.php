@@ -9,6 +9,7 @@ use App\Http\Controllers\Admin\Content\KeywordIndexController;
 use App\Http\Controllers\Admin\Content\PlanController;
 use App\Http\Controllers\Admin\Content\SearchController;
 use App\Http\Controllers\Admin\Content\ViralVideoController;
+use App\Http\Controllers\Admin\Marketing\NewsletterSubscriberController;
 use App\Http\Controllers\Admin\Subscription\CouponController;
 use App\Http\Controllers\Admin\Subscription\SubscriptionController;
 use App\Http\Controllers\Admin\Support\InquiryController;
@@ -60,6 +61,10 @@ Route::prefix('x/admin')
 
             Route::prefix('inquiries')->group(function (): void {
                 Route::get('/', [InquiryController::class, 'index'])->name('inquiries.index');
+            });
+
+            Route::prefix('newsletter')->group(function (): void {
+                Route::get('/', [NewsletterSubscriberController::class, 'index'])->name('newsletter.index');
             });
 
             Route::prefix('plans')->group(function (): void {

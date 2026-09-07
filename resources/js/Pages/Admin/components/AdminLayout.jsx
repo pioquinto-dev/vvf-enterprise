@@ -40,6 +40,7 @@ const NAV_GROUPS = [
             { key: 'searches', label: 'Searches', href: '/x/admin/searches', description: 'Search runs', icon: 'SE' },
             { key: 'keyword-index', label: 'Keyword Index', href: '/x/admin/keyword-index', description: 'Brands and products', icon: 'KI' },
             { key: 'inquiries', label: 'Inquiries', href: '/x/admin/inquiries', description: 'Contact inbox', icon: 'IN' },
+            { key: 'newsletter', label: 'Newsletter', href: '/x/admin/newsletter', description: 'Digest subscribers', icon: 'NL' },
             { key: 'plans', label: 'Plans', href: '/x/admin/plans', description: 'Pricing setup', icon: 'PL' },
         ],
     },

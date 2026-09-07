@@ -3,6 +3,7 @@
 use App\Http\Controllers\ComingSoonInterestController;
 use App\Http\Controllers\ContactInquiryController;
 use App\Http\Controllers\FreeSearchFunnelController;
+use App\Http\Controllers\NewsletterSubscriptionController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Auth\EmailVerificationController;
 use App\Http\Controllers\Auth\GoogleAuthController;
@@ -28,6 +29,7 @@ Route::get('/', function (Request $request) {
 })->name('landing');
 
 Route::post('/coming-soon-interest', ComingSoonInterestController::class)->name('coming-soon-interest.store');
+Route::post('/newsletter', NewsletterSubscriptionController::class)->name('newsletter.subscribe');
 Route::get('/contact', [ContactInquiryController::class, 'create'])->name('contact.create');
 Route::post('/contact', [ContactInquiryController::class, 'store'])->name('contact.store');
 Route::get('/privacy', fn () => Inertia::render('PrivacyPolicy'))->name('privacy');

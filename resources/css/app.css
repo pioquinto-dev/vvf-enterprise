@@ -6170,6 +6170,7 @@
 .bbh .ftr__row input:focus { border-color: var(--yellow); box-shadow: 0 0 0 3px rgba(255, 198, 41, 0.26); }
 .bbh .ftr__row .btn { height: 44px; padding: 0 18px; font-size: 0.88rem; }
 .bbh .ftr__fine { margin-top: 10px; font-size: 0.76rem; color: var(--faint); }
+.bbh .ftr__fine--error { color: #aa3a2a; font-weight: 600; }
 .bbh .ftr__cols { display: grid; grid-template-columns: repeat(4, 1fr); gap: 26px; }
 .bbh .ftr__cols h4 { font-size: 0.7rem; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: var(--faint); }
 .bbh .ftr__cols ul { list-style: none; margin-top: 16px; display: flex; flex-direction: column; gap: 11px; }

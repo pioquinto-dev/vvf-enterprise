@@ -8,6 +8,7 @@ use App\Models\Inquiry;
 use App\Models\ManagedCouponProgram;
 use App\Models\ManagedCouponRedemption;
 use App\Models\ManagedCouponWhitelistEntry;
+use App\Models\NewsletterSubscriber;
 use App\Models\PricingPlan;
 use App\Models\Subscription;
 use App\Models\User;
@@ -35,6 +36,7 @@ class AdminListingRepository
             'viral-videos' => 'Viral Videos',
             'searches' => 'Searches',
             'inquiries' => 'Inquiries',
+            'newsletter' => 'Newsletter Subscribers',
             'plans' => 'Plans',
             'subscription' => 'Subscription',
             'users' => 'Users',
@@ -56,6 +58,7 @@ class AdminListingRepository
             'viral-videos' => ['search', 'status', 'date'],
             'searches' => ['search', 'type', 'owner', 'date'],
             'inquiries' => ['search', 'category', 'date'],
+            'newsletter' => ['search', 'date'],
             'plans' => ['search', 'status'],
             'subscription' => ['search', 'status', 'plan', 'type'],
             'users' => ['search', 'status', 'plan'],
@@ -85,6 +88,9 @@ class AdminListingRepository
             ],
             'inquiries' => [
                 ['name' => 'category', 'label' => 'Category', 'options' => ['general', 'account', 'billing', 'feature-request', 'bug-report']],
+                ['name' => 'date', 'label' => 'Range', 'options' => ['today', '7d', '30d', 'custom']],
+            ],
+            'newsletter' => [
                 ['name' => 'date', 'label' => 'Range', 'options' => ['today', '7d', '30d', 'custom']],
             ],
             'plans' => [
@@ -141,6 +147,10 @@ class AdminListingRepository
                 ['key' => 'subject', 'label' => 'Subject'],
                 ['key' => 'message', 'label' => 'Message'],
                 ['key' => 'received_at', 'label' => 'Received'],
+            ],
+            'newsletter' => [
+                ['key' => 'email', 'label' => 'Email'],
+                ['key' => 'subscribed', 'label' => 'Subscribed'],
             ],
             'plans' => [
                 ['key' => 'plan', 'label' => 'Plan'],
@@ -208,6 +218,7 @@ class AdminListingRepository
             'viral-videos' => ViralVideo::query()->withTrashed(),
             'searches' => CustomKeywordSearch::query()->withTrashed()->with('user'),
             'inquiries' => Inquiry::query()->with('user'),
+            'newsletter' => NewsletterSubscriber::query(),
             'plans' => PricingPlan::query()->withTrashed(),
             'subscription' => Subscription::query()->withTrashed()->with(['user', 'plan']),
             'users' => User::query()->withTrashed()->with(['subscriptions.plan']),
@@ -239,6 +250,7 @@ class AdminListingRepository
                     ->orWhereRaw('LOWER(subject) like ?', [$like])
                     ->orWhereRaw('LOWER(message) like ?', [$like]),
             ),
+            'newsletter' => $query->whereRaw('LOWER(email) like ?', [$like]),
             'plans' => $query->where(
                 fn (Builder $inner) => $inner->whereRaw('LOWER(name) like ?', [$like])->orWhereRaw('LOWER(slug) like ?', [$like]),
             ),
@@ -565,6 +577,22 @@ class AdminListingRepository
                             ],
                         ],
                     ],
+                ],
+            ],
+            'newsletter' => [
+                'id' => $record->id,
+                'email' => $record->email,
+                'subscribed' => $record->created_at?->format('M j, Y') ?? '-',
+                'preview' => [
+                    'eyebrow' => 'Newsletter subscriber',
+                    'summary' => $record->email,
+                    'sections' => [[
+                        'title' => 'Subscriber',
+                        'fields' => [
+                            ['label' => 'Email', 'value' => $record->email],
+                            ['label' => 'Subscribed', 'value' => $record->created_at?->format('M j, Y g:i A')],
+                        ],
+                    ]],
                 ],
             ],
             'plans' => [
@@ -1235,6 +1263,7 @@ class AdminListingRepository
             // stays read-only.
             'searches' => ['preview' => true, 'edit' => false, 'archive' => false, 'delete' => false],
             'inquiries' => ['preview' => true, 'edit' => false, 'archive' => false, 'delete' => false],
+            'newsletter' => ['preview' => true, 'edit' => false, 'archive' => false, 'delete' => false],
             'subscription' => ['preview' => true, 'edit' => true, 'archive' => false, 'delete' => true],
             'users' => ['preview' => true, 'edit' => true, 'archive' => false, 'delete' => true, 'impersonate' => true],
             'keyword-index' => ['preview' => true, 'edit' => true, 'archive' => true, 'delete' => true],
@@ -1628,6 +1657,7 @@ class AdminListingRepository
             'viral-videos' => 'No viral videos match the current filters yet.',
             'searches' => 'No searches match the current filters yet.',
             'inquiries' => 'No inquiries match the current filters yet.',
+            'newsletter' => 'No newsletter subscribers match the current filters yet.',
             'plans' => 'No plans match the current filters yet.',
             'subscription' => 'No subscriptions match the current filters yet.',
             'users' => 'No users match the current filters yet.',
