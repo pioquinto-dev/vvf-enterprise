@@ -1276,6 +1276,261 @@ function AdminTrendChart({ points = [] }) {
 	});
 }
 //#endregion
+//#region resources/js/Pages/Admin/components/AcquisitionTable.jsx
+var AcquisitionTable_exports = /* @__PURE__ */ __exportAll({ default: () => AcquisitionTable });
+var METRICS = [
+	["signups", "Signups"],
+	["completed", "First search completed"],
+	["trials", "Trial starts"],
+	["paid", "First paid conversion"]
+];
+var PAGE_SIZE$1 = 15;
+var sourceLabel = (row) => row.medium === "Medium not recorded" ? row.source : `${row.source} / ${row.medium}`;
+var attributionLabel = (row) => row.campaign === "No campaign recorded" ? sourceLabel(row) : `${sourceLabel(row)} · Campaign: ${row.campaign}`;
+function AcquisitionTable({ acquisition = {} }) {
+	const cohort = acquisition.cohort ?? {
+		groups: [],
+		rows: [],
+		totals: {}
+	};
+	const [sort, setSort] = useState({
+		key: "signups",
+		descending: true
+	});
+	const [expanded, setExpanded] = useState({});
+	const [selection, setSelection] = useState(null);
+	const [page, setPage] = useState(1);
+	const sorted = (rows) => [...rows].sort((a, b) => {
+		return (sort.key === "source" ? `${a.source ?? a.campaign} / ${a.medium ?? ""}`.localeCompare(`${b.source ?? b.campaign} / ${b.medium ?? ""}`) : a[sort.key] - b[sort.key]) * (sort.descending ? -1 : 1);
+	});
+	const select = (metric, group = null, campaign = null) => {
+		setSelection({
+			metric,
+			group,
+			campaign
+		});
+		setPage(1);
+	};
+	const matches = selection ? cohort.rows.filter((row) => row[selection.metric] && (!selection.group || row.source === selection.group.source && row.medium === selection.group.medium) && (selection.campaign === null || row.campaign === selection.campaign)) : [];
+	const pages = Math.max(1, Math.ceil(matches.length / PAGE_SIZE$1));
+	const currentPage = Math.min(page, pages);
+	const cells = (row, group, campaign = null) => /* @__PURE__ */ jsxs(Fragment$1, { children: [METRICS.map(([key, label]) => /* @__PURE__ */ jsx("td", {
+		className: "px-3 py-3 text-right",
+		children: /* @__PURE__ */ jsx("button", {
+			className: "rounded px-2 py-1 text-sky-800 underline decoration-sky-200 hover:bg-sky-50 focus-visible:outline-2",
+			onClick: () => select(key, group, campaign),
+			"aria-label": `${label}: ${row[key]} for ${campaign ?? sourceLabel(group)}`,
+			children: row[key].toLocaleString()
+		})
+	}, key)), /* @__PURE__ */ jsxs("td", {
+		className: "px-3 py-3 text-right",
+		children: [row.rate, "%"]
+	})] });
+	return /* @__PURE__ */ jsxs("section", {
+		className: "rounded-2xl border border-[#dce4f0] bg-white p-4 sm:p-5",
+		children: [
+			/* @__PURE__ */ jsxs("div", {
+				className: "flex flex-wrap items-start justify-between gap-3",
+				children: [/* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsx("p", {
+					className: "text-xs font-semibold uppercase tracking-widest text-sky-700",
+					children: "Acquisition"
+				}), /* @__PURE__ */ jsx("h3", {
+					className: "mt-1 text-lg font-semibold",
+					children: "Where they come from"
+				})] }), /* @__PURE__ */ jsxs("span", {
+					className: "text-xs text-slate-500",
+					children: ["Signed up ", acquisition.rangeLabel]
+				})]
+			}),
+			/* @__PURE__ */ jsxs("p", {
+				className: "mt-2 text-sm text-slate-600",
+				children: [
+					"People who signed up in this range, followed through their outcomes as of ",
+					cohort.asOf ? new Date(cohort.asOf).toLocaleString(void 0, { timeZone: "UTC" }) : "today",
+					" UTC. Recent signups have had less time to convert."
+				]
+			}),
+			/* @__PURE__ */ jsx("div", {
+				className: "mt-4 grid grid-cols-2 gap-3 lg:grid-cols-4",
+				children: METRICS.map(([key, label]) => /* @__PURE__ */ jsxs("button", {
+					onClick: () => select(key),
+					className: "rounded-xl border border-slate-200 p-3 text-left hover:bg-sky-50",
+					children: [/* @__PURE__ */ jsx("span", {
+						className: "block text-xs text-slate-600",
+						children: label
+					}), /* @__PURE__ */ jsx("strong", {
+						className: "mt-1 block text-2xl",
+						children: (cohort.totals[key] ?? 0).toLocaleString()
+					})]
+				}, key))
+			}),
+			/* @__PURE__ */ jsxs("div", {
+				className: "mt-4 overflow-x-auto",
+				children: [/* @__PURE__ */ jsxs("table", {
+					className: "w-full text-sm",
+					children: [
+						/* @__PURE__ */ jsx("caption", {
+							className: "sr-only",
+							children: "Acquisition by source and medium. Expand a source to compare campaigns; select a count to see users."
+						}),
+						/* @__PURE__ */ jsx("thead", { children: /* @__PURE__ */ jsx("tr", {
+							className: "border-b border-slate-200 text-left text-xs text-slate-600",
+							children: [
+								["source", "Source / medium"],
+								...METRICS,
+								["rate", "Signup → paid"]
+							].map(([key, label]) => /* @__PURE__ */ jsx("th", {
+								className: `px-3 py-3 ${key === "source" ? "" : "text-right"}`,
+								"aria-sort": sort.key === key ? sort.descending ? "descending" : "ascending" : "none",
+								children: /* @__PURE__ */ jsxs("button", {
+									onClick: () => setSort({
+										key,
+										descending: sort.key === key ? !sort.descending : key !== "source"
+									}),
+									children: [
+										label,
+										" ",
+										sort.key === key ? sort.descending ? "↓" : "↑" : ""
+									]
+								})
+							}, key))
+						}) }),
+						/* @__PURE__ */ jsx("tbody", { children: sorted(cohort.groups).map((group) => /* @__PURE__ */ jsxs(Fragment, { children: [/* @__PURE__ */ jsxs("tr", {
+							className: "border-b border-slate-100",
+							children: [/* @__PURE__ */ jsx("th", {
+								className: "px-3 py-3 text-left font-medium",
+								children: /* @__PURE__ */ jsxs("button", {
+									className: "text-left",
+									"aria-expanded": Boolean(expanded[group.key]),
+									onClick: () => setExpanded({
+										...expanded,
+										[group.key]: !expanded[group.key]
+									}),
+									children: [
+										expanded[group.key] ? "▾" : "▸",
+										" ",
+										group.source,
+										" ",
+										group.medium !== "Medium not recorded" && /* @__PURE__ */ jsxs("span", {
+											className: "font-normal text-slate-500",
+											children: ["/ ", group.medium]
+										})
+									]
+								})
+							}), cells(group, group)]
+						}), expanded[group.key] && sorted(group.campaigns).map((campaign) => /* @__PURE__ */ jsxs("tr", {
+							className: "border-b border-slate-100 bg-slate-50",
+							children: [/* @__PURE__ */ jsxs("th", {
+								className: "py-3 pl-8 pr-3 text-left font-normal",
+								children: [/* @__PURE__ */ jsx("span", {
+									className: "text-xs text-slate-500",
+									children: "Campaign: "
+								}), campaign.campaign]
+							}), cells(campaign, group, campaign.campaign)]
+						}, campaign.campaign))] }, group.key)) })
+					]
+				}), cohort.groups.length === 0 && /* @__PURE__ */ jsx("p", {
+					className: "py-8 text-center text-sm text-slate-500",
+					children: "No signups in this range."
+				})]
+			}),
+			/* @__PURE__ */ jsxs("details", {
+				className: "mt-3 text-xs text-slate-500",
+				children: [
+					/* @__PURE__ */ jsx("summary", {
+						className: "cursor-pointer",
+						children: "How these numbers are counted"
+					}),
+					/* @__PURE__ */ jsx("p", {
+						className: "mt-2",
+						children: "Each person counts once per outcome, using their earliest recorded signup attribution. Subscription attribution copies are excluded. Trials stay counted after cancellation or conversion. Completed searches include archived searches."
+					}),
+					/* @__PURE__ */ jsx("p", {
+						className: "mt-2",
+						children: "Paid conversions use recorded paid subscription events or current paid status. Older customers who canceled before activity recording began may be missing. Trial completion alone does not prove payment."
+					}),
+					/* @__PURE__ */ jsx("p", {
+						className: "mt-2",
+						children: "Source not recorded means we did not capture where this person came from; it does not necessarily mean they visited directly. Missing medium and campaign values are hidden from user rows. No campaign recorded groups signups without a campaign tag. Paid and organic traffic are not inferred from the source alone. Program membership is separate from acquisition source."
+					})
+				]
+			}),
+			selection && /* @__PURE__ */ jsxs("div", {
+				className: "mt-5 rounded-xl border border-slate-200 p-3",
+				"aria-label": "Matching users",
+				children: [
+					/* @__PURE__ */ jsxs("div", {
+						className: "flex items-start justify-between gap-3",
+						children: [/* @__PURE__ */ jsxs("h4", {
+							className: "font-semibold",
+							children: [
+								METRICS.find(([key]) => key === selection.metric)?.[1],
+								" · ",
+								selection.group ? sourceLabel(selection.group) : "All sources",
+								selection.campaign !== null ? ` · ${selection.campaign}` : "",
+								" (",
+								matches.length,
+								")"
+							]
+						}), /* @__PURE__ */ jsx("button", {
+							onClick: () => setSelection(null),
+							className: "text-sm text-slate-600 underline",
+							children: "Close"
+						})]
+					}),
+					/* @__PURE__ */ jsx("ul", {
+						className: "mt-2 divide-y divide-slate-100",
+						children: matches.slice((currentPage - 1) * PAGE_SIZE$1, currentPage * PAGE_SIZE$1).map((user) => /* @__PURE__ */ jsxs("li", {
+							className: "flex flex-wrap justify-between gap-2 py-3 text-sm",
+							children: [/* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsx("p", {
+								className: "font-medium",
+								children: user.name || "Unnamed user"
+							}), /* @__PURE__ */ jsx("p", {
+								className: "break-all text-slate-500",
+								children: user.email
+							})] }), /* @__PURE__ */ jsxs("div", {
+								className: "text-xs text-slate-500",
+								children: [/* @__PURE__ */ jsx("p", { children: attributionLabel(user) }), /* @__PURE__ */ jsxs("p", { children: [
+									"Signed up ",
+									user.signup_at.slice(0, 10),
+									user.program ? " · Coupon program member" : ""
+								] })]
+							})]
+						}, user.id))
+					}),
+					matches.length === 0 && /* @__PURE__ */ jsx("p", {
+						className: "py-4 text-sm text-slate-500",
+						children: "No matching users."
+					}),
+					/* @__PURE__ */ jsxs("div", {
+						className: "mt-2 flex items-center justify-between text-sm",
+						children: [
+							/* @__PURE__ */ jsx("button", {
+								disabled: currentPage === 1,
+								onClick: () => setPage(currentPage - 1),
+								className: "rounded border px-3 py-1 disabled:opacity-40",
+								children: "Previous"
+							}),
+							/* @__PURE__ */ jsxs("span", { children: [
+								"Page ",
+								currentPage,
+								" of ",
+								pages
+							] }),
+							/* @__PURE__ */ jsx("button", {
+								disabled: currentPage === pages,
+								onClick: () => setPage(currentPage + 1),
+								className: "rounded border px-3 py-1 disabled:opacity-40",
+								children: "Next"
+							})
+						]
+					})
+				]
+			})
+		]
+	});
+}
+//#endregion
 //#region resources/js/Pages/Admin/Dashboard.jsx
 var Dashboard_exports$1 = /* @__PURE__ */ __exportAll({ default: () => Dashboard$1 });
 function formatDay(value) {
@@ -1311,152 +1566,6 @@ function StatCard({ card }) {
 						" vs prev"
 					]
 				}) : card.caption
-			})
-		]
-	});
-}
-var SOURCE_COLORS = [
-	"#19c7bd",
-	"#ff2d78",
-	"#f6a819",
-	"#7f80ff",
-	"#8bbd4d"
-];
-function sourceColor(index) {
-	return SOURCE_COLORS[index % SOURCE_COLORS.length];
-}
-function AcquisitionDashboard({ acquisition = {} }) {
-	const metrics = acquisition.metrics ?? [];
-	const [activeKey, setActiveKey] = useState("page_views");
-	const [sourceFilter, setSourceFilter] = useState("all");
-	const activeMetric = metrics.find((metric) => metric.key === activeKey && !metric.locked) ?? metrics.find((metric) => !metric.locked);
-	const details = acquisition.details?.[activeMetric?.key] ?? {
-		total: 0,
-		sources: [],
-		rows: []
-	};
-	const rows = sourceFilter === "all" ? details.rows : details.rows.filter((row) => row.source === sourceFilter);
-	const metricLabel = activeMetric?.label ?? "Acquisition";
-	const selectMetric = (metric) => {
-		if (metric.locked) return;
-		setActiveKey(metric.key);
-		setSourceFilter("all");
-	};
-	return /* @__PURE__ */ jsxs("section", {
-		className: "overflow-hidden rounded-2xl border border-[#dce4f0] bg-[linear-gradient(135deg,_#ffffff_0%,_#f6f9ff_100%)] p-4 shadow-[0_18px_42px_-32px_rgba(50,85,150,.45)] sm:p-5",
-		children: [
-			/* @__PURE__ */ jsxs("div", {
-				className: "flex flex-wrap items-start justify-between gap-3",
-				children: [/* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsx("p", {
-					className: "text-[10px] font-semibold tracking-[.22em] text-[#188fb7] uppercase",
-					children: "Acquisition"
-				}), /* @__PURE__ */ jsx("h3", {
-					className: "mt-1 text-[17px] font-semibold text-[var(--ink)]",
-					children: "Where they come from"
-				})] }), /* @__PURE__ */ jsx("span", {
-					className: "rounded-full border border-[#dce4f0] bg-white px-2.5 py-1 text-[10px] font-semibold tracking-[.12em] text-[#74849a] uppercase",
-					children: acquisition.rangeLabel ?? "Current range"
-				})]
-			}),
-			/* @__PURE__ */ jsx("div", {
-				className: "mt-3 grid grid-cols-2 overflow-hidden rounded-2xl border border-[#dce4f0] bg-[#fbfdff] sm:grid-cols-4",
-				children: metrics.map((metric) => {
-					const active = activeMetric?.key === metric.key;
-					return /* @__PURE__ */ jsxs("button", {
-						type: "button",
-						disabled: metric.locked,
-						onClick: () => selectMetric(metric),
-						className: `min-h-[62px] border-b border-[#e8edf5] px-3 py-2.5 text-left transition odd:border-r sm:border-r sm:border-b-0 last:sm:border-r-0 ${active ? "bg-white ring-1 ring-inset ring-[#49d4ef]" : metric.locked ? "cursor-not-allowed bg-[#f6f7fa] opacity-55" : "hover:bg-white"}`,
-						children: [/* @__PURE__ */ jsx("span", {
-							className: "block text-[9px] font-semibold tracking-[.16em] text-[#7b8ba0] uppercase",
-							children: metric.label
-						}), /* @__PURE__ */ jsxs("span", {
-							className: "mt-1.5 flex items-center gap-2 text-[21px] leading-none font-bold text-[var(--ink)]",
-							children: [metric.locked ? "Locked" : metric.value.toLocaleString(), active && /* @__PURE__ */ jsx("span", {
-								className: "rounded-full bg-[#dff7fc] px-1.5 py-0.5 text-[8px] font-semibold tracking-[.1em] text-[#2388a4] uppercase",
-								children: "Active"
-							})]
-						})]
-					}, metric.key);
-				})
-			}),
-			/* @__PURE__ */ jsxs("div", {
-				className: "mt-5 flex flex-wrap items-center justify-between gap-2",
-				children: [/* @__PURE__ */ jsx("h4", {
-					className: "text-[14px] font-semibold text-[var(--ink)]",
-					children: metricLabel
-				}), /* @__PURE__ */ jsx("strong", {
-					className: "text-[23px] leading-none tracking-[-.04em] text-[var(--ink)]",
-					children: details.total.toLocaleString()
-				})]
-			}),
-			/* @__PURE__ */ jsx("div", {
-				className: "mt-3 flex h-1.5 overflow-hidden rounded-full bg-[#e9eef5]",
-				children: details.sources.map((source, index) => /* @__PURE__ */ jsx("span", { style: {
-					width: `${source.percentage}%`,
-					backgroundColor: sourceColor(index)
-				} }, source.source))
-			}),
-			/* @__PURE__ */ jsxs("div", {
-				className: "mt-3 flex flex-wrap gap-1.5",
-				children: [/* @__PURE__ */ jsxs("button", {
-					type: "button",
-					onClick: () => setSourceFilter("all"),
-					className: `rounded-full border px-2.5 py-1 text-[10px] font-semibold tracking-[.08em] uppercase transition ${sourceFilter === "all" ? "border-[#49d4ef] bg-[#ebfbff] text-[#2388a4]" : "border-[#dce4f0] bg-white text-[#718197]"}`,
-					children: ["All - ", details.total]
-				}), details.sources.map((source, index) => /* @__PURE__ */ jsxs("button", {
-					type: "button",
-					onClick: () => setSourceFilter(source.source),
-					className: `rounded-full border px-2.5 py-1 text-[10px] font-semibold tracking-[.08em] uppercase transition ${sourceFilter === source.source ? "border-[#49d4ef] bg-[#ebfbff] text-[#2388a4]" : "border-[#dce4f0] bg-white text-[#718197]"}`,
-					children: [
-						/* @__PURE__ */ jsx("span", {
-							className: "mr-1 inline-block h-1.5 w-1.5 rounded-full",
-							style: { backgroundColor: sourceColor(index) }
-						}),
-						source.source,
-						" - ",
-						source.count
-					]
-				}, source.source))]
-			}),
-			/* @__PURE__ */ jsx("div", {
-				className: "mt-3 max-h-[236px] overflow-y-auto rounded-xl border border-[#dce4f0] bg-white",
-				children: rows.length === 0 ? /* @__PURE__ */ jsxs("p", {
-					className: "px-4 py-8 text-center text-[12px] text-[#718197]",
-					children: [
-						"No ",
-						metricLabel.toLowerCase(),
-						" recorded in this range."
-					]
-				}) : rows.map((row) => /* @__PURE__ */ jsxs("div", {
-					className: "flex items-center justify-between gap-3 border-b border-[#e8edf5] px-3 py-2.5 last:border-b-0",
-					children: [/* @__PURE__ */ jsxs("div", {
-						className: "min-w-0",
-						children: [
-							/* @__PURE__ */ jsx("p", {
-								className: "truncate text-[12px] font-semibold text-[var(--ink)]",
-								children: row.name
-							}),
-							/* @__PURE__ */ jsx("p", {
-								className: "truncate text-[10px] text-[#718197]",
-								children: row.email
-							}),
-							/* @__PURE__ */ jsxs("div", {
-								className: "mt-1 flex flex-wrap gap-1",
-								children: [/* @__PURE__ */ jsx("span", {
-									className: "rounded bg-[#e8faff] px-1.5 py-0.5 text-[9px] font-semibold text-[#2388a4] capitalize",
-									children: row.source
-								}), /* @__PURE__ */ jsx("span", {
-									className: "rounded bg-[#f1f4f8] px-1.5 py-0.5 text-[9px] text-[#718197]",
-									children: row.date ? formatDay(row.date.slice(0, 10)) : "-"
-								})]
-							})
-						]
-					}), /* @__PURE__ */ jsx("span", {
-						className: "shrink-0 rounded-full border border-[#dce4f0] px-2 py-1 text-[9px] font-semibold tracking-[.08em] text-[#718197] uppercase",
-						children: row.meta
-					})]
-				}, row.id))
 			})
 		]
 	});
@@ -1945,7 +2054,7 @@ function Dashboard$1({ trend = [], stats = [], snapshot = {}, range = "30D", ran
 			}),
 			/* @__PURE__ */ jsxs("div", {
 				className: "mt-3 grid gap-3 xl:grid-cols-2",
-				children: [/* @__PURE__ */ jsx(RecentActivity, { activity }), /* @__PURE__ */ jsx(AcquisitionDashboard, { acquisition })]
+				children: [/* @__PURE__ */ jsx(RecentActivity, { activity }), /* @__PURE__ */ jsx(AcquisitionTable, { acquisition }, range)]
 			}),
 			/* @__PURE__ */ jsx("div", {
 				className: "mt-3",
@@ -7098,10 +7207,11 @@ var STAGES = [
 * The transitional loading state after a run is dispatched. Not a wizard step —
 * it has no stepper — just a live view of a scrape already running server-side.
 */
-function RunningScreen({ searchId, onBack, onDone, onAutoReturn }) {
+function RunningScreen({ searchId, initialSearch = null, onBack, onDone, onAutoReturn }) {
 	const { auth = {} } = usePage().props;
 	const signedIn = auth.signedIn ?? Boolean(auth.user);
-	const [search, setSearch] = useState(null);
+	const [search, setSearch] = useState(initialSearch);
+	const [unavailable, setUnavailable] = useState(!searchId);
 	const [failed, setFailed] = useState(null);
 	const [completed, setCompleted] = useState(null);
 	const [email, setEmail] = useState("");
@@ -7119,6 +7229,12 @@ function RunningScreen({ searchId, onBack, onDone, onAutoReturn }) {
 			polling.current = true;
 			try {
 				const found = (await fetchNotifications([searchId]))?.searches?.[0];
+				if (!found) {
+					finished.current = true;
+					setSearch(null);
+					setUnavailable(true);
+					return;
+				}
 				if (found) {
 					setSearch(found);
 					if (found.status === "done") {
@@ -7134,6 +7250,12 @@ function RunningScreen({ searchId, onBack, onDone, onAutoReturn }) {
 					if (found.status === "failed") {
 						finished.current = true;
 						setFailed(found.latest_run_error || "The scrape did not finish. Try running the search again.");
+						return;
+					}
+					if (found.status !== "scraping") {
+						finished.current = true;
+						setSearch(null);
+						setUnavailable(true);
 						return;
 					}
 				}
@@ -7158,7 +7280,7 @@ function RunningScreen({ searchId, onBack, onDone, onAutoReturn }) {
 		};
 	}, [searchId, onDone]);
 	useEffect(() => {
-		if (!searchId || failed || completed || finished.current) return void 0;
+		if (!searchId || search?.status !== "scraping" || unavailable || failed || completed || finished.current) return void 0;
 		const timer = window.setTimeout(() => {
 			updateTracked(searchId, { runningPromptShown: true });
 			onAutoReturn?.();
@@ -7168,13 +7290,39 @@ function RunningScreen({ searchId, onBack, onDone, onAutoReturn }) {
 		completed,
 		failed,
 		onAutoReturn,
-		searchId
+		searchId,
+		search?.status,
+		unavailable
 	]);
 	useEffect(() => {
-		if (failed) return void 0;
+		if (failed || unavailable || search?.status !== "scraping") return void 0;
 		const timer = window.setInterval(() => setStage((s) => Math.min(s + 1, STAGES.length - 1)), 12e3);
 		return () => window.clearInterval(timer);
-	}, [failed]);
+	}, [
+		failed,
+		unavailable,
+		search?.status
+	]);
+	if (unavailable || !search) return /* @__PURE__ */ jsx("div", {
+		className: "card",
+		children: /* @__PURE__ */ jsxs("div", {
+			className: "run",
+			children: [
+				/* @__PURE__ */ jsx("h1", { children: unavailable ? "No search available" : "Checking search status" }),
+				/* @__PURE__ */ jsx("p", {
+					className: "muted",
+					style: { marginTop: 12 },
+					children: unavailable ? "Start a search to discover videos for your brand or product." : "Confirming the latest status of your search."
+				}),
+				unavailable && /* @__PURE__ */ jsx("button", {
+					onClick: onBack,
+					className: "btn btn--g",
+					style: { margin: "24px auto 0" },
+					children: "Start a search"
+				})
+			]
+		})
+	});
 	if (failed) return /* @__PURE__ */ jsx("div", {
 		className: "card",
 		children: /* @__PURE__ */ jsxs("div", {
@@ -19524,7 +19672,7 @@ function Keywords({ phrase = "", type = "brand" }) {
 //#endregion
 //#region resources/js/Pages/Search/Running.jsx
 var Running_exports = /* @__PURE__ */ __exportAll({ default: () => Running });
-function Running({ searchId }) {
+function Running({ searchId, search }) {
 	return /* @__PURE__ */ jsxs(Fragment$1, { children: [/* @__PURE__ */ jsx(Seo, {
 		title: "Search Running | Brand Beacon",
 		description: "Your Brand Beacon search is being prepared.",
@@ -19545,6 +19693,7 @@ function Running({ searchId }) {
 				},
 				children: /* @__PURE__ */ jsx(RunningScreen, {
 					searchId,
+					initialSearch: search,
 					onBack: () => router.visit("/search"),
 					onDone: () => router.visit(`/results/${searchId}`),
 					onAutoReturn: () => router.visit("/dashboard")
@@ -21427,6 +21576,7 @@ createServer((page) => createInertiaApp({
 			"./Pages/Admin/Dashboard.jsx": Dashboard_exports$1,
 			"./Pages/Admin/Listing.jsx": Listing_exports,
 			"./Pages/Admin/Login.jsx": Login_exports$1,
+			"./Pages/Admin/components/AcquisitionTable.jsx": AcquisitionTable_exports,
 			"./Pages/Admin/components/AdminLayout.jsx": AdminLayout_exports,
 			"./Pages/Auth/Login.jsx": Login_exports,
 			"./Pages/Auth/Register.jsx": Register_exports,

@@ -2,6 +2,7 @@ import { Link, router, useForm } from '@inertiajs/react';
 import { useState } from 'react';
 import AdminTrendChart from '../../components/admin/AdminTrendChart.jsx';
 import AdminLayout from './components/AdminLayout.jsx';
+import AcquisitionTable from './components/AcquisitionTable.jsx';
 
 function formatDay(value) {
     if (!value) {
@@ -35,129 +36,6 @@ function StatCard({ card }) {
                 )}
             </p>
         </div>
-    );
-}
-
-const SOURCE_COLORS = ['#19c7bd', '#ff2d78', '#f6a819', '#7f80ff', '#8bbd4d'];
-
-function sourceColor(index) {
-    return SOURCE_COLORS[index % SOURCE_COLORS.length];
-}
-
-function AcquisitionDashboard({ acquisition = {} }) {
-    const metrics = acquisition.metrics ?? [];
-    const [activeKey, setActiveKey] = useState('page_views');
-    const [sourceFilter, setSourceFilter] = useState('all');
-    const activeMetric = metrics.find((metric) => metric.key === activeKey && !metric.locked) ?? metrics.find((metric) => !metric.locked);
-    const details = acquisition.details?.[activeMetric?.key] ?? { total: 0, sources: [], rows: [] };
-    const rows = sourceFilter === 'all' ? details.rows : details.rows.filter((row) => row.source === sourceFilter);
-    const metricLabel = activeMetric?.label ?? 'Acquisition';
-
-    const selectMetric = (metric) => {
-        if (metric.locked) {
-            return;
-        }
-
-        setActiveKey(metric.key);
-        setSourceFilter('all');
-    };
-
-    return (
-        <section className="overflow-hidden rounded-2xl border border-[#dce4f0] bg-[linear-gradient(135deg,_#ffffff_0%,_#f6f9ff_100%)] p-4 shadow-[0_18px_42px_-32px_rgba(50,85,150,.45)] sm:p-5">
-            <div className="flex flex-wrap items-start justify-between gap-3">
-                <div>
-                    <p className="text-[10px] font-semibold tracking-[.22em] text-[#188fb7] uppercase">Acquisition</p>
-                    <h3 className="mt-1 text-[17px] font-semibold text-[var(--ink)]">Where they come from</h3>
-                </div>
-                <span className="rounded-full border border-[#dce4f0] bg-white px-2.5 py-1 text-[10px] font-semibold tracking-[.12em] text-[#74849a] uppercase">
-                    {acquisition.rangeLabel ?? 'Current range'}
-                </span>
-            </div>
-
-            <div className="mt-3 grid grid-cols-2 overflow-hidden rounded-2xl border border-[#dce4f0] bg-[#fbfdff] sm:grid-cols-4">
-                {metrics.map((metric) => {
-                    const active = activeMetric?.key === metric.key;
-
-                    return (
-                        <button
-                            key={metric.key}
-                            type="button"
-                            disabled={metric.locked}
-                            onClick={() => selectMetric(metric)}
-                            className={`min-h-[62px] border-b border-[#e8edf5] px-3 py-2.5 text-left transition odd:border-r sm:border-r sm:border-b-0 last:sm:border-r-0 ${
-                                active
-                                    ? 'bg-white ring-1 ring-inset ring-[#49d4ef]'
-                                    : metric.locked
-                                      ? 'cursor-not-allowed bg-[#f6f7fa] opacity-55'
-                                      : 'hover:bg-white'
-                            }`}
-                        >
-                            <span className="block text-[9px] font-semibold tracking-[.16em] text-[#7b8ba0] uppercase">{metric.label}</span>
-                            <span className="mt-1.5 flex items-center gap-2 text-[21px] leading-none font-bold text-[var(--ink)]">
-                                {metric.locked ? 'Locked' : metric.value.toLocaleString()}
-                                {active && <span className="rounded-full bg-[#dff7fc] px-1.5 py-0.5 text-[8px] font-semibold tracking-[.1em] text-[#2388a4] uppercase">Active</span>}
-                            </span>
-                        </button>
-                    );
-                })}
-            </div>
-
-            <div className="mt-5 flex flex-wrap items-center justify-between gap-2">
-                <h4 className="text-[14px] font-semibold text-[var(--ink)]">{metricLabel}</h4>
-                <strong className="text-[23px] leading-none tracking-[-.04em] text-[var(--ink)]">{details.total.toLocaleString()}</strong>
-            </div>
-
-            <div className="mt-3 flex h-1.5 overflow-hidden rounded-full bg-[#e9eef5]">
-                {details.sources.map((source, index) => (
-                    <span key={source.source} style={{ width: `${source.percentage}%`, backgroundColor: sourceColor(index) }} />
-                ))}
-            </div>
-
-            <div className="mt-3 flex flex-wrap gap-1.5">
-                <button
-                    type="button"
-                    onClick={() => setSourceFilter('all')}
-                    className={`rounded-full border px-2.5 py-1 text-[10px] font-semibold tracking-[.08em] uppercase transition ${
-                        sourceFilter === 'all' ? 'border-[#49d4ef] bg-[#ebfbff] text-[#2388a4]' : 'border-[#dce4f0] bg-white text-[#718197]'
-                    }`}
-                >
-                    All - {details.total}
-                </button>
-                {details.sources.map((source, index) => (
-                    <button
-                        key={source.source}
-                        type="button"
-                        onClick={() => setSourceFilter(source.source)}
-                        className={`rounded-full border px-2.5 py-1 text-[10px] font-semibold tracking-[.08em] uppercase transition ${
-                            sourceFilter === source.source ? 'border-[#49d4ef] bg-[#ebfbff] text-[#2388a4]' : 'border-[#dce4f0] bg-white text-[#718197]'
-                        }`}
-                    >
-                        <span className="mr-1 inline-block h-1.5 w-1.5 rounded-full" style={{ backgroundColor: sourceColor(index) }} />
-                        {source.source} - {source.count}
-                    </button>
-                ))}
-            </div>
-
-            <div className="mt-3 max-h-[236px] overflow-y-auto rounded-xl border border-[#dce4f0] bg-white">
-                {rows.length === 0 ? (
-                    <p className="px-4 py-8 text-center text-[12px] text-[#718197]">No {metricLabel.toLowerCase()} recorded in this range.</p>
-                ) : (
-                    rows.map((row) => (
-                        <div key={row.id} className="flex items-center justify-between gap-3 border-b border-[#e8edf5] px-3 py-2.5 last:border-b-0">
-                            <div className="min-w-0">
-                                <p className="truncate text-[12px] font-semibold text-[var(--ink)]">{row.name}</p>
-                                <p className="truncate text-[10px] text-[#718197]">{row.email}</p>
-                                <div className="mt-1 flex flex-wrap gap-1">
-                                    <span className="rounded bg-[#e8faff] px-1.5 py-0.5 text-[9px] font-semibold text-[#2388a4] capitalize">{row.source}</span>
-                                    <span className="rounded bg-[#f1f4f8] px-1.5 py-0.5 text-[9px] text-[#718197]">{row.date ? formatDay(row.date.slice(0, 10)) : '-'}</span>
-                                </div>
-                            </div>
-                            <span className="shrink-0 rounded-full border border-[#dce4f0] px-2 py-1 text-[9px] font-semibold tracking-[.08em] text-[#718197] uppercase">{row.meta}</span>
-                        </div>
-                    ))
-                )}
-            </div>
-        </section>
     );
 }
 
@@ -506,7 +384,7 @@ export default function Dashboard({ trend = [], stats = [], snapshot = {}, range
             </div>
             <div className="mt-3 grid gap-3 xl:grid-cols-2">
                 <RecentActivity activity={activity} />
-                <AcquisitionDashboard acquisition={acquisition} />
+                <AcquisitionTable key={range} acquisition={acquisition} />
             </div>
             <div className="mt-3">
                 <CouponProgramsPanel coupons={coupons} />

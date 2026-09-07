@@ -37,17 +37,12 @@ class AcquisitionDashboardServiceTest extends TestCase
 
         $payload = app(AcquisitionDashboardService::class)->payload(30);
 
-        $metrics = collect($payload['metrics'])->keyBy('key');
-        $this->assertSame(2, $metrics['sign_ups']['value']);
-        $this->assertSame(1, $metrics['trial_cc']['value']);
-        $this->assertTrue($metrics['trial_no_cc']['locked']);
-        $this->assertNull($metrics['trial_no_cc']['value']);
-        $this->assertArrayNotHasKey('page_views', $payload['details']);
-
-        $signupSources = collect($payload['details']['sign_ups']['sources'])->keyBy('source');
-        $this->assertSame(1, $signupSources['meta']['count']);
-        $this->assertSame(1, $signupSources['direct']['count']);
-        $this->assertSame('meta', $payload['details']['trial_cc']['rows'][0]['source']);
+        $this->assertSame(2, $payload['cohort']['totals']['signups']);
+        $this->assertSame(1, $payload['cohort']['totals']['trials']);
+        $signupSources = collect($payload['cohort']['groups'])->keyBy('source');
+        $this->assertSame(1, $signupSources['meta']['signups']);
+        $this->assertSame(1, $signupSources['Source not recorded']['signups']);
+        $this->assertSame(1, $signupSources['meta']['trials']);
 
         $funnel = collect($payload['funnel']['steps'])->keyBy('key');
         $this->assertSame(2, $funnel['signups']['value']);
