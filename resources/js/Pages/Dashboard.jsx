@@ -39,30 +39,12 @@ const formatDate = (iso) => {
   return Number.isNaN(d.getTime()) ? 'not yet' : d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 };
 
-/* Keep the placeholder sparkline visually stable, but never invent a
- * percentage trend from it. The spark is decorative until the API sends a
- * real series/metric for recent searches.
- */
-function sparkBars(seed, n = 6) {
-  const bars = [];
-  let s = Number(seed) || 1;
-  for (let i = 0; i < n; i += 1) {
-    s = (s * 9301 + 49297) % 233280;
-    const h = 42 + Math.round((s / 233280) * 38);
-    bars.push(h);
-  }
-
-  return bars;
-}
-
-/** Recent row matching the mockup: icon · name/meta · sparkline · trend · pill · videos */
+/** Recent row matching the mockup: icon · name/meta · pill · videos */
 function RecentRow({ search, onNavigate, retrying, onRetry }) {
   const status = STATUS_MAP[search.status] ?? { label: titleCase(search.status) || 'Ready', cls: 'pill--off' };
   const type = TYPE_LABEL[search.search_type] ?? titleCase(search.search_type);
   const freq = titleCase(search.frequency) || 'Weekly';
   const initials = (search.name || search.phrase || '?').slice(0, 2).toUpperCase();
-  const bars = sparkBars(search.id, 6);
-  const trend = typeof search.trend === 'number' ? search.trend : null;
   const canRetry = search.can_retry_initial === true;
 
   return (
@@ -85,14 +67,6 @@ function RecentRow({ search, onNavigate, retrying, onRetry }) {
         <span className="row__m">
           {type} · {freq} · updated {formatDate(search.last_run_at)}
         </span>
-      </span>
-      <span className="spark" aria-hidden>
-        {bars.map((h, i) => (
-          <span key={i} className={i === bars.length - 1 ? 'hot' : ''} style={{ height: `${h}%` }} />
-        ))}
-      </span>
-      <span className={`trend${trend !== null && trend >= 0 ? ' up' : ''}`}>
-        {trend === null ? '—' : `${trend >= 0 ? '+' : ''}${trend}%`}
       </span>
       <span className={`pill ${status.cls}`}>
         <i />
@@ -671,17 +645,12 @@ export default function Dashboard() {
         .rc__h h2{font-size:1.02rem;font-weight:800;letter-spacing:-.028em;color:var(--ink)}
         .link{display:inline-flex;align-items:center;gap:5px;font-size:.82rem;font-weight:700;color:var(--ink);text-decoration:none}
         .link:hover{color:var(--ink)} .link svg{width:14px;height:14px}
-        .rc .row{display:grid;grid-template-columns:auto 1fr auto auto auto auto;align-items:center;gap:16px;padding:14px 22px;border-bottom:1px solid var(--line);transition:background .14s}
+        .rc .row{display:grid;grid-template-columns:auto 1fr auto auto;align-items:center;gap:16px;padding:14px 22px;border-bottom:1px solid var(--line);transition:background .14s}
         .rc .row:last-child{border-bottom:none}
         .rc .row:hover{background:var(--paper,#FAF9F6)}
         .row__i{width:36px;height:36px;border-radius:10px;background:var(--wash);color:var(--amber-ink);display:grid;place-items:center;font-size:.8rem;font-weight:800}
         .row__n{display:block;font-size:.93rem;font-weight:700;color:var(--ink);letter-spacing:-.01em}
         .row__m{display:block;font-size:.77rem;color:var(--ink);margin-top:1px}
-        .spark{display:flex;align-items:flex-end;gap:3px;height:24px}
-        .spark span{width:5px;border-radius:2px;background:var(--line-2,#DEDBD3)}
-        .spark span.hot{background:var(--yellow)}
-        .trend{font-size:.81rem;font-weight:800;font-variant-numeric:tabular-nums;min-width:40px;text-align:right;color:var(--ink)}
-        .trend.up{color:var(--ok)}
         .row__k{text-align:right;min-width:48px}
         .row__kv{display:block;font-size:1rem;font-weight:800;color:var(--ink);line-height:1;font-variant-numeric:tabular-nums}
         .row__kl{display:block;font-size:.65rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--ink);margin-top:3px}
@@ -693,7 +662,7 @@ export default function Dashboard() {
         }
         @media (max-width:860px){
           .rc .row{grid-template-columns:auto 1fr auto;gap:12px}
-          .rc .row .spark,.rc .row .trend,.rc .row .pill{display:none}
+          .rc .row .pill{display:none}
         }
         @media (max-width:640px){
           .hero{padding:18px}
