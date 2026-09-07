@@ -197,6 +197,7 @@ export default function Index({
   analysisHistory: initialAnalysisHistory = [],
   analysisHistoryCount = 0,
   searchHistory = [],
+  initialTab = 'searches',
   filterType = null,
   watchlistedOnly: bookmarkedOnly = true,
 }) {
@@ -207,8 +208,7 @@ export default function Index({
   const [searches, setSearches] = useState(initialSearches);
   // Re-sync when the listing prop is refreshed after an edit reload.
   useEffect(() => setSearches(initialSearches), [initialSearches]);
-  const requestedTab = typeof window === 'undefined' ? null : new URLSearchParams(window.location.search).get('tab');
-  const [tab, setTab] = useState(requestedTab === 'history' ? 'history' : 'searches');
+  const [tab, setTab] = useState(initialTab === 'history' ? 'history' : 'searches');
   const [openMenuId, setOpenMenuId] = useState(null);
   const [bookmarkedVideos, setBookmarkedVideos] = useState(initialBookmarkedVideos);
   const [analysisHistory, setAnalysisHistory] = useState(initialAnalysisHistory);

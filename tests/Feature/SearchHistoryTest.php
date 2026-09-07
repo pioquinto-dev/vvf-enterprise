@@ -26,6 +26,7 @@ class SearchHistoryTest extends TestCase
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->component('SavedSearches/Index')
+                ->where('initialTab', 'history')
                 ->has('searchHistory', 2)
                 ->where('searchHistory.0.id', $newer->id)
                 ->where('searchHistory.0.name', 'Newest search')

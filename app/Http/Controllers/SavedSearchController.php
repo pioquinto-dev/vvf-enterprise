@@ -371,6 +371,7 @@ class SavedSearchController extends Controller
             'analysisHistory' => [],
             'analysisHistoryCount' => $bookmarkedOnly ? $this->analysisHistoryCount($request) : 0,
             'searchHistory' => $searchHistory,
+            'initialTab' => $request->query('tab') === 'history' ? 'history' : 'searches',
             'filterType' => $filterType,
             'watchlistedOnly' => $bookmarkedOnly,
             'isAuthenticated' => $request->user() !== null,
