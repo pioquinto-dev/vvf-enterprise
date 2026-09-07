@@ -3,6 +3,7 @@ import { useMemo, useState } from 'react';
 import { PRICING, PRICING_PLAN_ORDER } from '../../data/dummy.js';
 import { Check, Arrow } from '../../components/Icons.jsx';
 import { billing } from '../api.js';
+import { annualBillingNote, displayedMonthlyRate } from '../../../utils/pricing.js';
 
 export default function TrialScreen({ onBack, backLabel = 'Back to results' }) {
   const { pricingPlans = [], auth = {} } = usePage().props;
@@ -85,10 +86,10 @@ export default function TrialScreen({ onBack, backLabel = 'Back to results' }) {
               <p className="mt-1 text-[12.5px] faint">{t.tagline}</p>
 
               <p className="mt-3 font-display text-[32px] leading-none font-bold tracking-[-.03em]">
-                ${t.price}
+                {displayedMonthlyRate(t)}<span className="ml-1 text-[13px] font-medium tracking-normal faint">/mo</span>
               </p>
               <p className="mt-2 min-h-[32px] text-[11.5px] leading-[1.35] faint">
-                {billingCycle === 'annual' ? `First 2 months free. Billed annually. Save ${t.annualSavingsPercent}%` : '$0 for 8 days'}
+                {billingCycle === 'annual' ? annualBillingNote(t) : '$0 for 8 days'}
               </p>
 
               <p className="mt-4 text-[12px] faint">

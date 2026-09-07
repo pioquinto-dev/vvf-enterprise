@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Check } from '../components/Icons.jsx';
 import { PRICING, PRICING_PLAN_ORDER } from '../data/dummy.js';
+import { annualBillingNote, displayedMonthlyRate } from '../../utils/pricing.js';
 
 export default function Pricing({ plans = [], onStart, onTrial }) {
   const [billingCycle, setBillingCycle] = useState('monthly');
@@ -52,14 +53,14 @@ export default function Pricing({ plans = [], onStart, onTrial }) {
                 <div className="plan__n">{plan.name}</div>
                 <p className="plan__t">{plan.tagline}</p>
                 <div className="plan__p">
-                  {free ? '$0' : `$${plan.price}`}
-                  <span>{free ? '/mo' : billingCycle === 'annual' ? '/yr' : '/mo'}</span>
+                  {free ? '$0' : displayedMonthlyRate(plan)}
+                  <span>/mo</span>
                 </div>
                 <p className="plan__s">
                   {free
                     ? ''
                     : billingCycle === 'annual'
-                      ? `First 2 months free. Billed annually. Save ${plan.annualSavingsPercent}%`
+                      ? annualBillingNote(plan)
                       : '$0 for 8 days'}
                 </p>
 

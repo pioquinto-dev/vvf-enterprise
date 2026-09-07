@@ -6,6 +6,7 @@ import { billing } from '../landing/flow/api.js';
 import { Check, Arrow } from '../landing/components/Icons.jsx';
 import { PRICING_PLAN_ORDER } from '../landing/data/dummy.js';
 import UpgradePromptModal from './components/UpgradePromptModal.jsx';
+import { annualBillingNote, displayedMonthlyRate } from '../utils/pricing.js';
 
 function planTier(plan) {
   const slug = String(plan?.slug ?? '').toLowerCase();
@@ -129,16 +130,16 @@ export default function Plans() {
 
     if (!hasUsedTrial || isTrialing) {
       return {
-        amount: `$${plan.price}`,
-        suffix: annual ? '/yr' : '/mo',
-        subline: annual ? `First 2 months free. Billed annually. Save ${plan.annualSavingsPercent}%` : '$0 for 8 days',
+        amount: displayedMonthlyRate(plan),
+        suffix: '/mo',
+        subline: annual ? annualBillingNote(plan) : '$0 for 8 days',
       };
     }
 
     return {
-      amount: `$${plan.price}`,
-      suffix: annual ? '/yr' : '/mo',
-      subline: annual ? `First 2 months free. Billed annually. Save ${plan.annualSavingsPercent}%` : '',
+      amount: displayedMonthlyRate(plan),
+      suffix: '/mo',
+      subline: annual ? annualBillingNote(plan) : '',
     };
   };
 
