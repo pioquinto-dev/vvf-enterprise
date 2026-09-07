@@ -53,6 +53,7 @@ class SavedSearchManagerTest extends TestCase
 
         $first = $this->create($user);
         $this->assertSame(4, $this->searchCreditsRemaining($user));
+        $this->assertTrue((bool) data_get($first->runs()->firstOrFail()->raw_summary, 'free_search'));
 
         // Finish the first run so the re-search actually starts a new scrape.
         $first->runs()->update(['status' => CustomKeywordSearchRun::STATUS_DONE, 'completed_at' => now()]);
@@ -64,6 +65,7 @@ class SavedSearchManagerTest extends TestCase
         $this->assertSame(1, CustomKeywordSearch::count());
         $this->assertSame(2, $second->runs()->count());
         $this->assertSame(3, $this->searchCreditsRemaining($user));
+        $this->assertFalse((bool) data_get($second->runs()->latest('id')->firstOrFail()->raw_summary, 'free_search'));
     }
 
     public function test_re_searching_while_a_run_is_active_charges_nothing(): void

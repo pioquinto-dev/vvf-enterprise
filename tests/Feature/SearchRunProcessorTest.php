@@ -203,7 +203,10 @@ class SearchRunProcessorTest extends TestCase
 
         $user = User::factory()->create(['email' => 'owner@example.com']);
         $search = $this->search();
-        $run = $search->runs()->create(['status' => CustomKeywordSearchRun::STATUS_QUEUED]);
+        $run = $search->runs()->create([
+            'status' => CustomKeywordSearchRun::STATUS_QUEUED,
+            'raw_summary' => ['free_search' => true],
+        ]);
 
         $this->fakeApify([$this->apifyItem()]);
 
@@ -211,6 +214,29 @@ class SearchRunProcessorTest extends TestCase
             'user_id' => $user->id,
             'guest_token' => null,
         ]);
+
+        app(SearchRunProcessor::class)->process($run);
+    }
+
+    public function test_a_non_free_search_does_not_send_the_completion_email(): void
+    {
+        Queue::fake();
+
+        config()->set('brevo_notifications.search_done_enabled', true);
+        config()->set('brevo_notifications.notifications.search_done.template_id', 20);
+
+        $emails = Mockery::mock(BrevoLifecycleEmailService::class);
+        $emails->shouldNotReceive('sendSearchDone');
+        $this->app->instance(BrevoLifecycleEmailService::class, $emails);
+
+        $user = User::factory()->create();
+        $search = $this->search(['user_id' => $user->id, 'guest_token' => null]);
+        $run = $search->runs()->create([
+            'status' => CustomKeywordSearchRun::STATUS_QUEUED,
+            'raw_summary' => ['credit_reserved' => true],
+        ]);
+
+        $this->fakeApify([$this->apifyItem()]);
 
         app(SearchRunProcessor::class)->process($run);
     }

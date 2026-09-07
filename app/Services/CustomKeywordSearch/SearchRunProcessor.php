@@ -302,7 +302,7 @@ class SearchRunProcessor
             'next_run_at' => $this->nextRunAt($search->frequency),
         ]);
 
-        if ($search->user !== null) {
+        if ($search->user !== null && $this->isFreeSearch($run)) {
             $this->emails->sendSearchDone($search->user, $search->refresh());
         }
 
@@ -544,6 +544,11 @@ class SearchRunProcessor
     private function reservedCredit(CustomKeywordSearchRun $run): bool
     {
         return (bool) data_get($run->raw_summary, 'credit_reserved', false);
+    }
+
+    private function isFreeSearch(CustomKeywordSearchRun $run): bool
+    {
+        return (bool) data_get($run->raw_summary, 'free_search', false);
     }
 
     /**

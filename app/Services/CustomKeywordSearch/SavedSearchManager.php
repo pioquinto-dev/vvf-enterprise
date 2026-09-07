@@ -91,13 +91,15 @@ class SavedSearchManager
             'next_run_at' => $this->processor->nextRunAt($frequency),
         ]);
 
+        $isFreeSearch = $user === null || $user->free_search_used_at === null;
+
         if ($user !== null) {
             $this->billing->consumeSearchCredit($user);
         } elseif ($chargeGuest !== null) {
             $chargeGuest();
         }
 
-        $this->queueRun($search, $user !== null);
+        $this->queueRun($search, $user !== null, $isFreeSearch);
         $this->recordSearch($user, $search);
         $this->indexedKeywords->learnFromSearch($type, $phrase, $keywords);
 
@@ -197,11 +199,20 @@ class SavedSearchManager
         return $website === '' ? null : $website;
     }
 
-    public function queueRun(CustomKeywordSearch $search, bool $reservedCredit = false): CustomKeywordSearchRun
+    public function queueRun(
+        CustomKeywordSearch $search,
+        bool $reservedCredit = false,
+        bool $isFreeSearch = false,
+    ): CustomKeywordSearchRun
     {
+        $summary = array_filter([
+            'credit_reserved' => $reservedCredit ?: null,
+            'free_search' => $isFreeSearch ?: null,
+        ]);
+
         $run = $search->runs()->create([
             'status' => CustomKeywordSearchRun::STATUS_QUEUED,
-            'raw_summary' => $reservedCredit ? ['credit_reserved' => true] : null,
+            'raw_summary' => $summary !== [] ? $summary : null,
         ]);
 
         $search->update(['status' => CustomKeywordSearch::STATUS_SCRAPING]);

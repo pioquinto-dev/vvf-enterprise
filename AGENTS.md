@@ -442,6 +442,7 @@ Non-obvious rules:
 - `guest_token` is an ownership handle, not a quota key.
 - Session resets must never restore free-search eligibility.
 - Do not infer “free search unused” from row counts because soft deletion makes that unsafe.
+- The “Search is ready” email is only sent for a run explicitly stamped `raw_summary.free_search = true`; paid/trial searches and all refreshes must not send it.
 
 ### Billing and checkout flow
 
