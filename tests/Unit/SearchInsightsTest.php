@@ -105,7 +105,7 @@ class SearchInsightsTest extends TestCase
     {
         // Seven values, median 300. Multiples: .17, .33, .67, 1, 3, 5, 8.33 —
         // the three sub-3x videos fall outside every bucket by design; the
-        // panel describes the outliers, matching the mockup.
+        // panel describes the breakouts, matching the mockup.
         $rows = [
             $this->row(50),
             $this->row(100),
@@ -126,7 +126,7 @@ class SearchInsightsTest extends TestCase
         $this->assertSame(0, $counts['12x+']);
         $this->assertSame(3, array_sum($counts));
 
-        // Share is a fraction of the outliers, not of all seven videos.
+        // Share is a fraction of the breakouts, not of all seven videos.
         $this->assertSame(0.3333, $distribution->firstWhere('label', '3 - 5x')['share']);
     }
 

@@ -12,10 +12,10 @@ import { playerUrlFor, postTikTokMessage } from './tiktokPlayer.js';
  *
  * Layout follows brandbeaconanalyticsredesign.html:
  *   Back bar · Header (with inline handle editor + kebab) · AI Insights bullets ·
- *   Stat strip (4 tiles) · Winner outlier with auto-analysis · More outliers
+ *   Stat strip (4 tiles) · Winner breakout with auto-analysis · More breakouts
  *   grid with toggle-open per-card analysis · Analytics card with metric tabs +
  *   blurred history until the next refresh · When-they-post heatmap with a
- *   best-time insight bar · Outliers-per-week + Score distribution ·
+ *   best-time insight bar · Breakouts-per-week + Score distribution ·
  *   Hashtags & sounds scroll panels (each row is a link to TikTok).
  *
  * The heavy analytical text (insights, per-video why/replicate, best-time)
@@ -446,7 +446,7 @@ export default function DetailScreen({
   const [upgradeModalType, setUpgradeModalType] = useState(null);
   const [visible, setVisible] = useState(PAGE_STEP);
   const [sortKey, setSortKey] = useState('outlier');
-  // Which run bucket the "More outliers" grid is filtered to. `all` keeps
+  // Which run bucket the "More breakouts" grid is filtered to. `all` keeps
   // every card visible and colored by its own run; the other three narrow to
   // one bucket. Defaults to `all` so first-time visitors see the full grid.
   const [runFilter, setRunFilter] = useState('all');
@@ -656,7 +656,7 @@ export default function DetailScreen({
   const heatMax = Math.max(1, Number(insights?.heatmap?.max) || 0);
   const bestPostTime = search?.best_post_time ?? heatmapBestTime(insights?.heatmap);
 
-  /* ------------- outliers per week + distribution ------------- */
+  /* ------------- breakouts per week + distribution ------------- */
   const distribution = insights?.distribution ?? [];
   const distMax = Math.max(1, ...distribution.map((d) => d.count ?? 0));
   const weeklyBars = trend?.outliers_per_week ?? [];
@@ -1011,7 +1011,7 @@ export default function DetailScreen({
         </div>
       </div>
 
-      {/* OUTLIER VIDEOS — winner */}
+      {/* BREAKOUT VIDEOS — winner */}
       {winner && (() => {
         const winnerBucket = bucketForVideo(winner);
         const winnerBucketLabel = winnerBucket === 'new'
@@ -1086,7 +1086,7 @@ export default function DetailScreen({
         );
       })()}
 
-      {/* MORE OUTLIERS */}
+      {/* MORE BREAKOUTS */}
       {rest.length > 0 && (
         <>
           <div className="rs-sh">
@@ -2183,7 +2183,7 @@ const scopedCss = `
 .rs-runempty{padding:22px;border:1px dashed var(--line);border-radius:14px;background:var(--paper,rgba(250,249,246,.6));font-size:.85rem;color:var(--faint-2,#9A968E);text-align:center}
 .rs-runempty__reset{border:0;background:transparent;color:var(--ink);font-weight:700;text-decoration:underline;cursor:pointer;padding:0;margin-left:4px}
 .rs-ogrid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
-/* Mobile: the "More outliers" header reflows into two controls under the
+/* Mobile: the "More breakouts" header reflows into two controls under the
    title so the run filter remains easy to reach on smaller screens. */
 @media (max-width: 640px){
   .rs-sh{display:grid;grid-template-columns:1fr 1fr;grid-template-areas:"title title" "filter sort";align-items:center;gap:10px 12px;margin:28px 0 14px}

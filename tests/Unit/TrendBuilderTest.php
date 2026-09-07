@@ -141,7 +141,7 @@ class TrendBuilderTest extends TestCase
     {
         // Median across all four is 300. In its own week the 1200-view video
         // would be its own median and score 1x; against the search median it is
-        // 4x and correctly counts as an outlier.
+        // 4x and correctly counts as a breakout.
         $trend = $this->trends->build([
             $this->row(100, '2026-07-21T10:00:00+00:00'),
             $this->row(200, '2026-07-21T11:00:00+00:00'),
@@ -152,7 +152,7 @@ class TrendBuilderTest extends TestCase
         $this->assertSame(1, collect($trend['points'])->firstWhere('label', 'now')['outliers']);
 
         // The busy week is not graded on its own curve either: three videos
-        // clustered near the median produce no outliers.
+        // clustered near the median produce no breakouts.
         $this->assertSame(0, collect($trend['points'])->firstWhere('label', '2w ago')['outliers']);
     }
 
