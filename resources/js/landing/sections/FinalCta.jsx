@@ -15,10 +15,12 @@ export default function FinalCta({ onStart }) {
             Start free
             <Arrow className="btn__arrow h-[15px] w-[15px]" />
           </button>
+          {/*
           <button type="button" className="btn btn--ghost btn--lg">
             <Play className="h-[15px] w-[15px]" />
             Watch demo · 2 min
           </button>
+          */}
         </div>
         <p className="final__n">No credit card required · cancel any trial in two clicks</p>
       </div>
