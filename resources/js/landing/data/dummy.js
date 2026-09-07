@@ -28,7 +28,7 @@ export const FEATURES = [
   {
     id: 'outliers',
     tag: 'Discovery',
-    title: 'Outlier Vault',
+    title: 'Breakout Vault',
     body: "Surface the TikToks in your category that broke out this week. The ones running 10× above the creator's own baseline, not just the ones with big follower counts.",
     bullets: ['Breakout Score vs creator baseline', 'Last 7 / 30 / 90 day windows', 'Sound, hashtag and format tags'],
     accent: 'from-[#3a2b6b] to-[#8b3df0]',
@@ -314,7 +314,7 @@ export const FAQS = [
 export const FOOTER_LINKS = [
   {
     heading: 'Product',
-    links: ['Outlier Vault', 'Brand Tracking', 'Creator Shortlists', 'Virality Alerts', 'Changelog'],
+    links: ['Breakout Vault', 'Brand Tracking', 'Creator Shortlists', 'Virality Alerts', 'Changelog'],
   },
   {
     heading: 'Company',

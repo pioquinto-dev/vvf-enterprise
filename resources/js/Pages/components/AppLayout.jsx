@@ -148,7 +148,7 @@ function CompletedAnalysisModal({ item, onClose, onView }) {
                     Your analysis is done
                 </h2>
                 <p className="mt-3 text-[14px] leading-6 text-[var(--muted)]">
-                    {item.videoLabel || 'Your outlier video'} is ready. Open the search result it belongs to and we&apos;ll jump straight into the finished analysis.
+                    {item.videoLabel || 'Your breakout video'} is ready. Open the search result it belongs to and we&apos;ll jump straight into the finished analysis.
                 </p>
                 <div className="mt-4 rounded-[16px] border border-[var(--line)] bg-white/80 px-4 py-3 text-[13px] font-semibold text-[var(--ink)]">
                     {item.searchName || item.videoLabel || 'Saved search'}

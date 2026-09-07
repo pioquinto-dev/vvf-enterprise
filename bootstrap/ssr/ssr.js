@@ -530,6 +530,13 @@ var NAV_GROUPS = [
 				icon: "IN"
 			},
 			{
+				key: "newsletter",
+				label: "Newsletter",
+				href: "/x/admin/newsletter",
+				description: "Digest subscribers",
+				icon: "NL"
+			},
+			{
 				key: "plans",
 				label: "Plans",
 				href: "/x/admin/plans",
@@ -8717,7 +8724,14 @@ var COLS = [
 	}
 ];
 function Footer({ homeHref = "#top" }) {
-	const [subscribed, setSubscribed] = useState(false);
+	const form = useForm({ email: "" });
+	const subscribe = (e) => {
+		e.preventDefault();
+		form.post("/newsletter", {
+			preserveScroll: true,
+			onSuccess: () => form.reset("email")
+		});
+	};
 	return /* @__PURE__ */ jsx("footer", {
 		className: "ftr",
 		children: /* @__PURE__ */ jsxs("div", {
@@ -8736,10 +8750,7 @@ function Footer({ homeHref = "#top" }) {
 					}),
 					/* @__PURE__ */ jsxs("form", {
 						className: "ftr__form",
-						onSubmit: (e) => {
-							e.preventDefault();
-							setSubscribed(true);
-						},
+						onSubmit: subscribe,
 						children: [
 							/* @__PURE__ */ jsx("label", {
 								htmlFor: "nl",
@@ -8751,14 +8762,25 @@ function Footer({ homeHref = "#top" }) {
 									id: "nl",
 									type: "email",
 									required: true,
-									placeholder: "you@brand.com"
+									placeholder: "you@brand.com",
+									autoComplete: "email",
+									value: form.data.email,
+									onChange: (e) => form.setData("email", e.target.value),
+									disabled: form.processing
 								}), /* @__PURE__ */ jsx("button", {
 									type: "submit",
 									className: "btn btn--primary",
-									children: subscribed ? "Subscribed" : "Subscribe"
+									disabled: form.processing,
+									children: form.processing ? "Subscribing…" : form.wasSuccessful ? "Subscribed" : "Subscribe"
 								})]
 							}),
-							/* @__PURE__ */ jsx("p", {
+							form.errors.email ? /* @__PURE__ */ jsx("p", {
+								className: "ftr__fine ftr__fine--error",
+								children: form.errors.email
+							}) : form.wasSuccessful ? /* @__PURE__ */ jsx("p", {
+								className: "ftr__fine",
+								children: "Thanks — you're on the list. One email a week."
+							}) : /* @__PURE__ */ jsx("p", {
 								className: "ftr__fine",
 								children: "One email a week. Unsubscribe anytime."
 							})
@@ -20502,6 +20524,7 @@ function Support({ sessionAvailable, retryAfter = 0, commonQuestions = [] }) {
 	const [question, setQuestion] = useState("");
 	const [sending, setSending] = useState(false);
 	const [error, setError] = useState("");
+	const [quickOpen, setQuickOpen] = useState(false);
 	const inputRef = useRef(null);
 	const ask = async (rawQuestion) => {
 		const cleanQuestion = String(rawQuestion).trim();
@@ -20584,11 +20607,11 @@ function Support({ sessionAvailable, retryAfter = 0, commonQuestions = [] }) {
 					]
 				}), sessionAvailable ? /* @__PURE__ */ jsxs("section", {
 					className: "support-chat",
-					"aria-label": "Product support assistant",
+					"aria-label": "Beacon support assistant",
 					children: [
 						/* @__PURE__ */ jsx("div", {
 							className: "support-chat__head",
-							children: /* @__PURE__ */ jsxs("span", { children: [/* @__PURE__ */ jsx("i", {}), " Support assistant"] })
+							children: /* @__PURE__ */ jsxs("span", { children: [/* @__PURE__ */ jsx("i", {}), " Beacon"] })
 						}),
 						/* @__PURE__ */ jsxs("div", {
 							className: "support-chat__body",
@@ -20596,7 +20619,7 @@ function Support({ sessionAvailable, retryAfter = 0, commonQuestions = [] }) {
 							children: [
 								messages.length === 0 && /* @__PURE__ */ jsxs("div", {
 									className: "support-welcome",
-									children: [/* @__PURE__ */ jsx("b", { children: "What can I help with?" }), /* @__PURE__ */ jsx("p", { children: "Choose a common question for an instant answer, or ask your own below." })]
+									children: [/* @__PURE__ */ jsx("b", { children: "Hi, I'm Beacon. What can I help with?" }), /* @__PURE__ */ jsx("p", { children: "Choose a common question for an instant answer, or ask your own below." })]
 								}),
 								messages.map((message, index) => /* @__PURE__ */ jsxs("div", {
 									className: `support-message support-message--${message.role}`,
@@ -20615,15 +20638,26 @@ function Support({ sessionAvailable, retryAfter = 0, commonQuestions = [] }) {
 								})
 							]
 						}),
-						/* @__PURE__ */ jsx("div", {
-							className: "support-quick",
-							"aria-label": "Common support questions",
-							children: commonQuestions.map((entry) => /* @__PURE__ */ jsx("button", {
+						/* @__PURE__ */ jsxs("div", {
+							className: "support-quick-wrap",
+							children: [/* @__PURE__ */ jsxs("button", {
 								type: "button",
-								onClick: () => answerCommonQuestion(entry),
-								disabled: sending,
-								children: entry.question
-							}, entry.question))
+								className: "support-quick__toggle",
+								"aria-expanded": quickOpen,
+								"aria-controls": "support-quick-list",
+								onClick: () => setQuickOpen((open) => !open),
+								children: ["Common questions", /* @__PURE__ */ jsx(Chevron, { className: "h-4 w-4" })]
+							}), /* @__PURE__ */ jsx("div", {
+								id: "support-quick-list",
+								className: `support-quick${quickOpen ? "" : " support-quick--collapsed"}`,
+								"aria-label": "Common support questions",
+								children: commonQuestions.map((entry) => /* @__PURE__ */ jsx("button", {
+									type: "button",
+									onClick: () => answerCommonQuestion(entry),
+									disabled: sending,
+									children: entry.question
+								}, entry.question))
+							})]
 						}),
 						/* @__PURE__ */ jsxs("form", {
 							className: "support-chat__form",

@@ -269,7 +269,7 @@ export default function AdminLayout({ title, section, children, toolbar = null, 
 
     return (
         <div className="admin-shell min-h-screen bg-[var(--canvas)] text-[var(--ink)]">
-            <Head title={`${title} - Admin - Outlier Vault`} />
+            <Head title={`${title} - Admin - Breakout Vault`} />
 
             <div aria-hidden className="pointer-events-none fixed inset-0 overflow-hidden">
                 <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(255,198,41,.22),_transparent_42%)]" />

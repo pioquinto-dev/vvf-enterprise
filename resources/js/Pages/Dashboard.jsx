@@ -149,7 +149,7 @@ function GlanceStrip({ stats }) {
           <div className="gl__d up">{upArrow}+{videosNew.toLocaleString()} this week</div>
         </div>
         <div className="gl">
-          <div className="gl__l">Outliers this week</div>
+          <div className="gl__l">Breakouts this week</div>
           <div className="gl__v">{outliers.toLocaleString()}</div>
           <div className={`gl__d${outliersDelta >= 0 ? ' up' : ''}`}>{upArrow}{fmtDelta(outliersDelta)} vs last</div>
         </div>

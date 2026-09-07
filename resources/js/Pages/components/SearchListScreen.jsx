@@ -18,7 +18,7 @@ const COPY = {
     placeholder: 'Which brand do you want to research?',
     sample: 'rhode skin',
     heroHint: 'One brand per search — we widen it with keywords next.',
-    moversNote: 'Best outlier across every brand you track.',
+    moversNote: 'Best breakout across every brand you track.',
     allHeading: 'All brand searches',
     filterPlaceholder: 'Filter brands',
   },
@@ -29,14 +29,14 @@ const COPY = {
     placeholder: 'Which product do you want to track?',
     sample: 'lip oil',
     heroHint: 'One product per search — we widen it with keywords next.',
-    moversNote: 'Best outlier across every product you track.',
+    moversNote: 'Best breakout across every product you track.',
     allHeading: 'All product searches',
     filterPlaceholder: 'Filter products',
   },
 };
 
 const SORT = {
-  outliers: 'Most outliers',
+  outliers: 'Most breakouts',
   top_score: 'Top score',
   recent: 'Recently updated',
   az: 'Name A-Z',
@@ -93,11 +93,11 @@ function BrandCard({ search, onOpen, onEdit }) {
         </div>
         <div>
           <span className="bcard__v">{latestOutliers}</span>
-          <span className="bcard__l">new outliers</span>
+          <span className="bcard__l">new breakouts</span>
         </div>
         <div>
           <span className="bcard__v">{topScore}</span>
-          <span className="bcard__l">top outlier video</span>
+          <span className="bcard__l">top breakout video</span>
         </div>
         <div>
           <span className="bcard__v">{averageVideoViews}</span>

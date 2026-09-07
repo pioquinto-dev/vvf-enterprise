@@ -53,7 +53,7 @@ export default function Login() {
 
     return (
         <>
-            <Head title="Admin Login - Outlier Vault" />
+            <Head title="Admin Login - Breakout Vault" />
 
             <div className="min-h-screen bg-[var(--canvas)] px-4 py-8 text-[var(--ink)] sm:px-6">
                 <style>{`@keyframes admin-login-drift { 0%, 100% { transform: translate3d(-4%, -3%, 0) scale(1); } 50% { transform: translate3d(5%, 4%, 0) scale(1.08); } } @keyframes admin-login-grid { 0% { transform: translate3d(0, 0, 0); } 100% { transform: translate3d(44px, 44px, 0); } }`}</style>

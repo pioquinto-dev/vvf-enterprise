@@ -122,7 +122,7 @@ export default function Free({ phrase = '', type = 'brand', error = null }) {
   const goLogin = () => stashAndGo('/login', 'login');
   const initials = (subject || '?').trim().replace(/[^a-zA-Z0-9]/g, '').slice(0, 2).toUpperCase() || '?';
   const kindLabel = kind === 'brand' ? 'Brand' : 'Product';
-  const stages = ['Pulling videos from TikTok', 'Filtering against your keywords', 'Scoring outliers vs creator baseline', 'Ranking your top breakouts'];
+  const stages = ['Pulling videos from TikTok', 'Filtering against your keywords', 'Scoring breakouts vs creator baseline', 'Ranking your top breakouts'];
   const visibleSuggestions = subjectSuggestions.filter((suggestion) => suggestion.label?.trim());
   const applySuggestion = (label) => {
     setSubject(label);

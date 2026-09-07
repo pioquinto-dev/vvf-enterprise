@@ -413,7 +413,7 @@ export default function Show({ search: initial, isAuthenticated = false, billing
                         {isSearchProcessing && (
                             <div className="bb-partial">
                                 {SparkIcon}
-                                <span>Early results — ranking and outlier scores keep updating until the scan finishes.</span>
+                                <span>Early results — ranking and breakout scores keep updating until the scan finishes.</span>
                             </div>
                         )}
                     </>

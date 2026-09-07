@@ -293,10 +293,10 @@ export function PostingHeatmap({ heatmap }) {
 const GHOST_HEIGHTS = [34, 58, 42, 66, 50, 82];
 
 /**
- * Six-week outlier bars. An all-zero week set renders as ghost bars with an
+ * Six-week breakout bars. An all-zero week set renders as ghost bars with an
  * explanation instead of six zeros; on a first run that chart looks broken,
  * and the two reasons it can be empty deserve different sentences: either no
- * post has cleared the threshold at all, or the outliers exist but were
+ * post has cleared the threshold at all, or the breakouts exist but were
  * posted before the 12-week window this chart covers.
  */
 export function OutliersPerWeek({ bars = [], threshold = 3, totalOutliers = 0, nextRunLabel = null }) {
@@ -306,7 +306,7 @@ export function OutliersPerWeek({ bars = [], threshold = 3, totalOutliers = 0, n
   if (isEmpty) {
     return (
       <div className="panel">
-        <h3>outliers per week</h3>
+        <h3>breakouts per week</h3>
         <div className="psub">their posts scoring {outlierLabel(threshold) ?? '3x'} or higher</div>
 
         <div className="spark ghost" aria-hidden>
@@ -320,7 +320,7 @@ export function OutliersPerWeek({ bars = [], threshold = 3, totalOutliers = 0, n
 
         <p className="ghostnote">
           {totalOutliers > 0
-            ? `All ${totalOutliers} of their outliers were posted more than 12 weeks ago; this chart covers recent weeks only. It fills in as refreshes land.`
+            ? `All ${totalOutliers} of their breakouts were posted more than 12 weeks ago; this chart covers recent weeks only. It fills in as refreshes land.`
             : `Nothing has beaten ${outlierLabel(threshold) ?? '3x'} the search median yet. A bar appears the week a post breaks out${nextRunLabel ? ` - next check ${nextRunLabel}` : ''}.`}
         </p>
       </div>
@@ -329,7 +329,7 @@ export function OutliersPerWeek({ bars = [], threshold = 3, totalOutliers = 0, n
 
   return (
     <div className="panel">
-      <h3>outliers per week</h3>
+      <h3>breakouts per week</h3>
       <div className="psub">their posts scoring {outlierLabel(threshold) ?? '3x'} or higher</div>
 
       <div className="spark">
@@ -364,7 +364,7 @@ export function ScoreDistribution({ distribution = [] }) {
     <div className="panel">
       <h3>score distribution</h3>
       <div className="psub">
-        this search's {outliers} {outliers === 1 ? 'outlier' : 'outliers'}
+        this search's {outliers} {outliers === 1 ? 'breakout' : 'breakouts'}
       </div>
 
       <div className="dist">

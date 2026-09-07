@@ -136,7 +136,7 @@ function whyDrivers(result) {
     return result.content_breakdown.map((item, index) => ({
       id: index,
       rank: String(index + 1).padStart(2, '0'),
-      title: item?.title || item?.driver || item?.label || 'Outlier signal',
+      title: item?.title || item?.driver || item?.label || 'Breakout signal',
       body: item?.explanation || item?.reason || String(item),
       uplift: item?.uplift || item?.delta || item?.impact || null,
     }));
@@ -651,7 +651,7 @@ function WhyTab({ result, video }) {
   const drivers = whyDrivers(result);
   // Same source as the sidebar chips, so the panel and the numbers agree.
   const score = breakoutScore(video);
-  const subtitle = score ? `${formatMetric(score)}x Breakout Score` : 'Outlier drivers';
+  const subtitle = score ? `${formatMetric(score)}x Breakout Score` : 'Breakout drivers';
 
   return (
     <PanelShell
@@ -664,7 +664,7 @@ function WhyTab({ result, video }) {
         </svg>
       }
     >
-      <div className="mb-3 text-[10px] font-bold uppercase tracking-[0.1em] text-[#8c8579]">Top outlier drivers</div>
+      <div className="mb-3 text-[10px] font-bold uppercase tracking-[0.1em] text-[#8c8579]">Top breakout drivers</div>
       <div className="space-y-3">
         {drivers.map((item) => (
           <article key={item.id} className="min-w-0 rounded-[12px] border border-[#ddd6ca] bg-white px-3.5 py-3 min-[640px]:px-4">

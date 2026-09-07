@@ -378,8 +378,8 @@ export default function SearchWizard({
                     eyebrow="Search credits"
                     title={(billing.trialEligible ?? true) && !(billing.hasUsedTrial ?? false) ? 'Start your 8-day Growth trial' : 'Upgrade to unlock more searches'}
                     body={(billing.trialEligible ?? true) && !(billing.hasUsedTrial ?? false)
-                        ? "You've already used the search credits on Free. Start your trial to keep finding new outliers."
-                        : "You've already used the search credits available on your current plan. Upgrade to Growth or Scale to keep finding new outliers."}
+                        ? "You've already used the search credits on Free. Start your trial to keep finding new breakouts."
+                        : "You've already used the search credits available on your current plan. Upgrade to Growth or Scale to keep finding new breakouts."}
                     primaryLabel={(billing.trialEligible ?? true) && !(billing.hasUsedTrial ?? false) ? 'Start 8-day Growth trial' : 'Upgrade to Growth'}
                     onPrimary={() => {
                         if ((billing.trialEligible ?? true) && !(billing.hasUsedTrial ?? false)) {

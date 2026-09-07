@@ -508,8 +508,8 @@ export default function BrandInlineFlow({
           eyebrow="Search credits"
           title={shouldOfferTrial ? 'Start your 8-day Growth trial' : 'Upgrade to unlock more searches'}
           body={shouldOfferTrial
-            ? "You've already used the search credits on Free. Start your trial to keep finding new outliers."
-            : "You've already used the search credits available on your current plan. Upgrade to Growth or Scale to keep finding new outliers."}
+            ? "You've already used the search credits on Free. Start your trial to keep finding new breakouts."
+            : "You've already used the search credits available on your current plan. Upgrade to Growth or Scale to keep finding new breakouts."}
           primaryLabel={shouldOfferTrial ? 'Start 8-day Growth trial' : 'Upgrade to Growth'}
           onPrimary={() => (shouldOfferTrial ? billingApi.trialCheckout('growth') : router.visit('/plans'))}
           onClose={() => setUpgradeModalOpen(false)}
@@ -603,7 +603,7 @@ export default function BrandInlineFlow({
                 </div>
               </div>
               <button type="submit" className="bif__cta" disabled={!subject.trim()}>
-                <Search className="h-4 w-4" /> Find outliers
+                <Search className="h-4 w-4" /> Find breakouts
               </button>
             </form>
             <p className="bif__hint">
@@ -756,7 +756,7 @@ export default function BrandInlineFlow({
             <div>
               <h3>{searchResult.name || subject} is ready</h3>
               <p>
-                {searchResult.outlier_count ?? 0} outlier{(searchResult.outlier_count ?? 0) === 1 ? '' : 's'} this week
+                {searchResult.outlier_count ?? 0} breakout{(searchResult.outlier_count ?? 0) === 1 ? '' : 's'} this week
                 {searchResult.top_score ? ` · top score ${Math.round(searchResult.top_score)}×` : ''}
                 {searchResult.result_count != null ? ` · ${searchResult.result_count} videos scanned` : ''}
               </p>

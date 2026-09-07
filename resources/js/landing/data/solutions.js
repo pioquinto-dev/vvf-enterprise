@@ -45,11 +45,11 @@ export const SOLUTIONS = {
     intro: 'A large view count alone does not tell you what is unusual. Brand Beacon helps you find videos performing well above a creator\'s typical baseline.',
     searchType: 'brand',
     searchLabel: 'Monitor a topic',
-    signal: ['Outlier performance signals', 'Fresh videos around a defined subject', 'Creator, format, and caption context'],
+    signal: ['Breakout performance signals', 'Fresh videos around a defined subject', 'Creator, format, and caption context'],
     workflow: [
       ['Define the subject to watch', 'Set a brand, product, or category phrase that gives the monitoring workflow a clear frame.'],
       ['Collect relevant videos', 'Use supporting context to improve relevance while keeping the search broad enough to surface unexpected creative.'],
-      ['Rank by unusual performance', 'Review the strongest outliers first, then use the surrounding creator and post context to decide what matters.'],
+      ['Rank by unusual performance', 'Review the strongest breakouts first, then use the surrounding creator and post context to decide what matters.'],
     ],
     outcomes: ['Spend less time sorting through ordinary high-view content.', 'Catch unusual momentum while it is still useful to your team.', 'Build a more consistent source of creative and category intelligence.'],
   },
