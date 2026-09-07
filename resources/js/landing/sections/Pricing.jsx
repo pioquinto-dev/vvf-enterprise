@@ -32,8 +32,8 @@ export default function Pricing({ plans = [], onStart, onTrial }) {
       <div className="wrap">
         <div className="head head--c">
           <p className="eyebrow">Pricing</p>
-          <h2>Simple, per-search pricing</h2>
-          <p>Start with one free search. Upgrade when you want tracking on a schedule.</p>
+          <h2>Start with one free search</h2>
+          <p>Create an account to run one free search. No credit card required. For ongoing tracking, choose a subscription plan.</p>
           <div className="toggle">
             <button className={billingCycle === 'monthly' ? 'is-on' : ''} type="button" onClick={() => setBillingCycle('monthly')}>
               Monthly
@@ -54,11 +54,11 @@ export default function Pricing({ plans = [], onStart, onTrial }) {
                 <p className="plan__t">{plan.tagline}</p>
                 <div className="plan__p">
                   {free ? '$0' : displayedMonthlyRate(plan)}
-                  <span>/mo</span>
+                  {!free && <span>/mo</span>}
                 </div>
                 <p className="plan__s">
                   {free
-                    ? ''
+                    ? '1 free search after signup · No credit card required'
                     : billingCycle === 'annual'
                       ? annualBillingNote(plan)
                       : '$0 for 8 days'}
@@ -95,8 +95,8 @@ export default function Pricing({ plans = [], onStart, onTrial }) {
           <div>
             <h3>Start an 8-day Growth trial</h3>
             <p>
-              Try the full Growth plan for 8 days. Card details are collected up front, and billing starts only after the
-              trial ends unless you cancel.
+              Try Growth free for 8 days. A credit card is required. Your selected subscription starts automatically
+              when the trial ends unless you cancel beforehand.
             </p>
           </div>
           <button

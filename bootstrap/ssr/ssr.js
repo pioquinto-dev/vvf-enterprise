@@ -9915,8 +9915,16 @@ var FAQS = [
 		a: "A video with 4 million views from a creator with 4 million followers is great, but a video with 4 million views from a creator with 4 thousand followers is something to pay attention to. Breakouts are videos that outperform their creator's average. That's what we want to track."
 	},
 	{
+		q: "Is the free search a trial?",
+		a: "No. Your account includes one free search with no credit card required. Starting an 8-day subscription trial is a separate, optional step. A credit card is required for the trial."
+	},
+	{
 		q: "What happens after the 8-day trial?",
-		a: "1 day after your search updates, we'll email that your searches refreshed and let you know you'll be billed."
+		a: "Unless you cancel before the trial ends, we automatically charge your card for the plan and billing cycle you selected at checkout. Monthly plans are billed monthly; annual plans are billed annually."
+	},
+	{
+		q: "How do I cancel my trial?",
+		a: "Go to Settings → Subscription and cancel before your trial ends to avoid the subscription charge."
 	},
 	{
 		q: "Is the data real-time?",
@@ -10778,8 +10786,8 @@ function Pricing({ plans = [], onStart, onTrial }) {
 							className: "eyebrow",
 							children: "Pricing"
 						}),
-						/* @__PURE__ */ jsx("h2", { children: "Simple, per-search pricing" }),
-						/* @__PURE__ */ jsx("p", { children: "Start with one free search. Upgrade when you want tracking on a schedule." }),
+						/* @__PURE__ */ jsx("h2", { children: "Start with one free search" }),
+						/* @__PURE__ */ jsx("p", { children: "Create an account to run one free search. No credit card required. For ongoing tracking, choose a subscription plan." }),
 						/* @__PURE__ */ jsxs("div", {
 							className: "toggle",
 							children: [/* @__PURE__ */ jsx("button", {
@@ -10817,11 +10825,11 @@ function Pricing({ plans = [], onStart, onTrial }) {
 								}),
 								/* @__PURE__ */ jsxs("div", {
 									className: "plan__p",
-									children: [free ? "$0" : displayedMonthlyRate(plan), /* @__PURE__ */ jsx("span", { children: "/mo" })]
+									children: [free ? "$0" : displayedMonthlyRate(plan), !free && /* @__PURE__ */ jsx("span", { children: "/mo" })]
 								}),
 								/* @__PURE__ */ jsx("p", {
 									className: "plan__s",
-									children: free ? "" : billingCycle === "annual" ? annualBillingNote(plan) : "$0 for 8 days"
+									children: free ? "1 free search after signup · No credit card required" : billingCycle === "annual" ? annualBillingNote(plan) : "$0 for 8 days"
 								}),
 								/* @__PURE__ */ jsx("ul", { children: plan.features.map((feature) => /* @__PURE__ */ jsxs("li", { children: [/* @__PURE__ */ jsx(Check, { className: "h-[15px] w-[15px]" }), feature] }, feature)) }),
 								free ? /* @__PURE__ */ jsx("button", {
@@ -10841,7 +10849,7 @@ function Pricing({ plans = [], onStart, onTrial }) {
 				}),
 				/* @__PURE__ */ jsxs("div", {
 					className: "trial",
-					children: [/* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsx("h3", { children: "Start an 8-day Growth trial" }), /* @__PURE__ */ jsx("p", { children: "Try the full Growth plan for 8 days. Card details are collected up front, and billing starts only after the trial ends unless you cancel." })] }), /* @__PURE__ */ jsx("button", {
+					children: [/* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsx("h3", { children: "Start an 8-day Growth trial" }), /* @__PURE__ */ jsx("p", { children: "Try Growth free for 8 days. A credit card is required. Your selected subscription starts automatically when the trial ends unless you cancel beforehand." })] }), /* @__PURE__ */ jsx("button", {
 						type: "button",
 						className: "btn btn--ink",
 						style: { flex: "none" },
@@ -10919,7 +10927,7 @@ function FinalCta({ onStart }) {
 				}),
 				/* @__PURE__ */ jsx("p", {
 					className: "final__n",
-					children: "No credit card required · cancel any trial in two clicks"
+					children: "1 free search after signup · No credit card required"
 				})
 			]
 		})

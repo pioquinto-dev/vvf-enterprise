@@ -302,8 +302,16 @@ export const FAQS = [
 //		a: "Because raw data is only the starting point. The real work is reliable collection, media preservation, normalization, deduplication, ranking, historical comparison, and constant maintenance as upstream platforms change. That operational layer is what makes the product useful, and much harder to reproduce than it looks."
 //	},
   {
+    q: 'Is the free search a trial?',
+    a: 'No. Your account includes one free search with no credit card required. Starting an 8-day subscription trial is a separate, optional step. A credit card is required for the trial.',
+  },
+  {
     q: 'What happens after the 8-day trial?',
-    a: "1 day after your search updates, we'll email that your searches refreshed and let you know you'll be billed.",
+    a: 'Unless you cancel before the trial ends, we automatically charge your card for the plan and billing cycle you selected at checkout. Monthly plans are billed monthly; annual plans are billed annually.',
+  },
+  {
+    q: 'How do I cancel my trial?',
+    a: 'Go to Settings → Subscription and cancel before your trial ends to avoid the subscription charge.',
   },
   {
     q: 'Is the data real-time?',

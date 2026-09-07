@@ -22,7 +22,7 @@ export default function FinalCta({ onStart }) {
           </button>
           */}
         </div>
-        <p className="final__n">No credit card required · cancel any trial in two clicks</p>
+        <p className="final__n">1 free search after signup · No credit card required</p>
       </div>
     </section>
   );
