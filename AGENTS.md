@@ -295,6 +295,7 @@ Important:
 
 - `user_activities` is an append-only activity ledger for sign ups, subscriptions, engagement, and account deletion events.
 - The admin dashboard previews the five most recent records. `/x/admin/activity` provides the complete, paginated activity ledger. Activity starts collecting from deployment; it is not backfilled.
+- Dashboard activity filters use their own five-row category previews; never filter only the globally truncated five-row “All” list.
 
 ## Core domain concepts
 

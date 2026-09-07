@@ -300,7 +300,9 @@ const ACTIVITY_FILTERS = [
 
 function RecentActivity({ activity = {} }) {
     const [filter, setFilter] = useState('all');
-    const rows = (activity.rows ?? []).filter((row) => filter === 'all' || row.category === filter);
+    const rows = filter === 'all'
+        ? (activity.rows ?? [])
+        : (activity.byCategory?.[filter] ?? (activity.rows ?? []).filter((row) => row.category === filter));
 
     return (
         <section className="rounded-2xl border border-[#dce4f0] bg-[linear-gradient(135deg,_#ffffff_0%,_#f6f9ff_100%)] p-4 shadow-[0_18px_42px_-32px_rgba(50,85,150,.45)] sm:p-5">
