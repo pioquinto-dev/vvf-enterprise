@@ -1773,8 +1773,8 @@ function UpgradeModal({ mode = 'analysis', trialEligible = true, hasUsedTrial = 
         ? 'Start your 8-day Growth trial to manage this search'
         : 'Upgrade to manage this search'
       : shouldOfferTrial
-        ? 'Start your 8-day Growth trial to unlock more analysis credits'
-        : 'Upgrade to unlock more analysis credits';
+        ? 'Turn more breakouts into winning creative'
+        : 'Turn every breakout into your next winning creative';
   const body = isSearchBookmark
     ? shouldOfferTrial
       ? 'Free searches do not include saved search bookmarks. Start your 8-day Growth trial to save searches to your bookmarks.'
@@ -1784,15 +1784,19 @@ function UpgradeModal({ mode = 'analysis', trialEligible = true, hasUsedTrial = 
         ? 'Start your 8-day Growth trial to pause, resume, or delete tracked searches from your dashboard.'
         : 'Upgrade to Growth or Scale to pause, resume, or delete tracked searches from your dashboard.'
       : shouldOfferTrial
-        ? 'Free searches include the top-video breakdown. Start your 8-day Growth trial to analyze more breakouts.'
-        : 'Free searches include the top-video breakdown. Upgrade to Growth or Scale to analyze more breakouts.';
-  const ctaLabel = shouldOfferTrial ? 'Start 8-day Growth trial' : 'Upgrade to Growth';
+        ? 'See the hook, angle, and strategy behind more high-performing videos during your 8-day Growth trial.'
+        : 'See the hook, angle, and strategy behind more high-performing videos—then turn those insights into content faster.';
+  const ctaLabel = isSearchBookmark || isSearchManagement
+    ? shouldOfferTrial ? 'Start 8-day Growth trial' : 'Upgrade to Growth'
+    : shouldOfferTrial ? 'Analyze more free for 8 days' : 'Unlock more video analysis';
 
   return (
     <UpgradePromptModal
       eyebrow={eyebrowLabel}
       title={title}
       body={body}
+      visual={!isSearchBookmark && !isSearchManagement ? 'video-analysis' : null}
+      emphasis={!isSearchBookmark && !isSearchManagement ? 'Your free top-video breakdown stays included.' : null}
       primaryLabel={ctaLabel}
       onPrimary={onUpgrade}
       onClose={onClose}

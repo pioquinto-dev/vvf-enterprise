@@ -505,12 +505,13 @@ export default function BrandInlineFlow({
 
       {upgradeModalOpen && (
         <UpgradePromptModal
-          eyebrow="Search credits"
-          title={shouldOfferTrial ? 'Start your 8-day Growth trial' : 'Upgrade to unlock more searches'}
+          eyebrow="Keep your momentum"
+          title="Ready to find your next breakout?"
           body={shouldOfferTrial
-            ? "You've already used the search credits on Free. Start your trial to keep finding new breakouts."
-            : "You've already used the search credits available on your current plan. Upgrade to Growth or Scale to keep finding new breakouts."}
-          primaryLabel={shouldOfferTrial ? 'Start 8-day Growth trial' : 'Upgrade to Growth'}
+            ? 'Turn your first signal into a repeatable edge with Growth.'
+            : 'Keep spotting breakout content before the trend moves on.'}
+          visual="search-momentum"
+          primaryLabel={shouldOfferTrial ? 'Start my 8-day trial' : 'Unlock more searches'}
           onPrimary={() => (shouldOfferTrial ? billingApi.trialCheckout('growth') : router.visit('/plans'))}
           onClose={() => setUpgradeModalOpen(false)}
         />

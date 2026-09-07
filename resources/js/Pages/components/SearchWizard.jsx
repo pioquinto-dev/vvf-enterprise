@@ -122,6 +122,7 @@ export default function SearchWizard({
     const searchUsed = billing.searchCreditsUsed ?? 0;
     const searchRemainingAfterUse = searchLimit === -1 ? 'unlimited' : Math.max(0, searchLimit - searchUsed - 1);
     const searchCreditsAvailable = !signedIn || searchLimit === -1 || searchRemaining > 0;
+    const shouldOfferTrial = (billing.trialEligible ?? true) && !(billing.hasUsedTrial ?? false);
 
     const stampUrl = (id) => {
         if (typeof window === 'undefined') return;
@@ -375,14 +376,15 @@ export default function SearchWizard({
 
             {upgradeModalOpen && (
                 <UpgradePromptModal
-                    eyebrow="Search credits"
-                    title={(billing.trialEligible ?? true) && !(billing.hasUsedTrial ?? false) ? 'Start your 8-day Growth trial' : 'Upgrade to unlock more searches'}
-                    body={(billing.trialEligible ?? true) && !(billing.hasUsedTrial ?? false)
-                        ? "You've already used the search credits on Free. Start your trial to keep finding new breakouts."
-                        : "You've already used the search credits available on your current plan. Upgrade to Growth or Scale to keep finding new breakouts."}
-                    primaryLabel={(billing.trialEligible ?? true) && !(billing.hasUsedTrial ?? false) ? 'Start 8-day Growth trial' : 'Upgrade to Growth'}
+                    eyebrow="Keep your momentum"
+                    title="Ready to find your next breakout?"
+                    body={shouldOfferTrial
+                        ? 'Turn your first signal into a repeatable edge with Growth.'
+                        : 'Keep spotting breakout content before the trend moves on.'}
+                    visual="search-momentum"
+                    primaryLabel={shouldOfferTrial ? 'Start my 8-day trial' : 'Unlock more searches'}
                     onPrimary={() => {
-                        if ((billing.trialEligible ?? true) && !(billing.hasUsedTrial ?? false)) {
+                        if (shouldOfferTrial) {
                             billingApi.trialCheckout('growth');
                         } else {
                             router.visit('/plans');

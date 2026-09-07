@@ -302,34 +302,23 @@ function SearchProcessingModal({ searches, onClose }) {
 function SearchAccessPromptModal({ prompt, billing, onClose, onUpgrade }) {
   if (!prompt) return null;
 
-  if (prompt.reason === 'public_free_search_unavailable') {
-    return (
-      <UpgradePromptModal
-        eyebrow="Free Search"
-        title="This free search is unavailable"
-        body={prompt.message}
-        primaryLabel="Got it"
-        secondaryLabel={null}
-        onPrimary={onClose}
-        onClose={onClose}
-      />
-    );
-  }
-
   const trialEligible = billing?.trialEligible ?? true;
   const hasUsedTrial = billing?.hasUsedTrial ?? false;
-  const ctaLabel = trialEligible && !hasUsedTrial ? 'Start 8-day trial' : 'View Growth plan';
-  const body = trialEligible && !hasUsedTrial
-    ? 'You are out of search credits. Start your 8-day trial to unlock more searches.'
-    : 'You are out of search credits. Upgrade to Growth to keep searching.';
+  const shouldOfferTrial = trialEligible && !hasUsedTrial;
+  const ctaLabel = shouldOfferTrial ? 'Start my 8-day trial' : 'Unlock more searches';
+  const body = shouldOfferTrial
+    ? 'Turn your first signal into a repeatable edge with Growth.'
+    : 'Keep spotting breakout content before the trend moves on.';
 
   return (
     <UpgradePromptModal
-      eyebrow="Search credits"
-      title="Free search already used"
+      eyebrow="Keep your momentum"
+      title="Ready to find your next breakout?"
       body={body}
+      visual="search-momentum"
       primaryLabel={ctaLabel}
       onPrimary={onUpgrade}
+      secondaryLabel="Maybe later"
       onClose={onClose}
     />
   );

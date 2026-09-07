@@ -53,9 +53,26 @@ function Sel({ value, onChange, ariaLabel, children }) {
   );
 }
 
+function cardIdentity(search) {
+  const title = String(search.name || search.phrase || 'Untitled search').trim();
+  const phrase = String(search.phrase || '').trim();
+  const sameAsTitle = title.localeCompare(phrase, undefined, { sensitivity: 'base' }) === 0;
+
+  if (phrase && !sameAsTitle) {
+    return { title, context: `Searching “${phrase}”` };
+  }
+
+  const cadence = search.frequency === 'monthly' ? 'Monthly refresh' : 'Weekly refresh';
+  const keywordCount = Array.isArray(search.keywords) ? search.keywords.length : 0;
+  const coverage = keywordCount > 0 ? `${keywordCount} keyword${keywordCount === 1 ? '' : 's'}` : 'Focused tracking';
+
+  return { title, context: `${cadence} · ${coverage}` };
+}
+
 function BrandCard({ search, onOpen, onEdit }) {
   const status = STATUS[search.status] ?? { label: 'Ready', cls: 'pill--off' };
-  const initials = (search.name || search.phrase || '?').slice(0, 2).toUpperCase();
+  const identity = cardIdentity(search);
+  const initials = identity.title.slice(0, 2).toUpperCase();
   const topScore = Number(search.top_score) > 0 ? `${Math.round(search.top_score)}x` : '—';
   const videosScanned = search.videos_scanned != null ? compact(search.videos_scanned) : '0';
   const latestOutliers = search.latest_outlier_count != null ? compact(search.latest_outlier_count) : '0';
@@ -78,8 +95,8 @@ function BrandCard({ search, onOpen, onEdit }) {
       <div className="bcard__top">
         <span className="bcard__av">{initials}</span>
         <span style={{ minWidth: 0 }}>
-          <span className="bcard__n">{search.name}</span>
-          <span className="bcard__h">{search.phrase}</span>
+          <span className="bcard__n">{identity.title}</span>
+          <span className="bcard__h">{identity.context}</span>
         </span>
         <span className={`pill ${status.cls}`}>
           <i />
