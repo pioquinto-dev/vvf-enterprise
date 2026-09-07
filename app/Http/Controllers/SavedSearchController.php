@@ -23,6 +23,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\RateLimiter;
 use Inertia\Inertia;
@@ -206,7 +207,135 @@ class SavedSearchController extends Controller
         return Inertia::render('Search/Running', [
             'searchId' => $search->id,
             'search' => SavedSearchPresenter::summary($search),
+            'examples' => $this->freeSearchShowcase(),
         ]);
+    }
+
+    /**
+     * Real breakout videos featured as examples on the cold-free-user
+     * "while you wait" screen (M4 / M4b). Top scorers from the corpus that
+     * already carry content analysis, so the Hook / Format / Angle rows are
+     * populated. One card per creator, capped at five, cached briefly since it
+     * is identical for every visitor.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    private function freeSearchShowcase(): array
+    {
+        return Cache::remember('free_search_showcase_v1', 600, function (): array {
+            $videos = ViralVideo::query()
+                ->visible()
+                ->whereNotNull('content_hook')
+                ->where('virality_score', '>', 3)
+                ->orderByDesc('virality_score')
+                ->limit(24)
+                ->get();
+
+            $seen = [];
+            $cards = [];
+
+            foreach ($videos as $video) {
+                $creator = strtolower((string) $video->username);
+
+                if ($creator !== '' && isset($seen[$creator])) {
+                    continue;
+                }
+
+                $seen[$creator] = true;
+                $cards[] = $this->showcaseCard($video);
+
+                if (count($cards) >= 5) {
+                    break;
+                }
+            }
+
+            return $cards;
+        });
+    }
+
+    /** @return array<string, mixed> */
+    private function showcaseCard(ViralVideo $video): array
+    {
+        $score = (float) $video->virality_score;
+        $views = (float) $video->views;
+        $usual = $score > 1 ? $views / $score : null;
+        $multiplier = $score > 0 ? round($score).'x' : null;
+        $engagement = $video->engagementRate();
+
+        $rows = [];
+        foreach ([['Hook', $video->content_hook], ['Format', $video->content_format], ['Angle', $video->content_angle]] as [$label, $text]) {
+            if (filled($text)) {
+                $rows[] = ['label' => $label, 'text' => $text];
+            }
+        }
+
+        $hashtags = is_array($video->hashtags) ? $video->hashtags : [];
+        $tag = isset($hashtags[0]) ? ltrim((string) $hashtags[0], '#') : null;
+
+        $stats = array_values(array_filter([
+            ['label' => 'Views', 'value' => $this->compactNumber($views)],
+            $usual !== null ? ['label' => 'Their usual', 'value' => $this->compactNumber($usual)] : null,
+            $multiplier !== null ? ['label' => 'Beat their own account by', 'value' => $multiplier, 'accent' => true] : null,
+            $engagement !== null ? ['label' => 'Engagement rate', 'value' => rtrim(rtrim(number_format($engagement, 1), '0'), '.').'%'] : null,
+        ]));
+
+        return [
+            'id' => 'v'.$video->id,
+            'handle' => $video->username ? '@'.ltrim((string) $video->username, '@') : null,
+            'tag' => $tag !== '' ? $tag : null,
+            'caption' => $video->title,
+            'score' => $multiplier,
+            'thumbnail' => $video->thumbnail_url ?: $video->cover,
+            'gradient' => $this->showcaseGradient((string) $video->id),
+            'summary' => $this->showcaseSummary($views, $usual),
+            'rows' => $rows,
+            'stats' => $stats,
+            'beats' => null,
+            'post_url' => $video->post_url,
+        ];
+    }
+
+    private function showcaseSummary(float $views, ?float $usual): string
+    {
+        if ($usual === null || $usual <= 0) {
+            return number_format($views).' views.';
+        }
+
+        return number_format($views).' views, off an account that normally does '.number_format(round($usual)).'.';
+    }
+
+    private function compactNumber(float $number): string
+    {
+        if ($number >= 1_000_000) {
+            return rtrim(rtrim(number_format($number / 1_000_000, 1), '0'), '.').'M';
+        }
+
+        if ($number >= 1_000) {
+            return rtrim(rtrim(number_format($number / 1_000, 1), '0'), '.').'K';
+        }
+
+        return (string) (int) round($number);
+    }
+
+    /** Stable placeholder gradient behind a card when a thumbnail is missing. */
+    private function showcaseGradient(string $seed): string
+    {
+        $palettes = [
+            'linear-gradient(150deg,#3a2b6b,#6a3ca8 55%,#c07a9a)',
+            'linear-gradient(150deg,#2f3d2b,#4a5c3a 55%,#7aa060)',
+            'linear-gradient(150deg,#5c1030,#a8324f 55%,#ff8fb0)',
+            'linear-gradient(150deg,#0f3d5c,#2a6f9c 55%,#7ab6d8)',
+            'linear-gradient(150deg,#4a2b1a,#8a5230 55%,#d69a6a)',
+            'linear-gradient(150deg,#1a2f4a,#30528a 55%,#6a8fd6)',
+        ];
+
+        $hash = 0;
+        $length = strlen($seed);
+        for ($i = 0; $i < $length; $i++) {
+            $hash = ($hash * 31 + ord($seed[$i])) & 0x7fffffff;
+        }
+
+        return $palettes[$hash % count($palettes)];
     }
 
     /** GET /saved-searches/notifications?ids[]=1 — what the running screen polls. */

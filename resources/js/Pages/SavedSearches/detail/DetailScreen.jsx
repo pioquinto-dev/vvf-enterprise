@@ -417,12 +417,86 @@ const Icons = {
   Plus:      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round"><path d="M12 5v14M5 12h14" /></svg>,
 };
 
+/* ------------- live-run (M20/M20b/M20c) pieces ------------- */
+
+// The five visible passes of a paid run. While the run is live the ticker
+// advances through the first three and holds on "Analyzing" — scoring and the
+// final polish only tick over to done once the real run completes.
+const PROC_STEPS = [
+  'Scanning TikTok’s videos for your selected keywords',
+  'Pulling video and creator information',
+  'Analyzing videos with our AI agents',
+  'Scoring each video and extracting winners',
+  'Making it look pretty for you',
+];
+
+const ProcCheck = (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12.5l4.6 4.5L19 7" /></svg>
+);
+
+/** The M20 processing panel — a spinner, the time estimate, a sweeping bar,
+ * and the five-step checklist. Sits under the brand header while a run is live. */
+function ProcessingPanel({ panelRef, step }) {
+  return (
+    <div className="rs-proc" ref={panelRef}>
+      <div className="rs-proc__top">
+        <span className="rs-spin" aria-hidden>
+          <svg viewBox="0 0 108 108">
+            <defs>
+              <linearGradient id="rs-proc-g" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0" stopColor="#ffd84d" />
+                <stop offset="1" stopColor="#ff9f1c" />
+              </linearGradient>
+            </defs>
+            <circle className="rs-spin__tr" cx="54" cy="54" r="46" />
+            <circle className="rs-spin__arc" cx="54" cy="54" r="46" />
+          </svg>
+          <i />
+        </span>
+        <span className="rs-proc__copy">
+          <h2>Let us do our thing&hellip;</h2>
+          <span className="rs-proc__lede">1 to 5 minutes, mostly around 2 minutes.</span>
+        </span>
+      </div>
+      <div className="rs-sweep" aria-hidden><i /></div>
+      <div className="rs-proc__steps">
+        {PROC_STEPS.map((label, i) => {
+          const state = i < step ? 'done' : i === step ? 'now' : 'wait';
+          return (
+            <span key={label} className={`rs-tick rs-tick--${state}`}>
+              <span className="rs-tick__d">{state === 'wait' ? '•' : ProcCheck}</span>
+              {label}
+              {state === 'now' && (
+                <span className="rs-tick__c" aria-hidden>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round"><path d="M12 3.4a8.6 8.6 0 1 0 8.6 8.6" /></svg>
+                </span>
+              )}
+            </span>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+/** A shimmering placeholder standing in for a section whose data needs the
+ * full dataset before it can be computed. */
+function SkeletonSection({ title, height = 140 }) {
+  return (
+    <>
+      <div className="rs-sh"><h2>{title}</h2><span className="rs-sofar"><i />waiting</span></div>
+      <div className="rs-skcard"><span className="rs-sk" style={{ width: '100%', height }} /></div>
+    </>
+  );
+}
+
 /* ============================ COMPONENT ============================ */
 
 export default function DetailScreen({
   search,
   isAuthenticated = false,
   billing,
+  processing = false,
   refreshing = false,
   bookmarkUpdating = false,
   onRefresh,
@@ -465,6 +539,58 @@ export default function DetailScreen({
   const menuTopRef = useRef(null);
   const menuHeaderRef = useRef(null);
   const autoOpenedAnalysisRef = useRef(false);
+
+  /* ---- live-run (M20/M20b/M20c) orchestration ---- */
+  const procPanelRef = useRef(null);
+  const [procStep, setProcStep] = useState(processing ? 0 : PROC_STEPS.length);
+  const [panelOut, setPanelOut] = useState(false);
+  const [landedBarOpen, setLandedBarOpen] = useState(false);
+  const wasProcessingRef = useRef(processing);
+
+  // Pace the visible checklist forward while the run is live, holding on the
+  // "Analyzing" pass (index 2) until completion marks everything done.
+  useEffect(() => {
+    if (!processing) {
+      setProcStep(PROC_STEPS.length);
+      return undefined;
+    }
+    setProcStep(0);
+    const timer = window.setInterval(() => setProcStep((i) => (i < 2 ? i + 1 : i)), 9000);
+    return () => window.clearInterval(timer);
+  }, [processing]);
+
+  // When polling flips the run from processing → done, raise the green
+  // completion bar (M20c) until the visitor dismisses it.
+  useEffect(() => {
+    if (wasProcessingRef.current && !processing) setLandedBarOpen(true);
+    wasProcessingRef.current = processing;
+  }, [processing]);
+
+  // The amber runbar (M20b) only appears once the processing panel has
+  // scrolled out of view.
+  useEffect(() => {
+    const el = procPanelRef.current;
+    if (!processing || !el || typeof IntersectionObserver === 'undefined') {
+      setPanelOut(false);
+      return undefined;
+    }
+    // Reveal the runbar exactly as the panel slides under the app shell's
+    // sticky top bar. That bar is display:none on desktop (offsetHeight 0), so
+    // this collapses to an 8px nudge there and to ~the bar height on mobile.
+    const topBar = typeof document !== 'undefined' ? document.querySelector('.bb-top') : null;
+    const topInset = (topBar?.offsetHeight || 0) + 8;
+    const observer = new IntersectionObserver(
+      ([entry]) => setPanelOut(!entry.isIntersecting),
+      { threshold: 0, rootMargin: `-${topInset}px 0px 0px 0px` },
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [processing]);
+
+  const scrollToTop = () => {
+    if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   const canAnalyzeMoreOutliers = canUsePaidVideoAnalysis(billing);
   const canBookmarkSearch = canUseSearchBookmarks(billing);
   const canManageCurrentSearch = canManageSearch(billing);
@@ -863,6 +989,37 @@ export default function DetailScreen({
     <>
       <style>{scopedCss}</style>
 
+      {/* sticky runbar — amber while scanning (M20b) */}
+      {processing && panelOut && (
+        <div className="rs-runbar" role="status" aria-live="polite">
+          <span className="rs-runbar__mini" aria-hidden>
+            <svg viewBox="0 0 24 24" fill="none" stroke="#ffc629" strokeWidth="2.4" strokeLinecap="round"><path d="M12 2.8a9.2 9.2 0 1 0 9.2 9.2" /></svg>
+          </span>
+          <span className="rs-runbar__bd">
+            <strong>Still scanning TikTok for {search?.name || search?.phrase || 'your search'}</strong>
+            <span>{PROC_STEPS[Math.min(procStep, PROC_STEPS.length - 1)]} · about a minute left</span>
+          </span>
+          <button type="button" className="rs-runbar__go" onClick={scrollToTop}>Back to top</button>
+        </div>
+      )}
+
+      {/* sticky runbar — green when it lands (M20c) */}
+      {landedBarOpen && (
+        <div className="rs-runbar rs-runbar--done" role="status" aria-live="polite">
+          <span className="rs-runbar__mini" aria-hidden style={{ display: 'grid', placeItems: 'center' }}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="#ffffff" strokeWidth="3.2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12.5l4.6 4.5L19 7" /></svg>
+          </span>
+          <span className="rs-runbar__bd">
+            <strong>{`All ${Number(videosInRun ?? 0).toLocaleString()} videos are in, ${Number(outlierCount ?? 0).toLocaleString()} of them broke out`}</strong>
+            <span>Everything below is the finished readout</span>
+          </span>
+          <button type="button" className="rs-runbar__go" onClick={scrollToTop}>Start from the top</button>
+          <button type="button" className="rs-runbar__x" onClick={() => setLandedBarOpen(false)} aria-label="Dismiss">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#ffffff" strokeWidth="2.6" strokeLinecap="round"><path d="M6 6l12 12M18 6L6 18" /></svg>
+          </button>
+        </div>
+      )}
+
       {/* top bar */}
       <div className="rs-viewbar">
         <button type="button" className="rs-tbtn" onClick={goBack}>{Icons.Back} Go back</button>
@@ -934,6 +1091,9 @@ export default function DetailScreen({
         </div>
       </div>
 
+      {/* PROCESSING PANEL (M20) */}
+      {processing && <ProcessingPanel panelRef={procPanelRef} step={procStep} />}
+
       {/* inline handle editor */}
       {handleEditing && (
         <div className="rs-hedit">
@@ -987,27 +1147,51 @@ export default function DetailScreen({
         </div>
       )}
 
+      {/* INSIGHTS skeleton while the run is still scoring (M20) */}
+      {processing && !(bullets.length > 0 || search?.ai_summary) && (
+        <div className="rs-ai">
+          <div className="rs-ai__h">
+            {Icons.Spark}
+            <span className="rs-ai__t">Insights</span>
+            <span className="rs-sofar"><i />waiting</span>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 12 }}>
+            <span className="rs-sk" style={{ width: '100%', height: 10 }} />
+            <span className="rs-sk" style={{ width: '92%', height: 10 }} />
+            <span className="rs-sk" style={{ width: '61%', height: 10 }} />
+          </div>
+        </div>
+      )}
+
       {/* STATS */}
       <div className="rs-stats">
         <div className="rs-stt">
           <span className="rs-stt__k">Breakouts found</span>
           <span className="rs-stt__v">{Number(outlierCount ?? 0).toLocaleString()}</span>
-          <span className="rs-stt__d up">{Icons.UpTrend}<span>{outlierCount ?? 0} this cycle</span></span>
+          {processing
+            ? <span className="rs-sofar"><i />so far</span>
+            : <span className="rs-stt__d up">{Icons.UpTrend}<span>{outlierCount ?? 0} this cycle</span></span>}
         </div>
         <div className="rs-stt">
           <span className="rs-stt__k">Videos in this search</span>
           <span className="rs-stt__v">{Number(videosInRun ?? 0).toLocaleString()}</span>
-          <span className="rs-stt__d">{search?.last_run_at ? `all from the ${formatDate(search.last_run_at)} refresh` : 'this run'}</span>
+          {processing
+            ? <span className="rs-sofar"><i />so far</span>
+            : <span className="rs-stt__d">{search?.last_run_at ? `all from the ${formatDate(search.last_run_at)} refresh` : 'this run'}</span>}
         </div>
         <div className="rs-stt hi">
           <span className="rs-stt__k">Top Breakout Score</span>
           <span className="rs-stt__v">{compact(topBreakoutScore)}<small>×</small></span>
-          <span className="rs-stt__d">{medianViews ? `vs ${compact(medianViews)} median views` : '—'}</span>
+          {processing
+            ? <span className="rs-sofar rs-sofar--flat"><i />can still rise</span>
+            : <span className="rs-stt__d">{medianViews ? `vs ${compact(medianViews)} median views` : '—'}</span>}
         </div>
         <div className="rs-stt">
           <span className="rs-stt__k">Avg engagement rate</span>
-          <span className="rs-stt__v">{avgEng != null ? Number(avgEng).toFixed(1) : '—'}<small>%</small></span>
-          <span className="rs-stt__d">across {results.length} videos</span>
+          {processing && avgEng == null
+            ? <span className="rs-sk" style={{ width: '66%', height: 18, marginTop: 3 }} />
+            : <span className="rs-stt__v">{avgEng != null ? Number(avgEng).toFixed(1) : '—'}<small>%</small></span>}
+          {!processing && <span className="rs-stt__d">across {results.length} videos</span>}
         </div>
       </div>
 
@@ -1029,7 +1213,7 @@ export default function DetailScreen({
           <div className="rs-sh"><h2>Breakout videos</h2><span className="rs-note">Videos with unusually strong engagement for their creator&rsquo;s audience, ranked by Breakout Score.</span></div>
           <div className={`rs-winner rs-winner--run-${winnerBucket}`}>
             <div className="rs-wmedia">
-              <VideoFrame video={winner} winner showStats={false} isPlaying={videoPlayingId === winner.id} onTogglePlay={() => setVideoPlayingId((v) => v === winner.id ? null : winner.id)} />
+              <VideoFrame video={winner} winner leading={processing} showStats={false} isPlaying={videoPlayingId === winner.id} onTogglePlay={() => setVideoPlayingId((v) => v === winner.id ? null : winner.id)} />
               <div className="rs-oc__ov">
                 <div className="rs-ovchip rs-ovchip--out">
                   <div className="rs-ovchip__l">Breakout Score</div>
@@ -1156,6 +1340,10 @@ export default function DetailScreen({
       )}
 
       {/* ANALYTICS */}
+      {processing && weeklyPoints.length === 0 ? (
+        <SkeletonSection title="Analytics" height={180} />
+      ) : (
+      <>
       <div className="rs-sh"><h2>Analytics</h2><span className="rs-note">Weekly buckets based on when the matched videos were uploaded.</span></div>
       <div className="rs-acard">
         <div className="rs-mtabs">
@@ -1285,8 +1473,13 @@ export default function DetailScreen({
           </div>
         </div>
       </div>
+      </>
+      )}
 
       {/* WHEN THEY POST */}
+      {processing && heatCells.length === 0 && (
+        <SkeletonSection title="When they post" height={150} />
+      )}
       {heatCells.length > 0 && (
         <>
           <div className="rs-sh"><h2>When they post</h2><span className="rs-note">Posting schedule by day and hour.</span></div>
@@ -1355,6 +1548,9 @@ export default function DetailScreen({
       )}
 
       {/* MORE DATA */}
+      {processing && weeklyBars.length === 0 && distribution.length === 0 && (
+        <SkeletonSection title="More data" height={120} />
+      )}
       {(weeklyBars.length > 0 || distribution.length > 0) && (
         <>
           <div className="rs-sh"><h2>More data</h2><span className="rs-note">How the tracker is moving.</span></div>
@@ -1396,6 +1592,9 @@ export default function DetailScreen({
       )}
 
       {/* HASHTAGS & SOUNDS */}
+      {processing && hashtags.length === 0 && sounds.length === 0 && (
+        <SkeletonSection title="Hashtags & sounds" height={120} />
+      )}
       {(hashtags.length > 0 || sounds.length > 0) && (
         <>
           <div className="rs-sh"><h2>Hashtags &amp; sounds</h2><span className="rs-note">Across this search's breakout videos.</span></div>
@@ -1550,7 +1749,7 @@ export default function DetailScreen({
 
 /* -------------------- sub-components -------------------- */
 
-function VideoFrame({ video, winner = false, showStats = true, isPlaying, onTogglePlay }) {
+function VideoFrame({ video, winner = false, leading = false, showStats = true, isPlaying, onTogglePlay }) {
   const bg = video.thumbnail_url ? undefined : gradientFor(video.id ?? video.handle);
   const playerUrl = playerUrlFor(video, true);
   const [playerReady, setPlayerReady] = useState(false);
@@ -1603,7 +1802,7 @@ function VideoFrame({ video, winner = false, showStats = true, isPlaying, onTogg
       )}
       {!isPlaying && <div className="rs-vf__scrim" />}
       {winner
-        ? <span className="rs-vf__win">{Icons.Spark}Winner</span>
+        ? <span className={`rs-vf__win${leading ? ' rs-vf__win--lead' : ''}`}>{leading ? 'Leading so far' : <>{Icons.Spark}Winner</>}</span>
         : <span className="rs-vf__rank">{video.rank ?? ''}</span>}
       {video.duration != null && <span className="rs-vf__dur">{formatDuration(video.duration)}</span>}
       {!isPlaying && <button className="rs-vf__play" onClick={onTogglePlay} aria-label="Play">{Icons.Play}</button>}
@@ -2428,7 +2627,9 @@ const scopedCss = `
 .rs-stt__v{font-size:1.28rem}
 .rs-stt__d{font-size:.67rem;line-height:1.25}
 .rs-stt__d svg{width:10px;height:10px}
-.rs-handle span:first-child{max-width:120px}
+.rs-handle{padding:0;background:transparent;border:0;color:var(--muted);font-weight:600}
+.rs-handle span:first-child{max-width:150px}
+.rs-handle .rs-ed{display:none}
 .rs-oc__st{display:flex;justify-content:space-between;gap:8px;flex-wrap:nowrap}
 .rs-oc__st span{min-width:0;justify-content:flex-start;font-size:.68rem;gap:3px;flex:1 1 0}
 .rs-oc__st svg{width:11px;height:11px}
@@ -2469,6 +2670,70 @@ const scopedCss = `
 .rs-weekmodal__go{display:none}
 .rs-weekmodal__row{gap:10px;grid-template-columns:46px minmax(0,1fr) auto}
 .rs-weekmodal__thumb{width:46px;height:62px}
+}
+
+/* ---------- live-run (M20 / M20b / M20c) ---------- */
+@keyframes rs-turn{to{transform:rotate(360deg)}}
+@keyframes rs-ring{0%{transform:scale(.9);opacity:1}100%{transform:scale(1.12);opacity:0}}
+@keyframes rs-sweepmove{0%{left:-40%}100%{left:100%}}
+@keyframes rs-pulse{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.24);opacity:.6}}
+@keyframes rs-shim{0%{transform:translateX(-100%)}100%{transform:translateX(100%)}}
+
+.rs-proc{border:1px solid var(--line);border-radius:18px;background:var(--white);padding:18px 17px 17px;display:flex;flex-direction:column;gap:15px;margin-bottom:22px;box-shadow:0 8px 24px -20px rgba(20,15,0,.24)}
+.rs-proc__top{display:flex;align-items:center;gap:15px}
+.rs-proc__copy{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;gap:6px}
+.rs-proc__copy h2{margin:0;font-size:1.2rem;line-height:1.18;font-weight:800;letter-spacing:-.03em;color:var(--ink)}
+.rs-proc__lede{font-size:.86rem;line-height:1.45;color:var(--muted)}
+.rs-spin{position:relative;width:48px;height:48px;flex:none;display:grid;place-items:center}
+.rs-spin svg{position:absolute;inset:0;width:100%;height:100%;animation:rs-turn 1.15s linear infinite}
+.rs-spin__tr{fill:none;stroke:var(--paper,#f1efe9);stroke-width:9}
+.rs-spin__arc{fill:none;stroke:url(#rs-proc-g);stroke-width:9;stroke-linecap:round;stroke-dasharray:108 400}
+.rs-spin>i{position:absolute;inset:-6px;border-radius:50%;border:2px solid rgba(255,198,41,.5);animation:rs-ring 2.4s ease-out infinite}
+.rs-sweep{position:relative;height:5px;border-radius:999px;background:var(--paper,#f1efe9);overflow:hidden}
+.rs-sweep i{position:absolute;top:0;bottom:0;width:38%;border-radius:999px;background:linear-gradient(90deg,#ffd84d,#ff9f1c);animation:rs-sweepmove 1.7s ease-in-out infinite}
+.rs-proc__steps{display:flex;flex-direction:column;gap:10px}
+.rs-tick{display:flex;align-items:flex-start;gap:11px;font-size:.85rem;font-weight:500;color:var(--body,#33312c);line-height:1.45}
+.rs-tick__d{width:18px;height:18px;flex:none;margin-top:1px;display:grid;place-items:center;border-radius:50%;background:var(--ok-bg,#edf7f0);color:var(--ok,#12703f);font-size:.7rem;line-height:1}
+.rs-tick__d svg{width:9px;height:9px}
+.rs-tick__c{margin-left:auto;flex:none;width:15px;height:15px;margin-top:2px;color:var(--amber-ink,#9a6b00)}
+.rs-tick__c svg{width:15px;height:15px;animation:rs-turn .9s linear infinite}
+.rs-tick--now{color:var(--ink);font-weight:700}
+.rs-tick--now .rs-tick__d{background:var(--yellow);color:#0b0b0b;animation:rs-pulse 1.4s ease-in-out infinite}
+.rs-tick--wait{color:var(--faint-2,#9A968E)}
+.rs-tick--wait .rs-tick__d{background:var(--paper,#f1efe9);color:var(--paper,#f1efe9)}
+
+.rs-runbar{position:sticky;top:0;z-index:30;display:flex;align-items:center;gap:11px;padding:10px 16px;margin-bottom:18px;border-radius:0 0 14px 14px;background:#0b0b0b;color:#fff;box-shadow:0 10px 24px -16px rgba(0,0,0,.5)}
+.rs-runbar__mini{width:26px;height:26px;flex:none;display:grid;place-items:center}
+.rs-runbar__mini svg{width:24px;height:24px;animation:rs-turn 1.05s linear infinite}
+.rs-runbar--done .rs-runbar__mini svg{width:20px;height:20px;animation:none}
+.rs-runbar__bd{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;gap:1px}
+.rs-runbar__bd strong{font-size:.82rem;font-weight:700;letter-spacing:-.02em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rs-runbar__bd span{color:#d6d2c6;font-size:.71rem;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rs-runbar__go{flex:none;display:inline-flex;align-items:center;min-height:30px;padding:0 12px;border-radius:999px;background:var(--yellow);color:#0b0b0b;font-size:.75rem;font-weight:700;white-space:nowrap;border:0;cursor:pointer}
+.rs-runbar--done{background:#12703f}
+.rs-runbar--done .rs-runbar__bd span{color:#cfe8da}
+.rs-runbar__x{flex:none;width:26px;height:26px;display:grid;place-items:center;border-radius:50%;background:rgba(255,255,255,.16);border:0;cursor:pointer}
+.rs-runbar__x svg{width:12px;height:12px}
+/* Below 900px the app shell shows its own sticky top bar (~51px, z-index 50);
+   drop the runbar beneath it so it is not hidden behind the bar. */
+@media (max-width:900px){.rs-runbar{top:51px;z-index:49}}
+/* On mobile the brand header is a card, so give the processing panel below it
+   some breathing room instead of letting the two cards nearly touch. */
+@media (max-width:560px){.rs-proc{margin-top:16px}}
+
+.rs-sofar{display:inline-flex;align-items:center;gap:6px;padding:3px 9px;border-radius:999px;background:var(--wash,#fff8e6);color:var(--amber-ink,#9a6b00);font-size:.6rem;font-weight:800;text-transform:uppercase;letter-spacing:.07em;white-space:nowrap}
+.rs-sofar i{width:6px;height:6px;border-radius:50%;background:var(--yellow);animation:rs-pulse 1.4s ease-in-out infinite}
+.rs-sofar--flat{background:var(--paper,#f1efe9);color:var(--muted)}
+.rs-sofar--flat i{background:var(--muted);animation:none}
+
+.rs-sk{position:relative;overflow:hidden;border-radius:7px;background:#ecebe4;display:block}
+.rs-sk::after{content:'';position:absolute;inset:0;background:linear-gradient(90deg,rgba(255,255,255,0),rgba(255,255,255,.72) 50%,rgba(255,255,255,0));animation:rs-shim 1.6s ease-in-out infinite}
+.rs-skcard{border:1px solid var(--line);border-radius:16px;background:var(--white);padding:16px;display:flex;flex-direction:column;gap:10px}
+
+.rs-vf__win--lead{background:var(--amber-ink,#9a6b00);color:#fff8e6}
+
+@media (prefers-reduced-motion:reduce){
+.rs-spin svg,.rs-spin>i,.rs-sweep i,.rs-tick--now .rs-tick__d,.rs-tick__c svg,.rs-runbar__mini svg,.rs-sofar i,.rs-sk::after{animation:none}
 }
 `;
   const goBack = () => {

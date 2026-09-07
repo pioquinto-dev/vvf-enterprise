@@ -8,59 +8,6 @@ import { bookmarks, savedSearch as api, untrackSearch } from '../../landing/flow
 const ACTIVE_SEARCH_STATUSES = new Set(['pending', 'queued', 'running', 'scraping']);
 const SEARCH_POLL_MS = 8000;
 
-const SparkIcon = (
-    <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" width="14" height="14">
-        <path d="M12 2l1.8 6.2L20 10l-6.2 1.8L12 18l-1.8-6.2L4 10l6.2-1.8z" />
-    </svg>
-);
-const ArrowIcon = (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" width="14" height="14">
-        <path d="M5 12h14M13 6l6 6-6 6" />
-    </svg>
-);
-
-/**
- * Loading header that sits on top of the analytics page while a report is
- * still building. Once the run finishes it collapses to a slim
- * "Report complete" line for a moment before the caller drops it entirely.
- * Ported from the free-search-flow mockup's pending head.
- */
-function BuildingHeader({ search, done = false }) {
-    const subject = search?.name || search?.phrase || 'your search';
-    const scanned = Number(search?.scanned_count ?? 0);
-
-    return (
-        <div className={`bb-pend${done ? ' is-done' : ''}`}>
-            <div className="bb-pend__body">
-                <div className="bb-pend__t">
-                    <h2>Building your report for “{subject}”</h2>
-                    <span className="pill pill--run bb-pend__pill">
-                        <span className="bb-pend__spin" aria-hidden="true" />
-                        Scanning TikTok
-                    </span>
-                    <span className="bb-pend__eta">usually ready within 20 minutes</span>
-                </div>
-                <div className="bb-pend__cta">
-                    <a href="/dashboard" className="btn btn--y btn--sm">
-                        {SparkIcon} Browse the search dashboard {ArrowIcon}
-                    </a>
-                    <p>
-                        No need to wait here — we’ll email you the moment the full ranking is in.
-                        Early results fill in below as they land.
-                    </p>
-                </div>
-            </div>
-            <div className="bb-pend__slim">
-                <span className="pill pill--ok"><i />Report complete</span>
-                <span>
-                    {scanned > 0 ? <><b>{scanned.toLocaleString()}</b> videos scanned · </> : null}
-                    your ranking is ready.
-                </span>
-            </div>
-        </div>
-    );
-}
-
 function BuildingPopup({ subject, onDashboard, onClose }) {
     return (
         <div className="bb">
@@ -249,7 +196,6 @@ export default function Show({ search: initial, isAuthenticated = false, billing
     const [confirmRefresh, setConfirmRefresh] = useState(false);
     const [pollError, setPollError] = useState(false);
     const [buildingPopupOpen, setBuildingPopupOpen] = useState(false);
-    const [justCompleted, setJustCompleted] = useState(false);
 
     const isSearchProcessing = ACTIVE_SEARCH_STATUSES.has(String(search?.status ?? '').toLowerCase());
     const hasProcessingFailure = String(search?.status ?? '').toLowerCase() === 'failed';
@@ -265,8 +211,13 @@ export default function Show({ search: initial, isAuthenticated = false, billing
 
         try {
             await api.refresh(search.id);
-            router.visit(`/search/running?id=${search.id}`);
+            // Stay on the paid results page and let it flip into the live M20
+            // running state in place: the poller below picks up real progress
+            // and the completion banner raises when it lands.
+            setSearch((prev) => ({ ...prev, status: 'scraping' }));
         } catch {
+            // leave the page as-is on failure
+        } finally {
             setRefreshing(false);
         }
     };
@@ -348,16 +299,12 @@ export default function Show({ search: initial, isAuthenticated = false, billing
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
-    // When polling flips the run from processing → done, briefly hold the
-    // collapsed "Report complete" line before the header drops away.
+    // When polling flips the run from processing → done, close the free-search
+    // "still building" greeting. The completed-run banner (M20c) is owned by
+    // the tracker itself now.
     useEffect(() => {
         if (wasProcessingRef.current && !isSearchProcessing && !hasProcessingFailure) {
-            setJustCompleted(true);
             setBuildingPopupOpen(false);
-            const timer = window.setTimeout(() => setJustCompleted(false), 6000);
-            wasProcessingRef.current = isSearchProcessing;
-
-            return () => window.clearTimeout(timer);
         }
 
         wasProcessingRef.current = isSearchProcessing;
@@ -406,23 +353,12 @@ export default function Show({ search: initial, isAuthenticated = false, billing
 
             {/* The tracker carries its own header, so the shell renders content only. */}
             <AppLayout width="max-w-[1240px]">
-                {(isSearchProcessing || justCompleted) && (
-                    <>
-                        <style>{buildingCss}</style>
-                        <BuildingHeader search={search} done={!isSearchProcessing && justCompleted} />
-                        {isSearchProcessing && (
-                            <div className="bb-partial">
-                                {SparkIcon}
-                                <span>Early results — ranking and breakout scores keep updating until the scan finishes.</span>
-                            </div>
-                        )}
-                    </>
-                )}
                 <DetailScreenBoundary>
                     <DetailScreen
                         search={search}
                         isAuthenticated={isAuthenticated}
                         billing={billing}
+                        processing={isSearchProcessing}
                         refreshing={refreshing}
                         bookmarkUpdating={bookmarkingSearch}
                         onRefresh={refresh}
@@ -439,7 +375,9 @@ export default function Show({ search: initial, isAuthenticated = false, billing
             {confirmRefresh && (
                 <UsageConfirmModal
                     title="Refresh this search?"
-                    body={`This will use 1 search credit. You will have ${searchRemainingAfterUse} search credits remaining after the refresh starts. Search credits are not restored later, even if you pause or delete the search.`}
+                    body={searchLimit === -1
+                        ? 'Your plan includes unlimited searches, so this refresh won’t use up a search credit.'
+                        : `This will use 1 search credit, leaving you ${searchRemainingAfterUse} this cycle. Credits aren’t restored later, even if you pause or delete the search.`}
                     subject={search.name}
                     confirmLabel="Refresh search"
                     busy={refreshing}
@@ -462,8 +400,8 @@ export default function Show({ search: initial, isAuthenticated = false, billing
                 </>
             )}
 
-            {/* A failed run still blocks with the recovery overlay; the building
-                state now shows inline via BuildingHeader instead. */}
+            {/* A failed run still blocks with the recovery overlay; a live run
+                renders the M20 processing panel inline via DetailScreen. */}
             {hasProcessingFailure && pollError && (
                 <ProcessingOverlay
                     search={search}

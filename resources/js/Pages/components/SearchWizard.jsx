@@ -337,7 +337,9 @@ export default function SearchWizard({
 
             {confirmPayload && (
                 <SearchCreditConfirmModal
-                    body={`This will use 1 search credit. You will have ${searchRemainingAfterUse} search credits remaining after this run starts. Search credits are not restored later, even if you pause, delete, or rerun the search.`}
+                    body={searchLimit === -1
+                        ? 'Your plan includes unlimited searches, so this run won’t use up a search credit.'
+                        : `This will use 1 search credit, leaving you ${searchRemainingAfterUse} this cycle. Credits aren’t restored later, even if you pause, delete, or rerun the search.`}
                     subject={confirmPayload.payload?.name ?? confirmPayload.payload?.phrase ?? phrase}
                     busy={submitting}
                     onCancel={() => setConfirmPayload(null)}

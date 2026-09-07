@@ -265,8 +265,19 @@ export default function BrandInlineFlow({
         refreshExisting,
       });
       trackSearch({ id: created.id, name: created.name, url: created.url });
-      setSearchResult(created);
       onCreated?.(created);
+
+      // Hand straight off to the live results page (M20): the run continues
+      // there with the processing panel, SO-FAR counts, and skeletons until it
+      // lands. The brief inline "running" spinner covers the create request.
+      if (created?.url) {
+        router.visit(created.url);
+        return;
+      }
+
+      // Fallback for the unlikely case the API returns no url: keep the old
+      // inline running → done behaviour driven by the poller below.
+      setSearchResult(created);
     } catch (e) {
       if (e.status === 409 && e.payload?.code === 'existing_search') {
         setDuplicateSearch({ search: e.payload.search, newKeywords: e.payload.new_keywords });
@@ -785,7 +796,9 @@ export default function BrandInlineFlow({
       )}
       {confirmRefresh !== null && (
         <SearchCreditConfirmModal
-          body={`This will use 1 search credit. You will have ${searchLimit === -1 ? 'unlimited' : Math.max(0, Number(searchLeft ?? 0) - 1)} search credits remaining after this run starts.`}
+          body={searchLimit === -1
+            ? 'Your plan includes unlimited searches, so this run won’t use up a search credit.'
+            : `This will use 1 search credit, leaving you ${Math.max(0, Number(searchLeft ?? 0) - 1)} this cycle.`}
           subject={subject}
           busy={submitting}
           onCancel={() => setConfirmRefresh(null)}
