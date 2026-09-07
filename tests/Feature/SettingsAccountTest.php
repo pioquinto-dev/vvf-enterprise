@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Hash;
 use Inertia\Testing\AssertableInertia as Assert;
 use Tests\TestCase;
 
@@ -72,5 +73,40 @@ class SettingsAccountTest extends TestCase
                 'autoplay_previews' => true,
             ],
         ], $user->preferences);
+    }
+
+    public function test_google_connected_user_can_add_a_password_for_manual_login(): void
+    {
+        $user = User::factory()->create([
+            'preferences' => ['authentication' => ['google_connected' => true]],
+        ]);
+
+        $this->actingAs($user)
+            ->post('/settings/account/password', [
+                'password' => 'New-password-123',
+                'password_confirmation' => 'New-password-123',
+            ])
+            ->assertRedirect();
+
+        $user->refresh();
+        $this->assertTrue(Hash::check('New-password-123', $user->password));
+        $this->assertNotNull(data_get($user->preferences, 'authentication.password_added_at'));
+
+        auth()->logout();
+        $this->post('/login', ['email' => $user->email, 'password' => 'New-password-123'])
+            ->assertRedirect('/dashboard');
+        $this->assertAuthenticatedAs($user);
+    }
+
+    public function test_non_google_user_cannot_use_add_password_endpoint(): void
+    {
+        $user = User::factory()->create();
+
+        $this->actingAs($user)
+            ->post('/settings/account/password', [
+                'password' => 'New-password-123',
+                'password_confirmation' => 'New-password-123',
+            ])
+            ->assertForbidden();
     }
 }

@@ -221,7 +221,7 @@ Defined in `routes/frontend.php`.
 - `/products`
   - Product-oriented view over saved-search data.
 - `/settings/account`
-  - Account settings and deletion flow.
+  - Account settings, Google-user password setup, and deletion flow.
 - `/settings/appearance`
   - Appearance preferences.
 - `/settings/subscription`

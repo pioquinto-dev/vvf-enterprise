@@ -12,7 +12,9 @@ use Carbon\CarbonImmutable;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
+use Illuminate\Validation\Rules;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -48,6 +50,11 @@ class SettingsController extends Controller
             'subscription' => $this->subscriptionPayload($user),
             'preferences' => $this->preferencesPayload($user?->preferences ?? []),
             'accountDeletion' => $this->accountDeletionPayload($user),
+            'passwordAccess' => [
+                'canAdd' => (bool) data_get($user?->preferences, 'authentication.google_connected', false)
+                    && ! data_get($user?->preferences, 'authentication.password_added_at'),
+                'enabled' => (bool) data_get($user?->preferences, 'authentication.password_added_at'),
+            ],
         ]);
     }
 
@@ -68,6 +75,28 @@ class SettingsController extends Controller
         ]);
 
         return back()->with('status', 'Account details updated.');
+    }
+
+    public function addPassword(Request $request): RedirectResponse
+    {
+        $user = $request->user();
+
+        abort_unless((bool) data_get($user->preferences, 'authentication.google_connected', false), 403);
+
+        $validated = $request->validate([
+            'password' => ['required', 'confirmed', Rules\Password::defaults()],
+        ]);
+
+        $preferences = $user->preferences ?? [];
+        data_set($preferences, 'authentication.password_added_at', now()->toIso8601String());
+
+        $user->forceFill([
+            'password' => Hash::make($validated['password']),
+            'remember_token' => null,
+            'preferences' => $preferences,
+        ])->save();
+
+        return back()->with('status', 'Password added. You can now sign in with Google or your email and password.');
     }
 
     public function requestAccountDeletion(Request $request): RedirectResponse
@@ -335,7 +364,7 @@ class SettingsController extends Controller
 
     private function preferencesPayload(array $preferences): array
     {
-        return [
+        $payload = [
             'notifications' => array_merge(
                 self::DEFAULT_NOTIFICATION_PREFERENCES,
                 (array) data_get($preferences, 'notifications', [])
@@ -345,6 +374,12 @@ class SettingsController extends Controller
                 (array) data_get($preferences, 'appearance', [])
             ),
         ];
+
+        if (array_key_exists('authentication', $preferences)) {
+            $payload['authentication'] = (array) $preferences['authentication'];
+        }
+
+        return $payload;
     }
 
     private function mergedPreferencesPayload(array $currentPreferences, array $incomingPreferences): array

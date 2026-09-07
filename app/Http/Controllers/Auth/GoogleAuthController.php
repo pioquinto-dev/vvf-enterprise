@@ -87,6 +87,10 @@ class GoogleAuthController extends Controller
             ])->save();
         }
 
+        $preferences = $user->preferences ?? [];
+        data_set($preferences, 'authentication.google_connected', true);
+        $user->forceFill(['preferences' => $preferences])->save();
+
         Auth::login($user);
         if ($created) {
             $this->activity->record($user, 'sign_up', 'account_created', 'Created account.');

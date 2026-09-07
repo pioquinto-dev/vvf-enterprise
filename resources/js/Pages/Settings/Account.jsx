@@ -10,7 +10,7 @@ const NOTIFICATIONS = [
 ];
 
 export default function Account() {
-  const { auth = {}, flash = {}, preferences = {}, accountDeletion = {} } = usePage().props;
+  const { auth = {}, flash = {}, preferences = {}, accountDeletion = {}, passwordAccess = {} } = usePage().props;
   const initialNotifications = {
     ...Object.fromEntries(NOTIFICATIONS.map((n) => [n.key, n.on])),
     ...(preferences.notifications ?? {}),
@@ -26,6 +26,7 @@ export default function Account() {
   const form = useForm({ name: auth.user?.name ?? '' });
   const [savingPreferences, setSavingPreferences] = useState(false);
   const deletionForm = useForm({});
+  const passwordForm = useForm({ password: '', password_confirmation: '' });
 
   const submit = (event) => {
     event.preventDefault();
@@ -68,6 +69,14 @@ export default function Account() {
   const cancelDeletion = () => {
     deletionForm.delete('/settings/account/delete-request', {
       preserveScroll: true,
+    });
+  };
+
+  const addPassword = (event) => {
+    event.preventDefault();
+    passwordForm.post('/settings/account/password', {
+      preserveScroll: true,
+      onSuccess: () => passwordForm.reset(),
     });
   };
 
@@ -120,6 +129,39 @@ export default function Account() {
             </div>
           </div>
         </form>
+
+        {(passwordAccess.canAdd || passwordAccess.enabled) && (
+          <div className="card" style={{ marginTop: 16 }}>
+            <div className="card__p">
+              <h2>Password login</h2>
+              {passwordAccess.enabled ? (
+                <p className="muted" style={{ fontSize: '.86rem', marginTop: 6 }}>
+                  Password login is enabled. You can sign in with Google or use your email and password.
+                </p>
+              ) : (
+                <form onSubmit={addPassword}>
+                  <p className="muted" style={{ fontSize: '.86rem', marginTop: 6 }}>
+                    Add a password so you can also sign in manually with {auth.user?.email}.
+                  </p>
+                  <div className="grid2" style={{ marginTop: 18 }}>
+                    <div>
+                      <label className="lbl">New password</label>
+                      <input className="fld" type="password" autoComplete="new-password" value={passwordForm.data.password} onChange={(event) => passwordForm.setData('password', event.target.value)} />
+                      {passwordForm.errors.password && <p className="hint" style={{ color: 'var(--warn)' }}>{passwordForm.errors.password}</p>}
+                    </div>
+                    <div>
+                      <label className="lbl">Confirm password</label>
+                      <input className="fld" type="password" autoComplete="new-password" value={passwordForm.data.password_confirmation} onChange={(event) => passwordForm.setData('password_confirmation', event.target.value)} />
+                    </div>
+                  </div>
+                  <button type="submit" className="btn btn--y" style={{ marginTop: 18 }} disabled={passwordForm.processing}>
+                    {passwordForm.processing ? 'Adding password…' : 'Add password'}
+                  </button>
+                </form>
+              )}
+            </div>
+          </div>
+        )}
 
         <div className="card" style={{ marginTop: 16 }}>
           <div className="card__p">
