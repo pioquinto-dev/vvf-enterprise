@@ -317,6 +317,198 @@ class SavedSearchController extends Controller
         return (string) (int) round($number);
     }
 
+    /**
+     * "My Feed" — the signed-in home. Everything is derived from the user's own
+     * searches: their strongest breakout videos, the sounds and hashtags those
+     * breakouts lean on, and the videos they saved. Empty when they have no
+     * searches yet (the page shows an encouraging empty state instead).
+     *
+     * @return array<string, mixed>
+     */
+    private function feedPayload(Request $request): array
+    {
+        $userId = $request->user()?->id;
+        $guestToken = GuestIdentity::token($request);
+        $searchIds = CustomKeywordSearch::query()->ownedBy($userId, $guestToken)->pluck('id');
+
+        $discovery = app(\App\Services\CustomKeywordSearch\FeedDiscoveryService::class)->payload();
+        $empty = ['videos' => [], 'sounds' => [], 'hashtags' => [], 'saved' => [], 'savedCount' => 0, 'discovery' => $discovery];
+
+        if ($searchIds->isEmpty()) {
+            return $empty;
+        }
+
+        $searchNames = CustomKeywordSearch::query()->whereIn('id', $searchIds)->pluck('name', 'id');
+        $searchUrls = CustomKeywordSearch::query()->whereIn('id', $searchIds)->get()
+            ->mapWithKeys(fn (CustomKeywordSearch $s): array => [$s->id => $s->url()]);
+
+        // The user's strongest breakouts across every search, best first, one
+        // row per underlying video.
+        $rows = CustomKeywordSearchVideo::query()
+            ->whereIn('custom_keyword_search_id', $searchIds)
+            ->whereHas('video', fn ($query) => $query->visible())
+            ->with('video')
+            ->orderByDesc('viral_score')
+            ->limit(80)
+            ->get();
+
+        $seen = [];
+        $unique = [];
+        foreach ($rows as $row) {
+            $vid = $row->viral_video_id;
+            if ($vid === null || isset($seen[$vid])) {
+                continue;
+            }
+            $seen[$vid] = true;
+            $unique[] = $row;
+        }
+
+        $videos = array_map(
+            fn (CustomKeywordSearchVideo $row): array => $this->feedVideoCard($row, $searchNames, $searchUrls),
+            array_slice($unique, 0, 8),
+        );
+
+        $savedIds = $this->bookmarks->idsForUser($request->user());
+        $saved = [];
+        if ($savedIds !== []) {
+            $saved = ViralVideo::query()->visible()->whereIn('id', $savedIds)->limit(6)->get()
+                ->map(fn (ViralVideo $v): array => [
+                    'id' => $v->id,
+                    'thumbnail' => $v->thumbnail_url ?: $v->cover,
+                    'gradient' => $this->showcaseGradient((string) $v->id),
+                    'score' => (float) $v->virality_score > 0 ? round((float) $v->virality_score).'x' : null,
+                ])
+                ->all();
+        }
+
+        return [
+            'videos' => $videos,
+            'sounds' => $this->aggregateFeedSounds($unique),
+            'discovery' => $discovery,
+            'hashtags' => $this->aggregateFeedHashtags($unique),
+            'saved' => $saved,
+            'savedCount' => count($savedIds),
+        ];
+    }
+
+    /** @return array<string, mixed> */
+    private function feedVideoCard(CustomKeywordSearchVideo $row, Collection $names, Collection $urls): array
+    {
+        $video = $row->video;
+        $score = (float) ($row->viral_score ?: $video->virality_score);
+
+        return [
+            'id' => $video->id,
+            'brand' => $names[$row->custom_keyword_search_id] ?? null,
+            'search_url' => $urls[$row->custom_keyword_search_id] ?? null,
+            'video_url' => $video->video_url,
+            'score' => $score > 0 ? round($score).'x' : null,
+            'duration' => $this->formatFeedDuration($video->duration),
+            'handle' => $video->username ? '@'.ltrim((string) $video->username, '@') : null,
+            'age' => $this->shortAgo($video->uploaded_at),
+            'caption' => $video->title,
+            'views' => $this->compactNumber((float) $video->views),
+            'likes' => $this->compactNumber((float) $video->likes),
+            'comments' => $this->compactNumber((float) $video->comments),
+            'followers' => $this->compactNumber((float) $video->followers),
+            'thumbnail' => $video->thumbnail_url ?: $video->cover,
+            'gradient' => $this->showcaseGradient((string) $video->id),
+        ];
+    }
+
+    /**
+     * Top sounds across the user's breakout videos.
+     *
+     * @param  array<int, CustomKeywordSearchVideo>  $rows
+     * @return array<int, array<string, mixed>>
+     */
+    private function aggregateFeedSounds(array $rows): array
+    {
+        $byLabel = [];
+        foreach ($rows as $row) {
+            $label = $row->video->soundLabel();
+            if (! $label) {
+                continue;
+            }
+            if (! isset($byLabel[$label])) {
+                $byLabel[$label] = ['label' => $label, 'count' => 0, 'thumbs' => []];
+            }
+            $byLabel[$label]['count']++;
+            $thumb = $row->video->thumbnail_url ?: $row->video->cover;
+            if ($thumb && count($byLabel[$label]['thumbs']) < 3) {
+                $byLabel[$label]['thumbs'][] = $thumb;
+            }
+        }
+
+        usort($byLabel, fn ($a, $b) => $b['count'] <=> $a['count']);
+
+        return array_slice(array_values($byLabel), 0, 4);
+    }
+
+    /**
+     * Top hashtags across the user's breakout videos.
+     *
+     * @param  array<int, CustomKeywordSearchVideo>  $rows
+     * @return array<int, array<string, mixed>>
+     */
+    private function aggregateFeedHashtags(array $rows): array
+    {
+        $byTag = [];
+        foreach ($rows as $row) {
+            $tags = $row->video->hashtags;
+            if (! is_array($tags)) {
+                continue;
+            }
+            foreach ($tags as $tag) {
+                $clean = ltrim((string) $tag, '#');
+                if ($clean === '') {
+                    continue;
+                }
+                $key = strtolower($clean);
+                if (! isset($byTag[$key])) {
+                    $byTag[$key] = ['tag' => $clean, 'count' => 0];
+                }
+                $byTag[$key]['count']++;
+            }
+        }
+
+        usort($byTag, fn ($a, $b) => $b['count'] <=> $a['count']);
+
+        return array_slice(array_values($byTag), 0, 6);
+    }
+
+    private function formatFeedDuration(mixed $seconds): ?string
+    {
+        if ($seconds === null) {
+            return null;
+        }
+        $total = (int) round((float) $seconds);
+        if ($total <= 0) {
+            return null;
+        }
+
+        return floor($total / 60).':'.str_pad((string) ($total % 60), 2, '0', STR_PAD_LEFT);
+    }
+
+    private function shortAgo(?\Illuminate\Support\Carbon $moment): ?string
+    {
+        if ($moment === null) {
+            return null;
+        }
+
+        $days = $moment->diffInDays(now());
+        if ($days >= 1) {
+            return $days.'d ago';
+        }
+
+        $hours = $moment->diffInHours(now());
+        if ($hours >= 1) {
+            return $hours.'h ago';
+        }
+
+        return max(1, $moment->diffInMinutes(now())).'m ago';
+    }
+
     /** Stable placeholder gradient behind a card when a thumbnail is missing. */
     private function showcaseGradient(string $seed): string
     {
@@ -460,6 +652,18 @@ class SavedSearchController extends Controller
             'creators_surfaced' => (int) $creatorsSurfaced,
             'searches_count' => (int) $searchIds->count(),
         ];
+    }
+
+    /**
+     * GET /home — "My Feed", the signed-in default landing. A single feed built
+     * from the user's own searches (their breakout videos, sounds, hashtags and
+     * saved videos). The search homepage lives separately at /dashboard.
+     */
+    public function home(Request $request): Response
+    {
+        return Inertia::render('Feed', [
+            'feed' => $this->feedPayload($request),
+        ]);
     }
 
     /**

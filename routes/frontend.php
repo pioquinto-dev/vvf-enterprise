@@ -7,6 +7,7 @@ use App\Http\Controllers\VideoAnalysisPageController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware('auth')->group(function (): void {
+    Route::get('/home', [SavedSearchController::class, 'home'])->name('home');
     Route::get('/dashboard', [SavedSearchController::class, 'dashboard'])->name('dashboard');
     Route::get('/search-history', [SavedSearchController::class, 'history'])->name('search-history.index');
 

@@ -594,6 +594,8 @@ High-level flow:
 
 ## Frontend architecture notes
 
+- My Feed includes platform-wide discovery cards alongside personal highlights: most searched brands/products over seven days, top sounds in newly indexed visible videos, and hashtag occurrence growth versus the previous seven days. Discovery aggregates are cached for 15 minutes, expose no account identities, and also appear for accounts with no personal results. Desktop keeps personal highlights in the sidebar and places the three discovery cards in a full-width row below the feed; mobile interleaves cards. Personal video cards remain limited to eight.
+
 - Inertia entrypoint is `resources/js/app.jsx`.
 - Shared shell for signed-in pages is `resources/js/Pages/components/AppLayout.jsx`.
 - Dark mode is class-driven, not OS-driven.
