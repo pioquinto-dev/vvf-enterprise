@@ -2,9 +2,10 @@ import { useForm } from '@inertiajs/react';
 
 import { Logo } from '../components/Icons.jsx';
 
+// { label: 'Blogs', href: '/#top' }
 const COLS = [
   { h: 'Product', links: [{ label: 'TikTok Brand Tracking', href: '/tiktok-brand-tracking' }, { label: 'TikTok Product Research', href: '/tiktok-product-research' }, { label: 'Viral Video Monitoring', href: '/viral-video-monitoring' }] },
-  { h: 'Company', links: [{ label: 'Blogs', href: '/#top' }, { label: 'Support', href: '/support' }, { label: 'Contact', href: '/contact' }] },
+  { h: 'Company', links: [{ label: 'Support', href: '/support' }, { label: 'Contact', href: '/contact' }] },
   { h: 'Resources', links: [{ label: 'Brand Tracking', href: '/tiktok-brand-tracking' }, { label: 'UGC Trend Discovery', href: '/ugc-trend-discovery' }] },
   { h: 'Legal', links: [{ label: 'Terms', href: '/terms' }, { label: 'Privacy', href: '/privacy' }, { label: 'DPA', href: '/dpa' }, { label: 'Security', href: '/security' }] },
 ];
