@@ -11,6 +11,7 @@ use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\BillingController;
 use App\Http\Controllers\CouponSubscriptionController;
 use App\Http\Controllers\SeoDiscoveryController;
+use App\Http\Controllers\SavedSearchController;
 use App\Http\Controllers\SupportAssistantController;
 use App\Http\Controllers\StripeWebhookController;
 use Illuminate\Http\Request;
@@ -59,11 +60,7 @@ Route::prefix('search')->group(function (): void {
 
     Route::post('/pending', [FreeSearchFunnelController::class, 'store'])->name('search.pending');
 
-    Route::get('/running', function (Request $request) {
-        return Inertia::render('Search/Running', [
-            'searchId' => (int) $request->query('id'),
-        ]);
-    })->name('search.running');
+    Route::get('/running', [SavedSearchController::class, 'running'])->middleware('auth')->name('search.running');
 });
 
 Route::get('/trial', function () {

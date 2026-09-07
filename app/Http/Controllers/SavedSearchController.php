@@ -183,8 +183,33 @@ class SavedSearchController extends Controller
     }
 
     /**
-     * GET /saved-searches/notifications?ids[]=1 — what the running screen polls.
+     * Show progress only for an accessible search that is still scraping.
      */
+    public function running(Request $request): Response|RedirectResponse
+    {
+        $id = filter_var($request->query('id'), FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
+
+        if ($id === false) {
+            return redirect()->route('search.keywords');
+        }
+
+        $search = $this->searches->findMany($request, [$id])->first();
+
+        if ($search === null) {
+            return redirect()->route('search.keywords');
+        }
+
+        if ($search->status !== CustomKeywordSearch::STATUS_SCRAPING) {
+            return redirect()->to($search->url());
+        }
+
+        return Inertia::render('Search/Running', [
+            'searchId' => $search->id,
+            'search' => SavedSearchPresenter::summary($search),
+        ]);
+    }
+
+    /** GET /saved-searches/notifications?ids[]=1 — what the running screen polls. */
     public function notifications(Request $request): JsonResponse
     {
         $ids = array_slice(array_filter(array_map('intval', (array) $request->query('ids', []))), 0, 25);

@@ -49,6 +49,7 @@
   "resources/js/Pages/components/EntitlementsBar.jsx": [],
   "resources/js/Pages/components/SavedSearchRow.jsx": [],
   "resources/js/Pages/components/SearchCreditConfirmModal.jsx": [],
+  "resources/js/Pages/components/SearchHistoryTab.jsx": [],
   "resources/js/Pages/components/SearchLauncher.jsx": [],
   "resources/js/Pages/components/SearchListScreen.jsx": [],
   "resources/js/Pages/components/SearchWizard.jsx": [],
@@ -88,5 +89,6 @@
   "resources/js/landing/sections/Pricing.jsx": [],
   "resources/js/landing/sections/Testimonials.jsx": [],
   "resources/js/lib/analytics.js": [],
-  "resources/js/ssr.jsx": []
+  "resources/js/ssr.jsx": [],
+  "resources/js/utils/pricing.js": []
 }

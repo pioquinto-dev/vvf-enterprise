@@ -746,7 +746,7 @@ function AdminLayout({ title, section, children, toolbar = null, actions = null,
 	return /* @__PURE__ */ jsxs("div", {
 		className: "admin-shell min-h-screen bg-[var(--canvas)] text-[var(--ink)]",
 		children: [
-			/* @__PURE__ */ jsx(Head, { title: `${title} - Admin - Outlier Vault` }),
+			/* @__PURE__ */ jsx(Head, { title: `${title} - Admin - Breakout Vault` }),
 			/* @__PURE__ */ jsx("div", {
 				"aria-hidden": true,
 				className: "pointer-events-none fixed inset-0 overflow-hidden",
@@ -1679,7 +1679,7 @@ var ACTIVITY_FILTERS = [
 ];
 function RecentActivity({ activity = {} }) {
 	const [filter, setFilter] = useState("all");
-	const rows = (activity.rows ?? []).filter((row) => filter === "all" || row.category === filter);
+	const rows = filter === "all" ? activity.rows ?? [] : activity.byCategory?.[filter] ?? (activity.rows ?? []).filter((row) => row.category === filter);
 	return /* @__PURE__ */ jsxs("section", {
 		className: "rounded-2xl border border-[#dce4f0] bg-[linear-gradient(135deg,_#ffffff_0%,_#f6f9ff_100%)] p-4 shadow-[0_18px_42px_-32px_rgba(50,85,150,.45)] sm:p-5",
 		children: [
@@ -2855,7 +2855,7 @@ function Login$1() {
 		event.preventDefault();
 		form.post("/x/admin/login");
 	};
-	return /* @__PURE__ */ jsxs(Fragment$1, { children: [/* @__PURE__ */ jsx(Head, { title: "Admin Login - Outlier Vault" }), /* @__PURE__ */ jsxs("div", {
+	return /* @__PURE__ */ jsxs(Fragment$1, { children: [/* @__PURE__ */ jsx(Head, { title: "Admin Login - Breakout Vault" }), /* @__PURE__ */ jsxs("div", {
 		className: "min-h-screen bg-[var(--canvas)] px-4 py-8 text-[var(--ink)] sm:px-6",
 		children: [
 			/* @__PURE__ */ jsx("style", { children: `@keyframes admin-login-drift { 0%, 100% { transform: translate3d(-4%, -3%, 0) scale(1); } 50% { transform: translate3d(5%, 4%, 0) scale(1.08); } } @keyframes admin-login-grid { 0% { transform: translate3d(0, 0, 0); } 100% { transform: translate3d(44px, 44px, 0); } }` }),
@@ -2946,7 +2946,8 @@ function Login() {
 	const { flash = {} } = usePage().props;
 	const form = useForm({
 		email: "",
-		password: ""
+		password: "",
+		remember: false
 	});
 	const submit = (event) => {
 		event.preventDefault();
@@ -3017,43 +3018,72 @@ function Login() {
 										flexDirection: "column",
 										gap: 14
 									},
-									children: [/* @__PURE__ */ jsxs("div", { children: [
-										/* @__PURE__ */ jsx("label", {
-											className: "lbl",
-											children: "Email"
-										}),
-										/* @__PURE__ */ jsx("input", {
-											className: "fld",
-											type: "email",
-											autoComplete: "email",
-											placeholder: "you@brand.com",
-											value: form.data.email,
-											onChange: (e) => form.setData("email", e.target.value)
-										}),
-										form.errors.email && /* @__PURE__ */ jsx("p", {
-											className: "hint",
-											style: { color: "var(--warn)" },
-											children: form.errors.email
+									children: [
+										/* @__PURE__ */ jsxs("div", { children: [
+											/* @__PURE__ */ jsx("label", {
+												className: "lbl",
+												children: "Email"
+											}),
+											/* @__PURE__ */ jsx("input", {
+												className: "fld",
+												type: "email",
+												autoComplete: "email",
+												placeholder: "you@brand.com",
+												value: form.data.email,
+												onChange: (e) => form.setData("email", e.target.value)
+											}),
+											form.errors.email && /* @__PURE__ */ jsx("p", {
+												className: "hint",
+												style: { color: "var(--warn)" },
+												children: form.errors.email
+											})
+										] }),
+										/* @__PURE__ */ jsxs("div", { children: [
+											/* @__PURE__ */ jsx("label", {
+												className: "lbl",
+												children: "Password"
+											}),
+											/* @__PURE__ */ jsx("input", {
+												className: "fld",
+												type: "password",
+												autoComplete: "current-password",
+												placeholder: "••••••••",
+												value: form.data.password,
+												onChange: (e) => form.setData("password", e.target.value)
+											}),
+											form.errors.password && /* @__PURE__ */ jsx("p", {
+												className: "hint",
+												style: { color: "var(--warn)" },
+												children: form.errors.password
+											})
+										] }),
+										/* @__PURE__ */ jsxs("label", {
+											style: {
+												display: "inline-flex",
+												alignItems: "center",
+												gap: 9,
+												cursor: "pointer",
+												width: "fit-content"
+											},
+											children: [/* @__PURE__ */ jsx("input", {
+												type: "checkbox",
+												checked: form.data.remember,
+												onChange: (e) => form.setData("remember", e.target.checked),
+												style: {
+													width: 16,
+													height: 16,
+													accentColor: "var(--yellow)"
+												}
+											}), /* @__PURE__ */ jsx("span", {
+												style: {
+													fontSize: ".83rem",
+													fontWeight: 650,
+													color: "var(--ink)"
+												},
+												children: "Remember me for 30 days"
+											})]
 										})
-									] }), /* @__PURE__ */ jsxs("div", { children: [
-										/* @__PURE__ */ jsx("label", {
-											className: "lbl",
-											children: "Password"
-										}),
-										/* @__PURE__ */ jsx("input", {
-											className: "fld",
-											type: "password",
-											autoComplete: "current-password",
-											placeholder: "••••••••",
-											value: form.data.password,
-											onChange: (e) => form.setData("password", e.target.value)
-										}),
-										form.errors.password && /* @__PURE__ */ jsx("p", {
-											className: "hint",
-											style: { color: "var(--warn)" },
-											children: form.errors.password
-										})
-									] })]
+									]
 								}),
 								/* @__PURE__ */ jsxs("button", {
 									type: "submit",
@@ -3755,7 +3785,7 @@ function CompletedAnalysisModal({ item, onClose, onView }) {
 				}),
 				/* @__PURE__ */ jsxs("p", {
 					className: "mt-3 text-[14px] leading-6 text-[var(--muted)]",
-					children: [item.videoLabel || "Your outlier video", " is ready. Open the search result it belongs to and we'll jump straight into the finished analysis."]
+					children: [item.videoLabel || "Your breakout video", " is ready. Open the search result it belongs to and we'll jump straight into the finished analysis."]
 				}),
 				/* @__PURE__ */ jsx("div", {
 					className: "mt-4 rounded-[16px] border border-[var(--line)] bg-white/80 px-4 py-3 text-[13px] font-semibold text-[var(--ink)]",
@@ -4151,7 +4181,7 @@ function CloseIcon() {
 		children: /* @__PURE__ */ jsx("path", { d: "M6 6l12 12M18 6L6 18" })
 	});
 }
-function UpgradePromptModal({ open = true, eyebrow = null, title, body, detail = null, emphasis = null, primaryLabel, onPrimary, primaryDisabled = false, secondaryLabel = "Maybe later", onSecondary, onClose }) {
+function UpgradePromptModal({ open = true, eyebrow = null, title, body, detail = null, emphasis = null, visual = null, primaryLabel, onPrimary, primaryDisabled = false, secondaryLabel = "Maybe later", onSecondary, onClose }) {
 	if (!open) return null;
 	return /* @__PURE__ */ jsx("div", {
 		className: "bb",
@@ -4177,6 +4207,63 @@ function UpgradePromptModal({ open = true, eyebrow = null, title, body, detail =
 					eyebrow && /* @__PURE__ */ jsxs("div", {
 						className: "bb-modal__eyebrow",
 						children: [/* @__PURE__ */ jsx(SparkIcon$1, {}), /* @__PURE__ */ jsx("span", { children: eyebrow })]
+					}),
+					visual === "search-momentum" && /* @__PURE__ */ jsxs("div", {
+						className: "bb-upgrade-visual",
+						"aria-hidden": "true",
+						children: [/* @__PURE__ */ jsxs("div", {
+							className: "bb-upgrade-visual__chart",
+							children: [/* @__PURE__ */ jsx("span", {
+								className: "bb-upgrade-visual__badge",
+								children: "8-day access"
+							}), /* @__PURE__ */ jsxs("svg", {
+								viewBox: "0 0 240 76",
+								fill: "none",
+								children: [
+									/* @__PURE__ */ jsx("path", {
+										d: "M8 63C34 61 42 48 65 51C91 54 98 34 121 39C147 45 158 24 177 28C202 33 209 11 232 9",
+										stroke: "currentColor",
+										strokeWidth: "4",
+										strokeLinecap: "round"
+									}),
+									/* @__PURE__ */ jsx("circle", {
+										cx: "232",
+										cy: "9",
+										r: "7",
+										fill: "#ffc529",
+										stroke: "#fff",
+										strokeWidth: "4"
+									}),
+									/* @__PURE__ */ jsx("path", {
+										d: "M8 69H232",
+										stroke: "currentColor",
+										strokeOpacity: ".14"
+									})
+								]
+							})]
+						}), /* @__PURE__ */ jsxs("div", {
+							className: "bb-upgrade-visual__perks",
+							children: [
+								/* @__PURE__ */ jsx("span", { children: "More searches" }),
+								/* @__PURE__ */ jsx("span", { children: "Auto refreshes" }),
+								/* @__PURE__ */ jsx("span", { children: "Deeper analysis" })
+							]
+						})]
+					}),
+					visual === "video-analysis" && /* @__PURE__ */ jsxs("div", {
+						className: "bb-analysis-visual",
+						"aria-hidden": "true",
+						children: [/* @__PURE__ */ jsxs("div", {
+							className: "bb-analysis-visual__play",
+							children: [/* @__PURE__ */ jsx("span", { children: "▶" }), /* @__PURE__ */ jsx("i", { children: "8.4×" })]
+						}), /* @__PURE__ */ jsxs("div", {
+							className: "bb-analysis-visual__insights",
+							children: [
+								/* @__PURE__ */ jsxs("span", { children: [/* @__PURE__ */ jsx("i", { children: "01" }), /* @__PURE__ */ jsx("b", { children: "Winning hook" })] }),
+								/* @__PURE__ */ jsxs("span", { children: [/* @__PURE__ */ jsx("i", { children: "02" }), /* @__PURE__ */ jsx("b", { children: "Why it worked" })] }),
+								/* @__PURE__ */ jsxs("span", { children: [/* @__PURE__ */ jsx("i", { children: "03" }), /* @__PURE__ */ jsx("b", { children: "How to recreate it" })] })
+							]
+						})]
 					}),
 					/* @__PURE__ */ jsx("h2", { children: title }),
 					body && /* @__PURE__ */ jsx("p", {
@@ -4690,10 +4777,11 @@ function BrandInlineFlow({ kind = "brand", placeholder = "Which brand do you wan
         .bif__err{margin-top:12px;padding:10px 14px;border-radius:12px;background:#FBEDE6;color:#B0431B;font-size:.85rem;font-weight:600}
       ` }),
 		upgradeModalOpen && /* @__PURE__ */ jsx(UpgradePromptModal, {
-			eyebrow: "Search credits",
-			title: shouldOfferTrial ? "Start your 8-day Growth trial" : "Upgrade to unlock more searches",
-			body: shouldOfferTrial ? "You've already used the search credits on Free. Start your trial to keep finding new outliers." : "You've already used the search credits available on your current plan. Upgrade to Growth or Scale to keep finding new outliers.",
-			primaryLabel: shouldOfferTrial ? "Start 8-day Growth trial" : "Upgrade to Growth",
+			eyebrow: "Keep your momentum",
+			title: "Ready to find your next breakout?",
+			body: shouldOfferTrial ? "Turn your first signal into a repeatable edge with Growth." : "Keep spotting breakout content before the trend moves on.",
+			visual: "search-momentum",
+			primaryLabel: shouldOfferTrial ? "Start my 8-day trial" : "Unlock more searches",
 			onPrimary: () => shouldOfferTrial ? billing.trialCheckout("growth") : router.visit("/plans"),
 			onClose: () => setUpgradeModalOpen(false)
 		}),
@@ -4791,7 +4879,7 @@ function BrandInlineFlow({ kind = "brand", placeholder = "Which brand do you wan
 							type: "submit",
 							className: "bif__cta",
 							disabled: !subject.trim(),
-							children: [/* @__PURE__ */ jsx(Search, { className: "h-4 w-4" }), " Find outliers"]
+							children: [/* @__PURE__ */ jsx(Search, { className: "h-4 w-4" }), " Find breakouts"]
 						})]
 					}),
 					/* @__PURE__ */ jsxs("p", {
@@ -5021,7 +5109,7 @@ function BrandInlineFlow({ kind = "brand", placeholder = "Which brand do you wan
 						}),
 						/* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsxs("h3", { children: [searchResult.name || subject, " is ready"] }), /* @__PURE__ */ jsxs("p", { children: [
 							searchResult.outlier_count ?? 0,
-							" outlier",
+							" breakout",
 							(searchResult.outlier_count ?? 0) === 1 ? "" : "s",
 							" this week",
 							searchResult.top_score ? ` · top score ${Math.round(searchResult.top_score)}×` : "",
@@ -5540,7 +5628,7 @@ var COPY = {
 		placeholder: "Which brand do you want to research?",
 		sample: "rhode skin",
 		heroHint: "One brand per search — we widen it with keywords next.",
-		moversNote: "Best outlier across every brand you track.",
+		moversNote: "Best breakout across every brand you track.",
 		allHeading: "All brand searches",
 		filterPlaceholder: "Filter brands"
 	},
@@ -5551,13 +5639,13 @@ var COPY = {
 		placeholder: "Which product do you want to track?",
 		sample: "lip oil",
 		heroHint: "One product per search — we widen it with keywords next.",
-		moversNote: "Best outlier across every product you track.",
+		moversNote: "Best breakout across every product you track.",
 		allHeading: "All product searches",
 		filterPlaceholder: "Filter products"
 	}
 };
 var SORT = {
-	outliers: "Most outliers",
+	outliers: "Most breakouts",
 	top_score: "Top score",
 	recent: "Recently updated",
 	az: "Name A-Z"
@@ -5573,12 +5661,28 @@ function Sel$1({ value, onChange, ariaLabel, children }) {
 		}), /* @__PURE__ */ jsx(Chevron, {})]
 	});
 }
+function cardIdentity(search) {
+	const title = String(search.name || search.phrase || "Untitled search").trim();
+	const phrase = String(search.phrase || "").trim();
+	const sameAsTitle = title.localeCompare(phrase, void 0, { sensitivity: "base" }) === 0;
+	if (phrase && !sameAsTitle) return {
+		title,
+		context: `Searching “${phrase}”`
+	};
+	const cadence = search.frequency === "monthly" ? "Monthly refresh" : "Weekly refresh";
+	const keywordCount = Array.isArray(search.keywords) ? search.keywords.length : 0;
+	return {
+		title,
+		context: `${cadence} · ${keywordCount > 0 ? `${keywordCount} keyword${keywordCount === 1 ? "" : "s"}` : "Focused tracking"}`
+	};
+}
 function BrandCard({ search, onOpen, onEdit }) {
 	const status = STATUS[search.status] ?? {
 		label: "Ready",
 		cls: "pill--off"
 	};
-	const initials = (search.name || search.phrase || "?").slice(0, 2).toUpperCase();
+	const identity = cardIdentity(search);
+	const initials = identity.title.slice(0, 2).toUpperCase();
 	const topScore = Number(search.top_score) > 0 ? `${Math.round(search.top_score)}x` : "—";
 	const videosScanned = search.videos_scanned != null ? compact$1(search.videos_scanned) : "0";
 	const latestOutliers = search.latest_outlier_count != null ? compact$1(search.latest_outlier_count) : "0";
@@ -5607,10 +5711,10 @@ function BrandCard({ search, onOpen, onEdit }) {
 						style: { minWidth: 0 },
 						children: [/* @__PURE__ */ jsx("span", {
 							className: "bcard__n",
-							children: search.name
+							children: identity.title
 						}), /* @__PURE__ */ jsx("span", {
 							className: "bcard__h",
-							children: search.phrase
+							children: identity.context
 						})]
 					}),
 					/* @__PURE__ */ jsxs("span", {
@@ -5634,14 +5738,14 @@ function BrandCard({ search, onOpen, onEdit }) {
 						children: latestOutliers
 					}), /* @__PURE__ */ jsx("span", {
 						className: "bcard__l",
-						children: "new outliers"
+						children: "new breakouts"
 					})] }),
 					/* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsx("span", {
 						className: "bcard__v",
 						children: topScore
 					}), /* @__PURE__ */ jsx("span", {
 						className: "bcard__l",
-						children: "top outlier video"
+						children: "top breakout video"
 					})] }),
 					/* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsx("span", {
 						className: "bcard__v",
@@ -6084,7 +6188,7 @@ function ComingSoon() {
 			onSuccess: () => form.reset("email")
 		});
 	};
-	return /* @__PURE__ */ jsxs(Fragment$1, { children: [/* @__PURE__ */ jsx(Head, { title: "Coming Soon - Outlier Vault" }), /* @__PURE__ */ jsxs("div", {
+	return /* @__PURE__ */ jsxs(Fragment$1, { children: [/* @__PURE__ */ jsx(Head, { title: "Coming Soon - Breakout Vault" }), /* @__PURE__ */ jsxs("div", {
 		className: "vvf-landing relative min-h-screen overflow-hidden",
 		children: [/* @__PURE__ */ jsxs("div", {
 			"aria-hidden": true,
@@ -6116,7 +6220,7 @@ function ComingSoon() {
 					}),
 					/* @__PURE__ */ jsx("p", {
 						className: "mt-6 max-w-2xl text-[17px] leading-8 text-ink/72 dark:text-white/68",
-						children: "Outlier Vault is getting its final polish. Leave your email and we'll notify you when the site is live so you can get early access."
+						children: "Breakout Vault is getting its final polish. Leave your email and we'll notify you when the site is live so you can get early access."
 					}),
 					/* @__PURE__ */ jsxs("div", {
 						className: "mt-8 flex flex-wrap gap-3 text-sm text-ink/62 dark:text-white/62",
@@ -6334,7 +6438,7 @@ function ContactFormCard({ categories = [], defaults = {}, className = "" }) {
 //#region resources/js/Pages/Contact.jsx
 var Contact_exports = /* @__PURE__ */ __exportAll({ default: () => Contact });
 function Contact({ categories = [], defaults = {} }) {
-	return /* @__PURE__ */ jsxs(Fragment$1, { children: [/* @__PURE__ */ jsx(Head, { title: "Contact Us - Outlier Vault" }), /* @__PURE__ */ jsx(AppLayout, {
+	return /* @__PURE__ */ jsxs(Fragment$1, { children: [/* @__PURE__ */ jsx(Head, { title: "Contact Us - Breakout Vault" }), /* @__PURE__ */ jsx(AppLayout, {
 		width: "max-w-5xl",
 		children: /* @__PURE__ */ jsx(ContactFormCard, {
 			categories,
@@ -7376,6 +7480,7 @@ function SearchWizard({ initialType = "brand", initialQuery = "", heading = "Sta
 	const searchUsed = billing$4.searchCreditsUsed ?? 0;
 	const searchRemainingAfterUse = searchLimit === -1 ? "unlimited" : Math.max(0, searchLimit - searchUsed - 1);
 	const searchCreditsAvailable = !signedIn || searchLimit === -1 || searchRemaining > 0;
+	const shouldOfferTrial = (billing$4.trialEligible ?? true) && !(billing$4.hasUsedTrial ?? false);
 	const stampUrl = (id) => {
 		if (typeof window === "undefined") return;
 		const url = new URL(window.location.href);
@@ -7594,12 +7699,13 @@ function SearchWizard({ initialType = "brand", initialQuery = "", heading = "Sta
 			}
 		}),
 		upgradeModalOpen && /* @__PURE__ */ jsx(UpgradePromptModal, {
-			eyebrow: "Search credits",
-			title: (billing$4.trialEligible ?? true) && !(billing$4.hasUsedTrial ?? false) ? "Start your 8-day Growth trial" : "Upgrade to unlock more searches",
-			body: (billing$4.trialEligible ?? true) && !(billing$4.hasUsedTrial ?? false) ? "You've already used the search credits on Free. Start your trial to keep finding new outliers." : "You've already used the search credits available on your current plan. Upgrade to Growth or Scale to keep finding new outliers.",
-			primaryLabel: (billing$4.trialEligible ?? true) && !(billing$4.hasUsedTrial ?? false) ? "Start 8-day Growth trial" : "Upgrade to Growth",
+			eyebrow: "Keep your momentum",
+			title: "Ready to find your next breakout?",
+			body: shouldOfferTrial ? "Turn your first signal into a repeatable edge with Growth." : "Keep spotting breakout content before the trend moves on.",
+			visual: "search-momentum",
+			primaryLabel: shouldOfferTrial ? "Start my 8-day trial" : "Unlock more searches",
 			onPrimary: () => {
-				if ((billing$4.trialEligible ?? true) && !(billing$4.hasUsedTrial ?? false)) billing.trialCheckout("growth");
+				if (shouldOfferTrial) billing.trialCheckout("growth");
 				else router.visit("/plans");
 			},
 			onClose: () => setUpgradeModalOpen(false)
@@ -7664,17 +7770,7 @@ var formatDate$3 = (iso) => {
 		day: "numeric"
 	});
 };
-function sparkBars(seed, n = 6) {
-	const bars = [];
-	let s = Number(seed) || 1;
-	for (let i = 0; i < n; i += 1) {
-		s = (s * 9301 + 49297) % 233280;
-		const h = 42 + Math.round(s / 233280 * 38);
-		bars.push(h);
-	}
-	return bars;
-}
-/** Recent row matching the mockup: icon · name/meta · sparkline · trend · pill · videos */
+/** Recent row matching the mockup: icon · name/meta · pill · videos */
 function RecentRow({ search, onNavigate, retrying, onRetry }) {
 	const status = STATUS_MAP[search.status] ?? {
 		label: titleCase(search.status) || "Ready",
@@ -7683,8 +7779,6 @@ function RecentRow({ search, onNavigate, retrying, onRetry }) {
 	const type = TYPE_LABEL[search.search_type] ?? titleCase(search.search_type);
 	const freq = titleCase(search.frequency) || "Weekly";
 	const initials = (search.name || search.phrase || "?").slice(0, 2).toUpperCase();
-	const bars = sparkBars(search.id, 6);
-	const trend = typeof search.trend === "number" ? search.trend : null;
 	const canRetry = search.can_retry_initial === true;
 	return /* @__PURE__ */ jsxs("div", {
 		className: "row",
@@ -7718,18 +7812,6 @@ function RecentRow({ search, onNavigate, retrying, onRetry }) {
 						formatDate$3(search.last_run_at)
 					]
 				})]
-			}),
-			/* @__PURE__ */ jsx("span", {
-				className: "spark",
-				"aria-hidden": true,
-				children: bars.map((h, i) => /* @__PURE__ */ jsx("span", {
-					className: i === bars.length - 1 ? "hot" : "",
-					style: { height: `${h}%` }
-				}, i))
-			}),
-			/* @__PURE__ */ jsx("span", {
-				className: `trend${trend !== null && trend >= 0 ? " up" : ""}`,
-				children: trend === null ? "—" : `${trend >= 0 ? "+" : ""}${trend}%`
 			}),
 			/* @__PURE__ */ jsxs("span", {
 				className: `pill ${status.cls}`,
@@ -7815,7 +7897,7 @@ function GlanceStrip({ stats }) {
 				children: [
 					/* @__PURE__ */ jsx("div", {
 						className: "gl__l",
-						children: "Outliers this week"
+						children: "Breakouts this week"
 					}),
 					/* @__PURE__ */ jsx("div", {
 						className: "gl__v",
@@ -7884,7 +7966,7 @@ function RecentCard({ searches, retryingSearchId, onRetry, currentPath }) {
 		children: [/* @__PURE__ */ jsxs("div", {
 			className: "rc__h",
 			children: [/* @__PURE__ */ jsx("h2", { children: "Pick up where you left off" }), /* @__PURE__ */ jsxs(Link, {
-				href: "/library",
+				href: "/library?tab=history",
 				className: "link",
 				children: ["View all ", /* @__PURE__ */ jsx(Arrow, {})]
 			})]
@@ -8102,23 +8184,17 @@ function SearchProcessingModal({ searches, onClose }) {
 }
 function SearchAccessPromptModal({ prompt, billing, onClose, onUpgrade }) {
 	if (!prompt) return null;
-	if (prompt.reason === "public_free_search_unavailable") return /* @__PURE__ */ jsx(UpgradePromptModal, {
-		eyebrow: "Free Search",
-		title: "This free search is unavailable",
-		body: prompt.message,
-		primaryLabel: "Got it",
-		secondaryLabel: null,
-		onPrimary: onClose,
-		onClose
-	});
 	const trialEligible = billing?.trialEligible ?? true;
 	const hasUsedTrial = billing?.hasUsedTrial ?? false;
+	const shouldOfferTrial = trialEligible && !hasUsedTrial;
 	return /* @__PURE__ */ jsx(UpgradePromptModal, {
-		eyebrow: "Search credits",
-		title: "Free search already used",
-		body: trialEligible && !hasUsedTrial ? "You are out of search credits. Start your 8-day trial to unlock more searches." : "You are out of search credits. Upgrade to Growth to keep searching.",
-		primaryLabel: trialEligible && !hasUsedTrial ? "Start 8-day trial" : "View Growth plan",
+		eyebrow: "Keep your momentum",
+		title: "Ready to find your next breakout?",
+		body: shouldOfferTrial ? "Turn your first signal into a repeatable edge with Growth." : "Keep spotting breakout content before the trend moves on.",
+		visual: "search-momentum",
+		primaryLabel: shouldOfferTrial ? "Start my 8-day trial" : "Unlock more searches",
 		onPrimary: onUpgrade,
+		secondaryLabel: "Maybe later",
 		onClose
 	});
 }
@@ -8395,17 +8471,12 @@ function Dashboard() {
         .rc__h h2{font-size:1.02rem;font-weight:800;letter-spacing:-.028em;color:var(--ink)}
         .link{display:inline-flex;align-items:center;gap:5px;font-size:.82rem;font-weight:700;color:var(--ink);text-decoration:none}
         .link:hover{color:var(--ink)} .link svg{width:14px;height:14px}
-        .rc .row{display:grid;grid-template-columns:auto 1fr auto auto auto auto;align-items:center;gap:16px;padding:14px 22px;border-bottom:1px solid var(--line);transition:background .14s}
+        .rc .row{display:grid;grid-template-columns:auto 1fr auto auto;align-items:center;gap:16px;padding:14px 22px;border-bottom:1px solid var(--line);transition:background .14s}
         .rc .row:last-child{border-bottom:none}
         .rc .row:hover{background:var(--paper,#FAF9F6)}
         .row__i{width:36px;height:36px;border-radius:10px;background:var(--wash);color:var(--amber-ink);display:grid;place-items:center;font-size:.8rem;font-weight:800}
         .row__n{display:block;font-size:.93rem;font-weight:700;color:var(--ink);letter-spacing:-.01em}
         .row__m{display:block;font-size:.77rem;color:var(--ink);margin-top:1px}
-        .spark{display:flex;align-items:flex-end;gap:3px;height:24px}
-        .spark span{width:5px;border-radius:2px;background:var(--line-2,#DEDBD3)}
-        .spark span.hot{background:var(--yellow)}
-        .trend{font-size:.81rem;font-weight:800;font-variant-numeric:tabular-nums;min-width:40px;text-align:right;color:var(--ink)}
-        .trend.up{color:var(--ok)}
         .row__k{text-align:right;min-width:48px}
         .row__kv{display:block;font-size:1rem;font-weight:800;color:var(--ink);line-height:1;font-variant-numeric:tabular-nums}
         .row__kl{display:block;font-size:.65rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--ink);margin-top:3px}
@@ -8417,7 +8488,7 @@ function Dashboard() {
         }
         @media (max-width:860px){
           .rc .row{grid-template-columns:auto 1fr auto;gap:12px}
-          .rc .row .spark,.rc .row .trend,.rc .row .pill{display:none}
+          .rc .row .pill{display:none}
         }
         @media (max-width:640px){
           .hero{padding:18px}
@@ -8676,20 +8747,13 @@ var COLS = [
 	},
 	{
 		h: "Company",
-		links: [
-			{
-				label: "Blogs",
-				href: "/#top"
-			},
-			{
-				label: "Support",
-				href: "/support"
-			},
-			{
-				label: "Contact",
-				href: "/contact"
-			}
-		]
+		links: [{
+			label: "Support",
+			href: "/support"
+		}, {
+			label: "Contact",
+			href: "/contact"
+		}]
 	},
 	{
 		h: "Resources",
@@ -9331,7 +9395,7 @@ function Home({ stack, integrations }) {
 					})]
 				}),
 				/* @__PURE__ */ jsx(AppFooter, {
-					label: "Outlier Vault starter shell",
+					label: "Breakout Vault starter shell",
 					className: "mt-auto border-white/10 bg-white/5 dark:border-white/10 dark:bg-white/5"
 				})
 			]
@@ -9418,7 +9482,7 @@ var FEATURES = [
 	{
 		id: "outliers",
 		tag: "Discovery",
-		title: "Outlier Vault",
+		title: "Breakout Vault",
 		body: "Surface the TikToks in your category that broke out this week. The ones running 10× above the creator's own baseline, not just the ones with big follower counts.",
 		bullets: [
 			"Breakout Score vs creator baseline",
@@ -9940,7 +10004,7 @@ function Hero({ onStart }) {
 								/* @__PURE__ */ jsxs("button", {
 									type: "submit",
 									className: "btn btn--primary btn--lg btn--pulse",
-									children: ["Find outliers", /* @__PURE__ */ jsx(Arrow, { className: "btn__arrow h-[15px] w-[15px]" })]
+									children: ["Find breakouts", /* @__PURE__ */ jsx(Arrow, { className: "btn__arrow h-[15px] w-[15px]" })]
 								})
 							]
 						}),
@@ -10260,7 +10324,7 @@ function PreviewPane({ active, current }) {
 								children: [
 									/* @__PURE__ */ jsx("span", { children: "1M views" }),
 									"or",
-									/* @__PURE__ */ jsx("span", { children: "10× outlier" })
+									/* @__PURE__ */ jsx("span", { children: "10× breakout" })
 								]
 							}),
 							/* @__PURE__ */ jsxs("div", {
@@ -10519,6 +10583,25 @@ function Testimonials() {
 	});
 }
 //#endregion
+//#region resources/js/utils/pricing.js
+function usd(amount) {
+	const value = Number(amount ?? 0);
+	const hasCents = !Number.isInteger(value);
+	return new Intl.NumberFormat("en-US", {
+		style: "currency",
+		currency: "USD",
+		minimumFractionDigits: hasCents ? 2 : 0,
+		maximumFractionDigits: 2
+	}).format(value);
+}
+function displayedMonthlyRate(plan) {
+	const total = Number(plan?.price ?? 0);
+	return usd(plan?.duration === "annual" ? total / 12 : total);
+}
+function annualBillingNote(plan) {
+	return `Billed ${usd(plan?.price)} annually. Save ${Number(plan?.annualSavingsPercent ?? 0)}%`;
+}
+//#endregion
 //#region resources/js/landing/sections/Pricing.jsx
 function Pricing({ plans = [], onStart, onTrial }) {
 	const [billingCycle, setBillingCycle] = useState("monthly");
@@ -10586,11 +10669,11 @@ function Pricing({ plans = [], onStart, onTrial }) {
 								}),
 								/* @__PURE__ */ jsxs("div", {
 									className: "plan__p",
-									children: [free ? "$0" : `$${plan.price}`, /* @__PURE__ */ jsx("span", { children: free ? "/mo" : billingCycle === "annual" ? "/yr" : "/mo" })]
+									children: [free ? "$0" : displayedMonthlyRate(plan), /* @__PURE__ */ jsx("span", { children: "/mo" })]
 								}),
 								/* @__PURE__ */ jsx("p", {
 									className: "plan__s",
-									children: free ? "" : billingCycle === "annual" ? `First 2 months free. Billed annually. Save ${plan.annualSavingsPercent}%` : "$0 for 8 days"
+									children: free ? "" : billingCycle === "annual" ? annualBillingNote(plan) : "$0 for 8 days"
 								}),
 								/* @__PURE__ */ jsx("ul", { children: plan.features.map((feature) => /* @__PURE__ */ jsxs("li", { children: [/* @__PURE__ */ jsx(Check, { className: "h-[15px] w-[15px]" }), feature] }, feature)) }),
 								free ? /* @__PURE__ */ jsx("button", {
@@ -10677,18 +10760,14 @@ function FinalCta({ onStart }) {
 				}),
 				/* @__PURE__ */ jsx("h2", { children: "See what TikTok is saying about you" }),
 				/* @__PURE__ */ jsx("p", { children: "One free search, no card. Most brands get their first surprise within the top ten results." }),
-				/* @__PURE__ */ jsxs("div", {
+				/* @__PURE__ */ jsx("div", {
 					className: "final__ctas",
-					children: [/* @__PURE__ */ jsxs("button", {
+					children: /* @__PURE__ */ jsxs("button", {
 						type: "button",
 						className: "btn btn--ink btn--lg",
 						onClick: () => onStart(),
 						children: ["Start free", /* @__PURE__ */ jsx(Arrow, { className: "btn__arrow h-[15px] w-[15px]" })]
-					}), /* @__PURE__ */ jsxs("button", {
-						type: "button",
-						className: "btn btn--ghost btn--lg",
-						children: [/* @__PURE__ */ jsx(Play, { className: "h-[15px] w-[15px]" }), "Watch demo · 2 min"]
-					})]
+					})
 				}),
 				/* @__PURE__ */ jsx("p", {
 					className: "final__n",
@@ -10938,14 +11017,14 @@ var SOLUTIONS = {
 		searchType: "brand",
 		searchLabel: "Monitor a topic",
 		signal: [
-			"Outlier performance signals",
+			"Breakout performance signals",
 			"Fresh videos around a defined subject",
 			"Creator, format, and caption context"
 		],
 		workflow: [
 			["Define the subject to watch", "Set a brand, product, or category phrase that gives the monitoring workflow a clear frame."],
 			["Collect relevant videos", "Use supporting context to improve relevance while keeping the search broad enough to surface unexpected creative."],
-			["Rank by unusual performance", "Review the strongest outliers first, then use the surrounding creator and post context to decide what matters."]
+			["Rank by unusual performance", "Review the strongest breakouts first, then use the surrounding creator and post context to decide what matters."]
 		],
 		outcomes: [
 			"Spend less time sorting through ordinary high-view content.",
@@ -11270,14 +11349,14 @@ function Plans() {
 			subline: ""
 		};
 		if (!hasUsedTrial || isTrialing) return {
-			amount: `$${plan.price}`,
-			suffix: annual ? "/yr" : "/mo",
-			subline: annual ? `First 2 months free. Billed annually. Save ${plan.annualSavingsPercent}%` : "$0 for 8 days"
+			amount: displayedMonthlyRate(plan),
+			suffix: "/mo",
+			subline: annual ? annualBillingNote(plan) : "$0 for 8 days"
 		};
 		return {
-			amount: `$${plan.price}`,
-			suffix: annual ? "/yr" : "/mo",
-			subline: annual ? `First 2 months free. Billed annually. Save ${plan.annualSavingsPercent}%` : ""
+			amount: displayedMonthlyRate(plan),
+			suffix: "/mo",
+			subline: annual ? annualBillingNote(plan) : ""
 		};
 	};
 	return /* @__PURE__ */ jsxs(Fragment$1, { children: [/* @__PURE__ */ jsx(Head, { title: "Plans · Brand Beacon" }), /* @__PURE__ */ jsxs(SettingsShell, {
@@ -11516,6 +11595,245 @@ function Products({ searches = [], moving = [], suggestions = [] }) {
 	})] });
 }
 //#endregion
+//#region resources/js/Pages/components/SearchHistoryTab.jsx
+var SearchHistoryTab_exports = /* @__PURE__ */ __exportAll({ default: () => SearchHistoryTab });
+var PAGE_SIZE = 25;
+function searchedAt(value) {
+	const date = new Date(value);
+	return Number.isNaN(date.getTime()) ? "Date unavailable" : date.toLocaleString([], {
+		month: "short",
+		day: "numeric",
+		year: "numeric",
+		hour: "numeric",
+		minute: "2-digit"
+	});
+}
+function localDay(value) {
+	const date = new Date(value);
+	if (Number.isNaN(date.getTime())) return "";
+	return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+}
+function statusLabel(value) {
+	return {
+		scraping: "Running",
+		done: "Ready",
+		failed: "Failed",
+		paused: "Paused"
+	}[value] ?? value ?? "Pending";
+}
+function SearchHistoryTab({ searches = [] }) {
+	const [query, setQuery] = useState("");
+	const [type, setType] = useState("all");
+	const [fromDate, setFromDate] = useState("");
+	const [toDate, setToDate] = useState("");
+	const [page, setPage] = useState(1);
+	const filteredSearches = useMemo(() => {
+		const term = query.trim().toLowerCase();
+		return searches.filter((search) => {
+			const haystack = [
+				search.name,
+				search.phrase,
+				...search.keywords ?? []
+			].filter(Boolean).join(" ").toLowerCase();
+			const day = localDay(search.created_at);
+			return (term === "" || haystack.includes(term)) && (type === "all" || (type === "brand" ? search.search_type !== "product" : search.search_type === type)) && (fromDate === "" || day >= fromDate) && (toDate === "" || day <= toDate);
+		});
+	}, [
+		fromDate,
+		query,
+		searches,
+		toDate,
+		type
+	]);
+	useEffect(() => setPage(1), [
+		fromDate,
+		query,
+		searches,
+		toDate,
+		type
+	]);
+	const pageCount = Math.max(1, Math.ceil(filteredSearches.length / PAGE_SIZE));
+	const visibleSearches = filteredSearches.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+	const hasFilters = query !== "" || type !== "all" || fromDate !== "" || toDate !== "";
+	const clearFilters = () => {
+		setQuery("");
+		setType("all");
+		setFromDate("");
+		setToDate("");
+	};
+	return /* @__PURE__ */ jsxs("div", {
+		className: "search-history",
+		children: [
+			/* @__PURE__ */ jsxs("div", {
+				className: "search-history__filters",
+				children: [
+					/* @__PURE__ */ jsxs("label", {
+						className: "srch search-history__search",
+						children: [/* @__PURE__ */ jsx(Search, { className: "h-4 w-4" }), /* @__PURE__ */ jsx("input", {
+							value: query,
+							onChange: (event) => setQuery(event.target.value),
+							placeholder: "Search history",
+							"aria-label": "Search history"
+						})]
+					}),
+					/* @__PURE__ */ jsxs("label", {
+						className: "search-history__field",
+						children: [/* @__PURE__ */ jsx("span", { children: "From" }), /* @__PURE__ */ jsx("input", {
+							type: "date",
+							value: fromDate,
+							max: toDate || void 0,
+							onChange: (event) => setFromDate(event.target.value)
+						})]
+					}),
+					/* @__PURE__ */ jsxs("label", {
+						className: "search-history__field",
+						children: [/* @__PURE__ */ jsx("span", { children: "To" }), /* @__PURE__ */ jsx("input", {
+							type: "date",
+							value: toDate,
+							min: fromDate || void 0,
+							onChange: (event) => setToDate(event.target.value)
+						})]
+					}),
+					/* @__PURE__ */ jsxs("label", {
+						className: "search-history__field",
+						children: [/* @__PURE__ */ jsx("span", { children: "Type" }), /* @__PURE__ */ jsxs("select", {
+							value: type,
+							onChange: (event) => setType(event.target.value),
+							children: [
+								/* @__PURE__ */ jsx("option", {
+									value: "all",
+									children: "All types"
+								}),
+								/* @__PURE__ */ jsx("option", {
+									value: "brand",
+									children: "Brand"
+								}),
+								/* @__PURE__ */ jsx("option", {
+									value: "product",
+									children: "Product"
+								})
+							]
+						})]
+					}),
+					hasFilters && /* @__PURE__ */ jsx("button", {
+						type: "button",
+						className: "search-history__clear",
+						onClick: clearFilters,
+						children: "Clear"
+					})
+				]
+			}),
+			filteredSearches.length === 0 ? /* @__PURE__ */ jsxs("div", {
+				className: "empty search-history__empty",
+				children: [
+					/* @__PURE__ */ jsx("div", {
+						className: "empty__i",
+						children: /* @__PURE__ */ jsx(Search, { className: "h-6 w-6" })
+					}),
+					/* @__PURE__ */ jsx("h2", { children: searches.length === 0 ? "No searches yet" : "No searches matched" }),
+					/* @__PURE__ */ jsx("p", {
+						className: "muted",
+						style: {
+							maxWidth: 380,
+							margin: "10px auto 0"
+						},
+						children: searches.length === 0 ? "Your searches will appear here after you run your first one." : "Try changing your search, date range, or type filter."
+					}),
+					searches.length === 0 ? /* @__PURE__ */ jsxs(Link, {
+						href: "/dashboard",
+						className: "btn btn--y",
+						style: { margin: "22px auto 0" },
+						children: ["Start a search ", /* @__PURE__ */ jsx(Arrow, {})]
+					}) : /* @__PURE__ */ jsx("button", {
+						type: "button",
+						className: "btn btn--g",
+						style: { margin: "22px auto 0" },
+						onClick: clearFilters,
+						children: "Clear filters"
+					})
+				]
+			}) : /* @__PURE__ */ jsx("div", {
+				className: "search-history__list",
+				children: visibleSearches.map((search) => /* @__PURE__ */ jsxs(Link, {
+					className: "search-history__row",
+					href: search.url,
+					children: [
+						/* @__PURE__ */ jsx("span", {
+							className: "search-history__icon",
+							children: /* @__PURE__ */ jsx(Search, {})
+						}),
+						/* @__PURE__ */ jsxs("span", {
+							className: "search-history__main",
+							children: [/* @__PURE__ */ jsx("strong", { children: search.name || search.phrase }), /* @__PURE__ */ jsx("span", { children: search.phrase })]
+						}),
+						/* @__PURE__ */ jsx("span", {
+							className: "search-history__type",
+							children: search.search_type === "product" ? "Product" : "Brand"
+						}),
+						/* @__PURE__ */ jsx("span", {
+							className: `search-history__status is-${search.status}`,
+							children: statusLabel(search.status)
+						}),
+						/* @__PURE__ */ jsxs("span", {
+							className: "search-history__results",
+							children: [search.result_count ?? 0, " videos"]
+						}),
+						/* @__PURE__ */ jsx("time", {
+							dateTime: search.created_at,
+							children: searchedAt(search.created_at)
+						}),
+						/* @__PURE__ */ jsx(Arrow, {})
+					]
+				}, search.id))
+			}),
+			filteredSearches.length > PAGE_SIZE && /* @__PURE__ */ jsxs("nav", {
+				className: "search-history__pagination",
+				"aria-label": "Search history pagination",
+				children: [/* @__PURE__ */ jsxs("span", { children: [
+					(page - 1) * PAGE_SIZE + 1,
+					"–",
+					Math.min(page * PAGE_SIZE, filteredSearches.length),
+					" of ",
+					filteredSearches.length
+				] }), /* @__PURE__ */ jsxs("div", { children: [
+					/* @__PURE__ */ jsx("button", {
+						type: "button",
+						className: "btn btn--g btn--sm",
+						disabled: page === 1,
+						onClick: () => setPage((current) => current - 1),
+						children: "Previous"
+					}),
+					/* @__PURE__ */ jsxs("span", { children: [
+						"Page ",
+						page,
+						" of ",
+						pageCount
+					] }),
+					/* @__PURE__ */ jsx("button", {
+						type: "button",
+						className: "btn btn--g btn--sm",
+						disabled: page === pageCount,
+						onClick: () => setPage((current) => current + 1),
+						children: "Next"
+					})
+				] })]
+			}),
+			/* @__PURE__ */ jsx("style", { children: `
+        .search-history__filters{display:grid;grid-template-columns:minmax(220px,1fr) auto auto auto auto;align-items:end;gap:10px;margin-bottom:16px}.search-history__search{min-width:0;margin:0}
+        .search-history__field{display:flex;flex-direction:column;gap:5px}.search-history__field>span{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted)}
+        .search-history__field input,.search-history__field select{height:42px;padding:0 12px;border:1px solid var(--line);border-radius:11px;background:var(--white);color:var(--ink);font:inherit;font-size:13px}.search-history__field input{min-width:145px}.search-history__field select{min-width:125px;padding-right:30px}
+        .search-history__clear{height:42px;padding:0 8px;border:0;background:transparent;color:var(--muted);font-size:12px;font-weight:700;text-decoration:underline}.search-history__list{background:var(--white);border:1px solid var(--line);border-radius:18px;overflow:hidden}
+        .search-history__row{display:grid;grid-template-columns:38px minmax(180px,1fr) 75px 75px 85px 155px 18px;align-items:center;gap:14px;padding:16px 20px;color:var(--ink);text-decoration:none;border-bottom:1px solid var(--line);transition:background .14s}.search-history__row:last-child{border-bottom:0}.search-history__row:hover{background:var(--paper,#faf9f6)}
+        .search-history__icon{display:grid;place-items:center;width:38px;height:38px;border-radius:11px;background:var(--yellow-soft,#fff7d6)}.search-history__icon svg{width:17px;height:17px}.search-history__main{min-width:0;display:flex;flex-direction:column;gap:3px}.search-history__main strong,.search-history__main span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.search-history__main strong{font-size:14px}
+        .search-history__main span,.search-history__row time,.search-history__type,.search-history__results{font-size:12px;color:var(--muted)}.search-history__status{justify-self:start;border-radius:999px;padding:4px 9px;background:#edf6ee;color:#397047;font-size:11px;font-weight:700}.search-history__status.is-failed{background:#fff0ed;color:#a13c2e}.search-history__status.is-scraping{background:#fff7d6;color:#765e00}.search-history__status.is-paused{background:#f0efec;color:#666}.search-history__row>svg{width:14px;height:14px;color:var(--muted)}.search-history__empty{background:var(--white);border:1px solid var(--line);border-radius:18px}
+        .search-history__pagination{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-top:16px;color:var(--muted);font-size:12px}.search-history__pagination>div{display:flex;align-items:center;gap:12px}.search-history__pagination .btn:disabled{opacity:.45;cursor:not-allowed}
+        @media(max-width:950px){.search-history__filters{grid-template-columns:1fr 1fr}.search-history__search{grid-column:1/-1}.search-history__clear{justify-self:start}.search-history__row{grid-template-columns:38px minmax(0,1fr) auto 14px}.search-history__type,.search-history__status,.search-history__results{display:none}.search-history__row time{grid-column:2}.search-history__row>svg{grid-column:4;grid-row:1/3}}
+        @media(max-width:520px){.search-history__filters{grid-template-columns:1fr}.search-history__search{grid-column:auto}.search-history__field input,.search-history__field select{width:100%}.search-history__pagination{align-items:flex-start;flex-direction:column}.search-history__pagination>div{width:100%;justify-content:space-between}}
+      ` })
+		]
+	});
+}
+//#endregion
 //#region resources/js/Pages/SavedSearches/Index.jsx
 var Index_exports = /* @__PURE__ */ __exportAll({ default: () => Index });
 var FILTER_LABELS = {
@@ -11682,13 +12000,13 @@ function AnalysisHistoryRow({ entry, href, statusLabel, searchNames }) {
 		})]
 	});
 }
-function Index({ searches: initialSearches, bookmarkedVideos: initialBookmarkedVideos = [], bookmarkedVideosCount = 0, analysisHistory: initialAnalysisHistory = [], analysisHistoryCount = 0, filterType = null, watchlistedOnly: bookmarkedOnly = true }) {
+function Index({ searches: initialSearches, bookmarkedVideos: initialBookmarkedVideos = [], bookmarkedVideosCount = 0, analysisHistory: initialAnalysisHistory = [], analysisHistoryCount = 0, searchHistory = [], initialTab = "searches", filterType = null, watchlistedOnly: bookmarkedOnly = true }) {
 	const currentPath = typeof window === "undefined" ? "/library" : `${window.location.pathname}${window.location.search}`;
 	const isBrandCategoryView = filterType === "brand-group";
 	const showTabs = bookmarkedOnly && !filterType;
 	const [searches, setSearches] = useState(initialSearches);
 	useEffect(() => setSearches(initialSearches), [initialSearches]);
-	const [tab, setTab] = useState("searches");
+	const [tab, setTab] = useState(initialTab === "history" ? "history" : "searches");
 	const [openMenuId, setOpenMenuId] = useState(null);
 	const [bookmarkedVideos, setBookmarkedVideos] = useState(initialBookmarkedVideos);
 	const [analysisHistory, setAnalysisHistory] = useState(initialAnalysisHistory);
@@ -12057,6 +12375,19 @@ function Index({ searches: initialSearches, bookmarkedVideos: initialBookmarkedV
 								children: analysisHistoryCount
 							})
 						]
+					}),
+					/* @__PURE__ */ jsxs("button", {
+						type: "button",
+						className: `tab${tab === "history" ? " is-on" : ""}`,
+						onClick: () => setTab("history"),
+						children: [
+							/* @__PURE__ */ jsx(Search, { className: "h-[15px] w-[15px]" }),
+							/* @__PURE__ */ jsx("span", { children: "Search History" }),
+							/* @__PURE__ */ jsx("span", {
+								className: "tab__c",
+								children: searchHistory.length
+							})
+						]
 					})
 				]
 			}), tab === "searches" || !showTabs ? /* @__PURE__ */ jsxs(Fragment$1, { children: [/* @__PURE__ */ jsxs("div", {
@@ -12235,7 +12566,7 @@ function Index({ searches: initialSearches, bookmarkedVideos: initialBookmarkedV
 			}) : /* @__PURE__ */ jsx("div", {
 				className: "vgrid",
 				children: filteredVideos.map((v) => /* @__PURE__ */ jsx(VideoCard, { video: v }, v.id))
-			})] }) : /* @__PURE__ */ jsxs(Fragment$1, { children: [/* @__PURE__ */ jsxs("div", {
+			})] }) : tab === "history" ? /* @__PURE__ */ jsx(SearchHistoryTab, { searches: searchHistory }) : /* @__PURE__ */ jsxs(Fragment$1, { children: [/* @__PURE__ */ jsxs("div", {
 				className: "tools",
 				style: {
 					display: "grid",
@@ -12648,7 +12979,7 @@ function whyDrivers(result) {
 	if (Array.isArray(result?.content_breakdown) && result.content_breakdown.length > 0) return result.content_breakdown.map((item, index) => ({
 		id: index,
 		rank: String(index + 1).padStart(2, "0"),
-		title: item?.title || item?.driver || item?.label || "Outlier signal",
+		title: item?.title || item?.driver || item?.label || "Breakout signal",
 		body: item?.explanation || item?.reason || String(item),
 		uplift: item?.uplift || item?.delta || item?.impact || null
 	}));
@@ -13126,7 +13457,7 @@ function ErrorStateModal({ message, retrying, onRetry, onDismiss }) {
 function WhyTab({ result, video }) {
 	const drivers = whyDrivers(result);
 	const score = breakoutScore$1(video);
-	const subtitle = score ? `${formatMetric(score)}x Breakout Score` : "Outlier drivers";
+	const subtitle = score ? `${formatMetric(score)}x Breakout Score` : "Breakout drivers";
 	return /* @__PURE__ */ jsxs(PanelShell, {
 		title: "Analysis",
 		subtitle,
@@ -13141,7 +13472,7 @@ function WhyTab({ result, video }) {
 		}),
 		children: [/* @__PURE__ */ jsx("div", {
 			className: "mb-3 text-[10px] font-bold uppercase tracking-[0.1em] text-[#8c8579]",
-			children: "Top outlier drivers"
+			children: "Top breakout drivers"
 		}), /* @__PURE__ */ jsx("div", {
 			className: "space-y-3",
 			children: drivers.map((item) => /* @__PURE__ */ jsx("article", {
@@ -13538,10 +13869,10 @@ var DetailScreen_exports = /* @__PURE__ */ __exportAll({ default: () => DetailSc
 *
 * Layout follows brandbeaconanalyticsredesign.html:
 *   Back bar · Header (with inline handle editor + kebab) · AI Insights bullets ·
-*   Stat strip (4 tiles) · Winner outlier with auto-analysis · More outliers
+*   Stat strip (4 tiles) · Winner breakout with auto-analysis · More breakouts
 *   grid with toggle-open per-card analysis · Analytics card with metric tabs +
 *   blurred history until the next refresh · When-they-post heatmap with a
-*   best-time insight bar · Outliers-per-week + Score distribution ·
+*   best-time insight bar · Breakouts-per-week + Score distribution ·
 *   Hashtags & sounds scroll panels (each row is a link to TikTok).
 *
 * The heavy analytical text (insights, per-video why/replicate, best-time)
@@ -13724,7 +14055,7 @@ function weekKeyFromIso(iso) {
 	return utc.toISOString().slice(0, 10);
 }
 function formatMetricValue(value, metric) {
-	if (metric === "outliers") return `${Math.round(Number(value || 0))} outliers`;
+	if (metric === "outliers") return `${Math.round(Number(value || 0))} breakouts`;
 	if (metric === "engrate") return `${Number(value || 0).toFixed(1)}%`;
 	if (metric === "posts") return `${Math.round(Number(value || 0))} posts`;
 	if (metric === "eng") return `${compact(Number(value || 0))} engagements`;
@@ -14359,7 +14690,7 @@ function DetailScreen({ search, isAuthenticated = false, billing: billing$2, ref
 				videoId: video.id,
 				searchUrl: search?.url,
 				searchName: search?.name || search?.phrase,
-				videoLabel: video.handle || video.username || video.title || video.caption || "Outlier video"
+				videoLabel: video.handle || video.username || video.title || video.caption || "Breakout video"
 			});
 		} catch (error) {
 			setConfirmAnalysisVideo(video);
@@ -14680,7 +15011,7 @@ function DetailScreen({ search, isAuthenticated = false, billing: billing$2, ref
 					children: [
 						/* @__PURE__ */ jsx("span", {
 							className: "rs-stt__k",
-							children: "Outliers found"
+							children: "Breakouts found"
 						}),
 						/* @__PURE__ */ jsx("span", {
 							className: "rs-stt__v",
@@ -14755,7 +15086,7 @@ function DetailScreen({ search, isAuthenticated = false, billing: billing$2, ref
 			const winnerBucketHint = winnerBucket === "new" ? runLabels.latest : winnerBucket === "prev" ? runLabels.previous : "3rd run+";
 			return /* @__PURE__ */ jsxs(Fragment$1, { children: [/* @__PURE__ */ jsxs("div", {
 				className: "rs-sh",
-				children: [/* @__PURE__ */ jsx("h2", { children: "Outlier videos" }), /* @__PURE__ */ jsx("span", {
+				children: [/* @__PURE__ */ jsx("h2", { children: "Breakout videos" }), /* @__PURE__ */ jsx("span", {
 					className: "rs-note",
 					children: "Videos with unusually strong engagement for their creator’s audience, ranked by Breakout Score."
 				})]
@@ -14875,7 +15206,7 @@ function DetailScreen({ search, isAuthenticated = false, billing: billing$2, ref
 		rest.length > 0 && /* @__PURE__ */ jsxs(Fragment$1, { children: [
 			/* @__PURE__ */ jsxs("div", {
 				className: "rs-sh",
-				children: [/* @__PURE__ */ jsx("h2", { children: "More outliers" }), /* @__PURE__ */ jsxs("span", {
+				children: [/* @__PURE__ */ jsx("h2", { children: "More breakouts" }), /* @__PURE__ */ jsxs("span", {
 					className: "rs-sh__actions",
 					children: [/* @__PURE__ */ jsxs("span", {
 						className: "rs-runfilter",
@@ -15011,7 +15342,7 @@ function DetailScreen({ search, isAuthenticated = false, billing: billing$2, ref
 					children: [
 						["views", "views"],
 						["eng", "engagement"],
-						["outliers", "outliers"]
+						["outliers", "breakouts"]
 					].map(([key, label]) => /* @__PURE__ */ jsx("button", {
 						className: `rs-mtab${metric === key ? " on" : ""}`,
 						onClick: () => setMetric(key),
@@ -15245,7 +15576,7 @@ function DetailScreen({ search, isAuthenticated = false, billing: billing$2, ref
 			children: [/* @__PURE__ */ jsxs("div", {
 				className: "rs-dcard",
 				children: [
-					/* @__PURE__ */ jsx("h3", { children: "Outliers per week" }),
+					/* @__PURE__ */ jsx("h3", { children: "Breakouts per week" }),
 					/* @__PURE__ */ jsx("p", {
 						className: "rs-sub",
 						children: "Their posts scoring 3× or higher."
@@ -15289,7 +15620,7 @@ function DetailScreen({ search, isAuthenticated = false, billing: billing$2, ref
 						children: [
 							"This search's ",
 							distribution.reduce((s, d) => s + (d.count ?? 0), 0),
-							" outliers."
+							" breakouts."
 						]
 					}),
 					/* @__PURE__ */ jsx("div", {
@@ -15328,7 +15659,7 @@ function DetailScreen({ search, isAuthenticated = false, billing: billing$2, ref
 			className: "rs-sh",
 			children: [/* @__PURE__ */ jsx("h2", { children: "Hashtags & sounds" }), /* @__PURE__ */ jsx("span", {
 				className: "rs-note",
-				children: "Across this search's outlier videos."
+				children: "Across this search's breakout videos."
 			})]
 		}), /* @__PURE__ */ jsxs("div", {
 			className: "rs-two",
@@ -15420,11 +15751,11 @@ function DetailScreen({ search, isAuthenticated = false, billing: billing$2, ref
 											children: video.handle || video.username || video.title || "Video"
 										}), multiple >= 3 && /* @__PURE__ */ jsxs("em", {
 											className: "rs-weekmodal__ol",
-											children: [compact(multiple), "× outlier"]
+											children: [compact(multiple), "× breakout"]
 										})] }),
 										/* @__PURE__ */ jsx("span", {
 											className: "rs-weekmodal__cap",
-											children: video.title || video.caption || "Open this video from the outlier list."
+											children: video.title || video.caption || "Open this video from the breakout list."
 										}),
 										/* @__PURE__ */ jsxs("span", {
 											className: "rs-weekmodal__meta",
@@ -15777,7 +16108,7 @@ function UsageConfirmModal$1({ video, creditsRemaining, creditsRemainingAfterUse
 					className: "rs-upg__eyebrow",
 					children: [Icons.Spark, /* @__PURE__ */ jsx("span", { children: "Video analysis" })]
 				}),
-				/* @__PURE__ */ jsx("h3", { children: "Analyze this outlier video?" }),
+				/* @__PURE__ */ jsx("h3", { children: "Analyze this breakout video?" }),
 				/* @__PURE__ */ jsxs("p", { children: [
 					"You currently have ",
 					/* @__PURE__ */ jsx("b", { children: currentCredits }),
@@ -15819,9 +16150,11 @@ function UpgradeModal({ mode = "analysis", trialEligible = true, hasUsedTrial = 
 	const shouldOfferTrial = trialEligible && !hasUsedTrial;
 	return /* @__PURE__ */ jsx(UpgradePromptModal, {
 		eyebrow: isSearchBookmark ? "Search bookmarks" : isSearchManagement ? "Search management" : "Video analysis",
-		title: isSearchBookmark ? shouldOfferTrial ? "Start your 8-day Growth trial to unlock search bookmarks" : "Upgrade to unlock search bookmarks" : isSearchManagement ? shouldOfferTrial ? "Start your 8-day Growth trial to manage this search" : "Upgrade to manage this search" : shouldOfferTrial ? "Start your 8-day Growth trial to unlock more analysis credits" : "Upgrade to unlock more analysis credits",
-		body: isSearchBookmark ? shouldOfferTrial ? "Free searches do not include saved search bookmarks. Start your 8-day Growth trial to save searches to your bookmarks." : "Free searches do not include saved search bookmarks. Upgrade to Growth or Scale to save searches to your bookmarks." : isSearchManagement ? shouldOfferTrial ? "Start your 8-day Growth trial to pause, resume, or delete tracked searches from your dashboard." : "Upgrade to Growth or Scale to pause, resume, or delete tracked searches from your dashboard." : shouldOfferTrial ? "Free searches include the top-video breakdown. Start your 8-day Growth trial to analyze more outliers." : "Free searches include the top-video breakdown. Upgrade to Growth or Scale to analyze more outliers.",
-		primaryLabel: shouldOfferTrial ? "Start 8-day Growth trial" : "Upgrade to Growth",
+		title: isSearchBookmark ? shouldOfferTrial ? "Start your 8-day Growth trial to unlock search bookmarks" : "Upgrade to unlock search bookmarks" : isSearchManagement ? shouldOfferTrial ? "Start your 8-day Growth trial to manage this search" : "Upgrade to manage this search" : shouldOfferTrial ? "Turn more breakouts into winning creative" : "Turn every breakout into your next winning creative",
+		body: isSearchBookmark ? shouldOfferTrial ? "Free searches do not include saved search bookmarks. Start your 8-day Growth trial to save searches to your bookmarks." : "Free searches do not include saved search bookmarks. Upgrade to Growth or Scale to save searches to your bookmarks." : isSearchManagement ? shouldOfferTrial ? "Start your 8-day Growth trial to pause, resume, or delete tracked searches from your dashboard." : "Upgrade to Growth or Scale to pause, resume, or delete tracked searches from your dashboard." : shouldOfferTrial ? "See the hook, angle, and strategy behind more high-performing videos during your 8-day Growth trial." : "See the hook, angle, and strategy behind more high-performing videos—then turn those insights into content faster.",
+		visual: !isSearchBookmark && !isSearchManagement ? "video-analysis" : null,
+		emphasis: !isSearchBookmark && !isSearchManagement ? "Your free top-video breakdown stays included." : null,
+		primaryLabel: isSearchBookmark || isSearchManagement ? shouldOfferTrial ? "Start 8-day Growth trial" : "Upgrade to Growth" : shouldOfferTrial ? "Analyze more free for 8 days" : "Unlock more video analysis",
 		onPrimary: onUpgrade,
 		onClose
 	});
@@ -16240,7 +16573,7 @@ var scopedCss = `
 .rs-runempty{padding:22px;border:1px dashed var(--line);border-radius:14px;background:var(--paper,rgba(250,249,246,.6));font-size:.85rem;color:var(--faint-2,#9A968E);text-align:center}
 .rs-runempty__reset{border:0;background:transparent;color:var(--ink);font-weight:700;text-decoration:underline;cursor:pointer;padding:0;margin-left:4px}
 .rs-ogrid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
-/* Mobile: the "More outliers" header reflows into two controls under the
+/* Mobile: the "More breakouts" header reflows into two controls under the
    title so the run filter remains easy to reach on smaller screens. */
 @media (max-width: 640px){
   .rs-sh{display:grid;grid-template-columns:1fr 1fr;grid-template-areas:"title title" "filter sort";align-items:center;gap:10px 12px;margin:28px 0 14px}
@@ -16997,7 +17330,7 @@ function Show$1({ search: initial, isAuthenticated = false, billing }) {
 				}),
 				isSearchProcessing && /* @__PURE__ */ jsxs("div", {
 					className: "bb-partial",
-					children: [SparkIcon, /* @__PURE__ */ jsx("span", { children: "Early results — ranking and outlier scores keep updating until the scan finishes." })]
+					children: [SparkIcon, /* @__PURE__ */ jsx("span", { children: "Early results — ranking and breakout scores keep updating until the scan finishes." })]
 				})
 			] }), /* @__PURE__ */ jsx(DetailScreenBoundary, { children: /* @__PURE__ */ jsx(DetailScreen, {
 				search,
@@ -17126,7 +17459,7 @@ function relativeTime(iso) {
 	return "just now";
 }
 /**
-* Outlier multiple → "11.4x". This is views over the median of the search the
+* Breakout multiple → "11.4x". This is views over the median of the search the
 * video appears in, not the creator's own account baseline — label it as such
 * wherever it renders.
 */
@@ -17480,10 +17813,10 @@ var GHOST_HEIGHTS = [
 	82
 ];
 /**
-* Six-week outlier bars. An all-zero week set renders as ghost bars with an
+* Six-week breakout bars. An all-zero week set renders as ghost bars with an
 * explanation instead of six zeros; on a first run that chart looks broken,
 * and the two reasons it can be empty deserve different sentences: either no
-* post has cleared the threshold at all, or the outliers exist but were
+* post has cleared the threshold at all, or the breakouts exist but were
 * posted before the 12-week window this chart covers.
 */
 function OutliersPerWeek({ bars = [], threshold = 3, totalOutliers = 0, nextRunLabel = null }) {
@@ -17491,7 +17824,7 @@ function OutliersPerWeek({ bars = [], threshold = 3, totalOutliers = 0, nextRunL
 	if (bars.length === 0 || bars.every((b) => !b.value)) return /* @__PURE__ */ jsxs("div", {
 		className: "panel",
 		children: [
-			/* @__PURE__ */ jsx("h3", { children: "outliers per week" }),
+			/* @__PURE__ */ jsx("h3", { children: "breakouts per week" }),
 			/* @__PURE__ */ jsxs("div", {
 				className: "psub",
 				children: [
@@ -17516,14 +17849,14 @@ function OutliersPerWeek({ bars = [], threshold = 3, totalOutliers = 0, nextRunL
 			}),
 			/* @__PURE__ */ jsx("p", {
 				className: "ghostnote",
-				children: totalOutliers > 0 ? `All ${totalOutliers} of their outliers were posted more than 12 weeks ago; this chart covers recent weeks only. It fills in as refreshes land.` : `Nothing has beaten ${outlierLabel(threshold) ?? "3x"} the search median yet. A bar appears the week a post breaks out${nextRunLabel ? ` - next check ${nextRunLabel}` : ""}.`
+				children: totalOutliers > 0 ? `All ${totalOutliers} of their breakouts were posted more than 12 weeks ago; this chart covers recent weeks only. It fills in as refreshes land.` : `Nothing has beaten ${outlierLabel(threshold) ?? "3x"} the search median yet. A bar appears the week a post breaks out${nextRunLabel ? ` - next check ${nextRunLabel}` : ""}.`
 			})
 		]
 	});
 	return /* @__PURE__ */ jsxs("div", {
 		className: "panel",
 		children: [
-			/* @__PURE__ */ jsx("h3", { children: "outliers per week" }),
+			/* @__PURE__ */ jsx("h3", { children: "breakouts per week" }),
 			/* @__PURE__ */ jsxs("div", {
 				className: "psub",
 				children: [
@@ -17568,7 +17901,7 @@ function ScoreDistribution({ distribution = [] }) {
 					"this search's ",
 					outliers,
 					" ",
-					outliers === 1 ? "outlier" : "outliers"
+					outliers === 1 ? "breakout" : "breakouts"
 				]
 			}),
 			/* @__PURE__ */ jsx("div", {
@@ -18762,7 +19095,7 @@ function Free({ phrase = "", type = "brand", error = null }) {
 	const stages = [
 		"Pulling videos from TikTok",
 		"Filtering against your keywords",
-		"Scoring outliers vs creator baseline",
+		"Scoring breakouts vs creator baseline",
 		"Ranking your top breakouts"
 	];
 	const visibleSuggestions = subjectSuggestions.filter((suggestion) => suggestion.label?.trim());
@@ -19296,7 +19629,7 @@ var NOTIFICATIONS = [
 	}
 ];
 function Account() {
-	const { auth = {}, flash = {}, preferences = {}, accountDeletion = {} } = usePage().props;
+	const { auth = {}, flash = {}, preferences = {}, accountDeletion = {}, passwordAccess = {} } = usePage().props;
 	const initialNotifications = {
 		...Object.fromEntries(NOTIFICATIONS.map((n) => [n.key, n.on])),
 		...preferences.notifications ?? {}
@@ -19310,6 +19643,10 @@ function Account() {
 	const form = useForm({ name: auth.user?.name ?? "" });
 	const [savingPreferences, setSavingPreferences] = useState(false);
 	const deletionForm = useForm({});
+	const passwordForm = useForm({
+		password: "",
+		password_confirmation: ""
+	});
 	const submit = (event) => {
 		event.preventDefault();
 		form.patch("/settings/account");
@@ -19344,6 +19681,13 @@ function Account() {
 	};
 	const cancelDeletion = () => {
 		deletionForm.delete("/settings/account/delete-request", { preserveScroll: true });
+	};
+	const addPassword = (event) => {
+		event.preventDefault();
+		passwordForm.post("/settings/account/password", {
+			preserveScroll: true,
+			onSuccess: () => passwordForm.reset()
+		});
 	};
 	return /* @__PURE__ */ jsxs(Fragment$1, { children: [/* @__PURE__ */ jsx(Head, { title: "Account · Brand Beacon" }), /* @__PURE__ */ jsxs(SettingsShell, {
 		section: "account",
@@ -19413,6 +19757,75 @@ function Account() {
 							})
 						})
 					]
+				})
+			}),
+			(passwordAccess.canAdd || passwordAccess.enabled) && /* @__PURE__ */ jsx("div", {
+				className: "card",
+				style: { marginTop: 16 },
+				children: /* @__PURE__ */ jsxs("div", {
+					className: "card__p",
+					children: [/* @__PURE__ */ jsx("h2", { children: "Password login" }), passwordAccess.enabled ? /* @__PURE__ */ jsx("p", {
+						className: "muted",
+						style: {
+							fontSize: ".86rem",
+							marginTop: 6
+						},
+						children: "Password login is enabled. You can sign in with Google or use your email and password."
+					}) : /* @__PURE__ */ jsxs("form", {
+						onSubmit: addPassword,
+						children: [
+							/* @__PURE__ */ jsxs("p", {
+								className: "muted",
+								style: {
+									fontSize: ".86rem",
+									marginTop: 6
+								},
+								children: [
+									"Add a password so you can also sign in manually with ",
+									auth.user?.email,
+									"."
+								]
+							}),
+							/* @__PURE__ */ jsxs("div", {
+								className: "grid2",
+								style: { marginTop: 18 },
+								children: [/* @__PURE__ */ jsxs("div", { children: [
+									/* @__PURE__ */ jsx("label", {
+										className: "lbl",
+										children: "New password"
+									}),
+									/* @__PURE__ */ jsx("input", {
+										className: "fld",
+										type: "password",
+										autoComplete: "new-password",
+										value: passwordForm.data.password,
+										onChange: (event) => passwordForm.setData("password", event.target.value)
+									}),
+									passwordForm.errors.password && /* @__PURE__ */ jsx("p", {
+										className: "hint",
+										style: { color: "var(--warn)" },
+										children: passwordForm.errors.password
+									})
+								] }), /* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsx("label", {
+									className: "lbl",
+									children: "Confirm password"
+								}), /* @__PURE__ */ jsx("input", {
+									className: "fld",
+									type: "password",
+									autoComplete: "new-password",
+									value: passwordForm.data.password_confirmation,
+									onChange: (event) => passwordForm.setData("password_confirmation", event.target.value)
+								})] })]
+							}),
+							/* @__PURE__ */ jsx("button", {
+								type: "submit",
+								className: "btn btn--y",
+								style: { marginTop: 18 },
+								disabled: passwordForm.processing,
+								children: passwordForm.processing ? "Adding password…" : "Add password"
+							})
+						]
+					})]
 				})
 			}),
 			/* @__PURE__ */ jsx("div", {
@@ -20881,11 +21294,14 @@ function TrialScreen({ onBack, backLabel = "Back to results" }) {
 							}),
 							/* @__PURE__ */ jsxs("p", {
 								className: "mt-3 font-display text-[32px] leading-none font-bold tracking-[-.03em]",
-								children: ["$", t.price]
+								children: [displayedMonthlyRate(t), /* @__PURE__ */ jsx("span", {
+									className: "ml-1 text-[13px] font-medium tracking-normal faint",
+									children: "/mo"
+								})]
 							}),
 							/* @__PURE__ */ jsx("p", {
 								className: "mt-2 min-h-[32px] text-[11.5px] leading-[1.35] faint",
-								children: billingCycle === "annual" ? `First 2 months free. Billed annually. Save ${t.annualSavingsPercent}%` : "$0 for 8 days"
+								children: billingCycle === "annual" ? annualBillingNote(t) : "$0 for 8 days"
 							}),
 							/* @__PURE__ */ jsxs("p", {
 								className: "mt-4 text-[12px] faint",
@@ -21055,6 +21471,7 @@ createServer((page) => createInertiaApp({
 			"./Pages/components/EntitlementsBar.jsx": EntitlementsBar_exports,
 			"./Pages/components/SavedSearchRow.jsx": SavedSearchRow_exports,
 			"./Pages/components/SearchCreditConfirmModal.jsx": SearchCreditConfirmModal_exports,
+			"./Pages/components/SearchHistoryTab.jsx": SearchHistoryTab_exports,
 			"./Pages/components/SearchLauncher.jsx": SearchLauncher_exports,
 			"./Pages/components/SearchListScreen.jsx": SearchListScreen_exports,
 			"./Pages/components/SearchWizard.jsx": SearchWizard_exports,

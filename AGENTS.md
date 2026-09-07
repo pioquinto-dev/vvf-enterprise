@@ -184,7 +184,7 @@ Defined in `routes/public.php`.
 - `/search`
   - Standalone public free-search funnel. It collects the subject and refinements without creating a search; the Google callback creates the account-owned search after sign-in.
 - `/search/running`
-  - Public running-state view.
+  - Requires sign-in; signed-out visitors redirect to `/`. Running-state view for an existing, caller-owned scraping search. Missing or inaccessible IDs redirect to `/search`; inactive searches redirect to their results.
 - `/trial`
   - Trial plan page, with middleware that remembers checkout intent.
 - `/login`, `/register`

@@ -4,7 +4,7 @@ import Seo from '../../components/Seo.jsx';
 import RunningScreen from '../../landing/flow/screens/RunningScreen.jsx';
 import Nav from '../../landing/sections/Nav.jsx';
 
-export default function Running({ searchId }) {
+export default function Running({ searchId, search }) {
     return (
         <>
             <Seo title="Search Running | Brand Beacon" description="Your Brand Beacon search is being prepared." noIndex />
@@ -15,6 +15,7 @@ export default function Running({ searchId }) {
                     <div style={{ maxWidth: 760, margin: '0 auto' }}>
                         <RunningScreen
                             searchId={searchId}
+                            initialSearch={search}
                             onBack={() => router.visit('/search')}
                             onDone={() => router.visit(`/results/${searchId}`)}
                             onAutoReturn={() => router.visit('/dashboard')}

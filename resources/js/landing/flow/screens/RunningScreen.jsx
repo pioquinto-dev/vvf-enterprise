@@ -17,13 +17,14 @@ const STAGES = [
  * The transitional loading state after a run is dispatched. Not a wizard step —
  * it has no stepper — just a live view of a scrape already running server-side.
  */
-export default function RunningScreen({ searchId, onBack, onDone, onAutoReturn }) {
+export default function RunningScreen({ searchId, initialSearch = null, onBack, onDone, onAutoReturn }) {
   // The capture card exists to get an anonymous visitor an account before the
   // run finishes. Someone already signed in has nothing to claim.
   const { auth = {} } = usePage().props;
   const signedIn = auth.signedIn ?? Boolean(auth.user);
 
-  const [search, setSearch] = useState(null);
+  const [search, setSearch] = useState(initialSearch);
+  const [unavailable, setUnavailable] = useState(!searchId);
   const [failed, setFailed] = useState(null);
   const [completed, setCompleted] = useState(null);
   const [email, setEmail] = useState('');
@@ -48,6 +49,13 @@ export default function RunningScreen({ searchId, onBack, onDone, onAutoReturn }
         const payload = await fetchNotifications([searchId]);
         const found = payload?.searches?.[0];
 
+        if (!found) {
+          finished.current = true;
+          setSearch(null);
+          setUnavailable(true);
+          return;
+        }
+
         if (found) {
           setSearch(found);
 
@@ -62,6 +70,13 @@ export default function RunningScreen({ searchId, onBack, onDone, onAutoReturn }
           if (found.status === 'failed') {
             finished.current = true;
             setFailed(found.latest_run_error || 'The scrape did not finish. Try running the search again.');
+            return;
+          }
+
+          if (found.status !== 'scraping') {
+            finished.current = true;
+            setSearch(null);
+            setUnavailable(true);
             return;
           }
         }
@@ -93,7 +108,7 @@ export default function RunningScreen({ searchId, onBack, onDone, onAutoReturn }
   }, [searchId, onDone]);
 
   useEffect(() => {
-    if (!searchId || failed || completed || finished.current) return undefined;
+    if (!searchId || search?.status !== 'scraping' || unavailable || failed || completed || finished.current) return undefined;
 
     const timer = window.setTimeout(() => {
       updateTracked(searchId, { runningPromptShown: true });
@@ -101,14 +116,28 @@ export default function RunningScreen({ searchId, onBack, onDone, onAutoReturn }
     }, AUTO_RETURN_MS);
 
     return () => window.clearTimeout(timer);
-  }, [completed, failed, onAutoReturn, searchId]);
+  }, [completed, failed, onAutoReturn, searchId, search?.status, unavailable]);
 
   // Purely cosmetic progression so the wait reads as movement, not a hang.
   useEffect(() => {
-    if (failed) return undefined;
+    if (failed || unavailable || search?.status !== 'scraping') return undefined;
     const timer = window.setInterval(() => setStage((s) => Math.min(s + 1, STAGES.length - 1)), 12000);
     return () => window.clearInterval(timer);
-  }, [failed]);
+  }, [failed, unavailable, search?.status]);
+
+  if (unavailable || !search) {
+    return (
+      <div className="card">
+        <div className="run">
+          <h1>{unavailable ? 'No search available' : 'Checking search status'}</h1>
+          <p className="muted" style={{ marginTop: 12 }}>
+            {unavailable ? 'Start a search to discover videos for your brand or product.' : 'Confirming the latest status of your search.'}
+          </p>
+          {unavailable && <button onClick={onBack} className="btn btn--g" style={{ margin: '24px auto 0' }}>Start a search</button>}
+        </div>
+      </div>
+    );
+  }
 
   if (failed) {
     return (
