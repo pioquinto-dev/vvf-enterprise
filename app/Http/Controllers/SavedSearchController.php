@@ -403,7 +403,12 @@ class SavedSearchController extends Controller
             'id' => $video->id,
             'brand' => $names[$row->custom_keyword_search_id] ?? null,
             'search_url' => $urls[$row->custom_keyword_search_id] ?? null,
-            'video_url' => $video->video_url,
+            // Playback goes through TikTok's embed, never video_url: that is a
+            // signed CDN address that expires and 403s from a browser origin.
+            'video_id' => $video->video_id,
+            'embed_url' => $video->embed_url,
+            'post_url' => $video->post_url,
+            'social_media_source' => $video->platform,
             'score' => $score > 0 ? round($score).'x' : null,
             'duration' => $this->formatFeedDuration($video->duration),
             'handle' => $video->username ? '@'.ltrim((string) $video->username, '@') : null,

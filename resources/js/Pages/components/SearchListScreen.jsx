@@ -4,7 +4,7 @@ import { Link, router, usePage } from '@inertiajs/react';
 import AppLayout from './AppLayout.jsx';
 import BrandInlineFlow from './BrandInlineFlow.jsx';
 import EntitlementsBar from './EntitlementsBar.jsx';
-import { compact } from './VideoCard.jsx';
+import { compact } from './BreakoutVideoCard.jsx';
 import { STATUS, formatDate } from './SavedSearchRow.jsx';
 import { savedSearch as api } from '../../landing/flow/api.js';
 import { Search, Chevron, Refresh, Plus } from '../../landing/components/Icons.jsx';

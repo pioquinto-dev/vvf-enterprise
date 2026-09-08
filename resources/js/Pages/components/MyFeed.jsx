@@ -1,6 +1,7 @@
 import { Link } from '@inertiajs/react';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
+import { playerUrlFor, postTikTokMessage } from '../SavedSearches/detail/tiktokPlayer.js';
 import { withReturnTo } from '../utils/navigation.js';
 
 /**
@@ -25,22 +26,62 @@ const Icons = {
 function VideoCard({ video, currentPath }) {
   const href = video.search_url ? withReturnTo(video.search_url, currentPath) : null;
   const [playing, setPlaying] = useState(false);
-  const [failed, setFailed] = useState(false);
+  const iframeRef = useRef(null);
   const Details = href ? Link : 'div';
+  // The feed plays through TikTok's embed like every other surface. The raw
+  // video_url is a signed CDN address that expires and 403s from the browser.
+  const playerUrl = playerUrlFor(video, true);
+
+  useEffect(() => {
+    const iframe = iframeRef.current;
+    if (!playing || !iframe || !video?.video_id) return undefined;
+
+    const unmuteAndPlay = () => {
+      postTikTokMessage(iframe, 'unMute');
+      postTikTokMessage(iframe, 'play');
+    };
+
+    const handleReady = (event) => {
+      const payload = event?.data;
+      if (!payload || payload['x-tiktok-player'] !== true || payload.type !== 'onPlayerReady') return;
+      if (event.source !== iframe.contentWindow) return;
+      unmuteAndPlay();
+    };
+
+    iframe.addEventListener('load', unmuteAndPlay);
+    window.addEventListener('message', handleReady);
+
+    return () => {
+      iframe.removeEventListener('load', unmuteAndPlay);
+      window.removeEventListener('message', handleReady);
+    };
+  }, [playing, video?.video_id]);
 
   const body = (
     <>
       <div className="mf-vt">
-        {playing
-          ? <video key="playing" src={video.video_url} poster={video.thumbnail || undefined} controls autoPlay playsInline onError={() => { setPlaying(false); setFailed(true); }} />
-          : (video.thumbnail || video.video_url)
-            ? <video key="poster" poster={video.thumbnail || undefined} preload="none" playsInline muted />
-            : <span className="mf-vt__ph" style={{ background: video.gradient }} />}
+        {playing && playerUrl ? (
+          <>
+            <iframe
+              ref={iframeRef}
+              src={playerUrl}
+              title={video.caption || 'TikTok video'}
+              loading="lazy"
+              allow="autoplay; encrypted-media; fullscreen; picture-in-picture"
+              allowFullScreen
+            />
+            <button type="button" className="mf-close" aria-label="Close player" onClick={() => setPlaying(false)}>×</button>
+          </>
+        ) : video.thumbnail ? (
+          <img src={video.thumbnail} alt="" loading="lazy" />
+        ) : (
+          <span className="mf-vt__ph" style={{ background: video.gradient }} />
+        )}
         {!playing && video.brand && <span className="mf-k">{video.brand}</span>}
         {!playing && video.score && <span className="mf-m">{video.score}</span>}
         {!playing && video.duration && <span className="mf-d">{video.duration}</span>}
-        {!playing && !failed && video.video_url && <button type="button" className="mf-p" aria-label={`Play video by ${video.handle || 'TikTok creator'}`} onClick={() => setPlaying(true)}>{Icons.play}</button>}
-        {(failed || !video.video_url) && <span className="mf-play-error" role="status">{failed ? 'This video could not be played.' : 'Video unavailable.'}</span>}
+        {!playing && playerUrl && <button type="button" className="mf-p" aria-label={`Play video by ${video.handle || 'TikTok creator'}`} onClick={() => setPlaying(true)}>{Icons.play}</button>}
+        {!playerUrl && <span className="mf-play-error" role="status">Video unavailable.</span>}
       </div>
       <Details className="mf-vb" {...(href ? { href } : {})}>
         <div className="mf-vb__meta">
@@ -272,7 +313,9 @@ const scopedCss = `
 .mf-vc:hover{box-shadow:0 14px 34px -20px rgba(20,15,0,.32)}
 .mf-vt{position:relative;overflow:hidden;aspect-ratio:4/5;background:var(--paper,#faf9f6)}
 .mf-vt__ph{position:absolute;inset:0;width:100%;height:100%;display:block}
-.mf-vt video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;background:#000;display:block}
+.mf-vt img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}
+.mf-vt iframe{position:absolute;inset:0;width:100%;height:100%;border:0;background:#000;display:block}
+.mf-close{position:absolute;top:9px;right:9px;z-index:3;width:28px;height:28px;border:0;border-radius:50%;background:rgba(0,0,0,.65);color:#fff;font-size:1.25rem;line-height:1;cursor:pointer}
 .mf-play-error{position:absolute;inset:40% 12px auto;padding:12px;border-radius:8px;background:rgba(0,0,0,.8);color:#fff;text-align:center;font-size:.8rem}
 .mf-vb{display:block;color:inherit;text-decoration:none}
 a.mf-vb:hover{background:var(--wash)}

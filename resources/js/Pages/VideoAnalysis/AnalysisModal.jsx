@@ -2,13 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { usePage } from '@inertiajs/react';
 
 import { videoAnalysis } from '../../landing/flow/api.js';
-import { postTikTokMessage } from '../SavedSearches/detail/tiktokPlayer.js';
-
-function compactNumber(value) {
-  const number = Number(value || 0);
-  if (!Number.isFinite(number)) return '0';
-  return new Intl.NumberFormat(undefined, { notation: 'compact', maximumFractionDigits: 1 }).format(number);
-}
+import BreakoutVideoCard from '../components/BreakoutVideoCard.jsx';
 
 function formatMetric(value) {
   const number = Number(value || 0);
@@ -31,11 +25,6 @@ function formatDuration(seconds) {
   const minutes = Math.floor(total / 60);
   const remainder = String(Math.round(total % 60)).padStart(2, '0');
   return `${minutes}:${remainder}`;
-}
-
-function initials(name) {
-  const source = String(name || '').replace(/^@/, '').trim();
-  return source.slice(0, 2).toUpperCase() || '?';
 }
 
 /* The weighted engagement-per-follower score used to rank Breakout videos. */
@@ -71,26 +60,6 @@ function usePolling(videoId, initial, open) {
   }, [analysis?.status, open, videoId]);
 
   return [analysis, setAnalysis];
-}
-
-/*
- * The four numbers that make the comparison legible: reach, audience size,
- * engagement rate, and the resulting Breakout Score. Anything we cannot
- * compute renders as an em dash — the
- * old placeholder values (18x, 12.2%) read as real data and were not.
- */
-function statCards(video) {
-  const views = Number(video?.views ?? 0);
-  const followers = Number(video?.followers ?? 0);
-  const rate = Number(video?.engagement_rate ?? 0);
-  const score = breakoutScore(video);
-
-  return [
-    { label: 'Views', value: views > 0 ? compactNumber(views) : '—' },
-    { label: 'Followers', value: followers > 0 ? compactNumber(followers) : '—' },
-    { label: 'Engaged', value: rate > 0 ? `${formatMetric(rate)}%` : '—' },
-    { label: 'Breakout Score', value: score ? `${formatMetric(score)}x` : '—', good: true },
-  ];
 }
 
 function transcriptRows(analysis) {
@@ -218,15 +187,6 @@ function blueprintRows(blueprint) {
     });
 }
 
-function videoEmbedUrl(video) {
-  // Prefer the video-only player (fills the aspect box cleanly). The stored
-  // embed_url is TikTok's oEmbed *card*, which renders ~700px tall with caption
-  // and music chrome and blows out the sidebar, so it's only a last resort.
-  const id = video?.video_id;
-  if (id) return `https://www.tiktok.com/player/v1/${id}?autoplay=1&description=0&rel=0&music_info=0`;
-  return video?.embed_url ?? null;
-}
-
 function RegenerateButton({ regenerating, disabled, onClick, fullWidth = false }) {
   return (
     <button
@@ -301,150 +261,10 @@ function LeftSidebar({
   onToggleSave,
   showExternalLink = true,
 }) {
-  const metrics = statCards(video);
-  const score = breakoutScore(video);
-  const followers = Number(video?.followers ?? 0);
-  const runtime = formatDuration(video.duration);
-  const [playing, setPlaying] = useState(false);
-  const [thumbBroken, setThumbBroken] = useState(false);
-  const [avatarBroken, setAvatarBroken] = useState(false);
-  const iframeRef = useRef(null);
-  const embed = videoEmbedUrl(video);
-  const hasThumb = Boolean(video.thumbnail_url) && !thumbBroken;
-  const postedAt = video?.uploaded_at
-    ? new Date(video.uploaded_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
-    : null;
-
-  useEffect(() => {
-    const iframe = iframeRef.current;
-    if (!playing || !iframe || !video?.video_id) return undefined;
-
-    const unmuteAndPlay = () => {
-      postTikTokMessage(iframe, 'unMute');
-      postTikTokMessage(iframe, 'play');
-    };
-
-    const handleReady = (event) => {
-      const payload = event?.data;
-      if (!payload || payload['x-tiktok-player'] !== true || payload.type !== 'onPlayerReady') return;
-      if (event.source !== iframe.contentWindow) return;
-      unmuteAndPlay();
-    };
-
-    iframe.addEventListener('load', unmuteAndPlay);
-    window.addEventListener('message', handleReady);
-    return () => {
-      iframe.removeEventListener('load', unmuteAndPlay);
-      window.removeEventListener('message', handleReady);
-    };
-  }, [playing, video?.video_id]);
 
   return (
     <aside className="self-start rounded-[16px] border border-[#E7E5DF] bg-white p-3 shadow-[0_10px_24px_rgba(42,33,20,0.06)] min-[980px]:sticky min-[980px]:top-0 min-[980px]:rounded-[18px] min-[980px]:p-[13px]">
-      <div className="mx-auto w-full max-w-[260px] overflow-hidden rounded-[13px] bg-[#FAF9F6] min-[980px]:max-w-none">
-        {playing && embed ? (
-          <div className="relative">
-            <iframe
-              ref={iframeRef}
-              src={embed}
-              title={video?.title || 'TikTok video'}
-              loading="lazy"
-              allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
-              allowFullScreen
-              className="aspect-[9/13] w-full border-0"
-            />
-            <button
-              type="button"
-              onClick={() => setPlaying(false)}
-              aria-label="Close player"
-              className="absolute right-2 top-2 flex h-7 w-7 items-center justify-center rounded-full bg-black/60 text-white backdrop-blur-md transition hover:bg-black/80"
-            >
-              <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-                <path d="M6 6l12 12M18 6L6 18" />
-              </svg>
-            </button>
-          </div>
-        ) : (
-          <div className="relative">
-            {hasThumb ? (
-              <img
-                src={video.thumbnail_url}
-                alt=""
-                referrerPolicy="no-referrer"
-                onError={() => setThumbBroken(true)}
-                className="aspect-[9/13] w-full object-cover"
-              />
-            ) : (
-              <div className="aspect-[9/13] w-full bg-[linear-gradient(165deg,#cfb396,#a98069)]" />
-            )}
-            {score && (
-              <span className="absolute bottom-[9px] left-[9px] z-[2] rounded-[8px] bg-[rgba(11,11,11,0.82)] px-[9px] py-1 text-[12px] font-extrabold tracking-[-0.01em] text-[#FFC629] backdrop-blur-[2px]">
-                {formatMetric(score)}x
-              </span>
-            )}
-            {embed && (
-              <button
-                type="button"
-                onClick={() => setPlaying(true)}
-                className="absolute left-1/2 top-1/2 flex h-10 w-10 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-white/92 text-[#343434] shadow-[0_8px_30px_rgba(0,0,0,0.18)] transition hover:bg-white"
-                aria-label={video?.title ? `Play: ${video.title}` : 'Play video'}
-              >
-                <svg viewBox="0 0 24 24" className="ml-0.5 h-4 w-4 fill-current">
-                  <path d="M8 6.5v11l9-5.5-9-5.5z" />
-                </svg>
-              </button>
-            )}
-          </div>
-        )}
-      </div>
-
-      <div className="mt-3 flex items-center gap-[9px]">
-        <span className="h-[30px] w-[30px] flex-shrink-0 overflow-hidden rounded-full bg-[linear-gradient(150deg,#ffd27a,#ff9a5a_55%,#c0607a)]">
-          {video.avatar && !avatarBroken ? (
-            <img
-              src={video.avatar}
-              alt=""
-              referrerPolicy="no-referrer"
-              onError={() => setAvatarBroken(true)}
-              className="h-full w-full object-cover"
-            />
-          ) : (
-            <span className="flex h-full w-full items-center justify-center text-[10px] font-extrabold text-white">
-              {initials(video.handle ?? video.username ?? video.creator_name)}
-            </span>
-          )}
-        </span>
-        <div className="min-w-0">
-          <div className="truncate text-[13px] font-bold text-[#0B0B0B]">{video.handle ?? video.creator_name ?? '@creator'}</div>
-          <div className="text-[11.5px] text-[#5C5A54]">
-            {[postedAt, followers > 0 ? `${compactNumber(followers)} followers` : null].filter(Boolean).join(' · ')}
-          </div>
-        </div>
-      </div>
-
-      <div className="mt-[11px] flex flex-wrap items-center gap-2 text-[11px] text-[#5C5A54] min-[640px]:text-[11.5px]">
-        {video.content_format && (
-          <span className="rounded-[7px] bg-[#FFF3CF] px-[9px] py-1 text-[10px] font-extrabold uppercase tracking-[0.05em] text-[#9A6B00]">
-            {video.content_format}
-          </span>
-        )}
-        {runtime && (
-          <span>{runtime}</span>
-        )}
-      </div>
-
-      <div className="mt-3.5 grid grid-cols-4 overflow-hidden rounded-[13px] border border-[#E7E5DF] bg-white">
-        {metrics.map((item) => (
-          <div key={item.label} className="min-w-0 border-r border-[#E7E5DF] px-[7px] py-[10px] text-center last:border-r-0 min-[640px]:px-[8px]">
-            <span className={`block text-[15px] font-extrabold leading-[1.1] tracking-[-0.03em] [font-variant-numeric:tabular-nums] ${item.good ? 'text-[#1F7A4D]' : 'text-[#0B0B0B]'} min-[640px]:text-[16.5px]`}>
-              {item.value}
-            </span>
-            <span className="mt-[3px] block break-words text-[8.5px] font-extrabold uppercase leading-[1.15] tracking-[0.02em] text-[#74716A]">
-              {item.label}
-            </span>
-          </div>
-        ))}
-      </div>
+      <BreakoutVideoCard video={video} showActions={false} />
 
       <div className="mt-3.5 flex flex-col gap-[7px] border-t border-[#E7E5DF] pt-3.5">
         <div className={`grid gap-[7px] ${showExternalLink ? 'grid-cols-[minmax(0,1fr)_40px]' : 'grid-cols-1'}`}>

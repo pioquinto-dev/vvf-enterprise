@@ -2,12 +2,14 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Head, Link, router } from '@inertiajs/react';
 
 import AppLayout from '../components/AppLayout.jsx';
+import BreakoutVideoCard from '../components/BreakoutVideoCard.jsx';
 import EntitlementsBar from '../components/EntitlementsBar.jsx';
 import SavedSearchRow from '../components/SavedSearchRow.jsx';
 import SearchHistoryTab from '../components/SearchHistoryTab.jsx';
-import VideoCard from '../components/VideoCard.jsx';
+import AnalysisModal from '../VideoAnalysis/AnalysisModal.jsx';
 import { Arrow, Bookmark, Search, Chevron, Plus, Dots, Play } from '../../landing/components/Icons.jsx';
 import {
+  bookmarks,
   fetchAnalysisHistory,
   fetchBookmarkedVideos,
   savedSearch as api,
@@ -220,6 +222,11 @@ export default function Index({
   );
   const [bookmarkedVideosLoading, setBookmarkedVideosLoading] = useState(false);
   const [analysisHistoryLoading, setAnalysisHistoryLoading] = useState(false);
+  // Saved videos render the same breakout card as the results page, so they
+  // carry the same analyze / un-save affordances.
+  const [analysisModalVideo, setAnalysisModalVideo] = useState(null);
+  const [analysisByVideoId, setAnalysisByVideoId] = useState({});
+  const [unsavingVideoId, setUnsavingVideoId] = useState(null);
   const [query, setQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [searchTypeFilter, setSearchTypeFilter] = useState(isBrandCategoryView ? 'all' : filterType ?? 'all');
@@ -356,6 +363,20 @@ export default function Index({
     });
     return next;
   }, [bookmarkedVideos, videoQuery, videoSort]);
+
+  // Everything in this tab is bookmarked by definition, so the card's save
+  // toggle only ever un-saves — drop the row once the API confirms.
+  const unsaveVideo = async (video) => {
+    if (!video?.id || unsavingVideoId !== null) return;
+
+    setUnsavingVideoId(video.id);
+    try {
+      await bookmarks.remove(video.id);
+      setBookmarkedVideos((current) => current.filter((v) => String(v.id) !== String(video.id)));
+    } finally {
+      setUnsavingVideoId(null);
+    }
+  };
 
   const filteredAnalyses = useMemo(() => {
     const q = analysisQuery.trim().toLowerCase();
@@ -701,9 +722,15 @@ export default function Index({
                 </p>
               </div>
             ) : (
-              <div className="vgrid">
+              <div className="rs-ogrid">
                 {filteredVideos.map((v) => (
-                  <VideoCard key={v.id} video={v} />
+                  <BreakoutVideoCard
+                    key={v.id}
+                    video={{ ...v, bookmarked: true, analysis: analysisByVideoId[v.id] ?? v.analysis ?? null }}
+                    onAnalyze={() => setAnalysisModalVideo(v)}
+                    onToggleBookmark={() => unsaveVideo(v)}
+                    bookmarking={unsavingVideoId === v.id}
+                  />
                 ))}
               </div>
             )}
@@ -903,6 +930,18 @@ export default function Index({
             </div>
           </div>
         </div>
+      )}
+
+      {analysisModalVideo && (
+        <AnalysisModal
+          video={analysisModalVideo}
+          initialAnalysis={analysisByVideoId[analysisModalVideo.id] ?? analysisModalVideo.analysis ?? null}
+          onClose={() => setAnalysisModalVideo(null)}
+          onAnalysisChange={(videoId, analysis) => setAnalysisByVideoId((current) => ({ ...current, [videoId]: analysis }))}
+          saved
+          saving={unsavingVideoId === analysisModalVideo.id}
+          onToggleSave={() => unsaveVideo(analysisModalVideo)}
+        />
       )}
     </>
   );
