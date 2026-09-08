@@ -75,7 +75,7 @@ class AnalyticsIntegrationTest extends TestCase
         ]));
 
         $this->actingAs($user)
-            ->get('/dashboard')
+            ->get('/home')
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->where('analytics.enabled', false)
@@ -84,7 +84,7 @@ class AnalyticsIntegrationTest extends TestCase
                 ->where('analytics.events.0.parameters.plan_slug', 'basic'));
 
         $this->actingAs($user)
-            ->get('/dashboard')
+            ->get('/home')
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page->has('analytics.events', 0));
     }

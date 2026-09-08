@@ -10,7 +10,7 @@ class FeedDiscoveryService
 {
     public function payload(): array
     {
-        return Cache::remember('feed-discovery:v1', 900, function (): array {
+        return Cache::remember('feed-discovery:v2', 900, function (): array {
             $end = now();
             $start = $end->copy()->subDays(7);
             $previous = $start->copy()->subDays(7);
@@ -41,10 +41,23 @@ class FeedDiscoveryService
             usort($climbing, fn ($a, $b) => ($b['growth'] ?? -1) <=> ($a['growth'] ?? -1) ?: $b['count'] <=> $a['count'] ?: strcmp($a['tag'], $b['tag']));
             arsort($sounds);
 
+            // The strongest videos indexed this fortnight, used to fill My Feed
+            // for someone who has not run a search yet. Only the ids are cached;
+            // the feed loads and shapes them per request.
+            $topVideoIds = ViralVideo::query()
+                ->visible()
+                ->whereBetween('created_at', [$previous, $end])
+                ->where('virality_score', '>', 0)
+                ->orderByDesc('virality_score')
+                ->limit(8)
+                ->pluck('id')
+                ->all();
+
             return [
                 'mostSearched' => collect(['brand', 'product'])->mapWithKeys(fn ($type) => [$type => $mostSearched->where('search_type', $type)->take(3)->map(fn ($row) => ['phrase' => $row->phrase, 'count' => (int) $row->count])->values()->all()])->all(),
                 'climbingHashtags' => array_slice($climbing, 0, 5),
                 'topSounds' => collect($sounds)->take(3)->map(fn ($count, $label) => ['label' => $label, 'count' => $count])->values()->all(),
+                'topVideoIds' => $topVideoIds,
             ];
         });
     }

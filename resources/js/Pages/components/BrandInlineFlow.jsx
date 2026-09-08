@@ -23,8 +23,8 @@ import {
  * the top of the page and expands in-place — the page context beneath it
  * (moving-this-week, suggested-to-track, all-searches) never unmounts.
  *
- * The dashboard's SearchWizard flow is untouched — this is a separate,
- * lighter surface for the brand/product hubs.
+ * This is the only search flow now — the dashboard's older SearchWizard was
+ * retired along with the search homepage.
  */
 
 const STAGE_LIST = [

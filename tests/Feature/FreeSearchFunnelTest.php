@@ -120,7 +120,7 @@ class FreeSearchFunnelTest extends TestCase
             ])
             ->get('/auth/google/callback');
 
-        $response->assertRedirect('/dashboard');
+        $response->assertRedirect('/home');
         $response->assertSessionHas('search_access_prompt', function (array $prompt) {
             return $prompt['reason'] === 'search_credit_exhausted'
                 && $prompt['phrase'] === 'rhode skin'
@@ -169,7 +169,7 @@ class FreeSearchFunnelTest extends TestCase
             ],
         ])->get('/auth/google/callback');
 
-        $response->assertRedirect('/dashboard');
+        $response->assertRedirect('/home');
         $response->assertSessionHas('search_access_prompt', [
             'reason' => 'public_free_search_unavailable',
             'message' => 'This public free search is only available before starting a subscription. Use your plan\'s search credits from the dashboard.',

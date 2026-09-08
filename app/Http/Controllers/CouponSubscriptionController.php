@@ -58,13 +58,13 @@ class CouponSubscriptionController extends Controller
                 ['coupon_program' => $program->code, 'reason' => $eligibility->errorKey],
             );
 
-            return redirect()->route('dashboard')->with('coupon_access_prompt', $eligibility->toPromptArray($program->code));
+            return redirect()->route('home')->with('coupon_access_prompt', $eligibility->toPromptArray($program->code));
         }
 
         $plan = PricingPlan::query()->where('slug', $program->plan_slug)->first();
 
         if ($plan === null) {
-            return redirect()->route('dashboard')->with('coupon_access_prompt', [
+            return redirect()->route('home')->with('coupon_access_prompt', [
                 'errorKey' => 'Unavailable',
                 'title' => "This offer isn't available",
                 'detail' => 'The plan for this offer is not configured yet. Please contact support.',
@@ -75,7 +75,7 @@ class CouponSubscriptionController extends Controller
         try {
             $url = $this->billing->checkout($user, $plan, $program->trial_only, $program->billing_cycle, $program);
         } catch (ValidationException $exception) {
-            return redirect()->route('dashboard')->with('coupon_access_prompt', [
+            return redirect()->route('home')->with('coupon_access_prompt', [
                 'errorKey' => 'Not eligible',
                 'title' => 'Not eligible',
                 'detail' => collect($exception->errors())->flatten()->first() ?? 'This offer could not be started.',

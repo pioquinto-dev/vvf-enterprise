@@ -4,12 +4,13 @@ import { useEffect, useRef, useState } from 'react';
 import AppLayout from './components/AppLayout.jsx';
 import EntitlementsBar from './components/EntitlementsBar.jsx';
 import MyFeed from './components/MyFeed.jsx';
+import SearchFlashModals from './components/SearchFlashModals.jsx';
 
 /**
- * "My Feed" (mockup: V5 Home/My Feed) — the signed-in default landing. The feed
- * itself is built from the user's searches; the search homepage stays separate
- * at /dashboard. Typing here and choosing a search type hands off to it with
- * the keyword prefilled, landing straight on step 2 (add keywords).
+ * "My Feed" (mockup: V5 Home/My Feed) — the signed-in landing page. The feed is
+ * built from the user's searches; typing here and choosing a search type hands
+ * off to the matching hub (/brands or /products) with the subject prefilled,
+ * which opens that page's inline search flow on the keyword step.
  */
 function FeedSearchBar() {
   const [query, setQuery] = useState('');
@@ -28,11 +29,13 @@ function FeedSearchBar() {
     };
   }, [open]);
 
+  // Brand and product searches each own a hub with the inline flow; ?q= drops
+  // the typed subject straight into it.
   const goToSearch = (type) => {
     const phrase = query.trim();
     if (!phrase) return;
     setOpen(false);
-    router.visit(`/dashboard?type=${type}&q=${encodeURIComponent(phrase)}`);
+    router.visit(`${type === 'product' ? '/products' : '/brands'}?q=${encodeURIComponent(phrase)}`);
   };
 
   const hasQuery = query.trim().length > 0;
@@ -89,6 +92,10 @@ export default function Feed({ feed = {} }) {
         </div>
         <MyFeed feed={feed} currentPath={currentPath} />
       </AppLayout>
+
+      {/* Searches started from sign-up or checkout land here now, so their
+          progress and credit prompts follow them onto the feed. */}
+      <SearchFlashModals currentPath={currentPath} />
     </>
   );
 }

@@ -334,8 +334,14 @@ class SavedSearchController extends Controller
         $discovery = app(\App\Services\CustomKeywordSearch\FeedDiscoveryService::class)->payload();
         $empty = ['videos' => [], 'totalCount' => 0, 'sounds' => [], 'hashtags' => [], 'saved' => [], 'savedCount' => 0, 'discovery' => $discovery];
 
+        // Nothing of their own yet (a free user who has not spent their search):
+        // fill the feed with the best of what everyone else surfaced, so the
+        // page shows the product working instead of an empty column.
         if ($searchIds->isEmpty()) {
-            return $empty;
+            return array_merge($empty, [
+                'isDiscoveryFeed' => true,
+                'videos' => $this->globalFeedVideos($discovery['topVideoIds'] ?? []),
+            ]);
         }
 
         $searchNames = CustomKeywordSearch::query()->whereIn('id', $searchIds)->pluck('name', 'id');
@@ -421,6 +427,56 @@ class SavedSearchController extends Controller
             'thumbnail' => $video->thumbnail_url ?: $video->cover,
             'gradient' => $this->showcaseGradient((string) $video->id),
         ];
+    }
+
+    /**
+     * The same feed card shape for a video that is not tied to one of the
+     * user's searches, so the discovery feed renders through one component.
+     *
+     * @param  array<int, mixed>  $ids
+     * @return array<int, array<string, mixed>>
+     */
+    private function globalFeedVideos(array $ids): array
+    {
+        if ($ids === []) {
+            return [];
+        }
+
+        $order = array_flip(array_map('strval', $ids));
+
+        return ViralVideo::query()
+            ->visible()
+            ->whereIn('id', $ids)
+            ->get()
+            ->sortBy(fn (ViralVideo $video): int => $order[(string) $video->id] ?? PHP_INT_MAX)
+            ->map(function (ViralVideo $video): array {
+                $score = (float) $video->virality_score;
+
+                return [
+                    'id' => $video->id,
+                    // No owning search, so the card carries no brand chip and
+                    // does not link through to search results.
+                    'brand' => null,
+                    'search_url' => null,
+                    'video_id' => $video->video_id,
+                    'embed_url' => $video->embed_url,
+                    'post_url' => $video->post_url,
+                    'social_media_source' => $video->platform,
+                    'score' => $score > 0 ? round($score).'x' : null,
+                    'duration' => $this->formatFeedDuration($video->duration),
+                    'handle' => $video->username ? '@'.ltrim((string) $video->username, '@') : null,
+                    'age' => $this->shortAgo($video->uploaded_at),
+                    'caption' => $video->title,
+                    'views' => $this->compactNumber((float) $video->views),
+                    'likes' => $this->compactNumber((float) $video->likes),
+                    'comments' => $this->compactNumber((float) $video->comments),
+                    'followers' => $this->compactNumber((float) $video->followers),
+                    'thumbnail' => $video->thumbnail_url ?: $video->cover,
+                    'gradient' => $this->showcaseGradient((string) $video->id),
+                ];
+            })
+            ->values()
+            ->all();
     }
 
     /**
@@ -662,48 +718,14 @@ class SavedSearchController extends Controller
     }
 
     /**
-     * GET /home — "My Feed", the signed-in default landing. A single feed built
+     * GET /home — "My Feed", the signed-in landing page. A single feed built
      * from the user's own searches (their breakout videos, sounds, hashtags and
-     * saved videos). The search homepage lives separately at /dashboard.
+     * saved videos). Searches start from the brand/product hubs.
      */
     public function home(Request $request): Response
     {
         return Inertia::render('Feed', [
             'feed' => $this->feedPayload($request),
-        ]);
-    }
-
-    /**
-     * GET /dashboard — the search launcher plus the few most recent searches
-     * for the "Pick up where you left off" card.
-     */
-    public function dashboard(Request $request): Response|RedirectResponse
-    {
-        $runId = $request->integer('run');
-
-        if ($runId > 0) {
-            $ownedRun = CustomKeywordSearchRun::query()
-                ->whereKey($runId)
-                ->whereHas('search', fn ($query) => $query->where('user_id', $request->user()->id))
-                ->exists();
-
-            if (! $ownedRun) {
-                return redirect('/dashboard');
-            }
-        }
-
-        return Inertia::render('Dashboard', [
-            'recent' => $this->recentSearches($request),
-            'stats' => $this->dashboardStats($request),
-            'initialType' => $request->query('type') === 'product' ? 'product' : 'brand',
-            'initialQuery' => trim((string) $request->query('q', '')),
-            'searchSuggestions' => [
-                'brand' => $this->suggestions(
-                    $this->searches->all($request, [CustomKeywordSearch::TYPE_BRAND, CustomKeywordSearch::TYPE_COMPETITOR], false),
-                    [CustomKeywordSearch::TYPE_BRAND, CustomKeywordSearch::TYPE_COMPETITOR]
-                ),
-                'product' => $this->suggestions($this->searches->all($request, [CustomKeywordSearch::TYPE_PRODUCT], false), [CustomKeywordSearch::TYPE_PRODUCT]),
-            ],
         ]);
     }
 
@@ -934,6 +956,9 @@ class SavedSearchController extends Controller
             'searches' => $cards,
             'moving' => $this->movingThisWeek($searches),
             'suggestions' => $this->suggestions($searches, $types),
+            // ?q= drops someone straight into the inline flow with the subject
+            // filled in — this is where My Feed's search box hands off to.
+            'prefillQuery' => trim((string) $request->query('q', '')),
         ]);
     }
 

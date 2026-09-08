@@ -8,7 +8,11 @@ use Illuminate\Support\Facades\Route;
 
 Route::middleware('auth')->group(function (): void {
     Route::get('/home', [SavedSearchController::class, 'home'])->name('home');
-    Route::get('/dashboard', [SavedSearchController::class, 'dashboard'])->name('dashboard');
+    // The search homepage is retired: My Feed is the landing page and searches
+    // start from the brand/product hubs. The name stays mapped so any missed
+    // route('dashboard') caller lands on the feed rather than 500ing.
+    Route::redirect('/dashboard', '/home')->name('dashboard');
+    Route::redirect('/search', '/home', 301);
     Route::get('/search-history', [SavedSearchController::class, 'history'])->name('search-history.index');
 
     Route::redirect('/saved-searches', '/library', 301);

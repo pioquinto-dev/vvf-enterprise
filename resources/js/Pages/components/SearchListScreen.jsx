@@ -139,7 +139,7 @@ function BrandCard({ search, onOpen, onEdit }) {
   );
 }
 
-export default function SearchListScreen({ kind = 'brand', searches = [], moving = [], suggestions = [] }) {
+export default function SearchListScreen({ kind = 'brand', searches = [], moving = [], suggestions = [], prefillQuery = '' }) {
   const copy = COPY[kind] ?? COPY.brand;
   const { billing = {} } = usePage().props;
   const currentPath = typeof window === 'undefined'
@@ -156,8 +156,10 @@ export default function SearchListScreen({ kind = 'brand', searches = [], moving
   const [modalSearch, setModalSearch] = useState(null);
   const [formState, setFormState] = useState({ name: '', frequency: 'weekly', type: 'brand' });
   const [submitting, setSubmitting] = useState(false);
-  const [prefillSubject, setPrefillSubject] = useState('');
-  const [prefillNonce, setPrefillNonce] = useState(0);
+  const [prefillSubject, setPrefillSubject] = useState(prefillQuery);
+  // A non-zero nonce on mount opens the inline flow straight away when the
+  // page was reached from My Feed's search box (/brands?q=… or /products?q=…).
+  const [prefillNonce, setPrefillNonce] = useState(prefillQuery ? 1 : 0);
 
   const searchLeft = billing.searchCreditsRemaining;
   const searchLimit = billing.searchCreditsLimit;

@@ -154,7 +154,7 @@ class RegisteredUserController extends Controller
         }
 
         if ($this->billing->hasPaidPlan($user)) {
-            return redirect()->route('dashboard')->with('search_access_prompt', [
+            return redirect()->route('home')->with('search_access_prompt', [
                 'reason' => 'public_free_search_unavailable',
                 'message' => 'This public free search is only available before starting a subscription. Use your plan\'s search credits from the dashboard.',
             ]);
@@ -180,11 +180,11 @@ class RegisteredUserController extends Controller
                 'status' => $search->status,
             ]];
 
-            return redirect()->route('dashboard')
+            return redirect()->route('home')
                 ->with('tracked_searches', $tracked)
                 ->with('processing_searches', $tracked);
         } catch (ValidationException $exception) {
-            return redirect()->route('dashboard')->with('search_access_prompt', [
+            return redirect()->route('home')->with('search_access_prompt', [
                 'reason' => 'search_credit_exhausted',
                 'phrase' => $pending['phrase'] ?? '',
                 'message' => collect($exception->errors())->flatten()->first() ?? 'We could not start this search.',

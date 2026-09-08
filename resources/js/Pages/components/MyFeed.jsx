@@ -162,7 +162,7 @@ function DiscoveryPanel({ kind, discovery }) {
     {kind === 'searches' && <>
       {['brand', 'product'].map((type) => <div key={type}>
         <p className="mf-discovery-label">{type === 'brand' ? 'Brands' : 'Products'}</p>
-        {(discovery.mostSearched?.[type] ?? []).map((row, i) => <Link className="mf-rk" key={row.phrase} href={`/dashboard?type=${type}&q=${encodeURIComponent(row.phrase)}`}>
+        {(discovery.mostSearched?.[type] ?? []).map((row, i) => <Link className="mf-rk" key={row.phrase} href={`${type === 'product' ? '/products' : '/brands'}?q=${encodeURIComponent(row.phrase)}`}>
           <span className="mf-rk__p">{String(i + 1).padStart(2, '0')}</span><span className="mf-rk__bd"><strong>{row.phrase}</strong><span>{row.count} searches this week</span></span>
         </Link>)}
         {!discovery.mostSearched?.[type]?.length && <p className="mf-fsub">No searches recorded this week.</p>}
@@ -184,6 +184,22 @@ function DiscoveryPanel({ kind, discovery }) {
   </div>;
 }
 
+/* Shown above the discovery feed, so borrowed videos never read as their own. */
+function DiscoveryPrompt() {
+  return (
+    <div className="mf-prompt">
+      <span className="mf-prompt__i">{Icons.spark}</span>
+      <div>
+        <h2>Run your first search to make this yours</h2>
+        <p>
+          Until then, here is what is breaking out across Brand Beacon — the videos, sounds and
+          hashtags everyone else is surfacing. Search a brand or product above to swap it for your own.
+        </p>
+      </div>
+    </div>
+  );
+}
+
 function EmptyState() {
   return (
     <div className="mf-empty">
@@ -197,7 +213,16 @@ function EmptyState() {
   );
 }
 
-function FeedHead({ shown, totalCount }) {
+function FeedHead({ shown, totalCount, discoveryFeed }) {
+  if (discoveryFeed) {
+    return (
+      <div className="mf-feedhead">
+        <div className="mf-sec"><h2>breaking out now</h2></div>
+        <p>The strongest videos across Brand Beacon this week, while your own feed fills up.</p>
+      </div>
+    );
+  }
+
   const remaining = Math.max(0, totalCount - shown);
   const description = remaining > 0
     ? `${totalCount} video${totalCount === 1 ? '' : 's'} broke out for you this week. ${shown} ${shown === 1 ? 'is' : 'are'} here, and the other ${remaining} come round on your next visit.`
@@ -213,11 +238,12 @@ function FeedHead({ shown, totalCount }) {
 }
 
 export default function MyFeed({ feed = {}, currentPath = '/home' }) {
-  const { videos = [], totalCount = videos.length, sounds = [], hashtags = [], saved = [], savedCount = 0, discovery = {} } = feed;
+  const { videos = [], totalCount = videos.length, sounds = [], hashtags = [], saved = [], savedCount = 0, discovery = {}, isDiscoveryFeed = false } = feed;
   const discoveryPanels = ['searches', 'hashtags', 'sounds'].map((kind) => <DiscoveryPanel key={`discovery-${kind}`} kind={kind} discovery={discovery} />);
 
   const feedStyles = <style>{scopedCss}</style>;
 
+  // No searches yet and nothing global to borrow either — a brand new install.
   if (videos.length === 0) {
     return (
       <>
@@ -244,10 +270,11 @@ export default function MyFeed({ feed = {}, currentPath = '/home' }) {
   return (
     <>
       {feedStyles}
-      <FeedHead shown={videos.length} totalCount={totalCount} />
+      {isDiscoveryFeed && <DiscoveryPrompt />}
+      <FeedHead shown={videos.length} totalCount={totalCount} discoveryFeed={isDiscoveryFeed} />
       <div className="mf-mobile">{mobileItems}</div>
       <div className="mf">
-        <section className="mf-videos" aria-label="Your breakout videos">
+        <section className="mf-videos" aria-label={isDiscoveryFeed ? 'Breakout videos across Brand Beacon' : 'Your breakout videos'}>
           {videos.map((video, i) => <VideoCard key={`v-${video.id}-${i}`} video={video} currentPath={currentPath} />)}
         </section>
         <aside className="mf-sidebar" aria-label="Your search highlights and Brand Beacon trends">
@@ -363,6 +390,11 @@ a.mf-rk:hover,a.mf-hrow:hover{background:var(--wash)}
 .mf-score{position:absolute;left:8px;bottom:8px;display:inline-flex;align-items:center;padding:3px 8px;border-radius:6px;background:var(--yellow);color:#0b0b0b;font-family:ui-monospace,Menlo,monospace;font-size:.7rem;font-weight:700}
 .mf-link{font-size:.79rem;font-weight:700;color:var(--amber-ink);text-decoration:none}
 .mf-link:hover{text-decoration:underline}
+.mf-prompt{display:flex;gap:14px;align-items:flex-start;margin-top:24px;padding:16px 18px;border:1px solid #F2E2AE;border-radius:16px;background:#FFF8E6}
+.mf-prompt__i{width:34px;height:34px;flex:none;display:grid;place-items:center;border-radius:10px;background:var(--yellow);color:#1A1400}
+.mf-prompt__i svg{width:17px;height:17px}
+.mf-prompt h2{margin:0;font-size:.95rem;font-weight:800;letter-spacing:-.02em;color:var(--ink)}
+.mf-prompt p{margin:5px 0 0;font-size:.83rem;line-height:1.55;color:#5B4300;max-width:70ch}
 .mf-empty{background:var(--white);border:1px dashed var(--line-2,#DEDBD3);border-radius:20px;padding:40px 26px;text-align:center;margin-top:24px}
 .mf-empty__i{width:52px;height:52px;margin:0 auto 16px;border-radius:16px;background:var(--wash);color:var(--amber-ink);display:grid;place-items:center}
 .mf-empty__i svg{width:24px;height:24px}

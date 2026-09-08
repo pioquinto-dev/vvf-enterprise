@@ -107,7 +107,7 @@ class GoogleAuthController extends Controller
 
         if ($pending = FreeSearchFunnelController::pull($request)) {
             if ($this->billing->hasPaidPlan($user)) {
-                return redirect()->route('dashboard')->with('search_access_prompt', [
+                return redirect()->route('home')->with('search_access_prompt', [
                     'reason' => 'public_free_search_unavailable',
                     'message' => 'This public free search is only available before starting a subscription. Use your plan\'s search credits from the dashboard.',
                 ]);
@@ -133,7 +133,7 @@ class GoogleAuthController extends Controller
                 return redirect()->to($search->url())
                     ->with('free_search_new', true);
             } catch (ValidationException $exception) {
-                return redirect()->route('dashboard')->with('search_access_prompt', [
+                return redirect()->route('home')->with('search_access_prompt', [
                     'reason' => 'search_credit_exhausted',
                     'phrase' => $pending['phrase'] ?? '',
                     'message' => collect($exception->errors())->flatten()->first() ?? 'We could not start this search.',

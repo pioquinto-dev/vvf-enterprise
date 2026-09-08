@@ -85,7 +85,7 @@ export default function SearchHistoryTab({ searches = [] }) {
             {searches.length === 0 ? 'Your searches will appear here after you run your first one.' : 'Try changing your search, date range, or type filter.'}
           </p>
           {searches.length === 0
-            ? <Link href="/dashboard" className="btn btn--y" style={{ margin: '22px auto 0' }}>Start a search <Arrow /></Link>
+            ? <Link href="/brands" className="btn btn--y" style={{ margin: '22px auto 0' }}>Start a search <Arrow /></Link>
             : <button type="button" className="btn btn--g" style={{ margin: '22px auto 0' }} onClick={clearFilters}>Clear filters</button>}
         </div>
       ) : (
