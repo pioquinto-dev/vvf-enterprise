@@ -41,6 +41,12 @@ class User extends Authenticatable
         return $this->hasMany(Subscription::class);
     }
 
+    public function needsManualPassword(): bool
+    {
+        return (bool) data_get($this->preferences, 'authentication.google_connected', false)
+            && ! data_get($this->preferences, 'authentication.password_added_at');
+    }
+
     public function utmAttributions(): HasMany
     {
         return $this->hasMany(UtmAttribution::class);

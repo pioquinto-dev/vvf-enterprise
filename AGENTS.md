@@ -222,6 +222,7 @@ Defined in `routes/frontend.php`.
   - Product-oriented view over saved-search data.
 - `/settings/account`
   - Account settings, Google-user password setup, and deletion flow.
+  - `POST /settings/account/password` sets a Google user's first manual password only. `PATCH /settings/account/password` updates an existing manual password and requires the current password. Google users without `authentication.password_added_at` must complete setup before updating.
 - `/settings/appearance`
   - Appearance preferences.
 - `/settings/subscription`

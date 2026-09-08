@@ -20,6 +20,7 @@ Route::middleware('auth')->group(function (): void {
     Route::get('/settings/account', [SettingsController::class, 'account'])->name('settings.account');
     Route::patch('/settings/account', [SettingsController::class, 'updateAccount'])->name('settings.account.update');
     Route::post('/settings/account/password', [SettingsController::class, 'addPassword'])->name('settings.account.password.store');
+    Route::patch('/settings/account/password', [SettingsController::class, 'updatePassword'])->middleware('throttle:6,1')->name('settings.account.password.update');
     Route::post('/settings/account/delete-request', [SettingsController::class, 'requestAccountDeletion'])->name('settings.account.delete-request');
     Route::delete('/settings/account/delete-request', [SettingsController::class, 'cancelAccountDeletion'])->name('settings.account.delete-request.cancel');
     Route::get('/settings/appearance', [SettingsController::class, 'appearance'])->name('settings.appearance');

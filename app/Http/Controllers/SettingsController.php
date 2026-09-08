@@ -51,9 +51,8 @@ class SettingsController extends Controller
             'preferences' => $this->preferencesPayload($user?->preferences ?? []),
             'accountDeletion' => $this->accountDeletionPayload($user),
             'passwordAccess' => [
-                'canAdd' => (bool) data_get($user?->preferences, 'authentication.google_connected', false)
-                    && ! data_get($user?->preferences, 'authentication.password_added_at'),
-                'enabled' => (bool) data_get($user?->preferences, 'authentication.password_added_at'),
+                'canAdd' => $user->needsManualPassword(),
+                'enabled' => ! $user->needsManualPassword(),
             ],
         ]);
     }
@@ -81,7 +80,7 @@ class SettingsController extends Controller
     {
         $user = $request->user();
 
-        abort_unless((bool) data_get($user->preferences, 'authentication.google_connected', false), 403);
+        abort_unless($user->needsManualPassword(), 403);
 
         $validated = $request->validate([
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
@@ -97,6 +96,25 @@ class SettingsController extends Controller
         ])->save();
 
         return back()->with('status', 'Password added. You can now sign in with Google or your email and password.');
+    }
+
+    public function updatePassword(Request $request): RedirectResponse
+    {
+        $user = $request->user();
+
+        abort_if($user->needsManualPassword(), 403, 'Set a manual password first.');
+
+        $validated = $request->validate([
+            'current_password' => ['required', 'string', 'current_password:web'],
+            'password' => ['required', 'string', 'confirmed', Rules\Password::defaults()],
+        ]);
+
+        $user->forceFill([
+            'password' => Hash::make($validated['password']),
+            'remember_token' => null,
+        ])->save();
+
+        return back()->with('status', 'Password updated.');
     }
 
     public function requestAccountDeletion(Request $request): RedirectResponse

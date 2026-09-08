@@ -26,7 +26,7 @@ export default function Account() {
   const form = useForm({ name: auth.user?.name ?? '' });
   const [savingPreferences, setSavingPreferences] = useState(false);
   const deletionForm = useForm({});
-  const passwordForm = useForm({ password: '', password_confirmation: '' });
+  const passwordForm = useForm({ current_password: '', password: '', password_confirmation: '' });
 
   const submit = (event) => {
     event.preventDefault();
@@ -72,9 +72,9 @@ export default function Account() {
     });
   };
 
-  const addPassword = (event) => {
+  const savePassword = (event) => {
     event.preventDefault();
-    passwordForm.post('/settings/account/password', {
+    passwordForm.submit(passwordAccess.canAdd ? 'post' : 'patch', '/settings/account/password', {
       preserveScroll: true,
       onSuccess: () => passwordForm.reset(),
     });
@@ -133,32 +133,35 @@ export default function Account() {
         {(passwordAccess.canAdd || passwordAccess.enabled) && (
           <div className="card" style={{ marginTop: 16 }}>
             <div className="card__p">
-              <h2>Password login</h2>
-              {passwordAccess.enabled ? (
-                <p className="muted" style={{ fontSize: '.86rem', marginTop: 6 }}>
-                  Password login is enabled. You can sign in with Google or use your email and password.
-                </p>
-              ) : (
-                <form onSubmit={addPassword}>
+              <h2>{passwordAccess.canAdd ? 'Set a manual password' : 'Update password'}</h2>
+                <form onSubmit={savePassword}>
                   <p className="muted" style={{ fontSize: '.86rem', marginTop: 6 }}>
-                    Add a password so you can also sign in manually with {auth.user?.email}.
+                    {passwordAccess.canAdd
+                      ? `You sign in with Google. Set a manual password for ${auth.user?.email} before you can update it here.`
+                      : 'Confirm your current password to save a new password.'}
                   </p>
+                  {!passwordAccess.canAdd && (
+                    <div style={{ marginTop: 18 }}>
+                      <label className="lbl" htmlFor="current_password">Current password</label>
+                      <input id="current_password" className="fld" type="password" autoComplete="current-password" required value={passwordForm.data.current_password} onChange={(event) => passwordForm.setData('current_password', event.target.value)} />
+                      {passwordForm.errors.current_password && <p className="hint" style={{ color: 'var(--warn)' }}>{passwordForm.errors.current_password}</p>}
+                    </div>
+                  )}
                   <div className="grid2" style={{ marginTop: 18 }}>
                     <div>
-                      <label className="lbl">New password</label>
-                      <input className="fld" type="password" autoComplete="new-password" value={passwordForm.data.password} onChange={(event) => passwordForm.setData('password', event.target.value)} />
+                      <label className="lbl" htmlFor="new_password">New password</label>
+                      <input id="new_password" className="fld" type="password" autoComplete="new-password" required value={passwordForm.data.password} onChange={(event) => passwordForm.setData('password', event.target.value)} />
                       {passwordForm.errors.password && <p className="hint" style={{ color: 'var(--warn)' }}>{passwordForm.errors.password}</p>}
                     </div>
                     <div>
-                      <label className="lbl">Confirm password</label>
-                      <input className="fld" type="password" autoComplete="new-password" value={passwordForm.data.password_confirmation} onChange={(event) => passwordForm.setData('password_confirmation', event.target.value)} />
+                      <label className="lbl" htmlFor="password_confirmation">Confirm new password</label>
+                      <input id="password_confirmation" className="fld" type="password" autoComplete="new-password" required value={passwordForm.data.password_confirmation} onChange={(event) => passwordForm.setData('password_confirmation', event.target.value)} />
                     </div>
                   </div>
                   <button type="submit" className="btn btn--y" style={{ marginTop: 18 }} disabled={passwordForm.processing}>
-                    {passwordForm.processing ? 'Adding password…' : 'Add password'}
+                    {passwordForm.processing ? 'Saving…' : passwordAccess.canAdd ? 'Set manual password' : 'Update password'}
                   </button>
                 </form>
-              )}
             </div>
           </div>
         )}
