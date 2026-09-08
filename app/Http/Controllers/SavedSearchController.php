@@ -418,7 +418,8 @@ class SavedSearchController extends Controller
             'score' => $score > 0 ? round($score).'x' : null,
             'duration' => $this->formatFeedDuration($video->duration),
             'handle' => $video->username ? '@'.ltrim((string) $video->username, '@') : null,
-            'age' => $this->shortAgo($video->uploaded_at),
+            'uploaded_at' => $video->uploaded_at?->toDateString(),
+            'uploaded_date' => $video->uploaded_at?->format('M j, Y'),
             'caption' => $video->title,
             'views' => $this->compactNumber((float) $video->views),
             'likes' => $this->compactNumber((float) $video->likes),
@@ -465,7 +466,8 @@ class SavedSearchController extends Controller
                     'score' => $score > 0 ? round($score).'x' : null,
                     'duration' => $this->formatFeedDuration($video->duration),
                     'handle' => $video->username ? '@'.ltrim((string) $video->username, '@') : null,
-                    'age' => $this->shortAgo($video->uploaded_at),
+                    'uploaded_at' => $video->uploaded_at?->toDateString(),
+                    'uploaded_date' => $video->uploaded_at?->format('M j, Y'),
                     'caption' => $video->title,
                     'views' => $this->compactNumber((float) $video->views),
                     'likes' => $this->compactNumber((float) $video->likes),
@@ -551,25 +553,6 @@ class SavedSearchController extends Controller
         }
 
         return floor($total / 60).':'.str_pad((string) ($total % 60), 2, '0', STR_PAD_LEFT);
-    }
-
-    private function shortAgo(?\Illuminate\Support\Carbon $moment): ?string
-    {
-        if ($moment === null) {
-            return null;
-        }
-
-        $days = $moment->diffInDays(now());
-        if ($days >= 1) {
-            return $days.'d ago';
-        }
-
-        $hours = $moment->diffInHours(now());
-        if ($hours >= 1) {
-            return $hours.'h ago';
-        }
-
-        return max(1, $moment->diffInMinutes(now())).'m ago';
     }
 
     /** Stable placeholder gradient behind a card when a thumbnail is missing. */

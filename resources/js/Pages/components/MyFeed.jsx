@@ -86,7 +86,7 @@ function VideoCard({ video, currentPath }) {
       <Details className="mf-vb" {...(href ? { href } : {})}>
         <div className="mf-vb__meta">
           <p className="mf-vb__h">{video.handle || 'on TikTok'}</p>
-          {video.age && <p className="mf-vb__sub">{video.age}</p>}
+          {video.uploaded_date && <time className="mf-vb__sub" dateTime={video.uploaded_at}>Uploaded {video.uploaded_date}</time>}
         </div>
         {video.caption && <p className="mf-vb__c">{video.caption}</p>}
         <div className="mf-vb__s">

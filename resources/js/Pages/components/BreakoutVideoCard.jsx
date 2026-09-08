@@ -171,18 +171,18 @@ export function VideoFrame({ video, winner = false, leading = false, showStats =
         ? <span className={`rs-vf__win${leading ? ' rs-vf__win--lead' : ''}`}>{leading ? 'Leading so far' : <>{Icons.Spark}Winner</>}</span>
         : video.rank != null && <span className="rs-vf__rank">{video.rank}</span>}
       {video.duration != null && <span className="rs-vf__dur">{formatDuration(video.duration)}</span>}
-      {!isPlaying && <button className="rs-vf__play" onClick={onTogglePlay} aria-label="Play">{Icons.Play}</button>}
+      {!isPlaying && <button type="button" className="rs-vf__play-target" onClick={onTogglePlay} aria-label="Play"><span className="rs-vf__play">{Icons.Play}</span></button>}
       {isPlaying && playerUrl && !playerReady && <span className="rs-vf__loading">Loading video…</span>}
       {isPlaying && <button className="rs-vf__close" onClick={onTogglePlay} aria-label="Close video preview">×</button>}
-      {!isPlaying && showStats && (
-        <div className="rs-vf__stats">
-          <div className="rs-vchip rs-vchip--out">
-            <div className="rs-vchip__l">Breakout Score</div>
-            <div className="rs-vchip__n">{compact(breakoutScore(video))}×</div>
+      {showStats && (
+        <div className="rs-vf__stats" aria-hidden={Boolean(isPlaying)}>
+          <div className="rs-ovchip rs-ovchip--out">
+            <div className="rs-ovchip__l">Breakout Score</div>
+            <div className="rs-ovchip__n">{compact(breakoutScore(video))}×</div>
           </div>
-          <div className="rs-vchip rs-vchip--views">
-            <div className="rs-vchip__l">Views</div>
-            <div className="rs-vchip__n">{compact(video.views)}</div>
+          <div className="rs-ovchip rs-ovchip--views">
+            <div className="rs-ovchip__l">Views</div>
+            <div className="rs-ovchip__n">{compact(video.views)}</div>
           </div>
         </div>
       )}
@@ -215,18 +215,8 @@ export default function BreakoutVideoCard({
 
   return (
     <article className={`rs-oc rs-oc--run-${runBucket}`}>
-      <VideoFrame video={video} showStats={false} isPlaying={playing} onTogglePlay={togglePlay} />
+      <VideoFrame video={video} isPlaying={playing} onTogglePlay={togglePlay} />
       <div className="rs-oc__b">
-        <div className="rs-oc__ov">
-          <div className="rs-ovchip rs-ovchip--out">
-            <div className="rs-ovchip__l">Breakout Score</div>
-            <div className="rs-ovchip__n">{compact(breakoutScore(video))}×</div>
-          </div>
-          <div className="rs-ovchip rs-ovchip--views">
-            <div className="rs-ovchip__l">Views</div>
-            <div className="rs-ovchip__n">{compact(video.views)}</div>
-          </div>
-        </div>
         <div className="rs-oc__cr">
           <span className="rs-av rs-av--sm" style={{ background: gradientFor(video.handle ?? video.id) }} />
           <div className="rs-oc__copy">

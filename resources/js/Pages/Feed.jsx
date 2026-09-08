@@ -85,7 +85,7 @@ export default function Feed({ feed = {} }) {
   return (
     <>
       <Head title="My Feed · Brand Beacon" />
-      <AppLayout width="max-w-none">
+      <AppLayout width="max-w-[1440px] lg:px-6 xl:px-8">
         <div className="mf-header">
           <FeedSearchBar />
           <EntitlementsBar />

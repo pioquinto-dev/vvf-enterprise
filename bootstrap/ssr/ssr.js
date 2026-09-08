@@ -7613,10 +7613,14 @@ function VideoFrame({ video, winner = false, leading = false, showStats = true, 
 				children: formatDuration$2(video.duration)
 			}),
 			!isPlaying && /* @__PURE__ */ jsx("button", {
-				className: "rs-vf__play",
+				type: "button",
+				className: "rs-vf__play-target",
 				onClick: onTogglePlay,
 				"aria-label": "Play",
-				children: Icons$2.Play
+				children: /* @__PURE__ */ jsx("span", {
+					className: "rs-vf__play",
+					children: Icons$2.Play
+				})
 			}),
 			isPlaying && playerUrl && !playerReady && /* @__PURE__ */ jsx("span", {
 				className: "rs-vf__loading",
@@ -7628,24 +7632,25 @@ function VideoFrame({ video, winner = false, leading = false, showStats = true, 
 				"aria-label": "Close video preview",
 				children: "×"
 			}),
-			!isPlaying && showStats && /* @__PURE__ */ jsxs("div", {
+			showStats && /* @__PURE__ */ jsxs("div", {
 				className: "rs-vf__stats",
+				"aria-hidden": Boolean(isPlaying),
 				children: [/* @__PURE__ */ jsxs("div", {
-					className: "rs-vchip rs-vchip--out",
+					className: "rs-ovchip rs-ovchip--out",
 					children: [/* @__PURE__ */ jsx("div", {
-						className: "rs-vchip__l",
+						className: "rs-ovchip__l",
 						children: "Breakout Score"
 					}), /* @__PURE__ */ jsxs("div", {
-						className: "rs-vchip__n",
+						className: "rs-ovchip__n",
 						children: [compact(breakoutScore$1(video)), "×"]
 					})]
 				}), /* @__PURE__ */ jsxs("div", {
-					className: "rs-vchip rs-vchip--views",
+					className: "rs-ovchip rs-ovchip--views",
 					children: [/* @__PURE__ */ jsx("div", {
-						className: "rs-vchip__l",
+						className: "rs-ovchip__l",
 						children: "Views"
 					}), /* @__PURE__ */ jsx("div", {
-						className: "rs-vchip__n",
+						className: "rs-ovchip__n",
 						children: compact(video.views)
 					})]
 				})]
@@ -7663,34 +7668,11 @@ function BreakoutVideoCard({ video, runBucket = "old", onAnalyze, onToggleBookma
 		className: `rs-oc rs-oc--run-${runBucket}`,
 		children: [/* @__PURE__ */ jsx(VideoFrame, {
 			video,
-			showStats: false,
 			isPlaying: playing,
 			onTogglePlay: togglePlay
 		}), /* @__PURE__ */ jsxs("div", {
 			className: "rs-oc__b",
 			children: [
-				/* @__PURE__ */ jsxs("div", {
-					className: "rs-oc__ov",
-					children: [/* @__PURE__ */ jsxs("div", {
-						className: "rs-ovchip rs-ovchip--out",
-						children: [/* @__PURE__ */ jsx("div", {
-							className: "rs-ovchip__l",
-							children: "Breakout Score"
-						}), /* @__PURE__ */ jsxs("div", {
-							className: "rs-ovchip__n",
-							children: [compact(breakoutScore$1(video)), "×"]
-						})]
-					}), /* @__PURE__ */ jsxs("div", {
-						className: "rs-ovchip rs-ovchip--views",
-						children: [/* @__PURE__ */ jsx("div", {
-							className: "rs-ovchip__l",
-							children: "Views"
-						}), /* @__PURE__ */ jsx("div", {
-							className: "rs-ovchip__n",
-							children: compact(video.views)
-						})]
-					})]
-				}),
 				/* @__PURE__ */ jsxs("div", {
 					className: "rs-oc__cr",
 					children: [
@@ -7944,6 +7926,7 @@ var SORT = {
 	recent: "Recently updated",
 	az: "Name A-Z"
 };
+var SEARCH_PAGE_SIZE = 20;
 function Sel$1({ value, onChange, ariaLabel, children }) {
 	return /* @__PURE__ */ jsxs("span", {
 		className: "sel",
@@ -8075,6 +8058,8 @@ function SearchListScreen({ kind = "brand", searches = [], moving = [], suggesti
 	const [query, setQuery] = useState("");
 	const [statusFilter, setStatusFilter] = useState("all");
 	const [sortBy, setSortBy] = useState("recent");
+	const [visibleCount, setVisibleCount] = useState(SEARCH_PAGE_SIZE);
+	const loadMoreRef = useRef(null);
 	const [modalSearch, setModalSearch] = useState(null);
 	const [formState, setFormState] = useState({
 		name: "",
@@ -8116,6 +8101,20 @@ function SearchListScreen({ kind = "brand", searches = [], moving = [], suggesti
 		statusFilter,
 		sortBy
 	]);
+	useEffect(() => {
+		setVisibleCount(SEARCH_PAGE_SIZE);
+	}, [filtered]);
+	useEffect(() => {
+		const sentinel = loadMoreRef.current;
+		if (!sentinel || visibleCount >= filtered.length || typeof IntersectionObserver === "undefined") return void 0;
+		const observer = new IntersectionObserver(([entry]) => {
+			if (!entry.isIntersecting) return;
+			observer.disconnect();
+			setVisibleCount((count) => Math.min(count + SEARCH_PAGE_SIZE, filtered.length));
+		}, { rootMargin: "0px 0px 200px 0px" });
+		observer.observe(sentinel);
+		return () => observer.disconnect();
+	}, [filtered, visibleCount]);
 	useEffect(() => {
 		if (!modalSearch) return void 0;
 		const onEsc = (e) => e.key === "Escape" && !submitting && setModalSearch(null);
@@ -8335,11 +8334,37 @@ function SearchListScreen({ kind = "brand", searches = [], moving = [], suggesti
 						]
 					}) : /* @__PURE__ */ jsx("div", {
 						className: "bgrid",
-						children: filtered.map((s) => /* @__PURE__ */ jsx(BrandCard, {
+						children: filtered.slice(0, visibleCount).map((s) => /* @__PURE__ */ jsx(BrandCard, {
 							search: s,
 							onOpen: () => router.visit(withReturnTo(s.url ?? `/library/${s.id}`, currentPath)),
 							onEdit: () => openEdit(s)
 						}, s.id))
+					}),
+					filtered.length > 0 && /* @__PURE__ */ jsxs("div", {
+						style: {
+							marginTop: 20,
+							textAlign: "center"
+						},
+						children: [/* @__PURE__ */ jsxs("p", {
+							className: "note",
+							role: "status",
+							children: [
+								"Showing ",
+								Math.min(visibleCount, filtered.length),
+								" of ",
+								filtered.length,
+								" searches"
+							]
+						}), visibleCount < filtered.length && /* @__PURE__ */ jsx("div", {
+							ref: loadMoreRef,
+							style: { paddingTop: 12 },
+							children: /* @__PURE__ */ jsx("button", {
+								type: "button",
+								className: "btn btn--g btn--sm",
+								onClick: () => setVisibleCount((count) => Math.min(count + SEARCH_PAGE_SIZE, filtered.length)),
+								children: "Load more searches"
+							})
+						})]
 					})
 				]
 			}),
@@ -9471,9 +9496,10 @@ function VideoCard({ video, currentPath }) {
 				children: [/* @__PURE__ */ jsx("p", {
 					className: "mf-vb__h",
 					children: video.handle || "on TikTok"
-				}), video.age && /* @__PURE__ */ jsx("p", {
+				}), video.uploaded_date && /* @__PURE__ */ jsxs("time", {
 					className: "mf-vb__sub",
-					children: video.age
+					dateTime: video.uploaded_at,
+					children: ["Uploaded ", video.uploaded_date]
 				})]
 			}),
 			video.caption && /* @__PURE__ */ jsx("p", {
@@ -10477,7 +10503,7 @@ function Feed({ feed = {} }) {
 	return /* @__PURE__ */ jsxs(Fragment$1, { children: [
 		/* @__PURE__ */ jsx(Head, { title: "My Feed · Brand Beacon" }),
 		/* @__PURE__ */ jsxs(AppLayout, {
-			width: "max-w-none",
+			width: "max-w-[1440px] lg:px-6 xl:px-8",
 			children: [/* @__PURE__ */ jsxs("div", {
 				className: "mf-header",
 				children: [/* @__PURE__ */ jsx(FeedSearchBar, {}), /* @__PURE__ */ jsx(EntitlementsBar, {})]

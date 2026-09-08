@@ -6431,7 +6431,11 @@
 .rs-vf__win svg{width:11px;height:11px}
 .rs-vf__dur{position:absolute;top:10px;right:10px;padding:2px 7px;border-radius:6px;background:rgba(0,0,0,.6);color:#fff;font-size:.7rem;font-weight:700}
 .rs-vf__rank{position:absolute;top:10px;left:10px;width:24px;height:24px;border-radius:7px;background:rgba(0,0,0,.62);color:#fff;display:grid;place-items:center;font-size:.74rem;font-weight:800}
-.rs-vf__stats{position:absolute;left:10px;right:10px;bottom:10px;display:flex;gap:7px;transition:transform .34s,opacity .22s}
+.rs-vf__play-target{position:absolute;inset:0;width:100%;height:100%;border:0;background:transparent;cursor:pointer}
+.rs-vf__play-target:focus-visible{outline:3px solid var(--yellow);outline-offset:-3px}
+.rs-vf__stats{position:absolute;left:12px;right:12px;bottom:12px;display:flex;gap:8px;pointer-events:none;opacity:1;transition:opacity .22s}
+.rs-vf.playing .rs-vf__stats{opacity:0}
+@media(prefers-reduced-motion:reduce){.rs-vf__stats{transition:none}}
 .rs-vchip{flex:1;border-radius:10px;padding:7px 10px;background:rgba(24,22,20,.58);backdrop-filter:blur(6px);box-shadow:0 2px 8px -4px rgba(0,0,0,.4)}
 .rs-vchip__l{font-size:.6rem;font-weight:800;text-transform:uppercase;letter-spacing:.05em;opacity:.9}
 .rs-vchip__n{font-size:1.02rem;font-weight:900;letter-spacing:-.025em;margin-top:2px;font-variant-numeric:tabular-nums}

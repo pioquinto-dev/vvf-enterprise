@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, router, usePage } from '@inertiajs/react';
 
 import AppLayout from './AppLayout.jsx';
@@ -41,6 +41,8 @@ const SORT = {
   recent: 'Recently updated',
   az: 'Name A-Z',
 };
+
+const SEARCH_PAGE_SIZE = 20;
 
 function Sel({ value, onChange, ariaLabel, children }) {
   return (
@@ -153,6 +155,8 @@ export default function SearchListScreen({ kind = 'brand', searches = [], moving
   const [query, setQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [sortBy, setSortBy] = useState('recent');
+  const [visibleCount, setVisibleCount] = useState(SEARCH_PAGE_SIZE);
+  const loadMoreRef = useRef(null);
   const [modalSearch, setModalSearch] = useState(null);
   const [formState, setFormState] = useState({ name: '', frequency: 'weekly', type: 'brand' });
   const [submitting, setSubmitting] = useState(false);
@@ -196,6 +200,24 @@ export default function SearchListScreen({ kind = 'brand', searches = [], moving
     });
     return next;
   }, [searchList, query, statusFilter, sortBy]);
+
+  useEffect(() => {
+    setVisibleCount(SEARCH_PAGE_SIZE);
+  }, [filtered]);
+
+  useEffect(() => {
+    const sentinel = loadMoreRef.current;
+    if (!sentinel || visibleCount >= filtered.length || typeof IntersectionObserver === 'undefined') return undefined;
+
+    const observer = new IntersectionObserver(([entry]) => {
+      if (!entry.isIntersecting) return;
+      observer.disconnect();
+      setVisibleCount((count) => Math.min(count + SEARCH_PAGE_SIZE, filtered.length));
+    }, { rootMargin: '0px 0px 200px 0px' });
+
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [filtered, visibleCount]);
 
   useEffect(() => {
     if (!modalSearch) return undefined;
@@ -356,7 +378,7 @@ export default function SearchListScreen({ kind = 'brand', searches = [], moving
           </div>
         ) : (
           <div className="bgrid">
-            {filtered.map((s) => (
+            {filtered.slice(0, visibleCount).map((s) => (
               <BrandCard
                 key={s.id}
                 search={s}
@@ -364,6 +386,22 @@ export default function SearchListScreen({ kind = 'brand', searches = [], moving
                 onEdit={() => openEdit(s)}
               />
             ))}
+          </div>
+        )}
+        {filtered.length > 0 && (
+          <div style={{ marginTop: 20, textAlign: 'center' }}>
+            <p className="note" role="status">Showing {Math.min(visibleCount, filtered.length)} of {filtered.length} searches</p>
+            {visibleCount < filtered.length && (
+              <div ref={loadMoreRef} style={{ paddingTop: 12 }}>
+                <button
+                  type="button"
+                  className="btn btn--g btn--sm"
+                  onClick={() => setVisibleCount((count) => Math.min(count + SEARCH_PAGE_SIZE, filtered.length))}
+                >
+                  Load more searches
+                </button>
+              </div>
+            )}
           </div>
         )}
       </section>
