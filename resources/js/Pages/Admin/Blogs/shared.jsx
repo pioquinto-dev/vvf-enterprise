@@ -22,5 +22,5 @@ export function Pagination({ links = [] }) {
 }
 
 export function BlogTabs() {
-    return <nav aria-label="Blog management" className="blog-tabs"><Link href={base}>Articles</Link><Link href={`${base}/create`}>Create article</Link><Link href={`${base}/categories`}>Categories</Link><Link href={`${base}/tags`}>Tags</Link><Link href={`${base}/featured`}>Featured</Link><a href="/blog" target="_blank" rel="noreferrer">View blog ↗</a></nav>;
+    return <nav aria-label="Blog management" className="blog-tabs"><Link className="blog-button" href={base}>Articles</Link><Link className="blog-button" href={`${base}/create`}>Create article</Link><Link className="blog-button" href={`${base}/categories`}>Categories</Link><Link className="blog-button" href={`${base}/tags`}>Tags</Link><Link className="blog-button" href={`${base}/featured`}>Featured</Link><a className="blog-button" href="/blog" target="_blank" rel="noreferrer">View blog ↗</a></nav>;
 }

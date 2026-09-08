@@ -471,46 +471,6 @@ var Dots = ({ className = "h-4 w-4" }) => /* @__PURE__ */ jsxs("svg", {
 var AdminLayout_exports = /* @__PURE__ */ __exportAll({ default: () => AdminLayout });
 var NAV_GROUPS = [
 	{
-		label: "Blog Management",
-		items: [
-			{
-				key: "blogs",
-				label: "Blogs",
-				href: "/x/admin/blogs",
-				description: "Articles",
-				icon: "BL"
-			},
-			{
-				key: "blogs-create",
-				label: "Create Article",
-				href: "/x/admin/blogs/create",
-				description: "Block editor",
-				icon: "CA"
-			},
-			{
-				key: "blogs-categories",
-				label: "Categories",
-				href: "/x/admin/blogs/categories",
-				description: "Article categories",
-				icon: "BC"
-			},
-			{
-				key: "blogs-tags",
-				label: "Tags",
-				href: "/x/admin/blogs/tags",
-				description: "Article tags",
-				icon: "BT"
-			},
-			{
-				key: "blogs-featured",
-				label: "Featured Articles",
-				href: "/x/admin/blogs/featured",
-				description: "Featured order",
-				icon: "FA"
-			}
-		]
-	},
-	{
 		label: null,
 		items: [{
 			key: "dashboard",
@@ -610,6 +570,46 @@ var NAV_GROUPS = [
 				href: "/x/admin/plans",
 				description: "Pricing setup",
 				icon: "PL"
+			}
+		]
+	},
+	{
+		label: "Blog Management",
+		items: [
+			{
+				key: "blogs",
+				label: "Blogs",
+				href: "/x/admin/blogs",
+				description: "Articles",
+				icon: "BL"
+			},
+			{
+				key: "blogs-create",
+				label: "Create Article",
+				href: "/x/admin/blogs/create",
+				description: "Block editor",
+				icon: "CA"
+			},
+			{
+				key: "blogs-categories",
+				label: "Categories",
+				href: "/x/admin/blogs/categories",
+				description: "Article categories",
+				icon: "BC"
+			},
+			{
+				key: "blogs-tags",
+				label: "Tags",
+				href: "/x/admin/blogs/tags",
+				description: "Article tags",
+				icon: "BT"
+			},
+			{
+				key: "blogs-featured",
+				label: "Featured Articles",
+				href: "/x/admin/blogs/featured",
+				description: "Featured order",
+				icon: "FA"
 			}
 		]
 	},
@@ -1538,8 +1538,453 @@ function Articles({ articles, categories, tags, filters, stats }) {
 	});
 }
 //#endregion
+//#region resources/js/landing/sections/Nav.jsx
+function Nav({ homeHref = "#top" }) {
+	const { auth } = usePage().props;
+	const [stuck, setStuck] = useState(false);
+	useEffect(() => {
+		const onScroll = () => setStuck(window.scrollY > 8);
+		onScroll();
+		window.addEventListener("scroll", onScroll, { passive: true });
+		return () => window.removeEventListener("scroll", onScroll);
+	}, []);
+	return /* @__PURE__ */ jsx("header", {
+		className: `nav${stuck ? " is-stuck" : ""}`,
+		id: "nav",
+		children: /* @__PURE__ */ jsxs("div", {
+			className: "wrap nav__in",
+			children: [/* @__PURE__ */ jsxs("a", {
+				href: homeHref,
+				className: "brand",
+				"aria-label": "Brand Beacon home",
+				children: [/* @__PURE__ */ jsx(Logo, { className: "h-8 w-8" }), /* @__PURE__ */ jsx("span", { children: "Brand Beacon" })]
+			}), /* @__PURE__ */ jsxs("div", {
+				className: "nav__end",
+				children: [/* @__PURE__ */ jsx(Link, {
+					href: auth?.signedIn ? "/dashboard" : "/login",
+					className: "nav__signin",
+					children: auth?.signedIn ? "Dashboard" : "Sign In"
+				}), /* @__PURE__ */ jsxs("a", {
+					href: auth?.signedIn ? "/settings/subscription" : "/auth/google",
+					className: "btn btn--primary",
+					style: {
+						height: 44,
+						padding: "0 20px"
+					},
+					children: [/* @__PURE__ */ jsx("span", {
+						className: "gicon gicon--sm",
+						children: /* @__PURE__ */ jsx(Google, {})
+					}), auth?.signedIn ? "My Plan" : "Try for Free"]
+				})]
+			})]
+		})
+	});
+}
+//#endregion
+//#region resources/js/landing/sections/Footer.jsx
+var COLS = [
+	{
+		h: "Product",
+		links: [
+			{
+				label: "TikTok Brand Tracking",
+				href: "/tiktok-brand-tracking"
+			},
+			{
+				label: "TikTok Product Research",
+				href: "/tiktok-product-research"
+			},
+			{
+				label: "Viral Video Monitoring",
+				href: "/viral-video-monitoring"
+			}
+		]
+	},
+	{
+		h: "Company",
+		links: [
+			{
+				label: "Blog",
+				href: "/blog"
+			},
+			{
+				label: "Support",
+				href: "/support"
+			},
+			{
+				label: "Contact",
+				href: "/contact"
+			}
+		]
+	},
+	{
+		h: "Resources",
+		links: [{
+			label: "Brand Tracking",
+			href: "/tiktok-brand-tracking"
+		}, {
+			label: "UGC Trend Discovery",
+			href: "/ugc-trend-discovery"
+		}]
+	},
+	{
+		h: "Legal",
+		links: [
+			{
+				label: "Terms",
+				href: "/terms"
+			},
+			{
+				label: "Privacy",
+				href: "/privacy"
+			},
+			{
+				label: "DPA",
+				href: "/dpa"
+			},
+			{
+				label: "Security",
+				href: "/security"
+			}
+		]
+	}
+];
+function Footer({ homeHref = "#top" }) {
+	const form = useForm({ email: "" });
+	const subscribe = (e) => {
+		e.preventDefault();
+		form.post("/newsletter", {
+			preserveScroll: true,
+			onSuccess: () => form.reset("email")
+		});
+	};
+	return /* @__PURE__ */ jsx("footer", {
+		className: "ftr",
+		children: /* @__PURE__ */ jsxs("div", {
+			className: "wrap",
+			children: [/* @__PURE__ */ jsxs("div", {
+				className: "ftr__top",
+				children: [/* @__PURE__ */ jsxs("div", { children: [
+					/* @__PURE__ */ jsxs("a", {
+						href: homeHref,
+						className: "brand",
+						children: [/* @__PURE__ */ jsx(Logo, { className: "h-8 w-8" }), /* @__PURE__ */ jsx("span", { children: "Brand Beacon" })]
+					}),
+					/* @__PURE__ */ jsx("p", {
+						className: "ftr__blurb",
+						children: "TikTok social intelligence for brands. Find the viral videos moving your category, and the creators behind them."
+					}),
+					/* @__PURE__ */ jsxs("form", {
+						className: "ftr__form",
+						onSubmit: subscribe,
+						children: [
+							/* @__PURE__ */ jsx("label", {
+								htmlFor: "nl",
+								children: "Weekly viral digest"
+							}),
+							/* @__PURE__ */ jsxs("div", {
+								className: "ftr__row",
+								children: [/* @__PURE__ */ jsx("input", {
+									id: "nl",
+									type: "email",
+									required: true,
+									placeholder: "you@brand.com",
+									autoComplete: "email",
+									value: form.data.email,
+									onChange: (e) => form.setData("email", e.target.value),
+									disabled: form.processing
+								}), /* @__PURE__ */ jsx("button", {
+									type: "submit",
+									className: "btn btn--primary",
+									disabled: form.processing,
+									children: form.processing ? "Subscribing…" : form.wasSuccessful ? "Subscribed" : "Subscribe"
+								})]
+							}),
+							form.errors.email ? /* @__PURE__ */ jsx("p", {
+								className: "ftr__fine ftr__fine--error",
+								children: form.errors.email
+							}) : form.wasSuccessful ? /* @__PURE__ */ jsx("p", {
+								className: "ftr__fine",
+								children: "Thanks — you're on the list. One email a week."
+							}) : /* @__PURE__ */ jsx("p", {
+								className: "ftr__fine",
+								children: "One email a week. Unsubscribe anytime."
+							})
+						]
+					})
+				] }), /* @__PURE__ */ jsx("div", {
+					className: "ftr__cols",
+					children: COLS.map((col) => /* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsx("h4", { children: col.h }), /* @__PURE__ */ jsx("ul", { children: col.links.map((link) => /* @__PURE__ */ jsx("li", { children: /* @__PURE__ */ jsx("a", {
+						href: link.href,
+						children: link.label
+					}) }, link.label)) })] }, col.h))
+				})]
+			}), /* @__PURE__ */ jsx("div", {
+				className: "ftr__btm",
+				children: /* @__PURE__ */ jsx("p", { children: "© 2026 Brand Beacon. TikTok viral intelligence for brands." })
+			})]
+		})
+	});
+}
+//#endregion
+//#region resources/js/Pages/Blog/components.jsx
+var components_exports = /* @__PURE__ */ __exportAll({
+	Art: () => Art,
+	ArticleBlocks: () => ArticleBlocks,
+	Badges: () => Badges,
+	Card: () => Card$1,
+	Cta: () => Cta,
+	Shell: () => Shell
+});
+function Shell({ seo, jsonLd, children }) {
+	return /* @__PURE__ */ jsxs(Fragment$1, { children: [/* @__PURE__ */ jsxs(Head, {
+		title: seo.title,
+		children: [
+			/* @__PURE__ */ jsx("meta", {
+				"head-key": "description",
+				name: "description",
+				content: seo.description
+			}),
+			/* @__PURE__ */ jsx("meta", {
+				"head-key": "robots",
+				name: "robots",
+				content: seo.noIndex ? "noindex,follow" : "index,follow"
+			}),
+			/* @__PURE__ */ jsx("link", {
+				"head-key": "canonical",
+				rel: "canonical",
+				href: seo.canonical
+			}),
+			/* @__PURE__ */ jsx("meta", {
+				"head-key": "og:type",
+				property: "og:type",
+				content: seo.type ?? "website"
+			}),
+			/* @__PURE__ */ jsx("meta", {
+				"head-key": "og:title",
+				property: "og:title",
+				content: seo.title
+			}),
+			/* @__PURE__ */ jsx("meta", {
+				"head-key": "og:description",
+				property: "og:description",
+				content: seo.description
+			}),
+			/* @__PURE__ */ jsx("meta", {
+				"head-key": "og:url",
+				property: "og:url",
+				content: seo.canonical
+			}),
+			/* @__PURE__ */ jsx("meta", {
+				"head-key": "og:image",
+				property: "og:image",
+				content: seo.image || new URL("/brand-beacon-logo.svg", seo.canonical).href
+			}),
+			/* @__PURE__ */ jsx("meta", {
+				"head-key": "twitter:card",
+				name: "twitter:card",
+				content: "summary_large_image"
+			}),
+			seo.published && /* @__PURE__ */ jsx("meta", {
+				"head-key": "published",
+				property: "article:published_time",
+				content: seo.published
+			}),
+			seo.modified && /* @__PURE__ */ jsx("meta", {
+				"head-key": "modified",
+				property: "article:modified_time",
+				content: seo.modified
+			}),
+			/* @__PURE__ */ jsx("script", {
+				"head-key": "blog-jsonld",
+				type: "application/ld+json",
+				dangerouslySetInnerHTML: { __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c") }
+			})
+		]
+	}), /* @__PURE__ */ jsxs("div", {
+		className: "blog-public",
+		children: [
+			/* @__PURE__ */ jsx("div", {
+				className: "bbh",
+				children: /* @__PURE__ */ jsx(Nav, { homeHref: "/" })
+			}),
+			children,
+			/* @__PURE__ */ jsx("div", {
+				className: "bbh",
+				children: /* @__PURE__ */ jsx(Footer, { homeHref: "/" })
+			})
+		]
+	})] });
+}
+function Badges({ article }) {
+	return /* @__PURE__ */ jsxs("div", {
+		className: "flex flex-wrap gap-2",
+		children: [article.category && /* @__PURE__ */ jsx("span", {
+			className: "blog-badge",
+			children: article.category.name
+		}), article.tags.map((tag) => /* @__PURE__ */ jsx("span", {
+			className: "blog-badge",
+			children: tag.name
+		}, tag.name))]
+	});
+}
+function Art({ label = "Creator intelligence", className = "" }) {
+	return /* @__PURE__ */ jsx("div", {
+		className: `blog-art ${className}`,
+		children: /* @__PURE__ */ jsx("span", { children: label })
+	});
+}
+function Card$1({ article }) {
+	return /* @__PURE__ */ jsxs(Link, {
+		href: article.url,
+		className: "blog-card",
+		children: [article.heroMedium ? /* @__PURE__ */ jsx("img", {
+			src: article.heroMedium,
+			alt: "",
+			loading: "lazy"
+		}) : /* @__PURE__ */ jsx(Art, {}), /* @__PURE__ */ jsxs("div", {
+			className: "blog-card-copy",
+			children: [
+				/* @__PURE__ */ jsx(Badges, { article }),
+				/* @__PURE__ */ jsx("h3", { children: article.title }),
+				/* @__PURE__ */ jsx("p", { children: article.excerpt }),
+				/* @__PURE__ */ jsxs("div", {
+					className: "blog-card-footer",
+					children: [/* @__PURE__ */ jsx("time", { children: article.publishedDate }), /* @__PURE__ */ jsx("span", { children: "Read article ↗" })]
+				})
+			]
+		})]
+	});
+}
+function Cta({ eyebrow = "Put your research to work", title = "Find your next breakout idea.", text = "Discover the videos, brands and products gaining momentum with Brand Beacon.", button_label = "Explore Brand Beacon", button_url = "/dashboard" }) {
+	return /* @__PURE__ */ jsxs("section", {
+		className: "blog-cta",
+		children: [
+			/* @__PURE__ */ jsx("p", {
+				className: "blog-eyebrow",
+				children: eyebrow
+			}),
+			/* @__PURE__ */ jsx("h2", { children: title }),
+			/* @__PURE__ */ jsx("p", {
+				className: "text-sm leading-relaxed",
+				children: text
+			}),
+			button_label && button_url && /* @__PURE__ */ jsxs("a", {
+				className: "blog-button primary",
+				href: button_url,
+				children: [button_label, " →"]
+			})
+		]
+	});
+}
+function ArticleBlocks({ blocks }) {
+	return /* @__PURE__ */ jsx("div", {
+		className: "blog-blocks",
+		children: blocks.map((b, i) => {
+			switch (b.type) {
+				case "paragraph": return b.text ? /* @__PURE__ */ jsx("p", { children: b.text }, i) : null;
+				case "heading": {
+					const Tag = `h${b.level}`;
+					return b.text ? /* @__PURE__ */ jsx(Tag, {
+						id: b.anchor,
+						children: b.text
+					}, i) : null;
+				}
+				case "list": {
+					const Tag = b.style === "ordered" ? "ol" : "ul";
+					return b.items.length ? /* @__PURE__ */ jsx(Tag, { children: b.items.map((item, n) => /* @__PURE__ */ jsx("li", { children: item }, n)) }, i) : null;
+				}
+				case "quote": return b.text ? /* @__PURE__ */ jsxs("blockquote", { children: [/* @__PURE__ */ jsx("p", { children: b.text }), b.attribution && /* @__PURE__ */ jsxs("cite", { children: ["— ", b.attribution] })] }, i) : null;
+				case "callout": return b.title || b.text ? /* @__PURE__ */ jsxs("section", {
+					className: `blog-callout ${b.tone}`,
+					children: [b.title && /* @__PURE__ */ jsx("strong", { children: b.title }), b.text && /* @__PURE__ */ jsx("p", { children: b.text })]
+				}, i) : null;
+				case "link": return b.label && b.url ? /* @__PURE__ */ jsxs("a", {
+					className: "blog-panel",
+					href: b.url,
+					target: "_blank",
+					rel: "noopener noreferrer",
+					children: [/* @__PURE__ */ jsxs("strong", { children: [b.label, " ↗"] }), b.text && /* @__PURE__ */ jsx("p", { children: b.text })]
+				}, i) : null;
+				case "image": return b.src ? /* @__PURE__ */ jsxs("figure", { children: [/* @__PURE__ */ jsx("img", {
+					src: b.src,
+					alt: b.alt,
+					loading: "lazy"
+				}), b.caption && /* @__PURE__ */ jsx("figcaption", { children: b.caption })] }, i) : null;
+				case "embed": return b.url ? /* @__PURE__ */ jsxs("figure", { children: [/* @__PURE__ */ jsx("iframe", {
+					src: b.url,
+					title: b.caption || `Embedded video ${i + 1}`,
+					loading: "lazy",
+					allowFullScreen: true,
+					sandbox: "allow-scripts allow-same-origin allow-presentation",
+					referrerPolicy: "strict-origin-when-cross-origin",
+					allow: "fullscreen; picture-in-picture"
+				}), b.caption && /* @__PURE__ */ jsx("figcaption", { children: b.caption })] }, i) : null;
+				case "cta": return b.title || b.text ? /* @__PURE__ */ jsx(Cta, { ...b }, i) : null;
+				case "divider": return /* @__PURE__ */ jsx("hr", { className: "border-slate-200" }, i);
+				default: return null;
+			}
+		})
+	});
+}
+//#endregion
 //#region resources/js/Pages/Admin/Blogs/Editor.jsx
 var Editor_exports = /* @__PURE__ */ __exportAll({ default: () => Editor });
+function ImageBlockField({ block, onChange, error }) {
+	const [uploading, setUploading] = useState(false);
+	const [uploadError, setUploadError] = useState(null);
+	const upload = async (file) => {
+		if (!file) return;
+		setUploading(true);
+		setUploadError(null);
+		const data = new FormData();
+		data.append("image", file);
+		try {
+			const csrf = document.querySelector("meta[name=\"csrf-token\"]")?.content;
+			const res = await fetch(`${base}/images`, {
+				method: "POST",
+				body: data,
+				headers: {
+					"X-Requested-With": "XMLHttpRequest",
+					...csrf ? { "X-CSRF-TOKEN": csrf } : {}
+				}
+			});
+			if (!res.ok) throw new Error("Upload failed");
+			onChange("src", (await res.json()).url);
+		} catch {
+			setUploadError("Could not upload that image. Try again.");
+		} finally {
+			setUploading(false);
+		}
+	};
+	return /* @__PURE__ */ jsxs(Field, {
+		label: "Image",
+		error: error || uploadError,
+		children: [/* @__PURE__ */ jsxs("div", {
+			className: "blog-image-drop",
+			children: [
+				block.src && /* @__PURE__ */ jsx("img", {
+					src: block.src,
+					alt: ""
+				}),
+				/* @__PURE__ */ jsx("input", {
+					type: "file",
+					accept: "image/jpeg,image/png,image/webp,image/gif",
+					disabled: uploading,
+					onChange: (e) => upload(e.target.files[0])
+				}),
+				uploading && /* @__PURE__ */ jsx("span", {
+					className: "text-xs text-slate-500",
+					children: "Uploading…"
+				})
+			]
+		}), /* @__PURE__ */ jsx("input", {
+			placeholder: "Or paste an image URL",
+			value: block.src,
+			onChange: (e) => onChange("src", e.target.value)
+		})]
+	});
+}
 var fields = {
 	paragraph: ["text"],
 	heading: ["text"],
@@ -1594,6 +2039,7 @@ function Editor({ article, content, categories, tags, publishedLocal, timezone, 
 	});
 	const [manualSlug, setManualSlug] = useState(!!article);
 	const [preview, setPreview] = useState(null);
+	const [showPreview, setShowPreview] = useState(false);
 	useEffect(() => {
 		if (!form.data.heroImageUpload) {
 			setPreview(null);
@@ -1625,24 +2071,33 @@ function Editor({ article, content, categories, tags, publishedLocal, timezone, 
 			onSuccess: () => form.setData("heroImageUpload", null)
 		});
 	};
-	return /* @__PURE__ */ jsx(AdminLayout, {
+	return /* @__PURE__ */ jsxs(AdminLayout, {
 		title: article ? "Edit article" : "New article",
 		section: "blogs-create",
 		actions: /* @__PURE__ */ jsxs("div", {
 			className: "blog-actions",
-			children: [/* @__PURE__ */ jsx("button", {
-				className: "blog-button",
-				disabled: form.processing,
-				onClick: () => save("draft"),
-				children: "Save draft"
-			}), /* @__PURE__ */ jsx("button", {
-				className: "blog-button primary",
-				disabled: form.processing,
-				onClick: () => save("published"),
-				children: form.processing ? "Saving…" : "Publish"
-			})]
+			children: [
+				/* @__PURE__ */ jsx("button", {
+					type: "button",
+					className: "blog-button",
+					onClick: () => setShowPreview(true),
+					children: "Preview"
+				}),
+				/* @__PURE__ */ jsx("button", {
+					className: "blog-button",
+					disabled: form.processing,
+					onClick: () => save("draft"),
+					children: "Save draft"
+				}),
+				/* @__PURE__ */ jsx("button", {
+					className: "blog-button primary",
+					disabled: form.processing,
+					onClick: () => save("published"),
+					children: form.processing ? "Saving…" : "Publish"
+				})
+			]
 		}),
-		children: /* @__PURE__ */ jsxs("div", {
+		children: [/* @__PURE__ */ jsxs("div", {
 			className: "blog-admin",
 			children: [
 				/* @__PURE__ */ jsx(BlogTabs, {}),
@@ -1785,8 +2240,13 @@ function Editor({ article, content, categories, tags, publishedLocal, timezone, 
 											].map((tone) => /* @__PURE__ */ jsx("option", { children: tone }, tone))
 										})
 									}),
-									fields[block.type]?.map((key) => /* @__PURE__ */ jsx(Field, {
-										label: key === "src" ? "Image URL" : key.replaceAll("_", " "),
+									block.type === "image" && /* @__PURE__ */ jsx(ImageBlockField, {
+										block,
+										onChange: (key, value) => update(i, key, value),
+										error: form.errors[`blocks.${i}.src`]
+									}),
+									fields[block.type]?.filter((key) => !(block.type === "image" && key === "src")).map((key) => /* @__PURE__ */ jsx(Field, {
+										label: key.replaceAll("_", " "),
 										error: form.errors[`blocks.${i}.${key}`],
 										children: key === "text" ? /* @__PURE__ */ jsx("textarea", {
 											rows: 4,
@@ -1974,7 +2434,50 @@ function Editor({ article, content, categories, tags, publishedLocal, timezone, 
 					})]
 				})
 			]
-		})
+		}), showPreview && /* @__PURE__ */ jsx("div", {
+			className: "blog-modal-backdrop",
+			role: "dialog",
+			"aria-modal": "true",
+			"aria-label": "Article preview",
+			onClick: (e) => e.target === e.currentTarget && setShowPreview(false),
+			children: /* @__PURE__ */ jsxs("div", {
+				className: "blog-modal",
+				children: [/* @__PURE__ */ jsxs("div", {
+					className: "blog-modal-head",
+					children: [/* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsx("p", {
+						className: "blog-eyebrow",
+						children: "Preview"
+					}), /* @__PURE__ */ jsx("strong", { children: form.data.title || "Untitled article" })] }), /* @__PURE__ */ jsx("button", {
+						type: "button",
+						className: "blog-button",
+						onClick: () => setShowPreview(false),
+						children: "Close ✕"
+					})]
+				}), /* @__PURE__ */ jsxs("div", {
+					className: "blog-modal-body",
+					children: [
+						(preview || heroUrl) && /* @__PURE__ */ jsx("img", {
+							className: "blog-article-hero",
+							src: preview || heroUrl,
+							alt: form.data.title
+						}),
+						form.data.category_id && /* @__PURE__ */ jsx("p", {
+							className: "blog-eyebrow mb-3",
+							children: categories.find((c) => String(c.id) === String(form.data.category_id))?.name
+						}),
+						/* @__PURE__ */ jsx("h1", {
+							className: "blog-article-title",
+							children: form.data.title || "Untitled article"
+						}),
+						form.data.excerpt && /* @__PURE__ */ jsx("p", {
+							className: "blog-article-excerpt",
+							children: form.data.excerpt
+						}),
+						/* @__PURE__ */ jsx(ArticleBlocks, { blocks })
+					]
+				})]
+			})
+		})]
 	});
 }
 //#endregion
@@ -4603,397 +5106,6 @@ function Register() {
 			})
 		})
 	})] });
-}
-//#endregion
-//#region resources/js/landing/sections/Nav.jsx
-function Nav({ homeHref = "#top" }) {
-	const { auth } = usePage().props;
-	const [stuck, setStuck] = useState(false);
-	useEffect(() => {
-		const onScroll = () => setStuck(window.scrollY > 8);
-		onScroll();
-		window.addEventListener("scroll", onScroll, { passive: true });
-		return () => window.removeEventListener("scroll", onScroll);
-	}, []);
-	return /* @__PURE__ */ jsx("header", {
-		className: `nav${stuck ? " is-stuck" : ""}`,
-		id: "nav",
-		children: /* @__PURE__ */ jsxs("div", {
-			className: "wrap nav__in",
-			children: [/* @__PURE__ */ jsxs("a", {
-				href: homeHref,
-				className: "brand",
-				children: [/* @__PURE__ */ jsx(Logo, { className: "h-8 w-8" }), /* @__PURE__ */ jsx("span", { children: "Brand Beacon" })]
-			}), /* @__PURE__ */ jsxs("div", {
-				className: "nav__end",
-				children: [
-					/* @__PURE__ */ jsx(Link, {
-						href: "/blog",
-						className: "text-sm font-semibold",
-						children: "Blog"
-					}),
-					/* @__PURE__ */ jsx(Link, {
-						href: auth?.signedIn ? "/dashboard" : "/login",
-						className: "nav__signin",
-						children: auth?.signedIn ? "Dashboard" : "Sign In"
-					}),
-					/* @__PURE__ */ jsxs("a", {
-						href: auth?.signedIn ? "/settings/subscription" : "/auth/google",
-						className: "btn btn--primary",
-						style: {
-							height: 44,
-							padding: "0 20px"
-						},
-						children: [/* @__PURE__ */ jsx("span", {
-							className: "gicon gicon--sm",
-							children: /* @__PURE__ */ jsx(Google, {})
-						}), auth?.signedIn ? "My Plan" : "Try for Free"]
-					})
-				]
-			})]
-		})
-	});
-}
-//#endregion
-//#region resources/js/landing/sections/Footer.jsx
-var COLS = [
-	{
-		h: "Product",
-		links: [
-			{
-				label: "TikTok Brand Tracking",
-				href: "/tiktok-brand-tracking"
-			},
-			{
-				label: "TikTok Product Research",
-				href: "/tiktok-product-research"
-			},
-			{
-				label: "Viral Video Monitoring",
-				href: "/viral-video-monitoring"
-			}
-		]
-	},
-	{
-		h: "Company",
-		links: [{
-			label: "Support",
-			href: "/support"
-		}, {
-			label: "Contact",
-			href: "/contact"
-		}]
-	},
-	{
-		h: "Resources",
-		links: [
-			{
-				label: "Blog",
-				href: "/blog"
-			},
-			{
-				label: "Brand Tracking",
-				href: "/tiktok-brand-tracking"
-			},
-			{
-				label: "UGC Trend Discovery",
-				href: "/ugc-trend-discovery"
-			}
-		]
-	},
-	{
-		h: "Legal",
-		links: [
-			{
-				label: "Terms",
-				href: "/terms"
-			},
-			{
-				label: "Privacy",
-				href: "/privacy"
-			},
-			{
-				label: "DPA",
-				href: "/dpa"
-			},
-			{
-				label: "Security",
-				href: "/security"
-			}
-		]
-	}
-];
-function Footer({ homeHref = "#top" }) {
-	const form = useForm({ email: "" });
-	const subscribe = (e) => {
-		e.preventDefault();
-		form.post("/newsletter", {
-			preserveScroll: true,
-			onSuccess: () => form.reset("email")
-		});
-	};
-	return /* @__PURE__ */ jsx("footer", {
-		className: "ftr",
-		children: /* @__PURE__ */ jsxs("div", {
-			className: "wrap",
-			children: [/* @__PURE__ */ jsxs("div", {
-				className: "ftr__top",
-				children: [/* @__PURE__ */ jsxs("div", { children: [
-					/* @__PURE__ */ jsxs("a", {
-						href: homeHref,
-						className: "brand",
-						children: [/* @__PURE__ */ jsx(Logo, { className: "h-8 w-8" }), /* @__PURE__ */ jsx("span", { children: "Brand Beacon" })]
-					}),
-					/* @__PURE__ */ jsx("p", {
-						className: "ftr__blurb",
-						children: "TikTok social intelligence for brands. Find the viral videos moving your category, and the creators behind them."
-					}),
-					/* @__PURE__ */ jsxs("form", {
-						className: "ftr__form",
-						onSubmit: subscribe,
-						children: [
-							/* @__PURE__ */ jsx("label", {
-								htmlFor: "nl",
-								children: "Weekly viral digest"
-							}),
-							/* @__PURE__ */ jsxs("div", {
-								className: "ftr__row",
-								children: [/* @__PURE__ */ jsx("input", {
-									id: "nl",
-									type: "email",
-									required: true,
-									placeholder: "you@brand.com",
-									autoComplete: "email",
-									value: form.data.email,
-									onChange: (e) => form.setData("email", e.target.value),
-									disabled: form.processing
-								}), /* @__PURE__ */ jsx("button", {
-									type: "submit",
-									className: "btn btn--primary",
-									disabled: form.processing,
-									children: form.processing ? "Subscribing…" : form.wasSuccessful ? "Subscribed" : "Subscribe"
-								})]
-							}),
-							form.errors.email ? /* @__PURE__ */ jsx("p", {
-								className: "ftr__fine ftr__fine--error",
-								children: form.errors.email
-							}) : form.wasSuccessful ? /* @__PURE__ */ jsx("p", {
-								className: "ftr__fine",
-								children: "Thanks — you're on the list. One email a week."
-							}) : /* @__PURE__ */ jsx("p", {
-								className: "ftr__fine",
-								children: "One email a week. Unsubscribe anytime."
-							})
-						]
-					})
-				] }), /* @__PURE__ */ jsx("div", {
-					className: "ftr__cols",
-					children: COLS.map((col) => /* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsx("h4", { children: col.h }), /* @__PURE__ */ jsx("ul", { children: col.links.map((link) => /* @__PURE__ */ jsx("li", { children: /* @__PURE__ */ jsx("a", {
-						href: link.href,
-						children: link.label
-					}) }, link.label)) })] }, col.h))
-				})]
-			}), /* @__PURE__ */ jsx("div", {
-				className: "ftr__btm",
-				children: /* @__PURE__ */ jsx("p", { children: "© 2026 Brand Beacon. TikTok viral intelligence for brands." })
-			})]
-		})
-	});
-}
-//#endregion
-//#region resources/js/Pages/Blog/components.jsx
-var components_exports = /* @__PURE__ */ __exportAll({
-	Art: () => Art,
-	ArticleBlocks: () => ArticleBlocks,
-	Badges: () => Badges,
-	Card: () => Card$1,
-	Cta: () => Cta,
-	Shell: () => Shell
-});
-function Shell({ seo, jsonLd, children }) {
-	return /* @__PURE__ */ jsxs(Fragment$1, { children: [/* @__PURE__ */ jsxs(Head, {
-		title: seo.title,
-		children: [
-			/* @__PURE__ */ jsx("meta", {
-				"head-key": "description",
-				name: "description",
-				content: seo.description
-			}),
-			/* @__PURE__ */ jsx("meta", {
-				"head-key": "robots",
-				name: "robots",
-				content: seo.noIndex ? "noindex,follow" : "index,follow"
-			}),
-			/* @__PURE__ */ jsx("link", {
-				"head-key": "canonical",
-				rel: "canonical",
-				href: seo.canonical
-			}),
-			/* @__PURE__ */ jsx("meta", {
-				"head-key": "og:type",
-				property: "og:type",
-				content: seo.type ?? "website"
-			}),
-			/* @__PURE__ */ jsx("meta", {
-				"head-key": "og:title",
-				property: "og:title",
-				content: seo.title
-			}),
-			/* @__PURE__ */ jsx("meta", {
-				"head-key": "og:description",
-				property: "og:description",
-				content: seo.description
-			}),
-			/* @__PURE__ */ jsx("meta", {
-				"head-key": "og:url",
-				property: "og:url",
-				content: seo.canonical
-			}),
-			/* @__PURE__ */ jsx("meta", {
-				"head-key": "og:image",
-				property: "og:image",
-				content: seo.image || new URL("/brand-beacon-logo.svg", seo.canonical).href
-			}),
-			/* @__PURE__ */ jsx("meta", {
-				"head-key": "twitter:card",
-				name: "twitter:card",
-				content: "summary_large_image"
-			}),
-			seo.published && /* @__PURE__ */ jsx("meta", {
-				"head-key": "published",
-				property: "article:published_time",
-				content: seo.published
-			}),
-			seo.modified && /* @__PURE__ */ jsx("meta", {
-				"head-key": "modified",
-				property: "article:modified_time",
-				content: seo.modified
-			}),
-			/* @__PURE__ */ jsx("script", {
-				"head-key": "blog-jsonld",
-				type: "application/ld+json",
-				dangerouslySetInnerHTML: { __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c") }
-			})
-		]
-	}), /* @__PURE__ */ jsxs("div", {
-		className: "bbh blog-public",
-		children: [
-			/* @__PURE__ */ jsx(Nav, { homeHref: "/" }),
-			children,
-			/* @__PURE__ */ jsx(Footer, { homeHref: "/" })
-		]
-	})] });
-}
-function Badges({ article }) {
-	return /* @__PURE__ */ jsxs("div", {
-		className: "flex flex-wrap gap-2",
-		children: [article.category && /* @__PURE__ */ jsx("span", {
-			className: "blog-badge",
-			children: article.category.name
-		}), article.tags.map((tag) => /* @__PURE__ */ jsx("span", {
-			className: "blog-badge",
-			children: tag.name
-		}, tag.name))]
-	});
-}
-function Art({ label = "Creator intelligence", className = "" }) {
-	return /* @__PURE__ */ jsx("div", {
-		className: `blog-art ${className}`,
-		children: /* @__PURE__ */ jsx("span", { children: label })
-	});
-}
-function Card$1({ article }) {
-	return /* @__PURE__ */ jsxs(Link, {
-		href: article.url,
-		className: "blog-card",
-		children: [article.heroMedium ? /* @__PURE__ */ jsx("img", {
-			src: article.heroMedium,
-			alt: "",
-			loading: "lazy"
-		}) : /* @__PURE__ */ jsx(Art, {}), /* @__PURE__ */ jsxs("div", {
-			className: "blog-card-copy",
-			children: [
-				/* @__PURE__ */ jsx(Badges, { article }),
-				/* @__PURE__ */ jsx("h3", { children: article.title }),
-				/* @__PURE__ */ jsx("p", { children: article.excerpt }),
-				/* @__PURE__ */ jsxs("div", {
-					className: "blog-card-footer",
-					children: [/* @__PURE__ */ jsx("time", { children: article.publishedDate }), /* @__PURE__ */ jsx("span", { children: "Read article ↗" })]
-				})
-			]
-		})]
-	});
-}
-function Cta({ eyebrow = "Put your research to work", title = "Find your next breakout idea.", text = "Discover the videos, brands and products gaining momentum with Brand Beacon.", button_label = "Explore Brand Beacon", button_url = "/dashboard" }) {
-	return /* @__PURE__ */ jsxs("section", {
-		className: "blog-cta",
-		children: [
-			/* @__PURE__ */ jsx("p", {
-				className: "blog-eyebrow",
-				children: eyebrow
-			}),
-			/* @__PURE__ */ jsx("h2", { children: title }),
-			/* @__PURE__ */ jsx("p", {
-				className: "text-sm leading-relaxed",
-				children: text
-			}),
-			button_label && button_url && /* @__PURE__ */ jsxs("a", {
-				className: "blog-button primary",
-				href: button_url,
-				children: [button_label, " →"]
-			})
-		]
-	});
-}
-function ArticleBlocks({ blocks }) {
-	return /* @__PURE__ */ jsx("div", {
-		className: "blog-blocks",
-		children: blocks.map((b, i) => {
-			switch (b.type) {
-				case "paragraph": return b.text ? /* @__PURE__ */ jsx("p", { children: b.text }, i) : null;
-				case "heading": {
-					const Tag = `h${b.level}`;
-					return b.text ? /* @__PURE__ */ jsx(Tag, {
-						id: b.anchor,
-						children: b.text
-					}, i) : null;
-				}
-				case "list": {
-					const Tag = b.style === "ordered" ? "ol" : "ul";
-					return b.items.length ? /* @__PURE__ */ jsx(Tag, { children: b.items.map((item, n) => /* @__PURE__ */ jsx("li", { children: item }, n)) }, i) : null;
-				}
-				case "quote": return b.text ? /* @__PURE__ */ jsxs("blockquote", { children: [/* @__PURE__ */ jsx("p", { children: b.text }), b.attribution && /* @__PURE__ */ jsxs("cite", { children: ["— ", b.attribution] })] }, i) : null;
-				case "callout": return b.title || b.text ? /* @__PURE__ */ jsxs("section", {
-					className: `blog-callout ${b.tone}`,
-					children: [b.title && /* @__PURE__ */ jsx("strong", { children: b.title }), b.text && /* @__PURE__ */ jsx("p", { children: b.text })]
-				}, i) : null;
-				case "link": return b.label && b.url ? /* @__PURE__ */ jsxs("a", {
-					className: "blog-panel",
-					href: b.url,
-					target: "_blank",
-					rel: "noopener noreferrer",
-					children: [/* @__PURE__ */ jsxs("strong", { children: [b.label, " ↗"] }), b.text && /* @__PURE__ */ jsx("p", { children: b.text })]
-				}, i) : null;
-				case "image": return b.src ? /* @__PURE__ */ jsxs("figure", { children: [/* @__PURE__ */ jsx("img", {
-					src: b.src,
-					alt: b.alt,
-					loading: "lazy"
-				}), b.caption && /* @__PURE__ */ jsx("figcaption", { children: b.caption })] }, i) : null;
-				case "embed": return b.url ? /* @__PURE__ */ jsxs("figure", { children: [/* @__PURE__ */ jsx("iframe", {
-					src: b.url,
-					title: b.caption || `Embedded video ${i + 1}`,
-					loading: "lazy",
-					allowFullScreen: true,
-					sandbox: "allow-scripts allow-same-origin allow-presentation",
-					referrerPolicy: "strict-origin-when-cross-origin",
-					allow: "fullscreen; picture-in-picture"
-				}), b.caption && /* @__PURE__ */ jsx("figcaption", { children: b.caption })] }, i) : null;
-				case "cta": return b.title || b.text ? /* @__PURE__ */ jsx(Cta, { ...b }, i) : null;
-				case "divider": return /* @__PURE__ */ jsx("hr", { className: "border-slate-200" }, i);
-				default: return null;
-			}
-		})
-	});
 }
 //#endregion
 //#region resources/js/Pages/Blog/Index.jsx
