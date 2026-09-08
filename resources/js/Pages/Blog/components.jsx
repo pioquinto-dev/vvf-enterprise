@@ -32,7 +32,7 @@ export function Card({ article }) {
     return <Link href={article.url} className="blog-card">{article.heroMedium ? <img src={article.heroMedium} alt="" loading="lazy" /> : <Art />}<div className="blog-card-copy"><Badges article={article} /><h3>{article.title}</h3><p>{article.excerpt}</p><div className="blog-card-footer"><time>{article.publishedDate}</time><span>Read article ↗</span></div></div></Link>;
 }
 
-export function Cta({ eyebrow = 'Put your research to work', title = 'Find your next breakout idea.', text = 'Discover the videos, brands and products gaining momentum with Brand Beacon.', button_label = 'Explore Brand Beacon', button_url = '/dashboard' }) {
+export function Cta({ eyebrow = 'Put your research to work', title = 'Find your next breakout idea.', text = 'Discover the videos, brands and products gaining momentum with Brand Beacon.', button_label = 'Explore Brand Beacon', button_url = '/home' }) {
     return <section className="blog-cta"><p className="blog-eyebrow">{eyebrow}</p><h2>{title}</h2><p className="text-sm leading-relaxed">{text}</p>{button_label && button_url && <a className="blog-button primary" href={button_url}>{button_label} →</a>}</section>;
 }
 

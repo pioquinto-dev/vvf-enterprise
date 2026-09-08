@@ -2430,5 +2430,5 @@ const scopedCss = `
 }
 `;
   const goBack = () => {
-    window.location.assign('/dashboard');
+    window.location.assign('/home');
   };

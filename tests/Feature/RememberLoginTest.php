@@ -20,7 +20,7 @@ class RememberLoginTest extends TestCase
             'remember' => true,
         ]);
 
-        $response->assertRedirect('/dashboard');
+        $response->assertRedirect('/home');
         $this->assertAuthenticatedAs($user);
         $this->assertNotNull($user->fresh()->remember_token);
 
@@ -41,7 +41,7 @@ class RememberLoginTest extends TestCase
             'remember' => false,
         ]);
 
-        $response->assertRedirect('/dashboard');
+        $response->assertRedirect('/home');
         $this->assertNull($user->fresh()->remember_token);
     }
 }

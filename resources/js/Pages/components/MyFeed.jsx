@@ -212,7 +212,7 @@ function FeedHead({ shown, totalCount }) {
   );
 }
 
-export default function MyFeed({ feed = {}, currentPath = '/dashboard' }) {
+export default function MyFeed({ feed = {}, currentPath = '/home' }) {
   const { videos = [], totalCount = videos.length, sounds = [], hashtags = [], saved = [], savedCount = 0, discovery = {} } = feed;
   const discoveryPanels = ['searches', 'hashtags', 'sounds'].map((kind) => <DiscoveryPanel key={`discovery-${kind}`} kind={kind} discovery={discovery} />);
 

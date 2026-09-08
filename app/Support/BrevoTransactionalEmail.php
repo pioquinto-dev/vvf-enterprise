@@ -16,7 +16,7 @@ class BrevoTransactionalEmail
             'firstName' => self::firstName($user->name),
             'fullName' => $user->name,
             'loginUrl' => url('/login'),
-            'dashboardUrl' => url('/dashboard'),
+            'dashboardUrl' => url('/home'),
             'plansUrl' => url('/plans'),
         ]);
     }
@@ -41,7 +41,7 @@ class BrevoTransactionalEmail
             'videoBookmarkLimit' => self::limitLabel(data_get($subscription->metadata, 'subscription.viral_video_bookmarks.limit', 0)),
             'searchBookmarkLimit' => self::limitLabel(data_get($subscription->metadata, 'subscription.search_bookmarks.limit', 0)),
             'videoAnalysisLimit' => self::limitLabel(data_get($subscription->metadata, 'subscription.video_analysis.limit', 0)),
-            'dashboardUrl' => url('/dashboard'),
+            'dashboardUrl' => url('/home'),
             'savedSearchesUrl' => url('/library'),
             'settingsUrl' => url('/settings/subscription'),
         ]);
@@ -56,7 +56,7 @@ class BrevoTransactionalEmail
             'fullName' => $user->name,
             'planName' => $planName,
             'accessEndsAt' => $subscription->current_period_ends_at?->timezone(config('app.timezone'))->format('F j, Y') ?? 'the end of your current billing period',
-            'dashboardUrl' => url('/dashboard'),
+            'dashboardUrl' => url('/home'),
             'plansUrl' => url('/plans'),
             'supportEmail' => (string) config('mail.from.address', 'support@example.com'),
         ]);
@@ -91,7 +91,7 @@ class BrevoTransactionalEmail
             'planName' => $planName,
             'daysRemaining' => max(0, $daysRemaining),
             'trialEndsAt' => $endsAt?->timezone(config('app.timezone'))->format('F j, Y') ?? 'soon',
-            'dashboardUrl' => url('/dashboard'),
+            'dashboardUrl' => url('/home'),
             'settingsUrl' => url('/settings/subscription'),
             'plansUrl' => url('/plans'),
         ]);
@@ -106,7 +106,7 @@ class BrevoTransactionalEmail
             'fullName' => $user->name,
             'planName' => $planName,
             'accessEndedAt' => $subscription->current_period_ends_at?->timezone(config('app.timezone'))->format('F j, Y') ?? 'today',
-            'dashboardUrl' => url('/dashboard'),
+            'dashboardUrl' => url('/home'),
             'settingsUrl' => url('/settings/subscription'),
             'contactUrl' => url('/contact'),
             'plansUrl' => url('/plans'),
@@ -125,7 +125,7 @@ class BrevoTransactionalEmail
             'planName' => $planName,
             'daysRemaining' => max(0, $daysRemaining),
             'trialEndsAt' => $endsAt?->timezone(config('app.timezone'))->format('F j, Y') ?? 'soon',
-            'dashboardUrl' => url('/dashboard'),
+            'dashboardUrl' => url('/home'),
             'settingsUrl' => url('/settings/subscription'),
             'plansUrl' => url('/plans'),
         ]);
@@ -144,7 +144,7 @@ class BrevoTransactionalEmail
             'searchType' => (string) $search->search_type,
             'resultsCount' => $resultsCount,
             'resultsUrl' => url($search->url()),
-            'dashboardUrl' => url('/dashboard'),
+            'dashboardUrl' => url('/home'),
             'latestRunAt' => $latestRun?->completed_at?->timezone(config('app.timezone'))->format('F j, Y g:i A') ?? 'just now',
         ]);
     }

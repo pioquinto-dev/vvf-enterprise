@@ -22,12 +22,12 @@ function BuildingPopup({ subject, onDashboard, onClose }) {
                     <h2 id="bb-buildpop-title">Your report is still building</h2>
                     <p className="sub">
                         We’re scanning TikTok for <b>{subject}</b> and filling this page in as results land.
-                        Check back in a few minutes — or browse the search dashboard while you wait.
+                        Check back in a few minutes — or browse your feed while you wait.
                         We’ll email you the moment it’s complete.
                     </p>
                     <div className="bb-buildpop__actions">
                         <button type="button" className="btn btn--y btn--w" onClick={onDashboard}>
-                            Browse the search dashboard
+                            Browse your feed
                         </button>
                         <button type="button" className="btn btn--g btn--w" onClick={onClose}>
                             Stay on this page
@@ -134,7 +134,7 @@ function ProcessingOverlay({ search, failed = false, onGoDashboard }) {
                     </div>
                     <div className="actrow__r" style={{ marginTop: 24, justifyContent: 'center' }}>
                         <button type="button" className="btn btn--g" onClick={onGoDashboard}>
-                            Go to dashboard
+                            Go to my feed
                         </button>
                     </div>
                 </div>
@@ -394,7 +394,7 @@ export default function Show({ search: initial, isAuthenticated = false, billing
                     <style>{buildingCss}</style>
                     <BuildingPopup
                         subject={subjectLabel}
-                        onDashboard={() => window.location.assign('/dashboard')}
+                        onDashboard={() => window.location.assign('/home')}
                         onClose={() => setBuildingPopupOpen(false)}
                     />
                 </>
@@ -406,7 +406,7 @@ export default function Show({ search: initial, isAuthenticated = false, billing
                 <ProcessingOverlay
                     search={search}
                     failed
-                    onGoDashboard={() => window.location.assign('/dashboard')}
+                    onGoDashboard={() => window.location.assign('/home')}
                 />
             )}
         </>

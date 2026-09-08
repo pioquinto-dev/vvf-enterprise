@@ -22,7 +22,7 @@ class AuthRegistrationBrevoTest extends TestCase
             'email' => 'jane@example.com',
             'password' => 'password',
             'password_confirmation' => 'password',
-        ])->assertRedirect('/dashboard');
+        ])->assertRedirect('/home');
 
         $user = User::query()->where('email', 'jane@example.com')->firstOrFail();
 
@@ -49,7 +49,7 @@ class AuthRegistrationBrevoTest extends TestCase
             'email' => 'jane@example.com',
             'password' => 'password',
             'password_confirmation' => 'password',
-        ])->assertRedirect('/dashboard');
+        ])->assertRedirect('/home');
 
         $user = User::query()->where('email', 'jane@example.com')->firstOrFail();
 

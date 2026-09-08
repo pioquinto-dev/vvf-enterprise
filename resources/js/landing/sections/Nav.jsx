@@ -22,7 +22,7 @@ export default function Nav({ homeHref = '#top' }) {
           <span>Brand Beacon</span>
         </a>
         <div className="nav__end">
-          <Link href={auth?.signedIn ? '/dashboard' : '/login'} className="nav__signin">
+          <Link href={auth?.signedIn ? '/home' : '/login'} className="nav__signin">
             {auth?.signedIn ? 'Dashboard' : 'Sign In'}
           </Link>
           <a href={auth?.signedIn ? '/settings/subscription' : '/auth/google'} className="btn btn--primary" style={{ height: 44, padding: '0 20px' }}>

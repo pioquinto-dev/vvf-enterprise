@@ -94,7 +94,7 @@ class SettingsAccountTest extends TestCase
 
         auth()->logout();
         $this->post('/login', ['email' => $user->email, 'password' => 'New-password-123'])
-            ->assertRedirect('/dashboard');
+            ->assertRedirect('/home');
         $this->assertAuthenticatedAs($user);
     }
 

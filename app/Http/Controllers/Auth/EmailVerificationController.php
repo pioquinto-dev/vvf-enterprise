@@ -24,7 +24,7 @@ class EmailVerificationController extends Controller
         }
 
         if ($request->user()?->is($user)) {
-            return redirect('/dashboard')->with('status', 'Email verified successfully.');
+            return redirect('/home')->with('status', 'Email verified successfully.');
         }
 
         return redirect('/login')->with('status', 'Email verified successfully. You can sign in now.');
