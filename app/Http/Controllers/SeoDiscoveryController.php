@@ -2,7 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Article;
 use Illuminate\Http\Response;
+use Illuminate\Support\Facades\Schema;
 
 class SeoDiscoveryController extends Controller
 {
@@ -35,7 +37,13 @@ class SeoDiscoveryController extends Controller
             '/tiktok-product-research',
             '/viral-video-monitoring',
             '/ugc-trend-discovery',
+            '/blog',
         ];
+        if (Schema::hasTable('articles')) {
+            foreach (Article::published()->orderBy('id')->pluck('slug') as $slug) {
+                $urls[] = '/blog/'.rawurlencode($slug);
+            }
+        }
         $entries = collect($urls)
             ->map(fn (string $path) => '    <url><loc>'.$this->escape($this->baseUrl().$path).'</loc></url>')
             ->implode("\n");

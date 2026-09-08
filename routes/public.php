@@ -20,6 +20,8 @@ use Inertia\Inertia;
 
 Route::get('/robots.txt', [SeoDiscoveryController::class, 'robots'])->name('robots');
 Route::get('/sitemap.xml', [SeoDiscoveryController::class, 'sitemap'])->name('sitemap');
+Route::get('/blog', [\App\Http\Controllers\PublicBlogController::class, 'index'])->name('blog.index');
+Route::get('/blog/{slug}', [\App\Http\Controllers\PublicBlogController::class, 'show'])->name('blog.show');
 
 Route::get('/', function (Request $request) {
     if ($request->user()) {

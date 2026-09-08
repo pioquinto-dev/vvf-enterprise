@@ -431,7 +431,10 @@ class BillingEntitlementService
         $periodEnd = $subscription->current_period_ends_at ? CarbonImmutable::instance($subscription->current_period_ends_at) : null;
 
         $subscription->forceFill([
-            'metadata' => $this->subscriptionMetadata($plan, $searchCreditsUsed, $videoBookmarksUsed, $searchBookmarksUsed, $videoAnalysisUsed, $cycle, $periodStart, $periodEnd, $subscription->metadata ?? []),
+            'metadata' => array_replace_recursive(
+                $subscription->metadata ?? [],
+                $this->subscriptionMetadata($plan, $searchCreditsUsed, $videoBookmarksUsed, $searchBookmarksUsed, $videoAnalysisUsed, $cycle, $periodStart, $periodEnd, $subscription->metadata ?? []),
+            ),
         ])->save();
     }
 

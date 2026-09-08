@@ -471,6 +471,46 @@ var Dots = ({ className = "h-4 w-4" }) => /* @__PURE__ */ jsxs("svg", {
 var AdminLayout_exports = /* @__PURE__ */ __exportAll({ default: () => AdminLayout });
 var NAV_GROUPS = [
 	{
+		label: "Blog Management",
+		items: [
+			{
+				key: "blogs",
+				label: "Blogs",
+				href: "/x/admin/blogs",
+				description: "Articles",
+				icon: "BL"
+			},
+			{
+				key: "blogs-create",
+				label: "Create Article",
+				href: "/x/admin/blogs/create",
+				description: "Block editor",
+				icon: "CA"
+			},
+			{
+				key: "blogs-categories",
+				label: "Categories",
+				href: "/x/admin/blogs/categories",
+				description: "Article categories",
+				icon: "BC"
+			},
+			{
+				key: "blogs-tags",
+				label: "Tags",
+				href: "/x/admin/blogs/tags",
+				description: "Article tags",
+				icon: "BT"
+			},
+			{
+				key: "blogs-featured",
+				label: "Featured Articles",
+				href: "/x/admin/blogs/featured",
+				description: "Featured order",
+				icon: "FA"
+			}
+		]
+	},
+	{
 		label: null,
 		items: [{
 			key: "dashboard",
@@ -1113,6 +1153,1141 @@ function ActivityLog({ rows = [], filters = {}, events = [], pagination = {} }) 
 							})
 						]
 					})]
+				})
+			]
+		})
+	});
+}
+//#endregion
+//#region resources/js/Pages/Admin/Blogs/shared.jsx
+var shared_exports = /* @__PURE__ */ __exportAll({
+	BlogTabs: () => BlogTabs,
+	Field: () => Field,
+	Notice: () => Notice,
+	Pagination: () => Pagination,
+	base: () => base,
+	slugify: () => slugify
+});
+var base = "/x/admin/blogs";
+var slugify = (value) => value.normalize("NFKD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+function Notice() {
+	const { flash = {}, errors = {} } = usePage().props;
+	return /* @__PURE__ */ jsxs(Fragment$1, { children: [flash.status && /* @__PURE__ */ jsx("p", {
+		role: "status",
+		className: "blog-notice",
+		children: flash.status
+	}), Object.keys(errors).length > 0 && /* @__PURE__ */ jsxs("div", {
+		role: "alert",
+		className: "blog-errors",
+		children: [/* @__PURE__ */ jsx("strong", { children: "Please check the following:" }), Object.entries(errors).map(([key, error]) => /* @__PURE__ */ jsxs("p", { children: [
+			key,
+			": ",
+			error
+		] }, key))]
+	})] });
+}
+function Field({ label, children, error }) {
+	return /* @__PURE__ */ jsxs("label", {
+		className: "blog-field",
+		children: [
+			/* @__PURE__ */ jsx("span", { children: label }),
+			children,
+			error && /* @__PURE__ */ jsx("small", {
+				className: "text-red-700",
+				children: error
+			})
+		]
+	});
+}
+function Pagination({ links = [] }) {
+	if (links.length <= 3) return null;
+	return /* @__PURE__ */ jsx("nav", {
+		"aria-label": "Pagination",
+		className: "blog-pagination",
+		children: links.map((link, i) => {
+			const label = i === 0 ? "← Previous" : i === links.length - 1 ? "Next →" : String(link.label).replace(/<[^>]*>/g, "").replace(/&hellip;/g, "…");
+			return link.url ? /* @__PURE__ */ jsx(Link, {
+				href: link.url,
+				"aria-current": link.active ? "page" : void 0,
+				className: link.active ? "active" : "",
+				children: label
+			}, i) : /* @__PURE__ */ jsx("span", {
+				"aria-disabled": "true",
+				children: label
+			}, i);
+		})
+	});
+}
+function BlogTabs() {
+	return /* @__PURE__ */ jsxs("nav", {
+		"aria-label": "Blog management",
+		className: "blog-tabs",
+		children: [
+			/* @__PURE__ */ jsx(Link, {
+				href: base,
+				children: "Articles"
+			}),
+			/* @__PURE__ */ jsx(Link, {
+				href: `${base}/create`,
+				children: "Create article"
+			}),
+			/* @__PURE__ */ jsx(Link, {
+				href: `${base}/categories`,
+				children: "Categories"
+			}),
+			/* @__PURE__ */ jsx(Link, {
+				href: `${base}/tags`,
+				children: "Tags"
+			}),
+			/* @__PURE__ */ jsx(Link, {
+				href: `${base}/featured`,
+				children: "Featured"
+			}),
+			/* @__PURE__ */ jsx("a", {
+				href: "/blog",
+				target: "_blank",
+				rel: "noreferrer",
+				children: "View blog ↗"
+			})
+		]
+	});
+}
+//#endregion
+//#region resources/js/Pages/Admin/Blogs/Articles.jsx
+var Articles_exports = /* @__PURE__ */ __exportAll({ default: () => Articles });
+function Articles({ articles, categories, tags, filters, stats }) {
+	const [search, setSearch] = useState(filters.search ?? "");
+	const form = useForm({
+		ids: [],
+		action: ""
+	});
+	const [busy, setBusy] = useState(false);
+	useEffect(() => {
+		form.setData({
+			ids: [],
+			action: ""
+		});
+	}, [articles]);
+	useEffect(() => setSearch(filters.search ?? ""), [filters.search]);
+	const filter = (key, value) => router.get(base, {
+		...filters,
+		[key]: value,
+		page: 1
+	}, { preserveState: true });
+	const mutate = (article, action) => {
+		if (action === "delete" && !confirm(`Permanently delete “${article.title}”?`)) return;
+		router.visit(`${base}/${article.id}${action === "delete" ? "" : `/${action}`}`, {
+			method: action === "delete" ? "delete" : "post",
+			preserveScroll: true,
+			onStart: () => setBusy(true),
+			onFinish: () => setBusy(false)
+		});
+	};
+	const bulk = (e) => {
+		e.preventDefault();
+		if (form.data.action === "delete" && !confirm(`Permanently delete ${form.data.ids.length} selected articles?`)) return;
+		form.post(`${base}/bulk`, {
+			preserveScroll: true,
+			onSuccess: () => form.reset()
+		});
+	};
+	return /* @__PURE__ */ jsx(AdminLayout, {
+		title: "Articles",
+		section: "blogs",
+		actions: /* @__PURE__ */ jsx(Link, {
+			className: "blog-button primary",
+			href: `${base}/create`,
+			children: "New article"
+		}),
+		children: /* @__PURE__ */ jsxs("div", {
+			className: "blog-admin",
+			children: [
+				/* @__PURE__ */ jsx(BlogTabs, {}),
+				/* @__PURE__ */ jsx(Notice, {}),
+				/* @__PURE__ */ jsx("div", {
+					className: "blog-stats",
+					children: Object.entries(stats).map(([label, count]) => /* @__PURE__ */ jsxs("div", {
+						className: "blog-panel",
+						children: [/* @__PURE__ */ jsx("span", { children: label }), /* @__PURE__ */ jsx("strong", { children: count })]
+					}, label))
+				}),
+				/* @__PURE__ */ jsxs("section", {
+					className: "blog-panel",
+					children: [
+						/* @__PURE__ */ jsxs("div", {
+							className: "blog-filters",
+							children: [
+								/* @__PURE__ */ jsx("form", {
+									onSubmit: (e) => {
+										e.preventDefault();
+										filter("search", search);
+									},
+									children: /* @__PURE__ */ jsx(Field, {
+										label: "Search articles",
+										children: /* @__PURE__ */ jsx("input", {
+											placeholder: "Title, slug or excerpt",
+											value: search,
+											onChange: (e) => setSearch(e.target.value)
+										})
+									})
+								}),
+								/* @__PURE__ */ jsx(Field, {
+									label: "Status",
+									children: /* @__PURE__ */ jsxs("select", {
+										value: filters.status ?? "",
+										onChange: (e) => filter("status", e.target.value),
+										children: [
+											/* @__PURE__ */ jsx("option", {
+												value: "",
+												children: "All statuses"
+											}),
+											/* @__PURE__ */ jsx("option", {
+												value: "published",
+												children: "Published"
+											}),
+											/* @__PURE__ */ jsx("option", {
+												value: "draft",
+												children: "Draft"
+											})
+										]
+									})
+								}),
+								/* @__PURE__ */ jsx(Field, {
+									label: "Category",
+									children: /* @__PURE__ */ jsxs("select", {
+										value: filters.category ?? "",
+										onChange: (e) => filter("category", e.target.value),
+										children: [/* @__PURE__ */ jsx("option", {
+											value: "",
+											children: "All categories"
+										}), categories.map((c) => /* @__PURE__ */ jsx("option", {
+											value: c.id,
+											children: c.name
+										}, c.id))]
+									})
+								}),
+								/* @__PURE__ */ jsx(Field, {
+									label: "Tag",
+									children: /* @__PURE__ */ jsxs("select", {
+										value: filters.tag ?? "",
+										onChange: (e) => filter("tag", e.target.value),
+										children: [/* @__PURE__ */ jsx("option", {
+											value: "",
+											children: "All tags"
+										}), tags.map((t) => /* @__PURE__ */ jsx("option", {
+											value: t.id,
+											children: t.name
+										}, t.id))]
+									})
+								}),
+								/* @__PURE__ */ jsx(Field, {
+									label: "Featured",
+									children: /* @__PURE__ */ jsxs("select", {
+										value: filters.featured ?? "",
+										onChange: (e) => filter("featured", e.target.value),
+										children: [
+											/* @__PURE__ */ jsx("option", {
+												value: "",
+												children: "All"
+											}),
+											/* @__PURE__ */ jsx("option", {
+												value: "featured",
+												children: "Featured"
+											}),
+											/* @__PURE__ */ jsx("option", {
+												value: "standard",
+												children: "Not featured"
+											})
+										]
+									})
+								}),
+								/* @__PURE__ */ jsx(Field, {
+									label: "Per page",
+									children: /* @__PURE__ */ jsx("select", {
+										value: filters.per_page ?? 10,
+										onChange: (e) => filter("per_page", e.target.value),
+										children: [
+											10,
+											25,
+											50
+										].map((n) => /* @__PURE__ */ jsx("option", { children: n }, n))
+									})
+								})
+							]
+						}),
+						form.data.ids.length > 0 && /* @__PURE__ */ jsxs("form", {
+							onSubmit: bulk,
+							className: "blog-actions my-5",
+							children: [
+								/* @__PURE__ */ jsxs("strong", { children: [form.data.ids.length, " selected"] }),
+								/* @__PURE__ */ jsxs("select", {
+									"aria-label": "Bulk action",
+									value: form.data.action,
+									onChange: (e) => form.setData("action", e.target.value),
+									children: [
+										/* @__PURE__ */ jsx("option", {
+											value: "",
+											children: "Choose action"
+										}),
+										/* @__PURE__ */ jsx("option", {
+											value: "publish",
+											children: "Publish"
+										}),
+										/* @__PURE__ */ jsx("option", {
+											value: "draft",
+											children: "Move to draft"
+										}),
+										/* @__PURE__ */ jsx("option", {
+											value: "feature",
+											children: "Feature"
+										}),
+										/* @__PURE__ */ jsx("option", {
+											value: "delete",
+											children: "Delete"
+										})
+									]
+								}),
+								/* @__PURE__ */ jsx("button", {
+									className: "blog-button",
+									disabled: !form.data.action || form.processing || busy,
+									children: "Apply"
+								})
+							]
+						}),
+						/* @__PURE__ */ jsx("div", {
+							className: "overflow-x-auto",
+							children: /* @__PURE__ */ jsxs("table", {
+								className: "blog-table",
+								children: [/* @__PURE__ */ jsx("thead", { children: /* @__PURE__ */ jsxs("tr", { children: [
+									/* @__PURE__ */ jsx("th", { children: /* @__PURE__ */ jsx("input", {
+										type: "checkbox",
+										"aria-label": "Select all articles on this page",
+										checked: articles.data.length > 0 && form.data.ids.length === articles.data.length,
+										onChange: (e) => form.setData("ids", e.target.checked ? articles.data.map((a) => a.id) : [])
+									}) }),
+									/* @__PURE__ */ jsx("th", { children: "Title" }),
+									/* @__PURE__ */ jsx("th", { children: "Category" }),
+									/* @__PURE__ */ jsx("th", { children: "Status" }),
+									/* @__PURE__ */ jsx("th", { children: "Published" }),
+									/* @__PURE__ */ jsx("th", { children: "Actions" })
+								] }) }), /* @__PURE__ */ jsxs("tbody", { children: [articles.data.map((article) => /* @__PURE__ */ jsxs("tr", { children: [
+									/* @__PURE__ */ jsx("td", { children: /* @__PURE__ */ jsx("input", {
+										type: "checkbox",
+										"aria-label": `Select ${article.title}`,
+										checked: form.data.ids.includes(article.id),
+										onChange: (e) => form.setData("ids", e.target.checked ? [...form.data.ids, article.id] : form.data.ids.filter((id) => id !== article.id))
+									}) }),
+									/* @__PURE__ */ jsxs("td", { children: [
+										/* @__PURE__ */ jsx(Link, {
+											className: "font-semibold",
+											href: `${base}/${article.id}/edit`,
+											children: article.title
+										}),
+										/* @__PURE__ */ jsx("small", {
+											className: "block text-slate-500",
+											children: article.slug
+										}),
+										article.is_featured && /* @__PURE__ */ jsx("span", {
+											className: "blog-badge",
+											children: "Featured"
+										})
+									] }),
+									/* @__PURE__ */ jsx("td", { children: article.category?.name ?? "—" }),
+									/* @__PURE__ */ jsx("td", { children: /* @__PURE__ */ jsx("span", {
+										className: `blog-badge ${article.status}`,
+										children: article.status
+									}) }),
+									/* @__PURE__ */ jsx("td", { children: article.published_at?.slice(0, 10) ?? "—" }),
+									/* @__PURE__ */ jsx("td", { children: /* @__PURE__ */ jsxs("div", {
+										className: "blog-actions",
+										children: [
+											/* @__PURE__ */ jsx(Link, {
+												href: `${base}/${article.id}/edit`,
+												children: "Edit"
+											}),
+											/* @__PURE__ */ jsx("button", {
+												disabled: busy || form.processing,
+												onClick: () => mutate(article, article.status === "published" ? "unpublish" : "publish"),
+												children: article.status === "published" ? "Unpublish" : "Publish"
+											}),
+											/* @__PURE__ */ jsx("button", {
+												disabled: busy || form.processing,
+												onClick: () => mutate(article, "duplicate"),
+												children: "Duplicate"
+											}),
+											/* @__PURE__ */ jsx("button", {
+												className: "text-red-700",
+												disabled: busy || form.processing,
+												onClick: () => mutate(article, "delete"),
+												children: "Delete"
+											})
+										]
+									}) })
+								] }, article.id)), !articles.data.length && /* @__PURE__ */ jsx("tr", { children: /* @__PURE__ */ jsx("td", {
+									colSpan: "6",
+									className: "text-center py-12",
+									children: "No articles found."
+								}) })] })]
+							})
+						}),
+						/* @__PURE__ */ jsx(Pagination, { links: articles.links })
+					]
+				})
+			]
+		})
+	});
+}
+//#endregion
+//#region resources/js/Pages/Admin/Blogs/Editor.jsx
+var Editor_exports = /* @__PURE__ */ __exportAll({ default: () => Editor });
+var fields = {
+	paragraph: ["text"],
+	heading: ["text"],
+	list: [],
+	quote: ["text", "attribution"],
+	callout: ["title", "text"],
+	link: [
+		"label",
+		"url",
+		"text"
+	],
+	image: [
+		"src",
+		"alt",
+		"caption"
+	],
+	embed: ["url", "caption"],
+	cta: [
+		"eyebrow",
+		"title",
+		"text",
+		"button_label",
+		"button_url"
+	],
+	divider: []
+};
+function newBlock(type) {
+	return {
+		type,
+		...Object.fromEntries(fields[type].map((key) => [key, key === "eyebrow" ? "Next step" : ""])),
+		...type === "heading" ? { level: 2 } : {},
+		...type === "list" ? {
+			style: "bullet",
+			items: ["", ""]
+		} : {},
+		...type === "callout" ? { tone: "info" } : {}
+	};
+}
+function Editor({ article, content, categories, tags, publishedLocal, timezone, heroUrl }) {
+	const form = useForm({
+		title: article?.title ?? "",
+		slug: article?.slug ?? "",
+		excerpt: article?.excerpt ?? "",
+		status: article?.status ?? "draft",
+		published_at: publishedLocal ?? "",
+		category_id: article?.category_id ?? "",
+		tag_ids: article?.tags.map((t) => t.id) ?? [],
+		is_featured: article?.is_featured ?? false,
+		layout: content.layout,
+		blocks: content.blocks,
+		heroImageUpload: null
+	});
+	const [manualSlug, setManualSlug] = useState(!!article);
+	const [preview, setPreview] = useState(null);
+	useEffect(() => {
+		if (!form.data.heroImageUpload) {
+			setPreview(null);
+			return;
+		}
+		const url = URL.createObjectURL(form.data.heroImageUpload);
+		setPreview(url);
+		return () => URL.revokeObjectURL(url);
+	}, [form.data.heroImageUpload]);
+	const blocks = form.data.blocks;
+	const update = (i, key, value) => form.setData("blocks", blocks.map((b, n) => n === i ? {
+		...b,
+		[key]: value
+	} : b));
+	const move = (i, delta) => {
+		const next = [...blocks];
+		[next[i], next[i + delta]] = [next[i + delta], next[i]];
+		form.setData("blocks", next);
+	};
+	const save = (status) => {
+		form.transform((data) => ({
+			...data,
+			status,
+			...article ? { _method: "put" } : {}
+		}));
+		form.post(article ? `${base}/${article.id}` : base, {
+			forceFormData: true,
+			preserveScroll: true,
+			onSuccess: () => form.setData("heroImageUpload", null)
+		});
+	};
+	return /* @__PURE__ */ jsx(AdminLayout, {
+		title: article ? "Edit article" : "New article",
+		section: "blogs-create",
+		actions: /* @__PURE__ */ jsxs("div", {
+			className: "blog-actions",
+			children: [/* @__PURE__ */ jsx("button", {
+				className: "blog-button",
+				disabled: form.processing,
+				onClick: () => save("draft"),
+				children: "Save draft"
+			}), /* @__PURE__ */ jsx("button", {
+				className: "blog-button primary",
+				disabled: form.processing,
+				onClick: () => save("published"),
+				children: form.processing ? "Saving…" : "Publish"
+			})]
+		}),
+		children: /* @__PURE__ */ jsxs("div", {
+			className: "blog-admin",
+			children: [
+				/* @__PURE__ */ jsx(BlogTabs, {}),
+				/* @__PURE__ */ jsx(Notice, {}),
+				/* @__PURE__ */ jsx(Link, {
+					className: "inline-block mb-4",
+					href: base,
+					children: "← Articles"
+				}),
+				/* @__PURE__ */ jsxs("div", {
+					className: "blog-editor",
+					children: [/* @__PURE__ */ jsxs("div", {
+						className: "space-y-5",
+						children: [
+							/* @__PURE__ */ jsxs("section", {
+								className: "blog-panel space-y-5",
+								children: [
+									/* @__PURE__ */ jsx(Field, {
+										label: "Title",
+										error: form.errors.title,
+										children: /* @__PURE__ */ jsx("input", {
+											maxLength: 255,
+											value: form.data.title,
+											onChange: (e) => form.setData({
+												...form.data,
+												title: e.target.value,
+												...!manualSlug ? { slug: slugify(e.target.value) } : {}
+											})
+										})
+									}),
+									/* @__PURE__ */ jsx(Field, {
+										label: "Slug",
+										error: form.errors.slug,
+										children: /* @__PURE__ */ jsx("input", {
+											maxLength: 255,
+											value: form.data.slug,
+											onChange: (e) => {
+												setManualSlug(true);
+												form.setData("slug", e.target.value);
+											}
+										})
+									}),
+									/* @__PURE__ */ jsx(Field, {
+										label: "Excerpt",
+										error: form.errors.excerpt,
+										children: /* @__PURE__ */ jsx("textarea", {
+											rows: 3,
+											maxLength: 500,
+											value: form.data.excerpt,
+											onChange: (e) => form.setData("excerpt", e.target.value)
+										})
+									})
+								]
+							}),
+							/* @__PURE__ */ jsxs("div", {
+								className: "flex justify-between items-center",
+								children: [/* @__PURE__ */ jsx("h2", {
+									className: "font-semibold text-lg",
+									children: "Content blocks"
+								}), /* @__PURE__ */ jsxs("span", {
+									className: "text-sm text-slate-500",
+									children: [
+										"Plain text · ",
+										blocks.length,
+										" blocks"
+									]
+								})]
+							}),
+							blocks.map((block, i) => /* @__PURE__ */ jsxs("section", {
+								className: "blog-panel space-y-4",
+								children: [
+									/* @__PURE__ */ jsxs("div", {
+										className: "flex flex-wrap justify-between gap-3",
+										children: [/* @__PURE__ */ jsxs("h3", {
+											className: "capitalize font-semibold",
+											children: [
+												i + 1,
+												". ",
+												block.type
+											]
+										}), /* @__PURE__ */ jsxs("div", {
+											className: "blog-actions",
+											children: [
+												/* @__PURE__ */ jsx("button", {
+													type: "button",
+													"aria-label": `Move block ${i + 1} up`,
+													disabled: i === 0,
+													onClick: () => move(i, -1),
+													children: "↑ Up"
+												}),
+												/* @__PURE__ */ jsx("button", {
+													type: "button",
+													"aria-label": `Move block ${i + 1} down`,
+													disabled: i === blocks.length - 1,
+													onClick: () => move(i, 1),
+													children: "↓ Down"
+												}),
+												/* @__PURE__ */ jsx("button", {
+													type: "button",
+													onClick: () => form.setData("blocks", [
+														...blocks.slice(0, i + 1),
+														JSON.parse(JSON.stringify(block)),
+														...blocks.slice(i + 1)
+													]),
+													children: "Duplicate"
+												}),
+												/* @__PURE__ */ jsx("button", {
+													type: "button",
+													className: "text-red-700",
+													onClick: () => form.setData("blocks", blocks.filter((_, n) => n !== i)),
+													children: "Remove"
+												})
+											]
+										})]
+									}),
+									block.type === "heading" && /* @__PURE__ */ jsx(Field, {
+										label: "Heading level",
+										children: /* @__PURE__ */ jsx("select", {
+											value: block.level,
+											onChange: (e) => update(i, "level", Number(e.target.value)),
+											children: [
+												1,
+												2,
+												3
+											].map((n) => /* @__PURE__ */ jsxs("option", {
+												value: n,
+												children: ["H", n]
+											}, n))
+										})
+									}),
+									block.type === "callout" && /* @__PURE__ */ jsx(Field, {
+										label: "Tone",
+										children: /* @__PURE__ */ jsx("select", {
+											value: block.tone,
+											onChange: (e) => update(i, "tone", e.target.value),
+											children: [
+												"info",
+												"tip",
+												"warning"
+											].map((tone) => /* @__PURE__ */ jsx("option", { children: tone }, tone))
+										})
+									}),
+									fields[block.type]?.map((key) => /* @__PURE__ */ jsx(Field, {
+										label: key === "src" ? "Image URL" : key.replaceAll("_", " "),
+										error: form.errors[`blocks.${i}.${key}`],
+										children: key === "text" ? /* @__PURE__ */ jsx("textarea", {
+											rows: 4,
+											value: block[key],
+											onChange: (e) => update(i, key, e.target.value)
+										}) : /* @__PURE__ */ jsx("input", {
+											value: block[key],
+											onChange: (e) => update(i, key, e.target.value)
+										})
+									}, key)),
+									block.type === "embed" && /* @__PURE__ */ jsx("p", {
+										className: "text-xs text-slate-500",
+										children: "YouTube or Vimeo HTTPS video links. Watch links are converted automatically."
+									}),
+									block.type === "list" && /* @__PURE__ */ jsxs(Fragment$1, { children: [
+										/* @__PURE__ */ jsx(Field, {
+											label: "List style",
+											children: /* @__PURE__ */ jsxs("select", {
+												value: block.style,
+												onChange: (e) => update(i, "style", e.target.value),
+												children: [/* @__PURE__ */ jsx("option", {
+													value: "bullet",
+													children: "Bullet"
+												}), /* @__PURE__ */ jsx("option", {
+													value: "ordered",
+													children: "Ordered"
+												})]
+											})
+										}),
+										block.items.map((item, n) => /* @__PURE__ */ jsxs("div", {
+											className: "flex gap-2",
+											children: [/* @__PURE__ */ jsx("input", {
+												"aria-label": `Block ${i + 1}, list item ${n + 1}`,
+												value: item,
+												onChange: (e) => update(i, "items", block.items.map((v, j) => j === n ? e.target.value : v))
+											}), /* @__PURE__ */ jsx("button", {
+												type: "button",
+												"aria-label": `Remove list item ${n + 1}`,
+												onClick: () => update(i, "items", block.items.filter((_, j) => j !== n)),
+												children: "Remove"
+											})]
+										}, n)),
+										/* @__PURE__ */ jsx("button", {
+											type: "button",
+											className: "blog-button",
+											onClick: () => update(i, "items", [...block.items, ""]),
+											children: "Add item"
+										})
+									] }),
+									block.type === "divider" && /* @__PURE__ */ jsx("hr", { className: "border-slate-200" })
+								]
+							}, i)),
+							!blocks.length && /* @__PURE__ */ jsx("p", {
+								className: "blog-panel",
+								children: "No blocks yet. Add one below."
+							}),
+							/* @__PURE__ */ jsxs("section", {
+								className: "blog-panel",
+								children: [/* @__PURE__ */ jsx("h3", {
+									className: "font-semibold mb-3",
+									children: "Add a block"
+								}), /* @__PURE__ */ jsx("div", {
+									className: "blog-actions",
+									children: Object.keys(fields).map((type) => /* @__PURE__ */ jsxs("button", {
+										type: "button",
+										className: "blog-button capitalize",
+										onClick: () => form.setData("blocks", [...blocks, newBlock(type)]),
+										children: ["+ ", type]
+									}, type))
+								})]
+							})
+						]
+					}), /* @__PURE__ */ jsxs("aside", {
+						className: "space-y-5",
+						children: [
+							/* @__PURE__ */ jsxs("section", {
+								className: "blog-panel space-y-4",
+								children: [
+									/* @__PURE__ */ jsx("h2", {
+										className: "font-semibold",
+										children: "Settings"
+									}),
+									/* @__PURE__ */ jsx(Field, {
+										label: "Status",
+										children: /* @__PURE__ */ jsxs("select", {
+											value: form.data.status,
+											onChange: (e) => form.setData("status", e.target.value),
+											children: [/* @__PURE__ */ jsx("option", {
+												value: "draft",
+												children: "Draft"
+											}), /* @__PURE__ */ jsx("option", {
+												value: "published",
+												children: "Published"
+											})]
+										})
+									}),
+									/* @__PURE__ */ jsx(Field, {
+										label: `Publication date (${timezone})`,
+										children: /* @__PURE__ */ jsx("input", {
+											type: "datetime-local",
+											value: form.data.published_at,
+											onChange: (e) => form.setData("published_at", e.target.value)
+										})
+									}),
+									/* @__PURE__ */ jsx("p", {
+										className: "text-xs text-slate-500",
+										children: "Publish makes the article public immediately. The date does not schedule publication."
+									}),
+									/* @__PURE__ */ jsx(Field, {
+										label: "Layout",
+										children: /* @__PURE__ */ jsx("select", {
+											value: form.data.layout,
+											onChange: (e) => form.setData("layout", e.target.value),
+											children: [
+												"standard",
+												"guide",
+												"analysis"
+											].map((v) => /* @__PURE__ */ jsx("option", { children: v }, v))
+										})
+									}),
+									/* @__PURE__ */ jsx(Field, {
+										label: "Category",
+										children: /* @__PURE__ */ jsxs("select", {
+											value: form.data.category_id,
+											onChange: (e) => form.setData("category_id", e.target.value),
+											children: [/* @__PURE__ */ jsx("option", {
+												value: "",
+												children: "Uncategorized"
+											}), categories.map((c) => /* @__PURE__ */ jsx("option", {
+												value: c.id,
+												children: c.name
+											}, c.id))]
+										})
+									}),
+									/* @__PURE__ */ jsxs("label", {
+										className: "flex gap-2 items-center",
+										children: [/* @__PURE__ */ jsx("input", {
+											type: "checkbox",
+											checked: form.data.is_featured,
+											onChange: (e) => form.setData("is_featured", e.target.checked)
+										}), " Featured"]
+									})
+								]
+							}),
+							/* @__PURE__ */ jsxs("section", {
+								className: "blog-panel",
+								children: [/* @__PURE__ */ jsx("h2", {
+									className: "font-semibold mb-3",
+									children: "Tags"
+								}), /* @__PURE__ */ jsxs("div", {
+									className: "blog-actions",
+									children: [tags.map((tag) => /* @__PURE__ */ jsx("button", {
+										type: "button",
+										"aria-pressed": form.data.tag_ids.includes(tag.id),
+										className: `blog-button ${form.data.tag_ids.includes(tag.id) ? "primary" : ""}`,
+										onClick: () => form.setData("tag_ids", form.data.tag_ids.includes(tag.id) ? form.data.tag_ids.filter((id) => id !== tag.id) : [...form.data.tag_ids, tag.id]),
+										children: tag.name
+									}, tag.id)), !tags.length && /* @__PURE__ */ jsx("p", { children: "No tags yet." })]
+								})]
+							}),
+							/* @__PURE__ */ jsxs("section", {
+								className: "blog-panel space-y-3",
+								children: [
+									/* @__PURE__ */ jsx("h2", {
+										className: "font-semibold",
+										children: "Hero image"
+									}),
+									(preview || heroUrl) && /* @__PURE__ */ jsx("img", {
+										className: "rounded-xl w-full",
+										src: preview || heroUrl,
+										alt: "Article hero preview"
+									}),
+									/* @__PURE__ */ jsx(Field, {
+										label: "Upload image (up to 5 MB)",
+										error: form.errors.heroImageUpload,
+										children: /* @__PURE__ */ jsx("input", {
+											type: "file",
+											accept: "image/jpeg,image/png,image/webp,image/gif",
+											onChange: (e) => form.setData("heroImageUpload", e.target.files[0] ?? null)
+										}, article?.updated_at ?? "new")
+									})
+								]
+							})
+						]
+					})]
+				})
+			]
+		})
+	});
+}
+//#endregion
+//#region resources/js/Pages/Admin/Blogs/Featured.jsx
+var Featured_exports = /* @__PURE__ */ __exportAll({ default: () => Featured });
+function Featured({ articles }) {
+	const [order, setOrder] = useState(articles);
+	const [busy, setBusy] = useState(false);
+	const form = useForm({ ordered_ids: [] });
+	useEffect(() => setOrder(articles), [articles]);
+	const dirty = order.some((a, i) => a.id !== articles[i]?.id);
+	const move = (i, delta) => {
+		const next = [...order];
+		[next[i], next[i + delta]] = [next[i + delta], next[i]];
+		setOrder(next);
+	};
+	const save = () => form.transform(() => ({ ordered_ids: order.map((a) => a.id) })).put(`${base}/featured`, { preserveScroll: true });
+	const remove = (article) => {
+		if (!confirm(`Remove “${article.title}” from featured articles?`)) return;
+		router.post(`${base}/${article.id}/unfeature`, {}, {
+			preserveScroll: true,
+			onStart: () => setBusy(true),
+			onFinish: () => setBusy(false)
+		});
+	};
+	return /* @__PURE__ */ jsx(AdminLayout, {
+		title: "Featured articles",
+		section: "blogs-featured",
+		actions: dirty && /* @__PURE__ */ jsx("button", {
+			className: "blog-button primary",
+			disabled: form.processing || busy,
+			onClick: save,
+			children: "Save order"
+		}),
+		children: /* @__PURE__ */ jsxs("div", {
+			className: "blog-admin",
+			children: [
+				/* @__PURE__ */ jsx(BlogTabs, {}),
+				/* @__PURE__ */ jsx(Notice, {}),
+				/* @__PURE__ */ jsxs("section", {
+					className: "blog-panel",
+					children: [order.map((article, i) => /* @__PURE__ */ jsxs("div", {
+						className: "blog-taxonomy-row",
+						children: [
+							/* @__PURE__ */ jsx("span", {
+								className: "blog-badge",
+								children: i + 1
+							}),
+							article.heroUrl && /* @__PURE__ */ jsx("img", {
+								src: article.heroUrl,
+								alt: "",
+								className: "h-12 w-16 rounded-lg object-cover"
+							}),
+							/* @__PURE__ */ jsxs("div", {
+								className: "min-w-0 flex-1",
+								children: [/* @__PURE__ */ jsx("strong", {
+									className: "block truncate",
+									children: article.title
+								}), /* @__PURE__ */ jsx("small", { children: article.category?.name ?? "Uncategorized" })]
+							}),
+							/* @__PURE__ */ jsxs("div", {
+								className: "blog-actions",
+								children: [
+									/* @__PURE__ */ jsx("button", {
+										"aria-label": `Move ${article.title} up`,
+										disabled: i === 0 || busy || form.processing,
+										onClick: () => move(i, -1),
+										children: "↑ Up"
+									}),
+									/* @__PURE__ */ jsx("button", {
+										"aria-label": `Move ${article.title} down`,
+										disabled: i === order.length - 1 || busy || form.processing,
+										onClick: () => move(i, 1),
+										children: "↓ Down"
+									}),
+									/* @__PURE__ */ jsx("button", {
+										className: "text-red-700",
+										disabled: busy || form.processing,
+										onClick: () => remove(article),
+										children: "Remove"
+									})
+								]
+							})
+						]
+					}, article.id)), !order.length && /* @__PURE__ */ jsxs("div", {
+						className: "text-center py-12",
+						children: [/* @__PURE__ */ jsx("h2", {
+							className: "font-semibold",
+							children: "No featured articles yet."
+						}), /* @__PURE__ */ jsx("p", {
+							className: "mt-2 text-slate-500",
+							children: "Feature a published article from the articles table."
+						})]
+					})]
+				})
+			]
+		})
+	});
+}
+//#endregion
+//#region resources/js/Pages/Admin/Blogs/Taxonomy.jsx
+var Taxonomy_exports = /* @__PURE__ */ __exportAll({ default: () => Taxonomy });
+function Taxonomy({ kind, items }) {
+	const category = kind === "categories";
+	const singular = category ? "category" : "tag";
+	const title = category ? "Categories" : "Tags";
+	const dialog = useRef(null);
+	const [editing, setEditing] = useState(null);
+	const [open, setOpen] = useState(false);
+	const [busy, setBusy] = useState(false);
+	const [manualSlug, setManualSlug] = useState(false);
+	const form = useForm({
+		name: "",
+		slug: "",
+		color: "#00e8c4"
+	});
+	useEffect(() => {
+		if (!open) return;
+		const previous = document.body.style.overflow;
+		document.body.style.overflow = "hidden";
+		dialog.current.showModal();
+		return () => {
+			document.body.style.overflow = previous;
+		};
+	}, [open]);
+	const close = () => {
+		if (!form.processing) {
+			dialog.current.close();
+			setOpen(false);
+		}
+	};
+	const edit = (item = null) => {
+		setEditing(item);
+		setManualSlug(!!item);
+		form.clearErrors();
+		form.setData({
+			name: item?.name ?? "",
+			slug: item?.slug ?? "",
+			color: item?.color ?? "#00e8c4"
+		});
+		setOpen(true);
+	};
+	const submit = (e) => {
+		e.preventDefault();
+		form[editing ? "put" : "post"](`${base}/${kind}${editing ? `/${editing.id}` : ""}`, {
+			preserveScroll: true,
+			onSuccess: () => {
+				dialog.current.close();
+				setOpen(false);
+				form.reset();
+			}
+		});
+	};
+	const remove = (item) => {
+		if (!confirm(`Delete ${singular} “${item.name}”? Its ${item.articles_count} articles will be retained.`)) return;
+		router.delete(`${base}/${kind}/${item.id}`, {
+			preserveScroll: true,
+			onStart: () => setBusy(true),
+			onFinish: () => setBusy(false)
+		});
+	};
+	return /* @__PURE__ */ jsx(AdminLayout, {
+		title,
+		section: `blogs-${kind}`,
+		actions: /* @__PURE__ */ jsxs("button", {
+			className: "blog-button primary",
+			onClick: () => edit(),
+			children: ["New ", singular]
+		}),
+		children: /* @__PURE__ */ jsxs("div", {
+			className: "blog-admin",
+			children: [
+				/* @__PURE__ */ jsx(BlogTabs, {}),
+				/* @__PURE__ */ jsx(Notice, {}),
+				/* @__PURE__ */ jsxs("section", {
+					className: "blog-panel",
+					children: [items.map((item) => /* @__PURE__ */ jsxs("div", {
+						className: "blog-taxonomy-row",
+						children: [
+							category && /* @__PURE__ */ jsx("span", {
+								className: "w-5 h-5 rounded-full border border-slate-200 shrink-0",
+								style: { backgroundColor: item.color }
+							}),
+							/* @__PURE__ */ jsxs("div", {
+								className: "min-w-0 flex-1",
+								children: [/* @__PURE__ */ jsx("strong", { children: item.name }), /* @__PURE__ */ jsxs("p", {
+									className: "text-sm text-slate-500",
+									children: [
+										item.slug,
+										" · ",
+										item.articles_count,
+										" articles"
+									]
+								})]
+							}),
+							/* @__PURE__ */ jsx("button", {
+								className: "blog-button",
+								onClick: () => edit(item),
+								children: "Edit"
+							}),
+							/* @__PURE__ */ jsx("button", {
+								className: "blog-button danger",
+								disabled: busy,
+								onClick: () => remove(item),
+								children: "Delete"
+							})
+						]
+					}, item.id)), !items.length && /* @__PURE__ */ jsxs("p", {
+						className: "text-center py-12",
+						children: [
+							"No ",
+							kind,
+							" yet."
+						]
+					})]
+				}),
+				/* @__PURE__ */ jsx("dialog", {
+					ref: dialog,
+					className: "blog-dialog",
+					"aria-labelledby": "taxonomy-title",
+					onCancel: (e) => {
+						e.preventDefault();
+						close();
+					},
+					onClick: (e) => {
+						if (e.target === dialog.current) close();
+					},
+					children: /* @__PURE__ */ jsxs("form", {
+						onSubmit: submit,
+						className: "blog-panel space-y-5",
+						children: [
+							/* @__PURE__ */ jsxs("div", {
+								className: "flex justify-between items-center",
+								children: [/* @__PURE__ */ jsxs("h2", {
+									id: "taxonomy-title",
+									className: "font-semibold text-xl",
+									children: [
+										editing ? "Edit" : "New",
+										" ",
+										singular
+									]
+								}), /* @__PURE__ */ jsx("button", {
+									type: "button",
+									"aria-label": "Close dialog",
+									disabled: form.processing,
+									onClick: close,
+									children: "✕"
+								})]
+							}),
+							/* @__PURE__ */ jsx(Field, {
+								label: "Name",
+								error: form.errors.name,
+								children: /* @__PURE__ */ jsx("input", {
+									autoFocus: true,
+									required: true,
+									maxLength: 255,
+									value: form.data.name,
+									onChange: (e) => form.setData({
+										...form.data,
+										name: e.target.value,
+										...!manualSlug ? { slug: slugify(e.target.value) } : {}
+									})
+								})
+							}),
+							/* @__PURE__ */ jsx(Field, {
+								label: "Slug",
+								error: form.errors.slug,
+								children: /* @__PURE__ */ jsx("input", {
+									required: true,
+									maxLength: 255,
+									value: form.data.slug,
+									onChange: (e) => {
+										setManualSlug(true);
+										form.setData("slug", e.target.value);
+									}
+								})
+							}),
+							category && /* @__PURE__ */ jsxs("div", {
+								className: "flex gap-3",
+								children: [/* @__PURE__ */ jsx(Field, {
+									label: "Color picker",
+									children: /* @__PURE__ */ jsx("input", {
+										type: "color",
+										value: /^#[0-9a-f]{6}$/i.test(form.data.color) ? form.data.color : "#00e8c4",
+										onChange: (e) => form.setData("color", e.target.value)
+									})
+								}), /* @__PURE__ */ jsx(Field, {
+									label: "Hex color",
+									error: form.errors.color,
+									children: /* @__PURE__ */ jsx("input", {
+										value: form.data.color,
+										maxLength: 7,
+										pattern: "#[0-9A-Fa-f]{6}",
+										onChange: (e) => form.setData("color", e.target.value)
+									})
+								})]
+							}),
+							/* @__PURE__ */ jsxs("div", {
+								className: "blog-actions justify-end",
+								children: [/* @__PURE__ */ jsx("button", {
+									className: "blog-button",
+									type: "button",
+									disabled: form.processing,
+									onClick: close,
+									children: "Cancel"
+								}), /* @__PURE__ */ jsx("button", {
+									className: "blog-button primary",
+									disabled: form.processing,
+									children: form.processing ? "Saving…" : "Save"
+								})]
+							})
+						]
+					})
 				})
 			]
 		})
@@ -3428,6 +4603,619 @@ function Register() {
 			})
 		})
 	})] });
+}
+//#endregion
+//#region resources/js/landing/sections/Nav.jsx
+function Nav({ homeHref = "#top" }) {
+	const { auth } = usePage().props;
+	const [stuck, setStuck] = useState(false);
+	useEffect(() => {
+		const onScroll = () => setStuck(window.scrollY > 8);
+		onScroll();
+		window.addEventListener("scroll", onScroll, { passive: true });
+		return () => window.removeEventListener("scroll", onScroll);
+	}, []);
+	return /* @__PURE__ */ jsx("header", {
+		className: `nav${stuck ? " is-stuck" : ""}`,
+		id: "nav",
+		children: /* @__PURE__ */ jsxs("div", {
+			className: "wrap nav__in",
+			children: [/* @__PURE__ */ jsxs("a", {
+				href: homeHref,
+				className: "brand",
+				children: [/* @__PURE__ */ jsx(Logo, { className: "h-8 w-8" }), /* @__PURE__ */ jsx("span", { children: "Brand Beacon" })]
+			}), /* @__PURE__ */ jsxs("div", {
+				className: "nav__end",
+				children: [
+					/* @__PURE__ */ jsx(Link, {
+						href: "/blog",
+						className: "text-sm font-semibold",
+						children: "Blog"
+					}),
+					/* @__PURE__ */ jsx(Link, {
+						href: auth?.signedIn ? "/dashboard" : "/login",
+						className: "nav__signin",
+						children: auth?.signedIn ? "Dashboard" : "Sign In"
+					}),
+					/* @__PURE__ */ jsxs("a", {
+						href: auth?.signedIn ? "/settings/subscription" : "/auth/google",
+						className: "btn btn--primary",
+						style: {
+							height: 44,
+							padding: "0 20px"
+						},
+						children: [/* @__PURE__ */ jsx("span", {
+							className: "gicon gicon--sm",
+							children: /* @__PURE__ */ jsx(Google, {})
+						}), auth?.signedIn ? "My Plan" : "Try for Free"]
+					})
+				]
+			})]
+		})
+	});
+}
+//#endregion
+//#region resources/js/landing/sections/Footer.jsx
+var COLS = [
+	{
+		h: "Product",
+		links: [
+			{
+				label: "TikTok Brand Tracking",
+				href: "/tiktok-brand-tracking"
+			},
+			{
+				label: "TikTok Product Research",
+				href: "/tiktok-product-research"
+			},
+			{
+				label: "Viral Video Monitoring",
+				href: "/viral-video-monitoring"
+			}
+		]
+	},
+	{
+		h: "Company",
+		links: [{
+			label: "Support",
+			href: "/support"
+		}, {
+			label: "Contact",
+			href: "/contact"
+		}]
+	},
+	{
+		h: "Resources",
+		links: [
+			{
+				label: "Blog",
+				href: "/blog"
+			},
+			{
+				label: "Brand Tracking",
+				href: "/tiktok-brand-tracking"
+			},
+			{
+				label: "UGC Trend Discovery",
+				href: "/ugc-trend-discovery"
+			}
+		]
+	},
+	{
+		h: "Legal",
+		links: [
+			{
+				label: "Terms",
+				href: "/terms"
+			},
+			{
+				label: "Privacy",
+				href: "/privacy"
+			},
+			{
+				label: "DPA",
+				href: "/dpa"
+			},
+			{
+				label: "Security",
+				href: "/security"
+			}
+		]
+	}
+];
+function Footer({ homeHref = "#top" }) {
+	const form = useForm({ email: "" });
+	const subscribe = (e) => {
+		e.preventDefault();
+		form.post("/newsletter", {
+			preserveScroll: true,
+			onSuccess: () => form.reset("email")
+		});
+	};
+	return /* @__PURE__ */ jsx("footer", {
+		className: "ftr",
+		children: /* @__PURE__ */ jsxs("div", {
+			className: "wrap",
+			children: [/* @__PURE__ */ jsxs("div", {
+				className: "ftr__top",
+				children: [/* @__PURE__ */ jsxs("div", { children: [
+					/* @__PURE__ */ jsxs("a", {
+						href: homeHref,
+						className: "brand",
+						children: [/* @__PURE__ */ jsx(Logo, { className: "h-8 w-8" }), /* @__PURE__ */ jsx("span", { children: "Brand Beacon" })]
+					}),
+					/* @__PURE__ */ jsx("p", {
+						className: "ftr__blurb",
+						children: "TikTok social intelligence for brands. Find the viral videos moving your category, and the creators behind them."
+					}),
+					/* @__PURE__ */ jsxs("form", {
+						className: "ftr__form",
+						onSubmit: subscribe,
+						children: [
+							/* @__PURE__ */ jsx("label", {
+								htmlFor: "nl",
+								children: "Weekly viral digest"
+							}),
+							/* @__PURE__ */ jsxs("div", {
+								className: "ftr__row",
+								children: [/* @__PURE__ */ jsx("input", {
+									id: "nl",
+									type: "email",
+									required: true,
+									placeholder: "you@brand.com",
+									autoComplete: "email",
+									value: form.data.email,
+									onChange: (e) => form.setData("email", e.target.value),
+									disabled: form.processing
+								}), /* @__PURE__ */ jsx("button", {
+									type: "submit",
+									className: "btn btn--primary",
+									disabled: form.processing,
+									children: form.processing ? "Subscribing…" : form.wasSuccessful ? "Subscribed" : "Subscribe"
+								})]
+							}),
+							form.errors.email ? /* @__PURE__ */ jsx("p", {
+								className: "ftr__fine ftr__fine--error",
+								children: form.errors.email
+							}) : form.wasSuccessful ? /* @__PURE__ */ jsx("p", {
+								className: "ftr__fine",
+								children: "Thanks — you're on the list. One email a week."
+							}) : /* @__PURE__ */ jsx("p", {
+								className: "ftr__fine",
+								children: "One email a week. Unsubscribe anytime."
+							})
+						]
+					})
+				] }), /* @__PURE__ */ jsx("div", {
+					className: "ftr__cols",
+					children: COLS.map((col) => /* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsx("h4", { children: col.h }), /* @__PURE__ */ jsx("ul", { children: col.links.map((link) => /* @__PURE__ */ jsx("li", { children: /* @__PURE__ */ jsx("a", {
+						href: link.href,
+						children: link.label
+					}) }, link.label)) })] }, col.h))
+				})]
+			}), /* @__PURE__ */ jsx("div", {
+				className: "ftr__btm",
+				children: /* @__PURE__ */ jsx("p", { children: "© 2026 Brand Beacon. TikTok viral intelligence for brands." })
+			})]
+		})
+	});
+}
+//#endregion
+//#region resources/js/Pages/Blog/components.jsx
+var components_exports = /* @__PURE__ */ __exportAll({
+	Art: () => Art,
+	ArticleBlocks: () => ArticleBlocks,
+	Badges: () => Badges,
+	Card: () => Card$1,
+	Cta: () => Cta,
+	Shell: () => Shell
+});
+function Shell({ seo, jsonLd, children }) {
+	return /* @__PURE__ */ jsxs(Fragment$1, { children: [/* @__PURE__ */ jsxs(Head, {
+		title: seo.title,
+		children: [
+			/* @__PURE__ */ jsx("meta", {
+				"head-key": "description",
+				name: "description",
+				content: seo.description
+			}),
+			/* @__PURE__ */ jsx("meta", {
+				"head-key": "robots",
+				name: "robots",
+				content: seo.noIndex ? "noindex,follow" : "index,follow"
+			}),
+			/* @__PURE__ */ jsx("link", {
+				"head-key": "canonical",
+				rel: "canonical",
+				href: seo.canonical
+			}),
+			/* @__PURE__ */ jsx("meta", {
+				"head-key": "og:type",
+				property: "og:type",
+				content: seo.type ?? "website"
+			}),
+			/* @__PURE__ */ jsx("meta", {
+				"head-key": "og:title",
+				property: "og:title",
+				content: seo.title
+			}),
+			/* @__PURE__ */ jsx("meta", {
+				"head-key": "og:description",
+				property: "og:description",
+				content: seo.description
+			}),
+			/* @__PURE__ */ jsx("meta", {
+				"head-key": "og:url",
+				property: "og:url",
+				content: seo.canonical
+			}),
+			/* @__PURE__ */ jsx("meta", {
+				"head-key": "og:image",
+				property: "og:image",
+				content: seo.image || new URL("/brand-beacon-logo.svg", seo.canonical).href
+			}),
+			/* @__PURE__ */ jsx("meta", {
+				"head-key": "twitter:card",
+				name: "twitter:card",
+				content: "summary_large_image"
+			}),
+			seo.published && /* @__PURE__ */ jsx("meta", {
+				"head-key": "published",
+				property: "article:published_time",
+				content: seo.published
+			}),
+			seo.modified && /* @__PURE__ */ jsx("meta", {
+				"head-key": "modified",
+				property: "article:modified_time",
+				content: seo.modified
+			}),
+			/* @__PURE__ */ jsx("script", {
+				"head-key": "blog-jsonld",
+				type: "application/ld+json",
+				dangerouslySetInnerHTML: { __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c") }
+			})
+		]
+	}), /* @__PURE__ */ jsxs("div", {
+		className: "bbh blog-public",
+		children: [
+			/* @__PURE__ */ jsx(Nav, { homeHref: "/" }),
+			children,
+			/* @__PURE__ */ jsx(Footer, { homeHref: "/" })
+		]
+	})] });
+}
+function Badges({ article }) {
+	return /* @__PURE__ */ jsxs("div", {
+		className: "flex flex-wrap gap-2",
+		children: [article.category && /* @__PURE__ */ jsx("span", {
+			className: "blog-badge",
+			children: article.category.name
+		}), article.tags.map((tag) => /* @__PURE__ */ jsx("span", {
+			className: "blog-badge",
+			children: tag.name
+		}, tag.name))]
+	});
+}
+function Art({ label = "Creator intelligence", className = "" }) {
+	return /* @__PURE__ */ jsx("div", {
+		className: `blog-art ${className}`,
+		children: /* @__PURE__ */ jsx("span", { children: label })
+	});
+}
+function Card$1({ article }) {
+	return /* @__PURE__ */ jsxs(Link, {
+		href: article.url,
+		className: "blog-card",
+		children: [article.heroMedium ? /* @__PURE__ */ jsx("img", {
+			src: article.heroMedium,
+			alt: "",
+			loading: "lazy"
+		}) : /* @__PURE__ */ jsx(Art, {}), /* @__PURE__ */ jsxs("div", {
+			className: "blog-card-copy",
+			children: [
+				/* @__PURE__ */ jsx(Badges, { article }),
+				/* @__PURE__ */ jsx("h3", { children: article.title }),
+				/* @__PURE__ */ jsx("p", { children: article.excerpt }),
+				/* @__PURE__ */ jsxs("div", {
+					className: "blog-card-footer",
+					children: [/* @__PURE__ */ jsx("time", { children: article.publishedDate }), /* @__PURE__ */ jsx("span", { children: "Read article ↗" })]
+				})
+			]
+		})]
+	});
+}
+function Cta({ eyebrow = "Put your research to work", title = "Find your next breakout idea.", text = "Discover the videos, brands and products gaining momentum with Brand Beacon.", button_label = "Explore Brand Beacon", button_url = "/dashboard" }) {
+	return /* @__PURE__ */ jsxs("section", {
+		className: "blog-cta",
+		children: [
+			/* @__PURE__ */ jsx("p", {
+				className: "blog-eyebrow",
+				children: eyebrow
+			}),
+			/* @__PURE__ */ jsx("h2", { children: title }),
+			/* @__PURE__ */ jsx("p", {
+				className: "text-sm leading-relaxed",
+				children: text
+			}),
+			button_label && button_url && /* @__PURE__ */ jsxs("a", {
+				className: "blog-button primary",
+				href: button_url,
+				children: [button_label, " →"]
+			})
+		]
+	});
+}
+function ArticleBlocks({ blocks }) {
+	return /* @__PURE__ */ jsx("div", {
+		className: "blog-blocks",
+		children: blocks.map((b, i) => {
+			switch (b.type) {
+				case "paragraph": return b.text ? /* @__PURE__ */ jsx("p", { children: b.text }, i) : null;
+				case "heading": {
+					const Tag = `h${b.level}`;
+					return b.text ? /* @__PURE__ */ jsx(Tag, {
+						id: b.anchor,
+						children: b.text
+					}, i) : null;
+				}
+				case "list": {
+					const Tag = b.style === "ordered" ? "ol" : "ul";
+					return b.items.length ? /* @__PURE__ */ jsx(Tag, { children: b.items.map((item, n) => /* @__PURE__ */ jsx("li", { children: item }, n)) }, i) : null;
+				}
+				case "quote": return b.text ? /* @__PURE__ */ jsxs("blockquote", { children: [/* @__PURE__ */ jsx("p", { children: b.text }), b.attribution && /* @__PURE__ */ jsxs("cite", { children: ["— ", b.attribution] })] }, i) : null;
+				case "callout": return b.title || b.text ? /* @__PURE__ */ jsxs("section", {
+					className: `blog-callout ${b.tone}`,
+					children: [b.title && /* @__PURE__ */ jsx("strong", { children: b.title }), b.text && /* @__PURE__ */ jsx("p", { children: b.text })]
+				}, i) : null;
+				case "link": return b.label && b.url ? /* @__PURE__ */ jsxs("a", {
+					className: "blog-panel",
+					href: b.url,
+					target: "_blank",
+					rel: "noopener noreferrer",
+					children: [/* @__PURE__ */ jsxs("strong", { children: [b.label, " ↗"] }), b.text && /* @__PURE__ */ jsx("p", { children: b.text })]
+				}, i) : null;
+				case "image": return b.src ? /* @__PURE__ */ jsxs("figure", { children: [/* @__PURE__ */ jsx("img", {
+					src: b.src,
+					alt: b.alt,
+					loading: "lazy"
+				}), b.caption && /* @__PURE__ */ jsx("figcaption", { children: b.caption })] }, i) : null;
+				case "embed": return b.url ? /* @__PURE__ */ jsxs("figure", { children: [/* @__PURE__ */ jsx("iframe", {
+					src: b.url,
+					title: b.caption || `Embedded video ${i + 1}`,
+					loading: "lazy",
+					allowFullScreen: true,
+					sandbox: "allow-scripts allow-same-origin allow-presentation",
+					referrerPolicy: "strict-origin-when-cross-origin",
+					allow: "fullscreen; picture-in-picture"
+				}), b.caption && /* @__PURE__ */ jsx("figcaption", { children: b.caption })] }, i) : null;
+				case "cta": return b.title || b.text ? /* @__PURE__ */ jsx(Cta, { ...b }, i) : null;
+				case "divider": return /* @__PURE__ */ jsx("hr", { className: "border-slate-200" }, i);
+				default: return null;
+			}
+		})
+	});
+}
+//#endregion
+//#region resources/js/Pages/Blog/Index.jsx
+var Index_exports$1 = /* @__PURE__ */ __exportAll({ default: () => Index$1 });
+function Index$1({ seo, jsonLd, search, selectedCategory, categories, featuredArticle, articles }) {
+	const [query, setQuery] = useState(search);
+	useEffect(() => setQuery(search), [search]);
+	const categoryUrl = (slug) => `/blog?${new URLSearchParams({
+		...search ? { search } : {},
+		...slug ? { category: slug } : {}
+	})}`;
+	return /* @__PURE__ */ jsx(Shell, {
+		seo,
+		jsonLd,
+		children: /* @__PURE__ */ jsxs("main", {
+			className: "blog-wrap pb-20",
+			children: [
+				/* @__PURE__ */ jsxs("header", {
+					className: "blog-hero",
+					children: [
+						/* @__PURE__ */ jsx("p", {
+							className: "blog-eyebrow",
+							children: "The Brand Beacon journal / Creator intelligence"
+						}),
+						/* @__PURE__ */ jsxs("h1", { children: [
+							"Good research.",
+							/* @__PURE__ */ jsx("br", {}),
+							"Breakout ideas."
+						] }),
+						/* @__PURE__ */ jsx("p", { children: "Go beyond the scroll. Explore the strategies, signals and stories behind videos that get people talking." }),
+						/* @__PURE__ */ jsxs("form", {
+							className: "blog-search",
+							onSubmit: (e) => {
+								e.preventDefault();
+								router.get("/blog", {
+									search: query,
+									...selectedCategory ? { category: selectedCategory } : {}
+								});
+							},
+							children: [/* @__PURE__ */ jsx("input", {
+								"aria-label": "Search articles",
+								placeholder: "Search strategies, brands, ideas…",
+								value: query,
+								onChange: (e) => setQuery(e.target.value),
+								maxLength: 255
+							}), /* @__PURE__ */ jsx("button", {
+								className: "blog-button primary",
+								children: "Search"
+							})]
+						})
+					]
+				}),
+				/* @__PURE__ */ jsxs("nav", {
+					className: "blog-chips",
+					"aria-label": "Article categories",
+					children: [/* @__PURE__ */ jsx(Link, {
+						href: categoryUrl(""),
+						className: !selectedCategory ? "active" : "",
+						"aria-current": !selectedCategory ? "page" : void 0,
+						children: "All articles"
+					}), categories.map((category) => /* @__PURE__ */ jsx(Link, {
+						href: categoryUrl(category.slug),
+						className: selectedCategory === category.slug ? "active" : "",
+						"aria-current": selectedCategory === category.slug ? "page" : void 0,
+						children: category.name
+					}, category.id))]
+				}),
+				featuredArticle && /* @__PURE__ */ jsxs(Link, {
+					href: featuredArticle.url,
+					className: "blog-feature",
+					children: [featuredArticle.heroLarge ? /* @__PURE__ */ jsx("img", {
+						src: featuredArticle.heroLarge,
+						alt: ""
+					}) : /* @__PURE__ */ jsx(Art, { label: `${featuredArticle.readMinutes} minute read` }), /* @__PURE__ */ jsxs("div", {
+						className: "blog-feature-copy",
+						children: [
+							/* @__PURE__ */ jsx("p", {
+								className: "blog-eyebrow mb-5",
+								children: "Featured story"
+							}),
+							/* @__PURE__ */ jsx(Badges, { article: featuredArticle }),
+							/* @__PURE__ */ jsx("h2", { children: featuredArticle.title }),
+							/* @__PURE__ */ jsx("p", { children: featuredArticle.excerpt }),
+							/* @__PURE__ */ jsxs("div", {
+								className: "blog-byline",
+								children: [/* @__PURE__ */ jsx("strong", { children: featuredArticle.author }), /* @__PURE__ */ jsx("span", { children: featuredArticle.publishedDate })]
+							}),
+							/* @__PURE__ */ jsx("span", {
+								className: "blog-button primary",
+								children: "Read article ↗"
+							})
+						]
+					})]
+				}),
+				/* @__PURE__ */ jsxs("div", {
+					className: "flex items-center justify-between mb-6",
+					children: [/* @__PURE__ */ jsx("h2", {
+						className: "text-2xl font-semibold tracking-tight",
+						children: search || selectedCategory ? "Search Results" : "Latest Articles"
+					}), /* @__PURE__ */ jsxs("span", {
+						className: "text-sm text-slate-500",
+						children: [articles.total, " articles"]
+					})]
+				}),
+				/* @__PURE__ */ jsx("div", {
+					className: "blog-grid",
+					children: articles.data.map((article) => /* @__PURE__ */ jsx(Card$1, { article }, article.id))
+				}),
+				!articles.data.length && /* @__PURE__ */ jsxs("div", {
+					className: "blog-panel text-center py-16",
+					children: [
+						/* @__PURE__ */ jsx("h2", {
+							className: "text-xl font-semibold",
+							children: "No articles matched that search."
+						}),
+						/* @__PURE__ */ jsx("p", {
+							className: "text-slate-500 mt-3",
+							children: "Try a broader keyword or explore all categories."
+						}),
+						/* @__PURE__ */ jsx(Link, {
+							className: "blog-button mt-6",
+							href: "/blog",
+							children: "View all articles"
+						})
+					]
+				}),
+				/* @__PURE__ */ jsx(Pagination, { links: articles.links })
+			]
+		})
+	});
+}
+//#endregion
+//#region resources/js/Pages/Blog/Show.jsx
+var Show_exports$2 = /* @__PURE__ */ __exportAll({ default: () => Show$2 });
+function Show$2({ seo, jsonLd, article, blocks, tocItems, relatedArticles }) {
+	return /* @__PURE__ */ jsx(Shell, {
+		seo,
+		jsonLd,
+		children: /* @__PURE__ */ jsxs("main", {
+			className: "blog-wrap blog-detail",
+			children: [
+				/* @__PURE__ */ jsxs("nav", {
+					className: "blog-breadcrumb",
+					"aria-label": "Breadcrumb",
+					children: [
+						/* @__PURE__ */ jsx(Link, {
+							href: "/blog",
+							children: "Blog"
+						}),
+						article.category && /* @__PURE__ */ jsxs(Fragment$1, { children: [" / ", /* @__PURE__ */ jsx(Link, {
+							href: `/blog?category=${encodeURIComponent(article.category.slug)}`,
+							children: article.category.name
+						})] }),
+						" / ",
+						/* @__PURE__ */ jsx("span", { children: article.title.length > 52 ? `${article.title.slice(0, 52)}…` : article.title })
+					]
+				}),
+				/* @__PURE__ */ jsxs("div", {
+					className: "blog-reading-layout",
+					children: [/* @__PURE__ */ jsxs("article", {
+						className: "min-w-0",
+						children: [
+							/* @__PURE__ */ jsx(Badges, { article }),
+							/* @__PURE__ */ jsx("h1", {
+								className: "blog-article-title",
+								children: article.title
+							}),
+							article.excerpt && /* @__PURE__ */ jsx("p", {
+								className: "blog-article-excerpt",
+								children: article.excerpt
+							}),
+							/* @__PURE__ */ jsxs("div", {
+								className: "blog-byline",
+								children: [
+									/* @__PURE__ */ jsx("img", {
+										src: "/brand-beacon-logo.svg",
+										alt: "",
+										width: "32",
+										height: "32"
+									}),
+									/* @__PURE__ */ jsx("strong", { children: article.author }),
+									/* @__PURE__ */ jsx("time", { children: article.publishedLabel }),
+									/* @__PURE__ */ jsxs("span", { children: [article.readMinutes, " min read"] }),
+									/* @__PURE__ */ jsxs("span", { children: [article.blockCount, " sections"] })
+								]
+							}),
+							article.heroLarge ? /* @__PURE__ */ jsx("img", {
+								className: "blog-article-hero",
+								src: article.heroLarge,
+								alt: article.title
+							}) : /* @__PURE__ */ jsx(Art, {
+								className: "blog-article-hero",
+								label: "No hero image selected"
+							}),
+							/* @__PURE__ */ jsx(ArticleBlocks, { blocks })
+						]
+					}), /* @__PURE__ */ jsx("aside", { children: /* @__PURE__ */ jsxs("div", { children: [tocItems.length > 0 && /* @__PURE__ */ jsxs("nav", {
+						className: "blog-toc",
+						"aria-label": "In this article",
+						children: [/* @__PURE__ */ jsx("h2", {
+							className: "blog-eyebrow mb-4",
+							children: "In this article"
+						}), tocItems.map((item) => /* @__PURE__ */ jsx("a", {
+							href: `#${item.id}`,
+							style: { paddingLeft: item.level === 3 ? 16 : 0 },
+							children: item.label
+						}, item.id))]
+					}), /* @__PURE__ */ jsx(Cta, {})] }) })]
+				}),
+				relatedArticles.length > 0 && /* @__PURE__ */ jsxs("section", {
+					className: "mt-20",
+					children: [/* @__PURE__ */ jsx("h2", {
+						className: "text-2xl font-semibold mb-6",
+						children: "Continue Reading"
+					}), /* @__PURE__ */ jsx("div", {
+						className: "blog-grid related",
+						children: relatedArticles.map((related) => /* @__PURE__ */ jsx(Card$1, { article: related }, related.id))
+					})]
+				})
+			]
+		})
+	});
 }
 //#endregion
 //#region resources/js/Pages/components/AppFooter.jsx
@@ -9527,186 +11315,6 @@ function Seo({ title, description, noIndex = false, schema = null }) {
 				dangerouslySetInnerHTML: { __html: structuredData }
 			})
 		]
-	});
-}
-//#endregion
-//#region resources/js/landing/sections/Nav.jsx
-function Nav({ homeHref = "#top" }) {
-	const [stuck, setStuck] = useState(false);
-	useEffect(() => {
-		const onScroll = () => setStuck(window.scrollY > 8);
-		onScroll();
-		window.addEventListener("scroll", onScroll, { passive: true });
-		return () => window.removeEventListener("scroll", onScroll);
-	}, []);
-	return /* @__PURE__ */ jsx("header", {
-		className: `nav${stuck ? " is-stuck" : ""}`,
-		id: "nav",
-		children: /* @__PURE__ */ jsxs("div", {
-			className: "wrap nav__in",
-			children: [/* @__PURE__ */ jsxs("a", {
-				href: homeHref,
-				className: "brand",
-				children: [/* @__PURE__ */ jsx(Logo, { className: "h-8 w-8" }), /* @__PURE__ */ jsx("span", { children: "Brand Beacon" })]
-			}), /* @__PURE__ */ jsxs("div", {
-				className: "nav__end",
-				children: [/* @__PURE__ */ jsx(Link, {
-					href: "/login",
-					className: "nav__signin",
-					children: "Sign In"
-				}), /* @__PURE__ */ jsxs("a", {
-					href: "/auth/google",
-					className: "btn btn--primary",
-					style: {
-						height: 44,
-						padding: "0 20px"
-					},
-					children: [/* @__PURE__ */ jsx("span", {
-						className: "gicon gicon--sm",
-						children: /* @__PURE__ */ jsx(Google, {})
-					}), "Try for Free"]
-				})]
-			})]
-		})
-	});
-}
-//#endregion
-//#region resources/js/landing/sections/Footer.jsx
-var COLS = [
-	{
-		h: "Product",
-		links: [
-			{
-				label: "TikTok Brand Tracking",
-				href: "/tiktok-brand-tracking"
-			},
-			{
-				label: "TikTok Product Research",
-				href: "/tiktok-product-research"
-			},
-			{
-				label: "Viral Video Monitoring",
-				href: "/viral-video-monitoring"
-			}
-		]
-	},
-	{
-		h: "Company",
-		links: [{
-			label: "Support",
-			href: "/support"
-		}, {
-			label: "Contact",
-			href: "/contact"
-		}]
-	},
-	{
-		h: "Resources",
-		links: [{
-			label: "Brand Tracking",
-			href: "/tiktok-brand-tracking"
-		}, {
-			label: "UGC Trend Discovery",
-			href: "/ugc-trend-discovery"
-		}]
-	},
-	{
-		h: "Legal",
-		links: [
-			{
-				label: "Terms",
-				href: "/terms"
-			},
-			{
-				label: "Privacy",
-				href: "/privacy"
-			},
-			{
-				label: "DPA",
-				href: "/dpa"
-			},
-			{
-				label: "Security",
-				href: "/security"
-			}
-		]
-	}
-];
-function Footer({ homeHref = "#top" }) {
-	const form = useForm({ email: "" });
-	const subscribe = (e) => {
-		e.preventDefault();
-		form.post("/newsletter", {
-			preserveScroll: true,
-			onSuccess: () => form.reset("email")
-		});
-	};
-	return /* @__PURE__ */ jsx("footer", {
-		className: "ftr",
-		children: /* @__PURE__ */ jsxs("div", {
-			className: "wrap",
-			children: [/* @__PURE__ */ jsxs("div", {
-				className: "ftr__top",
-				children: [/* @__PURE__ */ jsxs("div", { children: [
-					/* @__PURE__ */ jsxs("a", {
-						href: homeHref,
-						className: "brand",
-						children: [/* @__PURE__ */ jsx(Logo, { className: "h-8 w-8" }), /* @__PURE__ */ jsx("span", { children: "Brand Beacon" })]
-					}),
-					/* @__PURE__ */ jsx("p", {
-						className: "ftr__blurb",
-						children: "TikTok social intelligence for brands. Find the viral videos moving your category, and the creators behind them."
-					}),
-					/* @__PURE__ */ jsxs("form", {
-						className: "ftr__form",
-						onSubmit: subscribe,
-						children: [
-							/* @__PURE__ */ jsx("label", {
-								htmlFor: "nl",
-								children: "Weekly viral digest"
-							}),
-							/* @__PURE__ */ jsxs("div", {
-								className: "ftr__row",
-								children: [/* @__PURE__ */ jsx("input", {
-									id: "nl",
-									type: "email",
-									required: true,
-									placeholder: "you@brand.com",
-									autoComplete: "email",
-									value: form.data.email,
-									onChange: (e) => form.setData("email", e.target.value),
-									disabled: form.processing
-								}), /* @__PURE__ */ jsx("button", {
-									type: "submit",
-									className: "btn btn--primary",
-									disabled: form.processing,
-									children: form.processing ? "Subscribing…" : form.wasSuccessful ? "Subscribed" : "Subscribe"
-								})]
-							}),
-							form.errors.email ? /* @__PURE__ */ jsx("p", {
-								className: "ftr__fine ftr__fine--error",
-								children: form.errors.email
-							}) : form.wasSuccessful ? /* @__PURE__ */ jsx("p", {
-								className: "ftr__fine",
-								children: "Thanks — you're on the list. One email a week."
-							}) : /* @__PURE__ */ jsx("p", {
-								className: "ftr__fine",
-								children: "One email a week. Unsubscribe anytime."
-							})
-						]
-					})
-				] }), /* @__PURE__ */ jsx("div", {
-					className: "ftr__cols",
-					children: COLS.map((col) => /* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsx("h4", { children: col.h }), /* @__PURE__ */ jsx("ul", { children: col.links.map((link) => /* @__PURE__ */ jsx("li", { children: /* @__PURE__ */ jsx("a", {
-						href: link.href,
-						children: link.label
-					}) }, link.label)) })] }, col.h))
-				})]
-			}), /* @__PURE__ */ jsx("div", {
-				className: "ftr__btm",
-				children: /* @__PURE__ */ jsx("p", { children: "© 2026 Brand Beacon. TikTok viral intelligence for brands." })
-			})]
-		})
 	});
 }
 //#endregion
@@ -21429,6 +23037,7 @@ function Account() {
 	const [savingPreferences, setSavingPreferences] = useState(false);
 	const deletionForm = useForm({});
 	const passwordForm = useForm({
+		current_password: "",
 		password: "",
 		password_confirmation: ""
 	});
@@ -21467,9 +23076,9 @@ function Account() {
 	const cancelDeletion = () => {
 		deletionForm.delete("/settings/account/delete-request", { preserveScroll: true });
 	};
-	const addPassword = (event) => {
+	const savePassword = (event) => {
 		event.preventDefault();
-		passwordForm.post("/settings/account/password", {
+		passwordForm.submit(passwordAccess.canAdd ? "post" : "patch", "/settings/account/password", {
 			preserveScroll: true,
 			onSuccess: () => passwordForm.reset()
 		});
@@ -21549,26 +23158,39 @@ function Account() {
 				style: { marginTop: 16 },
 				children: /* @__PURE__ */ jsxs("div", {
 					className: "card__p",
-					children: [/* @__PURE__ */ jsx("h2", { children: "Password login" }), passwordAccess.enabled ? /* @__PURE__ */ jsx("p", {
-						className: "muted",
-						style: {
-							fontSize: ".86rem",
-							marginTop: 6
-						},
-						children: "Password login is enabled. You can sign in with Google or use your email and password."
-					}) : /* @__PURE__ */ jsxs("form", {
-						onSubmit: addPassword,
+					children: [/* @__PURE__ */ jsx("h2", { children: passwordAccess.canAdd ? "Set a manual password" : "Update password" }), /* @__PURE__ */ jsxs("form", {
+						onSubmit: savePassword,
 						children: [
-							/* @__PURE__ */ jsxs("p", {
+							/* @__PURE__ */ jsx("p", {
 								className: "muted",
 								style: {
 									fontSize: ".86rem",
 									marginTop: 6
 								},
+								children: passwordAccess.canAdd ? `You sign in with Google. Set a manual password for ${auth.user?.email} before you can update it here.` : "Confirm your current password to save a new password."
+							}),
+							!passwordAccess.canAdd && /* @__PURE__ */ jsxs("div", {
+								style: { marginTop: 18 },
 								children: [
-									"Add a password so you can also sign in manually with ",
-									auth.user?.email,
-									"."
+									/* @__PURE__ */ jsx("label", {
+										className: "lbl",
+										htmlFor: "current_password",
+										children: "Current password"
+									}),
+									/* @__PURE__ */ jsx("input", {
+										id: "current_password",
+										className: "fld",
+										type: "password",
+										autoComplete: "current-password",
+										required: true,
+										value: passwordForm.data.current_password,
+										onChange: (event) => passwordForm.setData("current_password", event.target.value)
+									}),
+									passwordForm.errors.current_password && /* @__PURE__ */ jsx("p", {
+										className: "hint",
+										style: { color: "var(--warn)" },
+										children: passwordForm.errors.current_password
+									})
 								]
 							}),
 							/* @__PURE__ */ jsxs("div", {
@@ -21577,12 +23199,15 @@ function Account() {
 								children: [/* @__PURE__ */ jsxs("div", { children: [
 									/* @__PURE__ */ jsx("label", {
 										className: "lbl",
+										htmlFor: "new_password",
 										children: "New password"
 									}),
 									/* @__PURE__ */ jsx("input", {
+										id: "new_password",
 										className: "fld",
 										type: "password",
 										autoComplete: "new-password",
+										required: true,
 										value: passwordForm.data.password,
 										onChange: (event) => passwordForm.setData("password", event.target.value)
 									}),
@@ -21593,11 +23218,14 @@ function Account() {
 									})
 								] }), /* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsx("label", {
 									className: "lbl",
-									children: "Confirm password"
+									htmlFor: "password_confirmation",
+									children: "Confirm new password"
 								}), /* @__PURE__ */ jsx("input", {
+									id: "password_confirmation",
 									className: "fld",
 									type: "password",
 									autoComplete: "new-password",
+									required: true,
 									value: passwordForm.data.password_confirmation,
 									onChange: (event) => passwordForm.setData("password_confirmation", event.target.value)
 								})] })]
@@ -21607,7 +23235,7 @@ function Account() {
 								className: "btn btn--y",
 								style: { marginTop: 18 },
 								disabled: passwordForm.processing,
-								children: passwordForm.processing ? "Adding password…" : "Add password"
+								children: passwordForm.processing ? "Saving…" : passwordAccess.canAdd ? "Set manual password" : "Update password"
 							})
 						]
 					})]
@@ -23209,6 +24837,11 @@ createServer((page) => createInertiaApp({
 	resolve: (name) => {
 		return (/* @__PURE__ */ Object.assign({
 			"./Pages/Admin/ActivityLog.jsx": ActivityLog_exports,
+			"./Pages/Admin/Blogs/Articles.jsx": Articles_exports,
+			"./Pages/Admin/Blogs/Editor.jsx": Editor_exports,
+			"./Pages/Admin/Blogs/Featured.jsx": Featured_exports,
+			"./Pages/Admin/Blogs/Taxonomy.jsx": Taxonomy_exports,
+			"./Pages/Admin/Blogs/shared.jsx": shared_exports,
 			"./Pages/Admin/Dashboard.jsx": Dashboard_exports$1,
 			"./Pages/Admin/Listing.jsx": Listing_exports,
 			"./Pages/Admin/Login.jsx": Login_exports$1,
@@ -23216,6 +24849,9 @@ createServer((page) => createInertiaApp({
 			"./Pages/Admin/components/AdminLayout.jsx": AdminLayout_exports,
 			"./Pages/Auth/Login.jsx": Login_exports,
 			"./Pages/Auth/Register.jsx": Register_exports,
+			"./Pages/Blog/Index.jsx": Index_exports$1,
+			"./Pages/Blog/Show.jsx": Show_exports$2,
+			"./Pages/Blog/components.jsx": components_exports,
 			"./Pages/Brands.jsx": Brands_exports,
 			"./Pages/ComingSoon.jsx": ComingSoon_exports,
 			"./Pages/Contact.jsx": Contact_exports,

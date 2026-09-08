@@ -45,6 +45,16 @@ const NAV_GROUPS = [
         ],
     },
     {
+        label: 'Blog Management',
+        items: [
+            { key: 'blogs', label: 'Blogs', href: '/x/admin/blogs', description: 'Articles', icon: 'BL' },
+            { key: 'blogs-create', label: 'Create Article', href: '/x/admin/blogs/create', description: 'Block editor', icon: 'CA' },
+            { key: 'blogs-categories', label: 'Categories', href: '/x/admin/blogs/categories', description: 'Article categories', icon: 'BC' },
+            { key: 'blogs-tags', label: 'Tags', href: '/x/admin/blogs/tags', description: 'Article tags', icon: 'BT' },
+            { key: 'blogs-featured', label: 'Featured Articles', href: '/x/admin/blogs/featured', description: 'Featured order', icon: 'FA' },
+        ],
+    },
+    {
         label: 'Subscription Management',
         items: [{ key: 'subscription', label: 'Subscription', href: '/x/admin/subscription', description: 'Billing control', icon: 'SU' }],
     },

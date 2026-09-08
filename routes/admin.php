@@ -26,6 +26,7 @@ Route::prefix('x/admin')
         });
 
         Route::middleware('admin.auth')->group(function (): void {
+            require __DIR__.'/admin-blogs.php';
             Route::post('/logout', [AdminSessionController::class, 'destroy'])->name('logout');
             Route::post('/impersonation/stop', [AdminImpersonationController::class, 'stop'])->name('impersonation.stop');
 

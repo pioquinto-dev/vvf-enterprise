@@ -5917,6 +5917,10 @@
 .bbh .nav__end { display: flex; align-items: center; gap: 16px; flex: none; }
 .bbh .nav__signin { font-size: 0.93rem; font-weight: 500; color: var(--muted); }
 .bbh .nav__signin:hover { color: var(--ink); }
+@media (max-width: 480px) {
+    .bbh .nav__in, .bbh .nav__end { gap: 12px; }
+    .bbh .nav .brand span { display: none; }
+}
 
 /* hero */
 .bbh .hero { padding: 74px 0 0; text-align: center; }

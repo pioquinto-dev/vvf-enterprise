@@ -151,9 +151,9 @@ class BillingService
         ]);
 
         if ($program !== null) {
-            $this->activity()?->record($user, 'coupon_usage', 'coupon_checkout_initiated', "Started {$program->code} checkout for {$plan->name}.", ['plan' => $plan->slug, 'coupon_program' => $program->code], 'coupon-checkout:'.(string) ($session->id ?? ''));
+            $this->activity()->record($user, 'coupon_usage', 'coupon_checkout_initiated', "Started {$program->code} checkout for {$plan->name}.", ['plan' => $plan->slug, 'coupon_program' => $program->code], 'coupon-checkout:'.(string) ($session->id ?? ''));
         } else {
-            $this->activity?->record($user, 'engagement', 'checkout_initiated', "Initiated checkout for {$plan->name}.", ['plan' => $plan->slug], 'checkout:'.(string) ($session->id ?? ''));
+            $this->activity()->record($user, 'engagement', 'checkout_initiated', "Initiated checkout for {$plan->name}.", ['plan' => $plan->slug], 'checkout:'.(string) ($session->id ?? ''));
         }
 
         $this->analytics()->queueForUser($user, AnalyticsEvent::make('checkout_started', [
@@ -295,7 +295,7 @@ class BillingService
             data_set($metadata, 'subscription.search_limits.window_ends_at', data_get($subscription->metadata, 'subscription.search_limits.window_ends_at'));
 
             $subscription->forceFill(['plan_id' => $targetPlan->id, 'metadata' => $metadata])->save();
-            $this->activity()?->record($user, 'subscription', 'subscription_upgraded', "Upgraded from {$sourcePlan->name} to {$targetPlan->name}.", ['from_plan' => $sourcePlan->slug, 'to_plan' => $targetPlan->slug, 'charged_cents' => $chargeCents, 'subscription_id' => $subscription->id]);
+            $this->activity()->record($user, 'subscription', 'subscription_upgraded', "Upgraded from {$sourcePlan->name} to {$targetPlan->name}.", ['from_plan' => $sourcePlan->slug, 'to_plan' => $targetPlan->slug, 'charged_cents' => $chargeCents, 'subscription_id' => $subscription->id]);
             $this->analytics()->queueForUser($user, AnalyticsEvent::make('subscription_upgraded', ['from_plan' => $sourcePlan->slug, 'to_plan' => $targetPlan->slug, 'charged_cents' => $chargeCents]));
 
             return $subscription->refresh();
@@ -337,14 +337,14 @@ class BillingService
             return;
         }
 
-        $this->activity()?->record($user, 'coupon_usage', 'coupon_redeemed', "Redeemed {$program->code}.", ['coupon_program' => $program->code, 'status' => $status], 'coupon-redeemed:'.$program->id.':'.$user->id);
+        $this->activity()->record($user, 'coupon_usage', 'coupon_redeemed', "Redeemed {$program->code}.", ['coupon_program' => $program->code, 'status' => $status], 'coupon-redeemed:'.$program->id.':'.$user->id);
     }
 
     /**
      * Activity recorder — resolved lazily because the container leaves the
      * defaulted constructor dependency null (same reason as couponAccess).
      */
-    private function activity(): ?UserActivityService
+    private function activity(): UserActivityService
     {
         return $this->activity ?? app(UserActivityService::class);
     }
@@ -434,7 +434,7 @@ class BillingService
         $this->markFreeSearchUsed($user);
 
         $this->utmAttributionService->createSubscriptionAttribution($user, $subscriptionId);
-        $this->activity?->record($user, 'subscription', $status === 'trialing' ? 'trial_started' : 'subscription_paid', $status === 'trialing' ? "Started a trial on {$plan->name}." : "Started a paid subscription on {$plan->name}.", ['plan' => $plan->slug], 'subscription:'.$sessionId.':'.$status);
+        $this->activity()->record($user, 'subscription', $status === 'trialing' ? 'trial_started' : 'subscription_paid', $status === 'trialing' ? "Started a trial on {$plan->name}." : "Started a paid subscription on {$plan->name}.", ['plan' => $plan->slug], 'subscription:'.$sessionId.':'.$status);
         $this->analytics()->queueForUser($user, AnalyticsEvent::make($status === 'trialing' ? 'trial_started' : 'subscription_started', [
             'plan_slug' => $plan->slug,
             'billing_cycle' => $billingCycle,
@@ -924,7 +924,7 @@ class BillingService
             : ($subscription->current_period_ends_at !== null ? CarbonImmutable::instance($subscription->current_period_ends_at) : null);
         $this->applyCancellationState($subscription, true, $cancelAt);
 
-        $this->activity?->record(
+        $this->activity()->record(
             $user,
             'subscription',
             'subscription_cancellation_requested',
@@ -961,7 +961,7 @@ class BillingService
         // Clear the local cancellation flags right away (see cancelSubscription).
         $this->applyCancellationState($subscription, false, null);
 
-        $this->activity?->record(
+        $this->activity()->record(
             $user,
             'subscription',
             'subscription_reactivation_requested',

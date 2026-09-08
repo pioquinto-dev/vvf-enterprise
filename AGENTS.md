@@ -304,8 +304,22 @@ Important:
 - `user_activities` is an append-only activity ledger for sign ups, subscriptions, engagement, and account deletion events.
 - The admin dashboard previews the five most recent records. `/x/admin/activity` provides the complete, paginated activity ledger. Activity starts collecting from deployment; it is not backfilled.
 - Dashboard activity filters use their own five-row category previews; never filter only the globally truncated five-row “All” list.
+- Billing and Stripe webhook handlers must resolve the activity logger when optional injection is null (Laravel preserves unbound constructor defaults). Capture cancellation metadata before saving to detect schedule/revert events.
+- Usage synchronization preserves existing subscription metadata, including cancellation flags, while updating usage and limit fields.
 
 ## Core domain concepts
+
+### Blog management
+
+- Public reader routes are `/blog` and `/blog/{slug}`. Admin CRUD, taxonomy, featured ordering, bulk actions and image uploads live under `/x/admin/blogs`, protected by the same `admin.auth` session as the rest of this host. All authenticated admins can perform every blog action; there is no separate blog ability system.
+- Models: `Article`, `Category`, `Tag`, with `article_tag` links. Category deletion nulls article references; tag deletion removes links. Articles are permanently deleted. The optional Hook Templates module is not part of this implementation.
+- `BlogContent` normalizes ten plain-text block types and legacy ProseMirror documents, emits schema version 1, produces globally unique heading anchors and consistent reading estimates. Text is escaped; links accept HTTP(S) or local paths, and embeds accept only HTTPS YouTube/Vimeo videos.
+- Published status exposes an article immediately, including a future publication date. Dates are entered in the configured application timezone (shown in the editor). Draft saves/unpublish clear the date; bulk publish stamps now.
+- `ArticleService` saves article/tag changes transactionally. Featured reorder requires the full current published-featured set and locks existing rows; stable ID tie-breaking keeps equal positions deterministic. Simultaneous membership changes may require reloading the order page.
+- `BLOG_MEDIA_DISK` and `BLOG_MEDIA_PREFIX` configure media through `config/blog.php`. Hero paths are immutable and shared by duplicates; replacement stores new files without deleting existing paths. This intentionally retains unused files rather than risking another article's media. There is no orphan-cleanup job. Imagick variants fall back to the original when unavailable.
+- Blog mutations are actor-labelled application log entries; this host has no separate admin audit ledger. Public responses use `private, no-store` because Inertia props contain session data. Published articles are included in the sitemap. The existing Inertia SSR service must run for crawler-visible initial HTML.
+- UI follows the destination's Brand Beacon light theme. Admin pages are in `resources/js/Pages/Admin/Blogs`; reader pages are in `resources/js/Pages/Blog`.
+- Run the additive `2026_09_08_120000_create_blog_tables` migration at deployment. No reference-site data or credentials are migrated automatically. See `docs/blog-management.md` for rollout and verification.
 
 ### Saved search
 
