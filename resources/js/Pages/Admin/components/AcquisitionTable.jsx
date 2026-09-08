@@ -33,7 +33,7 @@ export default function AcquisitionTable({ acquisition = {} }) {
         <td className="px-3 py-3 text-right">{row.rate}%</td>
     </>;
 
-    return <section className="rounded-2xl border border-[#dce4f0] bg-white p-4 sm:p-5">
+    return <section className="min-w-0 rounded-2xl border border-[#dce4f0] bg-white p-4 sm:p-5">
         <div className="flex flex-wrap items-start justify-between gap-3">
             <div><p className="text-xs font-semibold uppercase tracking-widest text-sky-700">Acquisition</p><h3 className="mt-1 text-lg font-semibold">Where they come from</h3></div>
             <span className="text-xs text-slate-500">Signed up {acquisition.rangeLabel}</span>
@@ -44,8 +44,10 @@ export default function AcquisitionTable({ acquisition = {} }) {
                 <span className="block text-xs text-slate-600">{label}</span><strong className="mt-1 block text-2xl">{(cohort.totals[key] ?? 0).toLocaleString()}</strong>
             </button>)}
         </div>
-        <div className="mt-4 overflow-x-auto">
-            <table className="w-full text-sm">
+        {/* min-w-0 lets the scroller shrink inside a grid/flex parent; without
+            it the table's min-content width leaks out and widens the page. */}
+        <div className="mt-4 min-w-0 overflow-x-auto">
+            <table className="w-full min-w-[520px] text-sm">
                 <caption className="sr-only">Acquisition by source and medium. Expand a source to compare campaigns; select a count to see users.</caption>
                 <thead><tr className="border-b border-slate-200 text-left text-xs text-slate-600">
                     {[['source', 'Source / medium'], ...METRICS, ['rate', 'Signup → paid']].map(([key, label]) => <th key={key} className={`px-3 py-3 ${key === 'source' ? '' : 'text-right'}`} aria-sort={sort.key === key ? (sort.descending ? 'descending' : 'ascending') : 'none'}>

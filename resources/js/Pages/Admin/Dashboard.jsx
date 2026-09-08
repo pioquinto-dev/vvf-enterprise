@@ -382,7 +382,9 @@ export default function Dashboard({ trend = [], stats = [], snapshot = {}, range
             <div className="mt-3">
                 <EngagementInsights engagement={engagement} />
             </div>
-            <div className="mt-3 grid gap-3 xl:grid-cols-2">
+            {/* minmax(0,…) so a wide child (the acquisition table) cannot push
+                the track past the viewport and drag its neighbour with it. */}
+            <div className="mt-3 grid grid-cols-[minmax(0,1fr)] gap-3 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
                 <RecentActivity activity={activity} />
                 <AcquisitionTable key={range} acquisition={acquisition} />
             </div>
