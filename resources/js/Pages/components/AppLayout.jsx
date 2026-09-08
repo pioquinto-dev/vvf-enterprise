@@ -3,7 +3,7 @@ import { Link, router, useForm, usePage } from '@inertiajs/react';
 
 import AppFooter from './AppFooter.jsx';
 import EntitlementsBar from './EntitlementsBar.jsx';
-import { Logo, Menu, Close, Search, Library, Store, Target, Exit, Spark, Arrow, Lock } from '../../landing/components/Icons.jsx';
+import { Logo, Menu, Close, Library, Store, Target, Exit, Spark, Arrow, Lock } from '../../landing/components/Icons.jsx';
 import { readTrackedVideoAnalyses, untrackVideoAnalysis, videoAnalysis } from '../../landing/flow/api.js';
 
 /* Old AppLayout tones → Brand Beacon pill classes, so pages passing the
@@ -24,7 +24,6 @@ const PILL_CLASS = {
  */
 const NAV = [
     { label: 'My Feed', href: '/home', icon: Spark, match: '/home' },
-    { label: 'Search', href: '/dashboard', icon: Search, match: '/dashboard' },
     { label: 'Library', href: '/library', icon: Library, match: '/library' },
     { label: 'Brand searches', href: '/brands', icon: Store, match: '/brands' },
     { label: 'Product searches', href: '/products', icon: Target, match: '/products' },

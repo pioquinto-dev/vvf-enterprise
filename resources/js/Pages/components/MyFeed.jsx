@@ -19,7 +19,6 @@ const Icons = {
   heart: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20.4 5.6a5 5 0 0 0-7.1 0L12 6.9l-1.3-1.3a5 5 0 1 0-7.1 7.1l8.4 8.4 8.4-8.4a5 5 0 0 0 0-7.1z" /></svg>,
   comment: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 11.5a8.4 8.4 0 0 1-9 8.4 9.6 9.6 0 0 1-3-.5L3 21l1.6-4.6A8.4 8.4 0 0 1 3 11.5a8.4 8.4 0 0 1 9-8.4 8.4 8.4 0 0 1 9 8.4z" /></svg>,
   user: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>,
-  music: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M9 18V6.6l10-2v11" /><circle cx="6.6" cy="18" r="2.6" /><circle cx="16.6" cy="15.6" r="2.6" /></svg>,
   spark: <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l1.8 6.2L20 10l-6.2 1.8L12 18l-1.8-6.2L4 10l6.2-1.8z" /></svg>,
 };
 
@@ -32,9 +31,11 @@ function VideoCard({ video, currentPath }) {
   const body = (
     <>
       <div className="mf-vt">
-        {playing ? <video src={video.video_url} poster={video.thumbnail || undefined} controls autoPlay playsInline onError={() => { setPlaying(false); setFailed(true); }} /> : video.thumbnail
-          ? <img src={video.thumbnail} alt="" loading="lazy" />
-          : <span className="mf-vt__ph" style={{ background: video.gradient }} />}
+        {playing
+          ? <video key="playing" src={video.video_url} poster={video.thumbnail || undefined} controls autoPlay playsInline onError={() => { setPlaying(false); setFailed(true); }} />
+          : (video.thumbnail || video.video_url)
+            ? <video key="poster" poster={video.thumbnail || undefined} preload="none" playsInline muted />
+            : <span className="mf-vt__ph" style={{ background: video.gradient }} />}
         {!playing && video.brand && <span className="mf-k">{video.brand}</span>}
         {!playing && video.score && <span className="mf-m">{video.score}</span>}
         {!playing && video.duration && <span className="mf-d">{video.duration}</span>}
@@ -61,31 +62,15 @@ function VideoCard({ video, currentPath }) {
 }
 
 function SoundsPanel({ sounds }) {
-  const [lead, ...rest] = sounds;
-
   return (
     <div className="mf-panel">
       <div className="mf-sec"><h2>your top sounds</h2></div>
-      <a className="mf-snd" href={`https://www.tiktok.com/search/sound?q=${encodeURIComponent(lead.label)}`} target="_blank" rel="noopener noreferrer" aria-label={`${lead.label} — open on TikTok`}>
-        <span className="mf-snd__ico">{Icons.music}</span>
-        <span className="mf-snd__bd">
-          <strong>{lead.label}</strong>
-          <span>in {lead.count} of your breakout{lead.count === 1 ? '' : 's'}</span>
-        </span>
-      </a>
-      {lead.thumbs?.length > 0 && (
-        <div className="mf-thumbs">
-          {lead.thumbs.map((thumb, i) => (
-            <span className="mf-thumb" key={i}><img src={thumb} alt="" loading="lazy" /></span>
-          ))}
-        </div>
-      )}
-      {rest.map((sound, i) => (
+      {sounds.map((sound, i) => (
         <a className="mf-rk" key={sound.label} href={`https://www.tiktok.com/search/sound?q=${encodeURIComponent(sound.label)}`} target="_blank" rel="noopener noreferrer" aria-label={`${sound.label} — open on TikTok`}>
-          <span className="mf-rk__p">{String(i + 2).padStart(2, '0')}</span>
+          <span className="mf-rk__p">{String(i + 1).padStart(2, '0')}</span>
           <span className="mf-rk__bd">
             <strong>{sound.label}</strong>
-            <span>in {sound.count} breakout{sound.count === 1 ? '' : 's'}</span>
+            <span>in {sound.count} of your breakout{sound.count === 1 ? '' : 's'}</span>
           </span>
         </a>
       ))}
@@ -136,7 +121,7 @@ function DiscoveryPanel({ kind, discovery }) {
     {kind === 'searches' && <>
       {['brand', 'product'].map((type) => <div key={type}>
         <p className="mf-discovery-label">{type === 'brand' ? 'Brands' : 'Products'}</p>
-        {(discovery.mostSearched?.[type] ?? []).map((row, i) => <Link className="mf-rk" key={row.phrase} href={`/search?q=${encodeURIComponent(row.phrase)}&type=${type}`}>
+        {(discovery.mostSearched?.[type] ?? []).map((row, i) => <Link className="mf-rk" key={row.phrase} href={`/dashboard?type=${type}&q=${encodeURIComponent(row.phrase)}`}>
           <span className="mf-rk__p">{String(i + 1).padStart(2, '0')}</span><span className="mf-rk__bd"><strong>{row.phrase}</strong><span>{row.count} searches this week</span></span>
         </Link>)}
         {!discovery.mostSearched?.[type]?.length && <p className="mf-fsub">No searches recorded this week.</p>}
@@ -171,8 +156,23 @@ function EmptyState() {
   );
 }
 
+function FeedHead({ shown, totalCount }) {
+  const remaining = Math.max(0, totalCount - shown);
+  const description = remaining > 0
+    ? `${totalCount} video${totalCount === 1 ? '' : 's'} broke out for you this week. ${shown} ${shown === 1 ? 'is' : 'are'} here, and the other ${remaining} come round on your next visit.`
+    : `${totalCount} video${totalCount === 1 ? '' : 's'} broke out for you this week.`;
+
+  return (
+    <div className="mf-feedhead">
+      <div className="mf-sec"><h2>your feed</h2></div>
+      <p>{description}</p>
+      <span className="mf-feedhead__all">All {totalCount}</span>
+    </div>
+  );
+}
+
 export default function MyFeed({ feed = {}, currentPath = '/dashboard' }) {
-  const { videos = [], sounds = [], hashtags = [], saved = [], savedCount = 0, discovery = {} } = feed;
+  const { videos = [], totalCount = videos.length, sounds = [], hashtags = [], saved = [], savedCount = 0, discovery = {} } = feed;
   const discoveryPanels = ['searches', 'hashtags', 'sounds'].map((kind) => <DiscoveryPanel key={`discovery-${kind}`} kind={kind} discovery={discovery} />);
 
   const feedStyles = <style>{scopedCss}</style>;
@@ -187,7 +187,6 @@ export default function MyFeed({ feed = {}, currentPath = '/dashboard' }) {
     );
   }
 
-  const hasPanels = hashtags.length > 0 || sounds.length > 0 || saved.length > 0;
   const mobilePanels = [];
   if (sounds.length > 0) mobilePanels.push(<SoundsPanel key="sounds" sounds={sounds} />);
   mobilePanels.push(<DiscoveryPanel key="discovery-sounds" kind="sounds" discovery={discovery} />);
@@ -204,23 +203,21 @@ export default function MyFeed({ feed = {}, currentPath = '/dashboard' }) {
   return (
     <>
       {feedStyles}
+      <FeedHead shown={videos.length} totalCount={totalCount} />
       <div className="mf-mobile">{mobileItems}</div>
-      <div className={`mf${hasPanels ? '' : ' mf--videos-only'}`}>
-        {hasPanels && (
-          <aside className="mf-sidebar" aria-label="Your search highlights">
-            {hashtags.length > 0 && <HashtagsPanel hashtags={hashtags} />}
-            {sounds.length > 0 && <SoundsPanel sounds={sounds} />}
-            {saved.length > 0 && <SavedPanel saved={saved} savedCount={savedCount} />}
-          </aside>
-        )}
+      <div className="mf">
         <section className="mf-videos" aria-label="Your breakout videos">
           {videos.map((video, i) => <VideoCard key={`v-${video.id}-${i}`} video={video} currentPath={currentPath} />)}
         </section>
+        <aside className="mf-sidebar" aria-label="Your search highlights and Brand Beacon trends">
+          {sounds.length > 0 && <SoundsPanel sounds={sounds} />}
+          <DiscoveryPanel kind="sounds" discovery={discovery} />
+          {hashtags.length > 0 && <HashtagsPanel hashtags={hashtags} />}
+          <DiscoveryPanel kind="hashtags" discovery={discovery} />
+          {saved.length > 0 && <SavedPanel saved={saved} savedCount={savedCount} />}
+          <DiscoveryPanel kind="searches" discovery={discovery} />
+        </aside>
       </div>
-      <section className="mf-discovery-desktop" aria-labelledby="mf-discovery-title">
-        <h2 id="mf-discovery-title">Across Brand Beacon</h2>
-        <div className="mf-discovery-grid">{discoveryPanels}</div>
-      </section>
     </>
   );
 }
@@ -233,43 +230,56 @@ const scopedCss = `
 .mf-discovery-tags a{font-size:.78rem;padding:7px;border-radius:8px;background:var(--wash);color:inherit;text-decoration:none;overflow-wrap:anywhere}
 .mf-discovery-tags strong{color:var(--amber-ink);margin-left:4px}
 .mf-discovery-empty{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(260px,100%),1fr));gap:16px;margin-top:20px;align-items:start}
-.mf-qs{display:flex;align-items:center;gap:10px;min-height:52px;padding:0 6px 0 16px;border-radius:12px;border:1px solid rgba(0,0,0,.09);background:var(--white);box-shadow:0 1px 2px rgba(16,18,32,.04);text-decoration:none;color:inherit;transition:border-color .16s,box-shadow .16s}
-.mf-qs:hover{border-color:var(--yellow);box-shadow:0 0 0 4px rgba(255,198,41,.18)}
+.mf-header{display:flex;align-items:center;justify-content:space-between;gap:16px}
+.mf-feedhead{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 14px;margin:28px 0 20px}
+.mf-feedhead .mf-sec{flex:none}
+.mf-feedhead p{margin:0;flex:1;min-width:240px;color:var(--muted);font-size:.86rem;line-height:1.5}
+.mf-feedhead__all{margin-left:auto;flex:none;font-size:.82rem;font-weight:700;color:var(--amber-ink)}
+.mf-header .mf-qs{flex:1;min-width:0;max-width:520px}
+.mf-header .ent{display:none;margin-left:0}
+@media(min-width:1100px){.mf-header .ent{display:inline-flex;flex:none}}
+.mf-qs{position:relative;display:flex;align-items:center;gap:10px;min-height:52px;padding:0 6px 0 16px;border-radius:12px;border:1px solid rgba(0,0,0,.09);background:var(--white);box-shadow:0 1px 2px rgba(16,18,32,.04);color:inherit;transition:border-color .16s,box-shadow .16s}
+.mf-qs:focus-within{border-color:var(--yellow);box-shadow:0 0 0 4px rgba(255,198,41,.18)}
 .mf-qs>svg{width:18px;height:18px;color:var(--muted);flex:none}
-.mf-qs__ph{flex:1;min-width:0;color:var(--faint-2,#5c5a54);font-size:.92rem;font-weight:500}
-.mf-qs__btn{flex:none;display:inline-flex;align-items:center;min-height:40px;padding:0 16px;border-radius:10px;background:linear-gradient(#ffd84d,#ffc629);color:#0b0b0b;font-size:.84rem;font-weight:700}
+.mf-qs__in{flex:1;min-width:0;border:0;outline:0;background:transparent;font:inherit;color:var(--ink);font-size:.92rem;font-weight:500}
+.mf-qs__in::placeholder{color:var(--faint-2,#5c5a54)}
+.mf-qs__menuwrap{position:relative;flex:none}
+.mf-qs__btn{flex:none;display:inline-flex;align-items:center;gap:6px;min-height:40px;padding:0 16px;border:0;border-radius:10px;background:linear-gradient(#ffd84d,#ffc629);color:#0b0b0b;font-size:.84rem;font-weight:700;cursor:pointer}
+.mf-qs__btn svg{width:13px;height:13px;transition:transform .16s}
+.mf-qs__btn[aria-expanded="true"] svg{transform:rotate(180deg)}
+.mf-qs__btn[disabled]{opacity:.5;cursor:not-allowed}
+.mf-qs__menu{position:absolute;top:calc(100% + 8px);right:0;z-index:30;min-width:190px;overflow:hidden;border:1px solid var(--line);border-radius:12px;background:var(--white);box-shadow:0 18px 36px -18px rgba(20,15,0,.32)}
+.mf-qs__menu button{display:block;width:100%;padding:11px 14px;border:0;background:transparent;text-align:left;font-size:.86rem;font-weight:600;color:var(--ink);cursor:pointer}
+.mf-qs__menu button:hover,.mf-qs__menu button:focus-visible{background:var(--wash)}
 
-/* Highlights and videos occupy independent columns, sharing the page scroll. */
-.mf{margin-top:24px;display:none;gap:20px;align-items:start}
-.mf-discovery-desktop{display:none;margin-top:28px}
-.mf-discovery-desktop>h2{margin:0 0 14px;font-size:1.1rem;font-weight:700;color:var(--ink)}
-.mf-discovery-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;align-items:start}
+/* Desktop-only: the video feed and highlights sidebar share the page scroll
+   in one grid. Both are hidden below 1100px, where .mf-mobile takes over —
+   .mf-vc's base rules stay mobile's portrait card; the row layout below is
+   scoped under .mf-videos so it never reaches .mf-mobile. */
+.mf{margin-top:24px;display:none;gap:24px;align-items:start}
 .mf-mobile{margin-top:24px;display:flex;flex-direction:column;gap:14px}
 @media(min-width:820px) and (max-width:1099px){
   .mf-mobile{display:block;columns:2;column-gap:16px}
   .mf-mobile>*{break-inside:avoid;margin-bottom:16px}
 }
-.mf-sidebar{display:flex;flex-direction:column;gap:16px;min-width:0}
-.mf-videos{min-width:0;min-height:calc(100vh - 180px);columns:4 210px;column-gap:16px}
-.mf-videos>*{break-inside:avoid;margin-bottom:16px}
+.mf-sidebar{order:2;display:flex;flex-direction:column;gap:16px;min-width:0}
+.mf-videos{order:1;min-width:0;display:flex;flex-direction:column;gap:16px}
 @media(min-width:1100px){
-  .mf{display:grid;grid-template-columns:260px minmax(0,1fr)}
+  .mf{display:grid;grid-template-columns:minmax(0,1fr) 300px}
   .mf-mobile{display:none}
-  .mf-discovery-desktop{display:block}
-  .mf--videos-only{grid-template-columns:minmax(0,1fr)}
 }
 .mf-vc{display:block;overflow:hidden;text-align:left;background:var(--white);border:1px solid var(--line);border-radius:16px;text-decoration:none;color:inherit;transition:box-shadow .16s,transform .16s}
 .mf-vc:hover{box-shadow:0 14px 34px -20px rgba(20,15,0,.32)}
 .mf-vt{position:relative;overflow:hidden;aspect-ratio:4/5;background:var(--paper,#faf9f6)}
-.mf-vt img,.mf-vt__ph{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}
-.mf-vt video{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#000}
+.mf-vt__ph{position:absolute;inset:0;width:100%;height:100%;display:block}
+.mf-vt video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;background:#000;display:block}
 .mf-play-error{position:absolute;inset:40% 12px auto;padding:12px;border-radius:8px;background:rgba(0,0,0,.8);color:#fff;text-align:center;font-size:.8rem}
 .mf-vb{display:block;color:inherit;text-decoration:none}
 a.mf-vb:hover{background:var(--wash)}
-.mf-snd,.mf-rk,.mf-hrow{color:inherit;text-decoration:none}
-a.mf-snd:hover,a.mf-rk:hover,a.mf-hrow:hover{background:var(--wash)}
+.mf-rk,.mf-hrow{color:inherit;text-decoration:none}
+a.mf-rk:hover,a.mf-hrow:hover{background:var(--wash)}
 .mf-p{border:0;cursor:pointer}
-.mf-p:focus-visible,a.mf-vb:focus-visible,.mf-snd:focus-visible,.mf-rk:focus-visible,.mf-hrow:focus-visible{outline:3px solid var(--yellow);outline-offset:-3px}
+.mf-p:focus-visible,a.mf-vb:focus-visible,.mf-rk:focus-visible,.mf-hrow:focus-visible{outline:3px solid var(--yellow);outline-offset:-3px}
 .mf-k{position:absolute;top:9px;right:9px;z-index:2;display:inline-flex;align-items:center;gap:5px;padding:4px 9px;border-radius:7px;background:rgba(11,11,11,.62);backdrop-filter:blur(6px);color:#fff;font-size:.68rem;font-weight:700;max-width:60%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .mf-m{position:absolute;left:9px;bottom:9px;z-index:2;padding:3px 8px;border-radius:6px;background:var(--yellow);color:#1a1400;font-size:.68rem;font-weight:800}
 .mf-d{position:absolute;right:9px;bottom:9px;z-index:2;padding:3px 7px;border-radius:6px;background:rgba(11,11,11,.72);color:#fff;font-size:.66rem;font-weight:700}
@@ -283,19 +293,16 @@ a.mf-snd:hover,a.mf-rk:hover,a.mf-hrow:hover{background:var(--wash)}
 .mf-vb__s{display:flex;flex-wrap:wrap;gap:12px;margin-top:12px;padding-top:11px;border-top:1px solid var(--line);color:var(--muted);font-size:.75rem}
 .mf-vb__s span{display:inline-flex;align-items:center;gap:5px;white-space:nowrap}
 .mf-vb__s svg{width:12px;height:12px;flex:none}
+/* Desktop feed row card — a wide horizontal card (thumb + copy side by side),
+   scoped to .mf-videos so .mf-mobile's portrait .mf-vc is untouched. */
+.mf-videos .mf-vc{display:flex;flex-direction:row;align-items:center}
+.mf-videos .mf-vt{width:200px;flex:none;aspect-ratio:9/16}
+.mf-videos .mf-vb{flex:1;min-width:0;padding:18px 22px}
+.mf-videos .mf-vb__c{font-size:.86rem}
 .mf-panel{background:var(--white);border:1px solid var(--line);border-radius:16px;padding:15px 16px;display:flex;flex-direction:column;gap:12px}
 .mf-sec{display:flex;align-items:baseline;gap:9px}
 .mf-sec h2{margin:0;display:flex;align-items:center;gap:8px;font-size:.98rem;font-weight:700;letter-spacing:-.03em;color:var(--ink)}
 .mf-sec h2::before{content:'';width:3px;height:15px;flex:none;border-radius:2px;background:var(--yellow)}
-.mf-snd{display:flex;align-items:center;gap:11px}
-.mf-snd__ico{width:38px;height:38px;flex:none;display:grid;place-items:center;border-radius:10px;background:var(--yellow);color:#0b0b0b}
-.mf-snd__ico svg{width:18px;height:18px}
-.mf-snd__bd{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
-.mf-snd__bd strong{font-size:.87rem;font-weight:700;letter-spacing:-.02em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.mf-snd__bd span{color:var(--muted);font-size:.72rem;font-weight:500}
-.mf-thumbs{display:flex;gap:8px}
-.mf-thumb{position:relative;width:56px;aspect-ratio:9/16;border-radius:8px;overflow:hidden;background:var(--paper,#faf9f6);flex:none}
-.mf-thumb img{width:100%;height:100%;object-fit:cover;display:block}
 .mf-rk{display:flex;align-items:center;gap:11px;padding:9px 0;border-top:1px solid rgba(0,0,0,.05)}
 .mf-rk__p{width:20px;flex:none;color:var(--muted);font-family:ui-monospace,Menlo,monospace;font-size:.72rem;font-weight:700}
 .mf-rk__bd{flex:1;min-width:0;display:flex;flex-direction:column}

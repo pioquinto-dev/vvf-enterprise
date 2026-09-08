@@ -355,7 +355,7 @@ function CouponAccessPromptModal({ prompt, onClose }) {
 }
 
 export default function Dashboard() {
-  const { flash = {}, recent = [], stats = null, searchSuggestions = {}, billing = {} } = usePage().props;
+  const { flash = {}, recent = [], stats = null, searchSuggestions = {}, billing = {}, initialType = 'brand', initialQuery = '' } = usePage().props;
   const currentPath = typeof window === 'undefined' ? '/dashboard' : `${window.location.pathname}${window.location.search}`;
   const [processingModal, setProcessingModal] = useState(null);
   const [completionModal, setCompletionModal] = useState(null);
@@ -697,6 +697,8 @@ export default function Dashboard() {
         )}
 
       <SearchWizard
+          initialType={initialType}
+          initialQuery={initialQuery}
           subjectExtra={dashboardExtras}
           suggestionsByType={searchSuggestions}
           onTrackedSearchChange={() => {

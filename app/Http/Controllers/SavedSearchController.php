@@ -332,7 +332,7 @@ class SavedSearchController extends Controller
         $searchIds = CustomKeywordSearch::query()->ownedBy($userId, $guestToken)->pluck('id');
 
         $discovery = app(\App\Services\CustomKeywordSearch\FeedDiscoveryService::class)->payload();
-        $empty = ['videos' => [], 'sounds' => [], 'hashtags' => [], 'saved' => [], 'savedCount' => 0, 'discovery' => $discovery];
+        $empty = ['videos' => [], 'totalCount' => 0, 'sounds' => [], 'hashtags' => [], 'saved' => [], 'savedCount' => 0, 'discovery' => $discovery];
 
         if ($searchIds->isEmpty()) {
             return $empty;
@@ -363,6 +363,7 @@ class SavedSearchController extends Controller
             $unique[] = $row;
         }
 
+        $totalBreakouts = count($unique);
         $videos = array_map(
             fn (CustomKeywordSearchVideo $row): array => $this->feedVideoCard($row, $searchNames, $searchUrls),
             array_slice($unique, 0, 8),
@@ -383,6 +384,7 @@ class SavedSearchController extends Controller
 
         return [
             'videos' => $videos,
+            'totalCount' => $totalBreakouts,
             'sounds' => $this->aggregateFeedSounds($unique),
             'discovery' => $discovery,
             'hashtags' => $this->aggregateFeedHashtags($unique),
@@ -688,6 +690,8 @@ class SavedSearchController extends Controller
         return Inertia::render('Dashboard', [
             'recent' => $this->recentSearches($request),
             'stats' => $this->dashboardStats($request),
+            'initialType' => $request->query('type') === 'product' ? 'product' : 'brand',
+            'initialQuery' => trim((string) $request->query('q', '')),
             'searchSuggestions' => [
                 'brand' => $this->suggestions(
                     $this->searches->all($request, [CustomKeywordSearch::TYPE_BRAND, CustomKeywordSearch::TYPE_COMPETITOR], false),
