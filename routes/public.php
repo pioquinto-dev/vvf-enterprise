@@ -25,7 +25,7 @@ Route::get('/blog/{slug}', [\App\Http\Controllers\PublicBlogController::class, '
 
 Route::get('/', function (Request $request) {
     if ($request->user()) {
-        return Inertia::render('Dashboard');
+        return redirect()->route('home');
     }
 
     return Inertia::render(config('features.show_coming_soon') ? 'ComingSoon' : 'Landing');

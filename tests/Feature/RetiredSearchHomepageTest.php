@@ -14,6 +14,25 @@ class RetiredSearchHomepageTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_the_site_root_sends_signed_in_users_to_my_feed(): void
+    {
+        $user = User::factory()->create();
+
+        $this->actingAs($user)->get('/')->assertRedirect('/home');
+        $this->actingAs($user)->get('/home')
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page->component('Feed'));
+    }
+
+    public function test_the_site_root_keeps_the_marketing_page_for_guests(): void
+    {
+        config(['features.show_coming_soon' => false]);
+
+        $this->get('/')
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page->component('Landing'));
+    }
+
     public function test_the_retired_search_homepage_sends_signed_in_users_to_my_feed(): void
     {
         $user = User::factory()->create();

@@ -180,7 +180,7 @@ Warnings:
 Defined in `routes/public.php`.
 
 - `/`
-  - Marketing landing page.
+  - Marketing landing page for guests; signed-in users redirect to `/home` (My Feed). Do not render the retired `Dashboard` Inertia page.
 - `/search`
   - Standalone public free-search funnel. It collects the subject and refinements without creating a search; the Google callback creates the account-owned search after sign-in.
 - `/search/running`
@@ -206,8 +206,10 @@ Defined in `routes/public.php`.
 
 Defined in `routes/frontend.php`.
 
+- `/home`
+  - My Feed, the main signed-in landing page.
 - `/dashboard`
-  - Main signed-in dashboard.
+  - Legacy redirect to `/home`.
 - `/search-history`
   - Redirects to the Library's Search History tab, ordered by the date each search was created.
 - `/bookmark`
