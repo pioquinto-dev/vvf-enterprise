@@ -37,11 +37,13 @@ class SettingsAccountTest extends TestCase
 
     public function test_updating_account_can_persist_notification_preferences(): void
     {
+        // Preferences are normalized to just notifications/appearance (plus
+        // authentication, when present) — any other top-level key, like a
+        // legacy "theme" group, is not part of the current schema and is
+        // dropped on save.
         $user = User::factory()->create([
             'name' => 'Before',
-            'preferences' => [
-                'theme' => ['mode' => 'light'],
-            ],
+            'preferences' => [],
         ]);
 
         $this->actingAs($user)
@@ -61,7 +63,6 @@ class SettingsAccountTest extends TestCase
 
         $this->assertSame('After', $user->name);
         $this->assertSame([
-            'theme' => ['mode' => 'light'],
             'notifications' => [
                 'search_finished' => false,
                 'virality_alerts' => true,

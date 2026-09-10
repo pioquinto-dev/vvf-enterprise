@@ -26,9 +26,12 @@ class AdminImpersonationTest extends TestCase
             'admin.user' => ['email' => 'admin@example.com'],
         ])->post("/x/admin/users/{$user->id}/impersonate")
             ->assertRedirect(route('home'))
-            ->assertAuthenticatedAs($user)
             ->assertSessionHas('admin.authenticated', true)
             ->assertSessionHas('admin.impersonation.user_id', $user->id);
+
+        // assertAuthenticatedAs is a TestCase assertion, not a TestResponse
+        // one — it can't be chained off the response.
+        $this->assertAuthenticatedAs($user);
     }
 
     public function test_customer_sign_out_returns_an_impersonating_admin_to_the_admin_dashboard(): void
@@ -47,9 +50,10 @@ class AdminImpersonationTest extends TestCase
             ])
             ->post('/logout')
             ->assertRedirect(route('admin.dashboard'))
-            ->assertGuest()
             ->assertSessionHas('admin.authenticated', true)
             ->assertSessionMissing('admin.impersonation');
+
+        $this->assertGuest();
     }
 
     public function test_expired_impersonation_logs_out_the_customer_but_retains_admin_access(): void
@@ -67,9 +71,12 @@ class AdminImpersonationTest extends TestCase
                 ],
             ])
             ->get('/home')
-            ->assertRedirect(route('login'))
-            ->assertGuest()
+            // Guests are redirected to the marketing landing page, not
+            // /login — see $middleware->redirectGuestsTo() in bootstrap/app.php.
+            ->assertRedirect(route('landing'))
             ->assertSessionHas('admin.authenticated', true)
             ->assertSessionMissing('admin.impersonation');
+
+        $this->assertGuest();
     }
 }

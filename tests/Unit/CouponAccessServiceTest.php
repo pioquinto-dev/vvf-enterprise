@@ -188,9 +188,12 @@ class CouponAccessServiceTest extends TestCase
         $program = $this->vip();
         $user = User::factory()->create(['email' => 'exec@vip.com']);
         $program->whitelistEntries()->create(['email' => 'exec@vip.com']);
+        // status stays 'free' (not 'trialing') so this reads as a trial that
+        // already ran its course, not an active one — an active trial is
+        // blocked earlier as "Already Paid" instead.
         Subscription::create([
             'user_id' => $user->id,
-            'status' => 'trialing',
+            'status' => 'free',
             'trial_started_at' => now()->subDays(2),
         ]);
 

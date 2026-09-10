@@ -4,6 +4,7 @@ namespace Tests\Unit;
 
 use App\Models\ManagedCouponProgram;
 use App\Models\PricingPlan;
+use App\Models\Subscription;
 use App\Models\User;
 use App\Services\Billing\BillingEntitlementService;
 use App\Services\Billing\BillingService;
@@ -13,6 +14,7 @@ use App\Services\Utm\UtmAttributionService;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Mockery;
+use Stripe\Checkout\Session;
 use Tests\TestCase;
 
 class BillingServiceBrevoTest extends TestCase
@@ -24,7 +26,6 @@ class BillingServiceBrevoTest extends TestCase
         $user = User::factory()->create([
             'email' => 'vip@igniteamz.com',
             'name' => 'VIP User',
-            'stripe_customer_id' => 'cus_existing',
         ]);
 
         $plan = PricingPlan::query()->create([
@@ -62,6 +63,13 @@ class BillingServiceBrevoTest extends TestCase
         $emails = Mockery::mock(BrevoLifecycleEmailService::class);
         $utm = Mockery::mock(UtmAttributionService::class);
 
+        // checkout() resolves the Stripe customer from the user's active
+        // subscription record rather than a column on users, and also
+        // consults it for tier/eligibility checks earlier in the method.
+        $entitlements->shouldReceive('activeSubscriptionFor')
+            ->with(Mockery::on(fn (User $candidate): bool => $candidate->is($user)))
+            ->andReturn((new Subscription)->forceFill(['stripe_customer_id' => 'cus_existing']));
+
         $stripe->shouldReceive('createCheckoutSession')
             ->once()
             ->with(Mockery::on(function (array $payload) use ($user, $plan, $program): bool {
@@ -73,10 +81,10 @@ class BillingServiceBrevoTest extends TestCase
                     && (($payload['metadata']['user_id'] ?? null) === (string) $user->id)
                     && (($payload['line_items'][0]['price'] ?? null) === $plan->stripe_price_id);
             }))
-            ->andReturn((object) [
+            ->andReturn(Session::constructFrom([
                 'id' => 'cs_coupon_test',
                 'url' => 'https://checkout.stripe.test/session',
-            ]);
+            ]));
 
         $service = new BillingService($stripe, $entitlements, $emails, $utm);
 
@@ -89,9 +97,7 @@ class BillingServiceBrevoTest extends TestCase
     {
         CarbonImmutable::setTestNow('2026-08-17 09:00:00');
 
-        $user = User::factory()->create([
-            'stripe_customer_id' => 'cus_existing',
-        ]);
+        $user = User::factory()->create();
 
         $plan = PricingPlan::query()->create([
             'id' => (string) str()->ulid(),
@@ -115,16 +121,16 @@ class BillingServiceBrevoTest extends TestCase
         $stripe->shouldReceive('retrieveCheckoutSession')
             ->once()
             ->with('cs_test_123')
-            ->andReturn((object) [
+            ->andReturn(Session::constructFrom([
                 'payment_status' => 'paid',
                 'status' => 'complete',
-                'metadata' => (object) ['plan_slug' => 'basic'],
+                'metadata' => ['plan_slug' => 'basic'],
                 'subscription' => 'sub_test_123',
                 'customer' => 'cus_test_123',
-            ]);
+            ]));
 
         $entitlements->shouldReceive('limitsFor')
-            ->once()
+            ->twice()
             ->with(Mockery::type(PricingPlan::class))
             ->andReturn([
                 'searchLimit' => 10,
@@ -136,7 +142,7 @@ class BillingServiceBrevoTest extends TestCase
 
         $entitlements->shouldReceive('videoBookmarkCount')->once()->andReturn(0);
         $entitlements->shouldReceive('searchBookmarkCount')->once()->andReturn(0);
-        $entitlements->shouldReceive('remainingSearchCreditsFrom')->once()->andReturn(10);
+        $entitlements->shouldReceive('markFreeSearchUsed')->once()->with(Mockery::type(User::class));
 
         $emails->shouldReceive('sendSubscriptionStarted')
             ->once()

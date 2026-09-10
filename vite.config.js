@@ -4,7 +4,7 @@ import { bunny } from 'laravel-vite-plugin/fonts';
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 
-export default defineConfig({
+export default defineConfig(({ isSsrBuild }) => ({
     plugins: [
         laravel({
             input: ['resources/css/app.css', 'resources/js/app.jsx'],
@@ -31,4 +31,17 @@ export default defineConfig({
             ignored: ['**/storage/framework/views/**'],
         },
     },
-});
+    build: isSsrBuild
+        ? undefined
+        : {
+              rollupOptions: {
+                  output: {
+                      manualChunks(id) {
+                          if (/node_modules\/(react|react-dom|@inertiajs)/.test(id)) {
+                              return 'vendor';
+                          }
+                      },
+                  },
+              },
+          },
+}));

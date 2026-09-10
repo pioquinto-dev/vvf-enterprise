@@ -5,9 +5,14 @@ namespace Tests\Feature;
 use App\Jobs\RunCustomKeywordSearch;
 use App\Models\CustomKeywordSearch;
 use App\Models\CustomKeywordSearchRun;
+use App\Models\PricingPlan;
+use App\Models\Subscription;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\Str;
 use Tests\TestCase;
 
 class SavedSearchFlowTest extends TestCase
@@ -18,6 +23,12 @@ class SavedSearchFlowTest extends TestCase
     {
         parent::setUp();
 
+        // The expansion cache is a process-wide store, not scoped to
+        // RefreshDatabase, so a phrase cached by one test (e.g. the
+        // fallback test) would otherwise leak into the next test that
+        // expands the same phrase.
+        Cache::flush();
+
         // Nothing in these tests should reach a third party.
         Http::preventStrayRequests();
         Queue::fake();
@@ -27,7 +38,7 @@ class SavedSearchFlowTest extends TestCase
     {
         config()->set('services.openai.api_key', null);
 
-        $response = $this->postJson('/saved-searches/expand', ['phrase' => 'side hustle ideas']);
+        $response = $this->postJson('/api/v1/saved-searches/expand', ['phrase' => 'side hustle ideas']);
 
         $response->assertOk()
             ->assertJsonPath('phrase', 'side hustle ideas')
@@ -46,17 +57,17 @@ class SavedSearchFlowTest extends TestCase
         Http::fake([
             '*/chat/completions' => Http::response([
                 'choices' => [[
-                    'message' => ['content' => json_encode(['make money online', 'passive income'])],
+                    'message' => ['content' => json_encode(['side hustle apps', 'side hustle for moms'])],
                 ]],
             ]),
         ]);
 
-        $response = $this->postJson('/saved-searches/expand', ['phrase' => 'side hustle ideas']);
+        $response = $this->postJson('/api/v1/saved-searches/expand', ['phrase' => 'side hustle ideas']);
 
         $response->assertOk()
             ->assertJsonPath('source', 'ai')
             ->assertJsonPath('keywords.0', 'side hustle ideas')
-            ->assertJsonPath('keywords.1', 'make money online');
+            ->assertJsonPath('keywords.1', 'side hustle apps');
 
         Http::assertSent(function ($request): bool {
             $messages = $request['messages'] ?? [];
@@ -86,9 +97,9 @@ class SavedSearchFlowTest extends TestCase
                 ]],
             ]);
 
-        $first = $this->postJson('/saved-searches/expand', ['phrase' => 'gymshark']);
-        $cached = $this->postJson('/saved-searches/expand', ['phrase' => 'gymshark']);
-        $fresh = $this->postJson('/saved-searches/expand', ['phrase' => 'gymshark', 'fresh' => true]);
+        $first = $this->postJson('/api/v1/saved-searches/expand', ['phrase' => 'gymshark']);
+        $cached = $this->postJson('/api/v1/saved-searches/expand', ['phrase' => 'gymshark']);
+        $fresh = $this->postJson('/api/v1/saved-searches/expand', ['phrase' => 'gymshark', 'fresh' => true]);
 
         $first->assertOk()
             ->assertJsonPath('keywords.1', 'gymshark review');
@@ -117,7 +128,7 @@ class SavedSearchFlowTest extends TestCase
             ]),
         ]);
 
-        $response = $this->postJson('/saved-searches/expand', ['phrase' => 'jaxxon jewelry']);
+        $response = $this->postJson('/api/v1/saved-searches/expand', ['phrase' => 'jaxxon jewelry']);
 
         $response->assertOk()
             ->assertJsonPath('source', 'ai');
@@ -132,14 +143,15 @@ class SavedSearchFlowTest extends TestCase
 
     public function test_expansion_requires_a_phrase(): void
     {
-        $this->postJson('/saved-searches/expand', ['phrase' => ''])
+        $this->postJson('/api/v1/saved-searches/expand', ['phrase' => ''])
             ->assertStatus(422)
             ->assertJsonValidationErrors('phrase');
     }
 
     public function test_creating_a_search_queues_a_run(): void
     {
-        $response = $this->postJson('/saved-searches', [
+        $response = $this->postJson('/api/v1/saved-searches', [
+            'type' => 'brand',
             'phrase' => 'side hustle ideas',
             'keywords' => ['side hustle ideas', 'make money online'],
             'frequency' => 'weekly',
@@ -163,7 +175,8 @@ class SavedSearchFlowTest extends TestCase
 
     public function test_an_initial_failed_search_can_retry_without_using_the_refresh_endpoint(): void
     {
-        $this->postJson('/saved-searches', [
+        $this->postJson('/api/v1/saved-searches', [
+            'type' => 'brand',
             'phrase' => 'rare beauty',
             'keywords' => ['rare beauty'],
             'frequency' => 'weekly',
@@ -177,7 +190,7 @@ class SavedSearchFlowTest extends TestCase
             'error_message' => 'Apify connection failed.',
         ]);
 
-        $this->postJson("/saved-searches/{$search->id}/retry")
+        $this->postJson("/api/v1/saved-searches/{$search->id}/retry")
             ->assertOk()
             ->assertJsonPath('search.status', CustomKeywordSearch::STATUS_SCRAPING)
             ->assertJsonPath('search.can_retry_initial', false);
@@ -188,7 +201,7 @@ class SavedSearchFlowTest extends TestCase
 
     public function test_creating_a_product_search_queues_a_run_without_sources(): void
     {
-        $response = $this->postJson('/saved-searches', [
+        $response = $this->postJson('/api/v1/saved-searches', [
             'type' => 'product',
             'phrase' => 'lip oil',
             'keywords' => ['lip oil', 'lip oil review', 'best lip oil'],
@@ -210,7 +223,7 @@ class SavedSearchFlowTest extends TestCase
 
     public function test_creating_a_search_persists_optional_sources(): void
     {
-        $this->postJson('/saved-searches', [
+        $this->postJson('/api/v1/saved-searches', [
             'type' => 'brand',
             'phrase' => 'rhode skin',
             'keywords' => ['rhode skin', 'rhode'],
@@ -229,7 +242,7 @@ class SavedSearchFlowTest extends TestCase
 
     public function test_creating_a_product_search_persists_optional_sources(): void
     {
-        $this->postJson('/saved-searches', [
+        $this->postJson('/api/v1/saved-searches', [
             'type' => 'product',
             'phrase' => 'lip oil',
             'keywords' => ['lip oil', 'lip oil review'],
@@ -253,7 +266,8 @@ class SavedSearchFlowTest extends TestCase
         // search, so give this visitor headroom to make the second call.
         config()->set('custom_keyword_search.limits.max_saved_guest', 5);
 
-        $this->postJson('/saved-searches', [
+        $this->postJson('/api/v1/saved-searches', [
+            'type' => 'brand',
             'phrase' => 'side hustle ideas',
             'keywords' => ['side hustle ideas', 'make money online'],
             'frequency' => 'weekly',
@@ -262,39 +276,46 @@ class SavedSearchFlowTest extends TestCase
         CustomKeywordSearch::query()->update(['status' => CustomKeywordSearch::STATUS_DONE]);
         CustomKeywordSearchRun::query()->update(['status' => CustomKeywordSearchRun::STATUS_DONE]);
 
-        // Same keywords, different order and a new name.
-        $second = $this->postJson('/saved-searches', [
+        // Same keywords, different order. Creation is weekly-only now —
+        // changing to monthly is a separate, paid-only action via the
+        // /frequency endpoint. A duplicate phrase needs an explicit
+        // refresh_existing confirmation, same as the checkDuplicate flow the
+        // UI runs first. Reuse merges keywords and queues a new run; it does
+        // not rename the search.
+        $second = $this->postJson('/api/v1/saved-searches', [
+            'type' => 'brand',
             'phrase' => 'side hustle ideas',
-            'name' => 'Renamed',
             'keywords' => ['make money online', 'side hustle ideas'],
-            'frequency' => 'monthly',
+            'frequency' => 'weekly',
+            'refresh_existing' => true,
         ])->assertCreated();
 
         $this->assertSame(1, CustomKeywordSearch::count());
 
         $search = CustomKeywordSearch::firstOrFail();
         $this->assertSame($search->id, $second->json('id'));
-        $this->assertSame('Renamed', $search->name);
-        $this->assertSame('monthly', $search->frequency);
+        $this->assertSame('side hustle ideas', $search->name);
+        $this->assertSame('weekly', $search->frequency);
         $this->assertSame(2, $search->runs()->count());
     }
 
     public function test_creation_validates_its_input(): void
     {
-        $this->postJson('/saved-searches', ['phrase' => '', 'keywords' => [], 'frequency' => 'daily'])
+        $this->postJson('/api/v1/saved-searches', ['phrase' => '', 'keywords' => [], 'frequency' => 'daily'])
             ->assertStatus(422)
             ->assertJsonValidationErrors(['phrase', 'keywords', 'frequency']);
     }
 
     public function test_notifications_only_return_searches_owned_by_the_caller(): void
     {
-        $created = $this->postJson('/saved-searches', [
+        $created = $this->postJson('/api/v1/saved-searches', [
+            'type' => 'brand',
             'phrase' => 'korean skincare',
             'keywords' => ['korean skincare'],
             'frequency' => 'weekly',
         ])->json('id');
 
-        $this->getJson("/saved-searches/notifications?ids[]={$created}")
+        $this->getJson("/api/v1/saved-searches/notifications?ids[]={$created}")
             ->assertOk()
             ->assertJsonCount(1, 'searches')
             ->assertJsonPath('searches.0.id', $created);
@@ -302,20 +323,23 @@ class SavedSearchFlowTest extends TestCase
         // A different session holds no guest token, so it sees nothing.
         $this->flushSession();
 
-        $this->getJson("/saved-searches/notifications?ids[]={$created}")
+        $this->getJson("/api/v1/saved-searches/notifications?ids[]={$created}")
             ->assertOk()
             ->assertJsonCount(0, 'searches');
     }
 
     public function test_pause_fails_active_runs_and_resume_reschedules(): void
     {
-        $id = $this->postJson('/saved-searches', [
+        $this->actingAs($this->paidUser());
+
+        $id = $this->postJson('/api/v1/saved-searches', [
+            'type' => 'brand',
             'phrase' => 'korean skincare',
             'keywords' => ['korean skincare'],
             'frequency' => 'weekly',
         ])->json('id');
 
-        $this->patchJson("/saved-searches/{$id}/pause")
+        $this->patchJson("/api/v1/saved-searches/{$id}/pause")
             ->assertOk()
             ->assertJsonPath('search.status', 'paused');
 
@@ -323,7 +347,7 @@ class SavedSearchFlowTest extends TestCase
         $this->assertNull($search->next_run_at);
         $this->assertSame(0, $search->runs()->whereIn('status', ['queued', 'running'])->count());
 
-        $this->patchJson("/saved-searches/{$id}/resume")
+        $this->patchJson("/api/v1/saved-searches/{$id}/resume")
             ->assertOk()
             ->assertJsonPath('search.status', 'done');
 
@@ -332,13 +356,16 @@ class SavedSearchFlowTest extends TestCase
 
     public function test_frequency_update_leaves_keywords_alone(): void
     {
-        $id = $this->postJson('/saved-searches', [
+        $this->actingAs($this->paidUser());
+
+        $id = $this->postJson('/api/v1/saved-searches', [
+            'type' => 'brand',
             'phrase' => 'korean skincare',
             'keywords' => ['korean skincare', 'glass skin'],
             'frequency' => 'weekly',
         ])->json('id');
 
-        $this->patchJson("/saved-searches/{$id}/frequency", ['name' => 'K-beauty', 'frequency' => 'monthly'])
+        $this->patchJson("/api/v1/saved-searches/{$id}/frequency", ['name' => 'K-beauty', 'frequency' => 'monthly'])
             ->assertOk()
             ->assertJsonPath('search.name', 'K-beauty')
             ->assertJsonPath('search.frequency', 'monthly');
@@ -348,7 +375,9 @@ class SavedSearchFlowTest extends TestCase
 
     public function test_frequency_update_can_edit_brand_sources(): void
     {
-        $id = $this->postJson('/saved-searches', [
+        $this->actingAs($this->paidUser());
+
+        $id = $this->postJson('/api/v1/saved-searches', [
             'type' => 'brand',
             'phrase' => 'rhode skin',
             'keywords' => ['rhode skin', 'rhode'],
@@ -359,7 +388,7 @@ class SavedSearchFlowTest extends TestCase
             ],
         ])->json('id');
 
-        $this->patchJson("/saved-searches/{$id}/frequency", [
+        $this->patchJson("/api/v1/saved-searches/{$id}/frequency", [
             'name' => 'Rhode',
             'frequency' => 'monthly',
             'sources' => [
@@ -381,14 +410,14 @@ class SavedSearchFlowTest extends TestCase
 
     public function test_frequency_update_can_edit_sources_for_product_searches(): void
     {
-        $id = $this->postJson('/saved-searches', [
+        $id = $this->postJson('/api/v1/saved-searches', [
             'type' => 'product',
             'phrase' => 'lip oil',
             'keywords' => ['lip oil', 'lip oil review'],
             'frequency' => 'weekly',
         ])->json('id');
 
-        $this->patchJson("/saved-searches/{$id}/frequency", [
+        $this->patchJson("/api/v1/saved-searches/{$id}/frequency", [
             'sources' => [
                 'tiktokHandle' => '@not-a-brand',
                 'website' => 'https://example.com/',
@@ -405,21 +434,25 @@ class SavedSearchFlowTest extends TestCase
 
     public function test_delete_soft_deletes_the_search(): void
     {
-        $id = $this->postJson('/saved-searches', [
+        $this->actingAs($this->paidUser());
+
+        $id = $this->postJson('/api/v1/saved-searches', [
+            'type' => 'brand',
             'phrase' => 'korean skincare',
             'keywords' => ['korean skincare'],
             'frequency' => 'weekly',
         ])->json('id');
 
-        $this->deleteJson("/saved-searches/{$id}")->assertOk();
+        $this->deleteJson("/api/v1/saved-searches/{$id}")->assertOk();
 
         $this->assertSoftDeleted('custom_keyword_searches', ['id' => $id]);
-        $this->getJson("/saved-searches/{$id}/json")->assertNotFound();
+        $this->getJson("/api/v1/saved-searches/{$id}/json")->assertNotFound();
     }
 
     public function test_another_visitor_cannot_read_a_search(): void
     {
-        $id = $this->postJson('/saved-searches', [
+        $id = $this->postJson('/api/v1/saved-searches', [
+            'type' => 'brand',
             'phrase' => 'korean skincare',
             'keywords' => ['korean skincare'],
             'frequency' => 'weekly',
@@ -427,6 +460,53 @@ class SavedSearchFlowTest extends TestCase
 
         $this->flushSession();
 
-        $this->getJson("/saved-searches/{$id}/json")->assertNotFound();
+        $this->getJson("/api/v1/saved-searches/{$id}/json")->assertNotFound();
+    }
+
+    private function paidUser(): User
+    {
+        $plan = PricingPlan::query()->create([
+            'id' => (string) Str::ulid(),
+            'name' => 'Growth',
+            'slug' => 'basic',
+            'interval' => 'month',
+            'interval_count' => 1,
+            'price_cents' => 1000,
+            'currency' => 'usd',
+            'stripe_price_id' => 'price_test_basic',
+            'is_active' => true,
+            'metadata' => [
+                'subscription' => [
+                    'trialEnabled' => false,
+                    'search_limits' => ['used' => 0, 'limit' => 10],
+                    'viral_video_bookmarks' => ['used' => 0, 'limit' => 10],
+                    'search_bookmarks' => ['used' => 0, 'limit' => 10],
+                    'video_analysis' => ['used' => 0, 'limit' => 10],
+                ],
+            ],
+        ]);
+
+        $user = User::factory()->create();
+
+        Subscription::query()->create([
+            'id' => (string) Str::ulid(),
+            'user_id' => $user->id,
+            'plan_id' => $plan->id,
+            'status' => 'active',
+            'current_period_starts_at' => now(),
+            'current_period_ends_at' => now()->addMonth(),
+            'metadata' => [
+                'plan_slug' => 'basic',
+                'subscription' => [
+                    'trialEnabled' => false,
+                    'search_limits' => ['used' => 0, 'limit' => 10],
+                    'viral_video_bookmarks' => ['used' => 0, 'limit' => 10],
+                    'search_bookmarks' => ['used' => 0, 'limit' => 10],
+                    'video_analysis' => ['used' => 0, 'limit' => 10],
+                ],
+            ],
+        ]);
+
+        return $user;
     }
 }

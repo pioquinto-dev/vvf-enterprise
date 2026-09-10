@@ -43,7 +43,11 @@ class SupportAssistantTest extends TestCase
             ]),
         ]);
 
-        $this->postJson('/support/chat', ['question' => 'How do I start a search?'])
+        // Deliberately a question the curated knowledge base doesn't cover,
+        // so this exercises the AI fallback rather than short-circuiting on
+        // an indexed answer (the "how do I start a search" phrasing does
+        // match a known entry and returns its canned answer instead).
+        $this->postJson('/support/chat', ['question' => 'Can I export my saved search results to a spreadsheet?'])
             ->assertOk()
             ->assertJson([
                 'answer' => 'Start a search from the homepage, then add keywords to refine it.',

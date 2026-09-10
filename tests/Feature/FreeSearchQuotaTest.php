@@ -30,10 +30,11 @@ class FreeSearchQuotaTest extends TestCase
 
     private function search(array $overrides = []): \Illuminate\Testing\TestResponse
     {
-        return $this->postJson('/saved-searches', array_merge([
+        return $this->postJson('/api/v1/saved-searches', array_merge([
             'phrase' => 'side hustle ideas',
             'keywords' => ['side hustle ideas'],
             'frequency' => 'weekly',
+            'type' => 'brand',
         ], $overrides));
     }
 
@@ -208,13 +209,13 @@ class FreeSearchQuotaTest extends TestCase
         CustomKeywordSearch::findOrFail($id)->runs()->update(['status' => 'done', 'completed_at' => now()]);
         $this->assertSame(1, $this->searchCreditsRemaining($user));
 
-        $this->actingAs($user)->postJson("/saved-searches/{$id}/refresh")->assertOk();
+        $this->actingAs($user)->postJson("/api/v1/saved-searches/{$id}/refresh")->assertOk();
         $this->assertSame(0, $this->searchCreditsRemaining($user));
 
         CustomKeywordSearch::findOrFail($id)->runs()->update(['status' => 'done', 'completed_at' => now()]);
 
         // Out of credits, so the scrape must not start.
-        $this->actingAs($user)->postJson("/saved-searches/{$id}/refresh")
+        $this->actingAs($user)->postJson("/api/v1/saved-searches/{$id}/refresh")
             ->assertStatus(422)
             ->assertJsonValidationErrors('billing');
 

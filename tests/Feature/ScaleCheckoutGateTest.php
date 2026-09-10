@@ -13,6 +13,8 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Mockery;
+use Stripe\Checkout\Session;
+use Stripe\Customer;
 use Tests\TestCase;
 
 /**
@@ -92,14 +94,14 @@ class ScaleCheckoutGateTest extends TestCase
         $user = User::factory()->create();
 
         $stripe = Mockery::mock(StripeClient::class);
-        $stripe->shouldReceive('createCustomer')->andReturn((object) ['id' => 'cus_free']);
+        $stripe->shouldReceive('createCustomer')->andReturn(Customer::constructFrom(['id' => 'cus_free']));
         $stripe->shouldReceive('createCheckoutSession')->once()->withArgs(function (array $payload): bool {
             return data_get($payload, 'metadata.trial_days') === '8'
                 && data_get($payload, 'subscription_data.trial_period_days') === 8;
-        })->andReturn((object) [
+        })->andReturn(Session::constructFrom([
             'id' => 'cs_scale_free',
             'url' => 'https://checkout.stripe.test/scale',
-        ]);
+        ]));
         $this->app->instance(StripeClient::class, $stripe);
 
         $url = app(BillingService::class)->checkout($user, $scale, withTrial: true);
@@ -112,7 +114,12 @@ class ScaleCheckoutGateTest extends TestCase
         PricingPlanTable::seedDefaults();
 
         $growth = PricingPlan::query()->where('slug', 'growth')->firstOrFail();
+        // The seeded scale plan has no stripe_price_id yet (it's gated
+        // behind "Contact Us" pending real Stripe setup) — give it one here
+        // so this self-serve checkout path can actually be exercised.
         $scale = PricingPlan::query()->where('slug', 'scale')->firstOrFail();
+        $scale->forceFill(['stripe_price_id' => 'price_scale'])->save();
+
         $user = User::factory()->create();
 
         Subscription::query()->create([
@@ -128,13 +135,14 @@ class ScaleCheckoutGateTest extends TestCase
         ]);
 
         $stripe = Mockery::mock(StripeClient::class);
+        $stripe->shouldReceive('createCustomer')->andReturn(Customer::constructFrom(['id' => 'cus_scale_trialing']));
         $stripe->shouldReceive('createCheckoutSession')->once()->withArgs(function (array $payload): bool {
             return data_get($payload, 'metadata.trial_days') === '0'
                 && data_get($payload, 'subscription_data.trial_period_days') === null;
-        })->andReturn((object) [
+        })->andReturn(Session::constructFrom([
             'id' => 'cs_scale_trialing',
             'url' => 'https://checkout.stripe.test/scale-trialing',
-        ]);
+        ]));
         $this->app->instance(StripeClient::class, $stripe);
 
         $url = app(BillingService::class)->checkout($user, $scale);
@@ -158,10 +166,11 @@ class ScaleCheckoutGateTest extends TestCase
         ]);
 
         $stripe = Mockery::mock(StripeClient::class);
-        $stripe->shouldReceive('createCheckoutSession')->once()->andReturn((object) [
+        $stripe->shouldReceive('createCustomer')->andReturn(Customer::constructFrom(['id' => 'cus_scale_existing']));
+        $stripe->shouldReceive('createCheckoutSession')->once()->andReturn(Session::constructFrom([
             'id' => 'cs_scale_existing',
             'url' => 'https://checkout.stripe.test/scale-existing',
-        ]);
+        ]));
         $this->app->instance(StripeClient::class, $stripe);
 
         $url = app(BillingService::class)->checkout($user, $scale);
@@ -174,7 +183,12 @@ class ScaleCheckoutGateTest extends TestCase
         PricingPlanTable::seedDefaults();
 
         $growth = PricingPlan::query()->where('slug', 'growth')->firstOrFail();
+        // The seeded scale plan has no stripe_price_id yet (it's gated
+        // behind "Contact Us" pending real Stripe setup) — give it one here
+        // so this self-serve checkout path can actually be exercised.
         $scale = PricingPlan::query()->where('slug', 'scale')->firstOrFail();
+        $scale->forceFill(['stripe_price_id' => 'price_scale'])->save();
+
         $free = PricingPlan::query()->where('slug', 'free')->firstOrFail();
         $user = User::factory()->create();
 
@@ -202,20 +216,23 @@ class ScaleCheckoutGateTest extends TestCase
 
         $this->assertTrue(app(BillingEntitlementService::class)->hasUsedTrial($user));
 
+        // BillingService is a container singleton, so the mock has to be
+        // bound before the first resolution below — rebinding StripeClient
+        // afterward would not reach an already-constructed instance.
+        $stripe = Mockery::mock(StripeClient::class);
+        $stripe->shouldReceive('createCustomer')->andReturn(Customer::constructFrom(['id' => 'cus_reverted_trial']));
+        $stripe->shouldReceive('createCheckoutSession')->once()->andReturn(Session::constructFrom([
+            'id' => 'cs_scale_paid',
+            'url' => 'https://checkout.stripe.test/scale-paid',
+        ]));
+        $this->app->instance(StripeClient::class, $stripe);
+
         try {
             app(BillingService::class)->checkout($user, $scale, withTrial: true);
             $this->fail('A reverted trial user must not start another trial.');
         } catch (ValidationException $exception) {
             $this->assertArrayHasKey('trial', $exception->errors());
         }
-
-        $stripe = Mockery::mock(StripeClient::class);
-        $stripe->shouldReceive('createCustomer')->andReturn((object) ['id' => 'cus_reverted_trial']);
-        $stripe->shouldReceive('createCheckoutSession')->once()->andReturn((object) [
-            'id' => 'cs_scale_paid',
-            'url' => 'https://checkout.stripe.test/scale-paid',
-        ]);
-        $this->app->instance(StripeClient::class, $stripe);
 
         $url = app(BillingService::class)->checkout($user, $scale);
 

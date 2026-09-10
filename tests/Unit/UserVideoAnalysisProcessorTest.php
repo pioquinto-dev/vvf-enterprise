@@ -117,11 +117,29 @@ class UserVideoAnalysisProcessorTest extends TestCase
             ->with(Mockery::on(fn (ViralVideo $candidate): bool => $candidate->is($video)))
             ->andThrow(new ApifyConnectionException('Could not resolve host: api.apify.com'));
 
+        $transcripts = Mockery::mock(SharedTranscriptStore::class);
+        $transcripts->shouldReceive('find')
+            ->once()
+            ->with($video->video_id, $video->post_url)
+            ->andReturnNull();
+
+        $fetcher = Mockery::mock(TranscriptFetcher::class);
+        $fetcher->shouldReceive('fetch')
+            ->once()
+            ->with(Mockery::on(fn (ViralVideo $candidate): bool => $candidate->is($video)))
+            ->andReturnNull();
+
+        $normalizer = Mockery::mock(TranscriptPayloadNormalizer::class);
+        $normalizer->shouldReceive('extract')
+            ->once()
+            ->with([])
+            ->andReturn(['transcript' => null, 'transcript_segments' => null]);
+
         $processor = new VideoPreparationProcessor(
-            Mockery::mock(SharedTranscriptStore::class),
+            $transcripts,
             $refresher,
-            Mockery::mock(TranscriptFetcher::class),
-            Mockery::mock(TranscriptPayloadNormalizer::class),
+            $fetcher,
+            $normalizer,
             Mockery::mock(SharedDiagnosticAnalyzer::class),
         );
 
@@ -181,11 +199,17 @@ class UserVideoAnalysisProcessorTest extends TestCase
 
     private function analysisFor(User $user, bool $countsTowardQuota = true): VideoAnalysis
     {
+        $video = ViralVideo::query()->create([
+            'id' => (string) Str::ulid(),
+            'video_id' => '7300000000000000001',
+            'post_url' => 'https://www.tiktok.com/@tester/video/7300000000000000001',
+        ]);
+
         return VideoAnalysis::query()->create([
             'id' => (string) Str::ulid(),
             'user_id' => $user->id,
-            'viral_video_id' => (string) Str::ulid(),
-            'video_id' => '7300000000000000001',
+            'viral_video_id' => $video->id,
+            'video_id' => $video->video_id,
             'status' => VideoAnalysis::STATUS_PROCESSING,
             'counts_toward_quota' => $countsTowardQuota,
         ]);

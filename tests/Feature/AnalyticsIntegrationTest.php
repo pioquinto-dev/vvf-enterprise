@@ -8,19 +8,33 @@ use App\Models\User;
 use App\Models\ViralVideo;
 use App\Services\Analytics\AnalyticsEvent;
 use App\Services\Analytics\AnalyticsEventManager;
+use App\Services\Stripe\StripeClient;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Str;
 use Inertia\Testing\AssertableInertia as Assert;
+use Mockery;
+use Stripe\Subscription as StripeSubscription;
 use Tests\TestCase;
 
 class AnalyticsIntegrationTest extends TestCase
 {
     use RefreshDatabase;
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        // QUEUE_CONNECTION=sync in the test env means an unfaked queue runs
+        // jobs inline — saved-search creation would otherwise dispatch a
+        // real Apify call synchronously here.
+        Queue::fake();
+    }
+
     public function test_saved_search_creation_returns_analytics_payload(): void
     {
         $this->postJson('/api/v1/saved-searches', [
+            'type' => 'brand',
             'phrase' => 'summer fridays',
             'keywords' => ['summer fridays'],
             'frequency' => 'weekly',
@@ -58,6 +72,13 @@ class AnalyticsIntegrationTest extends TestCase
     public function test_subscription_cancel_request_returns_analytics_payload(): void
     {
         $user = $this->paidUser();
+
+        $stripe = Mockery::mock(StripeClient::class);
+        $stripe->shouldReceive('updateSubscription')
+            ->once()
+            ->with('sub_test_123', ['cancel_at_period_end' => true])
+            ->andReturn(StripeSubscription::constructFrom(['cancel_at' => now()->addMonth()->timestamp]));
+        $this->app->instance(StripeClient::class, $stripe);
 
         $this->actingAs($user)
             ->postJson('/settings/subscription/cancel')

@@ -12,6 +12,7 @@ use App\Services\Utm\UtmAttributionService;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Mockery;
+use Stripe\Checkout\Session;
 use Stripe\Event;
 use Tests\TestCase;
 
@@ -67,6 +68,19 @@ class StripeWebhookProcessorBrevoTest extends TestCase
         $billing->shouldReceive('videoBookmarkCount')->once()->with(Mockery::type(User::class))->andReturn(0);
         $billing->shouldReceive('syncSubscriptionUsage')->never();
         $billing->shouldReceive('searchCreditsRemaining')->never();
+        // The cancellation branch downgrades the account onto a free
+        // subscription record — mirror ensureSubscriptionRecord() by
+        // actually persisting one, since currentPlanSlug() below reads
+        // straight from the database.
+        $billing->shouldReceive('ensureSubscriptionRecord')
+            ->once()
+            ->with(Mockery::on(fn (User $candidate): bool => $candidate->is($user)))
+            ->andReturnUsing(fn (User $u): Subscription => Subscription::query()->create([
+                'id' => (string) str()->ulid(),
+                'user_id' => $u->id,
+                'status' => 'free',
+                'metadata' => [],
+            ]));
 
         $emails->shouldReceive('sendSubscriptionCanceled')
             ->once()
@@ -149,6 +163,7 @@ class StripeWebhookProcessorBrevoTest extends TestCase
             ]);
         $billing->shouldReceive('videoBookmarkCount')->once()->with(Mockery::type(User::class))->andReturn(0);
         $billing->shouldReceive('syncSubscriptionUsage')->once()->with(Mockery::type(User::class), Mockery::type(PricingPlan::class));
+        $billing->shouldReceive('markFreeSearchUsed')->once()->with(Mockery::type(User::class));
 
         $emails->shouldReceive('sendSubscriptionCanceled')->never();
 
@@ -228,6 +243,15 @@ class StripeWebhookProcessorBrevoTest extends TestCase
             ]);
         $billing->shouldReceive('videoBookmarkCount')->once()->with(Mockery::type(User::class))->andReturn(0);
         $billing->shouldReceive('syncSubscriptionUsage')->never();
+        $billing->shouldReceive('ensureSubscriptionRecord')
+            ->once()
+            ->with(Mockery::on(fn (User $candidate): bool => $candidate->is($user)))
+            ->andReturnUsing(fn (User $u): Subscription => Subscription::query()->create([
+                'id' => (string) str()->ulid(),
+                'user_id' => $u->id,
+                'status' => 'free',
+                'metadata' => [],
+            ]));
 
         $emails->shouldReceive('sendFinalFailedPayment')
             ->once()
@@ -295,24 +319,24 @@ class StripeWebhookProcessorBrevoTest extends TestCase
         $stripe->shouldReceive('retrieveCheckoutSession')
             ->once()
             ->with('cs_test_123')
-            ->andReturn((object) [
+            ->andReturn(Session::constructFrom([
                 'payment_status' => 'paid',
                 'status' => 'complete',
-                'metadata' => (object) ['plan_slug' => 'basic'],
+                'metadata' => ['plan_slug' => 'basic'],
                 'subscription' => 'sub_test_utm_123',
                 'customer' => 'cus_test_123',
-            ]);
+            ]));
 
         $entitlements->shouldReceive('videoBookmarkCount')->once()->with(Mockery::type(User::class))->andReturn(0);
         $entitlements->shouldReceive('searchBookmarkCount')->once()->with(Mockery::type(User::class))->andReturn(0);
-        $entitlements->shouldReceive('limitsFor')->once()->with(Mockery::type(PricingPlan::class))->andReturn([
+        $entitlements->shouldReceive('limitsFor')->twice()->with(Mockery::type(PricingPlan::class))->andReturn([
             'searchLimit' => 10,
             'videoBookmarkLimit' => 5,
             'searchBookmarkLimit' => 3,
             'videoAnalysisLimit' => 2,
             'trialEnabled' => false,
         ]);
-        $entitlements->shouldReceive('remainingSearchCreditsFrom')->once()->andReturn(10);
+        $entitlements->shouldReceive('markFreeSearchUsed')->once()->with(Mockery::type(User::class));
 
         $emails->shouldReceive('sendSubscriptionStarted')->once()->andReturn(true);
 

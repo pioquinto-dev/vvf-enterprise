@@ -5,8 +5,11 @@ namespace Tests\Unit;
 use App\Models\PricingPlan;
 use App\Models\Subscription;
 use App\Models\User;
+use App\Models\VideoAnalysis;
+use App\Models\ViralVideo;
 use App\Services\Billing\BillingEntitlementService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Tests\TestCase;
 
@@ -46,8 +49,13 @@ class VideoAnalysisEntitlementTest extends TestCase
         $user = $this->paidUserWithVideoAnalysisLimit(limit: 5, used: 1);
         $service = app(BillingEntitlementService::class);
 
+        // consumeVideoAnalysis() syncs the metadata counter up to the derived
+        // (real row) count rather than blindly incrementing it, so a second
+        // analysis has to actually exist for the count to move to 2.
+        $this->analysisFor($user);
+
         $service->consumeVideoAnalysis($user);
-        $this->assertSame(2, (int) data_get($user->subscriptions()->first()->metadata, 'subscription.video_analysis.used'));
+        $this->assertSame(2, (int) data_get($user->subscriptions()->first()->fresh()->metadata, 'subscription.video_analysis.used'));
 
         $service->refundVideoAnalysis($user);
         $this->assertSame(1, (int) data_get($user->subscriptions()->first()->fresh()->metadata, 'subscription.video_analysis.used'));
@@ -95,6 +103,30 @@ class VideoAnalysisEntitlementTest extends TestCase
             ],
         ]);
 
+        // Usage is derived from actual VideoAnalysis rows within the current
+        // billing window, not the metadata counter above (which is only a
+        // synced high-water mark) — so the limit gate needs real rows too.
+        for ($i = 0; $i < $used; $i++) {
+            $this->analysisFor($user);
+        }
+
         return $user;
+    }
+
+    private function analysisFor(User $user): VideoAnalysis
+    {
+        $video = ViralVideo::query()->create([
+            'id' => (string) Str::ulid(),
+            'video_id' => (string) Str::ulid(),
+        ]);
+
+        return VideoAnalysis::query()->create([
+            'id' => (string) Str::ulid(),
+            'user_id' => $user->id,
+            'viral_video_id' => $video->id,
+            'video_id' => $video->video_id,
+            'status' => VideoAnalysis::STATUS_PROCESSING,
+            'counts_toward_quota' => true,
+        ]);
     }
 }

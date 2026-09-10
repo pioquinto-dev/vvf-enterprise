@@ -369,64 +369,76 @@ class SavedSearchController extends Controller
             ]);
         }
 
-        $searchModels = CustomKeywordSearch::query()->whereIn('id', $searchIds)->get();
-        $searchNames = $searchModels->pluck('name', 'id');
-        $searchUrls = $searchModels->mapWithKeys(fn (CustomKeywordSearch $s): array => [$s->id => $s->url()]);
-        $searchTypes = $searchModels->mapWithKeys(fn (CustomKeywordSearch $s): array => [
-            $s->id => $s->search_type === CustomKeywordSearch::TYPE_PRODUCT ? 'product' : 'brand',
-        ]);
+        // The breakout rows, search summary cards, and hashtags only change
+        // when a search run completes (minutes-scale), so they're safe to
+        // cache briefly. The key is derived from the owner's current search
+        // ids, so creating/deleting a search naturally busts it — no manual
+        // invalidation needed. Bookmark/analysis state is always read live
+        // below, since those must reflect the user's last click immediately.
+        $cacheKey = 'feed:content:'.($userId ?? "guest:{$guestToken}").':'.md5($searchIds->sort()->implode(','));
 
-        // The user's strongest breakouts across every search, best first, one
-        // row per underlying video.
-        $rows = CustomKeywordSearchVideo::query()
-            ->whereIn('custom_keyword_search_id', $searchIds)
-            ->whereHas('video', fn ($query) => $query->visible())
-            ->with('video')
-            ->orderByDesc('viral_score')
-            ->limit(80)
-            ->get();
+        $content = Cache::remember($cacheKey, 60, function () use ($searchIds): array {
+            $searchModels = CustomKeywordSearch::query()->whereIn('id', $searchIds)->get();
+            $searchNames = $searchModels->pluck('name', 'id');
+            $searchUrls = $searchModels->mapWithKeys(fn (CustomKeywordSearch $s): array => [$s->id => $s->url()]);
+            $searchTypes = $searchModels->mapWithKeys(fn (CustomKeywordSearch $s): array => [
+                $s->id => $s->search_type === CustomKeywordSearch::TYPE_PRODUCT ? 'product' : 'brand',
+            ]);
 
-        $seen = [];
-        $unique = [];
-        foreach ($rows as $row) {
-            $vid = $row->viral_video_id;
-            if ($vid === null || isset($seen[$vid])) {
-                continue;
+            // The user's strongest breakouts across every search, best first, one
+            // row per underlying video.
+            $rows = CustomKeywordSearchVideo::query()
+                ->whereIn('custom_keyword_search_id', $searchIds)
+                ->whereHas('video', fn ($query) => $query->visible())
+                ->with('video')
+                ->orderByDesc('viral_score')
+                ->limit(80)
+                ->get();
+
+            $seen = [];
+            $unique = [];
+            foreach ($rows as $row) {
+                $vid = $row->viral_video_id;
+                if ($vid === null || isset($seen[$vid])) {
+                    continue;
+                }
+                $seen[$vid] = true;
+                $unique[] = $row;
             }
-            $seen[$vid] = true;
-            $unique[] = $row;
-        }
 
-        $totalBreakouts = count($unique);
-        // The stream renders the first few and reveals the rest client-side, so
-        // "Load more" costs no extra round trip.
-        $videos = array_map(
-            fn (CustomKeywordSearchVideo $row): array => $this->feedVideoCard($row, $searchNames, $searchUrls, $searchTypes),
-            array_slice($unique, 0, self::FEED_STREAM_LIMIT),
-        );
+            $totalBreakouts = count($unique);
+            // The stream renders the first few and reveals the rest client-side, so
+            // "Load more" costs no extra round trip.
+            $videos = array_map(
+                fn (CustomKeywordSearchVideo $row): array => $this->feedVideoCard($row, $searchNames, $searchUrls, $searchTypes),
+                array_slice($unique, 0, self::FEED_STREAM_LIMIT),
+            );
+
+            $hashtags = $this->aggregateFeedHashtags($unique);
+
+            return [
+                'videos' => $videos,
+                'totalCount' => $totalBreakouts,
+                'searches' => $this->feedSearchRows($searchModels, $searchIds),
+                'searchesCount' => $searchModels->count(),
+                'hashtags' => array_slice($hashtags, 0, 6),
+                'hashtagsCount' => count($hashtags),
+            ];
+        });
 
         // The save and analyze buttons both need to open in the right state, so
         // the user's bookmarks and any existing analyses ride along with the
         // cards. Without the analysis, a video the user already analysed would
         // offer "Analyze video" again and re-prompt to spend a credit.
         $savedIds = array_flip(array_map('strval', $this->bookmarks->idsForUser($request->user())));
-        $analyses = $this->feedAnalyses($request, array_column($videos, 'id'));
+        $analyses = $this->feedAnalyses($request, array_column($content['videos'], 'id'));
 
-        foreach ($videos as $index => $card) {
-            $videos[$index]['bookmarked'] = isset($savedIds[(string) $card['id']]);
-            $videos[$index]['analysis'] = $analyses[$card['id']] ?? null;
+        foreach ($content['videos'] as $index => $card) {
+            $content['videos'][$index]['bookmarked'] = isset($savedIds[(string) $card['id']]);
+            $content['videos'][$index]['analysis'] = $analyses[$card['id']] ?? null;
         }
 
-        $hashtags = $this->aggregateFeedHashtags($unique);
-
-        return array_merge($empty, [
-            'videos' => $videos,
-            'totalCount' => $totalBreakouts,
-            'searches' => $this->feedSearchRows($searchModels, $searchIds),
-            'searchesCount' => $searchModels->count(),
-            'hashtags' => array_slice($hashtags, 0, 6),
-            'hashtagsCount' => count($hashtags),
-        ]);
+        return array_merge($empty, $content);
     }
 
     /**
@@ -1058,13 +1070,31 @@ class SavedSearchController extends Controller
         $searches->loadMax('videos', 'viral_score');
         $searches->load('latestSnapshot');
 
-        $averageViewsBySearchId = CustomKeywordSearchVideo::query()
-            ->join('viral_videos', 'viral_videos.id', '=', 'custom_keyword_search_videos.viral_video_id')
-            ->whereIn('custom_keyword_search_videos.custom_keyword_search_id', $searches->pluck('id'))
-            ->whereNull('viral_videos.archived_at')
-            ->groupBy('custom_keyword_search_videos.custom_keyword_search_id')
-            ->selectRaw('custom_keyword_search_videos.custom_keyword_search_id, AVG(viral_videos.views) as average_video_views')
-            ->pluck('average_video_views', 'custom_keyword_search_videos.custom_keyword_search_id');
+        $searchIds = $searches->pluck('id');
+
+        // Pure video-stat aggregates that only move when a search run
+        // completes (minutes-scale) — safe to cache briefly. Search status
+        // (paused/bookmarked) and counts stay live above, so a pause/resume
+        // toggle on this page always reflects immediately.
+        $aggregateKey = 'search-hub:aggregates:'.md5($searchIds->sort()->implode(','));
+
+        $aggregates = Cache::remember($aggregateKey, 60, function () use ($searches, $searchIds): array {
+            $averageViewsBySearchId = CustomKeywordSearchVideo::query()
+                ->join('viral_videos', 'viral_videos.id', '=', 'custom_keyword_search_videos.viral_video_id')
+                ->whereIn('custom_keyword_search_videos.custom_keyword_search_id', $searchIds)
+                ->whereNull('viral_videos.archived_at')
+                ->groupBy('custom_keyword_search_videos.custom_keyword_search_id')
+                ->selectRaw('custom_keyword_search_videos.custom_keyword_search_id, AVG(viral_videos.views) as average_video_views')
+                ->pluck('average_video_views', 'custom_keyword_search_videos.custom_keyword_search_id')
+                ->all();
+
+            return [
+                'averageViews' => $averageViewsBySearchId,
+                'moving' => $this->movingThisWeek($searches),
+            ];
+        });
+
+        $averageViewsBySearchId = collect($aggregates['averageViews']);
 
         $searches->each(function (CustomKeywordSearch $search) use ($averageViewsBySearchId): void {
             $search->average_video_views = $averageViewsBySearchId->get($search->id);
@@ -1077,7 +1107,7 @@ class SavedSearchController extends Controller
 
         return Inertia::render($page, [
             'searches' => $cards,
-            'moving' => $this->movingThisWeek($searches),
+            'moving' => $aggregates['moving'],
             'suggestions' => $this->suggestions($searches, $types),
             // ?q= drops someone straight into the inline flow with the subject
             // filled in — this is where My Feed's search box hands off to.

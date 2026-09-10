@@ -36,7 +36,9 @@ class SearchHistoryTest extends TestCase
 
     public function test_search_history_requires_authentication(): void
     {
-        $this->get('/library?tab=history')->assertRedirect('/login');
+        // Guests are redirected to the marketing landing page, not /login —
+        // see $middleware->redirectGuestsTo() in bootstrap/app.php.
+        $this->get('/library?tab=history')->assertRedirect(route('landing'));
     }
 
     private function search(User $user, string $name, \DateTimeInterface $createdAt): CustomKeywordSearch

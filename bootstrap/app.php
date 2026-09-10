@@ -28,6 +28,27 @@ return Application::configure(basePath: dirname(__DIR__))
             CaptureUtmParameters::class,
         ]);
 
+        // ExpireAdminImpersonation must run before the 'auth' middleware:
+        // Laravel's global middleware priority list reorders Authenticate
+        // ahead of any middleware not listed here, regardless of
+        // registration order in the 'web' group above. Without this, an
+        // expired impersonation session is only caught starting on the
+        // customer's *next* request, not the one that expires it.
+        $middleware->priority([
+            \Illuminate\Foundation\Http\Middleware\HandlePrecognitiveRequests::class,
+            \Illuminate\Cookie\Middleware\EncryptCookies::class,
+            \Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse::class,
+            \Illuminate\Session\Middleware\StartSession::class,
+            ExpireAdminImpersonation::class,
+            \Illuminate\View\Middleware\ShareErrorsFromSession::class,
+            \Illuminate\Contracts\Auth\Middleware\AuthenticatesRequests::class,
+            \Illuminate\Routing\Middleware\ThrottleRequests::class,
+            \Illuminate\Routing\Middleware\ThrottleRequestsWithRedis::class,
+            \Illuminate\Contracts\Session\Middleware\AuthenticatesSessions::class,
+            \Illuminate\Routing\Middleware\SubstituteBindings::class,
+            \Illuminate\Auth\Middleware\Authorize::class,
+        ]);
+
         RedirectIfAuthenticated::redirectUsing(function (Request $request): string {
             if ($request->query('redirect') === 'trial_checkout') {
                 $plan = (string) $request->query('plan', 'basic');

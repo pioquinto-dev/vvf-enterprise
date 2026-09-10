@@ -34,10 +34,13 @@ class CheckoutIntentLoginTest extends TestCase
         $this->get('/login?redirect=trial_checkout&plan=scale&trial=1')
             ->assertOk();
 
+        // An active, paid Growth subscriber requesting Scale hits the more
+        // specific in-app-upgrade gate before the generic self-serve gate —
+        // that generic message only applies to non-Growth active subscribers.
         $this->post('/login', [
             'email' => $user->email,
             'password' => 'password',
         ])->assertRedirect(route('plans'))
-            ->assertSessionHas('status', 'This plan is not available for self-serve checkout yet. Contact us to upgrade.');
+            ->assertSessionHas('status', 'Use the in-app Scale upgrade to preserve your current billing period and charge only the plan difference.');
     }
 }

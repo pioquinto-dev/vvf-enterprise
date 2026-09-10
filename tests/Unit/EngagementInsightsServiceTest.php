@@ -25,6 +25,10 @@ class EngagementInsightsServiceTest extends TestCase
         $this->activity($second, 'trial_started', now()->subDay());
         $this->activity($second, 'subscription_paid', now()->subDay());
         $this->activity($first, 'logged_in', now()->subDays(10));
+        // A second previous-range login (vs. one this range) creates a login
+        // drop, which is what makes the suggestions engine produce output —
+        // otherwise this dataset trips none of its thresholds.
+        $this->activity($second, 'logged_in', now()->subDays(10));
 
         $payload = app(EngagementInsightsService::class)->payload(7);
 
@@ -34,7 +38,7 @@ class EngagementInsightsServiceTest extends TestCase
         $this->assertSame(1, $payload['trends'][2]['current']);
         $this->assertSame(2.0, $payload['frequency'][0]['average']);
         $this->assertSame(1, $payload['trends'][0]['current']);
-        $this->assertSame(1, $payload['trends'][0]['previous']);
+        $this->assertSame(2, $payload['trends'][0]['previous']);
         $this->assertNotEmpty($payload['suggestions']);
     }
 

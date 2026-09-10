@@ -33,7 +33,9 @@ class RememberLoginTest extends TestCase
 
     public function test_remembered_login_remains_opt_in(): void
     {
-        $user = User::factory()->create(['password' => bcrypt('password')]);
+        // The factory seeds a random remember_token by default, which would
+        // make this assertion pass even if login wrongly always remembered.
+        $user = User::factory()->create(['password' => bcrypt('password'), 'remember_token' => null]);
 
         $response = $this->post('/login', [
             'email' => $user->email,

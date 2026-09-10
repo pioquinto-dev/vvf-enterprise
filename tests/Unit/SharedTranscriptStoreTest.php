@@ -34,13 +34,14 @@ class SharedTranscriptStoreTest extends TestCase
 
     public function test_it_falls_back_to_latest_exact_post_url_match(): void
     {
+        // updated_at isn't mass-assignable on this model, so it has to be set
+        // after creation to actually stick.
         ViralVideoSharedTranscript::query()->create([
             'video_id' => null,
             'post_url' => 'https://www.tiktok.com/@creator/video/456',
             'normalized_post_url' => 'https://tiktok.com/@creator/video/456',
             'transcript' => 'First transcript',
-            'updated_at' => now()->subMinute(),
-        ]);
+        ])->forceFill(['updated_at' => now()->subMinute()])->save();
 
         $latest = ViralVideoSharedTranscript::query()->create([
             'video_id' => null,
@@ -61,8 +62,7 @@ class SharedTranscriptStoreTest extends TestCase
             'post_url' => 'https://m.tiktok.com/@creator/video/789?foo=bar',
             'normalized_post_url' => 'https://m.tiktok.com/@creator/video/789',
             'transcript' => 'First transcript',
-            'updated_at' => now()->subMinute(),
-        ]);
+        ])->forceFill(['updated_at' => now()->subMinute()])->save();
 
         $latest = ViralVideoSharedTranscript::query()->create([
             'video_id' => null,

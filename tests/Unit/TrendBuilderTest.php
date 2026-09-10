@@ -67,13 +67,14 @@ class TrendBuilderTest extends TestCase
         ], $attributes));
     }
 
-    public function test_it_returns_twelve_weekly_points_ending_now(): void
+    public function test_it_returns_fourteen_weekly_points_ending_the_current_week(): void
     {
         $trend = $this->trends->build([], new Collection);
 
-        $this->assertCount(12, $trend['points']);
-        $this->assertSame('11w ago', $trend['points'][0]['label']);
-        $this->assertSame('now', $trend['points'][11]['label']);
+        // 90-day lookback from 2026-08-07, in Monday-start weeks: May 4 .. Aug 3.
+        $this->assertCount(14, $trend['points']);
+        $this->assertSame('May 4', $trend['points'][0]['label']);
+        $this->assertSame('Aug 3', $trend['points'][13]['label']);
     }
 
     public function test_videos_land_in_the_week_they_were_posted(): void
@@ -87,24 +88,29 @@ class TrendBuilderTest extends TestCase
 
         $points = collect($trend['points'])->keyBy('label');
 
-        $this->assertSame(2, $points['now']['posts']);
-        $this->assertSame(1500, $points['now']['views']);
-        $this->assertSame(1, $points['1w ago']['posts']);
-        $this->assertSame(300, $points['1w ago']['views']);
-        $this->assertSame(0, $points['2w ago']['posts']);
+        $this->assertSame(2, $points['Aug 3']['posts']);
+        $this->assertSame(1500, $points['Aug 3']['views']);
+        $this->assertSame(1, $points['Jul 27']['posts']);
+        $this->assertSame(300, $points['Jul 27']['views']);
+        $this->assertSame(0, $points['Jul 20']['posts']);
     }
 
-    public function test_cohort_points_are_flagged_reconstructed(): void
+    public function test_points_are_never_flagged_reconstructed(): void
     {
+        // The chart is built purely from uploaded_at cohorts now, so there is
+        // nothing left to reconstruct from snapshots.
         $trend = $this->trends->build([$this->row(1000, '2026-08-04T10:00:00+00:00')], new Collection);
 
-        $this->assertTrue($trend['has_reconstructed']);
-        $this->assertTrue($trend['fully_reconstructed']);
+        $this->assertFalse($trend['has_reconstructed']);
+        $this->assertFalse($trend['fully_reconstructed']);
         $this->assertSame(0, $trend['recorded_count']);
+        $this->assertFalse(collect($trend['points'])->firstWhere('label', 'Aug 3')['reconstructed']);
     }
 
-    public function test_a_recorded_snapshot_replaces_the_reconstruction_for_its_week(): void
+    public function test_snapshots_no_longer_influence_the_built_points(): void
     {
+        // build() keeps a $snapshots parameter for call-site compatibility, but
+        // the chart is uploaded_at-based now and never reads it.
         $snapshots = new Collection([
             $this->snapshot([
                 'captured_at' => CarbonImmutable::parse('2026-08-06T09:00:00Z'),
@@ -113,31 +119,13 @@ class TrendBuilderTest extends TestCase
             ]),
         ]);
 
-        // The cohort for this week says 1 post; the recorded snapshot says 42.
-        $trend = $this->trends->build([$this->row(1000, '2026-08-04T10:00:00+00:00')], $snapshots);
+        $withSnapshots = $this->trends->build([$this->row(1000, '2026-08-04T10:00:00+00:00')], $snapshots);
+        $withoutSnapshots = $this->trends->build([$this->row(1000, '2026-08-04T10:00:00+00:00')], new Collection);
 
-        $now = collect($trend['points'])->firstWhere('label', 'now');
-
-        $this->assertFalse($now['reconstructed']);
-        $this->assertSame(42, $now['posts']);
-        $this->assertSame(9_999, $now['views']);
-        $this->assertSame(1, $trend['recorded_count']);
-        $this->assertFalse($trend['fully_reconstructed']);
+        $this->assertSame($withoutSnapshots['points'], $withSnapshots['points']);
     }
 
-    public function test_the_last_snapshot_in_a_week_wins_that_week(): void
-    {
-        $snapshots = new Collection([
-            $this->snapshot(['captured_at' => CarbonImmutable::parse('2026-08-03T09:00:00Z'), 'video_count' => 10]),
-            $this->snapshot(['captured_at' => CarbonImmutable::parse('2026-08-06T09:00:00Z'), 'video_count' => 20]),
-        ]);
-
-        $trend = $this->trends->build([], $snapshots);
-
-        $this->assertSame(20, collect($trend['points'])->firstWhere('label', 'now')['posts']);
-    }
-
-    public function test_reconstructed_weeks_are_scored_against_the_whole_search_median(): void
+    public function test_weeks_are_scored_against_the_whole_search_median(): void
     {
         // Median across all four is 300. In its own week the 1200-view video
         // would be its own median and score 1x; against the search median it is
@@ -149,11 +137,11 @@ class TrendBuilderTest extends TestCase
             $this->row(1200, '2026-08-04T10:00:00+00:00'),
         ], new Collection);
 
-        $this->assertSame(1, collect($trend['points'])->firstWhere('label', 'now')['outliers']);
+        $this->assertSame(1, collect($trend['points'])->firstWhere('label', 'Aug 3')['outliers']);
 
         // The busy week is not graded on its own curve either: three videos
         // clustered near the median produce no breakouts.
-        $this->assertSame(0, collect($trend['points'])->firstWhere('label', '2w ago')['outliers']);
+        $this->assertSame(0, collect($trend['points'])->firstWhere('label', 'Jul 20')['outliers']);
     }
 
     public function test_tile_deltas_need_two_populated_weeks(): void
@@ -175,7 +163,7 @@ class TrendBuilderTest extends TestCase
 
         // Median across all three is 3000, so only the 300-view week is quiet.
         $this->assertSame('up', $deltas['median_views']['direction']);
-        $this->assertTrue($deltas['median_views']['reconstructed']);
+        $this->assertFalse($deltas['median_views']['reconstructed']);
     }
 
     public function test_tag_growth_is_empty_until_two_recorded_snapshots_exist(): void
