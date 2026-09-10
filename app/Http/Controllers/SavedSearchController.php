@@ -9,15 +9,18 @@ use App\Models\CustomKeywordSearch;
 use App\Models\CustomKeywordSearchRun;
 use App\Models\CustomKeywordSearchSnapshot;
 use App\Models\CustomKeywordSearchVideo;
+use App\Models\User;
 use App\Models\VideoAnalysis;
 use App\Models\ViralVideo;
 use App\Services\Analytics\AnalyticsEvent;
 use App\Services\Billing\BillingService;
 use App\Services\Bookmarks\BookmarkService;
+use App\Services\CustomKeywordSearch\FeedDiscoveryService;
 use App\Services\CustomKeywordSearch\GuestSearchQuota;
 use App\Services\CustomKeywordSearch\KeywordExpansionService;
 use App\Services\CustomKeywordSearch\OwnedSearchResolver;
 use App\Services\CustomKeywordSearch\SavedSearchManager;
+use App\Services\IndexedKeywordService;
 use App\Support\GuestIdentity;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -32,6 +35,12 @@ use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 class SavedSearchController extends Controller
 {
+    /**
+     * How many feed cards ship with the page. The stream shows a first batch
+     * and reveals the rest on "Load more" without another request.
+     */
+    private const FEED_STREAM_LIMIT = 21;
+
     private const SEARCH_SUGGESTION_TARGET = 5;
 
     public function __construct(
@@ -165,7 +174,7 @@ class SavedSearchController extends Controller
     }
 
     /** @return array{search: ?CustomKeywordSearch, new_keywords: array<int, string>} */
-    private function duplicatePayload(Request $request, ?\App\Models\User $user, ?string $guestToken): array
+    private function duplicatePayload(Request $request, ?User $user, ?string $guestToken): array
     {
         $existing = $this->manager->findExisting($user, $guestToken, $request->string('phrase')->toString());
 
@@ -331,8 +340,20 @@ class SavedSearchController extends Controller
         $guestToken = GuestIdentity::token($request);
         $searchIds = CustomKeywordSearch::query()->ownedBy($userId, $guestToken)->pluck('id');
 
-        $discovery = app(\App\Services\CustomKeywordSearch\FeedDiscoveryService::class)->payload();
-        $empty = ['videos' => [], 'totalCount' => 0, 'sounds' => [], 'hashtags' => [], 'saved' => [], 'savedCount' => 0, 'discovery' => $discovery];
+        $discovery = app(FeedDiscoveryService::class)->payload();
+        $climbing = $discovery['climbingHashtags'] ?? [];
+        $suggestions = $this->feedSuggestions($request);
+
+        $empty = [
+            'videos' => [],
+            'totalCount' => 0,
+            'searches' => [],
+            'searchesCount' => 0,
+            'hashtags' => [],
+            'hashtagsCount' => 0,
+            'climbing' => $climbing,
+            'suggestions' => $suggestions,
+        ];
 
         // Nothing of their own yet (a free user who has not spent their search):
         // fill the feed with the best of what everyone else surfaced, so the
@@ -344,9 +365,12 @@ class SavedSearchController extends Controller
             ]);
         }
 
-        $searchNames = CustomKeywordSearch::query()->whereIn('id', $searchIds)->pluck('name', 'id');
-        $searchUrls = CustomKeywordSearch::query()->whereIn('id', $searchIds)->get()
-            ->mapWithKeys(fn (CustomKeywordSearch $s): array => [$s->id => $s->url()]);
+        $searchModels = CustomKeywordSearch::query()->whereIn('id', $searchIds)->get();
+        $searchNames = $searchModels->pluck('name', 'id');
+        $searchUrls = $searchModels->mapWithKeys(fn (CustomKeywordSearch $s): array => [$s->id => $s->url()]);
+        $searchTypes = $searchModels->mapWithKeys(fn (CustomKeywordSearch $s): array => [
+            $s->id => $s->search_type === CustomKeywordSearch::TYPE_PRODUCT ? 'product' : 'brand',
+        ]);
 
         // The user's strongest breakouts across every search, best first, one
         // row per underlying video.
@@ -370,37 +394,156 @@ class SavedSearchController extends Controller
         }
 
         $totalBreakouts = count($unique);
+        // The stream renders the first few and reveals the rest client-side, so
+        // "Load more" costs no extra round trip.
         $videos = array_map(
-            fn (CustomKeywordSearchVideo $row): array => $this->feedVideoCard($row, $searchNames, $searchUrls),
-            array_slice($unique, 0, 8),
+            fn (CustomKeywordSearchVideo $row): array => $this->feedVideoCard($row, $searchNames, $searchUrls, $searchTypes),
+            array_slice($unique, 0, self::FEED_STREAM_LIMIT),
         );
 
-        $savedIds = $this->bookmarks->idsForUser($request->user());
-        $saved = [];
-        if ($savedIds !== []) {
-            $saved = ViralVideo::query()->visible()->whereIn('id', $savedIds)->limit(6)->get()
-                ->map(fn (ViralVideo $v): array => [
-                    'id' => $v->id,
-                    'thumbnail' => $v->thumbnail_url ?: $v->cover,
-                    'gradient' => $this->showcaseGradient((string) $v->id),
-                    'score' => (float) $v->virality_score > 0 ? round((float) $v->virality_score).'x' : null,
-                ])
-                ->all();
+        // The save and analyze buttons both need to open in the right state, so
+        // the user's bookmarks and any existing analyses ride along with the
+        // cards. Without the analysis, a video the user already analysed would
+        // offer "Analyze video" again and re-prompt to spend a credit.
+        $savedIds = array_flip(array_map('strval', $this->bookmarks->idsForUser($request->user())));
+        $analyses = $this->feedAnalyses($request, array_column($videos, 'id'));
+
+        foreach ($videos as $index => $card) {
+            $videos[$index]['bookmarked'] = isset($savedIds[(string) $card['id']]);
+            $videos[$index]['analysis'] = $analyses[$card['id']] ?? null;
         }
 
-        return [
+        $hashtags = $this->aggregateFeedHashtags($unique);
+
+        return array_merge($empty, [
             'videos' => $videos,
             'totalCount' => $totalBreakouts,
-            'sounds' => $this->aggregateFeedSounds($unique),
-            'discovery' => $discovery,
-            'hashtags' => $this->aggregateFeedHashtags($unique),
-            'saved' => $saved,
-            'savedCount' => count($savedIds),
-        ];
+            'searches' => $this->feedSearchRows($searchModels, $searchIds),
+            'searchesCount' => $searchModels->count(),
+            'hashtags' => array_slice($hashtags, 0, 6),
+            'hashtagsCount' => count($hashtags),
+        ]);
     }
 
-    /** @return array<string, mixed> */
-    private function feedVideoCard(CustomKeywordSearchVideo $row, Collection $names, Collection $urls): array
+    /**
+     * The "Suggested to track" chips under the search field, split by keyword
+     * type so the row only ever offers what the Brand/Product toggle is set to.
+     *
+     * They come from the same keyword index that feeds the field's own
+     * suggestion dropdown, which is personalised and already drops anything the
+     * user has searched — offering a keyword they have run is not a useful
+     * suggestion.
+     *
+     * @return array<string, array<int, array<string, string>>>
+     */
+    private function feedSuggestions(Request $request): array
+    {
+        $keywords = app(IndexedKeywordService::class);
+        $userId = $request->user()?->id;
+
+        $byType = [];
+        foreach (['brand', 'product'] as $type) {
+            $byType[$type] = array_values(array_filter(array_map(
+                fn (array $row): ?array => trim((string) ($row['label'] ?? '')) === ''
+                    ? null
+                    : ['phrase' => $row['label'], 'type' => $type],
+                $keywords->suggest($type, '', 6, $userId),
+            )));
+        }
+
+        return $byType;
+    }
+
+    /**
+     * The "Your searches" rail card: each search with how many breakouts it has
+     * surfaced and its strongest score, best first.
+     *
+     * @param  Collection<int, CustomKeywordSearch>  $searches
+     * @param  Collection<int, string>  $searchIds
+     * @return array<int, array<string, mixed>>
+     */
+    private function feedSearchRows(Collection $searches, Collection $searchIds): array
+    {
+        $stats = CustomKeywordSearchVideo::query()
+            ->whereIn('custom_keyword_search_id', $searchIds)
+            ->selectRaw('custom_keyword_search_id, COUNT(*) as breakouts, MAX(viral_score) as top_score')
+            ->where('is_new_breakout', true)
+            ->groupBy('custom_keyword_search_id')
+            ->get()
+            ->keyBy('custom_keyword_search_id');
+
+        return $searches
+            ->map(function (CustomKeywordSearch $search) use ($stats): array {
+                $row = $stats[$search->id] ?? null;
+                $score = (float) ($row->top_score ?? 0);
+
+                return [
+                    'id' => $search->id,
+                    'name' => $search->name,
+                    'type' => $search->search_type === CustomKeywordSearch::TYPE_PRODUCT ? 'product' : 'brand',
+                    'initials' => $this->feedInitials((string) $search->name),
+                    'breakouts' => (int) ($row->breakouts ?? 0),
+                    'score' => $score > 0 ? round($score).'x' : null,
+                    'sort' => $score,
+                    'url' => $search->url(),
+                ];
+            })
+            ->sortByDesc('sort')
+            ->take(4)
+            ->map(function (array $row): array {
+                unset($row['sort']);
+
+                return $row;
+            })
+            ->values()
+            ->all();
+    }
+
+    /**
+     * The user's analyses for the videos in the stream, keyed by video id, in
+     * the same shape the results page sends so the shared analyze CTA and
+     * modal read them identically.
+     *
+     * @param  array<int, mixed>  $videoIds
+     * @return array<string, array<string, mixed>>
+     */
+    private function feedAnalyses(Request $request, array $videoIds): array
+    {
+        $user = $request->user();
+
+        if ($user === null || $videoIds === []) {
+            return [];
+        }
+
+        return VideoAnalysis::query()
+            ->where('user_id', $user->id)
+            ->whereIn('viral_video_id', $videoIds)
+            ->get()
+            ->keyBy('viral_video_id')
+            ->map(fn (VideoAnalysis $analysis): array => SavedSearchPresenter::analysisPayload($analysis))
+            ->all();
+    }
+
+    /** Two-letter monogram for a search's rail avatar. */
+    private function feedInitials(string $name): string
+    {
+        $clean = trim(preg_replace('/[^\p{L}\p{N} ]+/u', '', $name) ?? '');
+
+        if ($clean === '') {
+            return '??';
+        }
+
+        $words = preg_split('/\s+/', $clean) ?: [];
+
+        return mb_strtoupper(count($words) > 1
+            ? mb_substr($words[0], 0, 1).mb_substr($words[1], 0, 1)
+            : mb_substr($clean, 0, 2));
+    }
+
+    /**
+     * One card in the stream, owned by the search that surfaced it.
+     */
+    private function feedVideoCard(CustomKeywordSearchVideo $row, Collection $names, Collection $urls, Collection $types): array
     {
         $video = $row->video;
         $score = (float) ($row->viral_score ?: $video->virality_score);
@@ -409,6 +552,7 @@ class SavedSearchController extends Controller
             'id' => $video->id,
             'brand' => $names[$row->custom_keyword_search_id] ?? null,
             'search_url' => $urls[$row->custom_keyword_search_id] ?? null,
+            'search_type' => $types[$row->custom_keyword_search_id] ?? 'brand',
             // Playback goes through TikTok's embed, never video_url: that is a
             // signed CDN address that expires and 403s from a browser origin.
             'video_id' => $video->video_id,
@@ -419,24 +563,42 @@ class SavedSearchController extends Controller
             'duration' => $this->formatFeedDuration($video->duration),
             'handle' => $video->username ? '@'.ltrim((string) $video->username, '@') : null,
             'uploaded_at' => $video->uploaded_at?->toDateString(),
-            'uploaded_date' => $video->uploaded_at?->format('M j, Y'),
+            'uploaded_date' => $video->uploaded_at?->format('M j'),
             'caption' => $video->title,
             'views' => $this->compactNumber((float) $video->views),
             'likes' => $this->compactNumber((float) $video->likes),
             'comments' => $this->compactNumber((float) $video->comments),
+            'shares' => $this->compactNumber((float) $video->shares),
             'followers' => $this->compactNumber((float) $video->followers),
+            'engagement' => $this->formatEngagementRate($video),
+            'hashtags' => $this->feedHashtagList($video),
             'thumbnail' => $video->thumbnail_url ?: $video->cover,
             'gradient' => $this->showcaseGradient((string) $video->id),
         ];
     }
 
+    /** Interactions over views, already formatted, or null when there are no views. */
+    private function formatEngagementRate(ViralVideo $video): ?string
+    {
+        $rate = $video->engagementRate();
+
+        return $rate === null ? null : $rate.'%';
+    }
+
     /**
-     * The same feed card shape for a video that is not tied to one of the
-     * user's searches, so the discovery feed renders through one component.
+     * The video's hashtags, stripped of their leading "#", so the caption can
+     * be rendered with each tag linked back to TikTok.
      *
-     * @param  array<int, mixed>  $ids
-     * @return array<int, array<string, mixed>>
+     * @return array<int, string>
      */
+    private function feedHashtagList(ViralVideo $video): array
+    {
+        return array_values(array_filter(array_map(
+            fn ($tag): string => ltrim(trim((string) $tag), '#'),
+            (array) $video->hashtags,
+        )));
+    }
+
     private function globalFeedVideos(array $ids): array
     {
         if ($ids === []) {
@@ -472,42 +634,16 @@ class SavedSearchController extends Controller
                     'views' => $this->compactNumber((float) $video->views),
                     'likes' => $this->compactNumber((float) $video->likes),
                     'comments' => $this->compactNumber((float) $video->comments),
+                    'shares' => $this->compactNumber((float) $video->shares),
                     'followers' => $this->compactNumber((float) $video->followers),
+                    'engagement' => $this->formatEngagementRate($video),
+                    'hashtags' => $this->feedHashtagList($video),
                     'thumbnail' => $video->thumbnail_url ?: $video->cover,
                     'gradient' => $this->showcaseGradient((string) $video->id),
                 ];
             })
             ->values()
             ->all();
-    }
-
-    /**
-     * Top sounds across the user's breakout videos.
-     *
-     * @param  array<int, CustomKeywordSearchVideo>  $rows
-     * @return array<int, array<string, mixed>>
-     */
-    private function aggregateFeedSounds(array $rows): array
-    {
-        $byLabel = [];
-        foreach ($rows as $row) {
-            $label = $row->video->soundLabel();
-            if (! $label) {
-                continue;
-            }
-            if (! isset($byLabel[$label])) {
-                $byLabel[$label] = ['label' => $label, 'count' => 0, 'thumbs' => []];
-            }
-            $byLabel[$label]['count']++;
-            $thumb = $row->video->thumbnail_url ?: $row->video->cover;
-            if ($thumb && count($byLabel[$label]['thumbs']) < 3) {
-                $byLabel[$label]['thumbs'][] = $thumb;
-            }
-        }
-
-        usort($byLabel, fn ($a, $b) => $b['count'] <=> $a['count']);
-
-        return array_slice(array_values($byLabel), 0, 4);
     }
 
     /**
@@ -570,7 +706,7 @@ class SavedSearchController extends Controller
         $hash = 0;
         $length = strlen($seed);
         for ($i = 0; $i < $length; $i++) {
-            $hash = ($hash * 31 + ord($seed[$i])) & 0x7fffffff;
+            $hash = ($hash * 31 + ord($seed[$i])) & 0x7FFFFFFF;
         }
 
         return $palettes[$hash % count($palettes)];
@@ -1181,7 +1317,7 @@ class SavedSearchController extends Controller
             ->whereHas('video', fn ($q) => $q->whereNull('content_why_broke_out'))
             ->exists();
 
-        if (!$needsEnrichment) {
+        if (! $needsEnrichment) {
             return;
         }
 

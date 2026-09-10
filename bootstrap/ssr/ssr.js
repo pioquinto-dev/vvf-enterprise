@@ -6223,7 +6223,7 @@ function SearchCreditConfirmModal({ body, subject, busy = false, onConfirm, onCa
 //#endregion
 //#region resources/js/Pages/components/UpgradePromptModal.jsx
 var UpgradePromptModal_exports = /* @__PURE__ */ __exportAll({ default: () => UpgradePromptModal });
-function SparkIcon() {
+function SparkIcon$1() {
 	return /* @__PURE__ */ jsx("svg", {
 		viewBox: "0 0 24 24",
 		"aria-hidden": "true",
@@ -6269,7 +6269,7 @@ function UpgradePromptModal({ open = true, eyebrow = null, title, body, detail =
 					}),
 					eyebrow && /* @__PURE__ */ jsxs("div", {
 						className: "bb-modal__eyebrow",
-						children: [/* @__PURE__ */ jsx(SparkIcon, {}), /* @__PURE__ */ jsx("span", { children: eyebrow })]
+						children: [/* @__PURE__ */ jsx(SparkIcon$1, {}), /* @__PURE__ */ jsx("span", { children: eyebrow })]
 					}),
 					visual === "search-momentum" && /* @__PURE__ */ jsxs("div", {
 						className: "bb-upgrade-visual",
@@ -6448,7 +6448,7 @@ function MiniStepper({ current }) {
 	});
 }
 function BrandInlineFlow({ kind = "brand", placeholder = "Which brand do you want to research?", sample = "rhode skin", eyebrow = "Start a brand search", hint = "One brand per search — we widen it with keywords next.", prefillSubject = "", prefillNonce = 0, onCreated = null }) {
-	const { billing: billing$4 = {}, auth = {} } = usePage().props;
+	const { billing: billing$5 = {}, auth = {} } = usePage().props;
 	const signedIn = auth.signedIn ?? Boolean(auth.user);
 	const [state, setState] = useState("collapsed");
 	const [subject, setSubject] = useState("");
@@ -6473,10 +6473,10 @@ function BrandInlineFlow({ kind = "brand", placeholder = "Which brand do you wan
 	const subjectFieldRef = useRef(null);
 	const rootRef = useRef(null);
 	const kwCount = useMemo(() => keywords.filter((k) => k.selected).length, [keywords]);
-	const searchLeft = billing$4.searchCreditsRemaining;
-	const searchLimit = billing$4.searchCreditsLimit;
+	const searchLeft = billing$5.searchCreditsRemaining;
+	const searchLimit = billing$5.searchCreditsLimit;
 	const searchCreditsAvailable = !signedIn || searchLimit === -1 || Number(searchLeft ?? 0) > 0;
-	const shouldOfferTrial = (billing$4.trialEligible ?? true) && !(billing$4.hasUsedTrial ?? false);
+	const shouldOfferTrial = (billing$5.trialEligible ?? true) && !(billing$5.hasUsedTrial ?? false);
 	useEffect(() => {
 		const controller = new AbortController();
 		fetchKeywordSuggestions(kind, subject.trim(), { signal: controller.signal }).then((payload) => setSubjectSuggestions(Array.isArray(payload?.suggestions) ? payload.suggestions : [])).catch(() => {});
@@ -7367,7 +7367,7 @@ var BreakoutVideoCard_exports = /* @__PURE__ */ __exportAll({
 * Analyze and bookmark are opt-in: a surface that cannot spend analysis credits
 * simply omits `onAnalyze`, and the action row collapses to what it can do.
 */
-var Icons$2 = {
+var Icons$3 = {
 	Play: /* @__PURE__ */ jsx("svg", {
 		viewBox: "0 0 24 24",
 		fill: "currentColor",
@@ -7538,7 +7538,7 @@ function AnalyzeStateButton({ analysis, onClick, small = false }) {
 			/* @__PURE__ */ jsx("span", {
 				className: "rs-analyze__icon",
 				"aria-hidden": true,
-				children: Icons$2.Spark
+				children: Icons$3.Spark
 			}),
 			/* @__PURE__ */ jsx("span", {
 				className: "rs-analyze__label rs-analyze__label--desktop",
@@ -7603,7 +7603,7 @@ function VideoFrame({ video, winner = false, leading = false, showStats = true, 
 			!isPlaying && /* @__PURE__ */ jsx("div", { className: "rs-vf__scrim" }),
 			winner ? /* @__PURE__ */ jsx("span", {
 				className: `rs-vf__win${leading ? " rs-vf__win--lead" : ""}`,
-				children: leading ? "Leading so far" : /* @__PURE__ */ jsxs(Fragment$1, { children: [Icons$2.Spark, "Winner"] })
+				children: leading ? "Leading so far" : /* @__PURE__ */ jsxs(Fragment$1, { children: [Icons$3.Spark, "Winner"] })
 			}) : video.rank != null && /* @__PURE__ */ jsx("span", {
 				className: "rs-vf__rank",
 				children: video.rank
@@ -7619,7 +7619,7 @@ function VideoFrame({ video, winner = false, leading = false, showStats = true, 
 				"aria-label": "Play",
 				children: /* @__PURE__ */ jsx("span", {
 					className: "rs-vf__play",
-					children: Icons$2.Play
+					children: Icons$3.Play
 				})
 			}),
 			isPlaying && playerUrl && !playerReady && /* @__PURE__ */ jsx("span", {
@@ -7703,10 +7703,10 @@ function BreakoutVideoCard({ video, runBucket = "old", onAnalyze, onToggleBookma
 				/* @__PURE__ */ jsxs("div", {
 					className: "rs-oc__st",
 					children: [
-						/* @__PURE__ */ jsxs("span", { children: [Icons$2.Eye, compact(video.views)] }),
-						/* @__PURE__ */ jsxs("span", { children: [Icons$2.Heart, compact(video.likes)] }),
-						/* @__PURE__ */ jsxs("span", { children: [Icons$2.Comment, compact(video.comments)] }),
-						/* @__PURE__ */ jsxs("span", { children: [Icons$2.Share, compact(video.shares)] })
+						/* @__PURE__ */ jsxs("span", { children: [Icons$3.Eye, compact(video.views)] }),
+						/* @__PURE__ */ jsxs("span", { children: [Icons$3.Heart, compact(video.likes)] }),
+						/* @__PURE__ */ jsxs("span", { children: [Icons$3.Comment, compact(video.comments)] }),
+						/* @__PURE__ */ jsxs("span", { children: [Icons$3.Share, compact(video.shares)] })
 					]
 				}),
 				showActions && /* @__PURE__ */ jsxs("div", {
@@ -7724,7 +7724,7 @@ function BreakoutVideoCard({ video, runBucket = "old", onAnalyze, onToggleBookma
 							rel: "noopener noreferrer",
 							title: "Open in TikTok",
 							"aria-label": "Open in TikTok",
-							children: Icons$2.ExtLink
+							children: Icons$3.ExtLink
 						}),
 						onToggleBookmark && /* @__PURE__ */ jsx("button", {
 							className: `rs-ic2${video.bookmarked ? " on" : ""}`,
@@ -7732,7 +7732,7 @@ function BreakoutVideoCard({ video, runBucket = "old", onAnalyze, onToggleBookma
 							"aria-label": video.bookmarked ? "Remove from bookmarks" : "Save video",
 							onClick: onToggleBookmark,
 							disabled: bookmarking,
-							children: video.bookmarked ? Icons$2.Bookmark : Icons$2.BookmarkO
+							children: video.bookmarked ? Icons$3.Bookmark : Icons$3.BookmarkO
 						})
 					]
 				})
@@ -9345,78 +9345,943 @@ function DataProcessingAddendum() {
 	});
 }
 //#endregion
+//#region resources/js/Pages/VideoAnalysis/AnalysisModal.jsx
+var AnalysisModal_exports = /* @__PURE__ */ __exportAll({ default: () => AnalysisModal });
+function formatMetric(value) {
+	const number = Number(value || 0);
+	if (!Number.isFinite(number)) return "0";
+	return new Intl.NumberFormat(void 0, { maximumFractionDigits: number >= 100 ? 0 : 1 }).format(number);
+}
+function formatTimestamp(ms) {
+	if (!Number.isFinite(Number(ms))) return null;
+	const total = Math.max(0, Math.floor(Number(ms) / 1e3));
+	return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, "0")}`;
+}
+function formatDuration$1(seconds) {
+	const total = Number(seconds || 0);
+	if (!Number.isFinite(total) || total <= 0) return null;
+	return `${Math.floor(total / 60)}:${String(Math.round(total % 60)).padStart(2, "0")}`;
+}
+function breakoutScore(video) {
+	const value = Number(video?.score ?? video?.viral_score ?? video?.virality_score ?? 0);
+	return Number.isFinite(value) && value > 0 ? value : null;
+}
+function usePolling(videoId, initial, open) {
+	const [analysis, setAnalysis] = useState(initial);
+	useEffect(() => {
+		setAnalysis(initial);
+	}, [initial, videoId]);
+	useEffect(() => {
+		if (!open || analysis?.status === "complete" || analysis?.status === "failed") return void 0;
+		let cancelled = false;
+		const timer = window.setInterval(async () => {
+			try {
+				const payload = await videoAnalysis.get(videoId);
+				if (!cancelled) setAnalysis(payload.analysis);
+			} catch {}
+		}, 3e3);
+		return () => {
+			cancelled = true;
+			window.clearInterval(timer);
+		};
+	}, [
+		analysis?.status,
+		open,
+		videoId
+	]);
+	return [analysis, setAnalysis];
+}
+function transcriptRows(analysis) {
+	const segments = Array.isArray(analysis?.transcript_segments) ? analysis.transcript_segments : [];
+	if (segments.length > 0) return segments.map((segment, index) => ({
+		id: `segment-${index}`,
+		time: formatTimestamp(segment.start_ms) ?? "0:00",
+		text: segment.text
+	}));
+	const transcript = String(analysis?.transcript || "").trim();
+	if (transcript === "") return [];
+	return transcript.split("\n").map((line) => line.trim()).filter(Boolean).map((line, index) => ({
+		id: `line-${index}`,
+		time: formatTimestamp(index * 3e3) ?? "0:00",
+		text: line
+	}));
+}
+function hookVariations(result) {
+	if (Array.isArray(result?.hooks) && result.hooks.length > 0) return result.hooks.map((hook, index) => ({
+		id: index,
+		objection: typeof hook === "string" ? null : hook?.objection ?? null,
+		text: typeof hook === "string" ? hook : hook?.text || hook?.variation || JSON.stringify(hook)
+	}));
+	return [];
+}
+function whyDrags(result) {
+	if (!Array.isArray(result?.drags)) return [];
+	return result.drags.map((item, index) => ({
+		id: index,
+		rank: String(index + 1),
+		title: typeof item === "string" ? item : item?.title || "Drag",
+		body: typeof item === "string" ? null : item?.explanation || item?.reason || null
+	})).filter((item) => item.title || item.body);
+}
+function hookBeats(result) {
+	if (!Array.isArray(result?.hook_beats)) return [];
+	return result.hook_beats.filter((beat) => beat && (beat.title || beat.explanation)).map((beat, index) => ({
+		id: index,
+		time: beat.time || null,
+		title: beat.title || `Beat ${index + 1}`,
+		body: beat.explanation || null
+	}));
+}
+function hookPatterns(result) {
+	return Array.isArray(result?.hook_patterns) ? result.hook_patterns.filter((item) => typeof item === "string" && item.trim() !== "") : [];
+}
+function whyDrivers(result) {
+	if (Array.isArray(result?.content_breakdown) && result.content_breakdown.length > 0) return result.content_breakdown.map((item, index) => ({
+		id: index,
+		rank: String(index + 1).padStart(2, "0"),
+		title: item?.title || item?.driver || item?.label || "Breakout signal",
+		body: item?.explanation || item?.reason || String(item),
+		uplift: item?.uplift || item?.delta || item?.impact || null
+	}));
+	const evidence = String(result?.evidence_summary || "").trim();
+	return evidence === "" ? [] : evidence.split(/(?<=\.)\s+/).filter(Boolean).map((line, index) => ({
+		id: index,
+		rank: String(index + 1).padStart(2, "0"),
+		title: `Driver ${index + 1}`,
+		body: line,
+		uplift: null
+	}));
+}
+function strategistRecommendations(result) {
+	const recommendations = result?.creative_strategy?.recommendations;
+	if (Array.isArray(recommendations) && recommendations.length > 0) return recommendations.map((item, index) => ({
+		id: index,
+		rank: String(index + 1).padStart(2, "0"),
+		title: typeof item === "string" ? item : item?.title || item?.headline || `Recommendation ${index + 1}`,
+		body: typeof item === "string" ? null : item?.text || item?.body || item?.reason || null
+	}));
+	const summary = result?.creative_strategy?.summary;
+	return summary ? [{
+		id: 0,
+		rank: "01",
+		title: String(summary),
+		body: null
+	}] : [];
+}
+function RegenerateButton({ regenerating, disabled, onClick, fullWidth = false }) {
+	return /* @__PURE__ */ jsxs("button", {
+		type: "button",
+		onClick,
+		disabled,
+		className: `${fullWidth ? "flex w-full justify-center" : "inline-flex"} items-center gap-1.5 rounded-full border border-[#e5ddd1] bg-[#fbfaf7] px-3 py-2 text-[11px] font-semibold text-[#8c6b10] transition hover:bg-[#fff0bf] disabled:cursor-not-allowed disabled:opacity-60`,
+		children: [/* @__PURE__ */ jsxs("svg", {
+			viewBox: "0 0 24 24",
+			className: `h-3.5 w-3.5 stroke-current ${regenerating ? "animate-spin" : ""}`,
+			fill: "none",
+			strokeWidth: "2",
+			strokeLinecap: "round",
+			strokeLinejoin: "round",
+			children: [/* @__PURE__ */ jsx("path", { d: "M21 12a9 9 0 1 1-2.64-6.36" }), /* @__PURE__ */ jsx("path", { d: "M21 3v6h-6" })]
+		}), regenerating ? "Regenerating…" : "Regenerate"]
+	});
+}
+function AnalyzeButton$1({ state, onClick }) {
+	const running = state === "running";
+	const ready = state === "ready";
+	const base = "flex h-10 w-full items-center justify-center gap-2 rounded-[11px] px-3.5 text-[13px] font-bold transition";
+	if (ready) return /* @__PURE__ */ jsxs("div", {
+		className: `${base} cursor-default border border-[#E7E5DF] bg-white text-[#0B0B0B]`,
+		children: [/* @__PURE__ */ jsx("svg", {
+			viewBox: "0 0 24 24",
+			className: "h-[15px] w-[15px]",
+			fill: "none",
+			stroke: "#1F7A4D",
+			strokeWidth: "2.4",
+			strokeLinecap: "round",
+			strokeLinejoin: "round",
+			children: /* @__PURE__ */ jsx("path", { d: "M4 12.5l5.5 5.5L20 7" })
+		}), "Analysis ready"]
+	});
+	if (running) return /* @__PURE__ */ jsxs("div", {
+		className: `${base} cursor-default bg-[#FFF8E6] text-[#9A6B00]`,
+		children: [/* @__PURE__ */ jsx("span", { className: "h-[14px] w-[14px] animate-spin rounded-full border-2 border-[rgba(154,107,0,.3)] border-t-[#9A6B00]" }), "Analyzing…"]
+	});
+	return /* @__PURE__ */ jsxs("button", {
+		type: "button",
+		onClick,
+		className: `${base} bg-[#FFC629] text-[#1A1400] hover:bg-[#FFD84D]`,
+		children: [/* @__PURE__ */ jsxs("svg", {
+			viewBox: "0 0 24 24",
+			className: "h-[15px] w-[15px]",
+			fill: "none",
+			stroke: "currentColor",
+			strokeWidth: "2",
+			strokeLinecap: "round",
+			children: [/* @__PURE__ */ jsx("circle", {
+				cx: "11",
+				cy: "11",
+				r: "7"
+			}), /* @__PURE__ */ jsx("path", { d: "m20 20-3.5-3.5" })]
+		}), "Analyze video"]
+	});
+}
+function LeftSidebar({ video, canRegenerate = false, regenerating = false, disabledRegenerate = false, onRegenerate, analyzeState = "idle", onAnalyze, saved = false, saving = false, onToggleSave, showExternalLink = true }) {
+	return /* @__PURE__ */ jsxs("aside", {
+		className: "flex max-h-full min-h-0 flex-col gap-3 self-start overflow-y-auto",
+		children: [/* @__PURE__ */ jsx(BreakoutVideoCard, {
+			video,
+			showActions: false
+		}), /* @__PURE__ */ jsxs("div", {
+			className: "flex flex-col gap-[7px]",
+			children: [
+				/* @__PURE__ */ jsxs("div", {
+					className: `grid gap-[7px] ${showExternalLink ? "grid-cols-[minmax(0,1fr)_40px]" : "grid-cols-1"}`,
+					children: [/* @__PURE__ */ jsx(AnalyzeButton$1, {
+						state: analyzeState,
+						onClick: onAnalyze
+					}), showExternalLink && /* @__PURE__ */ jsx("a", {
+						href: video.post_url || video.postUrl || "#",
+						target: "_blank",
+						rel: "noreferrer noopener",
+						"aria-disabled": !(video.post_url || video.postUrl),
+						title: "Open on TikTok",
+						"aria-label": "Open on TikTok",
+						className: `flex h-10 items-center justify-center rounded-[11px] border border-[#E7E5DF] bg-white text-[#0B0B0B] transition hover:bg-[#FAF9F6] ${video.post_url || video.postUrl ? "" : "pointer-events-none opacity-40"}`,
+						children: /* @__PURE__ */ jsx("svg", {
+							viewBox: "0 0 24 24",
+							className: "h-[15px] w-[15px]",
+							fill: "none",
+							stroke: "currentColor",
+							strokeWidth: "2",
+							strokeLinecap: "round",
+							strokeLinejoin: "round",
+							children: /* @__PURE__ */ jsx("path", { d: "M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5" })
+						})
+					})]
+				}),
+				onToggleSave && /* @__PURE__ */ jsxs("button", {
+					type: "button",
+					onClick: onToggleSave,
+					disabled: saving,
+					"aria-pressed": saved,
+					className: `flex h-10 items-center justify-center gap-2 rounded-[11px] border px-2.5 text-[13px] font-bold transition disabled:opacity-60 ${saved ? "border-[#FFC629] bg-[#FFF8E6] text-[#5C4200]" : "border-[#E7E5DF] bg-white text-[#0B0B0B] hover:bg-[#FAF9F6]"}`,
+					children: [/* @__PURE__ */ jsx("svg", {
+						viewBox: "0 0 24 24",
+						className: "h-[15px] w-[15px]",
+						fill: saved ? "currentColor" : "none",
+						stroke: "currentColor",
+						strokeWidth: "2",
+						strokeLinejoin: "round",
+						children: /* @__PURE__ */ jsx("path", { d: "M6 3h12v18l-6-4.5L6 21z" })
+					}), saved ? "Saved" : "Save"]
+				}),
+				canRegenerate && /* @__PURE__ */ jsx(RegenerateButton, {
+					regenerating,
+					disabled: disabledRegenerate,
+					onClick: onRegenerate,
+					fullWidth: true
+				})
+			]
+		})]
+	});
+}
+function VideoHeadline({ video, calloutDismissed, onDismissCallout }) {
+	const caption = String(video?.title || video?.caption || "").trim();
+	const score = breakoutScore(video);
+	const showCallout = !calloutDismissed && Boolean(score);
+	const tagMatch = caption.match(/(\s#[^\s#]+(?:\s+#[^\s#]+)*)\s*$/);
+	const captionTags = tagMatch ? tagMatch[1].trim() : null;
+	const captionBody = tagMatch ? caption.slice(0, tagMatch.index).trim() : caption;
+	if (!caption && !showCallout) return null;
+	return /* @__PURE__ */ jsxs(Fragment$1, { children: [caption && /* @__PURE__ */ jsxs("p", {
+		className: "mr-11 mt-0.5 min-w-0 break-words text-[16.5px] font-extrabold leading-[1.4] tracking-[-0.01em] text-[#0B0B0B]",
+		children: [
+			"“",
+			captionBody,
+			"”",
+			captionTags && /* @__PURE__ */ jsxs("span", {
+				className: "font-bold text-[#9A6B00]",
+				children: [" ", captionTags]
+			})
+		]
+	}), showCallout && /* @__PURE__ */ jsxs("div", {
+		className: "flex min-w-0 items-start gap-[9px] rounded-[12px] border border-[#F2E2AE] bg-[#FFF3CF] px-3 py-2.5",
+		children: [
+			/* @__PURE__ */ jsx("span", {
+				"aria-hidden": true,
+				className: "mt-px flex-none text-[#9A6B00]",
+				children: /* @__PURE__ */ jsxs("svg", {
+					viewBox: "0 0 24 24",
+					className: "h-3.5 w-3.5",
+					fill: "none",
+					stroke: "currentColor",
+					strokeWidth: "2",
+					children: [/* @__PURE__ */ jsx("circle", {
+						cx: "12",
+						cy: "12",
+						r: "10"
+					}), /* @__PURE__ */ jsx("path", {
+						d: "M12 16v-5M12 8h.01",
+						strokeLinecap: "round"
+					})]
+				})
+			}),
+			/* @__PURE__ */ jsxs("p", {
+				className: "m-0 min-w-0 flex-1 break-words text-[12px] leading-[1.45] text-[#5B4300]",
+				children: [
+					/* @__PURE__ */ jsxs("b", {
+						className: "font-extrabold",
+						children: [formatMetric(score), "x is this video’s weighted engagement relative to its creator’s follower count."]
+					}),
+					" ",
+					"Views, likes and comments contribute to the score."
+				]
+			}),
+			/* @__PURE__ */ jsx("button", {
+				type: "button",
+				onClick: onDismissCallout,
+				"aria-label": "Dismiss",
+				className: "ml-auto flex-none cursor-pointer font-bold leading-none text-[#9B8140] transition hover:text-[#0B0B0B]",
+				children: "✕"
+			})
+		]
+	})] });
+}
+function TabRow({ tabs, activeTab, onChange }) {
+	return /* @__PURE__ */ jsx("div", {
+		className: "flex gap-1.5 rounded-[12px] border border-[#E7E5DF] bg-white p-[5px]",
+		role: "tablist",
+		children: tabs.map((tab) => /* @__PURE__ */ jsx("button", {
+			type: "button",
+			role: "tab",
+			"aria-selected": activeTab === tab.key,
+			onClick: () => onChange(tab.key),
+			className: `h-9 flex-1 rounded-[9px] text-[13px] font-bold transition ${activeTab === tab.key ? "bg-[#FFF3CF] text-[#9A6B00]" : "text-[#5C5A54] hover:text-[#0B0B0B]"}`,
+			children: tab.label
+		}, tab.key))
+	});
+}
+function ProcessingState({ status, error }) {
+	return /* @__PURE__ */ jsxs("section", {
+		className: "rounded-[16px] border border-[#ddd6ca] bg-[#fffdf9] p-5",
+		children: [/* @__PURE__ */ jsx("div", {
+			className: "text-[12px] font-semibold uppercase tracking-[0.12em] text-[#8c6b10]",
+			children: status || "idle"
+		}), /* @__PURE__ */ jsx("p", {
+			className: "mt-2 text-[14px] leading-6 text-[#696257]",
+			children: status === "failed" ? error || "This analysis could not be completed." : status === "processing" ? "We are preparing the transcript, shared diagnostics, and creator-facing guidance." : /* @__PURE__ */ jsxs(Fragment$1, { children: [
+				"Analysis hasn’t started yet. Run ",
+				/* @__PURE__ */ jsx("b", {
+					className: "font-bold text-[#1a1a1a]",
+					children: "Analyze video"
+				}),
+				" to break down what made this video outperform its audience size — and get a playbook you can hand to your creators."
+			] })
+		})]
+	});
+}
+function ErrorStateModal({ message, retrying, onRetry, onDismiss }) {
+	return /* @__PURE__ */ jsx("div", {
+		className: "absolute inset-0 z-20 flex items-center justify-center rounded-[22px] bg-[rgba(42,33,20,0.28)] px-4 backdrop-blur-[2px]",
+		children: /* @__PURE__ */ jsxs("div", {
+			className: "w-full max-w-[430px] rounded-[20px] border border-[#ddd6ca] bg-[#fffdf9] p-5 shadow-[0_24px_60px_rgba(42,33,20,0.18)]",
+			children: [
+				/* @__PURE__ */ jsx("div", {
+					className: "flex h-10 w-10 items-center justify-center rounded-full bg-[#fff0bf] text-[#8c6b10]",
+					children: /* @__PURE__ */ jsxs("svg", {
+						viewBox: "0 0 24 24",
+						className: "h-5 w-5 stroke-current",
+						fill: "none",
+						strokeWidth: "2",
+						strokeLinecap: "round",
+						strokeLinejoin: "round",
+						children: [
+							/* @__PURE__ */ jsx("path", { d: "M12 8v5" }),
+							/* @__PURE__ */ jsx("path", { d: "M12 16h.01" }),
+							/* @__PURE__ */ jsx("path", { d: "M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z" })
+						]
+					})
+				}),
+				/* @__PURE__ */ jsx("h3", {
+					className: "mt-4 text-[20px] font-semibold text-[#1a1a1a]",
+					children: "Something went wrong"
+				}),
+				/* @__PURE__ */ jsx("p", {
+					className: "mt-2 text-[14px] leading-6 text-[#696257]",
+					children: message || "We could not finish this analysis right now. Please try again later."
+				}),
+				/* @__PURE__ */ jsxs("div", {
+					className: "mt-5 flex gap-3",
+					children: [/* @__PURE__ */ jsx("button", {
+						type: "button",
+						onClick: onRetry,
+						disabled: retrying,
+						className: "inline-flex flex-1 items-center justify-center rounded-full bg-[#f2c44f] px-4 py-2.5 text-[12px] font-semibold text-[#4f3d08] transition hover:bg-[#e8bb48] disabled:cursor-not-allowed disabled:opacity-60",
+						children: retrying ? "Retrying…" : "Try again"
+					}), /* @__PURE__ */ jsx("button", {
+						type: "button",
+						onClick: onDismiss,
+						className: "inline-flex flex-1 items-center justify-center rounded-full border border-[#ddd6ca] bg-white px-4 py-2.5 text-[12px] font-semibold text-[#5f584d] transition hover:bg-[#faf7f1]",
+						children: "Close"
+					})]
+				})
+			]
+		})
+	});
+}
+function hookReasons(result) {
+	const reasons = Array.isArray(result?.hook_reasons) ? result.hook_reasons : [];
+	if (reasons.length > 0) return reasons.map((item, index) => ({
+		id: index,
+		title: item?.title || item?.tactic || item?.label || `Hook tactic ${index + 1}`,
+		body: item?.explanation || item?.reason || (typeof item === "string" ? item : "")
+	}));
+	return whyDrivers({ content_breakdown: Array.isArray(result?.content_breakdown) ? result.content_breakdown.slice(0, 3) : [] }).map((item) => ({
+		id: item.id,
+		title: item.title,
+		body: item.body
+	}));
+}
+function Section({ tone = "plain", title, count, children, className = "" }) {
+	return /* @__PURE__ */ jsxs("section", {
+		className: `min-w-0 rounded-[14px] border px-[15px] py-[14px] ${tone === "next" ? "border-[#F2E2AE] bg-[#FFFCF2]" : "border-[#E7E5DF] bg-white"} ${className}`,
+		children: [title && /* @__PURE__ */ jsxs("h3", {
+			className: "mb-[11px] flex items-center gap-2 text-[13.5px] font-extrabold tracking-[-0.01em] text-[#0B0B0B]",
+			children: [title, count && /* @__PURE__ */ jsx("span", {
+				className: "text-[10px] font-extrabold tracking-[0.06em] text-[#8A877F]",
+				children: count
+			})]
+		}), children]
+	});
+}
+function NumberedItems({ items, tone = "good" }) {
+	const chip = {
+		good: "bg-[#FFF3CF] text-[#9A6B00]",
+		bad: "bg-[#FEF0E7] text-[#C2410C]",
+		next: "bg-[#E9F5EE] text-[#1F7A4D]"
+	}[tone];
+	return /* @__PURE__ */ jsx("ul", {
+		className: "m-0 grid list-none gap-[11px] p-0",
+		children: items.map((item, index) => /* @__PURE__ */ jsxs("li", {
+			className: "flex gap-2.5",
+			children: [/* @__PURE__ */ jsx("span", {
+				className: `mt-px flex h-[19px] flex-[0_0_19px] items-center justify-center rounded-[6px] text-[10.5px] font-extrabold ${chip}`,
+				children: item.rank ?? index + 1
+			}), /* @__PURE__ */ jsxs("div", {
+				className: "min-w-0",
+				children: [item.title && /* @__PURE__ */ jsx("b", {
+					className: "mb-0.5 block text-[12.8px] font-bold text-[#0B0B0B]",
+					children: item.title
+				}), item.body && /* @__PURE__ */ jsx("p", {
+					className: "m-0 text-[12.3px] leading-[1.5] text-[#5C5A54]",
+					children: item.body
+				})]
+			})]
+		}, item.id ?? index))
+	});
+}
+function SourceNote({ children }) {
+	return /* @__PURE__ */ jsx("p", {
+		className: "mb-0 mt-[11px] text-[11px] italic text-[#8A877F]",
+		children
+	});
+}
+function EmptySection({ children }) {
+	return /* @__PURE__ */ jsx("p", {
+		className: "m-0 text-[12.3px] leading-[1.5] text-[#8A877F]",
+		children
+	});
+}
+function WhyPanel({ result, analysis, video }) {
+	const drivers = whyDrivers(result);
+	const drags = whyDrags(result);
+	const actions = strategistRecommendations(result);
+	const rows = transcriptRows(analysis);
+	const runtime = formatDuration$1(video?.duration ?? null);
+	return /* @__PURE__ */ jsxs("div", {
+		className: "grid gap-3",
+		children: [
+			/* @__PURE__ */ jsx(Section, {
+				title: "Why it worked",
+				count: drivers.length ? `${drivers.length} ${drivers.length === 1 ? "DRIVER" : "DRIVERS"}` : null,
+				children: drivers.length > 0 ? /* @__PURE__ */ jsx(NumberedItems, {
+					items: drivers,
+					tone: "good"
+				}) : /* @__PURE__ */ jsx(EmptySection, { children: "No drivers were identified for this video." })
+			}),
+			/* @__PURE__ */ jsx(Section, {
+				title: "What could be improved",
+				count: drags.length ? `${drags.length} ${drags.length === 1 ? "DRAG" : "DRAGS"}` : null,
+				children: drags.length > 0 ? /* @__PURE__ */ jsx(NumberedItems, {
+					items: drags,
+					tone: "bad"
+				}) : /* @__PURE__ */ jsx(EmptySection, { children: "Nothing measurable held this video back." })
+			}),
+			/* @__PURE__ */ jsx(Section, {
+				tone: "next",
+				title: "What you should do next",
+				count: actions.length ? `${actions.length} ${actions.length === 1 ? "ACTION" : "ACTIONS"}` : null,
+				children: actions.length > 0 ? /* @__PURE__ */ jsxs(Fragment$1, { children: [/* @__PURE__ */ jsx(NumberedItems, {
+					items: actions,
+					tone: "next"
+				}), /* @__PURE__ */ jsx(SourceNote, { children: "From this video’s transcript and metrics." })] }) : /* @__PURE__ */ jsx(EmptySection, { children: "No next actions were generated for this video." })
+			}),
+			/* @__PURE__ */ jsx(Section, {
+				title: "Transcript",
+				count: runtime,
+				children: rows.length > 0 ? /* @__PURE__ */ jsx("ul", {
+					className: "m-0 grid list-none gap-2 p-0",
+					children: rows.map((row, index) => /* @__PURE__ */ jsxs("li", {
+						className: "flex gap-[11px] text-[12.3px] leading-[1.5]",
+						children: [/* @__PURE__ */ jsx("span", {
+							className: "flex-[0_0_34px] pt-px text-[11px] font-bold [font-variant-numeric:tabular-nums] text-[#8A877F]",
+							children: row.time
+						}), /* @__PURE__ */ jsx("span", {
+							className: index === 0 ? "rounded-[6px] bg-[#FFF3CF] px-1.5 py-px" : void 0,
+							children: row.text
+						})]
+					}, row.id))
+				}) : /* @__PURE__ */ jsx(EmptySection, { children: "No transcript was captured for this video." })
+			})
+		]
+	});
+}
+function HookPanel({ result, video }) {
+	const hookLine = String(result?.hook_analysis || "").trim();
+	const patterns = hookPatterns(result);
+	const reasons = hookReasons(result);
+	const beats = hookBeats(result);
+	const rewrites = hookVariations(result);
+	const [copiedId, setCopiedId] = useState(null);
+	const copy = async (item) => {
+		try {
+			await navigator.clipboard.writeText(item.text);
+			setCopiedId(item.id);
+			window.setTimeout(() => setCopiedId((current) => current === item.id ? null : current), 1600);
+		} catch {}
+	};
+	return /* @__PURE__ */ jsxs("div", {
+		className: "grid gap-3",
+		children: [
+			/* @__PURE__ */ jsx(Section, { children: /* @__PURE__ */ jsxs("div", {
+				className: "flex items-stretch gap-[13px]",
+				children: [/* @__PURE__ */ jsxs("div", {
+					className: "relative aspect-[9/13] flex-[0_0_76px] overflow-hidden rounded-[10px] bg-[#FAF9F6]",
+					children: [video?.thumbnail_url ? /* @__PURE__ */ jsx("img", {
+						src: video.thumbnail_url,
+						alt: "",
+						referrerPolicy: "no-referrer",
+						className: "absolute inset-0 h-full w-full object-cover"
+					}) : /* @__PURE__ */ jsx("span", { className: "absolute inset-0 bg-[linear-gradient(150deg,#e8dcd2,#d8c4b6_55%,#a8887c)]" }), /* @__PURE__ */ jsx("span", {
+						className: "absolute bottom-1.5 left-1.5 text-[9px] font-extrabold tracking-[0.06em] text-white [text-shadow:0_1px_4px_rgba(0,0,0,.6)]",
+						children: "0:00"
+					})]
+				}), /* @__PURE__ */ jsxs("div", {
+					className: "flex min-w-0 flex-1 flex-col justify-center",
+					children: [hookLine ? /* @__PURE__ */ jsxs("blockquote", {
+						className: "m-0 mb-[9px] text-[16px] font-extrabold leading-[1.35] tracking-[-0.01em] text-[#0B0B0B] text-balance",
+						children: [
+							"“",
+							hookLine,
+							"”"
+						]
+					}) : /* @__PURE__ */ jsx(EmptySection, { children: "The opening line was not captured for this video." }), patterns.length > 0 && /* @__PURE__ */ jsx("div", {
+						className: "flex flex-wrap gap-1.5",
+						children: patterns.map((pattern, index) => /* @__PURE__ */ jsx("span", {
+							className: `rounded-[7px] border px-2 py-1 text-[10.5px] font-extrabold tracking-[0.03em] ${index === 0 ? "border-[#F2E2AE] bg-[#FFF3CF] text-[#9A6B00]" : "border-[#E7E5DF] bg-[#F5F4F0] text-[#5C5A54]"}`,
+							children: pattern
+						}, pattern))
+					})]
+				})]
+			}) }),
+			/* @__PURE__ */ jsx(Section, {
+				title: "Why it stops the scroll",
+				count: reasons.length ? `${reasons.length} ${reasons.length === 1 ? "REASON" : "REASONS"}` : null,
+				children: reasons.length > 0 ? /* @__PURE__ */ jsx(NumberedItems, {
+					items: reasons,
+					tone: "good"
+				}) : /* @__PURE__ */ jsx(EmptySection, { children: "No hook breakdown was generated for this video." })
+			}),
+			beats.length > 0 && /* @__PURE__ */ jsxs(Section, {
+				title: "How the first three seconds are built",
+				children: [/* @__PURE__ */ jsxs("div", {
+					className: "mb-3 flex h-1.5 overflow-hidden rounded-full bg-[#E7E5DF]",
+					children: [
+						/* @__PURE__ */ jsx("i", { className: "block flex-[3] bg-[#9A6B00]" }),
+						/* @__PURE__ */ jsx("i", { className: "block flex-[4] bg-[#E0B44A]" }),
+						/* @__PURE__ */ jsx("i", { className: "block flex-[3] bg-[#F0D89A]" })
+					]
+				}), /* @__PURE__ */ jsx("ul", {
+					className: "m-0 grid list-none gap-0 p-0",
+					children: beats.map((beat, index) => /* @__PURE__ */ jsxs("li", {
+						className: `grid grid-cols-[46px_1fr] gap-3 py-[9px] ${index === 0 ? "pt-0" : "border-t border-dashed border-[#E7E5DF]"}`,
+						children: [/* @__PURE__ */ jsx("span", {
+							className: "pt-px text-[11px] font-extrabold [font-variant-numeric:tabular-nums] text-[#9A6B00]",
+							children: beat.time ?? ""
+						}), /* @__PURE__ */ jsxs("div", {
+							className: "min-w-0",
+							children: [/* @__PURE__ */ jsx("b", {
+								className: "mb-0.5 block text-[12.5px] font-bold text-[#0B0B0B]",
+								children: beat.title
+							}), beat.body && /* @__PURE__ */ jsx("p", {
+								className: "m-0 text-[12.2px] leading-[1.5] text-[#5C5A54]",
+								children: beat.body
+							})]
+						})]
+					}, beat.id))
+				})]
+			}),
+			rewrites.length > 0 && /* @__PURE__ */ jsxs(Section, {
+				tone: "next",
+				title: "Swipe this hook",
+				count: `${rewrites.length} ${rewrites.length === 1 ? "REWRITE" : "REWRITES"}`,
+				children: [/* @__PURE__ */ jsx("ul", {
+					className: "m-0 grid list-none gap-[9px] p-0",
+					children: rewrites.map((item) => /* @__PURE__ */ jsxs("li", {
+						className: "flex items-start gap-2.5 rounded-[11px] border border-[#E7E5DF] bg-[#F5F4F0] px-[11px] py-2.5",
+						children: [/* @__PURE__ */ jsxs("span", {
+							className: "min-w-0 flex-1 text-[12.4px] leading-[1.5] text-[#0B0B0B]",
+							children: [item.objection && /* @__PURE__ */ jsx("em", {
+								className: "mb-[3px] block text-[10.5px] font-extrabold uppercase not-italic tracking-[0.05em] text-[#8A877F]",
+								children: item.objection
+							}), item.text]
+						}), /* @__PURE__ */ jsxs("button", {
+							type: "button",
+							onClick: () => copy(item),
+							className: "inline-flex h-[26px] flex-shrink-0 items-center gap-[5px] rounded-[8px] border border-[#E7E5DF] bg-white px-[9px] text-[11px] font-bold text-[#5C5A54] transition hover:border-[#c8c4ba] hover:text-[#0B0B0B]",
+							children: [/* @__PURE__ */ jsxs("svg", {
+								viewBox: "0 0 24 24",
+								className: "h-[11px] w-[11px]",
+								fill: "none",
+								stroke: "currentColor",
+								strokeWidth: "2",
+								strokeLinejoin: "round",
+								children: [/* @__PURE__ */ jsx("rect", {
+									x: "9",
+									y: "9",
+									width: "12",
+									height: "12",
+									rx: "2"
+								}), /* @__PURE__ */ jsx("path", { d: "M5 15V5a2 2 0 012-2h10" })]
+							}), copiedId === item.id ? "Copied" : "Copy"]
+						})]
+					}, item.id))
+				}), /* @__PURE__ */ jsx(SourceNote, { children: "Structure lifted from this video’s opening." })]
+			})
+		]
+	});
+}
+function ActivePanel({ activeTab, analysis, result, video }) {
+	if (activeTab === "hook") return /* @__PURE__ */ jsx(HookPanel, {
+		result,
+		video
+	});
+	return /* @__PURE__ */ jsx(WhyPanel, {
+		result,
+		analysis,
+		video
+	});
+}
+var DEFAULT_TABS = [{
+	key: "why",
+	label: "Why it worked"
+}, {
+	key: "hook",
+	label: "Hook"
+}];
+function AnalysisModal({ video, initialAnalysis, tabs = DEFAULT_TABS, open = true, onClose, onAnalysisChange, onAnalyze, analyzeBusy = false, saved = false, saving = false, onToggleSave, showExternalLink = true }) {
+	const [activeTab, setActiveTab] = useState(tabs[0]?.key ?? "why");
+	const [analysis, setAnalysis] = usePolling(video.id, initialAnalysis, open);
+	const [regenerating, setRegenerating] = useState(false);
+	const [showErrorModal, setShowErrorModal] = useState(false);
+	const [calloutDismissed, setCalloutDismissed] = useState(false);
+	const canRegenerate = Boolean(usePage().props?.features?.videoAnalysisRefresh);
+	const scrollerRef = useRef(null);
+	const selectTab = (key) => {
+		setActiveTab(key);
+		if (scrollerRef.current) scrollerRef.current.scrollTop = 0;
+	};
+	const onAnalysisChangeRef = useRef(onAnalysisChange);
+	onAnalysisChangeRef.current = onAnalysisChange;
+	useEffect(() => {
+		if (analysis) onAnalysisChangeRef.current?.(video.id, analysis);
+	}, [analysis, video.id]);
+	useEffect(() => {
+		if (!open) return;
+		setShowErrorModal(analysis?.status === "failed");
+	}, [
+		analysis?.status,
+		open,
+		video?.id
+	]);
+	const requestAnalysis = async (forceRefresh = false) => {
+		const payload = await videoAnalysis.request(video.id, forceRefresh ? { force_refresh: true } : {});
+		setShowErrorModal(false);
+		setAnalysis(payload.analysis);
+	};
+	const regenerate = async () => {
+		if (regenerating) return;
+		setRegenerating(true);
+		try {
+			await requestAnalysis(true);
+		} catch (error) {
+			window.alert(error?.message || "Could not regenerate this analysis.");
+		} finally {
+			setRegenerating(false);
+		}
+	};
+	const retryAnalysis = async () => {
+		if (regenerating) return;
+		setRegenerating(true);
+		try {
+			await requestAnalysis(false);
+		} catch (error) {
+			window.alert(error?.message || "Could not restart this analysis.");
+		} finally {
+			setRegenerating(false);
+		}
+	};
+	useEffect(() => {
+		if (!open) return void 0;
+		const previousOverflow = document.body.style.overflow;
+		document.body.style.overflow = "hidden";
+		const handleKeyDown = (event) => {
+			if (event.key === "Escape") onClose?.();
+		};
+		window.addEventListener("keydown", handleKeyDown);
+		return () => {
+			document.body.style.overflow = previousOverflow;
+			window.removeEventListener("keydown", handleKeyDown);
+		};
+	}, [open, onClose]);
+	useEffect(() => {
+		setActiveTab(tabs[0]?.key ?? "why");
+		setCalloutDismissed(false);
+	}, [tabs, video?.id]);
+	if (!open || !video) return null;
+	const result = analysis?.result ?? {};
+	const regenerateDisabled = regenerating || analysis?.status === "processing";
+	const status = analysis?.status;
+	const analyzeState = status === "complete" ? "ready" : analyzeBusy || regenerating || status === "processing" || status === "queued" || status === "pending" ? "running" : "idle";
+	const startAnalysis = () => {
+		if (onAnalyze) {
+			onAnalyze();
+			return;
+		}
+		retryAnalysis();
+	};
+	return /* @__PURE__ */ jsx("div", {
+		className: "fixed inset-0 z-[120] flex items-center justify-center bg-[rgba(38,33,28,0.42)] px-2 py-3 backdrop-blur-[2px] min-[640px]:px-4 min-[640px]:py-6",
+		onClick: onClose,
+		children: /* @__PURE__ */ jsx("div", {
+			className: "max-h-[calc(100vh-1.5rem)] w-full max-w-[1120px] overflow-y-auto rounded-[22px] border border-[#E7E5DF] bg-[#FAF9F6] p-2 shadow-[0_2px_4px_rgba(20,15,0,.05),0_24px_56px_-20px_rgba(20,15,0,.18)] min-[640px]:max-h-[calc(100vh-3rem)] min-[640px]:p-3 min-[820px]:overflow-hidden",
+			onClick: (event) => event.stopPropagation(),
+			role: "dialog",
+			"aria-modal": "true",
+			"aria-label": "Video analysis",
+			children: /* @__PURE__ */ jsxs("div", {
+				className: "relative min-w-0 rounded-[18px] p-3 min-[640px]:p-4 min-[820px]:h-[min(760px,calc(100vh-88px))] min-[820px]:overflow-hidden md:p-5",
+				children: [
+					showErrorModal && /* @__PURE__ */ jsx(ErrorStateModal, {
+						message: analysis?.error_message,
+						retrying: regenerating,
+						onRetry: retryAnalysis,
+						onDismiss: onClose
+					}),
+					/* @__PURE__ */ jsx("button", {
+						type: "button",
+						onClick: onClose,
+						className: "absolute right-4 top-4 z-10 flex h-8 w-8 items-center justify-center rounded-full border border-[#E7E5DF] bg-white text-[#5C5A54] transition hover:text-[#0B0B0B]",
+						"aria-label": "Close analysis",
+						children: /* @__PURE__ */ jsx("svg", {
+							viewBox: "0 0 24 24",
+							className: "h-[13px] w-[13px] stroke-current",
+							fill: "none",
+							strokeWidth: "2.4",
+							strokeLinecap: "round",
+							children: /* @__PURE__ */ jsx("path", { d: "M5 5l14 14M19 5L5 19" })
+						})
+					}),
+					/* @__PURE__ */ jsxs("div", {
+						className: "grid h-full items-start gap-6 min-[980px]:grid-cols-[300px_minmax(0,1fr)]",
+						children: [/* @__PURE__ */ jsx(LeftSidebar, {
+							video,
+							canRegenerate,
+							regenerating,
+							disabledRegenerate: regenerateDisabled,
+							onRegenerate: regenerate,
+							analyzeState,
+							onAnalyze: startAnalysis,
+							saved,
+							saving,
+							onToggleSave,
+							showExternalLink
+						}), /* @__PURE__ */ jsxs("div", {
+							className: "flex min-h-0 min-w-0 flex-col gap-3.5 min-[820px]:h-full",
+							children: [
+								/* @__PURE__ */ jsx(VideoHeadline, {
+									video,
+									calloutDismissed,
+									onDismissCallout: () => setCalloutDismissed(true)
+								}),
+								/* @__PURE__ */ jsx(TabRow, {
+									tabs,
+									activeTab,
+									onChange: selectTab
+								}),
+								/* @__PURE__ */ jsx("div", {
+									className: "relative flex min-h-0 flex-1 after:pointer-events-none after:absolute after:inset-x-0 after:bottom-0 after:h-[26px] after:bg-[linear-gradient(180deg,rgba(250,249,246,0),#FAF9F6)] min-[820px]:after:block max-[819px]:after:hidden",
+									children: /* @__PURE__ */ jsx("div", {
+										ref: scrollerRef,
+										className: "-mr-2.5 min-h-0 flex-1 overscroll-contain py-0.5 pl-0.5 pr-3 min-[820px]:overflow-y-auto",
+										children: analysis?.status !== "complete" ? /* @__PURE__ */ jsx(ProcessingState, {
+											status: analysis?.status ?? "idle",
+											error: analysis?.error_message
+										}) : /* @__PURE__ */ jsx(ActivePanel, {
+											activeTab,
+											analysis,
+											result,
+											video
+										})
+									})
+								})
+							]
+						})]
+					})
+				]
+			})
+		})
+	});
+}
+//#endregion
 //#region resources/js/Pages/components/MyFeed.jsx
 var MyFeed_exports = /* @__PURE__ */ __exportAll({ default: () => MyFeed });
 /**
-* The signed-in "My Feed" home (mockup: V5 Home/My Feed). A two-part layout with a
-* column of search highlights beside the user's strongest breakout videos, drawn
-* from those same searches — their top sounds, top hashtags, and saved videos.
+* The signed-in "My Feed" home. A stream of the user's strongest breakout
+* videos beside a rail of three cards — the searches feeding the stream, the
+* hashtags those breakouts lean on, and what is climbing across Brand Beacon.
 *
-* All content comes from the user's own searches; when they have none the feed
-* shows an encouraging empty state instead. Free-user / global discovery feeds
-* are handled separately, later.
+* Everything in the stream comes from the user's own searches; a user with no
+* searches yet borrows the global feed instead of seeing an empty column.
+*
+* Layout follows the feed mockup: a post is a wide card (thumb beside copy) on
+* desktop and a full-bleed portrait card on phones. The rail drops to two
+* columns under the stream at tablet width, and to one column on phones.
 */
-var Icons$1 = {
+var FIRST_BATCH = 5;
+var BATCH = 8;
+var Icons$2 = {
 	play: /* @__PURE__ */ jsx("svg", {
 		viewBox: "0 0 24 24",
 		fill: "currentColor",
-		children: /* @__PURE__ */ jsx("path", { d: "M7 4.6v14.8L19.5 12z" })
+		children: /* @__PURE__ */ jsx("path", { d: "M8 5v14l11-7z" })
 	}),
-	eye: /* @__PURE__ */ jsxs("svg", {
+	spark: /* @__PURE__ */ jsx("svg", {
 		viewBox: "0 0 24 24",
 		fill: "none",
 		stroke: "currentColor",
 		strokeWidth: "2",
-		strokeLinecap: "round",
 		strokeLinejoin: "round",
-		children: [/* @__PURE__ */ jsx("path", { d: "M1.6 12S5.6 5 12 5s10.4 7 10.4 7-4 7-10.4 7S1.6 12 1.6 12z" }), /* @__PURE__ */ jsx("circle", {
-			cx: "12",
-			cy: "12",
-			r: "3"
-		})]
+		children: /* @__PURE__ */ jsx("path", { d: "M12 3l2.2 5.8L20 11l-5.8 2.2L12 19l-2.2-5.8L4 11l5.8-2.2z" })
 	}),
 	heart: /* @__PURE__ */ jsx("svg", {
 		viewBox: "0 0 24 24",
 		fill: "none",
 		stroke: "currentColor",
 		strokeWidth: "2",
-		strokeLinecap: "round",
 		strokeLinejoin: "round",
-		children: /* @__PURE__ */ jsx("path", { d: "M20.4 5.6a5 5 0 0 0-7.1 0L12 6.9l-1.3-1.3a5 5 0 1 0-7.1 7.1l8.4 8.4 8.4-8.4a5 5 0 0 0 0-7.1z" })
+		children: /* @__PURE__ */ jsx("path", { d: "M12 20s-7-4.5-7-9a4 4 0 0 1 7-2.6A4 4 0 0 1 19 11c0 4.5-7 9-7 9z" })
 	}),
 	comment: /* @__PURE__ */ jsx("svg", {
 		viewBox: "0 0 24 24",
 		fill: "none",
 		stroke: "currentColor",
 		strokeWidth: "2",
-		strokeLinecap: "round",
 		strokeLinejoin: "round",
-		children: /* @__PURE__ */ jsx("path", { d: "M21 11.5a8.4 8.4 0 0 1-9 8.4 9.6 9.6 0 0 1-3-.5L3 21l1.6-4.6A8.4 8.4 0 0 1 3 11.5a8.4 8.4 0 0 1 9-8.4 8.4 8.4 0 0 1 9 8.4z" })
+		children: /* @__PURE__ */ jsx("path", { d: "M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" })
 	}),
-	user: /* @__PURE__ */ jsxs("svg", {
+	share: /* @__PURE__ */ jsxs("svg", {
 		viewBox: "0 0 24 24",
 		fill: "none",
 		stroke: "currentColor",
 		strokeWidth: "2",
 		strokeLinecap: "round",
 		strokeLinejoin: "round",
-		children: [/* @__PURE__ */ jsx("path", { d: "M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" }), /* @__PURE__ */ jsx("circle", {
-			cx: "12",
-			cy: "7",
-			r: "4"
-		})]
+		children: [/* @__PURE__ */ jsx("path", { d: "M22 2 11 13" }), /* @__PURE__ */ jsx("path", { d: "M22 2l-7 20-4-9-9-4z" })]
 	}),
-	spark: /* @__PURE__ */ jsx("svg", {
+	trend: /* @__PURE__ */ jsxs("svg", {
+		viewBox: "0 0 24 24",
+		fill: "none",
+		stroke: "currentColor",
+		strokeWidth: "2.4",
+		strokeLinecap: "round",
+		strokeLinejoin: "round",
+		children: [/* @__PURE__ */ jsx("path", { d: "M3 17l6-6 4 4 8-8" }), /* @__PURE__ */ jsx("path", { d: "M21 3h-5m5 0v5" })]
+	}),
+	bookmark: /* @__PURE__ */ jsx("svg", {
 		viewBox: "0 0 24 24",
 		fill: "currentColor",
-		children: /* @__PURE__ */ jsx("path", { d: "M12 2l1.8 6.2L20 10l-6.2 1.8L12 18l-1.8-6.2L4 10l6.2-1.8z" })
+		children: /* @__PURE__ */ jsx("path", { d: "M6 3h12v18l-6-4.5L6 21z" })
+	}),
+	bookmarkO: /* @__PURE__ */ jsx("svg", {
+		viewBox: "0 0 24 24",
+		fill: "none",
+		stroke: "currentColor",
+		strokeWidth: "2",
+		strokeLinejoin: "round",
+		children: /* @__PURE__ */ jsx("path", { d: "M6 3h12v18l-6-4.5L6 21z" })
+	}),
+	ext: /* @__PURE__ */ jsx("svg", {
+		viewBox: "0 0 24 24",
+		fill: "none",
+		stroke: "currentColor",
+		strokeWidth: "2",
+		strokeLinecap: "round",
+		strokeLinejoin: "round",
+		children: /* @__PURE__ */ jsx("path", { d: "M7 17 17 7M8 7h9v9" })
+	}),
+	arrow: /* @__PURE__ */ jsx("svg", {
+		viewBox: "0 0 24 24",
+		fill: "none",
+		stroke: "currentColor",
+		strokeWidth: "2.4",
+		strokeLinecap: "round",
+		strokeLinejoin: "round",
+		children: /* @__PURE__ */ jsx("path", { d: "M5 12h14M13 6l6 6-6 6" })
 	})
 };
-function VideoCard({ video, currentPath }) {
-	const href = video.search_url ? withReturnTo(video.search_url, currentPath) : null;
+var tiktokTagUrl = (tag) => `https://www.tiktok.com/tag/${encodeURIComponent(String(tag).replace(/^#/, ""))}`;
+/**
+* The caption with every #hashtag and @mention linked. Captions arrive as plain
+* text from TikTok, so the tags are found by pattern rather than markup.
+*/
+function Caption({ text }) {
+	if (!text) return null;
+	const parts = String(text).split(/([#@][\p{L}\p{N}_.]+)/gu);
+	return /* @__PURE__ */ jsx("p", {
+		className: "bbf-cap",
+		children: parts.map((part, i) => {
+			if (/^#[\p{L}\p{N}_.]+$/u.test(part)) return /* @__PURE__ */ jsx("a", {
+				className: "bbf-tag",
+				href: tiktokTagUrl(part),
+				target: "_blank",
+				rel: "noopener noreferrer",
+				children: part
+			}, i);
+			if (/^@[\p{L}\p{N}_.]+$/u.test(part)) return /* @__PURE__ */ jsx("a", {
+				className: "bbf-tag",
+				href: `https://www.tiktok.com/${part}`,
+				target: "_blank",
+				rel: "noopener noreferrer",
+				children: part
+			}, i);
+			return part;
+		})
+	});
+}
+function PostMedia({ video }) {
 	const [playing, setPlaying] = useState(false);
 	const iframeRef = useRef(null);
-	const Details = href ? Link : "div";
 	const playerUrl = playerUrlFor(video, true);
 	useEffect(() => {
 		const iframe = iframeRef.current;
@@ -9438,524 +10303,528 @@ function VideoCard({ video, currentPath }) {
 			window.removeEventListener("message", handleReady);
 		};
 	}, [playing, video?.video_id]);
-	const body = /* @__PURE__ */ jsxs(Fragment$1, { children: [/* @__PURE__ */ jsxs("div", {
-		className: "mf-vt",
-		children: [
-			playing && playerUrl ? /* @__PURE__ */ jsxs(Fragment$1, { children: [/* @__PURE__ */ jsx("iframe", {
-				ref: iframeRef,
-				src: playerUrl,
-				title: video.caption || "TikTok video",
-				loading: "lazy",
-				allow: "autoplay; encrypted-media; fullscreen; picture-in-picture",
-				allowFullScreen: true
-			}), /* @__PURE__ */ jsx("button", {
-				type: "button",
-				className: "mf-close",
-				"aria-label": "Close player",
-				onClick: () => setPlaying(false),
-				children: "×"
-			})] }) : video.thumbnail ? /* @__PURE__ */ jsx("img", {
+	return /* @__PURE__ */ jsx("div", {
+		className: `bbf-media${playing ? " playing" : ""}`,
+		children: playing && playerUrl ? /* @__PURE__ */ jsxs(Fragment$1, { children: [/* @__PURE__ */ jsx("iframe", {
+			ref: iframeRef,
+			src: playerUrl,
+			title: video.caption || "TikTok video",
+			loading: "lazy",
+			allow: "autoplay; encrypted-media; fullscreen; picture-in-picture",
+			allowFullScreen: true
+		}), /* @__PURE__ */ jsx("button", {
+			type: "button",
+			className: "bbf-close",
+			"aria-label": "Close player",
+			onClick: () => setPlaying(false),
+			children: "×"
+		})] }) : /* @__PURE__ */ jsxs(Fragment$1, { children: [
+			video.thumbnail ? /* @__PURE__ */ jsx("img", {
 				src: video.thumbnail,
 				alt: "",
 				loading: "lazy"
 			}) : /* @__PURE__ */ jsx("span", {
-				className: "mf-vt__ph",
+				className: "bbf-media__ph",
 				style: { background: video.gradient }
 			}),
-			!playing && video.brand && /* @__PURE__ */ jsx("span", {
-				className: "mf-k",
-				children: video.brand
+			/* @__PURE__ */ jsx("span", { className: "bbf-scrim" }),
+			video.brand && video.search_url && /* @__PURE__ */ jsxs(Link, {
+				className: `bbf-vtag${video.search_type === "product" ? " p" : ""}`,
+				href: video.search_url,
+				children: [/* @__PURE__ */ jsx("i", {}), video.brand]
 			}),
-			!playing && video.score && /* @__PURE__ */ jsx("span", {
-				className: "mf-m",
-				children: video.score
-			}),
-			!playing && video.duration && /* @__PURE__ */ jsx("span", {
-				className: "mf-d",
+			video.duration && /* @__PURE__ */ jsx("span", {
+				className: "bbf-dur",
 				children: video.duration
 			}),
-			!playing && playerUrl && /* @__PURE__ */ jsx("button", {
-				type: "button",
-				className: "mf-p",
-				"aria-label": `Play video by ${video.handle || "TikTok creator"}`,
-				onClick: () => setPlaying(true),
-				children: Icons$1.play
+			/* @__PURE__ */ jsxs("span", {
+				className: "bbf-ovstats",
+				children: [/* @__PURE__ */ jsxs("span", {
+					className: "bbf-ovchip bbf-ovchip--score",
+					children: [/* @__PURE__ */ jsxs("span", {
+						className: "lab",
+						children: [/* @__PURE__ */ jsx("i", {}), "Breakout score"]
+					}), /* @__PURE__ */ jsx("span", {
+						className: "num",
+						children: video.score || "—"
+					})]
+				}), /* @__PURE__ */ jsxs("span", {
+					className: "bbf-ovchip bbf-ovchip--views",
+					children: [/* @__PURE__ */ jsxs("span", {
+						className: "lab",
+						children: [/* @__PURE__ */ jsx("i", {}), "Views"]
+					}), /* @__PURE__ */ jsx("span", {
+						className: "num",
+						children: video.views || "—"
+					})]
+				})]
 			}),
-			!playerUrl && /* @__PURE__ */ jsx("span", {
-				className: "mf-play-error",
+			playerUrl ? /* @__PURE__ */ jsx("button", {
+				type: "button",
+				className: "bbf-play",
+				"aria-label": `Play video by ${video.handle || "this creator"}`,
+				onClick: () => setPlaying(true),
+				children: Icons$2.play
+			}) : /* @__PURE__ */ jsx("span", {
+				className: "bbf-play-error",
 				role: "status",
 				children: "Video unavailable."
 			})
-		]
-	}), /* @__PURE__ */ jsxs(Details, {
-		className: "mf-vb",
-		...href ? { href } : {},
+		] })
+	});
+}
+/** Matches the results page's analyze CTA wording, so the states read the same. */
+function analyzeLabel(status) {
+	if (status === "processing") return "Analyzing video…";
+	if (status === "complete") return "View analysis";
+	if (status === "failed") return "Retry analysis";
+	return "Analyze video";
+}
+function Post({ video, onAnalyze, onToggleSave, saving }) {
+	const status = video.analysis?.status;
+	const busy = status === "processing";
+	return /* @__PURE__ */ jsx("article", {
+		className: "bbf-post",
+		children: /* @__PURE__ */ jsxs("div", {
+			className: "bbf-post__b",
+			children: [/* @__PURE__ */ jsx(PostMedia, { video }), /* @__PURE__ */ jsxs("div", {
+				className: "bbf-side",
+				children: [
+					/* @__PURE__ */ jsxs("div", {
+						className: "bbf-who",
+						children: [
+							/* @__PURE__ */ jsx("span", {
+								className: "bbf-av",
+								style: { background: video.gradient }
+							}),
+							/* @__PURE__ */ jsxs("span", {
+								className: "bbf-who__t",
+								children: [/* @__PURE__ */ jsx("span", {
+									className: "n",
+									children: video.handle || "on TikTok"
+								}), video.followers && /* @__PURE__ */ jsxs("span", {
+									className: "s",
+									children: [video.followers, " followers"]
+								})]
+							}),
+							video.uploaded_date && /* @__PURE__ */ jsx("time", {
+								className: "bbf-who__d",
+								dateTime: video.uploaded_at,
+								children: video.uploaded_date
+							})
+						]
+					}),
+					/* @__PURE__ */ jsx(Caption, { text: video.caption }),
+					/* @__PURE__ */ jsxs("div", {
+						className: "bbf-eng",
+						children: [
+							/* @__PURE__ */ jsxs("span", { children: [Icons$2.heart, video.likes] }),
+							/* @__PURE__ */ jsxs("span", { children: [Icons$2.comment, video.comments] }),
+							/* @__PURE__ */ jsxs("span", { children: [Icons$2.share, video.shares] }),
+							video.engagement && /* @__PURE__ */ jsxs("span", { children: [Icons$2.trend, video.engagement] })
+						]
+					}),
+					/* @__PURE__ */ jsxs("div", {
+						className: "bbf-acts",
+						children: [
+							/* @__PURE__ */ jsxs("button", {
+								type: "button",
+								className: `bbf-act bbf-act--an${status === "complete" ? " done" : ""}`,
+								onClick: () => onAnalyze(video),
+								"aria-busy": busy,
+								disabled: busy,
+								children: [busy ? /* @__PURE__ */ jsx("span", {
+									className: "bbf-spin",
+									"aria-hidden": true
+								}) : Icons$2.spark, /* @__PURE__ */ jsx("span", { children: analyzeLabel(status) })]
+							}),
+							video.post_url && /* @__PURE__ */ jsx("a", {
+								className: "bbf-act bbf-act--ic",
+								href: video.post_url,
+								target: "_blank",
+								rel: "noopener noreferrer",
+								title: "Open in TikTok",
+								"aria-label": "Open in TikTok",
+								children: Icons$2.ext
+							}),
+							/* @__PURE__ */ jsx("button", {
+								type: "button",
+								className: `bbf-act bbf-act--ic${video.bookmarked ? " on" : ""}`,
+								title: video.bookmarked ? "Remove from saved" : "Save video",
+								"aria-label": video.bookmarked ? "Remove from saved" : "Save video",
+								"aria-pressed": Boolean(video.bookmarked),
+								disabled: saving,
+								onClick: () => onToggleSave(video),
+								children: video.bookmarked ? Icons$2.bookmark : Icons$2.bookmarkO
+							})
+						]
+					})
+				]
+			})]
+		})
+	});
+}
+function SearchesCard({ searches, searchesCount }) {
+	if (searches.length === 0) return null;
+	return /* @__PURE__ */ jsxs("section", {
+		className: "bbf-rcard",
 		children: [
 			/* @__PURE__ */ jsxs("div", {
-				className: "mf-vb__meta",
-				children: [/* @__PURE__ */ jsx("p", {
-					className: "mf-vb__h",
-					children: video.handle || "on TikTok"
-				}), video.uploaded_date && /* @__PURE__ */ jsxs("time", {
-					className: "mf-vb__sub",
-					dateTime: video.uploaded_at,
-					children: ["Uploaded ", video.uploaded_date]
+				className: "bbf-rhead",
+				children: [/* @__PURE__ */ jsx("h3", { children: "Your searches" }), /* @__PURE__ */ jsx(Link, {
+					className: "bbf-chip bbf-chip--plain",
+					href: "/library",
+					children: "Manage"
 				})]
 			}),
-			video.caption && /* @__PURE__ */ jsx("p", {
-				className: "mf-vb__c",
-				children: video.caption
+			/* @__PURE__ */ jsx("div", {
+				className: "bbf-rlist",
+				children: searches.map((search) => /* @__PURE__ */ jsxs(Link, {
+					className: "bbf-rrow",
+					href: search.url,
+					children: [
+						/* @__PURE__ */ jsx("span", {
+							className: `bbf-src${search.type === "product" ? " p" : ""}`,
+							children: search.initials
+						}),
+						/* @__PURE__ */ jsxs("span", {
+							className: "t",
+							children: [/* @__PURE__ */ jsx("b", { children: search.name }), /* @__PURE__ */ jsxs("span", { children: [
+								search.breakouts,
+								" breakout",
+								search.breakouts === 1 ? "" : "s"
+							] })]
+						}),
+						search.score && /* @__PURE__ */ jsx("span", {
+							className: "g",
+							children: search.score
+						})
+					]
+				}, search.id))
 			}),
-			/* @__PURE__ */ jsxs("div", {
-				className: "mf-vb__s",
+			searchesCount > searches.length && /* @__PURE__ */ jsxs(Link, {
+				className: "bbf-rlink",
+				href: "/library",
 				children: [
-					/* @__PURE__ */ jsxs("span", { children: [Icons$1.eye, video.views] }),
-					/* @__PURE__ */ jsxs("span", { children: [Icons$1.heart, video.likes] }),
-					/* @__PURE__ */ jsxs("span", { children: [Icons$1.comment, video.comments] }),
-					/* @__PURE__ */ jsxs("span", { children: [Icons$1.user, video.followers] })
+					"See all ",
+					searchesCount,
+					" searches ",
+					Icons$2.arrow
 				]
 			})
 		]
-	})] });
-	return /* @__PURE__ */ jsx("article", {
-		className: "mf-vc",
-		children: body
 	});
 }
-function SoundsPanel({ sounds }) {
-	return /* @__PURE__ */ jsxs("div", {
-		className: "mf-panel",
-		children: [/* @__PURE__ */ jsx("div", {
-			className: "mf-sec",
-			children: /* @__PURE__ */ jsx("h2", { children: "your top sounds" })
-		}), sounds.map((sound, i) => /* @__PURE__ */ jsxs("a", {
-			className: "mf-rk",
-			href: `https://www.tiktok.com/search/sound?q=${encodeURIComponent(sound.label)}`,
-			target: "_blank",
-			rel: "noopener noreferrer",
-			"aria-label": `${sound.label} — open on TikTok`,
-			children: [/* @__PURE__ */ jsx("span", {
-				className: "mf-rk__p",
-				children: String(i + 1).padStart(2, "0")
-			}), /* @__PURE__ */ jsxs("span", {
-				className: "mf-rk__bd",
-				children: [/* @__PURE__ */ jsx("strong", { children: sound.label }), /* @__PURE__ */ jsxs("span", { children: [
-					"in ",
-					sound.count,
-					" of your breakout",
-					sound.count === 1 ? "" : "s"
-				] })]
-			})]
-		}, sound.label))]
-	});
-}
-function HashtagsPanel({ hashtags }) {
-	return /* @__PURE__ */ jsxs("div", {
-		className: "mf-panel",
-		children: [/* @__PURE__ */ jsx("div", {
-			className: "mf-sec",
-			children: /* @__PURE__ */ jsx("h2", { children: "your top hashtags" })
-		}), /* @__PURE__ */ jsx("div", {
-			className: "mf-htags",
-			children: hashtags.map((h) => /* @__PURE__ */ jsxs("a", {
-				className: "mf-hrow",
-				href: `https://www.tiktok.com/tag/${encodeURIComponent(String(h.tag).replace(/^#/, ""))}`,
+function HashtagsCard({ hashtags, hashtagsCount }) {
+	if (hashtags.length === 0) return null;
+	const top = Math.max(...hashtags.map((h) => h.count), 1);
+	return /* @__PURE__ */ jsxs("section", {
+		className: "bbf-rcard",
+		children: [
+			/* @__PURE__ */ jsxs("div", {
+				className: "bbf-rhead",
+				children: [/* @__PURE__ */ jsx("h3", { children: "Hashtags in your breakouts" }), /* @__PURE__ */ jsx("span", {
+					className: "bbf-chip bbf-chip--yours",
+					children: "Yours"
+				})]
+			}),
+			hashtags.map((h) => /* @__PURE__ */ jsxs("a", {
+				className: "bbf-hrow",
+				href: tiktokTagUrl(h.tag),
 				target: "_blank",
 				rel: "noopener noreferrer",
-				"aria-label": `#${h.tag} — open on TikTok`,
-				children: [/* @__PURE__ */ jsxs("strong", { children: ["#", h.tag] }), /* @__PURE__ */ jsxs("span", { children: [
-					h.count,
-					" video",
-					h.count === 1 ? "" : "s"
-				] })]
-			}, h.tag))
-		})]
-	});
-}
-function SavedPanel({ saved, savedCount }) {
-	return /* @__PURE__ */ jsxs("div", {
-		className: "mf-panel",
-		children: [
-			/* @__PURE__ */ jsx("div", {
-				className: "mf-sec",
-				children: /* @__PURE__ */ jsx("h2", { children: "you saved these" })
-			}),
-			/* @__PURE__ */ jsx("p", {
-				className: "mf-fsub",
-				children: "The last videos you saved."
-			}),
-			/* @__PURE__ */ jsx("div", {
-				className: "mf-savedrow",
-				children: saved.map((v) => /* @__PURE__ */ jsxs("span", {
-					className: "mf-saved-vc",
-					style: { background: v.gradient },
-					children: [v.thumbnail && /* @__PURE__ */ jsx("img", {
-						src: v.thumbnail,
-						alt: "",
-						loading: "lazy"
-					}), v.score && /* @__PURE__ */ jsx("span", {
-						className: "mf-score",
-						children: v.score
-					})]
-				}, v.id))
-			}),
-			/* @__PURE__ */ jsxs(Link, {
-				href: "/library",
-				className: "mf-link",
 				children: [
-					"All ",
-					savedCount,
-					" saved video",
-					savedCount === 1 ? "" : "s"
+					/* @__PURE__ */ jsxs("b", { children: ["#", h.tag] }),
+					/* @__PURE__ */ jsx("span", {
+						className: "bar",
+						children: /* @__PURE__ */ jsx("i", { style: { width: `${Math.round(h.count / top * 100)}%` } })
+					}),
+					/* @__PURE__ */ jsx("span", {
+						className: "c",
+						children: h.count
+					})
 				]
+			}, h.tag)),
+			hashtagsCount > hashtags.length && /* @__PURE__ */ jsxs("p", {
+				className: "bbf-rfoot",
+				children: [hashtagsCount, " hashtags appear across your breakout videos."]
 			})
 		]
 	});
 }
-function DiscoveryPanel({ kind, discovery }) {
-	const titles = {
-		searches: "most searched",
-		hashtags: "hashtags climbing",
-		sounds: "top sounds"
-	};
-	const sounds = discovery.topSounds ?? [];
-	const hashtags = discovery.climbingHashtags ?? [];
-	return /* @__PURE__ */ jsxs("div", {
-		className: "mf-panel",
+function ClimbingCard({ climbing }) {
+	return /* @__PURE__ */ jsxs("section", {
+		className: "bbf-rcard",
 		children: [
 			/* @__PURE__ */ jsxs("div", {
-				className: "mf-sec",
-				children: [/* @__PURE__ */ jsx("h2", { children: titles[kind] }), /* @__PURE__ */ jsx("span", {
-					className: "mf-platform",
-					children: "Brand Beacon"
+				className: "bbf-rhead",
+				children: [/* @__PURE__ */ jsx("h3", { children: "Climbing this week" }), /* @__PURE__ */ jsx("span", {
+					className: "bbf-chip",
+					children: "All brands"
 				})]
 			}),
-			kind === "searches" && /* @__PURE__ */ jsxs(Fragment$1, { children: [["brand", "product"].map((type) => /* @__PURE__ */ jsxs("div", { children: [
-				/* @__PURE__ */ jsx("p", {
-					className: "mf-discovery-label",
-					children: type === "brand" ? "Brands" : "Products"
-				}),
-				(discovery.mostSearched?.[type] ?? []).map((row, i) => /* @__PURE__ */ jsxs(Link, {
-					className: "mf-rk",
-					href: `${type === "product" ? "/products" : "/brands"}?q=${encodeURIComponent(row.phrase)}`,
-					children: [/* @__PURE__ */ jsx("span", {
-						className: "mf-rk__p",
-						children: String(i + 1).padStart(2, "0")
-					}), /* @__PURE__ */ jsxs("span", {
-						className: "mf-rk__bd",
-						children: [/* @__PURE__ */ jsx("strong", { children: row.phrase }), /* @__PURE__ */ jsxs("span", { children: [row.count, " searches this week"] })]
-					})]
-				}, row.phrase)),
-				!discovery.mostSearched?.[type]?.length && /* @__PURE__ */ jsx("p", {
-					className: "mf-fsub",
-					children: "No searches recorded this week."
-				})
-			] }, type)), /* @__PURE__ */ jsx("p", {
-				className: "mf-discovery-note",
-				children: "New searches across Brand Beacon in the last 7 days. Account identities are never shown."
-			})] }),
-			kind === "hashtags" && /* @__PURE__ */ jsxs(Fragment$1, { children: [
-				/* @__PURE__ */ jsx("div", {
-					className: "mf-discovery-tags",
-					children: hashtags.map((row) => /* @__PURE__ */ jsxs("a", {
-						href: `https://www.tiktok.com/tag/${encodeURIComponent(row.tag)}`,
-						target: "_blank",
-						rel: "noopener noreferrer",
-						children: [
-							"#",
-							row.tag,
-							" ",
-							/* @__PURE__ */ jsx("strong", { children: row.growth === null ? "New" : `+${row.growth}%` })
-						]
-					}, row.tag))
-				}),
-				!hashtags.length && /* @__PURE__ */ jsx("p", {
-					className: "mf-fsub",
-					children: "No rising hashtags recorded yet."
-				}),
-				/* @__PURE__ */ jsx("p", {
-					className: "mf-discovery-note",
-					children: "Occurrences in videos indexed in the last 7 days versus the previous 7. “New” means absent from the previous period; this measures our index, not all of TikTok."
-				})
-			] }),
-			kind === "sounds" && /* @__PURE__ */ jsxs(Fragment$1, { children: [
-				sounds.map((row, i) => /* @__PURE__ */ jsxs("a", {
-					className: "mf-rk",
-					href: `https://www.tiktok.com/search/sound?q=${encodeURIComponent(row.label)}`,
-					target: "_blank",
-					rel: "noopener noreferrer",
-					children: [/* @__PURE__ */ jsx("span", {
-						className: "mf-rk__p",
-						children: String(i + 1).padStart(2, "0")
-					}), /* @__PURE__ */ jsxs("span", {
-						className: "mf-rk__bd",
-						children: [/* @__PURE__ */ jsx("strong", { children: row.label }), /* @__PURE__ */ jsxs("span", { children: [
-							"In ",
-							row.count,
-							" indexed videos"
-						] })]
-					})]
-				}, row.label)),
-				!sounds.length && /* @__PURE__ */ jsx("p", {
-					className: "mf-fsub",
-					children: "No sounds recorded this week."
-				}),
-				/* @__PURE__ */ jsx("p", {
-					className: "mf-discovery-note",
-					children: "Most common sounds in videos indexed across Brand Beacon in the last 7 days."
-				})
-			] })
+			climbing.length > 0 ? climbing.map((row) => /* @__PURE__ */ jsxs("a", {
+				className: "bbf-hrow",
+				href: tiktokTagUrl(row.tag),
+				target: "_blank",
+				rel: "noopener noreferrer",
+				children: [/* @__PURE__ */ jsxs("b", { children: ["#", row.tag] }), /* @__PURE__ */ jsx("span", {
+					className: "g",
+					children: row.growth === null ? "New" : `+${row.growth}%`
+				})]
+			}, row.tag)) : /* @__PURE__ */ jsx("p", {
+				className: "bbf-rempty",
+				children: "No rising hashtags recorded yet."
+			}),
+			/* @__PURE__ */ jsx("p", {
+				className: "bbf-rfoot",
+				children: "Growth is week over week across every indexed video, not just your searches. “New” means the hashtag was absent from the previous week."
+			})
 		]
 	});
 }
 function DiscoveryPrompt() {
 	return /* @__PURE__ */ jsxs("div", {
-		className: "mf-prompt",
+		className: "bbf-prompt",
 		children: [/* @__PURE__ */ jsx("span", {
-			className: "mf-prompt__i",
-			children: Icons$1.spark
-		}), /* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsx("h2", { children: "Run your first search to make this yours" }), /* @__PURE__ */ jsx("p", { children: "Until then, here is what is breaking out across Brand Beacon — the videos, sounds and hashtags everyone else is surfacing. Search a brand or product above to swap it for your own." })] })]
+			className: "bbf-prompt__i",
+			children: Icons$2.spark
+		}), /* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsx("h2", { children: "Run your first search to make this yours" }), /* @__PURE__ */ jsx("p", { children: "Until then, here is what is breaking out across Brand Beacon. Search a brand or product above to swap it for your own." })] })]
 	});
 }
 function EmptyState() {
 	return /* @__PURE__ */ jsxs("div", {
-		className: "mf-empty",
+		className: "bbf-empty",
 		children: [
 			/* @__PURE__ */ jsx("span", {
-				className: "mf-empty__i",
-				children: Icons$1.spark
+				className: "bbf-empty__i",
+				children: Icons$2.spark
 			}),
 			/* @__PURE__ */ jsx("h2", { children: "Your feed is waiting on your first search" }),
-			/* @__PURE__ */ jsx("p", { children: "Search a brand or product above and we’ll start filling this in — your breakout videos, the sounds and hashtags they lean on, and the ones you save." })
+			/* @__PURE__ */ jsx("p", { children: "Search a brand or product above and we’ll start filling this in — your breakout videos, the hashtags they lean on, and the searches behind them." })
 		]
 	});
 }
-function FeedHead({ shown, totalCount, discoveryFeed }) {
-	if (discoveryFeed) return /* @__PURE__ */ jsxs("div", {
-		className: "mf-feedhead",
-		children: [/* @__PURE__ */ jsx("div", {
-			className: "mf-sec",
-			children: /* @__PURE__ */ jsx("h2", { children: "breaking out now" })
-		}), /* @__PURE__ */ jsx("p", { children: "The strongest videos across Brand Beacon this week, while your own feed fills up." })]
-	});
-	const remaining = Math.max(0, totalCount - shown);
-	const description = remaining > 0 ? `${totalCount} video${totalCount === 1 ? "" : "s"} broke out for you this week. ${shown} ${shown === 1 ? "is" : "are"} here, and the other ${remaining} come round on your next visit.` : `${totalCount} video${totalCount === 1 ? "" : "s"} broke out for you this week.`;
-	return /* @__PURE__ */ jsxs("div", {
-		className: "mf-feedhead",
-		children: [
-			/* @__PURE__ */ jsx("div", {
-				className: "mf-sec",
-				children: /* @__PURE__ */ jsx("h2", { children: "your feed" })
-			}),
-			/* @__PURE__ */ jsx("p", { children: description }),
-			/* @__PURE__ */ jsxs("span", {
-				className: "mf-feedhead__all",
-				children: ["All ", totalCount]
-			})
-		]
-	});
-}
-function MyFeed({ feed = {}, currentPath = "/home" }) {
-	const { videos = [], totalCount = videos.length, sounds = [], hashtags = [], saved = [], savedCount = 0, discovery = {}, isDiscoveryFeed = false } = feed;
-	const discoveryPanels = [
-		"searches",
-		"hashtags",
-		"sounds"
-	].map((kind) => /* @__PURE__ */ jsx(DiscoveryPanel, {
-		kind,
-		discovery
-	}, `discovery-${kind}`));
-	const feedStyles = /* @__PURE__ */ jsx("style", { children: scopedCss$2 });
-	if (videos.length === 0) return /* @__PURE__ */ jsxs(Fragment$1, { children: [
-		feedStyles,
-		/* @__PURE__ */ jsx(EmptyState, {}),
-		/* @__PURE__ */ jsx("div", {
-			className: "mf-discovery-empty",
-			children: discoveryPanels
-		})
-	] });
-	const mobilePanels = [];
-	if (sounds.length > 0) mobilePanels.push(/* @__PURE__ */ jsx(SoundsPanel, { sounds }, "sounds"));
-	mobilePanels.push(/* @__PURE__ */ jsx(DiscoveryPanel, {
-		kind: "sounds",
-		discovery
-	}, "discovery-sounds"));
-	if (hashtags.length > 0) mobilePanels.push(/* @__PURE__ */ jsx(HashtagsPanel, { hashtags }, "hashtags"));
-	mobilePanels.push(/* @__PURE__ */ jsx(DiscoveryPanel, {
-		kind: "hashtags",
-		discovery
-	}, "discovery-hashtags"));
-	if (saved.length > 0) mobilePanels.push(/* @__PURE__ */ jsx(SavedPanel, {
+function MyFeed({ feed = {}, currentPath = "/home", onAnalyze, analysisById = {} }) {
+	const { videos = [], totalCount = videos.length, searches = [], searchesCount = 0, hashtags = [], hashtagsCount = 0, climbing = [], isDiscoveryFeed = false } = feed;
+	const [shown, setShown] = useState(FIRST_BATCH);
+	const [saved, setSaved] = useState({});
+	const [savingId, setSavingId] = useState(null);
+	const cards = useMemo(() => videos.slice(0, shown).map((v) => ({
+		...v,
+		...v.id in saved ? { bookmarked: saved[v.id] } : {},
+		analysis: analysisById[v.id] ?? v.analysis ?? null
+	})), [
+		videos,
+		shown,
 		saved,
-		savedCount
-	}, "saved"));
-	mobilePanels.push(/* @__PURE__ */ jsx(DiscoveryPanel, {
-		kind: "searches",
-		discovery
-	}, "discovery-searches"));
-	const mobileItems = videos.flatMap((video, i) => [/* @__PURE__ */ jsx(VideoCard, {
-		video,
-		currentPath
-	}, `v-${video.id}-${i}`), ...mobilePanels[i] ? [mobilePanels[i]] : []]);
-	mobileItems.push(...mobilePanels.slice(videos.length));
+		analysisById
+	]);
+	const remaining = Math.max(0, videos.length - shown);
+	const toggleSave = async (video) => {
+		const next = !video.bookmarked;
+		setSavingId(video.id);
+		try {
+			await (next ? bookmarks.save(video.id) : bookmarks.remove(video.id));
+			setSaved((cur) => ({
+				...cur,
+				[video.id]: next
+			}));
+		} catch {} finally {
+			setSavingId(null);
+		}
+	};
+	const analyze = (video) => {
+		if (typeof onAnalyze === "function") return onAnalyze(video);
+		return video.search_url ? router.visit(withReturnTo(video.search_url, currentPath)) : void 0;
+	};
+	const styles = /* @__PURE__ */ jsx("style", { children: scopedCss$3 });
+	if (videos.length === 0) return /* @__PURE__ */ jsxs(Fragment$1, { children: [styles, /* @__PURE__ */ jsx(EmptyState, {})] });
 	return /* @__PURE__ */ jsxs(Fragment$1, { children: [
-		feedStyles,
+		styles,
 		isDiscoveryFeed && /* @__PURE__ */ jsx(DiscoveryPrompt, {}),
-		/* @__PURE__ */ jsx(FeedHead, {
-			shown: videos.length,
-			totalCount,
-			discoveryFeed: isDiscoveryFeed
-		}),
-		/* @__PURE__ */ jsx("div", {
-			className: "mf-mobile",
-			children: mobileItems
+		/* @__PURE__ */ jsxs("div", {
+			className: "bbf-sbar",
+			children: [/* @__PURE__ */ jsx("h2", { children: isDiscoveryFeed ? "Breaking out now" : "Your top breakout videos" }), /* @__PURE__ */ jsx("p", { children: isDiscoveryFeed ? "The strongest videos across Brand Beacon this week, while your own feed fills up." : `Curated list of the top breakout videos from your searches and categories.${totalCount > videos.length ? ` ${totalCount} broke out for you this week.` : ""}` })]
 		}),
 		/* @__PURE__ */ jsxs("div", {
-			className: "mf",
-			children: [/* @__PURE__ */ jsx("section", {
-				className: "mf-videos",
+			className: "bbf-grid",
+			children: [/* @__PURE__ */ jsxs("section", {
+				className: "bbf-stream",
 				"aria-label": isDiscoveryFeed ? "Breakout videos across Brand Beacon" : "Your breakout videos",
-				children: videos.map((video, i) => /* @__PURE__ */ jsx(VideoCard, {
+				children: [cards.map((video, i) => /* @__PURE__ */ jsx(Post, {
 					video,
-					currentPath
-				}, `v-${video.id}-${i}`))
-			}), /* @__PURE__ */ jsxs("aside", {
-				className: "mf-sidebar",
-				"aria-label": "Your search highlights and Brand Beacon trends",
-				children: [
-					sounds.length > 0 && /* @__PURE__ */ jsx(SoundsPanel, { sounds }),
-					/* @__PURE__ */ jsx(DiscoveryPanel, {
-						kind: "sounds",
-						discovery
-					}),
-					hashtags.length > 0 && /* @__PURE__ */ jsx(HashtagsPanel, { hashtags }),
-					/* @__PURE__ */ jsx(DiscoveryPanel, {
-						kind: "hashtags",
-						discovery
-					}),
-					saved.length > 0 && /* @__PURE__ */ jsx(SavedPanel, {
-						saved,
-						savedCount
-					}),
-					/* @__PURE__ */ jsx(DiscoveryPanel, {
-						kind: "searches",
-						discovery
+					onAnalyze: analyze,
+					onToggleSave: toggleSave,
+					saving: savingId === video.id
+				}, `${video.id}-${i}`)), remaining > 0 && /* @__PURE__ */ jsx("div", {
+					className: "bbf-more",
+					children: /* @__PURE__ */ jsxs("button", {
+						type: "button",
+						className: "bbf-btn",
+						onClick: () => setShown((n) => n + BATCH),
+						children: [
+							"Load ",
+							Math.min(BATCH, remaining),
+							" more"
+						]
 					})
+				})]
+			}), /* @__PURE__ */ jsxs("aside", {
+				className: "bbf-rail",
+				"aria-label": "Your searches and hashtag trends",
+				children: [
+					/* @__PURE__ */ jsx(SearchesCard, {
+						searches,
+						searchesCount
+					}),
+					/* @__PURE__ */ jsx(HashtagsCard, {
+						hashtags,
+						hashtagsCount
+					}),
+					/* @__PURE__ */ jsx(ClimbingCard, { climbing })
 				]
 			})]
 		})
 	] });
 }
-var scopedCss$2 = `
-.mf-platform{margin-left:auto;font-size:.55rem;font-weight:800;text-transform:uppercase;white-space:nowrap;background:var(--wash);padding:4px 5px;border-radius:5px}
-.mf-discovery-label{font-size:.65rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:700}
-.mf-discovery-note{font-size:.72rem;line-height:1.5;color:var(--muted);margin:0}
-.mf-discovery-tags{display:flex;flex-wrap:wrap;gap:8px}
-.mf-discovery-tags a{font-size:.78rem;padding:7px;border-radius:8px;background:var(--wash);color:inherit;text-decoration:none;overflow-wrap:anywhere}
-.mf-discovery-tags strong{color:var(--amber-ink);margin-left:4px}
-.mf-discovery-empty{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(260px,100%),1fr));gap:16px;margin-top:20px;align-items:start}
-.mf-header{display:flex;align-items:center;justify-content:space-between;gap:16px}
-.mf-feedhead{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 14px;margin:28px 0 20px}
-.mf-feedhead .mf-sec{flex:none}
-.mf-feedhead p{margin:0;flex:1;min-width:240px;color:var(--muted);font-size:.86rem;line-height:1.5}
-.mf-feedhead__all{margin-left:auto;flex:none;font-size:.82rem;font-weight:700;color:var(--amber-ink)}
-.mf-header .mf-qs{flex:1;min-width:0;max-width:520px}
-.mf-header .ent{display:none;margin-left:0}
-@media(min-width:1100px){.mf-header .ent{display:inline-flex;flex:none}}
-.mf-qs{position:relative;display:flex;align-items:center;gap:10px;min-height:52px;padding:0 6px 0 16px;border-radius:12px;border:1px solid rgba(0,0,0,.09);background:var(--white);box-shadow:0 1px 2px rgba(16,18,32,.04);color:inherit;transition:border-color .16s,box-shadow .16s}
-.mf-qs:focus-within{border-color:var(--yellow);box-shadow:0 0 0 4px rgba(255,198,41,.18)}
-.mf-qs>svg{width:18px;height:18px;color:var(--muted);flex:none}
-.mf-qs__in{flex:1;min-width:0;border:0;outline:0;background:transparent;font:inherit;color:var(--ink);font-size:.92rem;font-weight:500}
-.mf-qs__in::placeholder{color:var(--faint-2,#5c5a54)}
-.mf-qs__menuwrap{position:relative;flex:none}
-.mf-qs__btn{flex:none;display:inline-flex;align-items:center;gap:6px;min-height:40px;padding:0 16px;border:0;border-radius:10px;background:linear-gradient(#ffd84d,#ffc629);color:#0b0b0b;font-size:.84rem;font-weight:700;cursor:pointer}
-.mf-qs__btn svg{width:13px;height:13px;transition:transform .16s}
-.mf-qs__btn[aria-expanded="true"] svg{transform:rotate(180deg)}
-.mf-qs__btn[disabled]{opacity:.5;cursor:not-allowed}
-.mf-qs__menu{position:absolute;top:calc(100% + 8px);right:0;z-index:30;min-width:190px;overflow:hidden;border:1px solid var(--line);border-radius:12px;background:var(--white);box-shadow:0 18px 36px -18px rgba(20,15,0,.32)}
-.mf-qs__menu button{display:block;width:100%;padding:11px 14px;border:0;background:transparent;text-align:left;font-size:.86rem;font-weight:600;color:var(--ink);cursor:pointer}
-.mf-qs__menu button:hover,.mf-qs__menu button:focus-visible{background:var(--wash)}
+var scopedCss$3 = `
+.bbf-sbar{margin:0 0 14px}
+.bbf-sbar h2{position:relative;margin:0;padding-left:13px;font-size:1.1rem;font-weight:800;letter-spacing:-.026em;color:var(--ink)}
+.bbf-sbar h2::before{content:'';position:absolute;left:0;top:.2em;bottom:.2em;width:3px;border-radius:2px;background:var(--yellow)}
+.bbf-sbar p{margin:4px 0 0;padding-left:13px;font-size:.88rem;line-height:1.5;color:var(--muted)}
 
-/* Desktop-only: the video feed and highlights sidebar share the page scroll
-   in one grid. Both are hidden below 1100px, where .mf-mobile takes over —
-   .mf-vc's base rules stay mobile's portrait card; the row layout below is
-   scoped under .mf-videos so it never reaches .mf-mobile. */
-.mf{margin-top:24px;display:none;gap:24px;align-items:start}
-.mf-mobile{margin-top:24px;display:flex;flex-direction:column;gap:14px}
-@media(min-width:820px) and (max-width:1099px){
-  .mf-mobile{display:block;columns:2;column-gap:16px}
-  .mf-mobile>*{break-inside:avoid;margin-bottom:16px}
+.bbf-grid{display:grid;grid-template-columns:minmax(0,1fr) 312px;gap:22px;align-items:start}
+.bbf-stream{display:flex;flex-direction:column;gap:14px;min-width:0}
+
+.bbf-post{background:var(--white);border:1px solid var(--line);border-radius:16px;overflow:hidden;transition:border-color .16s}
+.bbf-post:hover{border-color:var(--line-2,#D9D6CF)}
+.bbf-post__b{display:grid;grid-template-columns:262px minmax(0,1fr);gap:18px;padding:16px}
+
+.bbf-media{position:relative;aspect-ratio:9/13;border-radius:14px;overflow:hidden;background:var(--paper,#FAF9F6)}
+.bbf-media img,.bbf-media__ph{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}
+.bbf-media iframe{position:absolute;inset:0;width:100%;height:100%;border:0;background:#000;display:block}
+.bbf-scrim{position:absolute;left:0;right:0;bottom:0;height:44%;z-index:4;pointer-events:none;background:linear-gradient(180deg,transparent,rgba(11,11,11,.34) 45%,rgba(11,11,11,.62))}
+.bbf-vtag{position:absolute;top:9px;left:9px;z-index:6;display:inline-flex;align-items:center;gap:6px;max-width:calc(100% - 76px);padding:5px 10px;border-radius:8px;background:rgba(255,255,255,.94);backdrop-filter:blur(6px);font-size:.74rem;font-weight:800;color:var(--ink);letter-spacing:-.01em;text-decoration:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;transition:.16s}
+.bbf-vtag i{width:5px;height:5px;border-radius:50%;background:var(--yellow);flex:none}
+.bbf-vtag.p i{background:#C2410C}
+.bbf-vtag:hover{background:#fff;color:var(--amber-ink)}
+.bbf-dur{position:absolute;top:9px;right:9px;z-index:5;padding:3px 8px;border-radius:7px;background:rgba(11,11,11,.55);color:#fff;font-size:.68rem;font-weight:700;font-variant-numeric:tabular-nums}
+.bbf-play{position:absolute;inset:0;margin:auto;z-index:6;width:42px;height:42px;display:grid;place-items:center;border:0;border-radius:50%;background:rgba(255,255,255,.92);box-shadow:0 3px 12px rgba(0,0,0,.25);cursor:pointer;opacity:0;transition:opacity .2s}
+.bbf-media:hover .bbf-play,.bbf-play:focus-visible{opacity:1}
+.bbf-play svg{width:15px;height:15px;margin-left:2px;color:#1A1400}
+.bbf-close{position:absolute;top:9px;right:9px;z-index:7;width:28px;height:28px;border:0;border-radius:50%;background:rgba(0,0,0,.65);color:#fff;font-size:1.25rem;line-height:1;cursor:pointer}
+.bbf-play-error{position:absolute;inset:auto 12px 12px;z-index:6;padding:10px;border-radius:8px;background:rgba(0,0,0,.8);color:#fff;text-align:center;font-size:.78rem}
+.bbf-ovstats{position:absolute;left:9px;right:9px;bottom:9px;z-index:5;display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.bbf-ovchip{border-radius:10px;padding:7px 8px 8px;border:1px solid rgba(255,255,255,.35);box-shadow:0 4px 14px rgba(0,0,0,.28)}
+.bbf-ovchip .lab{display:flex;align-items:center;gap:5px;font-size:.56rem;font-weight:800;letter-spacing:.07em;text-transform:uppercase;white-space:nowrap}
+.bbf-ovchip .lab i{width:4px;height:4px;border-radius:50%;background:currentColor;flex:none}
+.bbf-ovchip .num{display:block;margin-top:3px;font-size:1.02rem;font-weight:800;line-height:1;letter-spacing:-.02em;color:var(--ink);font-variant-numeric:tabular-nums}
+.bbf-ovchip--score{background:#FFF3CF}
+.bbf-ovchip--score .lab{color:var(--amber-ink)}
+.bbf-ovchip--views{background:#FEF0E7}
+.bbf-ovchip--views .lab{color:#C2410C}
+
+.bbf-side{min-width:0;display:flex;flex-direction:column;gap:12px}
+.bbf-who{display:flex;align-items:flex-start;gap:9px}
+.bbf-av{width:32px;height:32px;border-radius:50%;flex:none;margin-top:1px;background:linear-gradient(150deg,#ffd27a,#ff9a5a 55%,#c0607a)}
+.bbf-who__t{min-width:0}
+.bbf-who__t .n{display:block;font-size:.88rem;font-weight:700;color:var(--ink);line-height:1.3;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bbf-who__t .s{display:block;font-size:.76rem;color:var(--faint,#74716A);line-height:1.3}
+.bbf-who__d{margin-left:auto;padding-top:2px;flex:none;font-size:.76rem;color:var(--faint,#74716A);white-space:nowrap;font-variant-numeric:tabular-nums}
+.bbf-cap{margin:0;font-size:.9rem;line-height:1.5;color:var(--ink);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.bbf-tag{color:var(--amber-ink);font-weight:700;text-decoration:none}
+.bbf-tag:hover{text-decoration:underline;text-underline-offset:2px}
+.bbf-eng{display:flex;justify-content:space-between;gap:6px;margin-top:auto;padding-top:12px;border-top:1px solid var(--line);font-size:.8rem;font-weight:600;color:var(--muted);font-variant-numeric:tabular-nums}
+.bbf-eng span{display:inline-flex;align-items:center;gap:5px;white-space:nowrap}
+.bbf-eng svg{width:13px;height:13px;flex:none;color:var(--faint,#74716A)}
+.bbf-acts{display:flex;gap:8px;margin-top:2px}
+.bbf-act{display:inline-flex;align-items:center;justify-content:center;gap:7px;height:38px;border:0;border-radius:10px;font:inherit;font-size:.84rem;font-weight:700;text-decoration:none;cursor:pointer;transition:.16s}
+.bbf-act svg{width:14px;height:14px;flex:none}
+.bbf-act--an{flex:1;background:var(--yellow);color:#1A1400}
+.bbf-act--an:hover{background:var(--yellow-hot,#FFD84D)}
+.bbf-act--ic{width:38px;border:1px solid var(--line);background:var(--white);color:var(--muted)}
+.bbf-act--ic:hover{color:var(--ink);border-color:var(--line-2,#D9D6CF)}
+.bbf-act--ic.on{color:var(--amber-ink);border-color:#FFF3CF;background:var(--wash)}
+.bbf-act--an.done{background:var(--white);border:1px solid var(--yellow);color:var(--ink)}
+.bbf-act[disabled]{opacity:.55;cursor:not-allowed}
+.bbf-act--an[aria-busy="true"]{opacity:1}
+.bbf-spin{width:14px;height:14px;flex:none;border-radius:50%;border:2px solid rgba(26,20,0,.28);border-top-color:#1A1400;animation:bbf-sp .8s linear infinite}
+@keyframes bbf-sp{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.bbf-spin{animation:none}}
+.bbf-act:focus-visible,.bbf-play:focus-visible,.bbf-vtag:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+
+.bbf-more{display:flex;justify-content:center;padding:6px 0 4px}
+.bbf-btn{display:inline-flex;align-items:center;justify-content:center;height:38px;padding:0 18px;border:1px solid var(--line-2,#D9D6CF);border-radius:10px;background:var(--white);font:inherit;font-size:.85rem;font-weight:700;color:var(--ink);cursor:pointer;transition:.16s}
+.bbf-btn:hover{background:var(--paper,#FAF9F6);border-color:#BDBAB2}
+
+.bbf-rail{position:sticky;top:24px;display:flex;flex-direction:column;gap:14px;min-width:0}
+.bbf-rcard{background:var(--white);border:1px solid var(--line);border-radius:16px;padding:15px 16px;min-width:0}
+.bbf-rhead{display:flex;align-items:center;gap:8px;margin-bottom:11px}
+.bbf-rhead h3{margin:0;font-size:.92rem;font-weight:800;letter-spacing:-.02em;color:var(--ink)}
+.bbf-chip{margin-left:auto;flex:none;padding:2px 6px;border:1px solid var(--line);border-radius:5px;font-size:.62rem;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:var(--faint,#74716A);text-decoration:none}
+.bbf-chip--plain{text-transform:none;letter-spacing:0;font-size:.72rem}
+.bbf-chip--plain:hover{color:var(--ink);border-color:var(--line-2,#D9D6CF)}
+.bbf-chip--yours{border-color:transparent;padding:3px 7px;color:var(--amber-ink);background:var(--wash)}
+.bbf-rlist{display:flex;flex-direction:column}
+.bbf-rrow{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--line);color:inherit;text-decoration:none}
+.bbf-rrow:first-child{padding-top:0}
+.bbf-rrow:last-child{border-bottom:0;padding-bottom:0}
+.bbf-src{width:30px;height:30px;flex:none;display:grid;place-items:center;border-radius:8px;background:var(--wash);color:var(--amber-ink);font-size:.72rem;font-weight:800}
+.bbf-src.p{background:#FEF0E7;color:#C2410C}
+.bbf-rrow .t{flex:1;min-width:0}
+.bbf-rrow .t b{display:block;font-size:.82rem;font-weight:700;color:var(--ink);line-height:1.3;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bbf-rrow .t span{display:block;font-size:.73rem;color:var(--faint,#74716A);line-height:1.3}
+.bbf-rrow:hover .t b{color:var(--amber-ink)}
+.bbf-rrow .g,.bbf-hrow .g{flex:none;font-size:.75rem;font-weight:800;color:#1F7A4D;font-variant-numeric:tabular-nums}
+.bbf-hrow{display:flex;align-items:center;gap:9px;padding:7px 0;border-bottom:1px solid var(--line);color:inherit;text-decoration:none}
+.bbf-hrow:first-of-type{padding-top:0}
+.bbf-hrow:last-of-type{border-bottom:0;padding-bottom:0}
+.bbf-hrow b{flex:1;min-width:0;font-size:.84rem;font-weight:700;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bbf-hrow:hover b{color:var(--amber-ink)}
+.bbf-hrow .bar{width:56px;height:5px;flex:none;border-radius:3px;background:var(--paper,#FAF9F6);overflow:hidden}
+.bbf-hrow .bar i{display:block;height:100%;border-radius:3px;background:var(--yellow)}
+.bbf-hrow .c{flex:none;min-width:24px;text-align:right;font-size:.75rem;color:var(--faint,#74716A);font-variant-numeric:tabular-nums}
+.bbf-rfoot{margin:11px 0 0;padding-top:10px;border-top:1px solid var(--line);font-size:.76rem;line-height:1.45;color:var(--faint,#74716A)}
+.bbf-rempty{margin:0;font-size:.8rem;line-height:1.5;color:var(--muted)}
+.bbf-rlink{display:inline-flex;align-items:center;gap:5px;margin-top:10px;font-size:.8rem;font-weight:700;color:var(--amber-ink);text-decoration:none}
+.bbf-rlink:hover{text-decoration:underline;text-underline-offset:3px}
+.bbf-rlink svg{width:12px;height:12px}
+
+.bbf-prompt{display:flex;gap:14px;align-items:flex-start;margin:0 0 18px;padding:16px 18px;border:1px solid #F2E2AE;border-radius:16px;background:var(--wash)}
+.bbf-prompt__i{width:34px;height:34px;flex:none;display:grid;place-items:center;border-radius:10px;background:var(--yellow);color:#1A1400}
+.bbf-prompt__i svg{width:17px;height:17px}
+.bbf-prompt h2{margin:0;font-size:.95rem;font-weight:800;letter-spacing:-.02em;color:var(--ink)}
+.bbf-prompt p{margin:5px 0 0;max-width:70ch;font-size:.83rem;line-height:1.55;color:#5B4300}
+.bbf-empty{margin-top:8px;padding:40px 26px;border:1px dashed var(--line-2,#D9D6CF);border-radius:20px;background:var(--white);text-align:center}
+.bbf-empty__i{width:52px;height:52px;margin:0 auto 16px;display:grid;place-items:center;border-radius:16px;background:var(--wash);color:var(--amber-ink)}
+.bbf-empty__i svg{width:24px;height:24px}
+.bbf-empty h2{margin:0;font-size:1.12rem;font-weight:800;letter-spacing:-.03em;color:var(--ink)}
+.bbf-empty p{margin:10px auto 0;max-width:440px;font-size:.9rem;line-height:1.55;color:var(--muted)}
+
+@media (prefers-reduced-motion:reduce){.bbf-post,.bbf-act,.bbf-play,.bbf-btn,.bbf-vtag{transition:none}}
+
+/* Tablet: the rail moves under the stream as a two-up row. */
+@media (max-width:1140px){
+  .bbf-grid{grid-template-columns:minmax(0,1fr)}
+  .bbf-rail{position:static;display:grid;grid-template-columns:1fr 1fr;gap:14px}
 }
-.mf-sidebar{order:2;display:flex;flex-direction:column;gap:16px;min-width:0}
-.mf-videos{order:1;min-width:0;display:flex;flex-direction:column;gap:16px}
-@media(min-width:1100px){
-  .mf{display:grid;grid-template-columns:minmax(0,1fr) 300px}
-  .mf-mobile{display:none}
+@media (max-width:980px){
+  .bbf-post__b{grid-template-columns:190px minmax(0,1fr);gap:14px}
 }
-.mf-vc{display:block;overflow:hidden;text-align:left;background:var(--white);border:1px solid var(--line);border-radius:16px;text-decoration:none;color:inherit;transition:box-shadow .16s,transform .16s}
-.mf-vc:hover{box-shadow:0 14px 34px -20px rgba(20,15,0,.32)}
-.mf-vt{position:relative;overflow:hidden;aspect-ratio:4/5;background:var(--paper,#faf9f6)}
-.mf-vt__ph{position:absolute;inset:0;width:100%;height:100%;display:block}
-.mf-vt img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}
-.mf-vt iframe{position:absolute;inset:0;width:100%;height:100%;border:0;background:#000;display:block}
-.mf-close{position:absolute;top:9px;right:9px;z-index:3;width:28px;height:28px;border:0;border-radius:50%;background:rgba(0,0,0,.65);color:#fff;font-size:1.25rem;line-height:1;cursor:pointer}
-.mf-play-error{position:absolute;inset:40% 12px auto;padding:12px;border-radius:8px;background:rgba(0,0,0,.8);color:#fff;text-align:center;font-size:.8rem}
-.mf-vb{display:block;color:inherit;text-decoration:none}
-a.mf-vb:hover{background:var(--wash)}
-.mf-rk,.mf-hrow{color:inherit;text-decoration:none}
-a.mf-rk:hover,a.mf-hrow:hover{background:var(--wash)}
-.mf-p{border:0;cursor:pointer}
-.mf-p:focus-visible,a.mf-vb:focus-visible,.mf-rk:focus-visible,.mf-hrow:focus-visible{outline:3px solid var(--yellow);outline-offset:-3px}
-.mf-k{position:absolute;top:9px;right:9px;z-index:2;display:inline-flex;align-items:center;gap:5px;padding:4px 9px;border-radius:7px;background:rgba(11,11,11,.62);backdrop-filter:blur(6px);color:#fff;font-size:.68rem;font-weight:700;max-width:60%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.mf-m{position:absolute;left:9px;bottom:9px;z-index:2;padding:3px 8px;border-radius:6px;background:var(--yellow);color:#1a1400;font-size:.68rem;font-weight:800}
-.mf-d{position:absolute;right:9px;bottom:9px;z-index:2;padding:3px 7px;border-radius:6px;background:rgba(11,11,11,.72);color:#fff;font-size:.66rem;font-weight:700}
-.mf-p{position:absolute;inset:0;z-index:2;width:44px;height:44px;margin:auto;display:grid;place-items:center;border-radius:50%;background:rgba(255,255,255,.94);box-shadow:0 3px 12px rgba(0,0,0,.28)}
-.mf-p svg{width:15px;height:15px;color:#0b0b0b;transform:translateX(1px)}
-.mf-vb{padding:14px}
-.mf-vb__meta{display:flex;align-items:baseline;justify-content:space-between;gap:8px}
-.mf-vb__h{margin:0;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--amber-ink);font-size:.79rem;font-weight:700}
-.mf-vb__sub{margin:0;flex:0 0 auto;white-space:nowrap;color:var(--muted);font-size:.73rem;font-weight:500}
-.mf-vb__c{margin:6px 0 0;color:var(--ink);font-size:.82rem;line-height:1.5}
-.mf-vb__s{display:flex;flex-wrap:wrap;gap:12px;margin-top:12px;padding-top:11px;border-top:1px solid var(--line);color:var(--muted);font-size:.75rem}
-.mf-vb__s span{display:inline-flex;align-items:center;gap:5px;white-space:nowrap}
-.mf-vb__s svg{width:12px;height:12px;flex:none}
-/* Desktop feed row card — a wide horizontal card (thumb + copy side by side),
-   scoped to .mf-videos so .mf-mobile's portrait .mf-vc is untouched. */
-.mf-videos .mf-vc{display:flex;flex-direction:row;align-items:center}
-.mf-videos .mf-vt{width:200px;flex:none;aspect-ratio:9/16}
-.mf-videos .mf-vb{flex:1;min-width:0;padding:18px 22px}
-.mf-videos .mf-vb__c{font-size:.86rem}
-.mf-panel{background:var(--white);border:1px solid var(--line);border-radius:16px;padding:15px 16px;display:flex;flex-direction:column;gap:12px}
-.mf-sec{display:flex;align-items:baseline;gap:9px}
-.mf-sec h2{margin:0;display:flex;align-items:center;gap:8px;font-size:.98rem;font-weight:700;letter-spacing:-.03em;color:var(--ink)}
-.mf-sec h2::before{content:'';width:3px;height:15px;flex:none;border-radius:2px;background:var(--yellow)}
-.mf-rk{display:flex;align-items:center;gap:11px;padding:9px 0;border-top:1px solid rgba(0,0,0,.05)}
-.mf-rk__p{width:20px;flex:none;color:var(--muted);font-family:ui-monospace,Menlo,monospace;font-size:.72rem;font-weight:700}
-.mf-rk__bd{flex:1;min-width:0;display:flex;flex-direction:column}
-.mf-rk__bd strong{font-size:.86rem;font-weight:700;letter-spacing:-.02em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.mf-rk__bd span{color:var(--muted);font-size:.72rem;font-weight:500}
-.mf-htags{display:flex;flex-direction:column}
-.mf-hrow{display:flex;align-items:baseline;justify-content:space-between;gap:10px;padding:9px 0;border-top:1px solid rgba(0,0,0,.05)}
-.mf-hrow:first-child{border-top:0}
-.mf-hrow strong{font-size:.9rem;font-weight:700;color:var(--ink)}
-.mf-hrow span{color:var(--muted);font-size:.75rem;font-weight:600}
-.mf-fsub{margin:-3px 0 0;color:var(--ink);font-size:.82rem;line-height:1.5;font-weight:500}
-.mf-savedrow{display:flex;gap:9px}
-.mf-saved-vc{position:relative;flex:1;aspect-ratio:9/16;border-radius:10px;overflow:hidden;background:var(--paper,#faf9f6)}
-.mf-saved-vc img{width:100%;height:100%;object-fit:cover;display:block}
-.mf-score{position:absolute;left:8px;bottom:8px;display:inline-flex;align-items:center;padding:3px 8px;border-radius:6px;background:var(--yellow);color:#0b0b0b;font-family:ui-monospace,Menlo,monospace;font-size:.7rem;font-weight:700}
-.mf-link{font-size:.79rem;font-weight:700;color:var(--amber-ink);text-decoration:none}
-.mf-link:hover{text-decoration:underline}
-.mf-prompt{display:flex;gap:14px;align-items:flex-start;margin-top:24px;padding:16px 18px;border:1px solid #F2E2AE;border-radius:16px;background:#FFF8E6}
-.mf-prompt__i{width:34px;height:34px;flex:none;display:grid;place-items:center;border-radius:10px;background:var(--yellow);color:#1A1400}
-.mf-prompt__i svg{width:17px;height:17px}
-.mf-prompt h2{margin:0;font-size:.95rem;font-weight:800;letter-spacing:-.02em;color:var(--ink)}
-.mf-prompt p{margin:5px 0 0;font-size:.83rem;line-height:1.55;color:#5B4300;max-width:70ch}
-.mf-empty{background:var(--white);border:1px dashed var(--line-2,#DEDBD3);border-radius:20px;padding:40px 26px;text-align:center;margin-top:24px}
-.mf-empty__i{width:52px;height:52px;margin:0 auto 16px;border-radius:16px;background:var(--wash);color:var(--amber-ink);display:grid;place-items:center}
-.mf-empty__i svg{width:24px;height:24px}
-.mf-empty h2{font-size:1.12rem;font-weight:800;letter-spacing:-.03em;color:var(--ink);margin:0}
-.mf-empty p{margin:10px auto 0;max-width:440px;color:var(--muted);font-size:.9rem;line-height:1.55}
+/* Phone: full-bleed portrait thumb, copy below, single-column rail. */
+@media (max-width:680px){
+  .bbf-rail{grid-template-columns:1fr}
+  .bbf-post__b{display:block;padding:0 0 14px}
+  .bbf-media{aspect-ratio:9/16;border-radius:0;margin-bottom:13px}
+  .bbf-play{opacity:1}
+  .bbf-ovstats{left:12px;right:12px;bottom:12px;gap:8px}
+  .bbf-ovchip{padding:9px 12px 10px}
+  .bbf-ovchip .lab{font-size:.6rem}
+  .bbf-ovchip .num{font-size:1.16rem}
+  .bbf-side{padding:0 14px}
+  .bbf-cap{-webkit-line-clamp:3}
+}
 `;
 //#endregion
 //#region resources/js/Pages/components/SearchFlashModals.jsx
@@ -10254,7 +11123,7 @@ function CouponAccessPromptModal({ prompt, onClose }) {
 	});
 }
 function SearchFlashModals({ currentPath = "/home" }) {
-	const { flash = {}, billing: billing$3 = {} } = usePage().props;
+	const { flash = {}, billing: billing$4 = {} } = usePage().props;
 	const [processingModal, setProcessingModal] = useState(null);
 	const [completionModal, setCompletionModal] = useState(null);
 	const [searchAccessPrompt, setSearchAccessPrompt] = useState(null);
@@ -10368,7 +11237,7 @@ function SearchFlashModals({ currentPath = "/home" }) {
 	};
 	const openSearchUpgrade = () => {
 		setSearchAccessPrompt(null);
-		if ((billing$3.trialEligible ?? true) && !(billing$3.hasUsedTrial ?? false)) billing.trialCheckout("growth");
+		if ((billing$4.trialEligible ?? true) && !(billing$4.hasUsedTrial ?? false)) billing.trialCheckout("growth");
 		else router.visit("/plans");
 	};
 	return /* @__PURE__ */ jsxs(Fragment$1, { children: [
@@ -10391,130 +11260,563 @@ function SearchFlashModals({ currentPath = "/home" }) {
 		}),
 		/* @__PURE__ */ jsx(SearchAccessPromptModal, {
 			prompt: searchAccessPrompt,
-			billing: billing$3,
+			billing: billing$4,
 			onClose: () => setSearchAccessPrompt(null),
 			onUpgrade: openSearchUpgrade
 		})
 	] });
 }
 //#endregion
+//#region resources/js/Pages/components/VideoAnalysisGate.jsx
+var VideoAnalysisGate_exports = /* @__PURE__ */ __exportAll({
+	AnalysisUpgradeModal: () => AnalysisUpgradeModal,
+	UsageConfirmModal: () => UsageConfirmModal$1,
+	canUsePaidVideoAnalysis: () => canUsePaidVideoAnalysis,
+	handleAnalyzeAction: () => handleAnalyzeAction,
+	videoAnalysisRemaining: () => videoAnalysisRemaining
+});
+/**
+* The credit gate in front of "Analyze video".
+*
+* Every surface that offers manual analysis — the results page and My Feed —
+* puts the CTA through the same three outcomes, so the prompt a user sees does
+* not depend on where they clicked:
+*
+*   no analysis entitlement  → AnalysisUpgradeModal
+*   already analysed/running → open the analysis modal directly
+*   otherwise                → UsageConfirmModal, which spends the credit
+*
+* `handleAnalyzeAction` below encodes that order; the modals and the credit
+* maths live here so there is one implementation to change.
+*/
+var SparkIcon = /* @__PURE__ */ jsx("svg", {
+	viewBox: "0 0 24 24",
+	fill: "currentColor",
+	"aria-hidden": "true",
+	children: /* @__PURE__ */ jsx("path", { d: "M12 2l1.8 6.2L20 10l-6.2 1.8L12 18l-1.8-6.2L4 10l6.2-1.8z" })
+});
+/** Paid plans with a non-zero analysis allowance can start a manual analysis. */
+function canUsePaidVideoAnalysis(billing) {
+	if (!billing) return false;
+	const limit = Number(billing.videoAnalysisLimit ?? 0);
+	return Boolean(billing.hasPaidPlan) && limit !== 0;
+}
+/**
+* Credits left, counting the ones started in this session but not yet reflected
+* in the shared billing prop. -1 means unlimited.
+*/
+function videoAnalysisRemaining(billing, startedThisSession = 0) {
+	if (!billing) return 0;
+	const limit = Number(billing.videoAnalysisLimit ?? 0);
+	const used = Number(billing.videoAnalysisUsed ?? 0) + Number(startedThisSession || 0);
+	if (limit === -1) return -1;
+	return Math.max(0, limit - used);
+}
+/**
+* Routes an "Analyze video" click to the right outcome. Surfaces supply the
+* three callbacks and keep their own modal state.
+*/
+function handleAnalyzeAction(video, { billing, onUpgrade, onOpenAnalysis, onConfirm }) {
+	if (!canUsePaidVideoAnalysis(billing)) {
+		onUpgrade();
+		return;
+	}
+	const status = video?.analysis?.status;
+	if (status === "complete" || status === "processing") {
+		onOpenAnalysis(video);
+		return;
+	}
+	onConfirm(video);
+}
+function UsageConfirmModal$1({ video, creditsRemaining, creditsRemainingAfterUse, busy = false, onConfirm, onCancel }) {
+	const currentCredits = creditsRemaining === -1 ? "Unlimited" : creditsRemaining;
+	return /* @__PURE__ */ jsxs("div", {
+		className: "rs-modalback",
+		onClick: onCancel,
+		children: [/* @__PURE__ */ jsx("style", { children: modalCss }), /* @__PURE__ */ jsxs("div", {
+			className: "rs-usage",
+			onClick: (event) => event.stopPropagation(),
+			role: "dialog",
+			"aria-modal": "true",
+			"aria-label": "Confirm video analysis",
+			children: [
+				/* @__PURE__ */ jsxs("div", {
+					className: "rs-upg__eyebrow",
+					children: [SparkIcon, /* @__PURE__ */ jsx("span", { children: "Video analysis" })]
+				}),
+				/* @__PURE__ */ jsx("h3", { children: "Analyze this breakout video?" }),
+				/* @__PURE__ */ jsxs("p", { children: [
+					"You currently have ",
+					/* @__PURE__ */ jsx("b", { children: currentCredits }),
+					" video analysis ",
+					currentCredits === 1 ? "credit" : "credits",
+					" remaining. This analysis will use ",
+					/* @__PURE__ */ jsx("b", { children: "1 credit" }),
+					" when it completes successfully, leaving you with ",
+					/* @__PURE__ */ jsx("b", { children: creditsRemainingAfterUse === "unlimited" ? "unlimited" : creditsRemainingAfterUse }),
+					"."
+				] }),
+				/* @__PURE__ */ jsx("p", {
+					className: "rs-usage__subject",
+					children: video?.title || video?.caption || video?.handle || "Selected video"
+				}),
+				/* @__PURE__ */ jsxs("div", {
+					className: "rs-upgmodal__actions",
+					children: [/* @__PURE__ */ jsx("button", {
+						type: "button",
+						className: "rs-btn rs-btn--g",
+						onClick: onCancel,
+						disabled: busy,
+						children: "Cancel"
+					}), /* @__PURE__ */ jsx("button", {
+						type: "button",
+						className: "rs-btn rs-btn--y",
+						onClick: onConfirm,
+						disabled: busy,
+						children: busy ? "Starting…" : "Start analysis"
+					})]
+				})
+			]
+		})]
+	});
+}
+/**
+* The paywall behind analysis and the two search-management entitlements. The
+* feed only ever passes the default 'analysis' mode; the results page uses all
+* three.
+*/
+function AnalysisUpgradeModal({ mode = "analysis", trialEligible = true, hasUsedTrial = false, onClose, onUpgrade }) {
+	const isSearchBookmark = mode === "search-bookmark";
+	const isSearchManagement = mode === "search-management";
+	const shouldOfferTrial = trialEligible && !hasUsedTrial;
+	return /* @__PURE__ */ jsx(UpgradePromptModal, {
+		eyebrow: isSearchBookmark ? "Search bookmarks" : isSearchManagement ? "Search management" : "Video analysis",
+		title: isSearchBookmark ? shouldOfferTrial ? "Start your 8-day Growth trial to unlock search bookmarks" : "Upgrade to unlock search bookmarks" : isSearchManagement ? shouldOfferTrial ? "Start your 8-day Growth trial to manage this search" : "Upgrade to manage this search" : shouldOfferTrial ? "Turn more breakouts into winning creative" : "Turn every breakout into your next winning creative",
+		body: isSearchBookmark ? shouldOfferTrial ? "Free searches do not include saved search bookmarks. Start your 8-day Growth trial to save searches to your bookmarks." : "Free searches do not include saved search bookmarks. Upgrade to Growth or Scale to save searches to your bookmarks." : isSearchManagement ? shouldOfferTrial ? "Start your 8-day Growth trial to pause, resume, or delete tracked searches from your dashboard." : "Upgrade to Growth or Scale to pause, resume, or delete tracked searches from your dashboard." : shouldOfferTrial ? "See the hook, angle, and strategy behind more high-performing videos during your 8-day Growth trial." : "See the hook, angle, and strategy behind more high-performing videos—then turn those insights into content faster.",
+		visual: !isSearchBookmark && !isSearchManagement ? "video-analysis" : null,
+		emphasis: !isSearchBookmark && !isSearchManagement ? "Your free top-video breakdown stays included." : null,
+		primaryLabel: isSearchBookmark || isSearchManagement ? shouldOfferTrial ? "Start 8-day Growth trial" : "Upgrade to Growth" : shouldOfferTrial ? "Analyze more free for 8 days" : "Unlock more video analysis",
+		onPrimary: onUpgrade,
+		onClose
+	});
+}
+var modalCss = `
+.rs-modalback{position:fixed;inset:0;z-index:130;display:flex;align-items:center;justify-content:center;padding:16px;background:rgba(20,15,0,.34);backdrop-filter:blur(3px)}
+.rs-usage{width:min(100%,460px);border:1px solid #f2e4b8;border-radius:22px;padding:22px;background:linear-gradient(180deg,#fffdf7 0%,#fff8ea 100%);box-shadow:0 28px 90px rgba(42,33,20,.22)}
+.rs-usage h3{margin-top:10px;font-size:1.15rem;font-weight:800;letter-spacing:-.03em;color:var(--ink)}
+.rs-usage p{margin-top:8px;font-size:.9rem;line-height:1.55;color:var(--muted)}
+.rs-usage b{color:var(--ink)}
+.rs-usage__subject{margin-top:14px;padding:12px 14px;border:1px solid var(--line);border-radius:14px;background:rgba(255,255,255,.7);font-weight:700;color:var(--ink)}
+.rs-upg__eyebrow{display:inline-flex;align-items:center;gap:7px;font-size:.67rem;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--amber-ink)}
+.rs-upg__eyebrow svg{width:12px;height:12px}
+.rs-upgmodal__actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:18px}
+.rs-upgmodal__actions .rs-btn{flex:1}
+.rs-btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:42px;padding:0 18px;border-radius:100px;font-size:.88rem;font-weight:700;letter-spacing:-.01em;white-space:nowrap;transition:.16s;border:0;cursor:pointer}
+.rs-btn svg{width:15px;height:15px;flex:none}
+.rs-btn--y{background:var(--yellow);color:#1A1400}
+.rs-btn--y:hover:not(:disabled){background:var(--yellow-hot,#FFD84D)}
+.rs-btn--g{border:1px solid var(--line-2,#DEDBD3);background:var(--white);color:var(--ink)}
+.rs-btn--g:hover:not(:disabled){border-color:var(--faint-2,#9A968E);background:var(--paper)}
+.rs-btn:disabled{opacity:.55;cursor:not-allowed}
+@media(max-width:560px){
+  .rs-usage{padding:20px 16px 16px}
+  .rs-usage h3{font-size:1.02rem}
+  .rs-usage p{font-size:.84rem}
+  .rs-upgmodal__actions .rs-btn{width:100%}
+}
+`;
+//#endregion
 //#region resources/js/Pages/Feed.jsx
 var Feed_exports = /* @__PURE__ */ __exportAll({ default: () => Feed });
 /**
-* "My Feed" (mockup: V5 Home/My Feed) — the signed-in landing page. The feed is
-* built from the user's searches; typing here and choosing a search type hands
-* off to the matching hub (/brands or /products) with the subject prefilled,
-* which opens that page's inline search flow on the keyword step.
+* "My Feed" — the signed-in landing page. The search card on top starts every
+* search: picking Brand or Product and typing a subject hands off to the
+* matching hub (/brands or /products) with the subject prefilled, which opens
+* that page's inline flow on the keyword step. Below it the feed is built from
+* the searches the user already owns.
 */
-function FeedSearchBar() {
-	const [query, setQuery] = useState("");
-	const [open, setOpen] = useState(false);
-	const wrapRef = useRef(null);
-	useEffect(() => {
-		if (!open) return void 0;
-		const onDocClick = (e) => {
-			if (wrapRef.current && !wrapRef.current.contains(e.target)) setOpen(false);
-		};
-		const onKey = (e) => {
-			if (e.key === "Escape") setOpen(false);
-		};
-		document.addEventListener("mousedown", onDocClick);
-		document.addEventListener("keydown", onKey);
-		return () => {
-			document.removeEventListener("mousedown", onDocClick);
-			document.removeEventListener("keydown", onKey);
-		};
-	}, [open]);
-	const goToSearch = (type) => {
-		const phrase = query.trim();
-		if (!phrase) return;
-		setOpen(false);
-		router.visit(`${type === "product" ? "/products" : "/brands"}?q=${encodeURIComponent(phrase)}`);
-	};
-	const hasQuery = query.trim().length > 0;
-	return /* @__PURE__ */ jsxs("div", {
-		className: "mf-qs",
-		ref: wrapRef,
+var Icons$1 = {
+	brand: /* @__PURE__ */ jsx("svg", {
+		viewBox: "0 0 24 24",
+		fill: "none",
+		stroke: "currentColor",
+		strokeWidth: "2",
+		strokeLinecap: "round",
+		strokeLinejoin: "round",
+		children: /* @__PURE__ */ jsx("path", { d: "M3 9l1.5-5h15L21 9M3 9v10a1 1 0 0 0 1 1h16a1 1 0 0 0 1-1V9M3 9h18M9 20v-6h6v6" })
+	}),
+	product: /* @__PURE__ */ jsxs("svg", {
+		viewBox: "0 0 24 24",
+		fill: "none",
+		stroke: "currentColor",
+		strokeWidth: "2",
 		children: [
-			/* @__PURE__ */ jsxs("svg", {
-				viewBox: "0 0 24 24",
-				fill: "none",
-				stroke: "currentColor",
-				strokeWidth: "2.3",
-				strokeLinecap: "round",
-				"aria-hidden": "true",
-				children: [/* @__PURE__ */ jsx("circle", {
-					cx: "11",
-					cy: "11",
-					r: "7"
-				}), /* @__PURE__ */ jsx("path", { d: "M20 20l-3.6-3.6" })]
+			/* @__PURE__ */ jsx("circle", {
+				cx: "12",
+				cy: "12",
+				r: "9"
 			}),
-			/* @__PURE__ */ jsx("input", {
-				className: "mf-qs__in",
-				type: "text",
-				placeholder: "Search a brand or a product",
-				"aria-label": "Search a brand or a product",
-				value: query,
-				onChange: (e) => setQuery(e.target.value),
-				onKeyDown: (e) => {
-					if (e.key === "Enter" && hasQuery) setOpen(true);
-				}
+			/* @__PURE__ */ jsx("circle", {
+				cx: "12",
+				cy: "12",
+				r: "5"
 			}),
-			/* @__PURE__ */ jsxs("div", {
-				className: "mf-qs__menuwrap",
-				children: [/* @__PURE__ */ jsxs("button", {
-					type: "button",
-					className: "mf-qs__btn",
-					disabled: !hasQuery,
-					"aria-haspopup": "menu",
-					"aria-expanded": open,
-					onClick: () => setOpen((o) => !o),
-					children: ["Search", /* @__PURE__ */ jsx("svg", {
-						viewBox: "0 0 24 24",
-						fill: "none",
-						stroke: "currentColor",
-						strokeWidth: "2.4",
-						strokeLinecap: "round",
-						strokeLinejoin: "round",
-						"aria-hidden": "true",
-						children: /* @__PURE__ */ jsx("path", { d: "M6 9l6 6 6-6" })
-					})]
-				}), open && hasQuery && /* @__PURE__ */ jsxs("div", {
-					className: "mf-qs__menu",
-					role: "menu",
-					children: [/* @__PURE__ */ jsx("button", {
-						type: "button",
-						role: "menuitem",
-						onClick: () => goToSearch("brand"),
-						children: "Search Brand"
-					}), /* @__PURE__ */ jsx("button", {
-						type: "button",
-						role: "menuitem",
-						onClick: () => goToSearch("product"),
-						children: "Search Product"
-					})]
-				})]
+			/* @__PURE__ */ jsx("circle", {
+				cx: "12",
+				cy: "12",
+				r: "1.4",
+				fill: "currentColor"
 			})
 		]
+	}),
+	search: /* @__PURE__ */ jsxs("svg", {
+		viewBox: "0 0 24 24",
+		fill: "none",
+		stroke: "currentColor",
+		strokeWidth: "2",
+		strokeLinecap: "round",
+		children: [/* @__PURE__ */ jsx("circle", {
+			cx: "11",
+			cy: "11",
+			r: "7"
+		}), /* @__PURE__ */ jsx("path", { d: "m20 20-3.5-3.5" })]
+	})
+};
+var TYPES$2 = [{
+	key: "brand",
+	label: "Brand",
+	icon: Icons$1.brand
+}, {
+	key: "product",
+	label: "Product",
+	icon: Icons$1.product
+}];
+/**
+* Brand / Product toggle. The indicator is a single sliding pill measured from
+* the active button, so it stays correct at any label width or font size.
+*/
+function TypeToggle({ value, onChange }) {
+	const wrapRef = useRef(null);
+	const [pill, setPill] = useState(null);
+	useEffect(() => {
+		const measure = () => {
+			const active = wrapRef.current?.querySelector("[aria-pressed=\"true\"]");
+			if (!active) return;
+			setPill({
+				width: active.offsetWidth,
+				x: active.offsetLeft - 3
+			});
+		};
+		measure();
+		window.addEventListener("resize", measure);
+		return () => window.removeEventListener("resize", measure);
+	}, [value]);
+	return /* @__PURE__ */ jsxs("span", {
+		className: "bbs-seg",
+		ref: wrapRef,
+		children: [pill && /* @__PURE__ */ jsx("span", {
+			className: "bbs-seg__ind",
+			style: {
+				width: pill.width,
+				transform: `translateX(${pill.x}px)`
+			},
+			"aria-hidden": true
+		}), TYPES$2.map((type) => /* @__PURE__ */ jsxs("button", {
+			type: "button",
+			className: value === type.key ? "on" : void 0,
+			"aria-pressed": value === type.key,
+			onClick: () => onChange(type.key),
+			children: [type.icon, type.label]
+		}, type.key))]
+	});
+}
+function SearchCard({ suggestions }) {
+	const [type, setType] = useState("brand");
+	const [query, setQuery] = useState("");
+	const [matches, setMatches] = useState([]);
+	const [open, setOpen] = useState(false);
+	const [active, setActive] = useState(-1);
+	const inputRef = useRef(null);
+	const fieldRef = useRef(null);
+	const chips = suggestions[type] ?? [];
+	useEffect(() => {
+		if (!open) return void 0;
+		const controller = new AbortController();
+		const timer = window.setTimeout(() => {
+			fetchKeywordSuggestions(type, query.trim(), { signal: controller.signal }).then((payload) => {
+				const rows = Array.isArray(payload?.suggestions) ? payload.suggestions : [];
+				setMatches(rows.filter((row) => row.label?.trim()));
+				setActive(-1);
+			}).catch(() => {});
+		}, 160);
+		return () => {
+			controller.abort();
+			window.clearTimeout(timer);
+		};
+	}, [
+		type,
+		query,
+		open
+	]);
+	useEffect(() => {
+		if (!open) return void 0;
+		const onDown = (e) => {
+			if (!fieldRef.current?.contains(e.target)) setOpen(false);
+		};
+		document.addEventListener("mousedown", onDown);
+		return () => document.removeEventListener("mousedown", onDown);
+	}, [open]);
+	const run = (phrase = query, kind = type) => {
+		const subject = String(phrase).trim();
+		if (!subject) {
+			inputRef.current?.focus();
+			return;
+		}
+		setOpen(false);
+		router.visit(`${kind === "product" ? "/products" : "/brands"}?q=${encodeURIComponent(subject)}`);
+	};
+	const choose = (row) => run(row.label, row.type === "product" ? "product" : "brand");
+	const onKeyDown = (event) => {
+		if (event.key === "Escape") {
+			setOpen(false);
+			setActive(-1);
+			return;
+		}
+		if (event.key === "Enter") {
+			if (open && active >= 0 && matches[active]) {
+				event.preventDefault();
+				choose(matches[active]);
+				return;
+			}
+			run();
+			return;
+		}
+		if (!open || matches.length === 0) return;
+		if (event.key === "ArrowDown") {
+			event.preventDefault();
+			setActive((cur) => (cur + 1) % matches.length);
+		}
+		if (event.key === "ArrowUp") {
+			event.preventDefault();
+			setActive((cur) => cur <= 0 ? matches.length - 1 : cur - 1);
+		}
+	};
+	return /* @__PURE__ */ jsxs("section", {
+		className: "bbs-card",
+		children: [/* @__PURE__ */ jsxs("div", {
+			className: "bbs-field",
+			ref: fieldRef,
+			children: [
+				/* @__PURE__ */ jsx(TypeToggle, {
+					value: type,
+					onChange: setType
+				}),
+				Icons$1.search,
+				/* @__PURE__ */ jsx("input", {
+					ref: inputRef,
+					type: "text",
+					value: query,
+					autoComplete: "off",
+					role: "combobox",
+					placeholder: type === "product" ? "lip oil" : "rhode skin",
+					"aria-label": type === "product" ? "Search a product" : "Search a brand",
+					"aria-expanded": open && matches.length > 0,
+					"aria-controls": "bbs-suggest",
+					"aria-activedescendant": active >= 0 && matches[active] ? `bbs-opt-${matches[active].id}` : void 0,
+					onChange: (e) => {
+						setQuery(e.target.value);
+						setOpen(true);
+					},
+					onFocus: () => setOpen(true),
+					onKeyDown
+				}),
+				/* @__PURE__ */ jsxs("button", {
+					type: "button",
+					className: "bbs-cta",
+					onClick: () => run(),
+					children: [Icons$1.search, "Find breakouts"]
+				}),
+				open && matches.length > 0 && /* @__PURE__ */ jsxs("div", {
+					className: "bbs-suggest",
+					id: "bbs-suggest",
+					role: "listbox",
+					"aria-label": type === "product" ? "Product suggestions" : "Brand suggestions",
+					children: [/* @__PURE__ */ jsxs("div", {
+						className: "bbs-suggest__h",
+						children: [/* @__PURE__ */ jsxs("span", { children: [
+							query.trim() ? "Matching" : "Trending",
+							" ",
+							type === "product" ? "products" : "brands"
+						] }), /* @__PURE__ */ jsx("span", { children: matches.length })]
+					}), matches.map((row, i) => /* @__PURE__ */ jsxs("button", {
+						id: `bbs-opt-${row.id}`,
+						type: "button",
+						role: "option",
+						"aria-selected": i === active,
+						className: `bbs-suggest__i${i === active ? " on" : ""}`,
+						onMouseEnter: () => setActive(i),
+						onMouseDown: (e) => e.preventDefault(),
+						onClick: () => choose(row),
+						children: [/* @__PURE__ */ jsx("strong", { children: row.label }), row.sector && /* @__PURE__ */ jsx("em", { children: row.sector })]
+					}, `${row.type}-${row.id}`))]
+				})
+			]
+		}), chips.length > 0 && /* @__PURE__ */ jsxs("div", {
+			className: "bbs-sugg",
+			children: [/* @__PURE__ */ jsxs("span", {
+				className: "bbs-sugg__l",
+				children: [
+					"Suggested ",
+					type === "product" ? "products" : "brands",
+					" to track"
+				]
+			}), chips.map((chip) => /* @__PURE__ */ jsxs("button", {
+				type: "button",
+				className: `bbs-kw${type === "product" ? " p" : ""}`,
+				onClick: () => run(chip.phrase, type),
+				children: [/* @__PURE__ */ jsx("i", {}), chip.phrase]
+			}, `${chip.type}-${chip.phrase}`))]
+		})]
 	});
 }
 function Feed({ feed = {} }) {
+	const { billing: billing$3 = {} } = usePage().props;
 	const currentPath = typeof window === "undefined" ? "/home" : `${window.location.pathname}${window.location.search}`;
+	const [analysisVideo, setAnalysisVideo] = useState(null);
+	const [analysisById, setAnalysisById] = useState({});
+	const [confirmVideo, setConfirmVideo] = useState(null);
+	const [upgradeOpen, setUpgradeOpen] = useState(false);
+	const [starting, setStarting] = useState(false);
+	const [reserved, setReserved] = useState([]);
+	const remainingNow = videoAnalysisRemaining(billing$3, reserved.length);
+	const remainingAfterUse = remainingNow === -1 ? "unlimited" : Math.max(0, remainingNow - 1);
+	const onAnalyze = (video) => handleAnalyzeAction({
+		...video,
+		analysis: analysisById[video.id] ?? video.analysis ?? null
+	}, {
+		billing: billing$3,
+		onUpgrade: () => setUpgradeOpen(true),
+		onOpenAnalysis: setAnalysisVideo,
+		onConfirm: setConfirmVideo
+	});
+	const startAnalysis = async (video) => {
+		setStarting(true);
+		setConfirmVideo(null);
+		try {
+			const next = (await videoAnalysis.request(video.id))?.analysis ?? null;
+			if (next) setAnalysisById((cur) => ({
+				...cur,
+				[video.id]: next
+			}));
+			setReserved((cur) => cur.some((id) => String(id) === String(video.id)) ? cur : [...cur, video.id]);
+			trackVideoAnalysis({
+				videoId: video.id,
+				searchUrl: video.search_url,
+				searchName: video.brand,
+				videoLabel: video.handle || video.caption || "Breakout video"
+			});
+		} catch (error) {
+			setConfirmVideo(video);
+			window.alert(error?.message || "Could not start this analysis.");
+		} finally {
+			setStarting(false);
+		}
+	};
+	const upgrade = () => {
+		setUpgradeOpen(false);
+		return (billing$3?.trialEligible ?? true) && !(billing$3?.hasUsedTrial ?? false) ? billing.trialCheckout("growth") : billing.checkout("growth");
+	};
 	return /* @__PURE__ */ jsxs(Fragment$1, { children: [
 		/* @__PURE__ */ jsx(Head, { title: "My Feed · Brand Beacon" }),
 		/* @__PURE__ */ jsxs(AppLayout, {
-			width: "max-w-[1440px] lg:px-6 xl:px-8",
-			children: [/* @__PURE__ */ jsxs("div", {
-				className: "mf-header",
-				children: [/* @__PURE__ */ jsx(FeedSearchBar, {}), /* @__PURE__ */ jsx(EntitlementsBar, {})]
-			}), /* @__PURE__ */ jsx(MyFeed, {
-				feed,
-				currentPath
-			})]
+			width: "max-w-[1180px] lg:px-6 xl:px-8",
+			children: [
+				/* @__PURE__ */ jsx("style", { children: scopedCss$2 }),
+				/* @__PURE__ */ jsx(SearchCard, { suggestions: feed.suggestions ?? {} }),
+				/* @__PURE__ */ jsx(MyFeed, {
+					feed,
+					currentPath,
+					onAnalyze,
+					analysisById
+				})
+			]
+		}),
+		analysisVideo && /* @__PURE__ */ jsx(AnalysisModal, {
+			video: analysisVideo,
+			initialAnalysis: analysisById[analysisVideo.id] ?? analysisVideo.analysis ?? null,
+			onClose: () => setAnalysisVideo(null),
+			onAnalysisChange: (videoId, analysis) => setAnalysisById((cur) => ({
+				...cur,
+				[videoId]: analysis
+			}))
+		}),
+		confirmVideo && /* @__PURE__ */ jsx(UsageConfirmModal$1, {
+			video: confirmVideo,
+			creditsRemaining: remainingNow,
+			creditsRemainingAfterUse: remainingAfterUse,
+			busy: starting,
+			onCancel: () => {
+				if (!starting) setConfirmVideo(null);
+			},
+			onConfirm: () => startAnalysis(confirmVideo)
+		}),
+		upgradeOpen && /* @__PURE__ */ jsx(AnalysisUpgradeModal, {
+			trialEligible: billing$3?.trialEligible ?? true,
+			hasUsedTrial: billing$3?.hasUsedTrial ?? false,
+			onClose: () => setUpgradeOpen(false),
+			onUpgrade: upgrade
 		}),
 		/* @__PURE__ */ jsx(SearchFlashModals, { currentPath })
 	] });
 }
+var scopedCss$2 = `
+.bbs-card{background:var(--white);border:1px solid var(--line);border-radius:22px;padding:20px 22px 18px;margin-bottom:26px}
+.bbs-field{position:relative;display:flex;align-items:center;gap:12px;height:66px;padding:0 9px;border:1px solid var(--line-2,#D9D6CF);border-radius:100px;background:var(--white);transition:border-color .18s,box-shadow .18s}
+.bbs-field:focus-within{border-color:var(--yellow);box-shadow:0 0 0 4px var(--wash)}
+.bbs-field>svg{width:20px;height:20px;flex:none;margin-left:4px;color:var(--faint,#74716A)}
+.bbs-field input{flex:1;min-width:0;border:0;outline:0;background:none;font:inherit;font-size:1.08rem;font-weight:500;color:var(--ink)}
+.bbs-field input::placeholder{color:#A5A29A;font-weight:400}
+
+.bbs-seg{position:relative;display:inline-flex;gap:3px;padding:3px;flex:none;border:1px solid var(--line);border-radius:100px;background:var(--paper,#FAF9F6)}
+.bbs-seg__ind{position:absolute;top:3px;left:3px;height:calc(100% - 6px);border-radius:100px;background:var(--yellow);box-shadow:0 2px 8px -2px rgba(255,198,41,.9);transition:transform .26s cubic-bezier(.22,.61,.36,1),width .26s cubic-bezier(.22,.61,.36,1)}
+.bbs-seg button{position:relative;z-index:2;display:inline-flex;align-items:center;gap:7px;height:36px;padding:0 15px;border:0;border-radius:100px;background:none;font:inherit;font-size:.84rem;font-weight:700;color:var(--muted);cursor:pointer;transition:color .18s}
+.bbs-seg button svg{width:15px;height:15px;opacity:.75}
+.bbs-seg button:hover{color:var(--ink)}
+.bbs-seg button.on{color:#1A1400}
+.bbs-seg button.on svg{opacity:1}
+
+.bbs-cta{position:relative;overflow:hidden;flex:none;height:48px;padding:0 24px;display:inline-flex;align-items:center;gap:9px;border:0;border-radius:100px;background:var(--yellow);color:#1A1400;font:inherit;font-size:.92rem;font-weight:800;letter-spacing:-.01em;cursor:pointer;box-shadow:0 6px 18px -6px rgba(255,198,41,.9)}
+.bbs-cta svg{width:16px;height:16px}
+.bbs-cta:hover{background:var(--yellow-hot,#FFD84D);box-shadow:0 8px 26px -6px rgba(255,198,41,1)}
+
+.bbs-suggest{position:absolute;top:calc(100% + 8px);left:0;right:0;z-index:40;max-height:340px;overflow-y:auto;padding:6px;border:1px solid var(--line);border-radius:16px;background:var(--white);box-shadow:0 18px 40px -18px rgba(20,15,0,.34)}
+.bbs-suggest__h{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 12px 6px;font-size:.68rem;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:var(--amber-ink)}
+.bbs-suggest__i{display:flex;align-items:baseline;gap:10px;width:100%;padding:10px 12px;border:0;border-radius:10px;background:none;font:inherit;text-align:left;cursor:pointer}
+.bbs-suggest__i strong{min-width:0;flex:1;font-size:.9rem;font-weight:700;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bbs-suggest__i em{flex:none;font-style:normal;font-size:.74rem;font-weight:600;color:var(--muted);opacity:.75}
+.bbs-suggest__i.on,.bbs-suggest__i:focus-visible{background:var(--wash);outline:0}
+
+.bbs-sugg{display:flex;align-items:center;flex-wrap:wrap;gap:9px;margin-top:16px;padding-top:16px;border-top:1px solid var(--line)}
+.bbs-sugg__l{font-size:.82rem;font-weight:700;color:var(--muted)}
+.bbs-kw{display:inline-flex;align-items:center;gap:7px;height:32px;padding:0 13px;border:1px solid var(--line);border-radius:100px;background:var(--white);font:inherit;font-size:.83rem;font-weight:600;color:var(--muted);cursor:pointer;transition:.16s}
+.bbs-kw i{width:5px;height:5px;flex:none;border-radius:50%;background:var(--yellow)}
+.bbs-kw.p i{background:#C2410C}
+.bbs-kw:hover{border-color:var(--yellow);background:var(--wash);color:var(--ink)}
+.bbs-cta:focus-visible,.bbs-kw:focus-visible,.bbs-seg button:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+
+@media (prefers-reduced-motion:reduce){.bbs-seg__ind,.bbs-cta,.bbs-kw{transition:none}}
+
+@media (max-width:680px){
+  .bbs-card{padding:16px 14px 14px;border-radius:18px}
+  .bbs-field{height:auto;flex-wrap:wrap;padding:12px;border-radius:16px;gap:10px}
+  .bbs-field>svg{margin-left:2px}
+  .bbs-field input{flex:1 1 auto;min-width:0;font-size:1rem}
+  .bbs-seg{flex:1 0 100%}
+  .bbs-seg button{flex:1;justify-content:center}
+  .bbs-cta{flex:1 0 100%;justify-content:center}
+  .bbs-suggest{max-height:260px}
+}
+`;
 //#endregion
 //#region resources/js/Pages/Home.jsx
 var Home_exports = /* @__PURE__ */ __exportAll({ default: () => Home });
@@ -13040,815 +14342,6 @@ function SearchHistoryTab({ searches = [] }) {
 	});
 }
 //#endregion
-//#region resources/js/Pages/VideoAnalysis/AnalysisModal.jsx
-var AnalysisModal_exports = /* @__PURE__ */ __exportAll({ default: () => AnalysisModal });
-function formatMetric(value) {
-	const number = Number(value || 0);
-	if (!Number.isFinite(number)) return "0";
-	return new Intl.NumberFormat(void 0, { maximumFractionDigits: number >= 100 ? 0 : 1 }).format(number);
-}
-function formatTimestamp(ms) {
-	if (!Number.isFinite(Number(ms))) return null;
-	const total = Math.max(0, Math.floor(Number(ms) / 1e3));
-	return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, "0")}`;
-}
-function formatDuration$1(seconds) {
-	const total = Number(seconds || 0);
-	if (!Number.isFinite(total) || total <= 0) return null;
-	return `${Math.floor(total / 60)}:${String(Math.round(total % 60)).padStart(2, "0")}`;
-}
-function breakoutScore(video) {
-	const value = Number(video?.score ?? video?.viral_score ?? video?.virality_score ?? 0);
-	return Number.isFinite(value) && value > 0 ? value : null;
-}
-function usePolling(videoId, initial, open) {
-	const [analysis, setAnalysis] = useState(initial);
-	useEffect(() => {
-		setAnalysis(initial);
-	}, [initial, videoId]);
-	useEffect(() => {
-		if (!open || analysis?.status === "complete" || analysis?.status === "failed") return void 0;
-		let cancelled = false;
-		const timer = window.setInterval(async () => {
-			try {
-				const payload = await videoAnalysis.get(videoId);
-				if (!cancelled) setAnalysis(payload.analysis);
-			} catch {}
-		}, 3e3);
-		return () => {
-			cancelled = true;
-			window.clearInterval(timer);
-		};
-	}, [
-		analysis?.status,
-		open,
-		videoId
-	]);
-	return [analysis, setAnalysis];
-}
-function transcriptRows(analysis) {
-	const segments = Array.isArray(analysis?.transcript_segments) ? analysis.transcript_segments : [];
-	if (segments.length > 0) return segments.map((segment, index) => ({
-		id: `segment-${index}`,
-		time: formatTimestamp(segment.start_ms) ?? "0:00",
-		text: segment.text
-	}));
-	const transcript = String(analysis?.transcript || "").trim();
-	if (transcript === "") return [];
-	return transcript.split("\n").map((line) => line.trim()).filter(Boolean).map((line, index) => ({
-		id: `line-${index}`,
-		time: formatTimestamp(index * 3e3) ?? "0:00",
-		text: line
-	}));
-}
-function hookVariations(result) {
-	if (Array.isArray(result?.hooks) && result.hooks.length > 0) return result.hooks.map((hook, index) => ({
-		id: index,
-		objection: typeof hook === "string" ? null : hook?.objection ?? null,
-		text: typeof hook === "string" ? hook : hook?.text || hook?.variation || JSON.stringify(hook)
-	}));
-	return [];
-}
-function whyDrags(result) {
-	if (!Array.isArray(result?.drags)) return [];
-	return result.drags.map((item, index) => ({
-		id: index,
-		rank: String(index + 1),
-		title: typeof item === "string" ? item : item?.title || "Drag",
-		body: typeof item === "string" ? null : item?.explanation || item?.reason || null
-	})).filter((item) => item.title || item.body);
-}
-function hookBeats(result) {
-	if (!Array.isArray(result?.hook_beats)) return [];
-	return result.hook_beats.filter((beat) => beat && (beat.title || beat.explanation)).map((beat, index) => ({
-		id: index,
-		time: beat.time || null,
-		title: beat.title || `Beat ${index + 1}`,
-		body: beat.explanation || null
-	}));
-}
-function hookPatterns(result) {
-	return Array.isArray(result?.hook_patterns) ? result.hook_patterns.filter((item) => typeof item === "string" && item.trim() !== "") : [];
-}
-function whyDrivers(result) {
-	if (Array.isArray(result?.content_breakdown) && result.content_breakdown.length > 0) return result.content_breakdown.map((item, index) => ({
-		id: index,
-		rank: String(index + 1).padStart(2, "0"),
-		title: item?.title || item?.driver || item?.label || "Breakout signal",
-		body: item?.explanation || item?.reason || String(item),
-		uplift: item?.uplift || item?.delta || item?.impact || null
-	}));
-	const evidence = String(result?.evidence_summary || "").trim();
-	return evidence === "" ? [] : evidence.split(/(?<=\.)\s+/).filter(Boolean).map((line, index) => ({
-		id: index,
-		rank: String(index + 1).padStart(2, "0"),
-		title: `Driver ${index + 1}`,
-		body: line,
-		uplift: null
-	}));
-}
-function strategistRecommendations(result) {
-	const recommendations = result?.creative_strategy?.recommendations;
-	if (Array.isArray(recommendations) && recommendations.length > 0) return recommendations.map((item, index) => ({
-		id: index,
-		rank: String(index + 1).padStart(2, "0"),
-		title: typeof item === "string" ? item : item?.title || item?.headline || `Recommendation ${index + 1}`,
-		body: typeof item === "string" ? null : item?.text || item?.body || item?.reason || null
-	}));
-	const summary = result?.creative_strategy?.summary;
-	return summary ? [{
-		id: 0,
-		rank: "01",
-		title: String(summary),
-		body: null
-	}] : [];
-}
-function RegenerateButton({ regenerating, disabled, onClick, fullWidth = false }) {
-	return /* @__PURE__ */ jsxs("button", {
-		type: "button",
-		onClick,
-		disabled,
-		className: `${fullWidth ? "flex w-full justify-center" : "inline-flex"} items-center gap-1.5 rounded-full border border-[#e5ddd1] bg-[#fbfaf7] px-3 py-2 text-[11px] font-semibold text-[#8c6b10] transition hover:bg-[#fff0bf] disabled:cursor-not-allowed disabled:opacity-60`,
-		children: [/* @__PURE__ */ jsxs("svg", {
-			viewBox: "0 0 24 24",
-			className: `h-3.5 w-3.5 stroke-current ${regenerating ? "animate-spin" : ""}`,
-			fill: "none",
-			strokeWidth: "2",
-			strokeLinecap: "round",
-			strokeLinejoin: "round",
-			children: [/* @__PURE__ */ jsx("path", { d: "M21 12a9 9 0 1 1-2.64-6.36" }), /* @__PURE__ */ jsx("path", { d: "M21 3v6h-6" })]
-		}), regenerating ? "Regenerating…" : "Regenerate"]
-	});
-}
-function AnalyzeButton$1({ state, onClick }) {
-	const running = state === "running";
-	const ready = state === "ready";
-	const base = "flex h-10 w-full items-center justify-center gap-2 rounded-[11px] px-3.5 text-[13px] font-bold transition";
-	if (ready) return /* @__PURE__ */ jsxs("div", {
-		className: `${base} cursor-default border border-[#E7E5DF] bg-white text-[#0B0B0B]`,
-		children: [/* @__PURE__ */ jsx("svg", {
-			viewBox: "0 0 24 24",
-			className: "h-[15px] w-[15px]",
-			fill: "none",
-			stroke: "#1F7A4D",
-			strokeWidth: "2.4",
-			strokeLinecap: "round",
-			strokeLinejoin: "round",
-			children: /* @__PURE__ */ jsx("path", { d: "M4 12.5l5.5 5.5L20 7" })
-		}), "Analysis ready"]
-	});
-	if (running) return /* @__PURE__ */ jsxs("div", {
-		className: `${base} cursor-default bg-[#FFF8E6] text-[#9A6B00]`,
-		children: [/* @__PURE__ */ jsx("span", { className: "h-[14px] w-[14px] animate-spin rounded-full border-2 border-[rgba(154,107,0,.3)] border-t-[#9A6B00]" }), "Analyzing…"]
-	});
-	return /* @__PURE__ */ jsxs("button", {
-		type: "button",
-		onClick,
-		className: `${base} bg-[#FFC629] text-[#1A1400] hover:bg-[#FFD84D]`,
-		children: [/* @__PURE__ */ jsxs("svg", {
-			viewBox: "0 0 24 24",
-			className: "h-[15px] w-[15px]",
-			fill: "none",
-			stroke: "currentColor",
-			strokeWidth: "2",
-			strokeLinecap: "round",
-			children: [/* @__PURE__ */ jsx("circle", {
-				cx: "11",
-				cy: "11",
-				r: "7"
-			}), /* @__PURE__ */ jsx("path", { d: "m20 20-3.5-3.5" })]
-		}), "Analyze video"]
-	});
-}
-function LeftSidebar({ video, canRegenerate = false, regenerating = false, disabledRegenerate = false, onRegenerate, analyzeState = "idle", onAnalyze, saved = false, saving = false, onToggleSave, showExternalLink = true }) {
-	return /* @__PURE__ */ jsxs("aside", {
-		className: "flex max-h-full min-h-0 flex-col gap-3 self-start overflow-y-auto",
-		children: [/* @__PURE__ */ jsx(BreakoutVideoCard, {
-			video,
-			showActions: false
-		}), /* @__PURE__ */ jsxs("div", {
-			className: "flex flex-col gap-[7px]",
-			children: [
-				/* @__PURE__ */ jsxs("div", {
-					className: `grid gap-[7px] ${showExternalLink ? "grid-cols-[minmax(0,1fr)_40px]" : "grid-cols-1"}`,
-					children: [/* @__PURE__ */ jsx(AnalyzeButton$1, {
-						state: analyzeState,
-						onClick: onAnalyze
-					}), showExternalLink && /* @__PURE__ */ jsx("a", {
-						href: video.post_url || video.postUrl || "#",
-						target: "_blank",
-						rel: "noreferrer noopener",
-						"aria-disabled": !(video.post_url || video.postUrl),
-						title: "Open on TikTok",
-						"aria-label": "Open on TikTok",
-						className: `flex h-10 items-center justify-center rounded-[11px] border border-[#E7E5DF] bg-white text-[#0B0B0B] transition hover:bg-[#FAF9F6] ${video.post_url || video.postUrl ? "" : "pointer-events-none opacity-40"}`,
-						children: /* @__PURE__ */ jsx("svg", {
-							viewBox: "0 0 24 24",
-							className: "h-[15px] w-[15px]",
-							fill: "none",
-							stroke: "currentColor",
-							strokeWidth: "2",
-							strokeLinecap: "round",
-							strokeLinejoin: "round",
-							children: /* @__PURE__ */ jsx("path", { d: "M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5" })
-						})
-					})]
-				}),
-				onToggleSave && /* @__PURE__ */ jsxs("button", {
-					type: "button",
-					onClick: onToggleSave,
-					disabled: saving,
-					"aria-pressed": saved,
-					className: `flex h-10 items-center justify-center gap-2 rounded-[11px] border px-2.5 text-[13px] font-bold transition disabled:opacity-60 ${saved ? "border-[#FFC629] bg-[#FFF8E6] text-[#5C4200]" : "border-[#E7E5DF] bg-white text-[#0B0B0B] hover:bg-[#FAF9F6]"}`,
-					children: [/* @__PURE__ */ jsx("svg", {
-						viewBox: "0 0 24 24",
-						className: "h-[15px] w-[15px]",
-						fill: saved ? "currentColor" : "none",
-						stroke: "currentColor",
-						strokeWidth: "2",
-						strokeLinejoin: "round",
-						children: /* @__PURE__ */ jsx("path", { d: "M6 3h12v18l-6-4.5L6 21z" })
-					}), saved ? "Saved" : "Save"]
-				}),
-				canRegenerate && /* @__PURE__ */ jsx(RegenerateButton, {
-					regenerating,
-					disabled: disabledRegenerate,
-					onClick: onRegenerate,
-					fullWidth: true
-				})
-			]
-		})]
-	});
-}
-function VideoHeadline({ video, calloutDismissed, onDismissCallout }) {
-	const caption = String(video?.title || video?.caption || "").trim();
-	const score = breakoutScore(video);
-	const showCallout = !calloutDismissed && Boolean(score);
-	const tagMatch = caption.match(/(\s#[^\s#]+(?:\s+#[^\s#]+)*)\s*$/);
-	const captionTags = tagMatch ? tagMatch[1].trim() : null;
-	const captionBody = tagMatch ? caption.slice(0, tagMatch.index).trim() : caption;
-	if (!caption && !showCallout) return null;
-	return /* @__PURE__ */ jsxs(Fragment$1, { children: [caption && /* @__PURE__ */ jsxs("p", {
-		className: "mr-11 mt-0.5 min-w-0 break-words text-[16.5px] font-extrabold leading-[1.4] tracking-[-0.01em] text-[#0B0B0B]",
-		children: [
-			"“",
-			captionBody,
-			"”",
-			captionTags && /* @__PURE__ */ jsxs("span", {
-				className: "font-bold text-[#9A6B00]",
-				children: [" ", captionTags]
-			})
-		]
-	}), showCallout && /* @__PURE__ */ jsxs("div", {
-		className: "flex min-w-0 items-start gap-[9px] rounded-[12px] border border-[#F2E2AE] bg-[#FFF3CF] px-3 py-2.5",
-		children: [
-			/* @__PURE__ */ jsx("span", {
-				"aria-hidden": true,
-				className: "mt-px flex-none text-[#9A6B00]",
-				children: /* @__PURE__ */ jsxs("svg", {
-					viewBox: "0 0 24 24",
-					className: "h-3.5 w-3.5",
-					fill: "none",
-					stroke: "currentColor",
-					strokeWidth: "2",
-					children: [/* @__PURE__ */ jsx("circle", {
-						cx: "12",
-						cy: "12",
-						r: "10"
-					}), /* @__PURE__ */ jsx("path", {
-						d: "M12 16v-5M12 8h.01",
-						strokeLinecap: "round"
-					})]
-				})
-			}),
-			/* @__PURE__ */ jsxs("p", {
-				className: "m-0 min-w-0 flex-1 break-words text-[12px] leading-[1.45] text-[#5B4300]",
-				children: [
-					/* @__PURE__ */ jsxs("b", {
-						className: "font-extrabold",
-						children: [formatMetric(score), "x is this video’s weighted engagement relative to its creator’s follower count."]
-					}),
-					" ",
-					"Views, likes and comments contribute to the score."
-				]
-			}),
-			/* @__PURE__ */ jsx("button", {
-				type: "button",
-				onClick: onDismissCallout,
-				"aria-label": "Dismiss",
-				className: "ml-auto flex-none cursor-pointer font-bold leading-none text-[#9B8140] transition hover:text-[#0B0B0B]",
-				children: "✕"
-			})
-		]
-	})] });
-}
-function TabRow({ tabs, activeTab, onChange }) {
-	return /* @__PURE__ */ jsx("div", {
-		className: "flex gap-1.5 rounded-[12px] border border-[#E7E5DF] bg-white p-[5px]",
-		role: "tablist",
-		children: tabs.map((tab) => /* @__PURE__ */ jsx("button", {
-			type: "button",
-			role: "tab",
-			"aria-selected": activeTab === tab.key,
-			onClick: () => onChange(tab.key),
-			className: `h-9 flex-1 rounded-[9px] text-[13px] font-bold transition ${activeTab === tab.key ? "bg-[#FFF3CF] text-[#9A6B00]" : "text-[#5C5A54] hover:text-[#0B0B0B]"}`,
-			children: tab.label
-		}, tab.key))
-	});
-}
-function ProcessingState({ status, error }) {
-	return /* @__PURE__ */ jsxs("section", {
-		className: "rounded-[16px] border border-[#ddd6ca] bg-[#fffdf9] p-5",
-		children: [/* @__PURE__ */ jsx("div", {
-			className: "text-[12px] font-semibold uppercase tracking-[0.12em] text-[#8c6b10]",
-			children: status || "idle"
-		}), /* @__PURE__ */ jsx("p", {
-			className: "mt-2 text-[14px] leading-6 text-[#696257]",
-			children: status === "failed" ? error || "This analysis could not be completed." : status === "processing" ? "We are preparing the transcript, shared diagnostics, and creator-facing guidance." : /* @__PURE__ */ jsxs(Fragment$1, { children: [
-				"Analysis hasn’t started yet. Run ",
-				/* @__PURE__ */ jsx("b", {
-					className: "font-bold text-[#1a1a1a]",
-					children: "Analyze video"
-				}),
-				" to break down what made this video outperform its audience size — and get a playbook you can hand to your creators."
-			] })
-		})]
-	});
-}
-function ErrorStateModal({ message, retrying, onRetry, onDismiss }) {
-	return /* @__PURE__ */ jsx("div", {
-		className: "absolute inset-0 z-20 flex items-center justify-center rounded-[22px] bg-[rgba(42,33,20,0.28)] px-4 backdrop-blur-[2px]",
-		children: /* @__PURE__ */ jsxs("div", {
-			className: "w-full max-w-[430px] rounded-[20px] border border-[#ddd6ca] bg-[#fffdf9] p-5 shadow-[0_24px_60px_rgba(42,33,20,0.18)]",
-			children: [
-				/* @__PURE__ */ jsx("div", {
-					className: "flex h-10 w-10 items-center justify-center rounded-full bg-[#fff0bf] text-[#8c6b10]",
-					children: /* @__PURE__ */ jsxs("svg", {
-						viewBox: "0 0 24 24",
-						className: "h-5 w-5 stroke-current",
-						fill: "none",
-						strokeWidth: "2",
-						strokeLinecap: "round",
-						strokeLinejoin: "round",
-						children: [
-							/* @__PURE__ */ jsx("path", { d: "M12 8v5" }),
-							/* @__PURE__ */ jsx("path", { d: "M12 16h.01" }),
-							/* @__PURE__ */ jsx("path", { d: "M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z" })
-						]
-					})
-				}),
-				/* @__PURE__ */ jsx("h3", {
-					className: "mt-4 text-[20px] font-semibold text-[#1a1a1a]",
-					children: "Something went wrong"
-				}),
-				/* @__PURE__ */ jsx("p", {
-					className: "mt-2 text-[14px] leading-6 text-[#696257]",
-					children: message || "We could not finish this analysis right now. Please try again later."
-				}),
-				/* @__PURE__ */ jsxs("div", {
-					className: "mt-5 flex gap-3",
-					children: [/* @__PURE__ */ jsx("button", {
-						type: "button",
-						onClick: onRetry,
-						disabled: retrying,
-						className: "inline-flex flex-1 items-center justify-center rounded-full bg-[#f2c44f] px-4 py-2.5 text-[12px] font-semibold text-[#4f3d08] transition hover:bg-[#e8bb48] disabled:cursor-not-allowed disabled:opacity-60",
-						children: retrying ? "Retrying…" : "Try again"
-					}), /* @__PURE__ */ jsx("button", {
-						type: "button",
-						onClick: onDismiss,
-						className: "inline-flex flex-1 items-center justify-center rounded-full border border-[#ddd6ca] bg-white px-4 py-2.5 text-[12px] font-semibold text-[#5f584d] transition hover:bg-[#faf7f1]",
-						children: "Close"
-					})]
-				})
-			]
-		})
-	});
-}
-function hookReasons(result) {
-	const reasons = Array.isArray(result?.hook_reasons) ? result.hook_reasons : [];
-	if (reasons.length > 0) return reasons.map((item, index) => ({
-		id: index,
-		title: item?.title || item?.tactic || item?.label || `Hook tactic ${index + 1}`,
-		body: item?.explanation || item?.reason || (typeof item === "string" ? item : "")
-	}));
-	return whyDrivers({ content_breakdown: Array.isArray(result?.content_breakdown) ? result.content_breakdown.slice(0, 3) : [] }).map((item) => ({
-		id: item.id,
-		title: item.title,
-		body: item.body
-	}));
-}
-function Section({ tone = "plain", title, count, children, className = "" }) {
-	return /* @__PURE__ */ jsxs("section", {
-		className: `min-w-0 rounded-[14px] border px-[15px] py-[14px] ${tone === "next" ? "border-[#F2E2AE] bg-[#FFFCF2]" : "border-[#E7E5DF] bg-white"} ${className}`,
-		children: [title && /* @__PURE__ */ jsxs("h3", {
-			className: "mb-[11px] flex items-center gap-2 text-[13.5px] font-extrabold tracking-[-0.01em] text-[#0B0B0B]",
-			children: [title, count && /* @__PURE__ */ jsx("span", {
-				className: "text-[10px] font-extrabold tracking-[0.06em] text-[#8A877F]",
-				children: count
-			})]
-		}), children]
-	});
-}
-function NumberedItems({ items, tone = "good" }) {
-	const chip = {
-		good: "bg-[#FFF3CF] text-[#9A6B00]",
-		bad: "bg-[#FEF0E7] text-[#C2410C]",
-		next: "bg-[#E9F5EE] text-[#1F7A4D]"
-	}[tone];
-	return /* @__PURE__ */ jsx("ul", {
-		className: "m-0 grid list-none gap-[11px] p-0",
-		children: items.map((item, index) => /* @__PURE__ */ jsxs("li", {
-			className: "flex gap-2.5",
-			children: [/* @__PURE__ */ jsx("span", {
-				className: `mt-px flex h-[19px] flex-[0_0_19px] items-center justify-center rounded-[6px] text-[10.5px] font-extrabold ${chip}`,
-				children: item.rank ?? index + 1
-			}), /* @__PURE__ */ jsxs("div", {
-				className: "min-w-0",
-				children: [item.title && /* @__PURE__ */ jsx("b", {
-					className: "mb-0.5 block text-[12.8px] font-bold text-[#0B0B0B]",
-					children: item.title
-				}), item.body && /* @__PURE__ */ jsx("p", {
-					className: "m-0 text-[12.3px] leading-[1.5] text-[#5C5A54]",
-					children: item.body
-				})]
-			})]
-		}, item.id ?? index))
-	});
-}
-function SourceNote({ children }) {
-	return /* @__PURE__ */ jsx("p", {
-		className: "mb-0 mt-[11px] text-[11px] italic text-[#8A877F]",
-		children
-	});
-}
-function EmptySection({ children }) {
-	return /* @__PURE__ */ jsx("p", {
-		className: "m-0 text-[12.3px] leading-[1.5] text-[#8A877F]",
-		children
-	});
-}
-function WhyPanel({ result, analysis, video }) {
-	const drivers = whyDrivers(result);
-	const drags = whyDrags(result);
-	const actions = strategistRecommendations(result);
-	const rows = transcriptRows(analysis);
-	const runtime = formatDuration$1(video?.duration ?? null);
-	return /* @__PURE__ */ jsxs("div", {
-		className: "grid gap-3",
-		children: [
-			/* @__PURE__ */ jsx(Section, {
-				title: "Why it worked",
-				count: drivers.length ? `${drivers.length} ${drivers.length === 1 ? "DRIVER" : "DRIVERS"}` : null,
-				children: drivers.length > 0 ? /* @__PURE__ */ jsx(NumberedItems, {
-					items: drivers,
-					tone: "good"
-				}) : /* @__PURE__ */ jsx(EmptySection, { children: "No drivers were identified for this video." })
-			}),
-			/* @__PURE__ */ jsx(Section, {
-				title: "What could be improved",
-				count: drags.length ? `${drags.length} ${drags.length === 1 ? "DRAG" : "DRAGS"}` : null,
-				children: drags.length > 0 ? /* @__PURE__ */ jsx(NumberedItems, {
-					items: drags,
-					tone: "bad"
-				}) : /* @__PURE__ */ jsx(EmptySection, { children: "Nothing measurable held this video back." })
-			}),
-			/* @__PURE__ */ jsx(Section, {
-				tone: "next",
-				title: "What you should do next",
-				count: actions.length ? `${actions.length} ${actions.length === 1 ? "ACTION" : "ACTIONS"}` : null,
-				children: actions.length > 0 ? /* @__PURE__ */ jsxs(Fragment$1, { children: [/* @__PURE__ */ jsx(NumberedItems, {
-					items: actions,
-					tone: "next"
-				}), /* @__PURE__ */ jsx(SourceNote, { children: "From this video’s transcript and metrics." })] }) : /* @__PURE__ */ jsx(EmptySection, { children: "No next actions were generated for this video." })
-			}),
-			/* @__PURE__ */ jsx(Section, {
-				title: "Transcript",
-				count: runtime,
-				children: rows.length > 0 ? /* @__PURE__ */ jsx("ul", {
-					className: "m-0 grid list-none gap-2 p-0",
-					children: rows.map((row, index) => /* @__PURE__ */ jsxs("li", {
-						className: "flex gap-[11px] text-[12.3px] leading-[1.5]",
-						children: [/* @__PURE__ */ jsx("span", {
-							className: "flex-[0_0_34px] pt-px text-[11px] font-bold [font-variant-numeric:tabular-nums] text-[#8A877F]",
-							children: row.time
-						}), /* @__PURE__ */ jsx("span", {
-							className: index === 0 ? "rounded-[6px] bg-[#FFF3CF] px-1.5 py-px" : void 0,
-							children: row.text
-						})]
-					}, row.id))
-				}) : /* @__PURE__ */ jsx(EmptySection, { children: "No transcript was captured for this video." })
-			})
-		]
-	});
-}
-function HookPanel({ result, video }) {
-	const hookLine = String(result?.hook_analysis || "").trim();
-	const patterns = hookPatterns(result);
-	const reasons = hookReasons(result);
-	const beats = hookBeats(result);
-	const rewrites = hookVariations(result);
-	const [copiedId, setCopiedId] = useState(null);
-	const copy = async (item) => {
-		try {
-			await navigator.clipboard.writeText(item.text);
-			setCopiedId(item.id);
-			window.setTimeout(() => setCopiedId((current) => current === item.id ? null : current), 1600);
-		} catch {}
-	};
-	return /* @__PURE__ */ jsxs("div", {
-		className: "grid gap-3",
-		children: [
-			/* @__PURE__ */ jsx(Section, { children: /* @__PURE__ */ jsxs("div", {
-				className: "flex items-stretch gap-[13px]",
-				children: [/* @__PURE__ */ jsxs("div", {
-					className: "relative aspect-[9/13] flex-[0_0_76px] overflow-hidden rounded-[10px] bg-[#FAF9F6]",
-					children: [video?.thumbnail_url ? /* @__PURE__ */ jsx("img", {
-						src: video.thumbnail_url,
-						alt: "",
-						referrerPolicy: "no-referrer",
-						className: "absolute inset-0 h-full w-full object-cover"
-					}) : /* @__PURE__ */ jsx("span", { className: "absolute inset-0 bg-[linear-gradient(150deg,#e8dcd2,#d8c4b6_55%,#a8887c)]" }), /* @__PURE__ */ jsx("span", {
-						className: "absolute bottom-1.5 left-1.5 text-[9px] font-extrabold tracking-[0.06em] text-white [text-shadow:0_1px_4px_rgba(0,0,0,.6)]",
-						children: "0:00"
-					})]
-				}), /* @__PURE__ */ jsxs("div", {
-					className: "flex min-w-0 flex-1 flex-col justify-center",
-					children: [hookLine ? /* @__PURE__ */ jsxs("blockquote", {
-						className: "m-0 mb-[9px] text-[16px] font-extrabold leading-[1.35] tracking-[-0.01em] text-[#0B0B0B] text-balance",
-						children: [
-							"“",
-							hookLine,
-							"”"
-						]
-					}) : /* @__PURE__ */ jsx(EmptySection, { children: "The opening line was not captured for this video." }), patterns.length > 0 && /* @__PURE__ */ jsx("div", {
-						className: "flex flex-wrap gap-1.5",
-						children: patterns.map((pattern, index) => /* @__PURE__ */ jsx("span", {
-							className: `rounded-[7px] border px-2 py-1 text-[10.5px] font-extrabold tracking-[0.03em] ${index === 0 ? "border-[#F2E2AE] bg-[#FFF3CF] text-[#9A6B00]" : "border-[#E7E5DF] bg-[#F5F4F0] text-[#5C5A54]"}`,
-							children: pattern
-						}, pattern))
-					})]
-				})]
-			}) }),
-			/* @__PURE__ */ jsx(Section, {
-				title: "Why it stops the scroll",
-				count: reasons.length ? `${reasons.length} ${reasons.length === 1 ? "REASON" : "REASONS"}` : null,
-				children: reasons.length > 0 ? /* @__PURE__ */ jsx(NumberedItems, {
-					items: reasons,
-					tone: "good"
-				}) : /* @__PURE__ */ jsx(EmptySection, { children: "No hook breakdown was generated for this video." })
-			}),
-			beats.length > 0 && /* @__PURE__ */ jsxs(Section, {
-				title: "How the first three seconds are built",
-				children: [/* @__PURE__ */ jsxs("div", {
-					className: "mb-3 flex h-1.5 overflow-hidden rounded-full bg-[#E7E5DF]",
-					children: [
-						/* @__PURE__ */ jsx("i", { className: "block flex-[3] bg-[#9A6B00]" }),
-						/* @__PURE__ */ jsx("i", { className: "block flex-[4] bg-[#E0B44A]" }),
-						/* @__PURE__ */ jsx("i", { className: "block flex-[3] bg-[#F0D89A]" })
-					]
-				}), /* @__PURE__ */ jsx("ul", {
-					className: "m-0 grid list-none gap-0 p-0",
-					children: beats.map((beat, index) => /* @__PURE__ */ jsxs("li", {
-						className: `grid grid-cols-[46px_1fr] gap-3 py-[9px] ${index === 0 ? "pt-0" : "border-t border-dashed border-[#E7E5DF]"}`,
-						children: [/* @__PURE__ */ jsx("span", {
-							className: "pt-px text-[11px] font-extrabold [font-variant-numeric:tabular-nums] text-[#9A6B00]",
-							children: beat.time ?? ""
-						}), /* @__PURE__ */ jsxs("div", {
-							className: "min-w-0",
-							children: [/* @__PURE__ */ jsx("b", {
-								className: "mb-0.5 block text-[12.5px] font-bold text-[#0B0B0B]",
-								children: beat.title
-							}), beat.body && /* @__PURE__ */ jsx("p", {
-								className: "m-0 text-[12.2px] leading-[1.5] text-[#5C5A54]",
-								children: beat.body
-							})]
-						})]
-					}, beat.id))
-				})]
-			}),
-			rewrites.length > 0 && /* @__PURE__ */ jsxs(Section, {
-				tone: "next",
-				title: "Swipe this hook",
-				count: `${rewrites.length} ${rewrites.length === 1 ? "REWRITE" : "REWRITES"}`,
-				children: [/* @__PURE__ */ jsx("ul", {
-					className: "m-0 grid list-none gap-[9px] p-0",
-					children: rewrites.map((item) => /* @__PURE__ */ jsxs("li", {
-						className: "flex items-start gap-2.5 rounded-[11px] border border-[#E7E5DF] bg-[#F5F4F0] px-[11px] py-2.5",
-						children: [/* @__PURE__ */ jsxs("span", {
-							className: "min-w-0 flex-1 text-[12.4px] leading-[1.5] text-[#0B0B0B]",
-							children: [item.objection && /* @__PURE__ */ jsx("em", {
-								className: "mb-[3px] block text-[10.5px] font-extrabold uppercase not-italic tracking-[0.05em] text-[#8A877F]",
-								children: item.objection
-							}), item.text]
-						}), /* @__PURE__ */ jsxs("button", {
-							type: "button",
-							onClick: () => copy(item),
-							className: "inline-flex h-[26px] flex-shrink-0 items-center gap-[5px] rounded-[8px] border border-[#E7E5DF] bg-white px-[9px] text-[11px] font-bold text-[#5C5A54] transition hover:border-[#c8c4ba] hover:text-[#0B0B0B]",
-							children: [/* @__PURE__ */ jsxs("svg", {
-								viewBox: "0 0 24 24",
-								className: "h-[11px] w-[11px]",
-								fill: "none",
-								stroke: "currentColor",
-								strokeWidth: "2",
-								strokeLinejoin: "round",
-								children: [/* @__PURE__ */ jsx("rect", {
-									x: "9",
-									y: "9",
-									width: "12",
-									height: "12",
-									rx: "2"
-								}), /* @__PURE__ */ jsx("path", { d: "M5 15V5a2 2 0 012-2h10" })]
-							}), copiedId === item.id ? "Copied" : "Copy"]
-						})]
-					}, item.id))
-				}), /* @__PURE__ */ jsx(SourceNote, { children: "Structure lifted from this video’s opening." })]
-			})
-		]
-	});
-}
-function ActivePanel({ activeTab, analysis, result, video }) {
-	if (activeTab === "hook") return /* @__PURE__ */ jsx(HookPanel, {
-		result,
-		video
-	});
-	return /* @__PURE__ */ jsx(WhyPanel, {
-		result,
-		analysis,
-		video
-	});
-}
-var DEFAULT_TABS = [{
-	key: "why",
-	label: "Why it worked"
-}, {
-	key: "hook",
-	label: "Hook"
-}];
-function AnalysisModal({ video, initialAnalysis, tabs = DEFAULT_TABS, open = true, onClose, onAnalysisChange, onAnalyze, analyzeBusy = false, saved = false, saving = false, onToggleSave, showExternalLink = true }) {
-	const [activeTab, setActiveTab] = useState(tabs[0]?.key ?? "why");
-	const [analysis, setAnalysis] = usePolling(video.id, initialAnalysis, open);
-	const [regenerating, setRegenerating] = useState(false);
-	const [showErrorModal, setShowErrorModal] = useState(false);
-	const [calloutDismissed, setCalloutDismissed] = useState(false);
-	const canRegenerate = Boolean(usePage().props?.features?.videoAnalysisRefresh);
-	const scrollerRef = useRef(null);
-	const selectTab = (key) => {
-		setActiveTab(key);
-		if (scrollerRef.current) scrollerRef.current.scrollTop = 0;
-	};
-	const onAnalysisChangeRef = useRef(onAnalysisChange);
-	onAnalysisChangeRef.current = onAnalysisChange;
-	useEffect(() => {
-		if (analysis) onAnalysisChangeRef.current?.(video.id, analysis);
-	}, [analysis, video.id]);
-	useEffect(() => {
-		if (!open) return;
-		setShowErrorModal(analysis?.status === "failed");
-	}, [
-		analysis?.status,
-		open,
-		video?.id
-	]);
-	const requestAnalysis = async (forceRefresh = false) => {
-		const payload = await videoAnalysis.request(video.id, forceRefresh ? { force_refresh: true } : {});
-		setShowErrorModal(false);
-		setAnalysis(payload.analysis);
-	};
-	const regenerate = async () => {
-		if (regenerating) return;
-		setRegenerating(true);
-		try {
-			await requestAnalysis(true);
-		} catch (error) {
-			window.alert(error?.message || "Could not regenerate this analysis.");
-		} finally {
-			setRegenerating(false);
-		}
-	};
-	const retryAnalysis = async () => {
-		if (regenerating) return;
-		setRegenerating(true);
-		try {
-			await requestAnalysis(false);
-		} catch (error) {
-			window.alert(error?.message || "Could not restart this analysis.");
-		} finally {
-			setRegenerating(false);
-		}
-	};
-	useEffect(() => {
-		if (!open) return void 0;
-		const previousOverflow = document.body.style.overflow;
-		document.body.style.overflow = "hidden";
-		const handleKeyDown = (event) => {
-			if (event.key === "Escape") onClose?.();
-		};
-		window.addEventListener("keydown", handleKeyDown);
-		return () => {
-			document.body.style.overflow = previousOverflow;
-			window.removeEventListener("keydown", handleKeyDown);
-		};
-	}, [open, onClose]);
-	useEffect(() => {
-		setActiveTab(tabs[0]?.key ?? "why");
-		setCalloutDismissed(false);
-	}, [tabs, video?.id]);
-	if (!open || !video) return null;
-	const result = analysis?.result ?? {};
-	const regenerateDisabled = regenerating || analysis?.status === "processing";
-	const status = analysis?.status;
-	const analyzeState = status === "complete" ? "ready" : analyzeBusy || regenerating || status === "processing" || status === "queued" || status === "pending" ? "running" : "idle";
-	const startAnalysis = () => {
-		if (onAnalyze) {
-			onAnalyze();
-			return;
-		}
-		retryAnalysis();
-	};
-	return /* @__PURE__ */ jsx("div", {
-		className: "fixed inset-0 z-[120] flex items-center justify-center bg-[rgba(38,33,28,0.42)] px-2 py-3 backdrop-blur-[2px] min-[640px]:px-4 min-[640px]:py-6",
-		onClick: onClose,
-		children: /* @__PURE__ */ jsx("div", {
-			className: "max-h-[calc(100vh-1.5rem)] w-full max-w-[1120px] overflow-y-auto rounded-[22px] border border-[#E7E5DF] bg-[#FAF9F6] p-2 shadow-[0_2px_4px_rgba(20,15,0,.05),0_24px_56px_-20px_rgba(20,15,0,.18)] min-[640px]:max-h-[calc(100vh-3rem)] min-[640px]:p-3 min-[820px]:overflow-hidden",
-			onClick: (event) => event.stopPropagation(),
-			role: "dialog",
-			"aria-modal": "true",
-			"aria-label": "Video analysis",
-			children: /* @__PURE__ */ jsxs("div", {
-				className: "relative min-w-0 rounded-[18px] p-3 min-[640px]:p-4 min-[820px]:h-[min(760px,calc(100vh-88px))] min-[820px]:overflow-hidden md:p-5",
-				children: [
-					showErrorModal && /* @__PURE__ */ jsx(ErrorStateModal, {
-						message: analysis?.error_message,
-						retrying: regenerating,
-						onRetry: retryAnalysis,
-						onDismiss: onClose
-					}),
-					/* @__PURE__ */ jsx("button", {
-						type: "button",
-						onClick: onClose,
-						className: "absolute right-4 top-4 z-10 flex h-8 w-8 items-center justify-center rounded-full border border-[#E7E5DF] bg-white text-[#5C5A54] transition hover:text-[#0B0B0B]",
-						"aria-label": "Close analysis",
-						children: /* @__PURE__ */ jsx("svg", {
-							viewBox: "0 0 24 24",
-							className: "h-[13px] w-[13px] stroke-current",
-							fill: "none",
-							strokeWidth: "2.4",
-							strokeLinecap: "round",
-							children: /* @__PURE__ */ jsx("path", { d: "M5 5l14 14M19 5L5 19" })
-						})
-					}),
-					/* @__PURE__ */ jsxs("div", {
-						className: "grid h-full items-start gap-6 min-[980px]:grid-cols-[300px_minmax(0,1fr)]",
-						children: [/* @__PURE__ */ jsx(LeftSidebar, {
-							video,
-							canRegenerate,
-							regenerating,
-							disabledRegenerate: regenerateDisabled,
-							onRegenerate: regenerate,
-							analyzeState,
-							onAnalyze: startAnalysis,
-							saved,
-							saving,
-							onToggleSave,
-							showExternalLink
-						}), /* @__PURE__ */ jsxs("div", {
-							className: "flex min-h-0 min-w-0 flex-col gap-3.5 min-[820px]:h-full",
-							children: [
-								/* @__PURE__ */ jsx(VideoHeadline, {
-									video,
-									calloutDismissed,
-									onDismissCallout: () => setCalloutDismissed(true)
-								}),
-								/* @__PURE__ */ jsx(TabRow, {
-									tabs,
-									activeTab,
-									onChange: selectTab
-								}),
-								/* @__PURE__ */ jsx("div", {
-									className: "relative flex min-h-0 flex-1 after:pointer-events-none after:absolute after:inset-x-0 after:bottom-0 after:h-[26px] after:bg-[linear-gradient(180deg,rgba(250,249,246,0),#FAF9F6)] min-[820px]:after:block max-[819px]:after:hidden",
-									children: /* @__PURE__ */ jsx("div", {
-										ref: scrollerRef,
-										className: "-mr-2.5 min-h-0 flex-1 overscroll-contain py-0.5 pl-0.5 pr-3 min-[820px]:overflow-y-auto",
-										children: analysis?.status !== "complete" ? /* @__PURE__ */ jsx(ProcessingState, {
-											status: analysis?.status ?? "idle",
-											error: analysis?.error_message
-										}) : /* @__PURE__ */ jsx(ActivePanel, {
-											activeTab,
-											analysis,
-											result,
-											video
-										})
-									})
-								})
-							]
-						})]
-					})
-				]
-			})
-		})
-	});
-}
-//#endregion
 //#region resources/js/Pages/SavedSearches/Index.jsx
 var Index_exports = /* @__PURE__ */ __exportAll({ default: () => Index });
 var FILTER_LABELS = {
@@ -15118,11 +15611,6 @@ function formatHeatmapHour(hour) {
 	if (hour === 12) return "12:00 PM";
 	return hour < 12 ? `${hour}:00 AM` : `${hour - 12}:00 PM`;
 }
-function canUsePaidVideoAnalysis(billing) {
-	if (!billing) return false;
-	const limit = Number(billing.videoAnalysisLimit ?? 0);
-	return Boolean(billing.hasPaidPlan) && limit !== 0;
-}
 function canUseSearchBookmarks(billing) {
 	if (!billing) return false;
 	const limit = Number(billing.searchBookmarkLimit ?? billing.bookmarkLimit ?? 0);
@@ -15133,13 +15621,6 @@ function canUseSearchBookmarks(billing) {
 function canManageSearch(billing) {
 	if (!billing) return false;
 	return Boolean(billing.hasPaidPlan);
-}
-function videoAnalysisRemaining(billing, startedThisSession = 0) {
-	if (!billing) return 0;
-	const limit = Number(billing.videoAnalysisLimit ?? 0);
-	const used = Number(billing.videoAnalysisUsed ?? 0) + Number(startedThisSession || 0);
-	if (limit === -1) return -1;
-	return Math.max(0, limit - used);
 }
 /** Render **bold** markers as <b>…</b> without allowing raw HTML. */
 function renderBold(text) {
@@ -17099,7 +17580,7 @@ function DetailScreen({ search, isAuthenticated = false, billing: billing$2, pro
 			onCancel: closeConfirmAnalysis,
 			onConfirm: () => launchManualAnalysis(confirmAnalysisVideo)
 		}),
-		upgradeModalType && /* @__PURE__ */ jsx(UpgradeModal, {
+		upgradeModalType && /* @__PURE__ */ jsx(AnalysisUpgradeModal, {
 			mode: upgradeModalType,
 			trialEligible: billing$2?.trialEligible ?? true,
 			hasUsedTrial: billing$2?.hasUsedTrial ?? false,
@@ -17142,74 +17623,6 @@ function AutoAnalysis({ video }) {
 			className: "rs-anz__h",
 			children: [Icons.Spark, "Analysis"]
 		}), /* @__PURE__ */ jsx("dl", { children: rows.map(([dt, dd]) => /* @__PURE__ */ jsxs(Fragment, { children: [/* @__PURE__ */ jsx("dt", { children: dt }), /* @__PURE__ */ jsx("dd", { children: dd })] }, dt)) })]
-	});
-}
-function UsageConfirmModal$1({ video, creditsRemaining, creditsRemainingAfterUse, busy = false, onConfirm, onCancel }) {
-	const currentCredits = creditsRemaining === -1 ? "Unlimited" : creditsRemaining;
-	const afterUseCredits = creditsRemainingAfterUse === "unlimited" ? "unlimited" : creditsRemainingAfterUse;
-	return /* @__PURE__ */ jsx("div", {
-		className: "rs-modalback",
-		onClick: onCancel,
-		children: /* @__PURE__ */ jsxs("div", {
-			className: "rs-usage",
-			onClick: (event) => event.stopPropagation(),
-			role: "dialog",
-			"aria-modal": "true",
-			"aria-label": "Confirm video analysis",
-			children: [
-				/* @__PURE__ */ jsxs("div", {
-					className: "rs-upg__eyebrow",
-					children: [Icons.Spark, /* @__PURE__ */ jsx("span", { children: "Video analysis" })]
-				}),
-				/* @__PURE__ */ jsx("h3", { children: "Analyze this breakout video?" }),
-				/* @__PURE__ */ jsxs("p", { children: [
-					"You currently have ",
-					/* @__PURE__ */ jsx("b", { children: currentCredits }),
-					" video analysis ",
-					currentCredits === 1 ? "credit" : "credits",
-					" remaining. This analysis will use ",
-					/* @__PURE__ */ jsx("b", { children: "1 credit" }),
-					" when it completes successfully, leaving you with ",
-					/* @__PURE__ */ jsx("b", { children: afterUseCredits }),
-					"."
-				] }),
-				/* @__PURE__ */ jsx("p", {
-					className: "rs-usage__subject",
-					children: video?.title || video?.caption || video?.handle || "Selected video"
-				}),
-				/* @__PURE__ */ jsxs("div", {
-					className: "rs-upgmodal__actions",
-					children: [/* @__PURE__ */ jsx("button", {
-						type: "button",
-						className: "rs-btn rs-btn--g",
-						onClick: onCancel,
-						disabled: busy,
-						children: "Cancel"
-					}), /* @__PURE__ */ jsx("button", {
-						type: "button",
-						className: "rs-btn rs-btn--y",
-						onClick: onConfirm,
-						disabled: busy,
-						children: busy ? "Starting…" : "Start analysis"
-					})]
-				})
-			]
-		})
-	});
-}
-function UpgradeModal({ mode = "analysis", trialEligible = true, hasUsedTrial = false, onClose, onUpgrade }) {
-	const isSearchBookmark = mode === "search-bookmark";
-	const isSearchManagement = mode === "search-management";
-	const shouldOfferTrial = trialEligible && !hasUsedTrial;
-	return /* @__PURE__ */ jsx(UpgradePromptModal, {
-		eyebrow: isSearchBookmark ? "Search bookmarks" : isSearchManagement ? "Search management" : "Video analysis",
-		title: isSearchBookmark ? shouldOfferTrial ? "Start your 8-day Growth trial to unlock search bookmarks" : "Upgrade to unlock search bookmarks" : isSearchManagement ? shouldOfferTrial ? "Start your 8-day Growth trial to manage this search" : "Upgrade to manage this search" : shouldOfferTrial ? "Turn more breakouts into winning creative" : "Turn every breakout into your next winning creative",
-		body: isSearchBookmark ? shouldOfferTrial ? "Free searches do not include saved search bookmarks. Start your 8-day Growth trial to save searches to your bookmarks." : "Free searches do not include saved search bookmarks. Upgrade to Growth or Scale to save searches to your bookmarks." : isSearchManagement ? shouldOfferTrial ? "Start your 8-day Growth trial to pause, resume, or delete tracked searches from your dashboard." : "Upgrade to Growth or Scale to pause, resume, or delete tracked searches from your dashboard." : shouldOfferTrial ? "See the hook, angle, and strategy behind more high-performing videos during your 8-day Growth trial." : "See the hook, angle, and strategy behind more high-performing videos—then turn those insights into content faster.",
-		visual: !isSearchBookmark && !isSearchManagement ? "video-analysis" : null,
-		emphasis: !isSearchBookmark && !isSearchManagement ? "Your free top-video breakdown stays included." : null,
-		primaryLabel: isSearchBookmark || isSearchManagement ? shouldOfferTrial ? "Start 8-day Growth trial" : "Upgrade to Growth" : shouldOfferTrial ? "Analyze more free for 8 days" : "Unlock more video analysis",
-		onPrimary: onUpgrade,
-		onClose
 	});
 }
 function ActionConfirmModal({ action, searchName, onClose, onConfirm }) {
@@ -23666,7 +24079,8 @@ createServer((page) => createInertiaApp({
 			"./Pages/components/SearchHistoryTab.jsx": SearchHistoryTab_exports,
 			"./Pages/components/SearchLauncher.jsx": SearchLauncher_exports,
 			"./Pages/components/SearchListScreen.jsx": SearchListScreen_exports,
-			"./Pages/components/UpgradePromptModal.jsx": UpgradePromptModal_exports
+			"./Pages/components/UpgradePromptModal.jsx": UpgradePromptModal_exports,
+			"./Pages/components/VideoAnalysisGate.jsx": VideoAnalysisGate_exports
 		}))[`./Pages/${name}.jsx`];
 	},
 	setup: ({ App, props }) => /* @__PURE__ */ jsx(App, { ...props })

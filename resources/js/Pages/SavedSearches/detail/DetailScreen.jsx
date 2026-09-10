@@ -13,7 +13,12 @@ import BreakoutVideoCard, {
   formatDuration,
   gradientFor,
 } from '../../components/BreakoutVideoCard.jsx';
-import UpgradePromptModal from '../../components/UpgradePromptModal.jsx';
+import {
+  AnalysisUpgradeModal,
+  UsageConfirmModal,
+  canUsePaidVideoAnalysis,
+  videoAnalysisRemaining,
+} from '../../components/VideoAnalysisGate.jsx';
 
 /**
  * Search analytics tracker — the redesigned results page.
@@ -263,14 +268,6 @@ function formatHeatmapHour(hour) {
   return hour < 12 ? `${hour}:00 AM` : `${hour - 12}:00 PM`;
 }
 
-function canUsePaidVideoAnalysis(billing) {
-  if (!billing) return false;
-
-  const limit = Number(billing.videoAnalysisLimit ?? 0);
-
-  return Boolean(billing.hasPaidPlan) && limit !== 0;
-}
-
 function canUseSearchBookmarks(billing) {
   if (!billing) return false;
 
@@ -286,17 +283,6 @@ function canManageSearch(billing) {
   if (!billing) return false;
 
   return Boolean(billing.hasPaidPlan);
-}
-
-function videoAnalysisRemaining(billing, startedThisSession = 0) {
-  if (!billing) return 0;
-
-  const limit = Number(billing.videoAnalysisLimit ?? 0);
-  const used = Number(billing.videoAnalysisUsed ?? 0) + Number(startedThisSession || 0);
-
-  if (limit === -1) return -1;
-
-  return Math.max(0, limit - used);
 }
 
 /** Render **bold** markers as <b>…</b> without allowing raw HTML. */
@@ -1645,7 +1631,7 @@ export default function DetailScreen({
         />
       )}
       {upgradeModalType && (
-        <UpgradeModal
+        <AnalysisUpgradeModal
           mode={upgradeModalType}
           trialEligible={billing?.trialEligible ?? true}
           hasUsedTrial={billing?.hasUsedTrial ?? false}
@@ -1708,82 +1694,6 @@ function AutoAnalysis({ video }) {
         ))}
       </dl>
     </div>
-  );
-}
-
-function UsageConfirmModal({ video, creditsRemaining, creditsRemainingAfterUse, busy = false, onConfirm, onCancel }) {
-  const currentCredits = creditsRemaining === -1 ? 'Unlimited' : creditsRemaining;
-  const afterUseCredits = creditsRemainingAfterUse === 'unlimited' ? 'unlimited' : creditsRemainingAfterUse;
-
-  return (
-    <div className="rs-modalback" onClick={onCancel}>
-      <div className="rs-usage" onClick={(event) => event.stopPropagation()} role="dialog" aria-modal="true" aria-label="Confirm video analysis">
-        <div className="rs-upg__eyebrow">{Icons.Spark}<span>Video analysis</span></div>
-        <h3>Analyze this breakout video?</h3>
-        <p>
-          You currently have <b>{currentCredits}</b> video analysis {currentCredits === 1 ? 'credit' : 'credits'} remaining.
-          This analysis will use <b>1 credit</b> when it completes successfully, leaving you with <b>{afterUseCredits}</b>.
-        </p>
-        <p className="rs-usage__subject">{video?.title || video?.caption || video?.handle || 'Selected video'}</p>
-        <div className="rs-upgmodal__actions">
-          <button type="button" className="rs-btn rs-btn--g" onClick={onCancel} disabled={busy}>
-            Cancel
-          </button>
-          <button type="button" className="rs-btn rs-btn--y" onClick={onConfirm} disabled={busy}>
-            {busy ? 'Starting…' : 'Start analysis'}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function UpgradeModal({ mode = 'analysis', trialEligible = true, hasUsedTrial = false, onClose, onUpgrade }) {
-  const isSearchBookmark = mode === 'search-bookmark';
-  const isSearchManagement = mode === 'search-management';
-  const shouldOfferTrial = trialEligible && !hasUsedTrial;
-  const eyebrowLabel = isSearchBookmark
-    ? 'Search bookmarks'
-    : isSearchManagement
-      ? 'Search management'
-      : 'Video analysis';
-  const title = isSearchBookmark
-    ? shouldOfferTrial
-      ? 'Start your 8-day Growth trial to unlock search bookmarks'
-      : 'Upgrade to unlock search bookmarks'
-    : isSearchManagement
-      ? shouldOfferTrial
-        ? 'Start your 8-day Growth trial to manage this search'
-        : 'Upgrade to manage this search'
-      : shouldOfferTrial
-        ? 'Turn more breakouts into winning creative'
-        : 'Turn every breakout into your next winning creative';
-  const body = isSearchBookmark
-    ? shouldOfferTrial
-      ? 'Free searches do not include saved search bookmarks. Start your 8-day Growth trial to save searches to your bookmarks.'
-      : 'Free searches do not include saved search bookmarks. Upgrade to Growth or Scale to save searches to your bookmarks.'
-    : isSearchManagement
-      ? shouldOfferTrial
-        ? 'Start your 8-day Growth trial to pause, resume, or delete tracked searches from your dashboard.'
-        : 'Upgrade to Growth or Scale to pause, resume, or delete tracked searches from your dashboard.'
-      : shouldOfferTrial
-        ? 'See the hook, angle, and strategy behind more high-performing videos during your 8-day Growth trial.'
-        : 'See the hook, angle, and strategy behind more high-performing videos—then turn those insights into content faster.';
-  const ctaLabel = isSearchBookmark || isSearchManagement
-    ? shouldOfferTrial ? 'Start 8-day Growth trial' : 'Upgrade to Growth'
-    : shouldOfferTrial ? 'Analyze more free for 8 days' : 'Unlock more video analysis';
-
-  return (
-    <UpgradePromptModal
-      eyebrow={eyebrowLabel}
-      title={title}
-      body={body}
-      visual={!isSearchBookmark && !isSearchManagement ? 'video-analysis' : null}
-      emphasis={!isSearchBookmark && !isSearchManagement ? 'Your free top-video breakdown stays included.' : null}
-      primaryLabel={ctaLabel}
-      onPrimary={onUpgrade}
-      onClose={onClose}
-    />
   );
 }
 

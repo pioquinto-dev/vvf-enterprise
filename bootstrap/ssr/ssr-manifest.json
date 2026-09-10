@@ -65,6 +65,7 @@
   "resources/js/Pages/components/SearchLauncher.jsx": [],
   "resources/js/Pages/components/SearchListScreen.jsx": [],
   "resources/js/Pages/components/UpgradePromptModal.jsx": [],
+  "resources/js/Pages/components/VideoAnalysisGate.jsx": [],
   "resources/js/Pages/utils/navigation.js": [],
   "resources/js/components/ContactFormCard.jsx": [],
   "resources/js/components/Seo.jsx": [],
