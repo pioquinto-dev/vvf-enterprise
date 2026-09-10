@@ -56,7 +56,7 @@ export function multiplier(score) {
 }
 
 /**
- * Outlier multiple → "11.4x". This is views over the median of the search the
+ * Breakout multiple → "11.4x". This is views over the median of the search the
  * video appears in, not the creator's own account baseline — label it as such
  * wherever it renders.
  */

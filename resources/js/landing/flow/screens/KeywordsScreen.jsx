@@ -4,21 +4,21 @@ import { expandKeywords } from '../api.js';
 
 const KEYWORD_CAP = 12;
 
-const FREQUENCIES = [
-  { value: 'weekly', label: 'Weekly', hint: 'Fresh viral videos every week. Best for fast-moving categories.' },
-  { value: 'monthly', label: 'Monthly', hint: 'A monthly pull. Lighter cadence for slower niches.' },
-];
-
-function SkeletonChips() {
+function SkeletonChips({ phrase }) {
   return (
     <>
-      <p className="hint" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, marginBottom: 12, color: 'var(--amber-ink)', fontWeight: 600 }}>
+      <p className="hint" role="status" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, marginBottom: 12, color: 'var(--amber-ink)', fontWeight: 600 }}>
         <span className="chip-spin" aria-hidden />
-        Suggesting keywords…
+        Finding related keywords…
       </p>
-      <div className="chips" aria-hidden>
-        {[132, 108, 156, 96, 140, 118].map((width, i) => (
-          <span key={i} className="chip-skel" style={{ width }} />
+      <div className="chips">
+        <span className="chip on chip--expand-in">
+          <span className="chip__b"><Check /></span>
+          {phrase}
+          <span className="chip__y">main</span>
+        </span>
+        {[132, 108, 156, 96, 140].map((width, i) => (
+          <span key={i} className="chip-skel" style={{ width, animationDelay: `${i * 70}ms` }} />
         ))}
       </div>
     </>
@@ -26,7 +26,7 @@ function SkeletonChips() {
 }
 
 /**
- * Step two — widen the single scrape with keywords and set the cadence.
+ * Step two — widen the single scrape with keywords.
  *
  * The scrape is sent only the primary phrase; every ticked keyword filters the
  * results locally, so "1 search covers everything you select" is literally true.
@@ -44,12 +44,18 @@ export default function KeywordsScreen({
 }) {
   const [terms, setTerms] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [refining, setRefining] = useState(false);
   const [regenerating, setRegenerating] = useState(false);
   const [expansionSource, setExpansionSource] = useState(null);
   const [adding, setAdding] = useState(false);
   const [draft, setDraft] = useState('');
-  const [frequency, setFrequency] = useState('weekly');
   const requested = useRef(false);
+  // Once the AI list lands it is authoritative; the instant preview must not
+  // clobber it if it happens to resolve later.
+  const aiApplied = useRef(false);
+  // Whether the user has touched the list — if so, the AI pass folds its new
+  // terms in as additions instead of replacing their work.
+  const interacted = useRef(false);
 
   /**
    * Build a term list from an expansion payload, keeping anything the user
@@ -75,22 +81,67 @@ export default function KeywordsScreen({
     ].slice(0, KEYWORD_CAP);
   };
 
+  /**
+   * Fold a fresh set of suggestions in without discarding the user's work:
+   * anything they added or removed stays, existing selections are preserved,
+   * and only genuinely new terms are appended (respecting the cap).
+   */
+  const mergeExpansion = (keywords, forPhrase, previous = []) => {
+    const present = new Set(previous.map((t) => t.value.toLowerCase()));
+    const additions = keywords
+      .filter((value) => {
+        const key = value.toLowerCase();
+        if (key === forPhrase.toLowerCase() || present.has(key)) return false;
+        present.add(key);
+        return true;
+      })
+      .map((value) => ({ value, selected: false, custom: false }));
+
+    return [...previous, ...additions].slice(0, KEYWORD_CAP);
+  };
+
   useEffect(() => {
     if (requested.current) return undefined;
     requested.current = true;
 
     const controller = new AbortController();
 
-    expandKeywords(phrase, { signal: controller.signal, type: searchType })
+    // Phase 1 — instant, OpenAI-free suggestions so chips paint immediately
+    // instead of sitting on a skeleton for the seconds the model takes.
+    expandKeywords(phrase, { signal: controller.signal, instant: true, type: searchType })
       .then((payload) => {
+        if (aiApplied.current) return; // AI already won the race — leave it be.
         const keywords = Array.isArray(payload?.keywords) ? payload.keywords : [phrase];
         setExpansionSource(payload?.source ?? null);
         setTerms(applyExpansion(keywords, phrase));
+        setLoading(false);
+        // 'preview'/'fallback' means the model is still refining in phase 2.
+        setRefining(payload?.source === 'preview');
       })
       .catch(() => {
-        setTerms([{ value: phrase, selected: true, locked: true }]);
+        /* the AI pass below is the real result — let it drive on its own */
+      });
+
+    // Phase 2 — the full AI expansion. It replaces the preview when the user
+    // has not touched anything yet, otherwise it only appends new terms.
+    expandKeywords(phrase, { signal: controller.signal, type: searchType })
+      .then((payload) => {
+        aiApplied.current = true;
+        const keywords = Array.isArray(payload?.keywords) ? payload.keywords : [phrase];
+        setExpansionSource(payload?.source ?? null);
+        setTerms((prev) =>
+          interacted.current && prev.length > 0
+            ? mergeExpansion(keywords, phrase, prev)
+            : applyExpansion(keywords, phrase, prev),
+        );
       })
-      .finally(() => setLoading(false));
+      .catch(() => {
+        setTerms((prev) => (prev.length > 0 ? prev : [{ value: phrase, selected: true, locked: true }]));
+      })
+      .finally(() => {
+        setLoading(false);
+        setRefining(false);
+      });
 
     return () => controller.abort();
   }, [phrase]);
@@ -114,12 +165,18 @@ export default function KeywordsScreen({
   const busy = loading || regenerating;
   const atKeywordCap = terms.length >= KEYWORD_CAP;
 
-  const toggle = (value) =>
+  const toggle = (value) => {
+    interacted.current = true;
     setTerms((prev) => prev.map((t) => (t.value === value && !t.locked ? { ...t, selected: !t.selected } : t)));
+  };
 
-  const remove = (value) => setTerms((prev) => prev.filter((t) => t.value !== value || t.locked));
+  const remove = (value) => {
+    interacted.current = true;
+    setTerms((prev) => prev.filter((t) => t.value !== value || t.locked));
+  };
 
   const commitAdd = () => {
+    interacted.current = true;
     const value = draft.trim().replace(/\s+/g, ' ');
     setDraft('');
     setAdding(false);
@@ -151,14 +208,14 @@ export default function KeywordsScreen({
           </button>
         </div>
 
-        {busy ? (
-          <SkeletonChips />
+        {loading ? (
+          <SkeletonChips phrase={phrase} />
         ) : (
           <>
             <div className="chips">
-              {terms.map(({ value, selected: on, locked, custom }) =>
+              {terms.map(({ value, selected: on, locked, custom }, index) =>
                 locked ? (
-                  <span key={value} className="chip on" title="The main keyword is always included">
+                  <span key={value} className="chip on chip--expand-in" style={{ animationDelay: `${index * 45}ms` }} title="The main keyword is always included">
                     <span className="chip__b">
                       <Check />
                     </span>
@@ -178,8 +235,8 @@ export default function KeywordsScreen({
                         toggle(value);
                       }
                     }}
-                    className={`chip${on ? ' on' : ''}`}
-                    style={{ cursor: 'pointer' }}
+                    className={`chip chip--expand-in${on ? ' on' : ''}`}
+                    style={{ cursor: 'pointer', animationDelay: `${index * 45}ms` }}
                   >
                     <span className="chip__b">
                       <Check />
@@ -232,40 +289,22 @@ export default function KeywordsScreen({
             </div>
 
             <p className="hint">
-              {selected.length} of {terms.length} selected · each keyword widens the same single search.
+              {refining ? (
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, color: 'var(--amber-ink)', fontWeight: 600 }}>
+                  <span className="chip-spin" aria-hidden />
+                  Sharpening suggestions…
+                </span>
+              ) : (
+                <>
+                  {selected.length} of {terms.length} selected · each keyword widens the same single search.
+                </>
+              )}
             </p>
             {expansionSource === 'fallback' && (
               <p className="hint">Suggestions came from templates this time — edit them freely.</p>
             )}
           </>
         )}
-      </div>
-
-      {/* ---------------- schedule ---------------- */}
-      <div className="sect">
-        <div className="sect__h">
-          <div>
-            <p className="sect__n">Schedule</p>
-            <h2>How often should we re-run it?</h2>
-          </div>
-        </div>
-        <div className="freq">
-          {FREQUENCIES.map((f) => (
-            <button
-              key={f.value}
-              type="button"
-              className={`fq${frequency === f.value ? ' on' : ''}`}
-              aria-pressed={frequency === f.value}
-              onClick={() => setFrequency(f.value)}
-            >
-              <span className="fq__t">
-                <span className="fq__r" />
-                {f.label}
-              </span>
-              <p>{f.hint}</p>
-            </button>
-          ))}
-        </div>
       </div>
 
       {error && (
@@ -285,7 +324,7 @@ export default function KeywordsScreen({
           type="button"
           className="btn btn--y"
           disabled={busy || submitting || selected.length === 0}
-          onClick={() => onSubmit({ phrase, keywords: selected, frequency, name: phrase })}
+          onClick={() => onSubmit({ phrase, keywords: selected, frequency: 'weekly', name: phrase })}
         >
           {submitting ? 'Starting…' : nextLabel} <Arrow />
         </button>

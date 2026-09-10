@@ -10,7 +10,7 @@ const NOTIFICATIONS = [
 ];
 
 export default function Account() {
-  const { auth = {}, flash = {}, preferences = {}, accountDeletion = {} } = usePage().props;
+  const { auth = {}, flash = {}, preferences = {}, accountDeletion = {}, passwordAccess = {} } = usePage().props;
   const initialNotifications = {
     ...Object.fromEntries(NOTIFICATIONS.map((n) => [n.key, n.on])),
     ...(preferences.notifications ?? {}),
@@ -26,6 +26,7 @@ export default function Account() {
   const form = useForm({ name: auth.user?.name ?? '' });
   const [savingPreferences, setSavingPreferences] = useState(false);
   const deletionForm = useForm({});
+  const passwordForm = useForm({ current_password: '', password: '', password_confirmation: '' });
 
   const submit = (event) => {
     event.preventDefault();
@@ -68,6 +69,14 @@ export default function Account() {
   const cancelDeletion = () => {
     deletionForm.delete('/settings/account/delete-request', {
       preserveScroll: true,
+    });
+  };
+
+  const savePassword = (event) => {
+    event.preventDefault();
+    passwordForm.submit(passwordAccess.canAdd ? 'post' : 'patch', '/settings/account/password', {
+      preserveScroll: true,
+      onSuccess: () => passwordForm.reset(),
     });
   };
 
@@ -120,6 +129,42 @@ export default function Account() {
             </div>
           </div>
         </form>
+
+        {(passwordAccess.canAdd || passwordAccess.enabled) && (
+          <div className="card" style={{ marginTop: 16 }}>
+            <div className="card__p">
+              <h2>{passwordAccess.canAdd ? 'Set a manual password' : 'Update password'}</h2>
+                <form onSubmit={savePassword}>
+                  <p className="muted" style={{ fontSize: '.86rem', marginTop: 6 }}>
+                    {passwordAccess.canAdd
+                      ? `You sign in with Google. Set a manual password for ${auth.user?.email} before you can update it here.`
+                      : 'Confirm your current password to save a new password.'}
+                  </p>
+                  {!passwordAccess.canAdd && (
+                    <div style={{ marginTop: 18 }}>
+                      <label className="lbl" htmlFor="current_password">Current password</label>
+                      <input id="current_password" className="fld" type="password" autoComplete="current-password" required value={passwordForm.data.current_password} onChange={(event) => passwordForm.setData('current_password', event.target.value)} />
+                      {passwordForm.errors.current_password && <p className="hint" style={{ color: 'var(--warn)' }}>{passwordForm.errors.current_password}</p>}
+                    </div>
+                  )}
+                  <div className="grid2" style={{ marginTop: 18 }}>
+                    <div>
+                      <label className="lbl" htmlFor="new_password">New password</label>
+                      <input id="new_password" className="fld" type="password" autoComplete="new-password" required value={passwordForm.data.password} onChange={(event) => passwordForm.setData('password', event.target.value)} />
+                      {passwordForm.errors.password && <p className="hint" style={{ color: 'var(--warn)' }}>{passwordForm.errors.password}</p>}
+                    </div>
+                    <div>
+                      <label className="lbl" htmlFor="password_confirmation">Confirm new password</label>
+                      <input id="password_confirmation" className="fld" type="password" autoComplete="new-password" required value={passwordForm.data.password_confirmation} onChange={(event) => passwordForm.setData('password_confirmation', event.target.value)} />
+                    </div>
+                  </div>
+                  <button type="submit" className="btn btn--y" style={{ marginTop: 18 }} disabled={passwordForm.processing}>
+                    {passwordForm.processing ? 'Saving…' : passwordAccess.canAdd ? 'Set manual password' : 'Update password'}
+                  </button>
+                </form>
+            </div>
+          </div>
+        )}
 
         <div className="card" style={{ marginTop: 16 }}>
           <div className="card__p">

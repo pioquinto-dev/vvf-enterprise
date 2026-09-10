@@ -1,6 +1,7 @@
-import { Head, router } from '@inertiajs/react';
+import { router } from '@inertiajs/react';
 
 import ContactFormCard from '../components/ContactFormCard.jsx';
+import Seo from '../components/Seo.jsx';
 import { useTheme } from '../landing/components/useTheme.js';
 import { useReveal } from '../landing/components/Reveal.jsx';
 import Nav from '../landing/sections/Nav.jsx';
@@ -23,10 +24,16 @@ export default function LandingContact({ categories = [], defaults = {} }) {
 
     return (
         <>
-            <Head title="Contact Us - Outlier Vault" />
+            <Seo
+                title="Contact Brand Beacon | TikTok Trend Intelligence"
+                description="Contact the Brand Beacon team for product, account, billing, or partnership support."
+            />
 
             <div ref={revealRoot} className="vvf-landing min-h-screen font-body">
-                <Nav theme={theme} onToggleTheme={toggle} onStart={startSearch} />
+                {/* Nav styles live under the landing (.bbh) design scope. */}
+                <div className="bbh">
+                    <Nav theme={theme} onToggleTheme={toggle} onStart={startSearch} />
+                </div>
 
                 <main className="relative overflow-hidden px-4 py-10 sm:px-6 lg:px-8 lg:py-16">
                     <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
@@ -39,7 +46,10 @@ export default function LandingContact({ categories = [], defaults = {} }) {
                     </div>
                 </main>
 
-                <Footer />
+                {/* Footer styles live under the landing (.bbh) design scope. */}
+                <div className="bbh">
+                    <Footer />
+                </div>
             </div>
         </>
     );

@@ -2,11 +2,19 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Head, Link, router } from '@inertiajs/react';
 
 import AppLayout from '../components/AppLayout.jsx';
+import BreakoutVideoCard from '../components/BreakoutVideoCard.jsx';
 import EntitlementsBar from '../components/EntitlementsBar.jsx';
 import SavedSearchRow from '../components/SavedSearchRow.jsx';
-import VideoCard from '../components/VideoCard.jsx';
+import SearchHistoryTab from '../components/SearchHistoryTab.jsx';
+import AnalysisModal from '../VideoAnalysis/AnalysisModal.jsx';
 import { Arrow, Bookmark, Search, Chevron, Plus, Dots, Play } from '../../landing/components/Icons.jsx';
-import { savedSearch as api, untrackSearch } from '../../landing/flow/api.js';
+import {
+  bookmarks,
+  fetchAnalysisHistory,
+  fetchBookmarkedVideos,
+  savedSearch as api,
+  untrackSearch,
+} from '../../landing/flow/api.js';
 import { withReturnTo } from '../utils/navigation.js';
 
 const FILTER_LABELS = {
@@ -23,7 +31,7 @@ const SORT_OPTIONS = {
 };
 
 const VIDEO_SORT = {
-  score: 'Outlier score',
+  score: 'Breakout Score',
   views: 'Views',
   recent: 'Most recent',
 };
@@ -37,7 +45,7 @@ const ANALYSIS_STATUS_LABELS = {
 const ANALYSIS_SORT = {
   recent: 'Most Recent',
   oldest: 'Oldest First',
-  outlier: 'Outlier Score',
+  outlier: 'Breakout Score',
   az: 'A-Z (by title)',
   za: 'Z-A (by title)',
 };
@@ -186,8 +194,12 @@ function AnalysisHistoryRow({ entry, href, statusLabel, searchNames }) {
 
 export default function Index({
   searches: initialSearches,
-  bookmarkedVideos = [],
-  analysisHistory = [],
+  bookmarkedVideos: initialBookmarkedVideos = [],
+  bookmarkedVideosCount = 0,
+  analysisHistory: initialAnalysisHistory = [],
+  analysisHistoryCount = 0,
+  searchHistory = [],
+  initialTab = 'searches',
   filterType = null,
   watchlistedOnly: bookmarkedOnly = true,
 }) {
@@ -196,8 +208,25 @@ export default function Index({
   const showTabs = bookmarkedOnly && !filterType;
 
   const [searches, setSearches] = useState(initialSearches);
-  const [tab, setTab] = useState('searches');
+  // Re-sync when the listing prop is refreshed after an edit reload.
+  useEffect(() => setSearches(initialSearches), [initialSearches]);
+  const [tab, setTab] = useState(initialTab === 'history' ? 'history' : 'searches');
   const [openMenuId, setOpenMenuId] = useState(null);
+  const [bookmarkedVideos, setBookmarkedVideos] = useState(initialBookmarkedVideos);
+  const [analysisHistory, setAnalysisHistory] = useState(initialAnalysisHistory);
+  const [bookmarkedVideosLoaded, setBookmarkedVideosLoaded] = useState(
+    initialBookmarkedVideos.length > 0 || bookmarkedVideosCount === 0
+  );
+  const [analysisHistoryLoaded, setAnalysisHistoryLoaded] = useState(
+    initialAnalysisHistory.length > 0 || analysisHistoryCount === 0
+  );
+  const [bookmarkedVideosLoading, setBookmarkedVideosLoading] = useState(false);
+  const [analysisHistoryLoading, setAnalysisHistoryLoading] = useState(false);
+  // Saved videos render the same breakout card as the results page, so they
+  // carry the same analyze / un-save affordances.
+  const [analysisModalVideo, setAnalysisModalVideo] = useState(null);
+  const [analysisByVideoId, setAnalysisByVideoId] = useState({});
+  const [unsavingVideoId, setUnsavingVideoId] = useState(null);
   const [query, setQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [searchTypeFilter, setSearchTypeFilter] = useState(isBrandCategoryView ? 'all' : filterType ?? 'all');
@@ -212,8 +241,7 @@ export default function Index({
   const [formState, setFormState] = useState({
     name: '',
     frequency: 'weekly',
-    tiktokHandle: '',
-    website: '',
+    type: 'brand',
   });
   const [submitting, setSubmitting] = useState(false);
   const menuRef = useRef(null);
@@ -241,6 +269,54 @@ export default function Index({
     document.addEventListener('keydown', onEsc);
     return () => document.removeEventListener('keydown', onEsc);
   }, [modalState.type, submitting]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    if (tab === 'videos' && !bookmarkedVideosLoaded) {
+      setBookmarkedVideosLoading(true);
+      fetchBookmarkedVideos()
+        .then((payload) => {
+          if (cancelled) return;
+          setBookmarkedVideos(Array.isArray(payload?.videos) ? payload.videos : []);
+          setBookmarkedVideosLoaded(true);
+        })
+        .catch(() => {
+          if (cancelled) return;
+          setBookmarkedVideos([]);
+          setBookmarkedVideosLoaded(true);
+        })
+        .finally(() => {
+          if (!cancelled) setBookmarkedVideosLoading(false);
+        });
+    }
+
+    if (tab === 'analysis' && !analysisHistoryLoaded) {
+      setAnalysisHistoryLoading(true);
+      fetchAnalysisHistory()
+        .then((payload) => {
+          if (cancelled) return;
+          setAnalysisHistory(Array.isArray(payload?.history) ? payload.history : []);
+          setAnalysisHistoryLoaded(true);
+        })
+        .catch(() => {
+          if (cancelled) return;
+          setAnalysisHistory([]);
+          setAnalysisHistoryLoaded(true);
+        })
+        .finally(() => {
+          if (!cancelled) setAnalysisHistoryLoading(false);
+        });
+    }
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    analysisHistoryLoaded,
+    bookmarkedVideosLoaded,
+    tab,
+  ]);
 
   const filteredSearches = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -287,6 +363,20 @@ export default function Index({
     });
     return next;
   }, [bookmarkedVideos, videoQuery, videoSort]);
+
+  // Everything in this tab is bookmarked by definition, so the card's save
+  // toggle only ever un-saves — drop the row once the API confirms.
+  const unsaveVideo = async (video) => {
+    if (!video?.id || unsavingVideoId !== null) return;
+
+    setUnsavingVideoId(video.id);
+    try {
+      await bookmarks.remove(video.id);
+      setBookmarkedVideos((current) => current.filter((v) => String(v.id) !== String(video.id)));
+    } finally {
+      setUnsavingVideoId(null);
+    }
+  };
 
   const filteredAnalyses = useMemo(() => {
     const q = analysisQuery.trim().toLowerCase();
@@ -366,8 +456,7 @@ export default function Index({
       setFormState({
         name: search.name ?? '',
         frequency: search.frequency ?? 'weekly',
-        tiktokHandle: search.source_tiktok_handle ?? '',
-        website: search.source_website ?? '',
+        type: search.search_type === 'product' ? 'product' : 'brand',
       });
     }
   };
@@ -398,16 +487,14 @@ export default function Index({
     if (!modalState.search) return;
     setSubmitting(true);
     try {
-      const { search: updated } = await api.update(modalState.search.id, {
+      await api.update(modalState.search.id, {
         name: formState.name.trim(),
         frequency: formState.frequency,
-        sources: {
-          tiktokHandle: formState.tiktokHandle.trim(),
-          website: formState.website.trim(),
-        },
+        type: formState.type,
       });
-      patchSearch(modalState.search.id, updated);
-      closeModal();
+      setModalState({ type: null, search: null });
+      // Reload the whole listing so a Brand<->Product switch reflows the view.
+      router.reload({ only: ['searches'], preserveScroll: true });
     } finally {
       setSubmitting(false);
     }
@@ -500,12 +587,17 @@ export default function Index({
               <Play className="h-[15px] w-[15px]" />
               <span className="sm:hidden">Videos</span>
               <span className="hidden sm:inline">Saved videos</span>
-              <span className="tab__c">{bookmarkedVideos.length}</span>
+              <span className="tab__c">{bookmarkedVideosCount}</span>
             </button>
             <button type="button" className={`tab${tab === 'analysis' ? ' is-on' : ''}`} onClick={() => setTab('analysis')}>
               <Search className="h-[15px] w-[15px]" />
               <span>Analysis History</span>
-              <span className="tab__c">{analysisHistory.length}</span>
+              <span className="tab__c">{analysisHistoryCount}</span>
+            </button>
+            <button type="button" className={`tab${tab === 'history' ? ' is-on' : ''}`} onClick={() => setTab('history')}>
+              <Search className="h-[15px] w-[15px]" />
+              <span>Search History</span>
+              <span className="tab__c">{searchHistory.length}</span>
             </button>
           </div>
         )}
@@ -609,7 +701,17 @@ export default function Index({
               </div>
             </div>
 
-            {filteredVideos.length === 0 ? (
+            {bookmarkedVideosLoading ? (
+              <div className="empty">
+                <div className="empty__i">
+                  <Play className="h-6 w-6" />
+                </div>
+                <h2>Loading saved videos</h2>
+                <p className="muted" style={{ maxWidth: 360, margin: '10px auto 0' }}>
+                  Pulling your bookmarked video library now.
+                </p>
+              </div>
+            ) : filteredVideos.length === 0 ? (
               <div className="empty">
                 <div className="empty__i">
                   <Play className="h-6 w-6" />
@@ -620,13 +722,21 @@ export default function Index({
                 </p>
               </div>
             ) : (
-              <div className="vgrid">
+              <div className="rs-ogrid">
                 {filteredVideos.map((v) => (
-                  <VideoCard key={v.id} video={v} />
+                  <BreakoutVideoCard
+                    key={v.id}
+                    video={{ ...v, bookmarked: true, analysis: analysisByVideoId[v.id] ?? v.analysis ?? null }}
+                    onAnalyze={() => setAnalysisModalVideo(v)}
+                    onToggleBookmark={() => unsaveVideo(v)}
+                    bookmarking={unsavingVideoId === v.id}
+                  />
                 ))}
               </div>
             )}
           </>
+        ) : tab === 'history' ? (
+          <SearchHistoryTab searches={searchHistory} />
         ) : (
           <>
             <div className="tools" style={{ display: 'grid', gap: 10 }}>
@@ -656,7 +766,17 @@ export default function Index({
               </div>
             </div>
 
-            {filteredAnalyses.length === 0 ? (
+            {analysisHistoryLoading ? (
+              <div className="empty">
+                <div className="empty__i">
+                  <Search className="h-6 w-6" />
+                </div>
+                <h2>Loading analysis history</h2>
+                <p className="muted" style={{ maxWidth: 360, margin: '10px auto 0' }}>
+                  Gathering your completed and in-flight video analyses.
+                </p>
+              </div>
+            ) : filteredAnalyses.length === 0 ? (
               <div className="empty">
                 <div className="empty__i">
                   <Search className="h-6 w-6" />
@@ -731,71 +851,28 @@ export default function Index({
                   </div>
 
                   <div style={{ marginTop: 20 }}>
+                    <label className="lbl" htmlFor="edit-search-type">Type</label>
+                    <select
+                      id="edit-search-type"
+                      className="fld"
+                      value={formState.type}
+                      onChange={(e) => setFormState((c) => ({ ...c, type: e.target.value }))}
+                    >
+                      <option value="brand">Brand</option>
+                      <option value="product">Product</option>
+                    </select>
+                    {formState.type !== (modalState.search.search_type === 'product' ? 'product' : 'brand') && (
+                      <p className="hint" style={{ marginTop: 8 }}>
+                        Your existing results stay — only how we tune keywords and insights changes going forward.
+                      </p>
+                    )}
+                  </div>
+
+                  <div style={{ marginTop: 20 }}>
                     <label className="lbl">Schedule</label>
-                    <div style={{ display: 'flex', gap: 8 }}>
-                      {['weekly', 'monthly'].map((f) => (
-                        <button
-                          key={f}
-                          type="button"
-                          className={`btn ${formState.frequency === f ? 'btn--y' : 'btn--g'} btn--w`}
-                          onClick={() => setFormState((c) => ({ ...c, frequency: f }))}
-                        >
-                          {f === 'weekly' ? 'Weekly' : 'Monthly'}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div style={{ marginTop: 20 }}>
-                    <label className="lbl">TikTok handle</label>
-                    <div style={{ position: 'relative' }}>
-                      <span
-                        style={{
-                          position: 'absolute',
-                          left: 14,
-                          top: '50%',
-                          transform: 'translateY(-50%)',
-                          color: 'var(--muted)',
-                          pointerEvents: 'none',
-                        }}
-                      >
-                        @
-                      </span>
-                      <input
-                        className="fld"
-                        style={{ paddingLeft: 28 }}
-                        value={formState.tiktokHandle}
-                        onChange={(e) => setFormState((c) => ({ ...c, tiktokHandle: e.target.value.replace(/^@/, '') }))}
-                        placeholder="rhode"
-                        aria-label="TikTok handle"
-                      />
-                    </div>
-                  </div>
-
-                  <div style={{ marginTop: 20 }}>
-                    <label className="lbl">Website</label>
-                    <div style={{ position: 'relative' }}>
-                      <span
-                        style={{
-                          position: 'absolute',
-                          left: 14,
-                          top: '50%',
-                          transform: 'translateY(-50%)',
-                          color: 'var(--muted)',
-                          pointerEvents: 'none',
-                        }}
-                      >
-                        https://
-                      </span>
-                      <input
-                        className="fld"
-                        style={{ paddingLeft: 72 }}
-                        value={formState.website}
-                        onChange={(e) => setFormState((c) => ({ ...c, website: e.target.value }))}
-                        placeholder="rhodeskin.com"
-                        aria-label="Website"
-                      />
-                    </div>
+                    <output className="btn btn--y btn--w" style={{ cursor: 'default', userSelect: 'none' }}>
+                      {formState.frequency === 'monthly' ? 'Monthly' : 'Weekly'}
+                    </output>
                   </div>
 
                   <div className="actrow__r" style={{ marginTop: 24, justifyContent: 'flex-end' }}>
@@ -853,6 +930,18 @@ export default function Index({
             </div>
           </div>
         </div>
+      )}
+
+      {analysisModalVideo && (
+        <AnalysisModal
+          video={analysisModalVideo}
+          initialAnalysis={analysisByVideoId[analysisModalVideo.id] ?? analysisModalVideo.analysis ?? null}
+          onClose={() => setAnalysisModalVideo(null)}
+          onAnalysisChange={(videoId, analysis) => setAnalysisByVideoId((current) => ({ ...current, [videoId]: analysis }))}
+          saved
+          saving={unsavingVideoId === analysisModalVideo.id}
+          onToggleSave={() => unsaveVideo(analysisModalVideo)}
+        />
       )}
     </>
   );

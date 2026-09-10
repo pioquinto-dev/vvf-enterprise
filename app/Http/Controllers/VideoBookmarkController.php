@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Services\Bookmarks\BookmarkService;
 use App\Services\Billing\BillingEntitlementService;
+use App\Services\Analytics\AnalyticsEvent;
 use App\Support\AppEventLogger;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -38,6 +39,12 @@ class VideoBookmarkController extends Controller
         return response()->json([
             'bookmarked' => true,
             'bookmarkCount' => $this->billing->videoBookmarkCount($user),
+            'analytics' => [
+                AnalyticsEvent::make('video_bookmarked', [
+                    'video_id' => $videoId,
+                    'bookmark_count' => $this->billing->videoBookmarkCount($user),
+                ]),
+            ],
         ]);
     }
 
@@ -62,6 +69,12 @@ class VideoBookmarkController extends Controller
         return response()->json([
             'bookmarked' => false,
             'bookmarkCount' => $this->billing->videoBookmarkCount($user),
+            'analytics' => [
+                AnalyticsEvent::make('video_unbookmarked', [
+                    'video_id' => $videoId,
+                    'bookmark_count' => $this->billing->videoBookmarkCount($user),
+                ]),
+            ],
         ]);
     }
 }

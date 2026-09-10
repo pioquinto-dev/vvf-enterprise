@@ -90,6 +90,13 @@ class CustomKeywordSearch extends Model
         return $this->hasMany(CustomKeywordSearchSnapshot::class);
     }
 
+    public function latestSnapshot(): HasOne
+    {
+        return $this->hasOne(CustomKeywordSearchSnapshot::class)
+            ->where('is_reconstructed', false)
+            ->latestOfMany('captured_at');
+    }
+
     /** Supporting keywords are everything except the phrase itself. */
     public function supportingKeywords(): array
     {

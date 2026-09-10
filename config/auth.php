@@ -114,4 +114,8 @@ return [
 
     'password_timeout' => env('AUTH_PASSWORD_TIMEOUT', 10800),
 
+    // Laravel's recaller cookie uses minutes. Keep opt-in remembered logins to
+    // 30 days instead of the framework's much longer default duration.
+    'remember_duration' => (int) env('AUTH_REMEMBER_DURATION', 60 * 24 * 30),
+
 ];

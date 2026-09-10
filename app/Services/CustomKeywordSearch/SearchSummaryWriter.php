@@ -12,7 +12,7 @@ use Throwable;
  * Writes the one-line read at the top of a tracker page.
  *
  * The model is handed figures that are already computed — it never does the
- * arithmetic itself. Asking a language model to work out "9 outliers, up 4"
+ * arithmetic itself. Asking a language model to work out "9 breakouts, up 4"
  * from raw rows is how a dashboard starts quoting numbers that appear nowhere
  * else on the page.
  */

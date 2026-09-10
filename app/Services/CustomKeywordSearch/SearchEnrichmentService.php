@@ -24,7 +24,7 @@ use Throwable;
  * mockup) — pulling every piece of analytical text in one round-trip keeps that
  * data density from turning into an OpenAI bill that scales with the UI.
  *
- * The model is fed pre-computed figures (median views, outlier counts, best
+ * The model is fed pre-computed figures (median views, breakout counts, best
  * hour) and never asked to do arithmetic. Anything the model can't tell from
  * the text stays null and the page renders without it.
  */

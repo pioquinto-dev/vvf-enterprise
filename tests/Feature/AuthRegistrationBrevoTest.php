@@ -2,45 +2,39 @@
 
 namespace Tests\Feature;
 
+use App\Jobs\SendRegistrationEmails;
 use App\Models\User;
 use App\Models\UtmAttribution;
-use App\Services\Brevo\BrevoLifecycleEmailService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Mockery;
+use Illuminate\Support\Facades\Queue;
 use Tests\TestCase;
 
 class AuthRegistrationBrevoTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_manual_registration_sends_registration_and_verification_emails(): void
+    public function test_manual_registration_queues_registration_and_verification_emails(): void
     {
-        $emails = Mockery::mock(BrevoLifecycleEmailService::class);
-        $this->app->instance(BrevoLifecycleEmailService::class, $emails);
-
-        $emails->shouldReceive('sendNewRegistration')
-            ->once()
-            ->with(Mockery::on(fn (User $user): bool => $user->email === 'jane@example.com'));
-
-        $emails->shouldReceive('sendVerifyEmail')
-            ->once()
-            ->with(Mockery::on(fn (User $user): bool => $user->email === 'jane@example.com'));
+        Queue::fake();
 
         $this->post('/register', [
             'name' => 'Jane Example',
             'email' => 'jane@example.com',
             'password' => 'password',
             'password_confirmation' => 'password',
-        ])->assertRedirect('/dashboard');
+        ])->assertRedirect('/home');
+
+        $user = User::query()->where('email', 'jane@example.com')->firstOrFail();
+
+        Queue::assertPushed(
+            SendRegistrationEmails::class,
+            fn (SendRegistrationEmails $job): bool => $job->userId === $user->id && $job->sendVerificationEmail,
+        );
     }
 
     public function test_manual_registration_persists_signup_utm_attribution_from_session(): void
     {
-        $emails = Mockery::mock(BrevoLifecycleEmailService::class);
-        $this->app->instance(BrevoLifecycleEmailService::class, $emails);
-
-        $emails->shouldReceive('sendNewRegistration')->once();
-        $emails->shouldReceive('sendVerifyEmail')->once();
+        Queue::fake();
 
         $this->withSession([
             'utm_params' => [
@@ -55,7 +49,7 @@ class AuthRegistrationBrevoTest extends TestCase
             'email' => 'jane@example.com',
             'password' => 'password',
             'password_confirmation' => 'password',
-        ])->assertRedirect('/dashboard');
+        ])->assertRedirect('/home');
 
         $user = User::query()->where('email', 'jane@example.com')->firstOrFail();
 

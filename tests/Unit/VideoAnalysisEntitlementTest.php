@@ -16,10 +16,7 @@ class VideoAnalysisEntitlementTest extends TestCase
 
     public function test_free_users_cannot_analyze_videos(): void
     {
-        $user = User::factory()->create([
-            'current_plan_slug' => 'free',
-            'plan_renews_at' => now()->addDay(),
-        ]);
+        $user = User::factory()->create();
 
         $this->expectException(ValidationException::class);
 
@@ -78,10 +75,7 @@ class VideoAnalysisEntitlementTest extends TestCase
             ],
         ]);
 
-        $user = User::factory()->create([
-            'current_plan_slug' => 'basic',
-            'plan_renews_at' => now()->addMonth(),
-        ]);
+        $user = User::factory()->create();
 
         Subscription::query()->create([
             'id' => (string) \Illuminate\Support\Str::ulid(),

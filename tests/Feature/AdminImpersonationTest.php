@@ -25,7 +25,7 @@ class AdminImpersonationTest extends TestCase
             'admin.authenticated' => true,
             'admin.user' => ['email' => 'admin@example.com'],
         ])->post("/x/admin/users/{$user->id}/impersonate")
-            ->assertRedirect(route('dashboard'))
+            ->assertRedirect(route('home'))
             ->assertAuthenticatedAs($user)
             ->assertSessionHas('admin.authenticated', true)
             ->assertSessionHas('admin.impersonation.user_id', $user->id);
@@ -66,7 +66,7 @@ class AdminImpersonationTest extends TestCase
                     'expires_at' => now()->subMinute()->toIso8601String(),
                 ],
             ])
-            ->get('/dashboard')
+            ->get('/home')
             ->assertRedirect(route('login'))
             ->assertGuest()
             ->assertSessionHas('admin.authenticated', true)

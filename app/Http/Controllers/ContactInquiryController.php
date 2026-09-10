@@ -10,21 +10,31 @@ use Inertia\Response;
 
 class ContactInquiryController extends Controller
 {
+    private const CATEGORIES = ['general', 'account', 'billing', 'plan-upgrade', 'feature-request', 'bug-report'];
+
     public function create(Request $request): Response
     {
         $component = $request->user() ? 'Contact' : 'LandingContact';
+
+        // A CTA can deep-link into the form with a category/subject/message
+        // prefilled — e.g. the Scale plan's "Contact Us" button.
+        $requestedCategory = (string) $request->query('category', '');
 
         return Inertia::render($component, [
             'categories' => [
                 ['value' => 'general', 'label' => 'General'],
                 ['value' => 'account', 'label' => 'Account'],
                 ['value' => 'billing', 'label' => 'Billing'],
+                ['value' => 'plan-upgrade', 'label' => 'Plan upgrade'],
                 ['value' => 'feature-request', 'label' => 'Feature request'],
                 ['value' => 'bug-report', 'label' => 'Bug report'],
             ],
             'defaults' => [
                 'name' => (string) ($request->user()?->name ?? ''),
                 'email' => (string) ($request->user()?->email ?? ''),
+                'category' => in_array($requestedCategory, self::CATEGORIES, true) ? $requestedCategory : null,
+                'subject' => \Illuminate\Support\Str::limit((string) $request->query('subject', ''), 255, ''),
+                'message' => \Illuminate\Support\Str::limit((string) $request->query('message', ''), 5000, ''),
             ],
         ]);
     }
@@ -34,7 +44,7 @@ class ContactInquiryController extends Controller
         $data = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'email', 'max:255'],
-            'category' => ['required', 'string', 'in:general,account,billing,feature-request,bug-report'],
+            'category' => ['required', 'string', 'in:'.implode(',', self::CATEGORIES)],
             'subject' => ['nullable', 'string', 'max:255'],
             'message' => ['required', 'string', 'max:5000'],
         ]);

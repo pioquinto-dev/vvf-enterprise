@@ -187,7 +187,7 @@ function PreviewPane({ active, current }) {
             <div className="threshold__rules">
               <span>1M views</span>
               or
-              <span>10× outlier</span>
+              <span>10× breakout</span>
             </div>
             <div className="deliver">
               <span className="deliver__btn is-on">

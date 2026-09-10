@@ -1,10 +1,10 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, router, usePage } from '@inertiajs/react';
 
 import AppLayout from './AppLayout.jsx';
 import BrandInlineFlow from './BrandInlineFlow.jsx';
 import EntitlementsBar from './EntitlementsBar.jsx';
-import { compact } from './VideoCard.jsx';
+import { compact } from './BreakoutVideoCard.jsx';
 import { STATUS, formatDate } from './SavedSearchRow.jsx';
 import { savedSearch as api } from '../../landing/flow/api.js';
 import { Search, Chevron, Refresh, Plus } from '../../landing/components/Icons.jsx';
@@ -18,7 +18,7 @@ const COPY = {
     placeholder: 'Which brand do you want to research?',
     sample: 'rhode skin',
     heroHint: 'One brand per search — we widen it with keywords next.',
-    moversNote: 'Best outlier across every brand you track.',
+    moversNote: 'Best breakout across every brand you track.',
     allHeading: 'All brand searches',
     filterPlaceholder: 'Filter brands',
   },
@@ -29,18 +29,20 @@ const COPY = {
     placeholder: 'Which product do you want to track?',
     sample: 'lip oil',
     heroHint: 'One product per search — we widen it with keywords next.',
-    moversNote: 'Best outlier across every product you track.',
+    moversNote: 'Best breakout across every product you track.',
     allHeading: 'All product searches',
     filterPlaceholder: 'Filter products',
   },
 };
 
 const SORT = {
-  outliers: 'Most outliers',
+  outliers: 'Most breakouts',
   top_score: 'Top score',
   recent: 'Recently updated',
   az: 'Name A-Z',
 };
+
+const SEARCH_PAGE_SIZE = 20;
 
 function Sel({ value, onChange, ariaLabel, children }) {
   return (
@@ -53,9 +55,26 @@ function Sel({ value, onChange, ariaLabel, children }) {
   );
 }
 
+function cardIdentity(search) {
+  const title = String(search.name || search.phrase || 'Untitled search').trim();
+  const phrase = String(search.phrase || '').trim();
+  const sameAsTitle = title.localeCompare(phrase, undefined, { sensitivity: 'base' }) === 0;
+
+  if (phrase && !sameAsTitle) {
+    return { title, context: `Searching “${phrase}”` };
+  }
+
+  const cadence = search.frequency === 'monthly' ? 'Monthly refresh' : 'Weekly refresh';
+  const keywordCount = Array.isArray(search.keywords) ? search.keywords.length : 0;
+  const coverage = keywordCount > 0 ? `${keywordCount} keyword${keywordCount === 1 ? '' : 's'}` : 'Focused tracking';
+
+  return { title, context: `${cadence} · ${coverage}` };
+}
+
 function BrandCard({ search, onOpen, onEdit }) {
   const status = STATUS[search.status] ?? { label: 'Ready', cls: 'pill--off' };
-  const initials = (search.name || search.phrase || '?').slice(0, 2).toUpperCase();
+  const identity = cardIdentity(search);
+  const initials = identity.title.slice(0, 2).toUpperCase();
   const topScore = Number(search.top_score) > 0 ? `${Math.round(search.top_score)}x` : '—';
   const videosScanned = search.videos_scanned != null ? compact(search.videos_scanned) : '0';
   const latestOutliers = search.latest_outlier_count != null ? compact(search.latest_outlier_count) : '0';
@@ -78,8 +97,8 @@ function BrandCard({ search, onOpen, onEdit }) {
       <div className="bcard__top">
         <span className="bcard__av">{initials}</span>
         <span style={{ minWidth: 0 }}>
-          <span className="bcard__n">{search.name}</span>
-          <span className="bcard__h">{search.phrase}</span>
+          <span className="bcard__n">{identity.title}</span>
+          <span className="bcard__h">{identity.context}</span>
         </span>
         <span className={`pill ${status.cls}`}>
           <i />
@@ -93,11 +112,11 @@ function BrandCard({ search, onOpen, onEdit }) {
         </div>
         <div>
           <span className="bcard__v">{latestOutliers}</span>
-          <span className="bcard__l">new outliers</span>
+          <span className="bcard__l">new breakouts</span>
         </div>
         <div>
           <span className="bcard__v">{topScore}</span>
-          <span className="bcard__l">top outlier video</span>
+          <span className="bcard__l">top breakout video</span>
         </div>
         <div>
           <span className="bcard__v">{averageVideoViews}</span>
@@ -122,7 +141,7 @@ function BrandCard({ search, onOpen, onEdit }) {
   );
 }
 
-export default function SearchListScreen({ kind = 'brand', searches = [], moving = [], suggestions = [] }) {
+export default function SearchListScreen({ kind = 'brand', searches = [], moving = [], suggestions = [], prefillQuery = '' }) {
   const copy = COPY[kind] ?? COPY.brand;
   const { billing = {} } = usePage().props;
   const currentPath = typeof window === 'undefined'
@@ -130,14 +149,21 @@ export default function SearchListScreen({ kind = 'brand', searches = [], moving
     : `${window.location.pathname}${window.location.search}`;
 
   const [searchList, setSearchList] = useState(searches);
+  // Keep the list in sync when the page props are refreshed (e.g. after an
+  // edit reloads the listing) so a re-typed search reflows in or out of view.
+  useEffect(() => setSearchList(searches), [searches]);
   const [query, setQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [sortBy, setSortBy] = useState('recent');
+  const [visibleCount, setVisibleCount] = useState(SEARCH_PAGE_SIZE);
+  const loadMoreRef = useRef(null);
   const [modalSearch, setModalSearch] = useState(null);
-  const [formState, setFormState] = useState({ name: '', frequency: 'weekly', tiktokHandle: '', website: '' });
+  const [formState, setFormState] = useState({ name: '', frequency: 'weekly', type: 'brand' });
   const [submitting, setSubmitting] = useState(false);
-  const [prefillSubject, setPrefillSubject] = useState('');
-  const [prefillNonce, setPrefillNonce] = useState(0);
+  const [prefillSubject, setPrefillSubject] = useState(prefillQuery);
+  // A non-zero nonce on mount opens the inline flow straight away when the
+  // page was reached from My Feed's search box (/brands?q=… or /products?q=…).
+  const [prefillNonce, setPrefillNonce] = useState(prefillQuery ? 1 : 0);
 
   const searchLeft = billing.searchCreditsRemaining;
   const searchLimit = billing.searchCreditsLimit;
@@ -176,6 +202,24 @@ export default function SearchListScreen({ kind = 'brand', searches = [], moving
   }, [searchList, query, statusFilter, sortBy]);
 
   useEffect(() => {
+    setVisibleCount(SEARCH_PAGE_SIZE);
+  }, [filtered]);
+
+  useEffect(() => {
+    const sentinel = loadMoreRef.current;
+    if (!sentinel || visibleCount >= filtered.length || typeof IntersectionObserver === 'undefined') return undefined;
+
+    const observer = new IntersectionObserver(([entry]) => {
+      if (!entry.isIntersecting) return;
+      observer.disconnect();
+      setVisibleCount((count) => Math.min(count + SEARCH_PAGE_SIZE, filtered.length));
+    }, { rootMargin: '0px 0px 200px 0px' });
+
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [filtered, visibleCount]);
+
+  useEffect(() => {
     if (!modalSearch) return undefined;
     const onEsc = (e) => e.key === 'Escape' && !submitting && setModalSearch(null);
     document.addEventListener('keydown', onEsc);
@@ -187,8 +231,7 @@ export default function SearchListScreen({ kind = 'brand', searches = [], moving
     setFormState({
       name: search.name ?? '',
       frequency: search.frequency ?? 'weekly',
-      tiktokHandle: search.source_tiktok_handle ?? '',
-      website: search.source_website ?? '',
+      type: search.search_type === 'product' ? 'product' : 'brand',
     });
   };
 
@@ -197,25 +240,19 @@ export default function SearchListScreen({ kind = 'brand', searches = [], moving
     setModalSearch(null);
   };
 
-  const patchSearch = (id, patch) => {
-    setSearchList((current) => current.map((s) => (s.id === id ? { ...s, ...patch } : s)));
-    setModalSearch((current) => (current?.id === id ? { ...current, ...patch } : current));
-  };
-
   const submitEdit = async () => {
     if (!modalSearch) return;
     setSubmitting(true);
     try {
-      const { search: updated } = await api.update(modalSearch.id, {
+      await api.update(modalSearch.id, {
         name: formState.name.trim(),
         frequency: formState.frequency,
-        sources: {
-          tiktokHandle: formState.tiktokHandle.trim(),
-          website: formState.website.trim(),
-        },
+        type: formState.type,
       });
-      patchSearch(modalSearch.id, updated);
       setModalSearch(null);
+      // Re-render the whole listing from the server: a Brand<->Product switch
+      // moves the search out of this type-scoped list entirely.
+      router.reload({ only: ['searches', 'moving', 'suggestions'], preserveScroll: true });
     } finally {
       setSubmitting(false);
     }
@@ -341,7 +378,7 @@ export default function SearchListScreen({ kind = 'brand', searches = [], moving
           </div>
         ) : (
           <div className="bgrid">
-            {filtered.map((s) => (
+            {filtered.slice(0, visibleCount).map((s) => (
               <BrandCard
                 key={s.id}
                 search={s}
@@ -349,6 +386,22 @@ export default function SearchListScreen({ kind = 'brand', searches = [], moving
                 onEdit={() => openEdit(s)}
               />
             ))}
+          </div>
+        )}
+        {filtered.length > 0 && (
+          <div style={{ marginTop: 20, textAlign: 'center' }}>
+            <p className="note" role="status">Showing {Math.min(visibleCount, filtered.length)} of {filtered.length} searches</p>
+            {visibleCount < filtered.length && (
+              <div ref={loadMoreRef} style={{ paddingTop: 12 }}>
+                <button
+                  type="button"
+                  className="btn btn--g btn--sm"
+                  onClick={() => setVisibleCount((count) => Math.min(count + SEARCH_PAGE_SIZE, filtered.length))}
+                >
+                  Load more searches
+                </button>
+              </div>
+            )}
           </div>
         )}
       </section>
@@ -378,71 +431,28 @@ export default function SearchListScreen({ kind = 'brand', searches = [], moving
               </div>
 
               <div style={{ marginTop: 20 }}>
+                <label className="lbl" htmlFor="edit-search-type">Type</label>
+                <select
+                  id="edit-search-type"
+                  className="fld"
+                  value={formState.type}
+                  onChange={(e) => setFormState((c) => ({ ...c, type: e.target.value }))}
+                >
+                  <option value="brand">Brand</option>
+                  <option value="product">Product</option>
+                </select>
+                {formState.type !== (modalSearch.search_type === 'product' ? 'product' : 'brand') && (
+                  <p className="hint" style={{ marginTop: 8 }}>
+                    Your existing results stay — only how we tune keywords and insights changes going forward.
+                  </p>
+                )}
+              </div>
+
+              <div style={{ marginTop: 20 }}>
                 <label className="lbl">Schedule</label>
-                <div style={{ display: 'flex', gap: 8 }}>
-                  {['weekly', 'monthly'].map((frequency) => (
-                    <button
-                      key={frequency}
-                      type="button"
-                      className={`btn ${formState.frequency === frequency ? 'btn--y' : 'btn--g'} btn--w`}
-                      onClick={() => setFormState((c) => ({ ...c, frequency }))}
-                    >
-                      {frequency === 'weekly' ? 'Weekly' : 'Monthly'}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div style={{ marginTop: 20 }}>
-                <label className="lbl">TikTok handle</label>
-                <div style={{ position: 'relative' }}>
-                  <span
-                    style={{
-                      position: 'absolute',
-                      left: 14,
-                      top: '50%',
-                      transform: 'translateY(-50%)',
-                      color: 'var(--muted)',
-                      pointerEvents: 'none',
-                    }}
-                  >
-                    @
-                  </span>
-                  <input
-                    className="fld"
-                    style={{ paddingLeft: 28 }}
-                    value={formState.tiktokHandle}
-                    onChange={(e) => setFormState((c) => ({ ...c, tiktokHandle: e.target.value.replace(/^@/, '') }))}
-                    placeholder="rhode"
-                    aria-label="TikTok handle"
-                  />
-                </div>
-              </div>
-
-              <div style={{ marginTop: 20 }}>
-                <label className="lbl">Website</label>
-                <div style={{ position: 'relative' }}>
-                  <span
-                    style={{
-                      position: 'absolute',
-                      left: 14,
-                      top: '50%',
-                      transform: 'translateY(-50%)',
-                      color: 'var(--muted)',
-                      pointerEvents: 'none',
-                    }}
-                  >
-                    https://
-                  </span>
-                  <input
-                    className="fld"
-                    style={{ paddingLeft: 72 }}
-                    value={formState.website}
-                    onChange={(e) => setFormState((c) => ({ ...c, website: e.target.value }))}
-                    placeholder="rhodeskin.com"
-                    aria-label="Website"
-                  />
-                </div>
+                <output className="btn btn--y btn--w" style={{ cursor: 'default', userSelect: 'none' }}>
+                  {formState.frequency === 'monthly' ? 'Monthly' : 'Weekly'}
+                </output>
               </div>
 
               <div className="actrow__r" style={{ marginTop: 24, justifyContent: 'flex-end' }}>

@@ -32,8 +32,6 @@ class DatabaseSeeder extends Seeder
             'email_verified_at' => now(),
             'password' => Hash::make('password'),
             'remember_token' => Str::random(10),
-            'current_plan_slug' => 'free',
-            'monthly_credits_remaining' => 1,
             'free_search_used_at' => null,
         ]);
 
@@ -61,8 +59,6 @@ class DatabaseSeeder extends Seeder
                     'email_verified_at' => now(),
                     'password' => Hash::make('password'),
                     'remember_token' => Str::random(10),
-                    'current_plan_slug' => 'free',
-                    'monthly_credits_remaining' => 1,
                     'free_search_used_at' => null,
                 ]
             );

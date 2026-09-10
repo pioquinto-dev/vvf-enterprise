@@ -61,12 +61,15 @@ class SavedSearchPresenter
     {
         $latestRun = $search->relationLoaded('latestRun') ? $search->latestRun : $search->latestRun()->first();
         $resultCount = $search->videos_count ?? $search->videos()->count();
+        $latestSnapshot = $search->relationLoaded('latestSnapshot') ? $search->latestSnapshot : null;
 
         return self::summary($search) + [
             'videos_scanned' => (int) data_get($latestRun?->raw_summary, 'received', $resultCount),
-            'latest_outlier_count' => self::latestOutlierCount($search, $latestRun),
+            'latest_outlier_count' => $latestSnapshot?->outlier_count ?? self::latestOutlierCount($search, $latestRun),
             'top_score' => $search->videos_max_viral_score !== null ? (float) $search->videos_max_viral_score : null,
-            'average_video_views' => self::averageVideoViews($search),
+            'average_video_views' => $search->average_video_views !== null
+                ? (int) round((float) $search->average_video_views)
+                : self::averageVideoViews($search),
             'outlier_count' => (int) ($search->outlier_count ?? 0),
         ];
     }
@@ -193,17 +196,22 @@ class SavedSearchPresenter
      */
     private static function runHistory(CustomKeywordSearch $search): array
     {
-        return $search->runs()
+        $runs = $search->runs()
             ->where('status', CustomKeywordSearchRun::STATUS_DONE)
             ->orderBy('completed_at')
             ->with(['search', 'apifyTrigger'])
+            ->get();
+
+        $snapshotsByRunId = $search->snapshots()
+            ->whereIn('custom_keyword_search_run_id', $runs->pluck('id'))
+            ->where('is_reconstructed', false)
+            ->orderBy('captured_at')
             ->get()
-            ->map(function (CustomKeywordSearchRun $run) use ($search): array {
-                $snapshot = $search->snapshots()
-                    ->where('custom_keyword_search_run_id', $run->id)
-                    ->where('is_reconstructed', false)
-                    ->latest('captured_at')
-                    ->first();
+            ->keyBy('custom_keyword_search_run_id');
+
+        return $runs
+            ->map(function (CustomKeywordSearchRun $run) use ($snapshotsByRunId): array {
+                $snapshot = $snapshotsByRunId->get($run->id);
 
                 return [
                     'id' => $run->id,

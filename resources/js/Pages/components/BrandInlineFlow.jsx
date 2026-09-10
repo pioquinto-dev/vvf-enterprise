@@ -2,9 +2,13 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { router, usePage } from '@inertiajs/react';
 
 import { Arrow, Check, Close, Search, Plus, Refresh } from '../../landing/components/Icons.jsx';
+import DuplicateSearchModal from './DuplicateSearchModal.jsx';
+import SearchCreditConfirmModal from './SearchCreditConfirmModal.jsx';
 import UpgradePromptModal from './UpgradePromptModal.jsx';
 import {
+  billing as billingApi,
   createSavedSearch,
+  checkDuplicateSavedSearch,
   expandKeywords,
   fetchKeywordSuggestions,
   fetchNotifications,
@@ -15,19 +19,19 @@ import {
  * The brand/product page's expand-in-place search flow (matches the
  * "Brand Beacon — Inline search flow" mockup).
  *
- * States: collapsed → keywords → sources → running → done. The card sits at
+ * States: collapsed → keywords → running → done. The card sits at
  * the top of the page and expands in-place — the page context beneath it
  * (moving-this-week, suggested-to-track, all-searches) never unmounts.
  *
- * The dashboard's SearchWizard flow is untouched — this is a separate,
- * lighter surface for the brand/product hubs.
+ * This is the only search flow now — the dashboard's older SearchWizard was
+ * retired along with the search homepage.
  */
 
 const STAGE_LIST = [
   { key: 'start',   label: 'Starting the scrape' },
   { key: 'pull',    label: 'Pulling videos from TikTok' },
   { key: 'filter',  label: 'Filtering against your keywords' },
-  { key: 'rank',    label: 'Ranking by outlier score' },
+  { key: 'rank',    label: 'Ranking by Breakout Score' },
 ];
 
 /* animate the stages while a run is in flight — the API's status text is
@@ -51,11 +55,9 @@ function useRunStages(active, done) {
 }
 
 function MiniStepper({ current }) {
-  const steps = current === 'sources'
-    ? [{ key: 'keywords', label: 'Keywords' }, { key: 'sources', label: 'Sources' }]
-    : [{ key: 'keywords', label: 'Keywords' }];
+  const steps = [{ key: 'keywords', label: 'Keywords' }];
   const activeIdx = steps.findIndex((s) => s.key === current);
-  const shown = current === 'sources' || current === 'keywords';
+  const shown = current === 'keywords';
   if (!shown) return null;
 
   return (
@@ -91,20 +93,19 @@ export default function BrandInlineFlow({
   const { billing = {}, auth = {} } = usePage().props;
   const signedIn = auth.signedIn ?? Boolean(auth.user);
 
-  const [state, setState] = useState('collapsed'); // collapsed|keywords|sources|running|done
+  const [state, setState] = useState('collapsed'); // collapsed|keywords|running|done
   const [subject, setSubject] = useState('');
   const [subjectSuggestions, setSubjectSuggestions] = useState([]);
   const [activeSuggestion, setActiveSuggestion] = useState(-1);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [keywords, setKeywords] = useState([]); // [{label, selected, source: 'ai'|'yours'}]
-  const [frequency, setFrequency] = useState('weekly');
-  const [tiktokHandle, setTiktokHandle] = useState('');
-  const [website, setWebsite] = useState('');
   const [emailWhenReady, setEmailWhenReady] = useState(true);
   const [addKeyword, setAddKeyword] = useState('');
   const [expanding, setExpanding] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
+  const [duplicateSearch, setDuplicateSearch] = useState(null);
+  const [confirmRefresh, setConfirmRefresh] = useState(null);
   const [searchResult, setSearchResult] = useState(null); // {id, name, url, status, initial_count, top_score}
   const [runDone, setRunDone] = useState(false);
   const [upgradeModalOpen, setUpgradeModalOpen] = useState(false);
@@ -119,7 +120,6 @@ export default function BrandInlineFlow({
   const searchLeft = billing.searchCreditsRemaining;
   const searchLimit = billing.searchCreditsLimit;
   const searchCreditsAvailable = !signedIn || searchLimit === -1 || Number(searchLeft ?? 0) > 0;
-  const supportsSources = kind !== 'product';
   const shouldOfferTrial = (billing.trialEligible ?? true) && !(billing.hasUsedTrial ?? false);
 
   useEffect(() => {
@@ -238,7 +238,7 @@ export default function BrandInlineFlow({
   };
 
   /* -------- create + run -------- */
-  const runSearch = async () => {
+  const startSearch = async (refreshExisting = false) => {
     if (!signedIn) {
       // fall back to the normal flow if not signed in
       window.location.assign(`/search?type=${kind}&q=${encodeURIComponent(subject)}`);
@@ -261,19 +261,68 @@ export default function BrandInlineFlow({
         phrase: subject,
         name: subject,
         keywords: selected,
-        frequency,
-        sources: {
-          tiktokHandle: tiktokHandle.trim().replace(/^@/, ''),
-          website: website.trim(),
-        },
+        frequency: 'weekly',
+        refreshExisting,
       });
       trackSearch({ id: created.id, name: created.name, url: created.url });
-      setSearchResult(created);
       onCreated?.(created);
+
+      // Hand straight off to the live results page (M20): the run continues
+      // there with the processing panel, SO-FAR counts, and skeletons until it
+      // lands. The brief inline "running" spinner covers the create request.
+      if (created?.url) {
+        router.visit(created.url);
+        return;
+      }
+
+      // Fallback for the unlikely case the API returns no url: keep the old
+      // inline running → done behaviour driven by the poller below.
+      setSearchResult(created);
     } catch (e) {
-      setError(e.message || 'Could not start the search.');
-        setState(supportsSources ? 'sources' : 'keywords');
+      if (e.status === 409 && e.payload?.code === 'existing_search') {
+        setDuplicateSearch({ search: e.payload.search, newKeywords: e.payload.new_keywords });
+        setState('keywords');
         setSubmitting(false);
+        return;
+      }
+
+      setError(e.message || 'Could not start the search.');
+        setState('keywords');
+        setSubmitting(false);
+    }
+  };
+
+  const checkAndConfirmSearch = async () => {
+    if (!signedIn) {
+      window.location.assign(`/search?type=${kind}&q=${encodeURIComponent(subject)}`);
+      return;
+    }
+
+    const selected = keywords.filter((k) => k.selected).map((k) => k.label);
+    if (selected.length === 0) {
+      setError('Pick at least one keyword.');
+      return;
+    }
+
+    setSubmitting(true);
+    setError(null);
+    try {
+      const duplicate = await checkDuplicateSavedSearch({
+        type: kind,
+        phrase: subject,
+        name: subject,
+        keywords: selected,
+        frequency: 'weekly',
+      });
+      if (duplicate.existing) {
+        setDuplicateSearch({ search: duplicate.search, newKeywords: duplicate.new_keywords });
+      } else {
+        setConfirmRefresh(false);
+      }
+    } catch (e) {
+      setError(e.message || 'Could not check your search history. Try again.');
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -299,7 +348,7 @@ export default function BrandInlineFlow({
         if (!cancelled && s?.status === 'failed') {
           setError('The search failed to complete.');
           setSubmitting(false);
-          setState(supportsSources ? 'sources' : 'keywords');
+          setState('keywords');
           return;
         }
       } catch {
@@ -313,7 +362,7 @@ export default function BrandInlineFlow({
       cancelled = true;
       window.clearTimeout(timer);
     };
-  }, [state, searchResult?.id, supportsSources]);
+  }, [state, searchResult?.id]);
 
   const viewResults = () => {
     if (searchResult?.url) router.visit(searchResult.url);
@@ -467,13 +516,14 @@ export default function BrandInlineFlow({
 
       {upgradeModalOpen && (
         <UpgradePromptModal
-          eyebrow="Search credits"
-          title={shouldOfferTrial ? 'Start your 8-day Growth trial' : 'Upgrade to unlock more searches'}
+          eyebrow="Keep your momentum"
+          title="Ready to find your next breakout?"
           body={shouldOfferTrial
-            ? "You've already used the search credits on Free. Start your trial to keep finding new outliers."
-            : "You've already used the search credits available on your current plan. Upgrade to Growth or Scale to keep finding new outliers."}
-          primaryLabel={shouldOfferTrial ? 'Start 8-day Growth trial' : 'Upgrade to Growth'}
-          onPrimary={() => router.visit(shouldOfferTrial ? '/trial' : '/plans')}
+            ? 'Turn your first signal into a repeatable edge with Growth.'
+            : 'Keep spotting breakout content before the trend moves on.'}
+          visual="search-momentum"
+          primaryLabel={shouldOfferTrial ? 'Start my 8-day trial' : 'Unlock more searches'}
+          onPrimary={() => (shouldOfferTrial ? billingApi.trialCheckout('growth') : router.visit('/plans'))}
           onClose={() => setUpgradeModalOpen(false)}
         />
       )}
@@ -565,7 +615,7 @@ export default function BrandInlineFlow({
                 </div>
               </div>
               <button type="submit" className="bif__cta" disabled={!subject.trim()}>
-                <Search className="h-4 w-4" /> Find outliers
+                <Search className="h-4 w-4" /> Find breakouts
               </button>
             </form>
             <p className="bif__hint">
@@ -656,24 +706,6 @@ export default function BrandInlineFlow({
             </div>
             <p className="khint"><b>{kwCount}</b> selected · each keyword widens the same single search.</p>
 
-            <p className="schead">How often should we re-run it?</p>
-            <div className="freq">
-              {[
-                { key: 'weekly',  label: 'Weekly',  desc: 'Fresh viral videos every week. Best for fast-moving categories.' },
-                { key: 'monthly', label: 'Monthly', desc: 'A lighter monthly pull for slower niches.' },
-              ].map((f) => (
-                <button
-                  key={f.key}
-                  type="button"
-                  className={`fq${frequency === f.key ? ' on' : ''}`}
-                  onClick={() => setFrequency(f.key)}
-                >
-                  <span className="fq__t"><span className="fq__r" />{f.label}</span>
-                  <p>{f.desc}</p>
-                </button>
-              ))}
-            </div>
-
             {error && <div className="bif__err">{error}</div>}
 
             <div className="biffoot">
@@ -681,74 +713,11 @@ export default function BrandInlineFlow({
               <button
                 type="button"
                 className="btn btn--y"
-                onClick={() => (supportsSources ? setState('sources') : runSearch())}
+                onClick={checkAndConfirmSearch}
                 disabled={kwCount === 0 || submitting}
               >
-                {supportsSources ? <>Continue <Arrow /></> : <>{submitting ? 'Starting…' : 'Run the search'} <Arrow /></>}
+                {submitting ? 'Starting…' : 'Run the search'} <Arrow />
               </button>
-            </div>
-          </div>
-        )}
-
-        {/* ---------- SOURCES ---------- */}
-        {supportsSources && state === 'sources' && (
-          <div>
-            <div className="ph">
-              <p className="ph__k">Optional</p>
-              <h3>Add the {kind === 'product' ? 'product' : 'brand'}'s handle or website</h3>
-              <p className="sub">Helps us match videos more accurately and unlock better insights.</p>
-            </div>
-
-            <div className="srcs">
-              <div className="src">
-                <div className="src__h">
-                  <span className="src__i">
-                    <svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z" /></svg>
-                  </span>
-                  <span className="src__t">TikTok handle</span>
-                </div>
-                <div className="src__f">
-                  <span className="src__pre">@</span>
-                  <input
-                    value={tiktokHandle}
-                    onChange={(e) => setTiktokHandle(e.target.value.replace(/^@/, ''))}
-                    placeholder={sample.split(' ')[0]}
-                  />
-                </div>
-                <p className="src__m faint">Optional</p>
-              </div>
-
-              <div className="src">
-                <div className="src__h">
-                  <span className="src__i">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M3 9l1.5-5h15L21 9M3 9v10a1 1 0 0 0 1 1h16a1 1 0 0 0 1-1V9M3 9h18M9 20v-6h6v6" />
-                    </svg>
-                  </span>
-                  <span className="src__t">Website</span>
-                </div>
-                <div className="src__f">
-                  <span className="src__pre">https://</span>
-                  <input
-                    value={website}
-                    onChange={(e) => setWebsite(e.target.value)}
-                    placeholder={`${sample.split(' ')[0]}.com`}
-                  />
-                </div>
-                <p className="src__m faint">Optional</p>
-              </div>
-            </div>
-
-            {error && <div className="bif__err">{error}</div>}
-
-            <div className="biffoot">
-              <button type="button" className="btn btn--g" onClick={() => setState('keywords')}>Back</button>
-              <div className="biffoot__r">
-                <button type="button" className="btn btn--g" onClick={runSearch} disabled={submitting}>Skip</button>
-                <button type="button" className="btn btn--y" onClick={runSearch} disabled={submitting}>
-                  {submitting ? 'Starting…' : 'Run the search'} <Arrow />
-                </button>
-              </div>
             </div>
           </div>
         )}
@@ -758,7 +727,7 @@ export default function BrandInlineFlow({
           <div className="run">
             <div className="run__ring" />
             <h3>Scanning TikTok for {subject}</h3>
-            <p className="sub">Widening with {kwCount} keyword{kwCount === 1 ? '' : 's'} · {frequency} schedule</p>
+            <p className="sub">Widening with {kwCount} keyword{kwCount === 1 ? '' : 's'} · weekly schedule</p>
             <div className="pbar"><div className="pbar__f" style={{ width: pFillWidth }} /></div>
             <div className="stages">
               {STAGE_LIST.map((s, i) => {
@@ -799,7 +768,7 @@ export default function BrandInlineFlow({
             <div>
               <h3>{searchResult.name || subject} is ready</h3>
               <p>
-                {searchResult.outlier_count ?? 0} outlier{(searchResult.outlier_count ?? 0) === 1 ? '' : 's'} this week
+                {searchResult.outlier_count ?? 0} breakout{(searchResult.outlier_count ?? 0) === 1 ? '' : 's'} this week
                 {searchResult.top_score ? ` · top score ${Math.round(searchResult.top_score)}×` : ''}
                 {searchResult.result_count != null ? ` · ${searchResult.result_count} videos scanned` : ''}
               </p>
@@ -813,6 +782,33 @@ export default function BrandInlineFlow({
           </div>
         )}
       </section>
+      {duplicateSearch && (
+        <DuplicateSearchModal
+          search={duplicateSearch.search}
+          newKeywords={duplicateSearch.newKeywords}
+          busy={submitting}
+          onCancel={() => setDuplicateSearch(null)}
+          onRefresh={() => {
+            setDuplicateSearch(null);
+            startSearch(true);
+          }}
+        />
+      )}
+      {confirmRefresh !== null && (
+        <SearchCreditConfirmModal
+          body={searchLimit === -1
+            ? 'Your plan includes unlimited searches, so this run won’t use up a search credit.'
+            : `This will use 1 search credit, leaving you ${Math.max(0, Number(searchLeft ?? 0) - 1)} this cycle.`}
+          subject={subject}
+          busy={submitting}
+          onCancel={() => setConfirmRefresh(null)}
+          onConfirm={() => {
+            const refreshExisting = confirmRefresh;
+            setConfirmRefresh(null);
+            startSearch(refreshExisting);
+          }}
+        />
+      )}
     </>
   );
 }

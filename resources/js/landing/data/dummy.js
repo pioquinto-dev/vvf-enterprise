@@ -28,9 +28,9 @@ export const FEATURES = [
   {
     id: 'outliers',
     tag: 'Discovery',
-    title: 'Outlier Vault',
+    title: 'Breakout Vault',
     body: "Surface the TikToks in your category that broke out this week. The ones running 10× above the creator's own baseline, not just the ones with big follower counts.",
-    bullets: ['Outlier scoring vs creator baseline', 'Last 7 / 30 / 90 day windows', 'Sound, hashtag and format tags'],
+    bullets: ['Breakout Score vs creator baseline', 'Last 7 / 30 / 90 day windows', 'Sound, hashtag and format tags'],
     accent: 'from-[#3a2b6b] to-[#8b3df0]',
   },
   {
@@ -110,7 +110,7 @@ export const TESTIMONIALS = [
   },
   {
     quote:
-      'The outlier scoring is the part that matters. Big accounts posting mediocre videos are noise. Brand Beacon filters those out by default.',
+      'The Breakout Score is the part that matters. Big accounts posting mediocre videos are noise. Brand Beacon filters those out by default.',
     name: 'Nina Sethi',
     role: 'Social Director',
     company: 'Sunset Soda Co.',
@@ -164,19 +164,19 @@ export const PRICING = {
       trialEnabled: true,
     },
     {
-      slug: 'basic',
+      slug: 'growth',
       planType: 'growth',
       duration: 'monthly',
       name: 'Growth',
       price: 99,
-      annualSavingsPercent: 40,
+      annualSavingsPercent: 17,
       tagline: 'For a single brand.',
       cta: 'Choose Growth',
       popular: true,
       features: [
         '100 searches',
         '100 viral breakout video analysis',
-        'Weekly + monthly scheduling',
+        'Weekly Refresh Scheduling',
         'Virality alerts',
         'Unlimited bookmarks',
       ],
@@ -193,19 +193,19 @@ export const PRICING = {
       trialEnabled: true,
     },
     {
-      slug: 'premium',
+      slug: 'scale',
       planType: 'scale',
       duration: 'monthly',
       name: 'Scale',
       price: 199,
-      annualSavingsPercent: 45,
+      annualSavingsPercent: 20,
       tagline: 'For brand and agency teams.',
       cta: 'Choose Scale',
       features: [
         'Unlimited searches',
         'Unlimited viral breakout video analysis',
         'Unlimited bookmarks',
-        'Weekly + monthly scheduling',
+        'Weekly Refresh Scheduling',
         'Virality alerts',
       ],
       searchCreditsLimit: -1,
@@ -223,19 +223,19 @@ export const PRICING = {
   ],
   annual: [
     {
-      slug: 'basic-annual',
+      slug: 'growth-annual',
       planType: 'growth',
       duration: 'annual',
       name: 'Growth',
-      price: 699,
-      annualSavingsPercent: 40,
+      price: 990,
+      annualSavingsPercent: 17,
       tagline: 'For a single brand.',
       cta: 'Choose Growth Annual',
       popular: true,
       features: [
         '100 searches',
         '100 viral breakout video analysis',
-        'Weekly + monthly scheduling',
+        'Weekly Refresh Scheduling',
         'Virality alerts',
         'Unlimited bookmarks',
       ],
@@ -252,18 +252,18 @@ export const PRICING = {
       trialEnabled: true,
     },
     {
-      slug: 'premium-annual',
+      slug: 'scale-annual',
       planType: 'scale',
       duration: 'annual',
       name: 'Scale',
-      price: 1299,
-      annualSavingsPercent: 45,
+      price: 1899,
+      annualSavingsPercent: 20,
       tagline: 'For brand and agency teams.',
       cta: 'Choose Scale Annual',
       features: [
         'Unlimited searches',
         'Unlimited viral breakout video analysis',
-        'Weekly + monthly scheduling',
+        'Weekly Refresh Scheduling',
         'Virality alerts',
         'Unlimited bookmarks',
       ],
@@ -282,7 +282,7 @@ export const PRICING = {
   ],
 };
 
-export const PRICING_PLAN_ORDER = ['free', 'basic', 'basic-annual', 'premium', 'premium-annual'];
+export const PRICING_PLAN_ORDER = ['free', 'growth', 'growth-annual', 'scale', 'scale-annual'];
 
 export const FAQS = [
 	{
@@ -302,19 +302,27 @@ export const FAQS = [
 //		a: "Because raw data is only the starting point. The real work is reliable collection, media preservation, normalization, deduplication, ranking, historical comparison, and constant maintenance as upstream platforms change. That operational layer is what makes the product useful, and much harder to reproduce than it looks."
 //	},
   {
+    q: 'Is the free search a trial?',
+    a: 'No. Your account includes one free search with no credit card required. Starting an 8-day subscription trial is a separate, optional step. A credit card is required for the trial.',
+  },
+  {
     q: 'What happens after the 8-day trial?',
-    a: "1 day after your search updates, we'll email that your searches refreshed and let you know you'll be billed.",
+    a: 'Unless you cancel before the trial ends, we automatically charge your card for the plan and billing cycle you selected at checkout. Monthly plans are billed monthly; annual plans are billed annually.',
+  },
+  {
+    q: 'How do I cancel my trial?',
+    a: 'Go to Settings → Subscription and cancel before your trial ends to avoid the subscription charge.',
   },
   {
     q: 'Is the data real-time?',
-    a: 'Effectively, yes. Our collection infrastructure tracks Tiktok at scale and routes new videos through the index within hours of them going live. Every index video is continuously re-evaluated against our outlier scoring engine, so the rankings you see are always tied to live performance.',
+    a: 'Effectively, yes. Our collection infrastructure tracks Tiktok at scale and routes new videos through the index within hours of them going live. Every index video is continuously re-evaluated by our Breakout Score engine, so the rankings you see are always tied to live performance.',
   }
 ];
 
 export const FOOTER_LINKS = [
   {
     heading: 'Product',
-    links: ['Outlier Vault', 'Brand Tracking', 'Creator Shortlists', 'Virality Alerts', 'Changelog'],
+    links: ['Breakout Vault', 'Brand Tracking', 'Creator Shortlists', 'Virality Alerts', 'Changelog'],
   },
   {
     heading: 'Company',

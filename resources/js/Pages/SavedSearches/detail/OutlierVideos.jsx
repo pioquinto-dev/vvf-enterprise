@@ -265,7 +265,7 @@ export function WinnerVideo({
           <div className="ovchip ovchip--score">
             <span className="lab">
               <i />
-              Outlier score
+              Breakout Score
             </span>
             <span className="num">{outlierLabel(video.outlier_multiple) ?? '—'}</span>
           </div>
@@ -391,7 +391,7 @@ export function OutlierCard({
           <div className="bbchip bbchip--score">
             <span className="lab">
               <i />
-              Outlier score
+              Breakout Score
             </span>
             <span className="num">{outlierLabel(video.outlier_multiple) ?? '—'}</span>
           </div>

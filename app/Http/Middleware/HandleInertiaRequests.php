@@ -3,6 +3,7 @@
 namespace App\Http\Middleware;
 
 use App\Models\Subscription;
+use App\Services\Analytics\AnalyticsEventManager;
 use App\Services\Admin\AdminImpersonationService;
 use App\Services\Billing\BillingEntitlementService;
 use App\Services\Billing\PricingPlanViewService;
@@ -35,6 +36,7 @@ class HandleInertiaRequests extends Middleware
     {
         $billing = app(BillingEntitlementService::class);
         $pricing = app(PricingPlanViewService::class);
+        $analytics = app(AnalyticsEventManager::class);
         $impersonation = app(AdminImpersonationService::class)->active($request);
         $limits = $request->user() ? $billing->limitsForUser($request->user()) : null;
         $subscription = $request->user()
@@ -55,6 +57,7 @@ class HandleInertiaRequests extends Middleware
             'app' => [
                 'name' => config('app.name'),
                 'env' => config('app.env'),
+                'url' => rtrim((string) config('app.url'), '/'),
             ],
             'features' => [
                 'videoAnalysisRefresh' => (bool) config('viral_video_analysis.allow_refresh'),
@@ -77,6 +80,7 @@ class HandleInertiaRequests extends Middleware
                 'status' => fn () => $request->session()->get('status'),
                 'trackedSearches' => fn () => $request->session()->get('tracked_searches', []),
                 'processingSearches' => fn () => $request->session()->get('processing_searches', []),
+                'freeSearchNew' => fn () => (bool) $request->session()->get('free_search_new', false),
                 'searchAccessPrompt' => fn () => $request->session()->get('search_access_prompt'),
                 'trialAccessPrompt' => fn () => $request->session()->get('trial_access_prompt'),
                 'couponAccessPrompt' => fn () => $request->session()->get('coupon_access_prompt'),
@@ -86,8 +90,15 @@ class HandleInertiaRequests extends Middleware
                 'googleConfigured' => filled(config('services.google.client_id')),
                 'stripeConfigured' => filled(config('services.stripe.key')),
             ],
+            'analytics' => [
+                'enabled' => (bool) config('services.analytics.enabled'),
+                'gtmContainerId' => (string) config('services.analytics.gtm_container_id', ''),
+                'ga4MeasurementId' => (string) config('services.analytics.ga4_measurement_id', ''),
+                'debugMode' => (bool) config('services.analytics.debug_mode'),
+                'events' => fn () => $analytics->pullForRequest($request),
+            ],
             'billing' => [
-                'currentPlan' => $request->user()?->current_plan_slug ?? 'free',
+                'currentPlan' => $billing->currentPlanSlug($request->user()),
                 'searchCreditsRemaining' => $billing->searchCreditsRemaining($request->user()),
                 'searchCreditsUsed' => $billing->searchCreditsUsed($request->user()),
                 'searchCreditsLimit' => $limits['searchCreditsLimit'] ?? 0,

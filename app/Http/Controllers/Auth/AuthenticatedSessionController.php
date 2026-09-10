@@ -22,7 +22,7 @@ use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
 
 class AuthenticatedSessionController extends Controller
 {
-    private const CHECKOUT_PLAN_SLUGS = ['basic', 'basic-annual', 'premium', 'premium-annual'];
+    private const CHECKOUT_PLAN_SLUGS = ['growth', 'growth-annual', 'scale', 'scale-annual'];
 
     public function __construct(
         private readonly PostAuthenticationRedirector $redirector,
@@ -41,10 +41,15 @@ class AuthenticatedSessionController extends Controller
 
     public function store(Request $request): RedirectResponse|SymfonyResponse
     {
-        $credentials = $request->validate([
+        $validated = $request->validate([
             'email' => ['required', 'email'],
             'password' => ['required', 'string'],
+            'remember' => ['nullable', 'boolean'],
         ]);
+        $credentials = [
+            'email' => $validated['email'],
+            'password' => $validated['password'],
+        ];
 
         $trashedUser = User::withTrashed()->firstWhere('email', strtolower(trim($credentials['email'])));
 
@@ -54,7 +59,10 @@ class AuthenticatedSessionController extends Controller
             ]);
         }
 
-        if (! Auth::attempt($credentials)) {
+        $remember = (bool) ($validated['remember'] ?? false);
+        Auth::guard('web')->setRememberDuration((int) config('auth.remember_duration', 43200));
+
+        if (! Auth::attempt($credentials, $remember)) {
             throw ValidationException::withMessages([
                 'email' => 'These credentials do not match our records.',
             ]);
@@ -98,7 +106,7 @@ class AuthenticatedSessionController extends Controller
             return;
         }
 
-        $plan = (string) $request->query('plan', 'basic');
+        $plan = (string) $request->query('plan', 'growth');
         $withTrial = $request->boolean('trial');
         $cycle = (string) $request->query('cycle', 'monthly');
 
@@ -133,7 +141,7 @@ class AuthenticatedSessionController extends Controller
         try {
             return Inertia::location($this->billing->checkout($user, $plan, $withTrial, $cycle));
         } catch (ValidationException $exception) {
-            if ($withTrial && $exception->errors()['trial'] ?? false) {
+            if ($withTrial && isset($exception->errors()['trial'])) {
                 return redirect()->route('plans')->with('trial_access_prompt', [
                     'reason' => 'already_used',
                     'plan_slug' => $plan->slug,
@@ -160,6 +168,13 @@ class AuthenticatedSessionController extends Controller
             return null;
         }
 
+        if ($this->billing->hasPaidPlan($user)) {
+            return redirect()->route('home')->with('search_access_prompt', [
+                'reason' => 'public_free_search_unavailable',
+                'message' => 'This public free search is only available before starting a subscription. Use your plan\'s search credits from the dashboard.',
+            ]);
+        }
+
         try {
             $this->billing->ensureCanCreateSearch($user);
             $search = $this->searches->create(
@@ -180,11 +195,11 @@ class AuthenticatedSessionController extends Controller
                 'status' => $search->status,
             ]];
 
-            return redirect()->route('dashboard')
+            return redirect()->route('home')
                 ->with('tracked_searches', $tracked)
                 ->with('processing_searches', $tracked);
         } catch (ValidationException $exception) {
-            return redirect()->route('dashboard')->with('search_access_prompt', [
+            return redirect()->route('home')->with('search_access_prompt', [
                 'reason' => 'search_credit_exhausted',
                 'phrase' => $pending['phrase'] ?? '',
                 'message' => collect($exception->errors())->flatten()->first() ?? 'We could not start this search.',

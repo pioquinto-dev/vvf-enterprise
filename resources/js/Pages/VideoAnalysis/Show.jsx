@@ -9,7 +9,7 @@ function closeModal() {
     return;
   }
 
-  window.location.assign('/dashboard');
+  window.location.assign('/home');
 }
 
 export default function Show({ video, analysis: initialAnalysis, tabs }) {

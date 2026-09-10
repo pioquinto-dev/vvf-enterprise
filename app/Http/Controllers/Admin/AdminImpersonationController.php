@@ -17,7 +17,7 @@ class AdminImpersonationController extends Controller
     {
         $this->impersonation->start($request, $user);
 
-        return redirect()->route('dashboard');
+        return redirect()->route('home');
     }
 
     public function stop(Request $request): RedirectResponse

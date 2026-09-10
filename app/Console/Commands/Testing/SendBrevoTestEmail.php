@@ -13,7 +13,7 @@ use Carbon\CarbonImmutable;
 class SendBrevoTestEmail extends Command
 {
     protected $signature = 'testing:send-brevo-email
-        {notification : One of new_registration, subscription_started, subscription_canceled, verify_email_manual_account, trial_ending, or all}
+        {notification : One of new_registration, subscription_started, subscription_canceled, verify_email_manual_account, trial_ending, final_failed_payment, no_cc_trial_ending, search_done, or all}
         {--email= : Override the configured test recipient email}
         {--name=Test User : Recipient name}';
 
@@ -46,18 +46,24 @@ class SendBrevoTestEmail extends Command
             'subscription_canceled' => [BrevoTransactionalEmail::subscriptionCanceled($user, $subscription)],
             'verify_email_manual_account' => [BrevoTransactionalEmail::verifyEmail($user)],
             'trial_ending' => [BrevoTransactionalEmail::trialEnding($user, $trialSubscription, 3)],
+            'final_failed_payment' => [BrevoTransactionalEmail::finalFailedPayment($user, $subscription)],
+            'no_cc_trial_ending' => [BrevoTransactionalEmail::noCardTrialEnding($user, $trialSubscription, 3)],
+            'search_done' => [BrevoTransactionalEmail::searchDone($user, $this->fakeSearch($user))],
             'all' => [
                 BrevoTransactionalEmail::newRegistration($user),
                 BrevoTransactionalEmail::subscriptionStarted($user, $subscription),
                 BrevoTransactionalEmail::subscriptionCanceled($user, $subscription),
                 BrevoTransactionalEmail::verifyEmail($user),
                 BrevoTransactionalEmail::trialEnding($user, $trialSubscription, 3),
+                BrevoTransactionalEmail::finalFailedPayment($user, $subscription),
+                BrevoTransactionalEmail::noCardTrialEnding($user, $trialSubscription, 3),
+                BrevoTransactionalEmail::searchDone($user, $this->fakeSearch($user)),
             ],
             default => null,
         };
 
         if ($payloads === null) {
-            $this->error('Unknown notification. Use one of: new_registration, subscription_started, subscription_canceled, verify_email_manual_account, trial_ending, all');
+            $this->error('Unknown notification. Use one of: new_registration, subscription_started, subscription_canceled, verify_email_manual_account, trial_ending, final_failed_payment, no_cc_trial_ending, search_done, all');
 
             return self::FAILURE;
         }
@@ -83,9 +89,6 @@ class SendBrevoTestEmail extends Command
             'id' => 999999,
             'name' => $name,
             'email' => $email,
-            'current_plan_slug' => 'premium',
-            'monthly_credits_remaining' => 18,
-            'plan_renews_at' => CarbonImmutable::now()->addDays(14),
         ]);
     }
 
@@ -94,7 +97,7 @@ class SendBrevoTestEmail extends Command
         $plan = (new PricingPlan())->forceFill([
             'id' => 'test-plan',
             'name' => 'Scale',
-            'slug' => 'premium',
+            'slug' => 'scale',
             'metadata' => [],
         ]);
 
@@ -116,5 +119,17 @@ class SendBrevoTestEmail extends Command
                 ],
             ],
         ])->setRelation('user', $user)->setRelation('plan', $plan);
+    }
+
+    private function fakeSearch(User $user): \App\Models\CustomKeywordSearch
+    {
+        return (new \App\Models\CustomKeywordSearch())->forceFill([
+            'id' => 12345,
+            'public_id' => 'searchdone123',
+            'user_id' => $user->id,
+            'name' => 'Rhode',
+            'phrase' => 'rhode',
+            'search_type' => 'brand',
+        ])->setRelation('user', $user);
     }
 }

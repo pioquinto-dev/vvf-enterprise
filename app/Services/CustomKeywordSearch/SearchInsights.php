@@ -13,14 +13,14 @@ use Carbon\CarbonImmutable;
  * worse than no delta chip. When a snapshot table lands, growth rates belong
  * here alongside the values they qualify.
  *
- * The outlier multiple is views over the *median views of this search*, not the
+ * The breakout multiple is views over the *median views of this search*, not the
  * median of the creator's own account. We do not scrape account timelines, so
  * an account baseline does not exist. Label it as "vs. search median" wherever
  * it surfaces.
  */
 class SearchInsights
 {
-    /** A video at or above this multiple counts as an outlier. */
+    /** A video at or above this multiple counts as a breakout. */
     public const OUTLIER_THRESHOLD = 3.0;
 
     /** The UI reveals these in batches, so ship a deeper ranked list instead
@@ -33,7 +33,7 @@ class SearchInsights
 
     /**
      * Buckets for the score distribution panel, matching the mockup: the panel
-     * describes the outliers only, so the bottom bucket starts at the outlier
+     * describes the breakouts only, so the bottom bucket starts at the breakout
      * threshold and everything under 3x falls outside the chart on purpose.
      * Upper bound is exclusive; null means open-ended.
      *
@@ -185,14 +185,14 @@ class SearchInsights
             ],
             [
                 'key' => 'outliers',
-                'label' => 'outliers',
+                'label' => 'breakouts',
                 'value' => $outliers,
                 'format' => 'count',
                 'hint' => sprintf('%sx or more vs. the search median', rtrim(rtrim(number_format(self::OUTLIER_THRESHOLD, 1), '0'), '.')),
             ],
             [
                 'key' => 'top_multiple',
-                'label' => 'top outlier',
+                'label' => 'top breakout',
                 'value' => $multiples === [] ? null : max($multiples),
                 'format' => 'multiple',
                 'hero' => true,
@@ -375,8 +375,8 @@ class SearchInsights
      */
     private function distribution(array $results): array
     {
-        // Only outliers feed the chart — the buckets start at the threshold,
-        // so share is a fraction of the outliers, not of every video.
+        // Only breakouts feed the chart — the buckets start at the threshold,
+        // so share is a fraction of the breakouts, not of every video.
         $multiples = array_values(array_filter(
             array_map(fn (array $row): ?float => $row['outlier_multiple'] ?? null, $results),
             fn (?float $value): bool => $value !== null && $value >= self::OUTLIER_THRESHOLD,

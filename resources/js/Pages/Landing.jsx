@@ -1,5 +1,8 @@
-import { Head, router, usePage } from '@inertiajs/react';
+import { router, usePage } from '@inertiajs/react';
 
+import Seo from '../components/Seo.jsx';
+
+import { FAQS } from '../landing/data/dummy.js';
 import Nav from '../landing/sections/Nav.jsx';
 import Hero from '../landing/sections/Hero.jsx';
 import BrandMarquee from '../landing/sections/BrandMarquee.jsx';
@@ -10,6 +13,7 @@ import Pricing from '../landing/sections/Pricing.jsx';
 import Faq from '../landing/sections/Faq.jsx';
 import FinalCta from '../landing/sections/FinalCta.jsx';
 import Footer from '../landing/sections/Footer.jsx';
+import SupportLauncher from '../landing/components/SupportLauncher.jsx';
 
 export default function Landing() {
   const { pricingPlans = [] } = usePage().props;
@@ -27,11 +31,22 @@ export default function Landing() {
   };
 
   const startTrial = (plan, cycle = 'monthly') =>
-    window.location.assign(`/login?redirect=trial_checkout&plan=${encodeURIComponent(plan?.slug ?? 'basic')}&trial=1&cycle=${encodeURIComponent(cycle)}`);
+    window.location.assign(`/login?redirect=trial_checkout&plan=${encodeURIComponent(plan?.slug ?? 'growth')}&trial=1&cycle=${encodeURIComponent(cycle)}`);
 
   return (
     <>
-      <Head title="Brand Beacon — TikTok viral intelligence for brands" />
+      <Seo
+        title="TikTok Trend Intelligence for Brands | Brand Beacon"
+        description="Discover viral TikTok videos, track brand mentions, and spot breakout trends before they peak with Brand Beacon."
+        schema={{
+          organization: true,
+          webSite: true,
+          softwareApplication: {
+            description: 'Brand Beacon helps teams discover viral TikTok videos, track brand mentions, and identify breakout trends.',
+          },
+          faqs: FAQS,
+        }}
+      />
 
       <div className="bbh">
         <Nav />
@@ -48,6 +63,7 @@ export default function Landing() {
         </main>
 
         <Footer />
+        <SupportLauncher />
       </div>
     </>
   );

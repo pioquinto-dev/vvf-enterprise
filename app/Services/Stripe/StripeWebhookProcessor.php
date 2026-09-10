@@ -6,6 +6,8 @@ use App\Models\CustomKeywordSearch;
 use App\Models\Subscription;
 use App\Models\User;
 use App\Services\Admin\UserActivityService;
+use App\Services\Analytics\AnalyticsEvent;
+use App\Services\Analytics\AnalyticsEventManager;
 use App\Services\Billing\BillingService;
 use App\Services\Brevo\BrevoLifecycleEmailService;
 use App\Support\AppEventLogger;
@@ -20,6 +22,7 @@ class StripeWebhookProcessor
         private readonly BillingService $billing,
         private readonly BrevoLifecycleEmailService $emails,
         private readonly ?UserActivityService $activity = null,
+        private readonly ?AnalyticsEventManager $analytics = null,
     ) {}
 
     public function handle(Event $event): void
@@ -38,6 +41,16 @@ class StripeWebhookProcessor
             'customer.subscription.deleted' => $this->handleSubscriptionEvent($event),
             default => null,
         };
+    }
+
+    private function activity(): UserActivityService
+    {
+        return $this->activity ?? app(UserActivityService::class);
+    }
+
+    private function analytics(): AnalyticsEventManager
+    {
+        return $this->analytics ?? app(AnalyticsEventManager::class);
     }
 
     private function handleCheckoutCompleted(Event $event): void
@@ -106,7 +119,7 @@ class StripeWebhookProcessor
 
         if ($subscription->user !== null) {
             if ($previousStatus === 'past_due') {
-                $this->activity?->record(
+                $this->activity()->record(
                     $subscription->user,
                     'subscription',
                     'payment_recovered',
@@ -116,7 +129,7 @@ class StripeWebhookProcessor
                 );
             }
 
-            $this->activity?->record(
+            $this->activity()->record(
                 $subscription->user,
                 'subscription',
                 'invoice_paid',
@@ -162,7 +175,7 @@ class StripeWebhookProcessor
         $subscription->forceFill(['status' => 'past_due'])->save();
 
         if ($subscription->user !== null) {
-            $this->activity?->record(
+            $this->activity()->record(
                 $subscription->user,
                 'subscription',
                 'payment_failed',
@@ -231,6 +244,7 @@ class StripeWebhookProcessor
         $status = (string) ($payload->status ?? $subscription->status);
         $previousStatus = (string) ($subscription->status ?? '');
         $previousPeriodEnd = $subscription->current_period_ends_at;
+        $previousCancelAtPeriodEnd = (bool) data_get($subscription->metadata, 'subscription.cancel_at_period_end', false);
         $cancelAtPeriodEnd = (bool) data_get($payload, 'cancel_at_period_end', false);
         $cancelAt = $this->timestampToCarbon(data_get($payload, 'cancel_at'));
         $periodStart = $this->timestampToCarbon(data_get($payload, 'current_period_start'));
@@ -319,8 +333,16 @@ class StripeWebhookProcessor
             ],
         ])->save();
 
+        if (in_array($status, ['trialing', 'active', 'paid'], true)) {
+            $this->billing->markFreeSearchUsed($user);
+        }
+
         if ($status === 'trialing' && $previousStatus !== 'trialing') {
-            $this->activity?->record($user, 'subscription', 'trial_started', "Started a trial on {$plan->name}.", ['plan' => $plan->slug], 'stripe:'.(string) $event->id.':trial');
+            $this->activity()->record($user, 'subscription', 'trial_started', "Started a trial on {$plan->name}.", ['plan' => $plan->slug], 'stripe:'.(string) $event->id.':trial');
+            $this->analytics()->queueForUser($user, AnalyticsEvent::make('trial_started', [
+                'plan_slug' => $plan->slug,
+                'subscription_status' => $status,
+            ]));
         }
         if (in_array($status, ['active', 'paid'], true) && ! in_array($previousStatus, ['active', 'paid'], true)) {
             $eventKey = in_array($previousStatus, ['canceled', 'unpaid', 'incomplete_expired', 'past_due'], true)
@@ -329,10 +351,15 @@ class StripeWebhookProcessor
             $summary = $eventKey === 'subscription_reactivated'
                 ? "Reactivated {$plan->name} into an active paid subscription."
                 : "Started a paid subscription on {$plan->name}.";
-            $this->activity?->record($user, 'subscription', $eventKey, $summary, ['plan' => $plan->slug], 'stripe:'.(string) $event->id.':paid');
+            $this->activity()->record($user, 'subscription', $eventKey, $summary, ['plan' => $plan->slug], 'stripe:'.(string) $event->id.':paid');
+            $this->analytics()->queueForUser($user, AnalyticsEvent::make($eventKey === 'subscription_reactivated' ? 'subscription_reactivated' : 'subscription_started', [
+                'plan_slug' => $plan->slug,
+                'subscription_status' => $status,
+                'billing_cycle' => $billingCycle,
+            ]));
         }
         if ($previousStatus === 'trialing' && $status !== 'trialing') {
-            $this->activity?->record(
+            $this->activity()->record(
                 $user,
                 'subscription',
                 'trial_completed',
@@ -343,8 +370,8 @@ class StripeWebhookProcessor
                 'stripe:'.(string) $event->id.':trial_completed'
             );
         }
-        if ($cancelAtPeriodEnd && ! (bool) data_get($subscription->getOriginal('metadata'), 'subscription.cancel_at_period_end', false)) {
-            $this->activity?->record(
+        if ($cancelAtPeriodEnd && ! $previousCancelAtPeriodEnd) {
+            $this->activity()->record(
                 $user,
                 'subscription',
                 'subscription_cancellation_scheduled',
@@ -352,9 +379,13 @@ class StripeWebhookProcessor
                 ['plan' => $plan->slug, 'cancel_at' => $cancelAt?->toIso8601String()],
                 'stripe:'.(string) $event->id.':cancel_scheduled'
             );
+            $this->analytics()->queueForUser($user, AnalyticsEvent::make('subscription_cancellation_scheduled', [
+                'plan_slug' => $plan->slug,
+                'cancel_at' => $cancelAt?->toIso8601String(),
+            ]));
         }
-        if (! $cancelAtPeriodEnd && (bool) data_get($subscription->getOriginal('metadata'), 'subscription.cancel_at_period_end', false)) {
-            $this->activity?->record(
+        if (! $cancelAtPeriodEnd && $previousCancelAtPeriodEnd) {
+            $this->activity()->record(
                 $user,
                 'subscription',
                 'subscription_cancellation_reverted',
@@ -362,37 +393,32 @@ class StripeWebhookProcessor
                 ['plan' => $plan->slug],
                 'stripe:'.(string) $event->id.':cancel_reverted'
             );
+            $this->analytics()->queueForUser($user, AnalyticsEvent::make('subscription_cancellation_reverted', [
+                'plan_slug' => $plan->slug,
+            ]));
         }
         if (in_array($status, ['canceled', 'unpaid', 'incomplete_expired'], true) && ! in_array($previousStatus, ['canceled', 'unpaid', 'incomplete_expired'], true)) {
-            $this->activity?->record($user, 'subscription', 'subscription_cancelled', 'Subscription was cancelled.', ['plan' => $plan->slug], 'stripe:'.(string) $event->id.':cancelled');
+            $this->activity()->record($user, 'subscription', 'subscription_cancelled', 'Subscription was cancelled.', ['plan' => $plan->slug], 'stripe:'.(string) $event->id.':cancelled');
+            $this->analytics()->queueForUser($user, AnalyticsEvent::make('subscription_cancelled', [
+                'plan_slug' => $plan->slug,
+                'subscription_status' => $status,
+            ]));
         }
 
         if ($status === 'active' && $periodEnd !== null) {
-            $user->forceFill([
-                'current_plan_slug' => $plan->slug,
-                'monthly_credits_remaining' => $renewed
-                    ? max(0, (int) ($limits['searchLimit'] ?? 0))
-                    : $user->monthly_credits_remaining,
-                'plan_renews_at' => $periodEnd,
-            ])->save();
-
-            if ($renewed) {
-                $user->forceFill([
-                    'monthly_credits_remaining' => max(0, (int) ($limits['searchLimit'] ?? 0)),
-                ])->save();
-            }
-
             $this->billing->syncSubscriptionUsage($user, $plan);
         }
 
         if (in_array($status, ['canceled', 'unpaid', 'incomplete_expired'], true)) {
-            $user->forceFill([
-                'current_plan_slug' => 'free',
-                'monthly_credits_remaining' => 1,
-                'plan_renews_at' => CarbonImmutable::now()->addMonth(),
+            $freeSubscription = $this->billing->ensureSubscriptionRecord($user);
+            $freeMetadata = (array) $freeSubscription->metadata;
+            data_set($freeMetadata, 'subscription.search_limits.used', 0);
+            $freeSubscription->forceFill([
+                'stripe_customer_id' => $freeSubscription->stripe_customer_id ?: $subscription->stripe_customer_id,
+                'metadata' => $freeMetadata,
             ])->save();
 
-            $this->activity?->record(
+            $this->activity()->record(
                 $user,
                 'subscription',
                 'subscription_reverted_to_free',
@@ -402,7 +428,11 @@ class StripeWebhookProcessor
             );
 
             if (! in_array($previousStatus, ['canceled', 'unpaid', 'incomplete_expired'], true)) {
-                $this->emails->sendSubscriptionCanceled($user, $subscription);
+                if ($this->isFinalFailedPaymentTransition($previousStatus, $status)) {
+                    $this->emails->sendFinalFailedPayment($user, $subscription);
+                } else {
+                    $this->emails->sendSubscriptionCanceled($user, $subscription);
+                }
             }
         }
 
@@ -428,5 +458,15 @@ class StripeWebhookProcessor
         }
 
         return CarbonImmutable::createFromTimestampUTC((int) $timestamp);
+    }
+
+    private function isFinalFailedPaymentTransition(string $previousStatus, string $status): bool
+    {
+        if (in_array($status, ['unpaid', 'incomplete_expired'], true)) {
+            return true;
+        }
+
+        return $previousStatus === 'past_due'
+            && in_array($status, ['canceled', 'unpaid', 'incomplete_expired'], true);
     }
 }

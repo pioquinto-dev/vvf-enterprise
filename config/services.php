@@ -44,6 +44,15 @@ return [
         'client_id' => env('GOOGLE_CLIENT_ID'),
         'client_secret' => env('GOOGLE_CLIENT_SECRET'),
         'redirect' => env('GOOGLE_REDIRECT_URI'),
+        'connect_timeout' => (float) env('GOOGLE_CONNECT_TIMEOUT', 3),
+        'timeout' => (float) env('GOOGLE_TIMEOUT', 12),
+    ],
+
+    'analytics' => [
+        'enabled' => env('ANALYTICS_ENABLED', false),
+        'gtm_container_id' => env('GTM_CONTAINER_ID'),
+        'ga4_measurement_id' => env('GA4_MEASUREMENT_ID'),
+        'debug_mode' => env('ANALYTICS_DEBUG_MODE', false),
     ],
 
     'stripe' => [
@@ -54,7 +63,8 @@ return [
 
     'brevo' => [
         'api_key' => env('BREVO_API_KEY'),
-        'test_recipient_ema8il' => env('BREVO_TEST_RECIPIENT_EMAIL'),
+        'test_recipient_email' => env('BREVO_TEST_RECIPIENT_EMAIL'),
+        'proxy' => env('BREVO_PROXY'),
     ],
 
     'slack' => [

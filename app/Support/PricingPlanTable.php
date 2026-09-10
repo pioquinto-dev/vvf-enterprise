@@ -54,7 +54,7 @@ class PricingPlanTable
             ],
             [
                 'id' => (string) Str::ulid(),
-                'slug' => 'basic',
+                'slug' => 'growth',
                 'name' => 'Growth',
                 'stripe_product_id' => null,
                 'stripe_price_id' => null,
@@ -66,7 +66,7 @@ class PricingPlanTable
                 'features' => [
                     '100 searches',
                     '100 viral breakout video analysis',
-                    'Weekly + monthly scheduling',
+                    'Weekly Refresh Scheduling',
                     'Virality alerts',
                     'Unlimited bookmarks',
                 ],
@@ -74,7 +74,7 @@ class PricingPlanTable
                     'settings' => [
                         'cta' => 'Choose Growth',
                         'popular' => true,
-                        'annualSavingsPercent' => 40,
+                        'annualSavingsPercent' => 17,
                     ],
                     'subscription' => [
                         'trialEnabled' => true,
@@ -95,11 +95,11 @@ class PricingPlanTable
             ],
             [
                 'id' => (string) Str::ulid(),
-                'slug' => 'basic-annual',
+                'slug' => 'growth-annual',
                 'name' => 'Growth',
                 'stripe_product_id' => null,
                 'stripe_price_id' => null,
-                'price_cents' => 69900,
+                'price_cents' => 99000,
                 'currency' => 'usd',
                 'interval' => 'year',
                 'interval_count' => 12,
@@ -107,7 +107,7 @@ class PricingPlanTable
                 'features' => [
                     '100 searches',
                     '100 viral breakout video analysis',
-                    'Weekly + monthly scheduling',
+                    'Weekly Refresh Scheduling',
                     'Virality alerts',
                     'Unlimited bookmarks',
                 ],
@@ -115,7 +115,7 @@ class PricingPlanTable
                     'settings' => [
                         'cta' => 'Choose Growth Annual',
                         'popular' => true,
-                        'annualSavingsPercent' => 40,
+                        'annualSavingsPercent' => 17,
                     ],
                     'subscription' => [
                         'trialEnabled' => true,
@@ -127,16 +127,16 @@ class PricingPlanTable
                 ],
                 'plan_type' => 'growth',
                 'description' => 'For a single brand.',
-                'amount' => 699,
-                'annual_amount' => 699,
-                'saved_amount' => 489,
-                'unit_amount' => 69900,
+                'amount' => 990,
+                'annual_amount' => 990,
+                'saved_amount' => 198,
+                'unit_amount' => 99000,
                 'duration' => 'annual',
                 'plan_environment' => 'production',
             ],
             [
                 'id' => (string) Str::ulid(),
-                'slug' => 'premium',
+                'slug' => 'scale',
                 'name' => 'Scale',
                 'stripe_product_id' => null,
                 'stripe_price_id' => null,
@@ -148,15 +148,17 @@ class PricingPlanTable
                 'features' => [
                     'Unlimited searches',
                     'Unlimited viral breakout video analysis',
-                    'Weekly + monthly scheduling',
+                    'Weekly Refresh Scheduling',
                     'Virality alerts',
                     'Unlimited bookmarks',
                 ],
                 'metadata' => [
                     'settings' => [
-                        'cta' => 'Choose Scale',
+                        'cta' => 'Contact Us',
                         'popular' => false,
-                        'annualSavingsPercent' => 45,
+                        'annualSavingsPercent' => 20,
+                        // Scale is gated behind a Contact Us flow — not self-serve.
+                        'self_serve' => false,
                     ],
                     'subscription' => [
                         'trialEnabled' => true,
@@ -177,11 +179,11 @@ class PricingPlanTable
             ],
             [
                 'id' => (string) Str::ulid(),
-                'slug' => 'premium-annual',
+                'slug' => 'scale-annual',
                 'name' => 'Scale',
                 'stripe_product_id' => null,
                 'stripe_price_id' => null,
-                'price_cents' => 129900,
+                'price_cents' => 189900,
                 'currency' => 'usd',
                 'interval' => 'year',
                 'interval_count' => 12,
@@ -189,15 +191,17 @@ class PricingPlanTable
                 'features' => [
                     'Unlimited searches',
                     'Unlimited viral breakout video analysis',
-                    'Weekly + monthly scheduling',
+                    'Weekly Refresh Scheduling',
                     'Virality alerts',
                     'Unlimited bookmarks',
                 ],
                 'metadata' => [
                     'settings' => [
-                        'cta' => 'Choose Scale Annual',
+                        'cta' => 'Contact Us',
                         'popular' => false,
-                        'annualSavingsPercent' => 45,
+                        'annualSavingsPercent' => 20,
+                        // Scale is gated behind a Contact Us flow — not self-serve.
+                        'self_serve' => false,
                     ],
                     'subscription' => [
                         'trialEnabled' => true,
@@ -209,10 +213,10 @@ class PricingPlanTable
                 ],
                 'plan_type' => 'scale',
                 'description' => 'For brand and agency teams.',
-                'amount' => 1299,
-                'annual_amount' => 1299,
-                'saved_amount' => 1089,
-                'unit_amount' => 129900,
+                'amount' => 1899,
+                'annual_amount' => 1899,
+                'saved_amount' => 489,
+                'unit_amount' => 189900,
                 'duration' => 'annual',
                 'plan_environment' => 'production',
             ],

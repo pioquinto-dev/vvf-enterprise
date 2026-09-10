@@ -55,6 +55,14 @@ class CouponAccessService
             );
         }
 
+        if ($user !== null && $this->entitlements->hasPaidPlan($user)) {
+            return CouponEligibility::block(
+                'Already Paid',
+                'You are already on a paid plan',
+                'This account already has paid access. For upgrades or plan transition requests, please contact us and we can help from there.',
+            );
+        }
+
         if ($user !== null && $this->hasRedeemed($program, $user)) {
             return CouponEligibility::block(
                 'Already Redeemed',
@@ -135,7 +143,7 @@ class CouponAccessService
      */
     public function hasRevertedToFreeAfterFailedPayment(User $user): bool
     {
-        if (($user->current_plan_slug ?? 'free') !== 'free') {
+        if ($this->entitlements->currentPlanSlug($user) !== 'free') {
             return false;
         }
 

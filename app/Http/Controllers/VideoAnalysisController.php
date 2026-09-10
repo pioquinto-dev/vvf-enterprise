@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Resources\SavedSearchPresenter;
 use App\Models\ViralVideo;
+use App\Services\Analytics\AnalyticsEvent;
 use App\Services\ViralVideoAnalysis\VideoAnalysisManager;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -35,6 +36,14 @@ class VideoAnalysisController extends Controller
 
         return response()->json([
             'analysis' => $this->payload($analysis),
+            'analytics' => [
+                AnalyticsEvent::make('video_analysis_requested', [
+                    'video_id' => $video->id,
+                    'video_platform_id' => $video->video_id,
+                    'force_refresh' => $request->boolean('force_refresh'),
+                    'counts_toward_quota' => (bool) $analysis->counts_toward_quota,
+                ]),
+            ],
         ], 202);
     }
 

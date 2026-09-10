@@ -3,6 +3,7 @@ import { Link, usePage } from '@inertiajs/react';
 const FOOT_NAV = [
   { label: 'Home', href: '/' },
   { label: 'Library', href: '/library' },
+  { label: 'Blog', href: '/blog' },
   { label: 'Contact', href: '/contact' },
   { label: 'Pricing', href: '/trial' },
 ];

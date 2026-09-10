@@ -3,16 +3,17 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\FreeSearchFunnelController;
+use App\Jobs\SendRegistrationEmails;
 use App\Models\PricingPlan;
 use App\Models\User;
 use App\Services\Admin\UserActivityService;
+use App\Services\Analytics\AnalyticsEvent;
+use App\Services\Analytics\AnalyticsEventManager;
 use App\Services\Auth\PostAuthenticationRedirector;
 use App\Services\Billing\BillingService;
-use App\Services\Brevo\BrevoLifecycleEmailService;
 use App\Services\CustomKeywordSearch\SavedSearchManager;
 use App\Services\Utm\UtmAttributionService;
 use App\Support\TrialCheckoutIntent;
-use Carbon\CarbonImmutable;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -20,21 +21,22 @@ use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rules;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
 
 class RegisteredUserController extends Controller
 {
-    private const CHECKOUT_PLAN_SLUGS = ['basic', 'basic-annual', 'premium', 'premium-annual'];
+    private const CHECKOUT_PLAN_SLUGS = ['growth', 'growth-annual', 'scale', 'scale-annual'];
 
     public function __construct(
         private readonly PostAuthenticationRedirector $redirector,
         private readonly BillingService $billing,
-        private readonly BrevoLifecycleEmailService $emails,
         private readonly SavedSearchManager $searches,
         private readonly UtmAttributionService $utmAttributionService,
         private readonly UserActivityService $activity,
+        private readonly AnalyticsEventManager $analytics,
     ) {}
 
     public function create(Request $request): Response
@@ -56,19 +58,19 @@ class RegisteredUserController extends Controller
             'name' => $validated['name'],
             'email' => $validated['email'],
             'password' => Hash::make($validated['password']),
-            'current_plan_slug' => 'free',
-            'monthly_credits_remaining' => 1,
-            'plan_renews_at' => CarbonImmutable::now()->addMonth(),
         ]);
 
         event(new Registered($user));
         $this->utmAttributionService->createSignupAttribution($user, $request);
-        $this->emails->sendNewRegistration($user);
-        $this->emails->sendVerifyEmail($user);
+        SendRegistrationEmails::dispatch($user->id, sendVerificationEmail: true);
         $this->billing->ensureSubscriptionRecord($user);
         Auth::login($user);
         $this->activity->record($user, 'sign_up', 'account_created', 'Created account.');
         $this->activity->record($user, 'engagement', 'logged_in', 'Logged in.');
+        $this->analytics->queueForUser($user, AnalyticsEvent::make('sign_up', [
+            'method' => 'email',
+            'user_id' => $user->id,
+        ]));
 
         $request->session()->regenerate();
 
@@ -89,7 +91,7 @@ class RegisteredUserController extends Controller
             return;
         }
 
-        $plan = (string) $request->query('plan', 'basic');
+        $plan = (string) $request->query('plan', 'growth');
         $withTrial = $request->boolean('trial');
         $cycle = (string) $request->query('cycle', 'monthly');
 
@@ -123,8 +125,8 @@ class RegisteredUserController extends Controller
 
         try {
             return Inertia::location($this->billing->checkout($user, $plan, $withTrial, $cycle));
-        } catch (\Illuminate\Validation\ValidationException $exception) {
-            if ($withTrial && $exception->errors()['trial'] ?? false) {
+        } catch (ValidationException $exception) {
+            if ($withTrial && isset($exception->errors()['trial'])) {
                 return redirect()->route('plans')->with('trial_access_prompt', [
                     'reason' => 'already_used',
                     'plan_slug' => $plan->slug,
@@ -151,6 +153,13 @@ class RegisteredUserController extends Controller
             return null;
         }
 
+        if ($this->billing->hasPaidPlan($user)) {
+            return redirect()->route('home')->with('search_access_prompt', [
+                'reason' => 'public_free_search_unavailable',
+                'message' => 'This public free search is only available before starting a subscription. Use your plan\'s search credits from the dashboard.',
+            ]);
+        }
+
         try {
             $this->billing->ensureCanCreateSearch($user);
             $search = $this->searches->create(
@@ -171,11 +180,11 @@ class RegisteredUserController extends Controller
                 'status' => $search->status,
             ]];
 
-            return redirect()->route('dashboard')
+            return redirect()->route('home')
                 ->with('tracked_searches', $tracked)
                 ->with('processing_searches', $tracked);
-        } catch (\Illuminate\Validation\ValidationException $exception) {
-            return redirect()->route('dashboard')->with('search_access_prompt', [
+        } catch (ValidationException $exception) {
+            return redirect()->route('home')->with('search_access_prompt', [
                 'reason' => 'search_credit_exhausted',
                 'phrase' => $pending['phrase'] ?? '',
                 'message' => collect($exception->errors())->flatten()->first() ?? 'We could not start this search.',

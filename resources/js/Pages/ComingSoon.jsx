@@ -16,7 +16,7 @@ export default function ComingSoon() {
 
     return (
         <>
-            <Head title="Coming Soon - Outlier Vault" />
+            <Head title="Coming Soon - Breakout Vault" />
 
             <div className="vvf-landing relative min-h-screen overflow-hidden">
                 <div aria-hidden className="pointer-events-none absolute inset-0">
@@ -38,7 +38,7 @@ export default function ComingSoon() {
                             </h1>
 
                             <p className="mt-6 max-w-2xl text-[17px] leading-8 text-ink/72 dark:text-white/68">
-                                Outlier Vault is getting its final polish. Leave your email and we&apos;ll notify you when the site is live so you can get early access.
+                                Breakout Vault is getting its final polish. Leave your email and we&apos;ll notify you when the site is live so you can get early access.
                             </p>
 
                             <div className="mt-8 flex flex-wrap gap-3 text-sm text-ink/62 dark:text-white/62">

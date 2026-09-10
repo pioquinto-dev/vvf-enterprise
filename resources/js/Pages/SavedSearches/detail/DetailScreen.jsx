@@ -4,18 +4,31 @@ import { savedSearch as savedSearchApi } from '../../../landing/flow/api.js';
 import { billing as billingApi } from '../../../landing/flow/api.js';
 import { trackVideoAnalysis, videoAnalysis } from '../../../landing/flow/api.js';
 import AnalysisModal from '../../VideoAnalysis/AnalysisModal.jsx';
-import UpgradePromptModal from '../../components/UpgradePromptModal.jsx';
-import { playerUrlFor, postTikTokMessage } from './tiktokPlayer.js';
+import BreakoutVideoCard, {
+  AnalyzeStateButton,
+  VideoFrame,
+  breakoutScore,
+  compact,
+  formatDate,
+  formatDuration,
+  gradientFor,
+} from '../../components/BreakoutVideoCard.jsx';
+import {
+  AnalysisUpgradeModal,
+  UsageConfirmModal,
+  canUsePaidVideoAnalysis,
+  videoAnalysisRemaining,
+} from '../../components/VideoAnalysisGate.jsx';
 
 /**
  * Search analytics tracker — the redesigned results page.
  *
  * Layout follows brandbeaconanalyticsredesign.html:
  *   Back bar · Header (with inline handle editor + kebab) · AI Insights bullets ·
- *   Stat strip (4 tiles) · Winner outlier with auto-analysis · More outliers
+ *   Stat strip (4 tiles) · Winner breakout with auto-analysis · More breakouts
  *   grid with toggle-open per-card analysis · Analytics card with metric tabs +
  *   blurred history until the next refresh · When-they-post heatmap with a
- *   best-time insight bar · Outliers-per-week + Score distribution ·
+ *   best-time insight bar · Breakouts-per-week + Score distribution ·
  *   Hashtags & sounds scroll panels (each row is a link to TikTok).
  *
  * The heavy analytical text (insights, per-video why/replicate, best-time)
@@ -40,19 +53,6 @@ const STATUS_LABEL = {
   paused: 'Paused',
   failed: 'Failed',
 };
-
-function compact(n) {
-  if (n == null || Number.isNaN(n)) return '—';
-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(n >= 10_000_000 ? 0 : 1)}M`;
-  if (n >= 1_000) return `${(n / 1_000).toFixed(n >= 10_000 ? 0 : 1)}K`;
-  return String(Math.round(n));
-}
-
-function formatDate(iso) {
-  if (!iso) return null;
-  const d = new Date(iso);
-  return Number.isNaN(d.getTime()) ? null : d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
-}
 
 /*
  * Plot box for the Analytics chart, in viewBox units.
@@ -152,7 +152,7 @@ function chartGeometry(values) {
 }
 
 function metricAxisLabel(metric) {
-  if (metric === 'outliers') return 'Outliers';
+  if (metric === 'outliers') return 'Breakouts';
   if (metric === 'posts') return 'Posts';
   if (metric === 'eng') return 'Engagement';
   if (metric === 'engrate') return 'Engagement rate';
@@ -229,7 +229,7 @@ function weekKeyFromIso(iso) {
 }
 
 function formatMetricValue(value, metric) {
-  if (metric === 'outliers') return `${Math.round(Number(value || 0))} outliers`;
+  if (metric === 'outliers') return `${Math.round(Number(value || 0))} breakouts`;
   if (metric === 'engrate') return `${Number(value || 0).toFixed(1)}%`;
   if (metric === 'posts') return `${Math.round(Number(value || 0))} posts`;
   if (metric === 'eng') return `${compact(Number(value || 0))} engagements`;
@@ -268,61 +268,6 @@ function formatHeatmapHour(hour) {
   return hour < 12 ? `${hour}:00 AM` : `${hour - 12}:00 PM`;
 }
 
-function analysisCtaLabel(analysis) {
-  if (analysis?.status === 'processing') return 'Analyzing video...';
-  if (analysis?.status === 'complete') return 'View analysis';
-  if (analysis?.status === 'failed') return 'Retry analysis';
-  return 'Analyze video';
-}
-
-function AnalyzeStateButton({ analysis, onClick, small = false }) {
-  const status = analysis?.status ?? 'idle';
-  const isProcessing = status === 'processing';
-  const isComplete = status === 'complete';
-  const stateClass = isProcessing ? 'rs-analyze--busy' : isComplete ? 'rs-analyze--done' : 'rs-analyze--ready';
-  const desktopLabel = analysisCtaLabel(analysis);
-  const mobileLabel = desktopLabel === 'Analyze video' ? 'Analyze' : desktopLabel;
-
-  return (
-    <button
-      type="button"
-      className={`rs-analyze ${stateClass}${small ? ' rs-analyze--sm' : ''}`}
-      onClick={onClick}
-      aria-busy={isProcessing}
-      disabled={isProcessing}
-    >
-      {isProcessing ? (
-        <>
-          <span className="rs-analyze__ring" aria-hidden />
-          <span className="rs-analyze__label rs-analyze__label--desktop">{desktopLabel}</span>
-          <span className="rs-analyze__label rs-analyze__label--mobile">{mobileLabel}</span>
-        </>
-      ) : isComplete ? (
-        <>
-          <span className="rs-analyze__badge" aria-hidden>✓</span>
-          <span className="rs-analyze__label rs-analyze__label--desktop">{desktopLabel}</span>
-          <span className="rs-analyze__label rs-analyze__label--mobile">{mobileLabel}</span>
-          <span className="rs-analyze__chev" aria-hidden>→</span>
-        </>
-      ) : (
-        <>
-          <span className="rs-analyze__icon" aria-hidden>{Icons.Spark}</span>
-          <span className="rs-analyze__label rs-analyze__label--desktop">{desktopLabel}</span>
-          <span className="rs-analyze__label rs-analyze__label--mobile">{mobileLabel}</span>
-        </>
-      )}
-    </button>
-  );
-}
-
-function canUsePaidVideoAnalysis(billing) {
-  if (!billing) return false;
-
-  const limit = Number(billing.videoAnalysisLimit ?? 0);
-
-  return Boolean(billing.hasPaidPlan) && limit !== 0;
-}
-
 function canUseSearchBookmarks(billing) {
   if (!billing) return false;
 
@@ -338,17 +283,6 @@ function canManageSearch(billing) {
   if (!billing) return false;
 
   return Boolean(billing.hasPaidPlan);
-}
-
-function videoAnalysisRemaining(billing, startedThisSession = 0) {
-  if (!billing) return 0;
-
-  const limit = Number(billing.videoAnalysisLimit ?? 0);
-  const used = Number(billing.videoAnalysisUsed ?? 0) + Number(startedThisSession || 0);
-
-  if (limit === -1) return -1;
-
-  return Math.max(0, limit - used);
 }
 
 /** Render **bold** markers as <b>…</b> without allowing raw HTML. */
@@ -367,23 +301,6 @@ function initials(name, fallback = '?') {
   return source.slice(0, 2).toUpperCase() || '?';
 }
 
-/* Deterministic gradient so a video's thumbnail placeholder is stable. */
-function gradientFor(id) {
-  const palettes = [
-    'linear-gradient(150deg,#ffd6a6,#ff9a8f 55%,#c07a9a)',
-    'linear-gradient(150deg,#d8c0ff,#a88fff 55%,#7a9ac0)',
-    'linear-gradient(150deg,#c8f0d8,#7ad0a0 55%,#5aa0c0)',
-    'linear-gradient(150deg,#a6d8ff,#7aa8ff 55%,#8f7aff)',
-    'linear-gradient(150deg,#ffe0a6,#ffbf8f 55%,#c0907a)',
-    'linear-gradient(150deg,#ffc0d8,#ff8fb0 55%,#c07a9a)',
-    'linear-gradient(150deg,#e0d0ff,#b0a0ff 55%,#8f7aff)',
-    'linear-gradient(150deg,#ffd27a,#ff9a5a 60%,#c0607a)',
-  ];
-  let h = 0;
-  const s = String(id || '');
-  for (let i = 0; i < s.length; i += 1) h = (h * 31 + s.charCodeAt(i)) | 0;
-  return palettes[Math.abs(h) % palettes.length];
-}
 
 /* ------------------------- inline SVG icons ------------------------- */
 
@@ -410,12 +327,86 @@ const Icons = {
   Plus:      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round"><path d="M12 5v14M5 12h14" /></svg>,
 };
 
+/* ------------- live-run (M20/M20b/M20c) pieces ------------- */
+
+// The five visible passes of a paid run. While the run is live the ticker
+// advances through the first three and holds on "Analyzing" — scoring and the
+// final polish only tick over to done once the real run completes.
+const PROC_STEPS = [
+  'Scanning TikTok’s videos for your selected keywords',
+  'Pulling video and creator information',
+  'Analyzing videos with our AI agents',
+  'Scoring each video and extracting winners',
+  'Making it look pretty for you',
+];
+
+const ProcCheck = (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12.5l4.6 4.5L19 7" /></svg>
+);
+
+/** The M20 processing panel — a spinner, the time estimate, a sweeping bar,
+ * and the five-step checklist. Sits under the brand header while a run is live. */
+function ProcessingPanel({ panelRef, step }) {
+  return (
+    <div className="rs-proc" ref={panelRef}>
+      <div className="rs-proc__top">
+        <span className="rs-spin" aria-hidden>
+          <svg viewBox="0 0 108 108">
+            <defs>
+              <linearGradient id="rs-proc-g" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0" stopColor="#ffd84d" />
+                <stop offset="1" stopColor="#ff9f1c" />
+              </linearGradient>
+            </defs>
+            <circle className="rs-spin__tr" cx="54" cy="54" r="46" />
+            <circle className="rs-spin__arc" cx="54" cy="54" r="46" />
+          </svg>
+          <i />
+        </span>
+        <span className="rs-proc__copy">
+          <h2>Let us do our thing&hellip;</h2>
+          <span className="rs-proc__lede">1 to 5 minutes, mostly around 2 minutes.</span>
+        </span>
+      </div>
+      <div className="rs-sweep" aria-hidden><i /></div>
+      <div className="rs-proc__steps">
+        {PROC_STEPS.map((label, i) => {
+          const state = i < step ? 'done' : i === step ? 'now' : 'wait';
+          return (
+            <span key={label} className={`rs-tick rs-tick--${state}`}>
+              <span className="rs-tick__d">{state === 'wait' ? '•' : ProcCheck}</span>
+              {label}
+              {state === 'now' && (
+                <span className="rs-tick__c" aria-hidden>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round"><path d="M12 3.4a8.6 8.6 0 1 0 8.6 8.6" /></svg>
+                </span>
+              )}
+            </span>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+/** A shimmering placeholder standing in for a section whose data needs the
+ * full dataset before it can be computed. */
+function SkeletonSection({ title, height = 140 }) {
+  return (
+    <>
+      <div className="rs-sh"><h2>{title}</h2><span className="rs-sofar"><i />waiting</span></div>
+      <div className="rs-skcard"><span className="rs-sk" style={{ width: '100%', height }} /></div>
+    </>
+  );
+}
+
 /* ============================ COMPONENT ============================ */
 
 export default function DetailScreen({
   search,
   isAuthenticated = false,
   billing,
+  processing = false,
   refreshing = false,
   bookmarkUpdating = false,
   onRefresh,
@@ -433,13 +424,12 @@ export default function DetailScreen({
   const [handleDraft, setHandleDraft] = useState(search?.source_tiktok_handle ?? '');
   const [savingHandle, setSavingHandle] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
-  const [expandedCardId, setExpandedCardId] = useState(null);
   const [analysisModal, setAnalysisModal] = useState(null);
   const [confirmAnalysisVideo, setConfirmAnalysisVideo] = useState(null);
   const [upgradeModalType, setUpgradeModalType] = useState(null);
   const [visible, setVisible] = useState(PAGE_STEP);
   const [sortKey, setSortKey] = useState('outlier');
-  // Which run bucket the "More outliers" grid is filtered to. `all` keeps
+  // Which run bucket the "More breakouts" grid is filtered to. `all` keeps
   // every card visible and colored by its own run; the other three narrow to
   // one bucket. Defaults to `all` so first-time visitors see the full grid.
   const [runFilter, setRunFilter] = useState('all');
@@ -458,6 +448,58 @@ export default function DetailScreen({
   const menuTopRef = useRef(null);
   const menuHeaderRef = useRef(null);
   const autoOpenedAnalysisRef = useRef(false);
+
+  /* ---- live-run (M20/M20b/M20c) orchestration ---- */
+  const procPanelRef = useRef(null);
+  const [procStep, setProcStep] = useState(processing ? 0 : PROC_STEPS.length);
+  const [panelOut, setPanelOut] = useState(false);
+  const [landedBarOpen, setLandedBarOpen] = useState(false);
+  const wasProcessingRef = useRef(processing);
+
+  // Pace the visible checklist forward while the run is live, holding on the
+  // "Analyzing" pass (index 2) until completion marks everything done.
+  useEffect(() => {
+    if (!processing) {
+      setProcStep(PROC_STEPS.length);
+      return undefined;
+    }
+    setProcStep(0);
+    const timer = window.setInterval(() => setProcStep((i) => (i < 2 ? i + 1 : i)), 9000);
+    return () => window.clearInterval(timer);
+  }, [processing]);
+
+  // When polling flips the run from processing → done, raise the green
+  // completion bar (M20c) until the visitor dismisses it.
+  useEffect(() => {
+    if (wasProcessingRef.current && !processing) setLandedBarOpen(true);
+    wasProcessingRef.current = processing;
+  }, [processing]);
+
+  // The amber runbar (M20b) only appears once the processing panel has
+  // scrolled out of view.
+  useEffect(() => {
+    const el = procPanelRef.current;
+    if (!processing || !el || typeof IntersectionObserver === 'undefined') {
+      setPanelOut(false);
+      return undefined;
+    }
+    // Reveal the runbar exactly as the panel slides under the app shell's
+    // sticky top bar. That bar is display:none on desktop (offsetHeight 0), so
+    // this collapses to an 8px nudge there and to ~the bar height on mobile.
+    const topBar = typeof document !== 'undefined' ? document.querySelector('.bb-top') : null;
+    const topInset = (topBar?.offsetHeight || 0) + 8;
+    const observer = new IntersectionObserver(
+      ([entry]) => setPanelOut(!entry.isIntersecting),
+      { threshold: 0, rootMargin: `-${topInset}px 0px 0px 0px` },
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [processing]);
+
+  const scrollToTop = () => {
+    if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   const canAnalyzeMoreOutliers = canUsePaidVideoAnalysis(billing);
   const canBookmarkSearch = canUseSearchBookmarks(billing);
   const canManageCurrentSearch = canManageSearch(billing);
@@ -537,16 +579,16 @@ export default function DetailScreen({
         const bt = b.posted_at ? new Date(b.posted_at).getTime() : 0;
         return bt - at;
       }
-      return (b.multiple ?? b.score ?? 0) - (a.multiple ?? a.score ?? 0);
+      return breakoutScore(b) - breakoutScore(a);
     });
     return arr;
   }, [rest, sortKey, runFilter, latestRunId, previousRunId]);
 
   /* ------------- stats ------------- */
   const tileByKey = (k) => (insights.tiles ?? []).find((t) => t.key === k) ?? {};
-  const outlierCount = tileByKey('outliers').value ?? results.filter((r) => (r.multiple ?? 0) >= 3).length;
+  const outlierCount = tileByKey('outliers').value ?? results.filter((r) => Number(r.outlier_multiple ?? r.multiple ?? 0) >= 3).length;
   const videosInRun = search?.scanned_count ?? results.length;
-  const topMultiple = tileByKey('top_multiple').value ?? (winner?.multiple ?? winner?.score ?? 0);
+  const topBreakoutScore = breakoutScore(winner);
   const avgEng = tileByKey('avg_engagement').value ?? null;
   const medianViews = insights?.baseline?.median_views ?? null;
 
@@ -649,7 +691,7 @@ export default function DetailScreen({
   const heatMax = Math.max(1, Number(insights?.heatmap?.max) || 0);
   const bestPostTime = search?.best_post_time ?? heatmapBestTime(insights?.heatmap);
 
-  /* ------------- outliers per week + distribution ------------- */
+  /* ------------- breakouts per week + distribution ------------- */
   const distribution = insights?.distribution ?? [];
   const distMax = Math.max(1, ...distribution.map((d) => d.count ?? 0));
   const weeklyBars = trend?.outliers_per_week ?? [];
@@ -670,7 +712,10 @@ export default function DetailScreen({
   };
   const openUpgradeModal = (type = 'analysis') => setUpgradeModalType(type);
   const closeUpgradeModal = () => setUpgradeModalType(null);
-  const openUpgradeForAnalysis = () => billingApi.checkout('basic');
+  const openUpgradeForAnalysis = () =>
+    (billing?.trialEligible ?? true) && !(billing?.hasUsedTrial ?? false)
+      ? billingApi.trialCheckout('growth')
+      : billingApi.checkout('growth');
   const videoLabel = (videoId) => {
     const video = results.find((entry) => String(entry.id) === String(videoId));
     return video?.handle || video?.username || video?.title || 'This video';
@@ -782,7 +827,7 @@ export default function DetailScreen({
         videoId: video.id,
         searchUrl: search?.url,
         searchName: search?.name || search?.phrase,
-        videoLabel: video.handle || video.username || video.title || video.caption || 'Outlier video',
+        videoLabel: video.handle || video.username || video.title || video.caption || 'Breakout video',
       });
     } catch (error) {
       setConfirmAnalysisVideo(video);
@@ -852,6 +897,37 @@ export default function DetailScreen({
   return (
     <>
       <style>{scopedCss}</style>
+
+      {/* sticky runbar — amber while scanning (M20b) */}
+      {processing && panelOut && (
+        <div className="rs-runbar" role="status" aria-live="polite">
+          <span className="rs-runbar__mini" aria-hidden>
+            <svg viewBox="0 0 24 24" fill="none" stroke="#ffc629" strokeWidth="2.4" strokeLinecap="round"><path d="M12 2.8a9.2 9.2 0 1 0 9.2 9.2" /></svg>
+          </span>
+          <span className="rs-runbar__bd">
+            <strong>Still scanning TikTok for {search?.name || search?.phrase || 'your search'}</strong>
+            <span>{PROC_STEPS[Math.min(procStep, PROC_STEPS.length - 1)]} · about a minute left</span>
+          </span>
+          <button type="button" className="rs-runbar__go" onClick={scrollToTop}>Back to top</button>
+        </div>
+      )}
+
+      {/* sticky runbar — green when it lands (M20c) */}
+      {landedBarOpen && (
+        <div className="rs-runbar rs-runbar--done" role="status" aria-live="polite">
+          <span className="rs-runbar__mini" aria-hidden style={{ display: 'grid', placeItems: 'center' }}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="#ffffff" strokeWidth="3.2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12.5l4.6 4.5L19 7" /></svg>
+          </span>
+          <span className="rs-runbar__bd">
+            <strong>{`All ${Number(videosInRun ?? 0).toLocaleString()} videos are in, ${Number(outlierCount ?? 0).toLocaleString()} of them broke out`}</strong>
+            <span>Everything below is the finished readout</span>
+          </span>
+          <button type="button" className="rs-runbar__go" onClick={scrollToTop}>Start from the top</button>
+          <button type="button" className="rs-runbar__x" onClick={() => setLandedBarOpen(false)} aria-label="Dismiss">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#ffffff" strokeWidth="2.6" strokeLinecap="round"><path d="M6 6l12 12M18 6L6 18" /></svg>
+          </button>
+        </div>
+      )}
 
       {/* top bar */}
       <div className="rs-viewbar">
@@ -924,6 +1000,9 @@ export default function DetailScreen({
         </div>
       </div>
 
+      {/* PROCESSING PANEL (M20) */}
+      {processing && <ProcessingPanel panelRef={procPanelRef} step={procStep} />}
+
       {/* inline handle editor */}
       {handleEditing && (
         <div className="rs-hedit">
@@ -977,31 +1056,55 @@ export default function DetailScreen({
         </div>
       )}
 
+      {/* INSIGHTS skeleton while the run is still scoring (M20) */}
+      {processing && !(bullets.length > 0 || search?.ai_summary) && (
+        <div className="rs-ai">
+          <div className="rs-ai__h">
+            {Icons.Spark}
+            <span className="rs-ai__t">Insights</span>
+            <span className="rs-sofar"><i />waiting</span>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 12 }}>
+            <span className="rs-sk" style={{ width: '100%', height: 10 }} />
+            <span className="rs-sk" style={{ width: '92%', height: 10 }} />
+            <span className="rs-sk" style={{ width: '61%', height: 10 }} />
+          </div>
+        </div>
+      )}
+
       {/* STATS */}
       <div className="rs-stats">
         <div className="rs-stt">
-          <span className="rs-stt__k">Outliers found</span>
+          <span className="rs-stt__k">Breakouts found</span>
           <span className="rs-stt__v">{Number(outlierCount ?? 0).toLocaleString()}</span>
-          <span className="rs-stt__d up">{Icons.UpTrend}<span>{outlierCount ?? 0} this cycle</span></span>
+          {processing
+            ? <span className="rs-sofar"><i />so far</span>
+            : <span className="rs-stt__d up">{Icons.UpTrend}<span>{outlierCount ?? 0} this cycle</span></span>}
         </div>
         <div className="rs-stt">
           <span className="rs-stt__k">Videos in this search</span>
           <span className="rs-stt__v">{Number(videosInRun ?? 0).toLocaleString()}</span>
-          <span className="rs-stt__d">{search?.last_run_at ? `all from the ${formatDate(search.last_run_at)} refresh` : 'this run'}</span>
+          {processing
+            ? <span className="rs-sofar"><i />so far</span>
+            : <span className="rs-stt__d">{search?.last_run_at ? `all from the ${formatDate(search.last_run_at)} refresh` : 'this run'}</span>}
         </div>
         <div className="rs-stt hi">
-          <span className="rs-stt__k">Top outlier score</span>
-          <span className="rs-stt__v">{compact(topMultiple ?? 0)}<small>×</small></span>
-          <span className="rs-stt__d">{medianViews ? `vs ${compact(medianViews)} median views` : '—'}</span>
+          <span className="rs-stt__k">Top Breakout Score</span>
+          <span className="rs-stt__v">{compact(topBreakoutScore)}<small>×</small></span>
+          {processing
+            ? <span className="rs-sofar rs-sofar--flat"><i />can still rise</span>
+            : <span className="rs-stt__d">{medianViews ? `vs ${compact(medianViews)} median views` : '—'}</span>}
         </div>
         <div className="rs-stt">
           <span className="rs-stt__k">Avg engagement rate</span>
-          <span className="rs-stt__v">{avgEng != null ? Number(avgEng).toFixed(1) : '—'}<small>%</small></span>
-          <span className="rs-stt__d">across {results.length} videos</span>
+          {processing && avgEng == null
+            ? <span className="rs-sk" style={{ width: '66%', height: 18, marginTop: 3 }} />
+            : <span className="rs-stt__v">{avgEng != null ? Number(avgEng).toFixed(1) : '—'}<small>%</small></span>}
+          {!processing && <span className="rs-stt__d">across {results.length} videos</span>}
         </div>
       </div>
 
-      {/* OUTLIER VIDEOS — winner */}
+      {/* BREAKOUT VIDEOS — winner */}
       {winner && (() => {
         const winnerBucket = bucketForVideo(winner);
         const winnerBucketLabel = winnerBucket === 'new'
@@ -1016,14 +1119,14 @@ export default function DetailScreen({
             : '3rd run+';
         return (
         <>
-          <div className="rs-sh"><h2>Outlier videos</h2><span className="rs-note">Their posts that beat the search median, ranked by outlier score.</span></div>
+          <div className="rs-sh"><h2>Breakout videos</h2><span className="rs-note">Videos with unusually strong engagement for their creator&rsquo;s audience, ranked by Breakout Score.</span></div>
           <div className={`rs-winner rs-winner--run-${winnerBucket}`}>
             <div className="rs-wmedia">
-              <VideoFrame video={winner} winner showStats={false} isPlaying={videoPlayingId === winner.id} onTogglePlay={() => setVideoPlayingId((v) => v === winner.id ? null : winner.id)} />
+              <VideoFrame video={winner} winner leading={processing} showStats={false} isPlaying={videoPlayingId === winner.id} onTogglePlay={() => setVideoPlayingId((v) => v === winner.id ? null : winner.id)} />
               <div className="rs-oc__ov">
                 <div className="rs-ovchip rs-ovchip--out">
-                  <div className="rs-ovchip__l">Outlier score</div>
-                  <div className="rs-ovchip__n">{compact(winner.multiple ?? winner.score ?? 0)}×</div>
+                  <div className="rs-ovchip__l">Breakout Score</div>
+                  <div className="rs-ovchip__n">{compact(breakoutScore(winner))}×</div>
                 </div>
                 <div className="rs-ovchip rs-ovchip--views">
                   <div className="rs-ovchip__l">Views</div>
@@ -1045,8 +1148,8 @@ export default function DetailScreen({
                   <span className="rs-runpill__dot" aria-hidden />
                   {winnerBucketLabel}
                 </span>
-                {winner.tiktok_url && (
-                  <a href={winner.tiktok_url} target="_blank" rel="noopener" className="rs-ic2" title="Open in TikTok">{Icons.ExtLink}</a>
+                {winner.post_url && (
+                  <a href={winner.post_url} target="_blank" rel="noopener" className="rs-ic2" title="Open in TikTok">{Icons.ExtLink}</a>
                 )}
               </div>
               <p className="rs-wcap">{winner.title || winner.caption}</p>
@@ -1076,11 +1179,11 @@ export default function DetailScreen({
         );
       })()}
 
-      {/* MORE OUTLIERS */}
+      {/* MORE BREAKOUTS */}
       {rest.length > 0 && (
         <>
           <div className="rs-sh">
-            <h2>More outliers</h2>
+            <h2>More breakouts</h2>
             <span className="rs-sh__actions">
               <span className="rs-runfilter">
                 <span className="rs-runfilter__pre">Show:</span>
@@ -1099,7 +1202,7 @@ export default function DetailScreen({
               <span className="rs-sortsel">
                 <span className="rs-sortsel__pre">Sort:</span>
                 <select value={sortKey} onChange={(e) => setSortKey(e.target.value)}>
-                  <option value="outlier">Outlier score</option>
+                  <option value="outlier">Breakout Score</option>
                   <option value="views">Views</option>
                   <option value="date">Date posted</option>
                 </select>
@@ -1117,15 +1220,10 @@ export default function DetailScreen({
           ) : (
             <div className="rs-ogrid">
               {sortedRest.slice(0, visible).map((v) => (
-                <OutlierCard
+                <BreakoutVideoCard
                   key={v.id}
                   video={v}
                   runBucket={bucketForVideo(v)}
-                  expanded={expandedCardId === v.id}
-                  locked={!canAnalyzeMoreOutliers}
-                  onToggle={() => (!canAnalyzeMoreOutliers
-                    ? openUpgradeModal('analysis')
-                    : setExpandedCardId((cur) => cur === v.id ? null : v.id))}
                   onAnalyze={() => handleAnalyzeAction(v)}
                   onToggleBookmark={() => onToggleVideoBookmark?.(v)}
                   bookmarking={bookmarkingVideoId === v.id}
@@ -1146,11 +1244,15 @@ export default function DetailScreen({
       )}
 
       {/* ANALYTICS */}
+      {processing && weeklyPoints.length === 0 ? (
+        <SkeletonSection title="Analytics" height={180} />
+      ) : (
+      <>
       <div className="rs-sh"><h2>Analytics</h2><span className="rs-note">Weekly buckets based on when the matched videos were uploaded.</span></div>
       <div className="rs-acard">
         <div className="rs-mtabs">
           {[
-            ['views', 'views'], ['eng', 'engagement'], ['outliers', 'outliers'],
+            ['views', 'views'], ['eng', 'engagement'], ['outliers', 'breakouts'],
           ].map(([key, label]) => (
             <button key={key} className={`rs-mtab${metric === key ? ' on' : ''}`} onClick={() => setMetric(key)}>{label}</button>
           ))}
@@ -1275,8 +1377,13 @@ export default function DetailScreen({
           </div>
         </div>
       </div>
+      </>
+      )}
 
       {/* WHEN THEY POST */}
+      {processing && heatCells.length === 0 && (
+        <SkeletonSection title="When they post" height={150} />
+      )}
       {heatCells.length > 0 && (
         <>
           <div className="rs-sh"><h2>When they post</h2><span className="rs-note">Posting schedule by day and hour.</span></div>
@@ -1345,12 +1452,15 @@ export default function DetailScreen({
       )}
 
       {/* MORE DATA */}
+      {processing && weeklyBars.length === 0 && distribution.length === 0 && (
+        <SkeletonSection title="More data" height={120} />
+      )}
       {(weeklyBars.length > 0 || distribution.length > 0) && (
         <>
           <div className="rs-sh"><h2>More data</h2><span className="rs-note">How the tracker is moving.</span></div>
           <div className="rs-two">
             <div className="rs-dcard">
-              <h3>Outliers per week</h3><p className="rs-sub">Their posts scoring 3× or higher.</p>
+              <h3>Breakouts per week</h3><p className="rs-sub">Their posts scoring 3× or higher.</p>
               <div className="rs-owk">
                 {weeklyBars.slice(-6).map((b, i) => {
                   const count = b.count ?? b.value ?? 0;
@@ -1367,7 +1477,7 @@ export default function DetailScreen({
               </div>
             </div>
             <div className="rs-dcard">
-              <h3>Score distribution</h3><p className="rs-sub">This search's {distribution.reduce((s, d) => s + (d.count ?? 0), 0)} outliers.</p>
+              <h3>Score distribution</h3><p className="rs-sub">This search's {distribution.reduce((s, d) => s + (d.count ?? 0), 0)} breakouts.</p>
               <div className="rs-dist">
                 {distribution.map((d) => {
                   const shade = d.count / distMax > 0.7 ? 'var(--a5)' : d.count / distMax > 0.4 ? 'var(--a4)' : d.count / distMax > 0.2 ? 'var(--a3)' : 'var(--a2)';
@@ -1386,9 +1496,12 @@ export default function DetailScreen({
       )}
 
       {/* HASHTAGS & SOUNDS */}
+      {processing && hashtags.length === 0 && sounds.length === 0 && (
+        <SkeletonSection title="Hashtags & sounds" height={120} />
+      )}
       {(hashtags.length > 0 || sounds.length > 0) && (
         <>
-          <div className="rs-sh"><h2>Hashtags &amp; sounds</h2><span className="rs-note">Across this search's outlier videos.</span></div>
+          <div className="rs-sh"><h2>Hashtags &amp; sounds</h2><span className="rs-note">Across this search's breakout videos.</span></div>
           <div className="rs-two">
             <ScrollPanel title="Hashtags they used" items={hashtags.map((h) => ({ label: h.tag, count: h.count, url: `https://www.tiktok.com/tag/${encodeURIComponent(String(h.tag).replace(/^#/, ''))}` }))} max={hashMax} />
             <ScrollPanel title="Sounds they used" items={sounds.map((s) => ({ label: s.label, count: s.count, icon: Icons.Music, url: `https://www.tiktok.com/search/sound?q=${encodeURIComponent(s.label)}` }))} max={soundMax} barColor="var(--a4)" />
@@ -1418,7 +1531,7 @@ export default function DetailScreen({
             </div>
             <div className="rs-weekmodal__list">
               {selectedWeekVideos.map((video) => {
-                const multiple = Number(video.outlier_multiple ?? video.multiple ?? video.score ?? 0);
+                const multiple = breakoutScore(video);
                 // The row is the whole target — clicking it closes the week
                 // list and hands the video to the breakdown modal.
                 const openBreakdown = () => {
@@ -1446,9 +1559,9 @@ export default function DetailScreen({
                     <span className="rs-weekmodal__body">
                       <strong>
                         <span className="rs-weekmodal__handle">{video.handle || video.username || video.title || 'Video'}</span>
-                        {multiple >= 3 && <em className="rs-weekmodal__ol">{compact(multiple)}× outlier</em>}
+                        {multiple >= 3 && <em className="rs-weekmodal__ol">{compact(multiple)}× breakout</em>}
                       </strong>
-                      <span className="rs-weekmodal__cap">{video.title || video.caption || 'Open this video from the outlier list.'}</span>
+                      <span className="rs-weekmodal__cap">{video.title || video.caption || 'Open this video from the breakout list.'}</span>
                       <span className="rs-weekmodal__meta">{compact(video.views)} views · uploaded {formatDate(video.uploaded_at) || '—'}</span>
                     </span>
                     <span className="rs-weekmodal__acts">
@@ -1518,7 +1631,7 @@ export default function DetailScreen({
         />
       )}
       {upgradeModalType && (
-        <UpgradeModal
+        <AnalysisUpgradeModal
           mode={upgradeModalType}
           trialEligible={billing?.trialEligible ?? true}
           hasUsedTrial={billing?.hasUsedTrial ?? false}
@@ -1539,87 +1652,6 @@ export default function DetailScreen({
 }
 
 /* -------------------- sub-components -------------------- */
-
-function VideoFrame({ video, winner = false, showStats = true, isPlaying, onTogglePlay }) {
-  const bg = video.thumbnail_url ? undefined : gradientFor(video.id ?? video.handle);
-  const playerUrl = playerUrlFor(video, true);
-  const [playerReady, setPlayerReady] = useState(false);
-  const iframeRef = useRef(null);
-
-  useEffect(() => {
-    setPlayerReady(false);
-  }, [isPlaying, playerUrl]);
-
-  useEffect(() => {
-    const iframe = iframeRef.current;
-    if (!isPlaying || !iframe || !video?.video_id) return undefined;
-
-    const unmuteAndPlay = () => {
-      postTikTokMessage(iframe, 'unMute');
-      postTikTokMessage(iframe, 'play');
-    };
-
-    const handleReady = (event) => {
-      const payload = event?.data;
-      if (!payload || payload['x-tiktok-player'] !== true || payload.type !== 'onPlayerReady') return;
-      if (event.source !== iframe.contentWindow) return;
-      unmuteAndPlay();
-    };
-
-    iframe.addEventListener('load', unmuteAndPlay);
-    window.addEventListener('message', handleReady);
-
-    return () => {
-      iframe.removeEventListener('load', unmuteAndPlay);
-      window.removeEventListener('message', handleReady);
-    };
-  }, [isPlaying, video?.video_id]);
-
-  return (
-    <div className={`rs-vf${isPlaying ? ' playing' : ''}${winner ? ' rs-vf--big' : ''}`}>
-      {!isPlaying && (video.thumbnail_url
-        ? <img className="rs-vf__img" src={video.thumbnail_url} alt="" loading="lazy" />
-        : <div className="rs-vf__img" style={{ background: bg }} />)}
-      {isPlaying && playerUrl && (
-        <iframe
-          ref={iframeRef}
-          className="rs-vf__player"
-          src={playerUrl}
-          title={video.title ? `Video: ${video.title}` : 'Video preview'}
-          allow="autoplay; encrypted-media; fullscreen"
-          allowFullScreen
-          onLoad={() => setPlayerReady(true)}
-        />
-      )}
-      {!isPlaying && <div className="rs-vf__scrim" />}
-      {winner
-        ? <span className="rs-vf__win">{Icons.Spark}Winner</span>
-        : <span className="rs-vf__rank">{video.rank ?? ''}</span>}
-      {video.duration != null && <span className="rs-vf__dur">{formatDuration(video.duration)}</span>}
-      {!isPlaying && <button className="rs-vf__play" onClick={onTogglePlay} aria-label="Play">{Icons.Play}</button>}
-      {isPlaying && playerUrl && !playerReady && <span className="rs-vf__loading">Loading video…</span>}
-      {isPlaying && <button className="rs-vf__close" onClick={onTogglePlay} aria-label="Close video preview">×</button>}
-      {!isPlaying && showStats && <div className="rs-vf__stats">
-        <div className="rs-vchip rs-vchip--out">
-          <div className="rs-vchip__l">Outlier score</div>
-          <div className="rs-vchip__n">{compact(video.multiple ?? video.score ?? 0)}×</div>
-        </div>
-        <div className="rs-vchip rs-vchip--views">
-          <div className="rs-vchip__l">Views</div>
-          <div className="rs-vchip__n">{compact(video.views)}</div>
-        </div>
-      </div>
-      }
-    </div>
-  );
-}
-
-function formatDuration(seconds) {
-  if (seconds == null || Number.isNaN(seconds)) return null;
-  const s = Math.round(seconds);
-  const m = Math.floor(s / 60);
-  return `${m}:${String(s % 60).padStart(2, '0')}`;
-}
 
 function VideoTags({ video }) {
   const tags = [];
@@ -1643,8 +1675,8 @@ function VideoTags({ video }) {
 function AutoAnalysis({ video }) {
   const rows = [];
   if (video.why_broke_out)    rows.push(['Why it broke out', video.why_broke_out]);
-  if (!video.why_broke_out && video.outlier_multiple != null) {
-    rows.push(['Performance signal', `${compact(video.views)} views, ${compact(video.outlier_multiple)}× the search median.`]);
+  if (!video.why_broke_out && breakoutScore(video) > 0) {
+    rows.push(['Performance signal', `${compact(video.views)} views, ${compact(breakoutScore(video))}× Breakout Score relative to the creator's audience.`]);
   }
   if (video.content_format)   rows.push(['Format', video.content_format]);
   if (video.replicate_with)   rows.push(['Replicate with', video.replicate_with]);
@@ -1662,131 +1694,6 @@ function AutoAnalysis({ video }) {
         ))}
       </dl>
     </div>
-  );
-}
-
-function OutlierCard({ video, runBucket = 'old', expanded, locked = false, onToggle, onAnalyze, onToggleBookmark, bookmarking, isPlaying, onTogglePlay }) {
-  return (
-    <article className={`rs-oc rs-oc--run-${runBucket}${expanded ? ' analyzed' : ''}`}>
-      <VideoFrame video={video} showStats={false} isPlaying={isPlaying} onTogglePlay={onTogglePlay} />
-      <div className="rs-oc__b">
-        <div className="rs-oc__ov">
-          <div className="rs-ovchip rs-ovchip--out">
-            <div className="rs-ovchip__l">Outlier score</div>
-            <div className="rs-ovchip__n">{compact(video.multiple ?? video.score ?? 0)}×</div>
-          </div>
-          <div className="rs-ovchip rs-ovchip--views">
-            <div className="rs-ovchip__l">Views</div>
-            <div className="rs-ovchip__n">{compact(video.views)}</div>
-          </div>
-        </div>
-        <div className="rs-oc__cr">
-          <span className="rs-av" style={{ background: gradientFor(video.handle ?? video.id), width: 30, height: 30, borderRadius: '50%', flex: 'none' }} />
-          <div className="rs-oc__copy" style={{ flex: 1, minWidth: 0 }}>
-            <div className="rs-oc__h">{video.handle || video.username || '—'}</div>
-            {Number(video.followers ?? 0) > 0 && <div className="rs-oc__f">{compact(video.followers)} followers</div>}
-          </div>
-          <div className="rs-oc__s">{video.uploaded_at ? formatDate(video.uploaded_at) : video.posted_at ? formatDate(video.posted_at) : ''}</div>
-        </div>
-        <p className="rs-oc__c">{video.title || video.caption}</p>
-        <div className="rs-oc__st">
-          <span>{Icons.Eye}{compact(video.views)}</span>
-          <span>{Icons.Heart}{compact(video.likes)}</span>
-          <span>{Icons.Comment}{compact(video.comments)}</span>
-          <span>{Icons.Share}{compact(video.shares)}</span>
-        </div>
-        {expanded && !locked && (
-          <div className="rs-oc__panel">
-            <AutoAnalysis video={video} />
-          </div>
-        )}
-        <div className="rs-oc__an">
-          <AnalyzeStateButton analysis={video.analysis} onClick={onAnalyze} small />
-          <button className="rs-ic2" title={expanded && !locked ? 'Hide inline summary' : 'Show inline summary'} onClick={onToggle}>{Icons.ExtLink}</button>
-          <button
-            className={`rs-ic2${video.bookmarked ? ' on' : ''}`}
-            title={video.bookmarked ? 'Remove from bookmarks' : 'Save video'}
-            aria-label={video.bookmarked ? 'Remove from bookmarks' : 'Save video'}
-            onClick={onToggleBookmark}
-            disabled={bookmarking}
-          >
-            {video.bookmarked ? Icons.Bookmark : Icons.BookmarkO}
-          </button>
-        </div>
-      </div>
-    </article>
-  );
-}
-
-function UsageConfirmModal({ video, creditsRemaining, creditsRemainingAfterUse, busy = false, onConfirm, onCancel }) {
-  const currentCredits = creditsRemaining === -1 ? 'Unlimited' : creditsRemaining;
-  const afterUseCredits = creditsRemainingAfterUse === 'unlimited' ? 'unlimited' : creditsRemainingAfterUse;
-
-  return (
-    <div className="rs-modalback" onClick={onCancel}>
-      <div className="rs-usage" onClick={(event) => event.stopPropagation()} role="dialog" aria-modal="true" aria-label="Confirm video analysis">
-        <div className="rs-upg__eyebrow">{Icons.Spark}<span>Video analysis</span></div>
-        <h3>Analyze this outlier video?</h3>
-        <p>
-          You currently have <b>{currentCredits}</b> video analysis {currentCredits === 1 ? 'credit' : 'credits'} remaining.
-          This analysis will use <b>1 credit</b> when it completes successfully, leaving you with <b>{afterUseCredits}</b>.
-        </p>
-        <p className="rs-usage__subject">{video?.title || video?.caption || video?.handle || 'Selected video'}</p>
-        <div className="rs-upgmodal__actions">
-          <button type="button" className="rs-btn rs-btn--g" onClick={onCancel} disabled={busy}>
-            Cancel
-          </button>
-          <button type="button" className="rs-btn rs-btn--y" onClick={onConfirm} disabled={busy}>
-            {busy ? 'Starting…' : 'Start analysis'}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function UpgradeModal({ mode = 'analysis', trialEligible = true, hasUsedTrial = false, onClose, onUpgrade }) {
-  const isSearchBookmark = mode === 'search-bookmark';
-  const isSearchManagement = mode === 'search-management';
-  const shouldOfferTrial = trialEligible && !hasUsedTrial;
-  const eyebrowLabel = isSearchBookmark
-    ? 'Search bookmarks'
-    : isSearchManagement
-      ? 'Search management'
-      : 'Video analysis';
-  const title = isSearchBookmark
-    ? shouldOfferTrial
-      ? 'Start your 8-day Growth trial to unlock search bookmarks'
-      : 'Upgrade to unlock search bookmarks'
-    : isSearchManagement
-      ? shouldOfferTrial
-        ? 'Start your 8-day Growth trial to manage this search'
-        : 'Upgrade to manage this search'
-      : shouldOfferTrial
-        ? 'Start your 8-day Growth trial to unlock more analysis credits'
-        : 'Upgrade to unlock more analysis credits';
-  const body = isSearchBookmark
-    ? shouldOfferTrial
-      ? 'Free searches do not include saved search bookmarks. Start your 8-day Growth trial to save searches to your bookmarks.'
-      : 'Free searches do not include saved search bookmarks. Upgrade to Growth or Scale to save searches to your bookmarks.'
-    : isSearchManagement
-      ? shouldOfferTrial
-        ? 'Start your 8-day Growth trial to pause, resume, or delete tracked searches from your dashboard.'
-        : 'Upgrade to Growth or Scale to pause, resume, or delete tracked searches from your dashboard.'
-      : shouldOfferTrial
-        ? 'Free searches include the top-video breakdown. Start your 8-day Growth trial to analyze more outliers.'
-        : 'Free searches include the top-video breakdown. Upgrade to Growth or Scale to analyze more outliers.';
-  const ctaLabel = shouldOfferTrial ? 'Start 8-day Growth trial' : 'Upgrade to Growth';
-
-  return (
-    <UpgradePromptModal
-      eyebrow={eyebrowLabel}
-      title={title}
-      body={body}
-      primaryLabel={ctaLabel}
-      onPrimary={onUpgrade}
-      onClose={onClose}
-    />
   );
 }
 
@@ -1993,28 +1900,9 @@ const scopedCss = `
 .rs-btn--danger:hover:not(:disabled){background:#972f0f}
 .rs-btn--sm{height:34px;padding:0 14px;font-size:.82rem;font-weight:600}
 .rs-btn:disabled{opacity:.55;cursor:not-allowed}
-.rs-analyze{position:relative;display:inline-flex;align-items:center;justify-content:center;gap:9px;height:46px;padding:0 22px;border-radius:999px;border:1px solid transparent;font-size:.92rem;font-weight:600;letter-spacing:-.01em;white-space:nowrap;cursor:pointer;overflow:hidden;transition:background .16s ease,border-color .16s ease,color .16s ease,transform .12s ease,box-shadow .16s ease}
-.rs-analyze > *{position:relative;z-index:1}
-.rs-analyze:focus-visible{outline:2px solid var(--ink);outline-offset:3px}
-.rs-analyze--sm{height:34px;padding:0 14px;font-size:.82rem;gap:7px}
-.rs-analyze--ready{background:var(--yellow);color:#1A1400;box-shadow:0 1px 2px rgba(17,17,20,.08),0 8px 18px -10px rgba(239,174,0,.9)}
-.rs-analyze--ready:hover:not(:disabled){background:var(--yellow-hot,#FFD84D);transform:translateY(-1px);box-shadow:0 2px 4px rgba(17,17,20,.1),0 12px 22px -12px rgba(239,174,0,1)}
-.rs-analyze--ready .rs-analyze__icon{display:inline-flex;animation:rs-analyze-twinkle 2.6s ease-in-out infinite}
-.rs-analyze--ready:hover:not(:disabled) .rs-analyze__icon{animation-duration:1.1s}
-.rs-analyze--busy{background:var(--white);border-color:var(--line-2,#DEDBD3);color:var(--ink);font-weight:500;cursor:progress;box-shadow:none}
-.rs-analyze--busy::before{content:"";position:absolute;top:0;bottom:0;left:0;width:44%;background:linear-gradient(90deg,transparent,rgba(255,198,41,.45),transparent);animation:rs-analyze-comet 1.5s cubic-bezier(.5,0,.5,1) infinite}
-.rs-analyze--done{background:var(--ink);color:#fff;font-weight:500;padding-right:16px}
-.rs-analyze--done:hover:not(:disabled){background:#000;transform:translateY(-1px)}
-.rs-analyze__icon svg{width:15px;height:15px}
-.rs-analyze__ring{width:14px;height:14px;border:2px solid rgba(239,174,0,.3);border-top-color:#EFAE00;border-radius:999px;animation:rs-analyze-spin .9s linear infinite}
-.rs-analyze__badge{color:var(--yellow);font-size:.95em;line-height:1}
-.rs-analyze__chev{color:rgba(255,255,255,.6);transition:transform .16s ease,color .16s ease}
-.rs-analyze--done:hover:not(:disabled) .rs-analyze__chev{transform:translateX(3px);color:#fff}
-.rs-analyze__label{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.rs-analyze__label--mobile{display:none}
-@keyframes rs-analyze-twinkle{0%,72%,100%{transform:scale(1) rotate(0)}82%{transform:scale(1.18) rotate(14deg)}92%{transform:scale(.96) rotate(-6deg)}}
-@keyframes rs-analyze-comet{from{transform:translateX(-110%)}to{transform:translateX(330%)}}
-@keyframes rs-analyze-spin{to{transform:rotate(360deg)}}
+/* .rs-analyze, .rs-vf, .rs-vchip, .rs-av, .rs-ic2, .rs-ogrid and .rs-oc live in
+   app.css — they are shared with the saved-videos library and analysis modal
+   through components/BreakoutVideoCard.jsx. */
 
 .rs-ai{border:1px solid #F2E4B8;background:var(--wash);border-radius:16px;padding:18px 20px;margin-top:20px;min-width:0;max-width:100%;overflow-x:hidden}
 .rs-ai__toggle{width:100%;border:0;background:transparent;padding:0;text-align:left;cursor:default}
@@ -2085,33 +1973,11 @@ const scopedCss = `
 .rs-runpill{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;font-size:.72rem;font-weight:700;letter-spacing:.01em;white-space:nowrap;border:1px solid transparent;flex:none}
 .rs-runpill__dot{width:8px;height:8px;border-radius:50%;flex:none;background:currentColor}
 .rs-runpill--new,.rs-runpill--prev,.rs-runpill--old{color:var(--ink);background:var(--paper);border-color:var(--line)}
-.rs-vf{position:relative;width:100%;aspect-ratio:9/16;border-radius:14px;overflow:hidden;background:#1a1a1a}
-.rs-vf--big{max-width:262px}
-.rs-vf__img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
-.rs-vf__player{position:absolute;inset:0;width:100%;height:100%;border:0;background:#000}
-.rs-vf__scrim{position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.28),transparent 22% 62%,rgba(0,0,0,.5));transition:opacity .2s}
-.rs-vf__play{position:absolute;inset:0;margin:auto;width:56px;height:56px;border-radius:50%;background:rgba(255,255,255,.92);display:grid;place-items:center;transition:.15s;border:0;cursor:pointer}
-.rs-vf__play svg{width:20px;height:20px;margin-left:2px;color:#1A1400}
-.rs-vf:hover .rs-vf__play{transform:scale(1.06)}
-.rs-vf__loading{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);padding:6px 9px;border-radius:8px;background:rgba(0,0,0,.7);color:#fff;font-size:.7rem;font-weight:700;white-space:nowrap;pointer-events:none}
-.rs-vf__close{position:absolute;top:9px;right:9px;width:28px;height:28px;border:0;border-radius:50%;background:rgba(0,0,0,.65);color:#fff;font-size:1.25rem;line-height:1;cursor:pointer}
-.rs-vf__win{position:absolute;top:10px;left:10px;display:inline-flex;align-items:center;gap:5px;padding:4px 9px;border-radius:100px;background:var(--yellow);color:#1A1400;font-size:.68rem;font-weight:800;letter-spacing:.02em}
-.rs-vf__win svg{width:11px;height:11px}
-.rs-vf__dur{position:absolute;top:10px;right:10px;padding:2px 7px;border-radius:6px;background:rgba(0,0,0,.6);color:#fff;font-size:.7rem;font-weight:700}
-.rs-vf__rank{position:absolute;top:10px;left:10px;width:24px;height:24px;border-radius:7px;background:rgba(0,0,0,.62);color:#fff;display:grid;place-items:center;font-size:.74rem;font-weight:800}
-.rs-vf__stats{position:absolute;left:10px;right:10px;bottom:10px;display:flex;gap:7px;transition:transform .34s,opacity .22s}
-.rs-vchip{flex:1;border-radius:10px;padding:7px 10px;background:rgba(24,22,20,.58);backdrop-filter:blur(6px);box-shadow:0 2px 8px -4px rgba(0,0,0,.4)}
-.rs-vchip__l{font-size:.6rem;font-weight:800;text-transform:uppercase;letter-spacing:.05em;opacity:.9}
-.rs-vchip__n{font-size:1.02rem;font-weight:900;letter-spacing:-.025em;margin-top:2px;font-variant-numeric:tabular-nums}
-.rs-vchip--out .rs-vchip__l{color:#F4CE6A} .rs-vchip--out .rs-vchip__n{color:#FFD766}
-.rs-vchip--views .rs-vchip__l{color:#F0AEC1} .rs-vchip--views .rs-vchip__n{color:#F7C2D2}
-
 .rs-wmedia{min-width:0;display:flex;flex-direction:column;gap:12px}
 .rs-wdet{min-width:0;display:flex;flex-direction:column}
 .rs-wcreator{display:flex;align-items:center;gap:10px}
 .rs-wcreator__copy{min-width:0;flex:1}
 .rs-wcreator__topline{display:flex;align-items:baseline;gap:8px}
-.rs-av{width:34px;height:34px;border-radius:50%;flex:none}
 .rs-wc__n{font-size:.92rem;font-weight:800;color:var(--ink);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .rs-wc__s{font-size:.76rem;color:var(--muted);white-space:nowrap}
 .rs-wcap{font-size:.92rem;color:var(--body);line-height:1.5;margin:13px 0}
@@ -2128,11 +1994,6 @@ const scopedCss = `
 .rs-anz dt{font-size:.8rem;font-weight:700;color:var(--faint,#7C7972)}
 .rs-anz dd{font-size:.85rem;color:var(--body)}
 .rs-wact{display:flex;gap:10px;margin-top:14px;flex-wrap:wrap}
-.rs-ic2{width:36px;height:36px;flex:none;border:1px solid var(--line-2,#DEDBD3);border-radius:100px;background:var(--white);display:grid;place-items:center;color:var(--muted);cursor:pointer;transition:.15s}
-.rs-ic2:hover{border-color:var(--faint-2,#9A968E);color:var(--ink)}
-.rs-ic2.on{background:var(--wash);border-color:var(--yellow);color:var(--amber-ink)}
-.rs-ic2:disabled{opacity:.5;cursor:not-allowed}
-.rs-ic2 svg{width:15px;height:15px}
 
 .rs-sh__actions{display:inline-flex;align-items:center;gap:12px;flex-wrap:wrap}
 .rs-sortsel,.rs-runfilter{position:relative;display:inline-flex;align-items:center;min-width:0}
@@ -2172,8 +2033,7 @@ const scopedCss = `
 }
 .rs-runempty{padding:22px;border:1px dashed var(--line);border-radius:14px;background:var(--paper,rgba(250,249,246,.6));font-size:.85rem;color:var(--faint-2,#9A968E);text-align:center}
 .rs-runempty__reset{border:0;background:transparent;color:var(--ink);font-weight:700;text-decoration:underline;cursor:pointer;padding:0;margin-left:4px}
-.rs-ogrid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
-/* Mobile: the "More outliers" header reflows into two controls under the
+/* Mobile: the "More breakouts" header reflows into two controls under the
    title so the run filter remains easy to reach on smaller screens. */
 @media (max-width: 640px){
   .rs-sh{display:grid;grid-template-columns:1fr 1fr;grid-template-areas:"title title" "filter sort";align-items:center;gap:10px 12px;margin:28px 0 14px}
@@ -2185,29 +2045,6 @@ const scopedCss = `
   .rs-sortsel{grid-area:sort;min-width:0}
   .rs-sortsel select{width:100%}
 }
-.rs-oc{background:var(--white);border:1px solid var(--line);border-radius:16px;overflow:hidden;display:flex;flex-direction:column}
-.rs-oc:hover{border-color:var(--line-2,#DEDBD3)}
-.rs-oc .rs-vf{border-radius:0}
-.rs-oc__b{padding:12px 13px;display:flex;flex-direction:column;flex:1;gap:0}
-.rs-oc__ov{display:flex;gap:8px;margin-bottom:12px}
-.rs-ovchip{flex:1;min-width:0;border-radius:12px;padding:9px 11px;border:1px solid var(--line)}
-.rs-ovchip__l{display:inline-flex;align-items:center;gap:5px;font-size:.58rem;font-weight:800;text-transform:uppercase;letter-spacing:.05em;white-space:nowrap}
-.rs-ovchip__l::before{content:"";width:5px;height:5px;border-radius:50%;background:currentColor;flex:none}
-.rs-ovchip__n{margin-top:4px;font-size:1.05rem;font-weight:900;line-height:1;letter-spacing:-.025em;color:var(--ink);font-variant-numeric:tabular-nums}
-.rs-ovchip--out{background:#FCF3D6;border-color:#F0E2B6}
-.rs-ovchip--out .rs-ovchip__l{color:#B0841A}
-.rs-ovchip--views{background:#FBE9E2;border-color:#F1D8CD}
-.rs-ovchip--views .rs-ovchip__l{color:#C2410C}
-.rs-oc__cr{display:flex;align-items:flex-start;gap:9px}
-.rs-oc__copy{min-width:0;flex:1}
-.rs-oc__h{font-size:.82rem;font-weight:800;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.rs-oc__f{margin-top:2px;font-size:.7rem;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.rs-oc__s{margin-left:auto;flex:none;font-size:.7rem;color:var(--muted);white-space:nowrap}
-.rs-oc__c{font-size:.8rem;color:var(--muted);line-height:1.4;margin-top:8px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
-.rs-oc__st{display:flex;justify-content:space-between;gap:6px;margin-top:11px}
-.rs-oc__st span{display:inline-flex;align-items:center;gap:5px;font-size:.76rem;color:var(--ink);font-weight:600;font-variant-numeric:tabular-nums}
-.rs-oc__st svg{width:13px;height:13px;color:var(--ink);flex:none}
-.rs-oc__panel{margin-top:10px}
 .rs-modalback{position:fixed;inset:0;z-index:130;display:flex;align-items:center;justify-content:center;padding:16px;background:rgba(20,15,0,.34);backdrop-filter:blur(3px)}
 .rs-toast{position:fixed;right:18px;bottom:18px;z-index:140;display:flex;align-items:center;gap:12px;max-width:min(420px,calc(100vw - 32px));padding:14px 16px;border-radius:16px;border:1px solid var(--line);background:#fff;box-shadow:0 18px 40px rgba(42,33,20,.18)}
 .rs-toast--success{border-color:#cfe8d4;background:#f6fff7}
@@ -2228,8 +2065,6 @@ const scopedCss = `
 .rs-upgmodal p{margin-top:8px;font-size:.9rem;line-height:1.55;color:var(--muted)}
 .rs-upgmodal__actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:18px}
 .rs-upgmodal__actions .rs-btn{flex:1}
-.rs-oc__an{margin-top:auto;padding-top:11px;display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:8px;align-items:center}
-.rs-oc__an .rs-analyze{min-width:0}
 .rs-loadmore{display:flex;justify-content:center;margin-top:20px}
 
 .rs-acard{background:linear-gradient(180deg,#FFFEFB 0%,#FFF8EB 100%);border:1px solid #F1E2BE;border-radius:20px;padding:20px 22px;box-shadow:0 18px 38px -30px rgba(117,85,11,.25);min-width:0;max-width:100%;overflow-x:hidden}
@@ -2372,7 +2207,6 @@ const scopedCss = `
 .rs-scrollp__fade span{display:inline-flex;align-items:center;gap:5px;font-size:.72rem;font-weight:700;color:var(--faint,#7C7972);background:var(--white);border:1px solid var(--line);border-radius:100px;padding:3px 10px}
 .rs-scrollp.is-end .rs-scrollp__fade{opacity:0}
 
-@media (max-width:1080px){.rs-ogrid{grid-template-columns:repeat(2,1fr)}}
 @media (max-width:900px){
   .rs-stats{grid-template-columns:1fr 1fr}
   .rs-stt:nth-child(2){border-right:none}
@@ -2384,7 +2218,6 @@ const scopedCss = `
 @media (max-width:560px){
 .rs-mobileonly{display:flex}
 .rs-desktoponly{display:none}
-.rs-ogrid{grid-template-columns:1fr 1fr}
 .rs-viewbar{margin-bottom:12px}
 .rs-viewbar__actions{gap:6px}
 .rs-bhead{padding:12px 13px;border-radius:15px;gap:10px}
@@ -2414,28 +2247,13 @@ const scopedCss = `
 .rs-stt__v{font-size:1.28rem}
 .rs-stt__d{font-size:.67rem;line-height:1.25}
 .rs-stt__d svg{width:10px;height:10px}
-.rs-handle span:first-child{max-width:120px}
-.rs-oc__st{display:flex;justify-content:space-between;gap:8px;flex-wrap:nowrap}
-.rs-oc__st span{min-width:0;justify-content:flex-start;font-size:.68rem;gap:3px;flex:1 1 0}
-.rs-oc__st svg{width:11px;height:11px}
-.rs-oc__an{gap:6px}
-.rs-oc__an .rs-analyze{padding:0 12px;font-size:.78rem}
-.rs-oc__an .rs-analyze__icon svg{width:13px;height:13px}
-.rs-analyze__label--desktop{display:none}
-.rs-analyze__label--mobile{display:inline}
-.rs-ic2{width:34px;height:34px}
+.rs-handle{padding:0;background:transparent;border:0;color:var(--muted);font-weight:600}
+.rs-handle span:first-child{max-width:150px}
+.rs-handle .rs-ed{display:none}
 .rs-upgmodal{padding:20px 16px 16px}
 .rs-upgmodal h3{font-size:1.02rem;max-width:none}
 .rs-upgmodal p{font-size:.84rem}
 .rs-upgmodal__actions .rs-btn{width:100%}
-}
-@media (prefers-reduced-motion:reduce){
-.rs-analyze{transition:none}
-.rs-analyze--busy::before{animation:none;width:100%;opacity:.5}
-.rs-analyze--busy .rs-analyze__ring,.rs-analyze--ready .rs-analyze__icon{animation:none}
-}
-@media (max-width:420px){
-.rs-ogrid{grid-template-columns:1fr}
 }
 /* Narrow screens: smaller pins so neighbouring weeks stop colliding, and the
    week rows drop the "Watch" cue in favour of the thumbnail affordance. */
@@ -2456,7 +2274,71 @@ const scopedCss = `
 .rs-weekmodal__row{gap:10px;grid-template-columns:46px minmax(0,1fr) auto}
 .rs-weekmodal__thumb{width:46px;height:62px}
 }
+
+/* ---------- live-run (M20 / M20b / M20c) ---------- */
+@keyframes rs-turn{to{transform:rotate(360deg)}}
+@keyframes rs-ring{0%{transform:scale(.9);opacity:1}100%{transform:scale(1.12);opacity:0}}
+@keyframes rs-sweepmove{0%{left:-40%}100%{left:100%}}
+@keyframes rs-pulse{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.24);opacity:.6}}
+@keyframes rs-shim{0%{transform:translateX(-100%)}100%{transform:translateX(100%)}}
+
+.rs-proc{border:1px solid var(--line);border-radius:18px;background:var(--white);padding:18px 17px 17px;display:flex;flex-direction:column;gap:15px;margin-bottom:22px;box-shadow:0 8px 24px -20px rgba(20,15,0,.24)}
+.rs-proc__top{display:flex;align-items:center;gap:15px}
+.rs-proc__copy{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;gap:6px}
+.rs-proc__copy h2{margin:0;font-size:1.2rem;line-height:1.18;font-weight:800;letter-spacing:-.03em;color:var(--ink)}
+.rs-proc__lede{font-size:.86rem;line-height:1.45;color:var(--muted)}
+.rs-spin{position:relative;width:48px;height:48px;flex:none;display:grid;place-items:center}
+.rs-spin svg{position:absolute;inset:0;width:100%;height:100%;animation:rs-turn 1.15s linear infinite}
+.rs-spin__tr{fill:none;stroke:var(--paper,#f1efe9);stroke-width:9}
+.rs-spin__arc{fill:none;stroke:url(#rs-proc-g);stroke-width:9;stroke-linecap:round;stroke-dasharray:108 400}
+.rs-spin>i{position:absolute;inset:-6px;border-radius:50%;border:2px solid rgba(255,198,41,.5);animation:rs-ring 2.4s ease-out infinite}
+.rs-sweep{position:relative;height:5px;border-radius:999px;background:var(--paper,#f1efe9);overflow:hidden}
+.rs-sweep i{position:absolute;top:0;bottom:0;width:38%;border-radius:999px;background:linear-gradient(90deg,#ffd84d,#ff9f1c);animation:rs-sweepmove 1.7s ease-in-out infinite}
+.rs-proc__steps{display:flex;flex-direction:column;gap:10px}
+.rs-tick{display:flex;align-items:flex-start;gap:11px;font-size:.85rem;font-weight:500;color:var(--body,#33312c);line-height:1.45}
+.rs-tick__d{width:18px;height:18px;flex:none;margin-top:1px;display:grid;place-items:center;border-radius:50%;background:var(--ok-bg,#edf7f0);color:var(--ok,#12703f);font-size:.7rem;line-height:1}
+.rs-tick__d svg{width:9px;height:9px}
+.rs-tick__c{margin-left:auto;flex:none;width:15px;height:15px;margin-top:2px;color:var(--amber-ink,#9a6b00)}
+.rs-tick__c svg{width:15px;height:15px;animation:rs-turn .9s linear infinite}
+.rs-tick--now{color:var(--ink);font-weight:700}
+.rs-tick--now .rs-tick__d{background:var(--yellow);color:#0b0b0b;animation:rs-pulse 1.4s ease-in-out infinite}
+.rs-tick--wait{color:var(--faint-2,#9A968E)}
+.rs-tick--wait .rs-tick__d{background:var(--paper,#f1efe9);color:var(--paper,#f1efe9)}
+
+.rs-runbar{position:sticky;top:0;z-index:30;display:flex;align-items:center;gap:11px;padding:10px 16px;margin-bottom:18px;border-radius:0 0 14px 14px;background:#0b0b0b;color:#fff;box-shadow:0 10px 24px -16px rgba(0,0,0,.5)}
+.rs-runbar__mini{width:26px;height:26px;flex:none;display:grid;place-items:center}
+.rs-runbar__mini svg{width:24px;height:24px;animation:rs-turn 1.05s linear infinite}
+.rs-runbar--done .rs-runbar__mini svg{width:20px;height:20px;animation:none}
+.rs-runbar__bd{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;gap:1px}
+.rs-runbar__bd strong{font-size:.82rem;font-weight:700;letter-spacing:-.02em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rs-runbar__bd span{color:#d6d2c6;font-size:.71rem;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rs-runbar__go{flex:none;display:inline-flex;align-items:center;min-height:30px;padding:0 12px;border-radius:999px;background:var(--yellow);color:#0b0b0b;font-size:.75rem;font-weight:700;white-space:nowrap;border:0;cursor:pointer}
+.rs-runbar--done{background:#12703f}
+.rs-runbar--done .rs-runbar__bd span{color:#cfe8da}
+.rs-runbar__x{flex:none;width:26px;height:26px;display:grid;place-items:center;border-radius:50%;background:rgba(255,255,255,.16);border:0;cursor:pointer}
+.rs-runbar__x svg{width:12px;height:12px}
+/* Below 900px the app shell shows its own sticky top bar (~51px, z-index 50);
+   drop the runbar beneath it so it is not hidden behind the bar. */
+@media (max-width:900px){.rs-runbar{top:51px;z-index:49}}
+/* On mobile the brand header is a card, so give the processing panel below it
+   some breathing room instead of letting the two cards nearly touch. */
+@media (max-width:560px){.rs-proc{margin-top:16px}}
+
+.rs-sofar{display:inline-flex;align-items:center;gap:6px;padding:3px 9px;border-radius:999px;background:var(--wash,#fff8e6);color:var(--amber-ink,#9a6b00);font-size:.6rem;font-weight:800;text-transform:uppercase;letter-spacing:.07em;white-space:nowrap}
+.rs-sofar i{width:6px;height:6px;border-radius:50%;background:var(--yellow);animation:rs-pulse 1.4s ease-in-out infinite}
+.rs-sofar--flat{background:var(--paper,#f1efe9);color:var(--muted)}
+.rs-sofar--flat i{background:var(--muted);animation:none}
+
+.rs-sk{position:relative;overflow:hidden;border-radius:7px;background:#ecebe4;display:block}
+.rs-sk::after{content:'';position:absolute;inset:0;background:linear-gradient(90deg,rgba(255,255,255,0),rgba(255,255,255,.72) 50%,rgba(255,255,255,0));animation:rs-shim 1.6s ease-in-out infinite}
+.rs-skcard{border:1px solid var(--line);border-radius:16px;background:var(--white);padding:16px;display:flex;flex-direction:column;gap:10px}
+
+.rs-vf__win--lead{background:var(--amber-ink,#9a6b00);color:#fff8e6}
+
+@media (prefers-reduced-motion:reduce){
+.rs-spin svg,.rs-spin>i,.rs-sweep i,.rs-tick--now .rs-tick__d,.rs-tick__c svg,.rs-runbar__mini svg,.rs-sofar i,.rs-sk::after{animation:none}
+}
 `;
   const goBack = () => {
-    window.location.assign('/dashboard');
+    window.location.assign('/home');
   };

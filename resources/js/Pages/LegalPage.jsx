@@ -1,12 +1,18 @@
-import { Head } from '@inertiajs/react';
-
+import Seo from '../components/Seo.jsx';
 import Nav from '../landing/sections/Nav.jsx';
 import Footer from '../landing/sections/Footer.jsx';
+
+const descriptions = {
+  'Privacy Policy': 'Learn how Brand Beacon collects, uses, and protects information when you use our TikTok trend intelligence platform.',
+  'Terms of Service': 'Read the terms that govern use of Brand Beacon and its TikTok trend intelligence platform.',
+  'Data Processing Addendum': 'Review Brand Beacon\'s Data Processing Addendum for customer personal data processing.',
+  Security: 'Learn about the administrative, technical, and operational security practices used by Brand Beacon.',
+};
 
 export default function LegalPage({ title, effectiveDate, sections }) {
   return (
     <>
-      <Head title={`${title} · Brand Beacon`} />
+      <Seo title={`${title} | Brand Beacon`} description={descriptions[title] ?? 'Legal information for Brand Beacon.'} />
 
       <div className="bbh">
         <Nav />

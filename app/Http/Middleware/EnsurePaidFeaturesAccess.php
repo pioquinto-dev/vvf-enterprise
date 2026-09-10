@@ -20,7 +20,14 @@ class EnsurePaidFeaturesAccess
         $user = $request->user();
 
         if (! $this->billing->hasPaidPlan($user)) {
-            return redirect('/trial')->with('status', 'Upgrade to Growth or Scale to access this feature.');
+            $message = 'Upgrade to Growth or Scale to access this feature.';
+
+            // XHR/API callers can't follow a redirect — hand them a clean 403.
+            if ($request->expectsJson() || $request->ajax()) {
+                return response()->json(['message' => $message], 403);
+            }
+
+            return redirect('/trial')->with('status', $message);
         }
 
         return $next($request);

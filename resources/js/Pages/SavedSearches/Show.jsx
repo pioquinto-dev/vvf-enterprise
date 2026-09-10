@@ -1,5 +1,5 @@
-import { Component, useEffect, useState } from 'react';
-import { Head, router } from '@inertiajs/react';
+import { Component, useEffect, useRef, useState } from 'react';
+import { Head, router, usePage } from '@inertiajs/react';
 
 import AppLayout from '../components/AppLayout.jsx';
 import DetailScreen from './detail/DetailScreen.jsx';
@@ -7,6 +7,66 @@ import { bookmarks, savedSearch as api, untrackSearch } from '../../landing/flow
 
 const ACTIVE_SEARCH_STATUSES = new Set(['pending', 'queued', 'running', 'scraping']);
 const SEARCH_POLL_MS = 8000;
+
+function BuildingPopup({ subject, onDashboard, onClose }) {
+    return (
+        <div className="bb">
+            <div className="bb-modal">
+                <button className="bb-modal__bg" aria-label="Close" onClick={onClose} />
+                <div className="bb-modal__box bb-buildpop" role="dialog" aria-modal="true" aria-labelledby="bb-buildpop-title">
+                    <span className="bb-buildpop__i" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                            <circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" />
+                        </svg>
+                    </span>
+                    <h2 id="bb-buildpop-title">Your report is still building</h2>
+                    <p className="sub">
+                        We’re scanning TikTok for <b>{subject}</b> and filling this page in as results land.
+                        Check back in a few minutes — or browse your feed while you wait.
+                        We’ll email you the moment it’s complete.
+                    </p>
+                    <div className="bb-buildpop__actions">
+                        <button type="button" className="btn btn--y btn--w" onClick={onDashboard}>
+                            Browse your feed
+                        </button>
+                        <button type="button" className="btn btn--g btn--w" onClick={onClose}>
+                            Stay on this page
+                        </button>
+                    </div>
+                    <p className="bb-buildpop__fine">Early results are already visible below.</p>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+const buildingCss = `
+.bb-pend{border:1px solid var(--line);border-radius:var(--r-xl);background:var(--white);padding:22px 24px;margin-bottom:22px;box-shadow:0 1px 2px rgba(20,15,0,.04)}
+.bb-pend__t{display:flex;align-items:center;gap:11px;flex-wrap:wrap}
+.bb-pend__t h2{font-size:1.06rem;margin:0;letter-spacing:-.01em}
+.bb-pend__pill{display:inline-flex;align-items:center;gap:7px}
+.bb-pend__spin{width:11px;height:11px;border-radius:50%;border:2px solid currentColor;border-top-color:transparent;animation:bb-pend-spin .8s linear infinite;flex:none;opacity:.85}
+@keyframes bb-pend-spin{to{transform:rotate(360deg)}}
+.bb-pend__eta{margin-left:auto;font-size:.8rem;color:var(--faint);opacity:.7;font-variant-numeric:tabular-nums}
+.bb-pend__cta{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-top:16px;padding-top:16px;border-top:1px solid var(--line)}
+.bb-pend__cta .btn{display:inline-flex;align-items:center;gap:7px;white-space:nowrap}
+.bb-pend__cta p{margin:0;font-size:.84rem;color:var(--faint);opacity:.85;max-width:44ch;line-height:1.5}
+.bb-pend.is-done{padding:12px 20px;display:flex;align-items:center;gap:11px;flex-wrap:wrap;background:var(--ok-bg);border-color:#cde7d9;box-shadow:none;animation:bb-pend-fold .3s var(--ease)}
+@keyframes bb-pend-fold{from{opacity:.4;transform:translateY(-4px)}to{opacity:1;transform:none}}
+.bb-pend.is-done .bb-pend__body{display:none}
+.bb-pend__slim{display:none;align-items:center;gap:11px;flex-wrap:wrap;font-size:.85rem;color:var(--muted)}
+.bb-pend.is-done .bb-pend__slim{display:flex}
+.bb-pend__slim b{color:var(--ink);font-weight:700}
+.bb-partial{display:flex;align-items:center;gap:10px;padding:11px 15px;border:1px dashed var(--line-2);border-radius:var(--r);background:var(--paper);font-size:.83rem;color:var(--muted);margin-bottom:18px}
+.bb-partial svg{width:15px;height:15px;color:var(--amber-ink);flex:none}
+.bb-buildpop{max-width:420px;text-align:center}
+.bb-buildpop__i{width:52px;height:52px;margin:0 auto 16px;border-radius:50%;background:var(--wash);display:grid;place-items:center;color:var(--amber-ink);position:relative}
+.bb-buildpop__i::after{content:'';position:absolute;inset:-5px;border-radius:50%;border:2px solid var(--yellow);border-top-color:transparent;animation:bb-pend-spin 1.1s linear infinite}
+.bb-buildpop__i svg{width:22px;height:22px}
+.bb-buildpop .sub{margin:9px 0 0}
+.bb-buildpop__actions{display:flex;flex-direction:column;gap:9px;margin-top:20px}
+.bb-buildpop__fine{font-size:.78rem;color:var(--faint);opacity:.7;margin-top:12px}
+`;
 
 function UsageConfirmModal({ title, body, subject, confirmLabel, busy = false, onConfirm, onCancel }) {
     return (
@@ -74,7 +134,7 @@ function ProcessingOverlay({ search, failed = false, onGoDashboard }) {
                     </div>
                     <div className="actrow__r" style={{ marginTop: 24, justifyContent: 'center' }}>
                         <button type="button" className="btn btn--g" onClick={onGoDashboard}>
-                            Go to dashboard
+                            Go to my feed
                         </button>
                     </div>
                 </div>
@@ -126,15 +186,21 @@ class DetailScreenBoundary extends Component {
  * product all render the same analytics tracker (the one design identity).
  */
 export default function Show({ search: initial, isAuthenticated = false, billing }) {
+    const page = usePage();
+    const freeSearchNew = Boolean(page?.props?.flash?.freeSearchNew);
+
     const [search, setSearch] = useState(initial);
     const [refreshing, setRefreshing] = useState(false);
     const [bookmarkingSearch, setBookmarkingSearch] = useState(false);
     const [bookmarkingVideoId, setBookmarkingVideoId] = useState(null);
     const [confirmRefresh, setConfirmRefresh] = useState(false);
     const [pollError, setPollError] = useState(false);
+    const [buildingPopupOpen, setBuildingPopupOpen] = useState(false);
 
     const isSearchProcessing = ACTIVE_SEARCH_STATUSES.has(String(search?.status ?? '').toLowerCase());
     const hasProcessingFailure = String(search?.status ?? '').toLowerCase() === 'failed';
+    const wasProcessingRef = useRef(isSearchProcessing);
+    const subjectLabel = search?.name || search?.phrase || 'your search';
 
     const searchLimit = billing?.searchCreditsLimit ?? 0;
     const searchUsed = billing?.searchCreditsUsed ?? 0;
@@ -145,8 +211,13 @@ export default function Show({ search: initial, isAuthenticated = false, billing
 
         try {
             await api.refresh(search.id);
-            router.visit(`/search/running?id=${search.id}`);
+            // Stay on the paid results page and let it flip into the live M20
+            // running state in place: the poller below picks up real progress
+            // and the completion banner raises when it lands.
+            setSearch((prev) => ({ ...prev, status: 'scraping' }));
         } catch {
+            // leave the page as-is on failure
+        } finally {
             setRefreshing(false);
         }
     };
@@ -215,6 +286,32 @@ export default function Show({ search: initial, isAuthenticated = false, billing
         setSearch(initial);
     }, [initial]);
 
+    // Greet a fresh free-search arrival with the "still building" popup once,
+    // just after the page settles. Only fires when the report is genuinely
+    // still processing so a fast run that already finished skips it.
+    useEffect(() => {
+        if (!freeSearchNew || !isSearchProcessing) return undefined;
+
+        const timer = window.setTimeout(() => setBuildingPopupOpen(true), 500);
+
+        return () => window.clearTimeout(timer);
+        // Mount-only: read the initial flash/status, ignore later polls.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
+    // When polling flips the run from processing → done, close the free-search
+    // "still building" greeting. The completed-run banner (M20c) is owned by
+    // the tracker itself now.
+    useEffect(() => {
+        if (wasProcessingRef.current && !isSearchProcessing && !hasProcessingFailure) {
+            setBuildingPopupOpen(false);
+        }
+
+        wasProcessingRef.current = isSearchProcessing;
+
+        return undefined;
+    }, [isSearchProcessing, hasProcessingFailure]);
+
     useEffect(() => {
         if (!search?.id || !isSearchProcessing) return undefined;
 
@@ -261,6 +358,7 @@ export default function Show({ search: initial, isAuthenticated = false, billing
                         search={search}
                         isAuthenticated={isAuthenticated}
                         billing={billing}
+                        processing={isSearchProcessing}
                         refreshing={refreshing}
                         bookmarkUpdating={bookmarkingSearch}
                         onRefresh={refresh}
@@ -277,7 +375,9 @@ export default function Show({ search: initial, isAuthenticated = false, billing
             {confirmRefresh && (
                 <UsageConfirmModal
                     title="Refresh this search?"
-                    body={`This will use 1 search credit. You will have ${searchRemainingAfterUse} search credits remaining after the refresh starts. Search credits are not restored later, even if you pause or delete the search.`}
+                    body={searchLimit === -1
+                        ? 'Your plan includes unlimited searches, so this refresh won’t use up a search credit.'
+                        : `This will use 1 search credit, leaving you ${searchRemainingAfterUse} this cycle. Credits aren’t restored later, even if you pause or delete the search.`}
                     subject={search.name}
                     confirmLabel="Refresh search"
                     busy={refreshing}
@@ -289,11 +389,24 @@ export default function Show({ search: initial, isAuthenticated = false, billing
                 />
             )}
 
-            {(isSearchProcessing || (hasProcessingFailure && pollError)) && (
+            {buildingPopupOpen && (
+                <>
+                    <style>{buildingCss}</style>
+                    <BuildingPopup
+                        subject={subjectLabel}
+                        onDashboard={() => window.location.assign('/home')}
+                        onClose={() => setBuildingPopupOpen(false)}
+                    />
+                </>
+            )}
+
+            {/* A failed run still blocks with the recovery overlay; a live run
+                renders the M20 processing panel inline via DetailScreen. */}
+            {hasProcessingFailure && pollError && (
                 <ProcessingOverlay
                     search={search}
-                    failed={hasProcessingFailure && pollError}
-                    onGoDashboard={() => window.location.assign('/dashboard')}
+                    failed
+                    onGoDashboard={() => window.location.assign('/home')}
                 />
             )}
         </>

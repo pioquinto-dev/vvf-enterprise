@@ -8,6 +8,8 @@ use Illuminate\Http\Request;
 
 class UserActivityService
 {
+    private const CATEGORIES = ['sign_up', 'subscription', 'engagement', 'analysis', 'coupon_usage'];
+
     public function record(User $user, string $category, string $event, string $summary, array $metadata = [], ?string $dedupeKey = null): void
     {
         $data = ['user_id' => $user->id, 'user_name' => $user->name ?: 'Unnamed user', 'user_email' => $user->email, 'category' => $category, 'event' => $event, 'summary' => $summary, 'metadata' => $metadata];
@@ -17,7 +19,20 @@ class UserActivityService
     /** @return array<string, mixed> */
     public function recentPayload(int $limit = 5): array
     {
-        return ['rows' => $this->mapRows(UserActivity::query()->latest('created_at')->limit($limit)->get())];
+        $byCategory = collect(self::CATEGORIES)->mapWithKeys(fn (string $category): array => [
+            $category => $this->mapRows(
+                UserActivity::query()
+                    ->where('category', $category)
+                    ->latest('created_at')
+                    ->limit($limit)
+                    ->get()
+            ),
+        ])->all();
+
+        return [
+            'rows' => $this->mapRows(UserActivity::query()->latest('created_at')->limit($limit)->get()),
+            'byCategory' => $byCategory,
+        ];
     }
 
     /** @return array<string, mixed> */
@@ -26,9 +41,8 @@ class UserActivityService
         $range = strtoupper((string) $request->query('range', '30D'));
         $rangeDays = ['7D' => 7, '30D' => 30, '6M' => 180, '1Y' => 365];
         $range = array_key_exists($range, $rangeDays) ? $range : '30D';
-        $categories = ['sign_up', 'subscription', 'engagement', 'coupon_usage'];
         $category = (string) $request->query('category', 'all');
-        $category = in_array($category, $categories, true) ? $category : 'all';
+        $category = in_array($category, self::CATEGORIES, true) ? $category : 'all';
         $event = trim((string) $request->query('event', 'all'));
 
         $query = UserActivity::query()

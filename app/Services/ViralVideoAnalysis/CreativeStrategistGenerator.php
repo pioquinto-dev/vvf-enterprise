@@ -56,7 +56,10 @@ class CreativeStrategistGenerator
             'hook_analysis' => data_get($shared->analysis_result, 'hook_analysis'),
             'hook_reasons' => data_get($shared->analysis_result, 'hook_reasons'),
             'content_breakdown' => data_get($shared->analysis_result, 'content_breakdown'),
+            'drags' => data_get($shared->analysis_result, 'drags'),
             'hooks' => data_get($shared->analysis_result, 'hooks'),
+            'hook_patterns' => data_get($shared->analysis_result, 'hook_patterns'),
+            'hook_beats' => data_get($shared->analysis_result, 'hook_beats'),
         ], $creatorLayer);
 
         return [

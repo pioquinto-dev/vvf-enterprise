@@ -3,16 +3,25 @@
 use App\Http\Controllers\ComingSoonInterestController;
 use App\Http\Controllers\ContactInquiryController;
 use App\Http\Controllers\FreeSearchFunnelController;
+use App\Http\Controllers\NewsletterSubscriptionController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Auth\EmailVerificationController;
 use App\Http\Controllers\Auth\GoogleAuthController;
 use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\BillingController;
 use App\Http\Controllers\CouponSubscriptionController;
+use App\Http\Controllers\SeoDiscoveryController;
+use App\Http\Controllers\SavedSearchController;
+use App\Http\Controllers\SupportAssistantController;
 use App\Http\Controllers\StripeWebhookController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
+
+Route::get('/robots.txt', [SeoDiscoveryController::class, 'robots'])->name('robots');
+Route::get('/sitemap.xml', [SeoDiscoveryController::class, 'sitemap'])->name('sitemap');
+Route::get('/blog', [\App\Http\Controllers\PublicBlogController::class, 'index'])->name('blog.index');
+Route::get('/blog/{slug}', [\App\Http\Controllers\PublicBlogController::class, 'show'])->name('blog.show');
 
 Route::get('/', function (Request $request) {
     if ($request->user()) {
@@ -23,12 +32,20 @@ Route::get('/', function (Request $request) {
 })->name('landing');
 
 Route::post('/coming-soon-interest', ComingSoonInterestController::class)->name('coming-soon-interest.store');
+Route::post('/newsletter', NewsletterSubscriptionController::class)->name('newsletter.subscribe');
 Route::get('/contact', [ContactInquiryController::class, 'create'])->name('contact.create');
 Route::post('/contact', [ContactInquiryController::class, 'store'])->name('contact.store');
 Route::get('/privacy', fn () => Inertia::render('PrivacyPolicy'))->name('privacy');
 Route::get('/terms', fn () => Inertia::render('TermsOfService'))->name('terms');
 Route::get('/dpa', fn () => Inertia::render('DataProcessingAddendum'))->name('dpa');
 Route::get('/security', fn () => Inertia::render('SecurityPage'))->name('security');
+Route::get('/support', [SupportAssistantController::class, 'show'])->name('support');
+Route::post('/support/chat', [SupportAssistantController::class, 'reply'])->name('support.chat');
+Route::get('/tiktok-brand-tracking', fn () => Inertia::render('LandingSolution', ['topic' => 'brand-tracking']))->name('seo.brand-tracking');
+Route::get('/tiktok-product-research', fn () => Inertia::render('LandingSolution', ['topic' => 'product-research']))->name('seo.product-research');
+Route::get('/viral-video-monitoring', fn () => Inertia::render('LandingSolution', ['topic' => 'viral-video-monitoring']))->name('seo.viral-video-monitoring');
+Route::redirect('/competitor-tracking', '/tiktok-brand-tracking', 301)->name('seo.competitor-tracking');
+Route::get('/ugc-trend-discovery', fn () => Inertia::render('LandingSolution', ['topic' => 'ugc-trend-discovery']))->name('seo.ugc-trend-discovery');
 
 Route::prefix('search')->group(function (): void {
     Route::get('/', function (Request $request) {
@@ -45,11 +62,7 @@ Route::prefix('search')->group(function (): void {
 
     Route::post('/pending', [FreeSearchFunnelController::class, 'store'])->name('search.pending');
 
-    Route::get('/running', function (Request $request) {
-        return Inertia::render('Search/Running', [
-            'searchId' => (int) $request->query('id'),
-        ]);
-    })->name('search.running');
+    Route::get('/running', [SavedSearchController::class, 'running'])->middleware('auth')->name('search.running');
 });
 
 Route::get('/trial', function () {

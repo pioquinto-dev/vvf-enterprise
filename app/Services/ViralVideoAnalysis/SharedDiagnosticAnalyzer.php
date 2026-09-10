@@ -27,7 +27,13 @@ class SharedDiagnosticAnalyzer
             || blank($normalized['hook_analysis'])
             || count($normalized['content_breakdown']) < 3
             || count($normalized['hook_reasons']) < 3
-            || count($normalized['hooks']) < 3;
+            || count($normalized['hooks']) < 3
+            // Fields behind the "What could be improved" section and the Hook
+            // tab's pattern chips and beat breakdown. Analyses stored before
+            // those existed refresh into the fuller shape.
+            || count($normalized['drags']) < 2
+            || count($normalized['hook_patterns']) < 3
+            || count($normalized['hook_beats']) < 3;
     }
 
     /**
@@ -55,7 +61,7 @@ class SharedDiagnosticAnalyzer
                             'content' => implode("\n", [
                                 'You are a senior short-form strategist explaining why a video outperformed its baseline.',
                                 'Return only valid JSON with exactly these top-level keys:',
-                                'why_it_went_viral, evidence_summary, hook_analysis, hook_reasons, content_breakdown, hooks.',
+                                'why_it_went_viral, evidence_summary, hook_analysis, hook_reasons, content_breakdown, drags, hooks, hook_patterns, hook_beats.',
                                 'Ground every claim in the transcript, transcript segments, metrics, or provided context.',
                                 'Do not invent visuals, timing, or audience reactions that are not supported by the inputs.',
                                 'why_it_went_viral must be a dense 2-4 sentence summary that names the specific mechanism (e.g. a countable promise, an open loop, trend-native phrasing) and why people keep watching to the end — not generic praise.',
@@ -65,7 +71,10 @@ class SharedDiagnosticAnalyzer
                                 'content_breakdown must be an array of exactly 4 objects with keys: title, explanation, uplift, evidence, covering the whole video (not just the hook).',
                                 'Each content_breakdown title is a short named driver; explanation must explain the retention/share mechanism, not restate the line.',
                                 'uplift must be a short estimated effect label like "+34%" for every driver — always provide your best-supported estimate, never null.',
-                                'hooks must be an array of exactly 3 short alternate opening lines a brand could test that preserve the same mechanism without copying the source verbatim.',
+                                'drags must be an array of exactly 2 objects with keys: title, explanation, naming what held this video back or would stop it repeating — a weak second half, a buried payoff, a caption that restates the first frame. Judge the video on its own terms; never invent account history you were not given. If the video has no real weakness, name the biggest risk in repeating it.',
+                                'hooks must be an array of exactly 3 objects with keys: objection, text. text is a short alternate opening line preserving the same mechanism without copying the source verbatim; objection is a 2-5 word label for the doubt or friction that rewrite answers (e.g. "Objection: price", "Same structure, your product").',
+                                'hook_patterns must be an array of 3-4 short chip labels (2-4 words each) describing observable properties of the opening: its type plus format facts you can support, e.g. "Confessed fail", "On-screen text", "No product shown", "Spoken by 0:03".',
+                                'hook_beats must be an array of exactly 3 objects with keys: time, title, explanation, breaking down how the first three seconds are constructed. time is a mm:ss timestamp inside the opening (e.g. "0:00"), title is a 1-3 word beat name (e.g. "Setup", "Named subject", "Unresolved turn"), explanation quotes the words at that beat and says what they do.',
                                 'Be specific and concrete; avoid generic best practices that would apply to any video.',
                             ]),
                         ],
@@ -126,6 +135,15 @@ class SharedDiagnosticAnalyzer
         $hooks = $this->normalizeHooks(
             $payload['hooks'] ?? $payload['hook_variations'] ?? $payload['variations_to_test'] ?? null
         );
+        $drags = $this->normalizeDrags(
+            $payload['drags'] ?? $payload['what_held_it_back'] ?? $payload['weaknesses'] ?? null
+        );
+        $hookPatterns = $this->normalizeHookPatterns(
+            $payload['hook_patterns'] ?? $payload['patterns'] ?? $payload['hook_tags'] ?? null
+        );
+        $hookBeats = $this->normalizeHookBeats(
+            $payload['hook_beats'] ?? $payload['beats'] ?? $payload['opening_beats'] ?? null
+        );
 
         if ($why === null && $evidence !== null) {
             $why = $evidence;
@@ -148,8 +166,123 @@ class SharedDiagnosticAnalyzer
             'hook_analysis' => $hook ?? 'The opening hook is still being assembled from the available transcript.',
             'hook_reasons' => $hookReasons,
             'content_breakdown' => $contentBreakdown,
+            'drags' => $drags,
             'hooks' => $hooks,
+            'hook_patterns' => $hookPatterns,
+            'hook_beats' => $hookBeats,
         ];
+    }
+
+    /**
+     * "What could be improved" — what held the video back, or the risk in
+     * repeating it. Same shape as the drivers so the panel renders them alike.
+     *
+     * @return array<int, array<string, ?string>>
+     */
+    private function normalizeDrags(mixed $value): array
+    {
+        if (! is_array($value)) {
+            return [];
+        }
+
+        $items = [];
+
+        foreach ($value as $entry) {
+            if (is_string($entry)) {
+                $text = $this->cleanString($entry);
+
+                if ($text === null) {
+                    continue;
+                }
+
+                $items[] = ['title' => Str::limit($text, 42, ''), 'explanation' => $text];
+
+                continue;
+            }
+
+            if (! is_array($entry)) {
+                continue;
+            }
+
+            $title = $this->stringValue($entry['title'] ?? $entry['drag'] ?? $entry['label'] ?? null);
+            $explanation = $this->stringValue(
+                $entry['explanation'] ?? $entry['reason'] ?? $entry['body'] ?? $entry['description'] ?? null
+            );
+
+            if ($title === null && $explanation === null) {
+                continue;
+            }
+
+            $items[] = [
+                'title' => $title ?? Str::limit((string) $explanation, 42, ''),
+                'explanation' => $explanation ?? $title,
+            ];
+        }
+
+        return array_slice($items, 0, 3);
+    }
+
+    /**
+     * Short chip labels describing observable properties of the opening.
+     *
+     * @return array<int, string>
+     */
+    private function normalizeHookPatterns(mixed $value): array
+    {
+        if (! is_array($value)) {
+            return [];
+        }
+
+        $items = [];
+
+        foreach ($value as $entry) {
+            $text = is_string($entry)
+                ? $this->cleanString($entry)
+                : (is_array($entry) ? $this->stringValue($entry['label'] ?? $entry['text'] ?? $entry['name'] ?? null) : null);
+
+            if ($text !== null) {
+                $items[] = $text;
+            }
+        }
+
+        return array_slice(array_values(array_unique($items)), 0, 4);
+    }
+
+    /**
+     * Beat-by-beat construction of the first three seconds.
+     *
+     * @return array<int, array<string, ?string>>
+     */
+    private function normalizeHookBeats(mixed $value): array
+    {
+        if (! is_array($value)) {
+            return [];
+        }
+
+        $items = [];
+
+        foreach ($value as $entry) {
+            if (! is_array($entry)) {
+                continue;
+            }
+
+            $title = $this->stringValue($entry['title'] ?? $entry['beat'] ?? $entry['label'] ?? null);
+            $explanation = $this->stringValue(
+                $entry['explanation'] ?? $entry['body'] ?? $entry['description'] ?? null
+            );
+
+            if ($title === null && $explanation === null) {
+                continue;
+            }
+
+            $items[] = [
+                'time' => $this->stringValue($entry['time'] ?? $entry['timestamp'] ?? $entry['at'] ?? null),
+                'title' => $title ?? Str::limit((string) $explanation, 28, ''),
+                'explanation' => $explanation ?? $title,
+            ];
+        }
+
+        return array_slice($items, 0, 4);
     }
 
     /**
@@ -276,8 +409,11 @@ class SharedDiagnosticAnalyzer
     }
 
     /**
+     * Rewrites for the swipe file. Each carries the objection it answers; older
+     * stored analyses hold plain strings, which keep working without a label.
+     *
      * @param  mixed  $value
-     * @return array<int, string>
+     * @return array<int, array<string, ?string>>
      */
     private function normalizeHooks(mixed $value): array
     {
@@ -286,31 +422,32 @@ class SharedDiagnosticAnalyzer
         }
 
         $items = [];
+        $seen = [];
 
         foreach ($value as $entry) {
+            $text = null;
+            $objection = null;
+
             if (is_string($entry)) {
                 $text = $this->cleanString($entry);
-                if ($text !== null) {
-                    $items[] = $text;
-                }
+            } elseif (is_array($entry)) {
+                $text = $this->stringValue(
+                    $entry['text'] ?? $entry['variation'] ?? $entry['hook'] ?? $entry['line'] ?? null
+                );
+                $objection = $this->stringValue(
+                    $entry['objection'] ?? $entry['angle'] ?? $entry['label'] ?? null
+                );
+            }
 
+            if ($text === null || isset($seen[$text])) {
                 continue;
             }
 
-            if (! is_array($entry)) {
-                continue;
-            }
-
-            $text = $this->stringValue(
-                $entry['text'] ?? $entry['variation'] ?? $entry['hook'] ?? $entry['line'] ?? null
-            );
-
-            if ($text !== null) {
-                $items[] = $text;
-            }
+            $seen[$text] = true;
+            $items[] = ['objection' => $objection, 'text' => $text];
         }
 
-        return array_slice(array_values(array_unique($items)), 0, 3);
+        return array_slice($items, 0, 3);
     }
 
     /**

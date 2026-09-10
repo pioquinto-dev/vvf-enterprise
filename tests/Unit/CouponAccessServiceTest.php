@@ -149,6 +149,26 @@ class CouponAccessServiceTest extends TestCase
         $this->assertSame('Already Redeemed', $this->service()->evaluate($program->fresh(), $user)->errorKey);
     }
 
+    public function test_paid_account_is_blocked_with_contact_prompt_copy(): void
+    {
+        $program = $this->vip();
+        $user = User::factory()->create(['email' => 'exec@vip.com']);
+        Subscription::create([
+            'id' => (string) \Illuminate\Support\Str::ulid(),
+            'user_id' => $user->id,
+            'status' => 'active',
+            'current_period_ends_at' => now()->addMonth(),
+        ]);
+        $program->whitelistEntries()->create(['email' => 'exec@vip.com']);
+
+        $result = $this->service()->evaluate($program->fresh(), $user);
+
+        $this->assertFalse($result->allowed);
+        $this->assertSame('Already Paid', $result->errorKey);
+        $this->assertSame('You are already on a paid plan', $result->title);
+        $this->assertStringContainsString('contact us', strtolower((string) $result->detail));
+    }
+
     public function test_record_redemption_is_idempotent_per_user(): void
     {
         $program = $this->ignite();
@@ -180,7 +200,7 @@ class CouponAccessServiceTest extends TestCase
     public function test_vip_blocks_reverted_to_free(): void
     {
         $program = $this->vip();
-        $user = User::factory()->create(['email' => 'exec@vip.com', 'current_plan_slug' => 'free']);
+        $user = User::factory()->create(['email' => 'exec@vip.com']);
         $program->whitelistEntries()->create(['email' => 'exec@vip.com']);
         Subscription::create([
             'user_id' => $user->id,

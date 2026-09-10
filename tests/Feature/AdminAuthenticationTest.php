@@ -61,8 +61,7 @@ class AdminAuthenticationTest extends TestCase
         $this->get('/x/admin/login')
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
-                ->component('Admin/Login')
-                ->where('adminRootEmail', 'admin@example.com'));
+                ->component('Admin/Login'));
     }
 
     public function test_admin_can_log_out(): void

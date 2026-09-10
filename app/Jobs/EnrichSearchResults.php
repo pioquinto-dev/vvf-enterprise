@@ -132,7 +132,7 @@ class EnrichSearchResults implements ShouldQueue
     }
 
     /**
-     * Given the outlier rows, return the day+hour cell with the most posts.
+     * Given the breakout rows, return the day+hour cell with the most posts.
      * Deterministic, no OpenAI — the service is only asked to phrase the
      * finding, not compute it.
      *

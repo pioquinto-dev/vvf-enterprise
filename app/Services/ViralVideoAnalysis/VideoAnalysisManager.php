@@ -131,7 +131,7 @@ class VideoAnalysisManager
                 'status' => VideoAnalysis::STATUS_PROCESSING,
                 'error_message' => null,
             ])->save();
-            $this->activity->record($user, 'engagement', 'video_analysis_triggered', 'Triggered video analysis.', ['video_id' => $video->id]);
+            $this->activity->record($user, 'analysis', 'video_analysis_triggered', 'Triggered video analysis.', ['video_id' => $video->id]);
 
             // A forced refresh must rebuild the shared diagnostic too (hook
             // reasons, drivers), so it routes back through preparation rather

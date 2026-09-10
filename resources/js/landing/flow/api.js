@@ -3,6 +3,8 @@
  * navigation; these calls are the in-page ones that should not re-render the
  * whole document.
  */
+import { pushAnalyticsEvents } from '../../lib/analytics.js';
+
 function csrfToken() {
   return document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') ?? '';
 }
@@ -32,10 +34,12 @@ async function request(url, { method = 'GET', body, signal } = {}) {
     throw error;
   }
 
+  pushAnalyticsEvents(payload?.analytics);
+
   return payload;
 }
 
-export function expandKeywords(phrase, { signal, fresh = false, type = 'brand' } = {}) {
+export function expandKeywords(phrase, { signal, fresh = false, instant = false, type = 'brand' } = {}) {
   return fetch(`${API_V1}/saved-searches/expand`, {
     method: 'POST',
     credentials: 'same-origin',
@@ -46,7 +50,7 @@ export function expandKeywords(phrase, { signal, fresh = false, type = 'brand' }
       'X-Requested-With': 'XMLHttpRequest',
       'X-CSRF-TOKEN': csrfToken(),
     },
-    body: JSON.stringify({ phrase, type, ...(fresh ? { fresh: true } : {}) }),
+    body: JSON.stringify({ phrase, type, ...(fresh ? { fresh: true } : {}), ...(instant ? { instant: true } : {}) }),
   }).then(async (response) => {
     const payload = await response.json().catch(() => null);
     if (!response.ok) throw new Error(payload?.message || 'Could not suggest keywords.');
@@ -62,12 +66,19 @@ export function fetchKeywordSuggestions(type, q, { signal } = {}) {
   return request(`${API_V1}/keyword-index/suggestions?${params.toString()}`, { signal });
 }
 
-export function createSavedSearch({ type, phrase, name, keywords, frequency, sources }) {
+export function createSavedSearch({ type, phrase, name, keywords, frequency, sources, refreshExisting = false }) {
   // `sources` (brand/competitor TikTok handle + website) rides along optionally;
   // the backend uses it to sharpen matching where it can, and ignores it otherwise.
   return request(`${API_V1}/saved-searches`, {
     method: 'POST',
-    body: { type, phrase, name, keywords, frequency, ...(sources ? { sources } : {}) },
+    body: { type, phrase, name, keywords, frequency, ...(sources ? { sources } : {}), ...(refreshExisting ? { refresh_existing: true } : {}) },
+  });
+}
+
+export function checkDuplicateSavedSearch({ type, phrase, name, keywords, frequency }) {
+  return request(`${API_V1}/saved-searches/check-duplicate`, {
+    method: 'POST',
+    body: { type, phrase, name, keywords, frequency },
   });
 }
 
@@ -78,6 +89,14 @@ export function fetchNotifications(ids) {
 
 export function fetchRecentSearches() {
   return request(`${API_V1}/saved-searches/recent`);
+}
+
+export function fetchBookmarkedVideos() {
+  return request(`${API_V1}/saved-searches/bookmarked-videos`);
+}
+
+export function fetchAnalysisHistory() {
+  return request(`${API_V1}/saved-searches/analysis-history`);
 }
 
 export const savedSearch = {
@@ -104,6 +123,7 @@ export const billing = {
     if (cycle === 'annual') params.set('cycle', 'annual');
     window.location.assign(`/billing/checkout/${encodeURIComponent(slug)}?${params.toString()}`);
   },
+  upgrade: (slug) => request(`/billing/upgrade/${encodeURIComponent(slug)}`, { method: 'POST' }),
   createPaymentMethodSetup: () => request('/settings/subscription/payment-method/setup', { method: 'POST' }),
   updatePaymentMethod: (paymentMethodId) => request('/settings/subscription/payment-method', {
     method: 'PATCH',

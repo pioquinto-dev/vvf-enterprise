@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\PricingPlan;
 use App\Models\Subscription;
+use App\Services\Analytics\AnalyticsEvent;
 use App\Services\Billing\BillingService;
 use App\Services\Admin\UserActivityService;
 use App\Services\Billing\BillingEntitlementService;
@@ -11,6 +12,9 @@ use Carbon\CarbonImmutable;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\ValidationException;
+use Illuminate\Validation\Rules;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -46,6 +50,10 @@ class SettingsController extends Controller
             'subscription' => $this->subscriptionPayload($user),
             'preferences' => $this->preferencesPayload($user?->preferences ?? []),
             'accountDeletion' => $this->accountDeletionPayload($user),
+            'passwordAccess' => [
+                'canAdd' => $user->needsManualPassword(),
+                'enabled' => ! $user->needsManualPassword(),
+            ],
         ]);
     }
 
@@ -66,6 +74,47 @@ class SettingsController extends Controller
         ]);
 
         return back()->with('status', 'Account details updated.');
+    }
+
+    public function addPassword(Request $request): RedirectResponse
+    {
+        $user = $request->user();
+
+        abort_unless($user->needsManualPassword(), 403);
+
+        $validated = $request->validate([
+            'password' => ['required', 'confirmed', Rules\Password::defaults()],
+        ]);
+
+        $preferences = $user->preferences ?? [];
+        data_set($preferences, 'authentication.password_added_at', now()->toIso8601String());
+
+        $user->forceFill([
+            'password' => Hash::make($validated['password']),
+            'remember_token' => null,
+            'preferences' => $preferences,
+        ])->save();
+
+        return back()->with('status', 'Password added. You can now sign in with Google or your email and password.');
+    }
+
+    public function updatePassword(Request $request): RedirectResponse
+    {
+        $user = $request->user();
+
+        abort_if($user->needsManualPassword(), 403, 'Set a manual password first.');
+
+        $validated = $request->validate([
+            'current_password' => ['required', 'string', 'current_password:web'],
+            'password' => ['required', 'string', 'confirmed', Rules\Password::defaults()],
+        ]);
+
+        $user->forceFill([
+            'password' => Hash::make($validated['password']),
+            'remember_token' => null,
+        ])->save();
+
+        return back()->with('status', 'Password updated.');
     }
 
     public function requestAccountDeletion(Request $request): RedirectResponse
@@ -162,19 +211,53 @@ class SettingsController extends Controller
 
     public function cancelSubscription(Request $request): JsonResponse
     {
-        $this->billingService->cancelSubscription($request->user());
+        try {
+            $this->billingService->cancelSubscription($request->user());
+        } catch (ValidationException $exception) {
+            return response()->json([
+                'message' => collect($exception->errors())->flatten()->first() ?? 'We could not cancel your subscription.',
+            ], 422);
+        } catch (\Throwable $exception) {
+            report($exception);
+
+            return response()->json([
+                'message' => 'We could not cancel your subscription right now. Please try again in a moment.',
+            ], 502);
+        }
 
         return response()->json([
             'message' => 'Subscription cancellation scheduled. Access stays active until the end of the current billing period.',
+            'analytics' => [
+                AnalyticsEvent::make('subscription_cancellation_requested', [
+                    'plan_slug' => $this->billingService->currentPlanSlug($request->user()),
+                ]),
+            ],
         ]);
     }
 
     public function reactivateSubscription(Request $request): JsonResponse
     {
-        $this->billingService->reactivateSubscription($request->user());
+        try {
+            $this->billingService->reactivateSubscription($request->user());
+        } catch (ValidationException $exception) {
+            return response()->json([
+                'message' => collect($exception->errors())->flatten()->first() ?? 'We could not reactivate your subscription.',
+            ], 422);
+        } catch (\Throwable $exception) {
+            report($exception);
+
+            return response()->json([
+                'message' => 'We could not reactivate your subscription right now. Please try again in a moment.',
+            ], 502);
+        }
 
         return response()->json([
             'message' => 'Subscription reactivated. Auto-renew is back on.',
+            'analytics' => [
+                AnalyticsEvent::make('subscription_reactivation_requested', [
+                    'plan_slug' => $this->billingService->currentPlanSlug($request->user()),
+                ]),
+            ],
         ]);
     }
 
@@ -207,13 +290,13 @@ class SettingsController extends Controller
             ->first();
 
         $limits = $this->billing->limitsForUser($user);
-        $fallbackPlan = PricingPlan::query()->where('slug', $user->current_plan_slug)->first();
-        $plan = $subscription?->status === 'pending' ? $fallbackPlan : ($subscription?->plan ?? $fallbackPlan);
+        $fallbackPlan = PricingPlan::query()->where('slug', $this->billing->currentPlanSlug($user))->first();
+        $plan = $subscription?->plan ?? $fallbackPlan;
         $billingCycle = (string) data_get($subscription?->metadata, 'settings.billing_cycle', 'monthly');
         $price = $billingCycle === 'annual'
             ? ($plan?->annual_amount ?? null)
             : ($plan?->amount ?? ($plan?->price_cents !== null ? ((int) $plan->price_cents / 100) : null));
-        $status = $subscription?->status === 'pending' ? ($user->current_plan_slug === 'free' ? 'free' : 'active') : ($subscription?->status ?? 'free');
+        $status = $subscription?->status ?? 'free';
         $videoAnalysisUsed = max(0, (int) data_get($subscription?->metadata, 'subscription.video_analysis.used', $limits['videoAnalysisUsed'] ?? 0));
         $cancelAtPeriodEnd = (bool) data_get($subscription?->metadata, 'subscription.cancel_at_period_end', false);
         $cancelAt = data_get($subscription?->metadata, 'subscription.cancel_at');
@@ -223,8 +306,8 @@ class SettingsController extends Controller
             : null;
         $renewsAt = $status === 'pending'
             ? null
-            : ($trialEndsAt ?? $subscription?->current_period_ends_at ?? $user->plan_renews_at);
-        $planSlug = $plan?->slug ?? ($user->current_plan_slug ?? 'free');
+            : ($trialEndsAt ?? $subscription?->current_period_ends_at);
+        $planSlug = $plan?->slug ?? $this->billing->currentPlanSlug($user);
         $paymentMethod = $this->safePaymentMethodSummary($user);
         $invoices = $this->safeInvoiceHistory($user);
 
@@ -279,10 +362,10 @@ class SettingsController extends Controller
     private function formatPlanDisplayName(string $planSlug, ?string $fallbackName = null): string
     {
         return match ($planSlug) {
-            'basic' => 'Basic',
-            'basic-annual' => 'Basic (Annual)',
-            'premium' => 'Premium',
-            'premium-annual' => 'Premium (Annual)',
+            'growth' => 'Growth',
+            'growth-annual' => 'Growth (Annual)',
+            'scale' => 'Scale',
+            'scale-annual' => 'Scale (Annual)',
             default => $fallbackName ?? ucfirst($planSlug),
         };
     }
@@ -299,7 +382,7 @@ class SettingsController extends Controller
 
     private function preferencesPayload(array $preferences): array
     {
-        return [
+        $payload = [
             'notifications' => array_merge(
                 self::DEFAULT_NOTIFICATION_PREFERENCES,
                 (array) data_get($preferences, 'notifications', [])
@@ -309,6 +392,12 @@ class SettingsController extends Controller
                 (array) data_get($preferences, 'appearance', [])
             ),
         ];
+
+        if (array_key_exists('authentication', $preferences)) {
+            $payload['authentication'] = (array) $preferences['authentication'];
+        }
+
+        return $payload;
     }
 
     private function mergedPreferencesPayload(array $currentPreferences, array $incomingPreferences): array

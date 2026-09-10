@@ -2,9 +2,15 @@
 
 namespace Tests\Feature;
 
+use App\Jobs\RunCustomKeywordSearch;
 use App\Models\CustomKeywordSearch;
+use App\Models\PricingPlan;
+use App\Models\Subscription;
 use App\Models\User;
+use App\Support\PricingPlanTable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\Str;
 use Laravel\Socialite\Contracts\User as SocialiteUserContract;
 use Laravel\Socialite\Facades\Socialite;
 use Mockery;
@@ -48,12 +54,47 @@ class FreeSearchFunnelTest extends TestCase
         $this->assertNull(session('free_search.pending.sources'));
     }
 
+    public function test_google_callback_lands_new_free_search_on_its_analytics_page(): void
+    {
+        Queue::fake();
+
+        $googleUser = Mockery::mock(SocialiteUserContract::class);
+        $googleUser->shouldReceive('getEmail')->andReturn('fresh@example.com');
+        $googleUser->shouldReceive('getName')->andReturn('Fresh User');
+        $googleUser->shouldReceive('getNickname')->andReturn(null);
+
+        $provider = Mockery::mock();
+        $provider->shouldReceive('redirectUrl')->andReturnSelf();
+        $provider->shouldReceive('user')->andReturn($googleUser);
+
+        Socialite::shouldReceive('driver')->with('google')->andReturn($provider);
+
+        $response = $this
+            ->withSession([
+                'free_search.pending' => [
+                    'type' => 'brand',
+                    'phrase' => 'rhode skin',
+                    'keywords' => ['rhode skin', 'skincare'],
+                    'frequency' => 'weekly',
+                ],
+            ])
+            ->get('/auth/google/callback');
+
+        $search = CustomKeywordSearch::firstWhere('phrase', 'rhode skin');
+
+        $this->assertNotNull($search);
+        $response->assertRedirect($search->url());
+        $response->assertSessionHas('free_search_new', true);
+        $response->assertSessionMissing('free_search.pending');
+        $this->assertAuthenticatedAs(User::firstWhere('email', 'fresh@example.com'));
+
+        Queue::assertPushed(RunCustomKeywordSearch::class);
+    }
+
     public function test_google_callback_redirects_to_dashboard_with_upgrade_prompt_when_pending_search_cannot_start(): void
     {
         $user = User::factory()->create([
             'email' => 'existing@example.com',
-            'current_plan_slug' => 'free',
-            'monthly_credits_remaining' => 0,
             'free_search_used_at' => now()->subDay(),
         ]);
 
@@ -79,7 +120,7 @@ class FreeSearchFunnelTest extends TestCase
             ])
             ->get('/auth/google/callback');
 
-        $response->assertRedirect('/dashboard');
+        $response->assertRedirect('/home');
         $response->assertSessionHas('search_access_prompt', function (array $prompt) {
             return $prompt['reason'] === 'search_credit_exhausted'
                 && $prompt['phrase'] === 'rhode skin'
@@ -88,5 +129,52 @@ class FreeSearchFunnelTest extends TestCase
         $response->assertSessionMissing('free_search.pending');
         $this->assertSame(0, CustomKeywordSearch::count());
         $this->assertAuthenticatedAs($user->fresh());
+    }
+
+    public function test_google_callback_does_not_redeem_public_free_search_for_paid_account(): void
+    {
+        PricingPlanTable::seedDefaults();
+        $user = User::factory()->create([
+            'email' => 'subscriber@example.com',
+            'free_search_used_at' => null,
+        ]);
+        $plan = PricingPlan::query()->where('slug', 'growth')->firstOrFail();
+
+        Subscription::query()->create([
+            'id' => (string) Str::ulid(),
+            'user_id' => $user->id,
+            'plan_id' => $plan->id,
+            'status' => 'active',
+            'current_period_starts_at' => now(),
+            'current_period_ends_at' => now()->addMonth(),
+            'metadata' => ['plan_slug' => 'growth'],
+        ]);
+
+        $googleUser = Mockery::mock(SocialiteUserContract::class);
+        $googleUser->shouldReceive('getEmail')->andReturn('subscriber@example.com');
+        $googleUser->shouldReceive('getName')->andReturn('Subscriber');
+        $googleUser->shouldReceive('getNickname')->andReturn(null);
+
+        $provider = Mockery::mock();
+        $provider->shouldReceive('redirectUrl')->andReturnSelf();
+        $provider->shouldReceive('user')->andReturn($googleUser);
+        Socialite::shouldReceive('driver')->with('google')->andReturn($provider);
+
+        $response = $this->withSession([
+            'free_search.pending' => [
+                'type' => 'brand',
+                'phrase' => 'rhode skin',
+                'keywords' => ['rhode skin', 'skincare'],
+                'frequency' => 'weekly',
+            ],
+        ])->get('/auth/google/callback');
+
+        $response->assertRedirect('/home');
+        $response->assertSessionHas('search_access_prompt', [
+            'reason' => 'public_free_search_unavailable',
+            'message' => 'This public free search is only available before starting a subscription. Use your plan\'s search credits from the dashboard.',
+        ]);
+        $response->assertSessionMissing('free_search.pending');
+        $this->assertSame(0, CustomKeywordSearch::count());
     }
 }

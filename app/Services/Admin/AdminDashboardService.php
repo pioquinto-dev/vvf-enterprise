@@ -13,6 +13,7 @@ class AdminDashboardService
         private readonly DashboardSnapshotService $snapshots,
         private readonly AcquisitionDashboardService $acquisition,
         private readonly UserActivityService $activity,
+        private readonly EngagementInsightsService $engagement,
     ) {}
 
     /**
@@ -40,6 +41,7 @@ class AdminDashboardService
             ],
             'acquisition' => $this->acquisition->payload($days),
             'activity' => $this->activity->recentPayload(),
+            'engagement' => $this->engagement->payload($days),
             'coupons' => $this->couponPayload(),
         ];
     }

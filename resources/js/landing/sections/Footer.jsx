@@ -1,23 +1,31 @@
-import { useState } from 'react';
+import { useForm } from '@inertiajs/react';
 
 import { Logo } from '../components/Icons.jsx';
 
 const COLS = [
-  { h: 'Product', links: [{ label: 'Outlier Vault', href: '#top' }, { label: 'Brand Tracking', href: '#top' }, { label: 'Creator Shortlists', href: '#top' }, { label: 'Virality Alerts', href: '#top' }, { label: 'Changelog', href: '#top' }] },
-  { h: 'Company', links: [{ label: 'About', href: '#top' }, { label: 'Careers', href: '#top' }, { label: 'Blog', href: '#top' }, { label: 'Press kit', href: '#top' }, { label: 'Contact', href: '/contact' }] },
-  { h: 'Resources', links: [{ label: 'TikTok benchmarks', href: '#top' }, { label: 'Category reports', href: '#top' }, { label: 'Help center', href: '#top' }, { label: 'API docs', href: '#top' }, { label: 'Status', href: '#top' }] },
+  { h: 'Product', links: [{ label: 'TikTok Brand Tracking', href: '/tiktok-brand-tracking' }, { label: 'TikTok Product Research', href: '/tiktok-product-research' }, { label: 'Viral Video Monitoring', href: '/viral-video-monitoring' }] },
+  { h: 'Company', links: [{ label: 'Blog', href: '/blog' }, { label: 'Support', href: '/support' }, { label: 'Contact', href: '/contact' }] },
+  { h: 'Resources', links: [{ label: 'Brand Tracking', href: '/tiktok-brand-tracking' }, { label: 'UGC Trend Discovery', href: '/ugc-trend-discovery' }] },
   { h: 'Legal', links: [{ label: 'Terms', href: '/terms' }, { label: 'Privacy', href: '/privacy' }, { label: 'DPA', href: '/dpa' }, { label: 'Security', href: '/security' }] },
 ];
 
-export default function Footer() {
-  const [subscribed, setSubscribed] = useState(false);
+export default function Footer({ homeHref = '#top' }) {
+  const form = useForm({ email: '' });
+
+  const subscribe = (e) => {
+    e.preventDefault();
+    form.post('/newsletter', {
+      preserveScroll: true,
+      onSuccess: () => form.reset('email'),
+    });
+  };
 
   return (
     <footer className="ftr">
       <div className="wrap">
         <div className="ftr__top">
           <div>
-            <a href="#top" className="brand">
+            <a href={homeHref} className="brand">
               <Logo className="h-8 w-8" />
               <span>Brand Beacon</span>
             </a>
@@ -25,21 +33,30 @@ export default function Footer() {
               TikTok social intelligence for brands. Find the viral videos moving your category, and the creators behind
               them.
             </p>
-            <form
-              className="ftr__form"
-              onSubmit={(e) => {
-                e.preventDefault();
-                setSubscribed(true);
-              }}
-            >
+            <form className="ftr__form" onSubmit={subscribe}>
               <label htmlFor="nl">Weekly viral digest</label>
               <div className="ftr__row">
-                <input id="nl" type="email" required placeholder="you@brand.com" />
-                <button type="submit" className="btn btn--primary">
-                  {subscribed ? 'Subscribed' : 'Subscribe'}
+                <input
+                  id="nl"
+                  type="email"
+                  required
+                  placeholder="you@brand.com"
+                  autoComplete="email"
+                  value={form.data.email}
+                  onChange={(e) => form.setData('email', e.target.value)}
+                  disabled={form.processing}
+                />
+                <button type="submit" className="btn btn--primary" disabled={form.processing}>
+                  {form.processing ? 'Subscribing…' : form.wasSuccessful ? 'Subscribed' : 'Subscribe'}
                 </button>
               </div>
-              <p className="ftr__fine">One email a week. Unsubscribe anytime.</p>
+              {form.errors.email ? (
+                <p className="ftr__fine ftr__fine--error">{form.errors.email}</p>
+              ) : form.wasSuccessful ? (
+                <p className="ftr__fine">Thanks — you're on the list. One email a week.</p>
+              ) : (
+                <p className="ftr__fine">One email a week. Unsubscribe anytime.</p>
+              )}
             </form>
           </div>
 
@@ -61,12 +78,6 @@ export default function Footer() {
 
         <div className="ftr__btm">
           <p>© 2026 Brand Beacon. TikTok viral intelligence for brands.</p>
-          <nav>
-            <a href="/terms">Terms</a>
-            <a href="/privacy">Privacy</a>
-            <a href="/security">Security</a>
-            <a href="/contact">Contact</a>
-          </nav>
         </div>
       </div>
     </footer>

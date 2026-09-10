@@ -238,7 +238,7 @@ export default function Hero({ onStart }) {
               </div>
             )}
             <button type="submit" className="btn btn--primary btn--lg btn--pulse">
-              Find outliers
+              Find breakouts
               <Arrow className="btn__arrow h-[15px] w-[15px]" />
             </button>
           </div>

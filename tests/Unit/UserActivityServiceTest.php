@@ -28,6 +28,28 @@ class UserActivityServiceTest extends TestCase
         $this->assertSame('search_triggered', $payload['rows'][0]['event']);
     }
 
+    public function test_dashboard_preview_keeps_recent_rows_for_each_filter_category(): void
+    {
+        $user = User::factory()->create();
+        $activity = app(UserActivityService::class);
+
+        $activity->record($user, 'sign_up', 'account_created', 'Created account.');
+        $activity->record($user, 'subscription', 'subscription_paid', 'Started a paid subscription.');
+        $activity->record($user, 'coupon_usage', 'coupon_redeemed', 'Redeemed a coupon.');
+
+        foreach (range(1, 6) as $index) {
+            $activity->record($user, 'engagement', "engagement_{$index}", "Engagement {$index}.");
+        }
+
+        $payload = $activity->recentPayload(5);
+
+        $this->assertCount(5, $payload['rows']);
+        $this->assertSame('account_created', $payload['byCategory']['sign_up'][0]['event']);
+        $this->assertSame('subscription_paid', $payload['byCategory']['subscription'][0]['event']);
+        $this->assertSame('coupon_redeemed', $payload['byCategory']['coupon_usage'][0]['event']);
+        $this->assertCount(5, $payload['byCategory']['engagement']);
+    }
+
     public function test_it_filters_the_full_activity_log_by_category_and_event(): void
     {
         $user = User::factory()->create();
@@ -35,6 +57,7 @@ class UserActivityServiceTest extends TestCase
 
         $activity->record($user, 'engagement', 'logged_in', 'Logged in.');
         $activity->record($user, 'engagement', 'search_triggered', 'Triggered a product search with keyword serum.');
+        $activity->record($user, 'analysis', 'video_analysis_triggered', 'Triggered video analysis.');
         $activity->record($user, 'subscription', 'subscription_paid', 'Subscription is active.');
 
         $payload = $activity->activityLogPayload(Request::create('/x/admin/activity', 'GET', [
@@ -48,5 +71,16 @@ class UserActivityServiceTest extends TestCase
         $this->assertCount(1, $payload['rows']);
         $this->assertSame('search_triggered', $payload['rows'][0]['event']);
         $this->assertContains('subscription_paid', $payload['events']);
+        $this->assertContains('video_analysis_triggered', $payload['events']);
+
+        $analysisPayload = $activity->activityLogPayload(Request::create('/x/admin/activity', 'GET', [
+            'range' => '30D',
+            'category' => 'analysis',
+            'event' => 'video_analysis_triggered',
+        ]));
+
+        $this->assertSame('analysis', $analysisPayload['filters']['category']);
+        $this->assertCount(1, $analysisPayload['rows']);
+        $this->assertSame('video_analysis_triggered', $analysisPayload['rows'][0]['event']);
     }
 }

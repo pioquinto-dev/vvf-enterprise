@@ -67,6 +67,7 @@ Notes:
 
 - Requires ngrok to be installed and authenticated.
 - On Windows it also opens helper consoles for Stripe forwarding, queue/server logs, and formatted error tails.
+- `composer dev` keeps `GOOGLE_REDIRECT_URI` aligned with its current ngrok URL.
 
 ### Testing and diagnostics
 
@@ -103,7 +104,7 @@ Inspect scheduler entries.
 
 #### `php artisan queue:work`
 
-Required for queued flows like saved-search refreshes, media archiving, and video-analysis jobs.
+Required for queued flows like registration emails, saved-search refreshes, media archiving, and video-analysis jobs.
 
 ### Domain-specific Artisan commands
 
@@ -183,7 +184,7 @@ Defined in `routes/public.php`.
 - `/search`
   - Standalone public free-search funnel. It collects the subject and refinements without creating a search; the Google callback creates the account-owned search after sign-in.
 - `/search/running`
-  - Public running-state view.
+  - Requires sign-in; signed-out visitors redirect to `/`. Running-state view for an existing, caller-owned scraping search. Missing or inaccessible IDs redirect to `/search`; inactive searches redirect to their results.
 - `/trial`
   - Trial plan page, with middleware that remembers checkout intent.
 - `/login`, `/register`
@@ -207,6 +208,8 @@ Defined in `routes/frontend.php`.
 
 - `/dashboard`
   - Main signed-in dashboard.
+- `/search-history`
+  - Redirects to the Library's Search History tab, ordered by the date each search was created.
 - `/bookmark`
   - Watchlist index.
 - `/results/{search}`
@@ -218,7 +221,8 @@ Defined in `routes/frontend.php`.
 - `/products`
   - Product-oriented view over saved-search data.
 - `/settings/account`
-  - Account settings and deletion flow.
+  - Account settings, Google-user password setup, and deletion flow.
+  - `POST /settings/account/password` sets a Google user's first manual password only. `PATCH /settings/account/password` updates an existing manual password and requires the current password. Google users without `authentication.password_added_at` must complete setup before updating.
 - `/settings/appearance`
   - Appearance preferences.
 - `/settings/subscription`
@@ -285,6 +289,11 @@ Important:
 
 ### UTM acquisition reporting
 
+- The "Where they come from" table selects a signup cohort in UTC and follows its outcomes through the current time. Source/medium rows expand into campaigns; counts open paginated user drilldowns over the complete cohort. Each user counts once per outcome, including soft-deleted accounts and searches.
+- Acquisition uses the earliest signup attribution, excluding subscription copies. Missing source is labeled "Source not recorded"; missing medium and campaign are hidden from user rows. Campaign expansion uses "No campaign recorded" for missing tags. No direct/paid/organic classification is inferred from missing data. Coupon membership is shown separately.
+- Cohort trial starts use historical timestamps regardless of current subscription status. Paid conversions use subscription-paid/reactivated/payment-recovered activity or current paid status; trial completion alone is not payment evidence. Canceled legacy customers without recorded paid evidence may be missing, as disclosed in the panel.
+- The separate operations conversion funnel retains its event-window semantics; it is not the signup-cohort report.
+
 - `utm_page_visits` records one anonymous public visit per browser session from the feature's deployment onward. A tagged UTM source wins, an untagged external referrer uses its host, and only no-source/no-referrer traffic is reported as `direct`.
 - Sign-ups and card-on-file trial starts use each user's signup attribution (`subscription_id = null`) so subscription-attribution copies are never counted twice.
 - “Trial - no CC” is intentionally displayed as locked until the product supports that flow.
@@ -294,8 +303,23 @@ Important:
 
 - `user_activities` is an append-only activity ledger for sign ups, subscriptions, engagement, and account deletion events.
 - The admin dashboard previews the five most recent records. `/x/admin/activity` provides the complete, paginated activity ledger. Activity starts collecting from deployment; it is not backfilled.
+- Dashboard activity filters use their own five-row category previews; never filter only the globally truncated five-row “All” list.
+- Billing and Stripe webhook handlers must resolve the activity logger when optional injection is null (Laravel preserves unbound constructor defaults). Capture cancellation metadata before saving to detect schedule/revert events.
+- Usage synchronization preserves existing subscription metadata, including cancellation flags, while updating usage and limit fields.
 
 ## Core domain concepts
+
+### Blog management
+
+- Public reader routes are `/blog` and `/blog/{slug}`. Admin CRUD, taxonomy, featured ordering, bulk actions and image uploads live under `/x/admin/blogs`, protected by the same `admin.auth` session as the rest of this host. All authenticated admins can perform every blog action; there is no separate blog ability system.
+- Models: `Article`, `Category`, `Tag`, with `article_tag` links. Category deletion nulls article references; tag deletion removes links. Articles are permanently deleted. The optional Hook Templates module is not part of this implementation.
+- `BlogContent` normalizes ten plain-text block types and legacy ProseMirror documents, emits schema version 1, produces globally unique heading anchors and consistent reading estimates. Text is escaped; links accept HTTP(S) or local paths, and embeds accept only HTTPS YouTube/Vimeo videos.
+- Published status exposes an article immediately, including a future publication date. Dates are entered in the configured application timezone (shown in the editor). Draft saves/unpublish clear the date; bulk publish stamps now.
+- `ArticleService` saves article/tag changes transactionally. Featured reorder requires the full current published-featured set and locks existing rows; stable ID tie-breaking keeps equal positions deterministic. Simultaneous membership changes may require reloading the order page.
+- `BLOG_MEDIA_DISK` and `BLOG_MEDIA_PREFIX` configure media through `config/blog.php`. Hero paths are immutable and shared by duplicates; replacement stores new files without deleting existing paths. This intentionally retains unused files rather than risking another article's media. There is no orphan-cleanup job. Imagick variants fall back to the original when unavailable.
+- Blog mutations are actor-labelled application log entries; this host has no separate admin audit ledger. Public responses use `private, no-store` because Inertia props contain session data. Published articles are included in the sitemap. The existing Inertia SSR service must run for crawler-visible initial HTML.
+- UI follows the destination's Brand Beacon light theme. Admin pages are in `resources/js/Pages/Admin/Blogs`; reader pages are in `resources/js/Pages/Blog`.
+- Run the additive `2026_09_08_120000_create_blog_tables` migration at deployment. No reference-site data or credentials are migrated automatically. See `docs/blog-management.md` for rollout and verification.
 
 ### Saved search
 
@@ -402,7 +426,7 @@ Current standard:
 3. Pull local corpus candidates from `viral_videos`.
 4. Filter local candidates through the same matcher rules.
 5. Combine both match sets, with Apify winning collisions because its stats are fresher.
-6. Rank the combined winners by strongest outlier signal first.
+6. Rank the combined winners by strongest breakout signal first.
 
 Filtering gates:
 
@@ -441,6 +465,7 @@ Non-obvious rules:
 - `guest_token` is an ownership handle, not a quota key.
 - Session resets must never restore free-search eligibility.
 - Do not infer “free search unused” from row counts because soft deletion makes that unsafe.
+- The “Search is ready” email is only sent for a run explicitly stamped `raw_summary.free_search = true`; paid/trial searches and all refreshes must not send it.
 
 ### Billing and checkout flow
 
@@ -584,6 +609,8 @@ High-level flow:
 
 ## Frontend architecture notes
 
+- My Feed includes platform-wide discovery cards alongside personal highlights: most searched brands/products over seven days, top sounds in newly indexed visible videos, and hashtag occurrence growth versus the previous seven days. Discovery aggregates are cached for 15 minutes, expose no account identities, and also appear for accounts with no personal results. Desktop keeps personal highlights in the sidebar and places the three discovery cards in a full-width row below the feed; mobile interleaves cards. Personal video cards remain limited to eight.
+
 - Inertia entrypoint is `resources/js/app.jsx`.
 - Shared shell for signed-in pages is `resources/js/Pages/components/AppLayout.jsx`.
 - Dark mode is class-driven, not OS-driven.
@@ -598,6 +625,11 @@ Important:
 ## Environment variables to know
 
 - `APP_URL`
+- `GOOGLE_CLIENT_ID`
+- `GOOGLE_CLIENT_SECRET`
+- `GOOGLE_REDIRECT_URI`
+- `GOOGLE_CONNECT_TIMEOUT`
+- `GOOGLE_TIMEOUT`
 - `DB_*`
 - `APIFY_TOKEN`
 - `APIFY_TASK_IDS`

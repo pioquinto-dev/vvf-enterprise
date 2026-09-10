@@ -3,7 +3,7 @@ import { Link, router, useForm, usePage } from '@inertiajs/react';
 
 import AppFooter from './AppFooter.jsx';
 import EntitlementsBar from './EntitlementsBar.jsx';
-import { Logo, Menu, Close, Search, Library, Store, Exit, Spark, Arrow, Lock } from '../../landing/components/Icons.jsx';
+import { Logo, Menu, Close, Library, Store, Target, Exit, Spark, Arrow, Lock } from '../../landing/components/Icons.jsx';
 import { readTrackedVideoAnalyses, untrackVideoAnalysis, videoAnalysis } from '../../landing/flow/api.js';
 
 /* Old AppLayout tones → Brand Beacon pill classes, so pages passing the
@@ -23,10 +23,10 @@ const PILL_CLASS = {
  * a later batch and will repoint the last two entries.
  */
 const NAV = [
-    { label: 'Search', href: '/dashboard', icon: Spark, match: '/dashboard' },
+    { label: 'My Feed', href: '/home', icon: Spark, match: '/home' },
     { label: 'Library', href: '/library', icon: Library, match: '/library' },
     { label: 'Brand searches', href: '/brands', icon: Store, match: '/brands' },
-    { label: 'Product searches', href: '/products', icon: Search, match: '/products' },
+    { label: 'Product searches', href: '/products', icon: Target, match: '/products' },
 ];
 
 function isActive(currentUrl, item) {
@@ -44,7 +44,7 @@ function initials(name, email) {
 
 function Brand({ onNavigate }) {
     return (
-        <Link href="/dashboard" onClick={onNavigate} className="side__brand">
+        <Link href="/home" onClick={onNavigate} className="side__brand">
             <Logo className="h-[30px] w-[30px]" />
             <span>Brand Beacon</span>
         </Link>
@@ -148,7 +148,7 @@ function CompletedAnalysisModal({ item, onClose, onView }) {
                     Your analysis is done
                 </h2>
                 <p className="mt-3 text-[14px] leading-6 text-[var(--muted)]">
-                    {item.videoLabel || 'Your outlier video'} is ready. Open the search result it belongs to and we&apos;ll jump straight into the finished analysis.
+                    {item.videoLabel || 'Your breakout video'} is ready. Open the search result it belongs to and we&apos;ll jump straight into the finished analysis.
                 </p>
                 <div className="mt-4 rounded-[16px] border border-[var(--line)] bg-white/80 px-4 py-3 text-[13px] font-semibold text-[var(--ink)]">
                     {item.searchName || item.videoLabel || 'Saved search'}

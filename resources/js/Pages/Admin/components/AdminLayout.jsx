@@ -40,7 +40,18 @@ const NAV_GROUPS = [
             { key: 'searches', label: 'Searches', href: '/x/admin/searches', description: 'Search runs', icon: 'SE' },
             { key: 'keyword-index', label: 'Keyword Index', href: '/x/admin/keyword-index', description: 'Brands and products', icon: 'KI' },
             { key: 'inquiries', label: 'Inquiries', href: '/x/admin/inquiries', description: 'Contact inbox', icon: 'IN' },
+            { key: 'newsletter', label: 'Newsletter', href: '/x/admin/newsletter', description: 'Digest subscribers', icon: 'NL' },
             { key: 'plans', label: 'Plans', href: '/x/admin/plans', description: 'Pricing setup', icon: 'PL' },
+        ],
+    },
+    {
+        label: 'Blog Management',
+        items: [
+            { key: 'blogs', label: 'Blogs', href: '/x/admin/blogs', description: 'Articles', icon: 'BL' },
+            { key: 'blogs-create', label: 'Create Article', href: '/x/admin/blogs/create', description: 'Block editor', icon: 'CA' },
+            { key: 'blogs-categories', label: 'Categories', href: '/x/admin/blogs/categories', description: 'Article categories', icon: 'BC' },
+            { key: 'blogs-tags', label: 'Tags', href: '/x/admin/blogs/tags', description: 'Article tags', icon: 'BT' },
+            { key: 'blogs-featured', label: 'Featured Articles', href: '/x/admin/blogs/featured', description: 'Featured order', icon: 'FA' },
         ],
     },
     {
@@ -268,7 +279,7 @@ export default function AdminLayout({ title, section, children, toolbar = null, 
 
     return (
         <div className="admin-shell min-h-screen bg-[var(--canvas)] text-[var(--ink)]">
-            <Head title={`${title} - Admin - Outlier Vault`} />
+            <Head title={`${title} - Admin - Breakout Vault`} />
 
             <div aria-hidden className="pointer-events-none fixed inset-0 overflow-hidden">
                 <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(255,198,41,.22),_transparent_42%)]" />

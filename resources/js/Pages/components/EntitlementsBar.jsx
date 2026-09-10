@@ -32,7 +32,7 @@ export default function EntitlementsBar({ variant = 'default' }) {
                     <i />
                     <span className={searchesLow ? 'low' : undefined}>
                         <b>{searchUsed}</b>
-                        {searchLimit > 0 && `/${searchLimit}`} searches
+                        {searchLimit > 0 && ` of ${searchLimit}`} searches
                     </span>
                     <i />
                     <span className="ent__cta">View Full Credits</span>
@@ -47,7 +47,7 @@ export default function EntitlementsBar({ variant = 'default' }) {
             <i />
             <span className={searchesLow ? 'low' : undefined}>
                 <b>{searchUsed}</b>
-                {searchLimit > 0 && `/${searchLimit}`} searches
+                {searchLimit > 0 && ` of ${searchLimit}`} searches
             </span>
             {!billing.hasPaidPlan && (
                 <>

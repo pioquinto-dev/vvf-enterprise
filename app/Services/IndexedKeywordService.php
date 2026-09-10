@@ -6,6 +6,7 @@ use App\Models\CustomKeywordSearch;
 use App\Models\IndexedKeyword;
 use App\Services\CustomKeywordSearch\KeywordNormalizer;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 
 class IndexedKeywordService
 {
@@ -25,10 +26,15 @@ class IndexedKeywordService
             return $this->trendingSuggestions($type, $limit, $userId);
         }
 
+        // Drop anything the user has already searched — a keyword they have run
+        // is not a helpful suggestion to run again.
+        $excludedLabels = $this->searchedLabels($type, $userId);
+
         $startsWith = IndexedKeyword::query()
             ->live()
             ->where('keyword_type', $type)
             ->where('normalized_label', 'like', $query.'%')
+            ->when($excludedLabels !== [], fn ($builder) => $builder->whereNotIn(DB::raw('LOWER(normalized_label)'), $excludedLabels))
             ->orderByDesc('usage_count')
             ->orderBy('label')
             ->limit($limit)
@@ -42,6 +48,7 @@ class IndexedKeywordService
                 ->where('keyword_type', $type)
                 ->where('normalized_label', 'like', '%'.$query.'%')
                 ->whereNotIn('id', $startsWith->pluck('id'))
+                ->when($excludedLabels !== [], fn ($builder) => $builder->whereNotIn(DB::raw('LOWER(normalized_label)'), $excludedLabels))
                 ->orderByDesc('usage_count')
                 ->orderBy('label')
                 ->limit($remaining)
@@ -153,7 +160,7 @@ class IndexedKeywordService
         $existingLabels = $trending
             ->pluck('label')
             ->filter()
-            ->map(fn (string $label): string => $this->normalizer->keyword($label))
+            ->map(fn (string $label): string => mb_strtolower($this->normalizer->keyword($label)))
             ->merge($excludedLabels)
             ->unique()
             ->all();
@@ -161,7 +168,7 @@ class IndexedKeywordService
         $fallback = IndexedKeyword::query()
             ->live()
             ->where('keyword_type', $type)
-            ->when($existingLabels !== [], fn ($query) => $query->whereNotIn('normalized_label', $existingLabels))
+            ->when($existingLabels !== [], fn ($query) => $query->whereNotIn(DB::raw('LOWER(normalized_label)'), $existingLabels))
             ->orderByDesc('usage_count')
             ->orderByDesc('last_seen_at')
             ->orderBy('label')
@@ -213,7 +220,7 @@ class IndexedKeywordService
             foreach ($this->relatedTerms($type, (string) $search->phrase, 2) as $index => $related) {
                 $normalized = $this->normalizer->keyword($related);
 
-                if ($normalized === '' || in_array($normalized, $excludedLabels, true)) {
+                if ($normalized === '' || in_array(mb_strtolower($normalized), $excludedLabels, true)) {
                     continue;
                 }
 
@@ -251,7 +258,7 @@ class IndexedKeywordService
         $existingLabels = ($seeded ?? collect())
             ->pluck('label')
             ->filter()
-            ->map(fn (string $label): string => $this->normalizer->keyword($label))
+            ->map(fn (string $label): string => mb_strtolower($this->normalizer->keyword($label)))
             ->merge($excludedLabels)
             ->unique()
             ->all();
@@ -261,8 +268,8 @@ class IndexedKeywordService
             ->whereIn('search_type', $searchTypes)
             ->whereNotNull('phrase')
             ->where('phrase', '!=', '')
-            ->when($existingLabels !== [], fn ($query) => $query->whereNotIn('LOWER(phrase)', $existingLabels))
-            ->groupBy('phrase', 'normalized_phrase')
+            ->when($existingLabels !== [], fn ($query) => $query->whereNotIn(DB::raw('LOWER(phrase)'), $existingLabels))
+            ->groupBy('phrase', DB::raw('LOWER(phrase)'))
             ->orderByDesc('usage_count')
             ->orderByDesc('latest_at')
             ->limit($limit)
@@ -304,7 +311,7 @@ class IndexedKeywordService
             ->where('user_id', $userId)
             ->whereIn('search_type', $searchTypes)
             ->pluck('phrase')
-            ->map(fn (?string $phrase): string => $this->normalizer->keyword((string) $phrase))
+            ->map(fn (?string $phrase): string => mb_strtolower($this->normalizer->keyword((string) $phrase)))
             ->filter()
             ->unique()
             ->values()

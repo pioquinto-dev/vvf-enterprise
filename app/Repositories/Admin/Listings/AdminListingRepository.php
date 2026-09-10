@@ -8,6 +8,7 @@ use App\Models\Inquiry;
 use App\Models\ManagedCouponProgram;
 use App\Models\ManagedCouponRedemption;
 use App\Models\ManagedCouponWhitelistEntry;
+use App\Models\NewsletterSubscriber;
 use App\Models\PricingPlan;
 use App\Models\Subscription;
 use App\Models\User;
@@ -35,6 +36,7 @@ class AdminListingRepository
             'viral-videos' => 'Viral Videos',
             'searches' => 'Searches',
             'inquiries' => 'Inquiries',
+            'newsletter' => 'Newsletter Subscribers',
             'plans' => 'Plans',
             'subscription' => 'Subscription',
             'users' => 'Users',
@@ -56,6 +58,7 @@ class AdminListingRepository
             'viral-videos' => ['search', 'status', 'date'],
             'searches' => ['search', 'type', 'owner', 'date'],
             'inquiries' => ['search', 'category', 'date'],
+            'newsletter' => ['search', 'date'],
             'plans' => ['search', 'status'],
             'subscription' => ['search', 'status', 'plan', 'type'],
             'users' => ['search', 'status', 'plan'],
@@ -85,6 +88,9 @@ class AdminListingRepository
             ],
             'inquiries' => [
                 ['name' => 'category', 'label' => 'Category', 'options' => ['general', 'account', 'billing', 'feature-request', 'bug-report']],
+                ['name' => 'date', 'label' => 'Range', 'options' => ['today', '7d', '30d', 'custom']],
+            ],
+            'newsletter' => [
                 ['name' => 'date', 'label' => 'Range', 'options' => ['today', '7d', '30d', 'custom']],
             ],
             'plans' => [
@@ -141,6 +147,10 @@ class AdminListingRepository
                 ['key' => 'subject', 'label' => 'Subject'],
                 ['key' => 'message', 'label' => 'Message'],
                 ['key' => 'received_at', 'label' => 'Received'],
+            ],
+            'newsletter' => [
+                ['key' => 'email', 'label' => 'Email'],
+                ['key' => 'subscribed', 'label' => 'Subscribed'],
             ],
             'plans' => [
                 ['key' => 'plan', 'label' => 'Plan'],
@@ -208,6 +218,7 @@ class AdminListingRepository
             'viral-videos' => ViralVideo::query()->withTrashed(),
             'searches' => CustomKeywordSearch::query()->withTrashed()->with('user'),
             'inquiries' => Inquiry::query()->with('user'),
+            'newsletter' => NewsletterSubscriber::query(),
             'plans' => PricingPlan::query()->withTrashed(),
             'subscription' => Subscription::query()->withTrashed()->with(['user', 'plan']),
             'users' => User::query()->withTrashed()->with(['subscriptions.plan']),
@@ -239,6 +250,7 @@ class AdminListingRepository
                     ->orWhereRaw('LOWER(subject) like ?', [$like])
                     ->orWhereRaw('LOWER(message) like ?', [$like]),
             ),
+            'newsletter' => $query->whereRaw('LOWER(email) like ?', [$like]),
             'plans' => $query->where(
                 fn (Builder $inner) => $inner->whereRaw('LOWER(name) like ?', [$like])->orWhereRaw('LOWER(slug) like ?', [$like]),
             ),
@@ -567,6 +579,22 @@ class AdminListingRepository
                     ],
                 ],
             ],
+            'newsletter' => [
+                'id' => $record->id,
+                'email' => $record->email,
+                'subscribed' => $record->created_at?->format('M j, Y') ?? '-',
+                'preview' => [
+                    'eyebrow' => 'Newsletter subscriber',
+                    'summary' => $record->email,
+                    'sections' => [[
+                        'title' => 'Subscriber',
+                        'fields' => [
+                            ['label' => 'Email', 'value' => $record->email],
+                            ['label' => 'Subscribed', 'value' => $record->created_at?->format('M j, Y g:i A')],
+                        ],
+                    ]],
+                ],
+            ],
             'plans' => [
                 'id' => $record->id,
                 'plan' => $record->name,
@@ -606,6 +634,13 @@ class AdminListingRepository
                                 ['label' => 'Video bookmark limit', 'value' => $this->limitLabel((int) data_get($record->metadata, 'subscription.viral_video_bookmarks.limit', 0))],
                                 ['label' => 'Search bookmark limit', 'value' => $this->limitLabel((int) data_get($record->metadata, 'subscription.search_bookmarks.limit', 0))],
                                 ['label' => 'Video analysis limit', 'value' => $this->limitLabel((int) data_get($record->metadata, 'subscription.video_analysis.limit', 0))],
+                            ],
+                        ],
+                        [
+                            'title' => 'Stripe',
+                            'fields' => [
+                                ['label' => 'Stripe product ID', 'value' => $record->stripe_product_id],
+                                ['label' => 'Stripe price ID', 'value' => $record->stripe_price_id],
                             ],
                         ],
                     ],
@@ -722,7 +757,7 @@ class AdminListingRepository
                         ],
                     ],
                     [
-                        'title' => 'Usage',
+                        'title' => 'Usage this cycle',
                         'fields' => [
                             ['label' => 'Search credits', 'value' => $this->usageSummary($usage['search'])],
                             ['label' => 'Video bookmarks', 'value' => $this->usageSummary($usage['video_bookmarks'])],
@@ -734,7 +769,7 @@ class AdminListingRepository
                         'title' => 'Stripe',
                         'fields' => [
                             ['label' => 'Stripe subscription ID', 'value' => $record->stripe_subscription_id],
-                            ['label' => 'Stripe customer ID', 'value' => $record->stripe_customer_id ?: $record->user?->stripe_customer_id],
+                            ['label' => 'Stripe customer ID', 'value' => $record->stripe_customer_id],
                         ],
                     ],
                 ],
@@ -753,7 +788,7 @@ class AdminListingRepository
             'id' => $record->id,
             'user' => $record->name ?: $record->email,
             'email' => $record->email ?: '-',
-            'plan' => $record->current_plan_slug ?? 'free',
+            'plan' => $record->subscriptions()->latest('created_at')->first()?->plan?->slug ?? 'free',
             'credits' => $this->creditSummary($usage['search']),
             'status' => $record->trashed() ? 'deleted' : 'active',
             'joined_at' => $record->created_at?->format('M j, Y') ?? '-',
@@ -766,19 +801,10 @@ class AdminListingRepository
                         'fields' => [
                             ['label' => 'Name', 'value' => $record->name],
                             ['label' => 'Email', 'value' => $record->email],
-                            ['label' => 'Current plan', 'value' => $record->current_plan_slug ?? 'free'],
+                            ['label' => 'Current plan', 'value' => $record->subscriptions()->latest('created_at')->first()?->plan?->slug ?? 'free'],
                             ['label' => 'Status', 'value' => $record->trashed() ? 'deleted' : 'active'],
                             ['label' => 'Email verified', 'value' => $this->yesNo($record->email_verified_at !== null)],
                             ['label' => 'Free search used', 'value' => $this->yesNo($record->free_search_used_at !== null)],
-                        ],
-                    ],
-                    [
-                        'title' => 'Usage',
-                        'fields' => [
-                            ['label' => 'Search credits', 'value' => $this->usageSummary($usage['search'])],
-                            ['label' => 'Video bookmarks', 'value' => $this->usageSummary($usage['video_bookmarks'])],
-                            ['label' => 'Search bookmarks', 'value' => $this->usageSummary($usage['search_bookmarks'])],
-                            ['label' => 'Video analysis', 'value' => $this->usageSummary($usage['video_analysis'])],
                         ],
                     ],
                     [
@@ -1160,11 +1186,20 @@ class AdminListingRepository
     {
         $options = PricingPlan::query()
             ->orderBy('amount')
-            ->get(['slug', 'name'])
-            ->map(fn (PricingPlan $plan): array => ['value' => (string) $plan->slug, 'label' => $plan->name])
+            ->get(['slug', 'name', 'duration'])
+            ->map(function (PricingPlan $plan): array {
+                $duration = strtolower((string) ($plan->duration ?? 'monthly'));
+                $label = $plan->name;
+
+                if (in_array($duration, ['monthly', 'annual'], true)) {
+                    $label .= ' ('.ucfirst($duration).')';
+                }
+
+                return ['value' => (string) $plan->slug, 'label' => $label];
+            })
             ->all();
 
-        return $options === [] ? [['value' => 'basic', 'label' => 'basic']] : $options;
+        return $options === [] ? [['value' => 'growth', 'label' => 'growth']] : $options;
     }
 
     /**
@@ -1228,6 +1263,7 @@ class AdminListingRepository
             // stays read-only.
             'searches' => ['preview' => true, 'edit' => false, 'archive' => false, 'delete' => false],
             'inquiries' => ['preview' => true, 'edit' => false, 'archive' => false, 'delete' => false],
+            'newsletter' => ['preview' => true, 'edit' => false, 'archive' => false, 'delete' => false],
             'subscription' => ['preview' => true, 'edit' => true, 'archive' => false, 'delete' => true],
             'users' => ['preview' => true, 'edit' => true, 'archive' => false, 'delete' => true, 'impersonate' => true],
             'keyword-index' => ['preview' => true, 'edit' => true, 'archive' => true, 'delete' => true],
@@ -1252,7 +1288,7 @@ class AdminListingRepository
             'search' => [
                 'used' => $searchUsed,
                 'limit' => $searchLimit,
-                'remaining' => max(0, (int) ($subscription->user?->monthly_credits_remaining ?? 0)),
+                'remaining' => $searchLimit === -1 ? -1 : max(0, $searchLimit - $searchUsed),
             ],
             'video_bookmarks' => [
                 'used' => max(0, (int) data_get($metadata, 'subscription.viral_video_bookmarks.used', 0)),
@@ -1285,8 +1321,8 @@ class AdminListingRepository
             return [
                 'search' => [
                     'used' => 0,
-                    'limit' => max(0, (int) $user->monthly_credits_remaining),
-                    'remaining' => max(0, (int) $user->monthly_credits_remaining),
+                    'limit' => 0,
+                    'remaining' => 0,
                 ],
                 'video_bookmarks' => ['used' => $videoBookmarksUsed, 'limit' => 0],
                 'search_bookmarks' => ['used' => 0, 'limit' => 0],
@@ -1385,7 +1421,7 @@ class AdminListingRepository
                 ['name' => 'interval', 'label' => 'Interval', 'type' => 'select', 'options' => ['day', 'week', 'month', 'year']],
                 ['name' => 'interval_count', 'label' => 'Interval count', 'type' => 'number'],
                 ['name' => 'duration', 'label' => 'Duration label', 'type' => 'text'],
-                ['name' => 'search_credits_limit', 'label' => 'Search credits per period', 'type' => 'number', 'help' => 'Stored in plan metadata. Drives the credit allowance for this plan.'],
+                ['name' => 'search_credits_limit', 'label' => 'Search credits per period', 'type' => 'number', 'min' => -1, 'help' => '-1 means unlimited. Stored in plan metadata and drives the credit allowance for this plan.'],
                 ['name' => 'video_bookmark_limit', 'label' => 'Video bookmark limit', 'type' => 'number', 'min' => -1, 'help' => '-1 means unlimited.'],
                 ['name' => 'search_bookmark_limit', 'label' => 'Search bookmark limit', 'type' => 'number', 'min' => -1, 'help' => '-1 means unlimited.'],
                 ['name' => 'video_analysis_limit', 'label' => 'Video analysis limit', 'type' => 'number', 'min' => -1, 'help' => '-1 means unlimited.'],
@@ -1403,7 +1439,7 @@ class AdminListingRepository
                 ['name' => 'cta', 'label' => 'Plan CTA label', 'type' => 'text', 'help' => 'Edits the linked plan metadata.'],
                 ['name' => 'popular', 'label' => 'Plan marked as popular', 'type' => 'toggle', 'help' => 'Edits the linked plan metadata.'],
                 ['name' => 'trial_enabled', 'label' => 'Plan trial enabled', 'type' => 'toggle', 'help' => 'Edits the linked plan metadata.'],
-                ['name' => 'search_credits_limit', 'label' => 'Plan search credits per period', 'type' => 'number', 'help' => 'Edits the plan metadata - this changes the allowance for every subscriber on this plan.'],
+                ['name' => 'search_credits_limit', 'label' => 'Plan search credits per period', 'type' => 'number', 'min' => -1, 'help' => '-1 means unlimited. Edits the plan metadata - this changes the allowance for every subscriber on this plan.'],
                 ['name' => 'video_bookmark_limit', 'label' => 'Plan video bookmark limit', 'type' => 'number', 'min' => -1, 'help' => 'Edits the plan metadata for every subscriber on this plan.'],
                 ['name' => 'search_bookmark_limit', 'label' => 'Plan search bookmark limit', 'type' => 'number', 'min' => -1, 'help' => 'Edits the plan metadata for every subscriber on this plan.'],
                 ['name' => 'video_analysis_limit', 'label' => 'Plan video analysis limit', 'type' => 'number', 'min' => -1, 'help' => 'Edits the plan metadata for every subscriber on this plan.'],
@@ -1413,9 +1449,7 @@ class AdminListingRepository
             'users' => [
                 ['name' => 'name', 'label' => 'Name', 'type' => 'text'],
                 ['name' => 'email', 'label' => 'Email', 'type' => 'text', 'rules' => ['required', 'email', 'max:255', 'unique:users,email,{id}']],
-                ['name' => 'current_plan_slug', 'label' => 'Current plan', 'type' => 'select', 'options' => $this->planSlugOptions()],
                 ['name' => 'credits', 'label' => 'Search credits remaining', 'type' => 'number'],
-                ['name' => 'stripe_customer_id', 'label' => 'Stripe customer ID', 'type' => 'text'],
                 ['name' => 'email_verified', 'label' => 'Email verified', 'type' => 'toggle', 'help' => 'Stored as a timestamp; turning this off clears the verification date.'],
                 ['name' => 'free_search_used', 'label' => 'Free search used', 'type' => 'toggle', 'help' => 'Turning this off gives the account its one free search back.'],
                 ['name' => 'password', 'label' => 'Set new password', 'type' => 'password', 'help' => 'Leave blank to keep the current password.', 'rules' => ['nullable', 'string', 'min:8']],
@@ -1497,7 +1531,9 @@ class AdminListingRepository
             'subscription' => [
                 'status' => $record->status,
                 'plan_id' => (string) ($record->plan_id ?? ''),
-                'credits' => (int) ($record->user?->monthly_credits_remaining ?? 0),
+                'credits' => (int) data_get($record->metadata, 'subscription.search_limits.limit', 0) === -1
+                    ? -1
+                    : max(0, (int) data_get($record->metadata, 'subscription.search_limits.limit', 0) - (int) data_get($record->metadata, 'subscription.search_limits.used', 0)),
                 'cta' => (string) data_get($record->plan?->metadata, 'settings.cta', 'Choose plan'),
                 'popular' => (bool) data_get($record->plan?->metadata, 'settings.popular', false),
                 'trial_enabled' => (bool) data_get($record->plan?->metadata, 'subscription.trialEnabled', false),
@@ -1511,9 +1547,11 @@ class AdminListingRepository
             'users' => [
                 'name' => $record->name,
                 'email' => $record->email,
-                'current_plan_slug' => $record->current_plan_slug ?? 'free',
-                'credits' => (int) ($record->monthly_credits_remaining ?? 0),
-                'stripe_customer_id' => $record->stripe_customer_id,
+                'credits' => ($subscription = $record->subscriptions()->latest('created_at')->first())
+                    ? ((int) data_get($subscription->metadata, 'subscription.search_limits.limit', 0) === -1
+                        ? -1
+                        : max(0, (int) data_get($subscription->metadata, 'subscription.search_limits.limit', 0) - (int) data_get($subscription->metadata, 'subscription.search_limits.used', 0)))
+                    : 0,
                 'email_verified' => $record->email_verified_at !== null,
                 'free_search_used' => $record->free_search_used_at !== null,
                 // Never round-trips the hash - the field is write-only.
@@ -1596,7 +1634,7 @@ class AdminListingRepository
             'coupon-programs' => [
                 'code' => '',
                 'name' => '',
-                'plan_slug' => (string) (PricingPlan::query()->orderBy('amount')->value('slug') ?? 'basic'),
+                'plan_slug' => (string) (PricingPlan::query()->orderBy('amount')->value('slug') ?? 'growth'),
                 'billing_cycle' => 'monthly',
                 'max_redemptions' => 0,
                 'allowed_domain' => '',
@@ -1619,6 +1657,7 @@ class AdminListingRepository
             'viral-videos' => 'No viral videos match the current filters yet.',
             'searches' => 'No searches match the current filters yet.',
             'inquiries' => 'No inquiries match the current filters yet.',
+            'newsletter' => 'No newsletter subscribers match the current filters yet.',
             'plans' => 'No plans match the current filters yet.',
             'subscription' => 'No subscriptions match the current filters yet.',
             'users' => 'No users match the current filters yet.',

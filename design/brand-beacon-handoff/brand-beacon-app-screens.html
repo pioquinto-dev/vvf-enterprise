@@ -450,7 +450,7 @@ body{padding-top:48px}
     border-radius: 8px;
 }
 
-/* ---------- top view bar (back link + outliers/their-content switch) ---------- */
+/* ---------- top view bar (back link + breakouts/their-content switch) ---------- */
 
 .tracker .viewbar {
     display: flex;
@@ -2224,7 +2224,7 @@ const KEYWORDS=[
  {v:'beauty',on:true},{v:'skincare',on:true},{v:'eye gel',on:true},{v:'serum',on:true},
  {v:'reviews',on:false},{v:'routine',on:false},{v:'glazed donut',on:false,custom:true}];
 
-const STAGES=['Starting the scrape','Pulling videos from TikTok','Filtering against your keywords','Ranking by outlier score'];
+const STAGES=['Starting the scrape','Pulling videos from TikTok','Filtering against your keywords','Ranking by breakout score'];
 
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 
@@ -2384,14 +2384,14 @@ SCREENS.results=()=>shell('Library',`
     </div>
   </div>
   <div class="card" style="margin-bottom:18px"><div style="display:grid;grid-template-columns:repeat(4,1fr)">
-    ${[['118','Videos found'],['22x','Top outlier'],['16.4M','Total views'],['64','Creators']].map((s,i)=>
+    ${[['118','Videos found'],['22x','Top breakout'],['16.4M','Total views'],['64','Creators']].map((s,i)=>
       `<div style="padding:20px;text-align:center;${i<3?'border-right:1px solid var(--line)':''}">
         <div style="font-size:1.5rem;font-weight:900;letter-spacing:-.04em;color:var(--ink)">${s[0]}</div>
         <div class="faint" style="font-size:.76rem;margin-top:4px">${s[1]}</div></div>`).join('')}
   </div></div>
   <div class="tools">
     <label class="srch">${I.srch}<input placeholder="Filter these results"></label>
-    <span class="sel"><select><option>Outlier score</option><option>Views</option><option>Most recent</option></select>${I.chev}</span>
+    <span class="sel"><select><option>Breakout score</option><option>Views</option><option>Most recent</option></select>${I.chev}</span>
     <span class="sel"><select><option>Last 90 days</option><option>Last 30 days</option><option>Last 7 days</option></select>${I.chev}</span>
   </div>
   <div class="vgrid">${RESULTS.map((v,i)=>`
@@ -2585,7 +2585,7 @@ SCREENS['library-videos']=()=>shell('Library',`
   <div class="tools">
     <label class="srch">${I.srch}<input placeholder="Search your bookmarked videos"></label>
     <span class="sel"><select><option>All searches</option><option>rhode skin</option><option>skims</option><option>olipop</option></select>${I.chev}</span>
-    <span class="sel"><select><option>Outlier score</option><option>Views</option><option>Recently saved</option></select>${I.chev}</span>
+    <span class="sel"><select><option>Breakout score</option><option>Views</option><option>Recently saved</option></select>${I.chev}</span>
   </div>
   <div class="vgrid">${BM_VIDEOS.map((v,i)=>videoCard(v,i)).join('')}</div>`,'wrapw');
 
@@ -2677,7 +2677,7 @@ function brandCard(b){
       <span class="pill ${st.cls}"><i></i>${st.label}</span>
     </div>
     <div class="bcard__mid">
-      <div><span class="bcard__v">${b.out}</span><span class="bcard__l">outliers/wk</span></div>
+      <div><span class="bcard__v">${b.out}</span><span class="bcard__l">breakouts/wk</span></div>
       <div><span class="bcard__v">${b.top}</span><span class="bcard__l">top score</span></div>
       <div><span class="bcard__v">${b.vids}</span><span class="bcard__l">videos</span></div>
       <div class="bcard__sp">${sparkSvg(b.spark)}
@@ -2696,7 +2696,7 @@ SCREENS.brands=()=>shell('Brand searches',`
       <textarea rows="2" placeholder="Which brand do you want to research?"></textarea>
       <div class="sbox__f">
         <p class="sbox__t">Try <b>“rhode skin”</b><br>One brand per search — we widen it with keywords next.</p>
-        <a href="#" data-go="keywords" data-flow="brand" class="btn btn--y btn--lg">${I.srch} Find outliers</a>
+        <a href="#" data-go="keywords" data-flow="brand" class="btn btn--y btn--lg">${I.srch} Find breakouts</a>
       </div>
     </div>
     <div class="bhero__r">
@@ -2707,7 +2707,7 @@ SCREENS.brands=()=>shell('Brand searches',`
   </section>
 
   <section class="movers">
-    <div class="movers__h"><h2>Moving this week</h2><span class="note">Best outlier across every brand you track.</span></div>
+    <div class="movers__h"><h2>Moving this week</h2><span class="note">Best breakout across every brand you track.</span></div>
     <div class="movers__g">
       ${RESULTS.slice(0,3).map((v,i)=>`<a class="mv" href="#" data-go="analytics">
         <span class="mv__t"><img src="${IMGS[i%3]}" alt=""><span class="mv__x">${v.multiplier}</span></span>
@@ -2735,7 +2735,7 @@ SCREENS.brands=()=>shell('Brand searches',`
     <div class="tools" style="margin-top:14px">
       <label class="srch">${I.srch}<input placeholder="Filter brands"></label>
       <span class="sel"><select><option>All categories</option><option>Skincare</option><option>Beauty</option><option>Beverage</option><option>Home</option><option>Fitness</option></select>${I.chev}</span>
-      <span class="sel"><select><option>Most outliers</option><option>Top score</option><option>Recently updated</option><option>Name A-Z</option></select>${I.chev}</span>
+      <span class="sel"><select><option>Most breakouts</option><option>Top score</option><option>Recently updated</option><option>Name A-Z</option></select>${I.chev}</span>
     </div>
     <div class="bgrid">${BRAND_ROWS.map(brandCard).join('')}</div>
   </section>
@@ -2768,7 +2768,7 @@ function productCard(b){
       <span class="pill ${st.cls}"><i></i>${st.label}</span>
     </div>
     <div class="bcard__mid">
-      <div><span class="bcard__v">${b.out}</span><span class="bcard__l">outliers/wk</span></div>
+      <div><span class="bcard__v">${b.out}</span><span class="bcard__l">breakouts/wk</span></div>
       <div><span class="bcard__v">${b.top}</span><span class="bcard__l">top score</span></div>
       <div><span class="bcard__v">${b.vids}</span><span class="bcard__l">videos</span></div>
       <div class="bcard__sp">${sparkSvg(b.spark)}
@@ -2787,7 +2787,7 @@ SCREENS.products=()=>shell('Product searches',`
       <textarea rows="2" placeholder="Which product do you want to track?"></textarea>
       <div class="sbox__f">
         <p class="sbox__t">Try <b>“lip oil”</b><br>One product per search — we widen it with keywords next.</p>
-        <a href="#" data-go="keywords" data-flow="product" class="btn btn--y btn--lg">${I.srch} Find outliers</a>
+        <a href="#" data-go="keywords" data-flow="product" class="btn btn--y btn--lg">${I.srch} Find breakouts</a>
       </div>
     </div>
     <div class="bhero__r">
@@ -2798,7 +2798,7 @@ SCREENS.products=()=>shell('Product searches',`
   </section>
 
   <section class="movers">
-    <div class="movers__h"><h2>Moving this week</h2><span class="note">Best outlier across every product you track.</span></div>
+    <div class="movers__h"><h2>Moving this week</h2><span class="note">Best breakout across every product you track.</span></div>
     <div class="movers__g">
       ${RESULTS.slice(0,3).map((v,i)=>`<a class="mv" href="#" data-go="analytics">
         <span class="mv__t"><img src="${IMGS[i%3]}" alt=""><span class="mv__x">${v.multiplier}</span></span>
@@ -2826,7 +2826,7 @@ SCREENS.products=()=>shell('Product searches',`
     <div class="tools" style="margin-top:14px">
       <label class="srch">${I.srch}<input placeholder="Filter products"></label>
       <span class="sel"><select><option>All categories</option><option>Beauty</option><option>Skincare</option><option>Haircare</option><option>Bath</option></select>${I.chev}</span>
-      <span class="sel"><select><option>Most outliers</option><option>Top score</option><option>Recently updated</option><option>Name A-Z</option></select>${I.chev}</span>
+      <span class="sel"><select><option>Most breakouts</option><option>Top score</option><option>Recently updated</option><option>Name A-Z</option></select>${I.chev}</span>
     </div>
     <div class="bgrid">${PRODUCT_ROWS.map(productCard).join('')}</div>
   </section>
@@ -2840,7 +2840,7 @@ function lineChart(vals,labels){
   const pts=vals.map((v,i)=>[x(i),y(v)]);
   const d=pts.map((p,i)=>(i?'L':'M')+p[0].toFixed(1)+' '+p[1].toFixed(1)).join(' ');
   const ticks=[0,max/2,max];
-  return `<div class="chart" id="lc"><div class="tip" id="lcTip"></div><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Outliers per week, past 12 weeks">
+  return `<div class="chart" id="lc"><div class="tip" id="lcTip"></div><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Breakouts per week, past 12 weeks">
     ${ticks.map(t=>`<line class="gridline" x1="${PL}" x2="${W-PR}" y1="${y(t)}" y2="${y(t)}"/>
       <text class="axis" x="${PL-8}" y="${y(t)+3.5}" text-anchor="end">${t}</text>`).join('')}
     <path d="${d}" fill="none" stroke="#B98200" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
@@ -2855,7 +2855,7 @@ function barChart(rows,ramp){
   const W=560,H=190,PL=34,PR=8,PT=12,PB=26;
   const max=Math.max(...rows.map(r=>r[1])), iw=W-PL-PR, ih=H-PT-PB;
   const bw=iw/rows.length-10;
-  return `<div class="chart" id="bc"><div class="tip" id="bcTip"></div><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Outlier score distribution">
+  return `<div class="chart" id="bc"><div class="tip" id="bcTip"></div><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Breakout score distribution">
     ${[0,max/2,max].map(t=>`<line class="gridline" x1="${PL}" x2="${W-PR}" y1="${PT+ih-(t/max)*ih}" y2="${PT+ih-(t/max)*ih}"/>
       <text class="axis" x="${PL-8}" y="${PT+ih-(t/max)*ih+3.5}" text-anchor="end">${Math.round(t)}</text>`).join('')}
     ${rows.map((r,i)=>{const h=(r[1]/max)*ih, xx=PL+iw*i/rows.length+5;
@@ -2900,7 +2900,7 @@ function trkCard(v,i,rank){
     </div>
     <div class="bbbody">
       <div class="bbstats">
-        <div class="bbchip bbchip--score"><span class="lab"><i></i>Outlier score</span><span class="num">${v.multiplier}</span></div>
+        <div class="bbchip bbchip--score"><span class="lab"><i></i>Breakout score</span><span class="num">${v.multiplier}</span></div>
         <div class="bbchip bbchip--views"><span class="lab"><i></i>Views</span><span class="num">${v.views}</span></div>
       </div>
       <div class="bbwho">
@@ -2948,19 +2948,19 @@ SCREENS.analytics=()=>shell('Library',`<div class="tracker">
 
   <div class="ai">
     <svg class="spark" viewBox="0 0 24 24" aria-hidden><path d="M12 2l1.8 6.2L20 10l-6.2 1.8L12 18l-1.8-6.2L4 10l6.2-1.8z"/></svg>
-    <div class="txt"><b>Outliers are up 45% week over week, driven almost entirely by short GRWM clips under 15 seconds.</b> The “glazed donut” hook appears in 4 of the top 5 — it has replaced ingredient explainers as the dominant format in this category.</div>
+    <div class="txt"><b>Breakouts are up 45% week over week, driven almost entirely by short GRWM clips under 15 seconds.</b> The “glazed donut” hook appears in 4 of the top 5 — it has replaced ingredient explainers as the dominant format in this category.</div>
     <span class="when">Mar 4</span>
   </div>
 
   <div class="stats">
     <div class="stat"><div class="k">followers</div><div class="v">1.2<small>M</small></div><div class="d up">↑ 4.2% mo</div></div>
-    <div class="stat"><div class="k">outliers this week</div><div class="v">16</div><div class="d up">↑ 5 vs last</div></div>
-    <div class="stat hero"><div class="k">top outlier score</div><div class="v">22<small>x</small></div><div class="d up">↑ 4x</div></div>
+    <div class="stat"><div class="k">breakouts this week</div><div class="v">16</div><div class="d up">↑ 5 vs last</div></div>
+    <div class="stat hero"><div class="k">top breakout score</div><div class="v">22<small>x</small></div><div class="d up">↑ 4x</div></div>
     <div class="stat"><div class="k">avg score</div><div class="v">9.4<small>x</small></div><div class="d down">↓ 0.6x</div></div>
     <div class="stat"><div class="k">avg eng rate</div><div class="v">7.8<small>%</small></div><div class="d up">↑ 0.9pt</div></div>
   </div>
 
-  <div class="sect-head"><h2>outlier videos</h2><span class="note">their posts that beat the search median. ranked by outlier score.</span></div>
+  <div class="sect-head"><h2>breakout videos</h2><span class="note">their posts that beat the search median. ranked by breakout score.</span></div>
 
   <div class="winner">
     <div class="vid" id="heroVid">
@@ -2968,7 +2968,7 @@ SCREENS.analytics=()=>shell('Library',`<div class="tracker">
       <img class="cov" src="${IMGS[0]}" alt="">
       <span class="ovscrim" aria-hidden="true"></span>
       <div class="ovstats">
-        <div class="ovchip ovchip--score"><span class="lab"><i></i>Outlier score</span><span class="num">18x</span></div>
+        <div class="ovchip ovchip--score"><span class="lab"><i></i>Breakout score</span><span class="num">18x</span></div>
         <div class="ovchip ovchip--views"><span class="lab"><i></i>Views</span><span class="num">4.2M</span></div>
       </div>
       <button type="button" class="play" aria-label="Play video"><svg width="16" height="18" viewBox="0 0 14 16" fill="#1B1834"><path d="M0 0l14 8-14 8z"/></svg></button>
@@ -3010,7 +3010,7 @@ SCREENS.analytics=()=>shell('Library',`<div class="tracker">
     </div>
   </div>
 
-  <div class="sect-head" style="margin-top:34px"><h2 style="font-size:19px">more outliers</h2><span class="note">7 more.</span></div>
+  <div class="sect-head" style="margin-top:34px"><h2 style="font-size:19px">more breakouts</h2><span class="note">7 more.</span></div>
   <div class="feed">${RESULTS.slice(1,5).map((v,i)=>trkCard(v,i+1,i+2)).join('')}</div>
   <div class="loadmore"><button class="tbtn">load 4 more ↓</button></div>
 
@@ -3032,7 +3032,7 @@ SCREENS.analytics=()=>shell('Library',`<div class="tracker">
 
   <div class="sect-head"><h2>based on the data from videos pulled last March 4</h2><span class="note">this tracker, past 12 weeks.</span></div>
   <div class="panel">
-    <div class="ts-tabs"><button class="on">views</button><button>engagement</button><button>outliers</button></div>
+    <div class="ts-tabs"><button class="on">views</button><button>engagement</button><button>breakouts</button></div>
     <div class="ts-head"><span class="ts-val">16.4M</span><span class="ts-delta up">↑ 38% vs 12 wk ago</span></div>
     ${(()=>{const W=560,H=180,P=10,vals=[6.2,6.8,6.5,7.9,7.4,9.1,8.8,11.2,10.6,13.4,12.9,16.4];
       const mx=Math.max(...vals),mn=Math.min(...vals);
@@ -3065,12 +3065,12 @@ SCREENS.analytics=()=>shell('Library',`<div class="tracker">
 
   <div class="sect-head"><h2>more data</h2><span class="note">how the tracker is moving.</span></div>
   <div class="datagrid">
-    <div class="panel"><h3>outliers per week</h3><div class="psub">their posts scoring 3x or higher</div>
+    <div class="panel"><h3>breakouts per week</h3><div class="psub">their posts scoring 3x or higher</div>
       <div class="spark">
         ${[4,7,5,9,11,16].map((v,i,arr)=>`<div class="col"><div class="bar2${i===arr.length-1?' now':''}" style="height:${Math.max(v/16*100,4)}%"><em>${v}</em></div><span class="wl">${i===arr.length-1?'now':`wk ${i+1}`}</span></div>`).join('')}
       </div>
     </div>
-    <div class="panel"><h3>score distribution</h3><div class="psub">this search's 118 outliers</div>
+    <div class="panel"><h3>score distribution</h3><div class="psub">this search's 118 breakouts</div>
       <div class="dist">
         ${[['3–5x',52,'var(--violet-soft)'],['5–8x',34,'var(--violet-soft)'],['8–12x',21,'var(--violet)'],['12x+',11,'var(--coral)']].map(r=>`<div class="dline"><span class="rng">${r[0]}</span><span class="dbar"><span style="width:${r[1]/52*100}%;background:${r[2]}"></span></span><span class="cnt">${r[1]}</span></div>`).join('')}
       </div>
@@ -3101,7 +3101,7 @@ SCREENS.analytics=()=>shell('Library',`<div class="tracker">
           <span>Mar 2, 2026</span><span>0:14</span>
         </div>
         <div class="bbm-grid">
-          <div class="bbchip bbchip--score"><span class="lab"><i></i>Outlier</span><span class="num">18x</span></div>
+          <div class="bbchip bbchip--score"><span class="lab"><i></i>Breakout</span><span class="num">18x</span></div>
           <div class="bbchip bbchip--views"><span class="lab"><i></i>Views</span><span class="num">4.2M</span></div>
           <div class="bbchip bbchip--mut"><span class="lab"><i></i>Eng rate</span><span class="num">12.2%</span></div>
           <div class="bbchip bbchip--mut"><span class="lab"><i></i>Shares</span><span class="num">214K</span></div>
@@ -3123,7 +3123,7 @@ SCREENS.analytics=()=>shell('Library',`<div class="tracker">
 
         <div class="bbm-pane" data-p="viral">
           <div class="bbm-h"><span class="bbm-hi">${I.trend}</span><div><h4>Why It Went Viral</h4><span class="sub">18x baseline</span></div></div>
-          <p class="bbm-k">Top Outlier Drivers</p>
+          <p class="bbm-k">Top Breakout Drivers</p>
           <div class="drv"><span class="n">01</span><div><b>Countable Promise <em class="pct">+34%</em></b><p>“Only 3 products” is a finite, checkable claim — the viewer stays to verify the count, which holds retention to the last second.</p></div></div>
           <div class="drv"><span class="n">02</span><div><b>Trend-Native Phrasing <em class="pct">+22%</em></b><p>“Glazed donut skin” carries built-in search demand; the video joins an existing conversation instead of starting one.</p></div></div>
           <div class="drv"><span class="n">03</span><div><b>Sub-15s Payoff <em class="pct">+18%</em></b><p>The full routine lands before the natural swipe point, so completion rate — the strongest ranking signal — stays high.</p></div></div>
@@ -3187,7 +3187,7 @@ function bindTips(){
       el.addEventListener('mouseleave',()=>tip.style.opacity=0);
     });
   };
-  wire('lc','lcTip','rect[data-i]',el=>`${el.dataset.l} · <b>${el.dataset.v}</b> outliers`);
+  wire('lc','lcTip','rect[data-i]',el=>`${el.dataset.l} · <b>${el.dataset.v}</b> breakouts`);
   wire('bc','bcTip','rect[data-l]',el=>`${el.dataset.l} · <b>${el.dataset.v}</b> videos`);
   wire('hm','hmTip','.hm__c',el=>`${el.dataset.l} · <b>${el.dataset.v}</b> posts`);
 }

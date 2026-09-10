@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\CustomKeywordSearch;
+use App\Models\User;
+use App\Services\Billing\BillingService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -47,5 +49,12 @@ class FreeSearchFunnelController extends Controller
     public static function put(Request $request, array $payload): void
     {
         $request->session()->put(self::SESSION_KEY, $payload);
+    }
+
+    /** A pending public draft is never redeemable with paid-plan credits. */
+    public static function canStartFor(User $user): bool
+    {
+        return $user->free_search_used_at === null
+            && ! app(BillingService::class)->hasPaidPlan($user);
     }
 }
