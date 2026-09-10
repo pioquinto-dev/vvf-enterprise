@@ -89,6 +89,28 @@ class DiscoveryFeedTest extends TestCase
                 ->has('feed.videos', 0));
     }
 
+    public function test_unused_free_search_accounts_can_browse_older_and_unscored_global_records(): void
+    {
+        $user = User::factory()->create(['free_search_used_at' => null]);
+        $older = $this->video('older.breakout', 88);
+        $older->update(['created_at' => now()->subMonths(3)]);
+        $this->video('unscored.creator', 0)->update(['created_at' => now()->subMonth()]);
+        $this->video('hidden.creator', 100)->update(['archived_at' => now()]);
+
+        $this->actingAs($user)->get('/home')
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->where('feed.isDiscoveryFeed', true)
+                ->where('feed.totalCount', 2)
+                ->has('feed.videos', 2)
+                ->where('feed.videos.0.handle', '@older.breakout')
+                ->where('feed.videos.1.handle', '@unscored.creator')
+                ->where('feed.videos.0.search_url', null));
+
+        $this->assertNull($user->fresh()->free_search_used_at);
+        $this->assertSame(0, CustomKeywordSearch::count());
+    }
+
     public function test_archived_videos_stay_out_of_the_discovery_feed(): void
     {
         $this->video('cleangirl.ari', 88)->update(['archived_at' => now()]);

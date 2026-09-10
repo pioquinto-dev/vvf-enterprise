@@ -10,7 +10,7 @@ class FeedDiscoveryService
 {
     public function payload(): array
     {
-        return Cache::remember('feed-discovery:v2', 900, function (): array {
+        return Cache::remember('feed-discovery:v3', 900, function (): array {
             $end = now();
             $start = $end->copy()->subDays(7);
             $previous = $start->copy()->subDays(7);
@@ -41,14 +41,15 @@ class FeedDiscoveryService
             usort($climbing, fn ($a, $b) => ($b['growth'] ?? -1) <=> ($a['growth'] ?? -1) ?: $b['count'] <=> $a['count'] ?: strcmp($a['tag'], $b['tag']));
             arsort($sounds);
 
-            // The strongest videos indexed this fortnight, used to fill My Feed
-            // for someone who has not run a search yet. Only the ids are cached;
-            // the feed loads and shapes them per request.
+            // New accounts can browse the visible global collection even when
+            // nothing was indexed recently or scores have not been populated.
+            // Only ids are cached; the feed checks visibility again per request.
             $topVideoIds = ViralVideo::query()
                 ->visible()
-                ->whereBetween('created_at', [$previous, $end])
-                ->where('virality_score', '>', 0)
-                ->orderByDesc('virality_score')
+                ->orderByRaw('COALESCE(virality_score, 0) DESC')
+                ->orderByDesc('views')
+                ->orderByDesc('created_at')
+                ->orderBy('id')
                 ->limit(8)
                 ->pluck('id')
                 ->all();

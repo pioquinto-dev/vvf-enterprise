@@ -289,7 +289,7 @@ function DiscoveryPrompt() {
       <div>
         <h2>Run your first search to make this yours</h2>
         <p>
-          Until then, here is what is breaking out across Brand Beacon. Search a brand or product
+          Until then, explore videos from across Brand Beacon. Search a brand or product
           above to swap it for your own.
         </p>
       </div>
@@ -377,10 +377,10 @@ export default function MyFeed({ feed = {}, currentPath = '/home', onAnalyze, an
       {isDiscoveryFeed && <DiscoveryPrompt />}
 
       <div className="bbf-sbar">
-        <h2>{isDiscoveryFeed ? 'Breaking out now' : 'Your top breakout videos'}</h2>
+        <h2>{isDiscoveryFeed ? 'Explore global videos' : 'Your top breakout videos'}</h2>
         <p>
           {isDiscoveryFeed
-            ? 'The strongest videos across Brand Beacon this week, while your own feed fills up.'
+            ? 'Discover videos from across Brand Beacon while your own feed fills up.'
             : `Curated list of the top breakout videos from your searches and categories.${totalCount > videos.length ? ` ${totalCount} broke out for you this week.` : ''}`}
         </p>
       </div>

@@ -329,8 +329,8 @@ class SavedSearchController extends Controller
     /**
      * "My Feed" — the signed-in home. Everything is derived from the user's own
      * searches: their strongest breakout videos, the sounds and hashtags those
-     * breakouts lean on, and the videos they saved. Empty when they have no
-     * searches yet (the page shows an encouraging empty state instead).
+     * breakouts lean on, and the videos they saved. Accounts without searches
+     * browse visible global videos until they have their own results.
      *
      * @return array<string, mixed>
      */
@@ -359,9 +359,12 @@ class SavedSearchController extends Controller
         // fill the feed with the best of what everyone else surfaced, so the
         // page shows the product working instead of an empty column.
         if ($searchIds->isEmpty()) {
+            $videos = $this->globalFeedVideos($discovery['topVideoIds'] ?? []);
+
             return array_merge($empty, [
                 'isDiscoveryFeed' => true,
-                'videos' => $this->globalFeedVideos($discovery['topVideoIds'] ?? []),
+                'videos' => $videos,
+                'totalCount' => count($videos),
             ]);
         }
 

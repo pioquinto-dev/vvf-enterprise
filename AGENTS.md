@@ -611,6 +611,8 @@ High-level flow:
 
 ## Frontend architecture notes
 
+- Accounts without searches receive up to eight visible global videos in My Feed, ranked by breakout score, views, indexing date, then ID. This collection has no recency or positive-score requirement, so older and unscored records remain available. Browsing it does not consume the free search; global cards expose no other account's search links. Discovery aggregates retain their seven-day windows.
+
 - My Feed includes platform-wide discovery cards alongside personal highlights: most searched brands/products over seven days, top sounds in newly indexed visible videos, and hashtag occurrence growth versus the previous seven days. Discovery aggregates are cached for 15 minutes, expose no account identities, and also appear for accounts with no personal results. Desktop keeps personal highlights in the sidebar and places the three discovery cards in a full-width row below the feed; mobile interleaves cards. Personal video cards remain limited to eight.
 
 - Inertia entrypoint is `resources/js/app.jsx`.
