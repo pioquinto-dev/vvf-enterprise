@@ -1,4 +1,4 @@
-import { Head, router, usePage } from '@inertiajs/react';
+import { Head, usePage } from '@inertiajs/react';
 import { useEffect, useRef, useState } from 'react';
 
 import {
@@ -10,6 +10,7 @@ import {
 import AnalysisModal from './VideoAnalysis/AnalysisModal.jsx';
 import AppLayout from './components/AppLayout.jsx';
 import MyFeed from './components/MyFeed.jsx';
+import BrandInlineFlow from './components/BrandInlineFlow.jsx';
 import SearchFlashModals from './components/SearchFlashModals.jsx';
 import {
   AnalysisUpgradeModal,
@@ -20,9 +21,9 @@ import {
 
 /**
  * "My Feed" — the signed-in landing page. The search card on top starts every
- * search: picking Brand or Product and typing a subject hands off to the
- * matching hub (/brands or /products) with the subject prefilled, which opens
- * that page's inline flow on the keyword step. Below it the feed is built from
+ * search: picking Brand or Product and typing a subject opens keyword
+ * expansion here, then hands the created search to its live results page.
+ * Below it the feed is built from
  * the searches the user already owns.
  */
 
@@ -77,6 +78,7 @@ function TypeToggle({ value, onChange }) {
 }
 
 function SearchCard({ suggestions }) {
+  const [activeSearch, setActiveSearch] = useState(null);
   const [type, setType] = useState('brand');
   const [query, setQuery] = useState('');
   const [matches, setMatches] = useState([]);
@@ -125,8 +127,7 @@ function SearchCard({ suggestions }) {
     return () => document.removeEventListener('mousedown', onDown);
   }, [open]);
 
-  // Brand and product searches each own a hub with the inline flow; ?q= drops
-  // the typed subject straight into it on the keyword step.
+  // Start the shared stepper here without navigating away from My Feed.
   const run = (phrase = query, kind = type) => {
     const subject = String(phrase).trim();
     if (!subject) {
@@ -134,11 +135,10 @@ function SearchCard({ suggestions }) {
       return;
     }
     setOpen(false);
-    router.visit(`${kind === 'product' ? '/products' : '/brands'}?q=${encodeURIComponent(subject)}`);
+    setActiveSearch({ subject, kind });
   };
 
-  // Picking a suggestion runs it, the same as the chips below the field: the
-  // hub's keyword step is still editable, so nothing is committed early.
+  // Suggestions open the same editable keyword step as the search button.
   const choose = (row) => run(row.label, row.type === 'product' ? 'product' : 'brand');
 
   const onKeyDown = (event) => {
@@ -170,6 +170,24 @@ function SearchCard({ suggestions }) {
       setActive((cur) => (cur <= 0 ? matches.length - 1 : cur - 1));
     }
   };
+
+  if (activeSearch) {
+    return <BrandInlineFlow
+      kind={activeSearch.kind}
+      eyebrow={activeSearch.kind === 'product' ? 'Start a product search' : 'Start a brand search'}
+      placeholder={activeSearch.kind === 'product' ? 'Which product do you want to track?' : 'Which brand do you want to research?'}
+      prefillSubject={activeSearch.subject}
+      expandOnPrefill
+      onReset={(subject) => {
+        setQuery(subject);
+        setType(activeSearch.kind);
+        setOpen(false);
+        setActive(-1);
+        setActiveSearch(null);
+        window.requestAnimationFrame(() => inputRef.current?.focus());
+      }}
+    />;
+  }
 
   return (
     <section className="bbs-card">

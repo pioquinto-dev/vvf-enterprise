@@ -611,6 +611,10 @@ High-level flow:
 
 ## Frontend architecture notes
 
+- Cancel, close, and subject editing in My Feed's inline search return to its Brand/Product search card using `onReset`, preserving the current subject and selected kind. Hub pages retain the inline flow's own collapsed form.
+
+- My Feed's search box and suggestion chips open the shared BrandInlineFlow on My Feed with immediate keyword expansion. Search creation shows the inline running state, then navigates to the search's canonical results URL for existing running status/modal behavior. Popular Searches still confirms and opens a prefilled brand/product hub.
+
 - My Feed shows Popular Searches below Climbing this Week for all plans, including empty feeds. It ranks the top five all-time account-owned search records (including soft-deleted searches) by occurrences, then distinct users, then keyword/type. Keywords are trimmed and case-folded; competitor searches count as brands. Refresh runs are not new search occurrences. Only aggregate counts are exposed, cached for 15 minutes. Confirming a row opens the matching hub with `?q=`; Brands and Products must forward `prefillQuery` to SearchListScreen. No search is created by confirmation.
 
 - Web 404 responses render `Errors/NotFound` through the exception response handler, preserving HTTP 404 for direct and Inertia requests, with a homepage link. API 404s remain JSON.

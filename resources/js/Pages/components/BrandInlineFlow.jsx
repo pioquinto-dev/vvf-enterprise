@@ -88,6 +88,8 @@ export default function BrandInlineFlow({
   hint = 'One brand per search — we widen it with keywords next.',
   prefillSubject = '',
   prefillNonce = 0,
+  expandOnPrefill = false,
+  onReset = null,
   onCreated = null,
 }) {
   const { billing = {}, auth = {} } = usePage().props;
@@ -155,13 +157,18 @@ export default function BrandInlineFlow({
     setActiveSuggestion(-1);
     setError(null);
 
+    if (expandOnPrefill) {
+      startFlow(nextSubject);
+      return;
+    }
+
     rootRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     window.requestAnimationFrame(() => inputRef.current?.focus());
-  }, [prefillNonce, prefillSubject]);
+  }, [prefillNonce, prefillSubject, expandOnPrefill]);
 
   /* -------- collapsed -> keywords: fetch suggested terms -------- */
-  const startFlow = async () => {
-    const q = subject.trim().replace(/\s+/g, ' ');
+  const startFlow = async (prefill) => {
+    const q = (typeof prefill === 'string' ? prefill : subject).trim().replace(/\s+/g, ' ');
     if (!q) return;
     if (!searchCreditsAvailable) {
       setUpgradeModalOpen(true);
@@ -196,6 +203,10 @@ export default function BrandInlineFlow({
   };
 
   const collapse = () => {
+    if (onReset) {
+      onReset(subject);
+      return;
+    }
     setState('collapsed');
     setKeywords([]);
     setSearchResult(null);

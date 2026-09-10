@@ -6451,7 +6451,7 @@ function MiniStepper({ current }) {
 		})
 	});
 }
-function BrandInlineFlow({ kind = "brand", placeholder = "Which brand do you want to research?", sample = "rhode skin", eyebrow = "Start a brand search", hint = "One brand per search — we widen it with keywords next.", prefillSubject = "", prefillNonce = 0, onCreated = null }) {
+function BrandInlineFlow({ kind = "brand", placeholder = "Which brand do you want to research?", sample = "rhode skin", eyebrow = "Start a brand search", hint = "One brand per search — we widen it with keywords next.", prefillSubject = "", prefillNonce = 0, expandOnPrefill = false, onReset = null, onCreated = null }) {
 	const { billing: billing$5 = {}, auth = {} } = usePage().props;
 	const signedIn = auth.signedIn ?? Boolean(auth.user);
 	const [state, setState] = useState("collapsed");
@@ -6504,14 +6504,22 @@ function BrandInlineFlow({ kind = "brand", placeholder = "Which brand do you wan
 		setShowSuggestions(false);
 		setActiveSuggestion(-1);
 		setError(null);
+		if (expandOnPrefill) {
+			startFlow(nextSubject);
+			return;
+		}
 		rootRef.current?.scrollIntoView({
 			behavior: "smooth",
 			block: "start"
 		});
 		window.requestAnimationFrame(() => inputRef.current?.focus());
-	}, [prefillNonce, prefillSubject]);
-	const startFlow = async () => {
-		const q = subject.trim().replace(/\s+/g, " ");
+	}, [
+		prefillNonce,
+		prefillSubject,
+		expandOnPrefill
+	]);
+	const startFlow = async (prefill) => {
+		const q = (typeof prefill === "string" ? prefill : subject).trim().replace(/\s+/g, " ");
 		if (!q) return;
 		if (!searchCreditsAvailable) {
 			setUpgradeModalOpen(true);
@@ -6547,6 +6555,10 @@ function BrandInlineFlow({ kind = "brand", placeholder = "Which brand do you wan
 		}
 	};
 	const collapse = () => {
+		if (onReset) {
+			onReset(subject);
+			return;
+		}
 		setState("collapsed");
 		setKeywords([]);
 		setSearchResult(null);
@@ -11619,9 +11631,9 @@ var modalCss = `
 var Feed_exports = /* @__PURE__ */ __exportAll({ default: () => Feed });
 /**
 * "My Feed" — the signed-in landing page. The search card on top starts every
-* search: picking Brand or Product and typing a subject hands off to the
-* matching hub (/brands or /products) with the subject prefilled, which opens
-* that page's inline flow on the keyword step. Below it the feed is built from
+* search: picking Brand or Product and typing a subject opens keyword
+* expansion here, then hands the created search to its live results page.
+* Below it the feed is built from
 * the searches the user already owns.
 */
 var Icons$1 = {
@@ -11720,6 +11732,7 @@ function TypeToggle({ value, onChange }) {
 	});
 }
 function SearchCard({ suggestions }) {
+	const [activeSearch, setActiveSearch] = useState(null);
 	const [type, setType] = useState("brand");
 	const [query, setQuery] = useState("");
 	const [matches, setMatches] = useState([]);
@@ -11762,7 +11775,10 @@ function SearchCard({ suggestions }) {
 			return;
 		}
 		setOpen(false);
-		router.visit(`${kind === "product" ? "/products" : "/brands"}?q=${encodeURIComponent(subject)}`);
+		setActiveSearch({
+			subject,
+			kind
+		});
 	};
 	const choose = (row) => run(row.label, row.type === "product" ? "product" : "brand");
 	const onKeyDown = (event) => {
@@ -11790,6 +11806,21 @@ function SearchCard({ suggestions }) {
 			setActive((cur) => cur <= 0 ? matches.length - 1 : cur - 1);
 		}
 	};
+	if (activeSearch) return /* @__PURE__ */ jsx(BrandInlineFlow, {
+		kind: activeSearch.kind,
+		eyebrow: activeSearch.kind === "product" ? "Start a product search" : "Start a brand search",
+		placeholder: activeSearch.kind === "product" ? "Which product do you want to track?" : "Which brand do you want to research?",
+		prefillSubject: activeSearch.subject,
+		expandOnPrefill: true,
+		onReset: (subject) => {
+			setQuery(subject);
+			setType(activeSearch.kind);
+			setOpen(false);
+			setActive(-1);
+			setActiveSearch(null);
+			window.requestAnimationFrame(() => inputRef.current?.focus());
+		}
+	});
 	return /* @__PURE__ */ jsxs("section", {
 		className: "bbs-card",
 		children: [/* @__PURE__ */ jsxs("div", {
