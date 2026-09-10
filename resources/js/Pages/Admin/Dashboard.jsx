@@ -230,6 +230,45 @@ function RecentActivity({ activity = {} }) {
     );
 }
 
+function CriticalErrorsPanel({ criticalErrors = {} }) {
+    const rows = criticalErrors.rows ?? [];
+    const unresolvedCount = criticalErrors.unresolvedCount ?? 0;
+
+    if (unresolvedCount === 0) return null;
+
+    return (
+        <section className="rounded-2xl border border-[rgba(154,52,18,.25)] bg-[var(--warn-bg)] p-4 shadow-[0_18px_42px_-32px_rgba(154,52,18,.35)] sm:p-5">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                    <p className="text-[10px] font-semibold tracking-[.22em] text-[var(--warn)] uppercase">Needs attention</p>
+                    <h3 className="mt-1 text-[17px] font-semibold text-[var(--ink)]">
+                        {unresolvedCount} unresolved critical error{unresolvedCount === 1 ? '' : 's'}
+                    </h3>
+                </div>
+                <Link href="/x/admin/critical-errors" className="text-[11px] font-semibold text-[var(--warn)] transition hover:opacity-80">
+                    Show All -&gt;
+                </Link>
+            </div>
+            <div className="mt-4 rounded-xl border border-[rgba(154,52,18,.2)] bg-white">
+                {rows.map((row) => (
+                    <div key={row.id} className="flex gap-2.5 border-b border-[#e8edf5] px-3 py-2.5 last:border-b-0">
+                        <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-[var(--warn)]" />
+                        <div className="min-w-0 flex-1">
+                            <div className="flex flex-wrap items-center gap-1.5">
+                                <strong className="text-[12px] text-[var(--ink)]">{row.event}</strong>
+                                <span className="rounded-full bg-[#f1f4f8] px-1.5 py-0.5 text-[8px] font-semibold tracking-[.08em] text-[#718197] uppercase">
+                                    {row.date ? formatDay(row.date.slice(0, 10)) : '-'}
+                                </span>
+                            </div>
+                            <p className="mt-1 truncate text-[10.5px] text-[#718197]">{row.message}</p>
+                        </div>
+                    </div>
+                ))}
+            </div>
+        </section>
+    );
+}
+
 function CouponProgramsPanel({ coupons = {} }) {
     const programs = coupons.programs ?? [];
     const alerts = coupons.alerts ?? [];
@@ -311,7 +350,7 @@ function CouponProgramsPanel({ coupons = {} }) {
     );
 }
 
-export default function Dashboard({ trend = [], stats = [], snapshot = {}, range = '30D', ranges = [], acquisition = {}, activity = {}, engagement = {}, coupons = {} }) {
+export default function Dashboard({ trend = [], stats = [], snapshot = {}, range = '30D', ranges = [], acquisition = {}, activity = {}, engagement = {}, coupons = {}, criticalErrors = {} }) {
     const refresh = useForm({});
 
     const selectRange = (next) => {
@@ -342,6 +381,10 @@ export default function Dashboard({ trend = [], stats = [], snapshot = {}, range
                     </button>
                 </div>
             </section>
+
+            <div className="mt-3">
+                <CriticalErrorsPanel criticalErrors={criticalErrors} />
+            </div>
 
             <section className="mt-3 rounded-2xl border border-[var(--line)] bg-white px-5 py-4 shadow-[0_1px_2px_rgba(20,15,0,.04),0_16px_32px_-26px_rgba(20,15,0,.18)]">
                 <div className="mb-4 flex flex-wrap items-start justify-between gap-3">

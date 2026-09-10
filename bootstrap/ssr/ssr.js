@@ -490,6 +490,13 @@ var NAV_GROUPS = [
 		label: "Needs Attention",
 		items: [
 			{
+				key: "critical-errors",
+				label: "Critical Errors",
+				href: "/x/admin/critical-errors",
+				description: "Third-party and core failures",
+				icon: "CE"
+			},
+			{
 				key: "subscription-past-due",
 				label: "Past Due Subs",
 				href: "/x/admin/subscription?status=past_due",
@@ -980,7 +987,7 @@ var TONES = {
 	analysis: "#25a6d9",
 	coupon_usage: "#f6a819"
 };
-function formatTimestamp$1(value) {
+function formatTimestamp$2(value) {
 	if (!value) return "-";
 	return new Date(value).toLocaleString(void 0, {
 		month: "short",
@@ -1111,7 +1118,7 @@ function ActivityLog({ rows = [], filters = {}, events = [], pagination = {} }) 
 										children: [
 											row.email,
 											" - ",
-											formatTimestamp$1(row.date)
+											formatTimestamp$2(row.date)
 										]
 									})
 								]
@@ -2812,6 +2819,198 @@ function Taxonomy({ kind, items }) {
 	});
 }
 //#endregion
+//#region resources/js/Pages/Admin/CriticalErrors.jsx
+var CriticalErrors_exports = /* @__PURE__ */ __exportAll({ default: () => CriticalErrors });
+var STATUSES = [
+	["unresolved", "Unresolved"],
+	["resolved", "Resolved"],
+	["all", "All"]
+];
+function formatTimestamp$1(value) {
+	if (!value) return "-";
+	return new Date(value).toLocaleString(void 0, {
+		month: "short",
+		day: "numeric",
+		year: "numeric",
+		hour: "numeric",
+		minute: "2-digit"
+	});
+}
+function ErrorRow({ row }) {
+	const [expanded, setExpanded] = useState(false);
+	const resolveForm = useForm({});
+	const hasDetails = Boolean(row.exceptionClass || row.file || row.context && Object.keys(row.context).length > 0);
+	const resolve = () => {
+		resolveForm.patch(`/x/admin/critical-errors/${row.id}/resolve`, { preserveScroll: true });
+	};
+	return /* @__PURE__ */ jsx("article", {
+		className: "border-b border-[#e8edf5] px-4 py-3 last:border-b-0",
+		children: /* @__PURE__ */ jsxs("div", {
+			className: "flex gap-3",
+			children: [
+				/* @__PURE__ */ jsx("span", { className: `mt-1.5 h-2 w-2 shrink-0 rounded-full ${row.resolvedAt ? "bg-[#25a6d9]" : "bg-[var(--warn)]"}` }),
+				/* @__PURE__ */ jsxs("div", {
+					className: "min-w-0 flex-1",
+					children: [
+						/* @__PURE__ */ jsxs("div", {
+							className: "flex flex-wrap items-center gap-1.5",
+							children: [
+								/* @__PURE__ */ jsx("strong", {
+									className: "text-[12px] text-[var(--ink)]",
+									children: row.event
+								}),
+								row.exceptionClass && /* @__PURE__ */ jsx("span", {
+									className: "rounded-full border border-[#dce4f0] px-1.5 py-0.5 text-[8px] font-semibold tracking-[.1em] text-[#53657d] uppercase",
+									children: row.exceptionClass
+								}),
+								row.resolvedAt && /* @__PURE__ */ jsx("span", {
+									className: "rounded-full bg-[#e6f6fb] px-1.5 py-0.5 text-[8px] font-semibold tracking-[.1em] text-[#1c7ba0] uppercase",
+									children: "Resolved"
+								})
+							]
+						}),
+						/* @__PURE__ */ jsx("p", {
+							className: "mt-1 text-[11px] text-[#55667d]",
+							children: row.message
+						}),
+						/* @__PURE__ */ jsxs("p", {
+							className: "mt-1 text-[10px] text-[#8a98aa]",
+							children: [formatTimestamp$1(row.date), row.file && ` · ${row.file}${row.line ? `:${row.line}` : ""}`]
+						}),
+						hasDetails && /* @__PURE__ */ jsx("button", {
+							type: "button",
+							onClick: () => setExpanded((value) => !value),
+							className: "mt-1.5 text-[10.5px] font-semibold text-[#718197] underline decoration-dotted",
+							children: expanded ? "Hide details" : "Show details"
+						}),
+						expanded && row.context && Object.keys(row.context).length > 0 && /* @__PURE__ */ jsx("pre", {
+							className: "mt-2 max-h-64 overflow-auto rounded-lg bg-[#f6f9ff] p-3 text-[10px] text-[#40506a]",
+							children: JSON.stringify(row.context, null, 2)
+						})
+					]
+				}),
+				!row.resolvedAt && /* @__PURE__ */ jsx("button", {
+					type: "button",
+					disabled: resolveForm.processing,
+					onClick: resolve,
+					className: "h-7 shrink-0 self-start rounded-lg border border-[#dce4f0] bg-white px-2.5 text-[10px] font-semibold text-[var(--ink)] transition hover:border-[#49d4ef] disabled:opacity-50",
+					children: "Mark resolved"
+				})
+			]
+		})
+	});
+}
+function CriticalErrors({ rows = [], filters = {}, events = [], pagination = {} }) {
+	const current = {
+		status: filters.status ?? "unresolved",
+		event: filters.event ?? "all"
+	};
+	const update = (changes) => router.get("/x/admin/critical-errors", {
+		...current,
+		...changes,
+		page: 1
+	}, {
+		preserveScroll: true,
+		replace: true
+	});
+	const goToPage = (page) => router.get("/x/admin/critical-errors", {
+		...current,
+		page
+	}, { preserveScroll: true });
+	return /* @__PURE__ */ jsx(AdminLayout, {
+		title: "Critical Errors",
+		section: "critical-errors",
+		children: /* @__PURE__ */ jsxs("section", {
+			className: "rounded-2xl border border-[#dce4f0] bg-[linear-gradient(135deg,_#ffffff_0%,_#f6f9ff_100%)] p-4 shadow-[0_18px_42px_-32px_rgba(50,85,150,.45)] sm:p-5",
+			children: [
+				/* @__PURE__ */ jsxs("div", {
+					className: "flex flex-wrap items-start justify-between gap-4",
+					children: [/* @__PURE__ */ jsxs("div", { children: [
+						/* @__PURE__ */ jsx("p", {
+							className: "text-[10px] font-semibold tracking-[.22em] text-[var(--warn)] uppercase",
+							children: "Critical errors"
+						}),
+						/* @__PURE__ */ jsx("h2", {
+							className: "mt-1 text-[22px] font-bold tracking-[-.03em] text-[var(--ink)]",
+							children: "Critical error log"
+						}),
+						/* @__PURE__ */ jsx("p", {
+							className: "mt-1 text-[11px] text-[#718197]",
+							children: "Third-party connection failures, usage-limit exhaustion, and core-feature exceptions worth reviewing."
+						})
+					] }), /* @__PURE__ */ jsx("div", {
+						className: "flex rounded-xl border border-[#dce4f0] bg-white p-1",
+						children: STATUSES.map(([status, label]) => /* @__PURE__ */ jsx("button", {
+							type: "button",
+							onClick: () => update({ status }),
+							className: `rounded-lg px-2.5 py-1.5 text-[10px] font-semibold ${current.status === status ? "bg-[var(--warn)] text-white" : "text-[#718197] hover:bg-[#f6f9ff]"}`,
+							children: label
+						}, status))
+					})]
+				}),
+				/* @__PURE__ */ jsxs("div", {
+					className: "mt-5 flex flex-wrap gap-2",
+					children: [/* @__PURE__ */ jsx("label", {
+						className: "sr-only",
+						htmlFor: "critical-error-event",
+						children: "Event"
+					}), /* @__PURE__ */ jsxs("select", {
+						id: "critical-error-event",
+						value: current.event,
+						onChange: (event) => update({ event: event.target.value }),
+						className: "h-9 min-w-[190px] rounded-lg border border-[#dce4f0] bg-white px-3 text-[11px] font-medium text-[var(--ink)] outline-none focus:border-[#49d4ef]",
+						children: [/* @__PURE__ */ jsx("option", {
+							value: "all",
+							children: "All event keys"
+						}), events.map((event) => /* @__PURE__ */ jsx("option", {
+							value: event,
+							children: event
+						}, event))]
+					})]
+				}),
+				/* @__PURE__ */ jsx("div", {
+					className: "mt-4 overflow-hidden rounded-xl border border-[#dce4f0] bg-white",
+					children: rows.length === 0 ? /* @__PURE__ */ jsx("p", {
+						className: "px-4 py-10 text-center text-[12px] text-[#718197]",
+						children: "No errors match these filters."
+					}) : rows.map((row) => /* @__PURE__ */ jsx(ErrorRow, { row }, row.id))
+				}),
+				/* @__PURE__ */ jsxs("div", {
+					className: "mt-4 flex flex-col gap-2 text-[11px] text-[#718197] sm:flex-row sm:items-center sm:justify-between sm:gap-3",
+					children: [/* @__PURE__ */ jsxs("span", { children: [pagination.total ?? 0, " errors"] }), /* @__PURE__ */ jsxs("div", {
+						className: "flex items-center gap-2",
+						children: [
+							/* @__PURE__ */ jsx("button", {
+								type: "button",
+								disabled: (pagination.currentPage ?? 1) <= 1,
+								onClick: () => goToPage(pagination.currentPage - 1),
+								className: "rounded-lg border border-[#dce4f0] bg-white px-3 py-1.5 font-semibold text-[var(--ink)] disabled:cursor-not-allowed disabled:opacity-45",
+								children: "Previous"
+							}),
+							/* @__PURE__ */ jsxs("span", {
+								className: "px-1 py-1.5",
+								children: [
+									"Page ",
+									pagination.currentPage ?? 1,
+									" of ",
+									pagination.lastPage ?? 1
+								]
+							}),
+							/* @__PURE__ */ jsx("button", {
+								type: "button",
+								disabled: (pagination.currentPage ?? 1) >= (pagination.lastPage ?? 1),
+								onClick: () => goToPage(pagination.currentPage + 1),
+								className: "rounded-lg border border-[#dce4f0] bg-white px-3 py-1.5 font-semibold text-[var(--ink)] disabled:cursor-not-allowed disabled:opacity-45",
+								children: "Next"
+							})
+						]
+					})]
+				})
+			]
+		})
+	});
+}
+//#endregion
 //#region resources/js/components/admin/AdminTrendChart.jsx
 var SERIES = [
 	{
@@ -3574,6 +3773,53 @@ function RecentActivity({ activity = {} }) {
 		]
 	});
 }
+function CriticalErrorsPanel({ criticalErrors = {} }) {
+	const rows = criticalErrors.rows ?? [];
+	const unresolvedCount = criticalErrors.unresolvedCount ?? 0;
+	if (unresolvedCount === 0) return null;
+	return /* @__PURE__ */ jsxs("section", {
+		className: "rounded-2xl border border-[rgba(154,52,18,.25)] bg-[var(--warn-bg)] p-4 shadow-[0_18px_42px_-32px_rgba(154,52,18,.35)] sm:p-5",
+		children: [/* @__PURE__ */ jsxs("div", {
+			className: "flex flex-wrap items-start justify-between gap-3",
+			children: [/* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsx("p", {
+				className: "text-[10px] font-semibold tracking-[.22em] text-[var(--warn)] uppercase",
+				children: "Needs attention"
+			}), /* @__PURE__ */ jsxs("h3", {
+				className: "mt-1 text-[17px] font-semibold text-[var(--ink)]",
+				children: [
+					unresolvedCount,
+					" unresolved critical error",
+					unresolvedCount === 1 ? "" : "s"
+				]
+			})] }), /* @__PURE__ */ jsx(Link, {
+				href: "/x/admin/critical-errors",
+				className: "text-[11px] font-semibold text-[var(--warn)] transition hover:opacity-80",
+				children: "Show All ->"
+			})]
+		}), /* @__PURE__ */ jsx("div", {
+			className: "mt-4 rounded-xl border border-[rgba(154,52,18,.2)] bg-white",
+			children: rows.map((row) => /* @__PURE__ */ jsxs("div", {
+				className: "flex gap-2.5 border-b border-[#e8edf5] px-3 py-2.5 last:border-b-0",
+				children: [/* @__PURE__ */ jsx("span", { className: "mt-1.5 h-2 w-2 shrink-0 rounded-full bg-[var(--warn)]" }), /* @__PURE__ */ jsxs("div", {
+					className: "min-w-0 flex-1",
+					children: [/* @__PURE__ */ jsxs("div", {
+						className: "flex flex-wrap items-center gap-1.5",
+						children: [/* @__PURE__ */ jsx("strong", {
+							className: "text-[12px] text-[var(--ink)]",
+							children: row.event
+						}), /* @__PURE__ */ jsx("span", {
+							className: "rounded-full bg-[#f1f4f8] px-1.5 py-0.5 text-[8px] font-semibold tracking-[.08em] text-[#718197] uppercase",
+							children: row.date ? formatDay(row.date.slice(0, 10)) : "-"
+						})]
+					}), /* @__PURE__ */ jsx("p", {
+						className: "mt-1 truncate text-[10.5px] text-[#718197]",
+						children: row.message
+					})]
+				})]
+			}, row.id))
+		})]
+	});
+}
 function CouponProgramsPanel({ coupons = {} }) {
 	const programs = coupons.programs ?? [];
 	const alerts = coupons.alerts ?? [];
@@ -3680,7 +3926,7 @@ function CouponProgramsPanel({ coupons = {} }) {
 		]
 	});
 }
-function Dashboard({ trend = [], stats = [], snapshot = {}, range = "30D", ranges = [], acquisition = {}, activity = {}, engagement = {}, coupons = {} }) {
+function Dashboard({ trend = [], stats = [], snapshot = {}, range = "30D", ranges = [], acquisition = {}, activity = {}, engagement = {}, coupons = {}, criticalErrors = {} }) {
 	const refresh = useForm({});
 	const selectRange = (next) => {
 		router.get("/x/admin", { range: next }, {
@@ -3739,6 +3985,10 @@ function Dashboard({ trend = [], stats = [], snapshot = {}, range = "30D", range
 						]
 					})
 				]
+			}),
+			/* @__PURE__ */ jsx("div", {
+				className: "mt-3",
+				children: /* @__PURE__ */ jsx(CriticalErrorsPanel, { criticalErrors })
 			}),
 			/* @__PURE__ */ jsxs("section", {
 				className: "mt-3 rounded-2xl border border-[var(--line)] bg-white px-5 py-4 shadow-[0_1px_2px_rgba(20,15,0,.04),0_16px_32px_-26px_rgba(20,15,0,.18)]",
@@ -24244,6 +24494,7 @@ createServer((page) => createInertiaApp({
 			"./Pages/Admin/Blogs/Featured.jsx": Featured_exports,
 			"./Pages/Admin/Blogs/Taxonomy.jsx": Taxonomy_exports,
 			"./Pages/Admin/Blogs/shared.jsx": shared_exports,
+			"./Pages/Admin/CriticalErrors.jsx": CriticalErrors_exports,
 			"./Pages/Admin/Dashboard.jsx": Dashboard_exports,
 			"./Pages/Admin/Listing.jsx": Listing_exports,
 			"./Pages/Admin/Login.jsx": Login_exports$1,

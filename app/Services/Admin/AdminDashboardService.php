@@ -14,6 +14,7 @@ class AdminDashboardService
         private readonly AcquisitionDashboardService $acquisition,
         private readonly UserActivityService $activity,
         private readonly EngagementInsightsService $engagement,
+        private readonly CriticalErrorLogService $criticalErrors,
     ) {}
 
     /**
@@ -43,6 +44,7 @@ class AdminDashboardService
             'activity' => $this->activity->recentPayload(),
             'engagement' => $this->engagement->payload($days),
             'coupons' => $this->couponPayload(),
+            'criticalErrors' => $this->criticalErrors->recentPayload(),
         ];
     }
 

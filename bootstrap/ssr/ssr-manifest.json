@@ -7,6 +7,7 @@
   "resources/js/Pages/Admin/Blogs/Featured.jsx": [],
   "resources/js/Pages/Admin/Blogs/Taxonomy.jsx": [],
   "resources/js/Pages/Admin/Blogs/shared.jsx": [],
+  "resources/js/Pages/Admin/CriticalErrors.jsx": [],
   "resources/js/Pages/Admin/Dashboard.jsx": [],
   "resources/js/Pages/Admin/Listing.jsx": [],
   "resources/js/Pages/Admin/Login.jsx": [],
