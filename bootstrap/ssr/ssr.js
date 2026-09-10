@@ -8508,12 +8508,13 @@ function SearchListScreen({ kind = "brand", searches = [], moving = [], suggesti
 //#endregion
 //#region resources/js/Pages/Brands.jsx
 var Brands_exports = /* @__PURE__ */ __exportAll({ default: () => Brands });
-function Brands({ searches = [], moving = [], suggestions = [] }) {
+function Brands({ searches = [], moving = [], suggestions = [], prefillQuery = "" }) {
 	return /* @__PURE__ */ jsxs(Fragment$1, { children: [/* @__PURE__ */ jsx(Head, { title: "Brand searches · Brand Beacon" }), /* @__PURE__ */ jsx(SearchListScreen, {
 		kind: "brand",
 		searches,
 		moving,
-		suggestions
+		suggestions,
+		prefillQuery
 	})] });
 }
 //#endregion
@@ -9364,6 +9365,78 @@ function DataProcessingAddendum() {
 		title: "Data Processing Addendum",
 		effectiveDate: "August 29, 2026",
 		sections: sections$3
+	});
+}
+//#endregion
+//#region resources/js/Pages/Errors/NotFound.jsx
+var NotFound_exports = /* @__PURE__ */ __exportAll({ default: () => NotFound });
+function NotFound() {
+	return /* @__PURE__ */ jsxs("div", {
+		className: "bb-not-found",
+		children: [
+			/* @__PURE__ */ jsx(Head, {
+				title: "Page not found · Brand Beacon",
+				children: /* @__PURE__ */ jsx("meta", {
+					name: "robots",
+					content: "noindex, nofollow"
+				})
+			}),
+			/* @__PURE__ */ jsx("header", { children: /* @__PURE__ */ jsxs("a", {
+				className: "bb-not-found__brand",
+				href: "/",
+				"aria-label": "Brand Beacon home",
+				children: [/* @__PURE__ */ jsx("img", {
+					src: "/brand-beacon-logo.svg",
+					width: "32",
+					height: "32",
+					alt: ""
+				}), /* @__PURE__ */ jsx("span", { children: "Brand Beacon" })]
+			}) }),
+			/* @__PURE__ */ jsx("main", { children: /* @__PURE__ */ jsxs("section", {
+				"aria-labelledby": "not-found-title",
+				children: [
+					/* @__PURE__ */ jsxs("div", {
+						className: "bb-not-found__number",
+						"aria-hidden": "true",
+						children: ["404", /* @__PURE__ */ jsx("span", {})]
+					}),
+					/* @__PURE__ */ jsx("p", {
+						className: "bb-not-found__label",
+						children: "PAGE NOT FOUND"
+					}),
+					/* @__PURE__ */ jsx("h1", {
+						id: "not-found-title",
+						children: "This page is off the radar."
+					}),
+					/* @__PURE__ */ jsx("p", { children: "The link may have changed, or the page is no longer available. Let’s get you back to discovering what’s next." }),
+					/* @__PURE__ */ jsxs("a", {
+						className: "bb-not-found__button",
+						href: "/",
+						children: ["Back to homepage ", /* @__PURE__ */ jsx("span", {
+							"aria-hidden": "true",
+							children: "→"
+						})]
+					})
+				]
+			}) }),
+			/* @__PURE__ */ jsx("footer", { children: "TikTok intelligence. A clearer signal." }),
+			/* @__PURE__ */ jsx("style", { children: `
+        .bb-not-found{min-height:100svh;display:flex;flex-direction:column;background:#f7f6f2;color:#171714;font-family:Figtree,Arial,sans-serif}
+        .bb-not-found header{padding:28px clamp(24px,5vw,72px)}
+        .bb-not-found__brand{display:inline-flex;align-items:center;gap:10px;font-weight:800;text-decoration:none;color:inherit}
+        .bb-not-found main{flex:1;display:grid;place-items:center;padding:40px 24px 64px}
+        .bb-not-found section{width:100%;max-width:560px;text-align:center}
+        .bb-not-found__number{position:relative;display:inline-block;font-size:clamp(100px,20vw,160px);font-weight:900;letter-spacing:-.07em;line-height:1.1;isolation:isolate}
+        .bb-not-found__number span{position:absolute;bottom:12px;left:0;right:-8px;height:28px;background:#ffcd29;z-index:-1;border-radius:4px}
+        .bb-not-found__label{font-size:11px!important;font-weight:800;letter-spacing:.18em;margin:24px 0 14px!important;color:#78766e!important}
+        .bb-not-found h1{font-size:clamp(26px,5vw,36px);font-weight:800;line-height:1.2;letter-spacing:-.035em;margin:0 0 16px}
+        .bb-not-found section>p{max-width:420px;margin:0 auto;color:#67665d;font-size:16px;line-height:1.7}
+        .bb-not-found__button{display:inline-flex;align-items:center;justify-content:center;gap:24px;min-height:48px;margin-top:30px;padding:12px 24px;border-radius:999px;background:#ffcd29;color:#171714;font-size:14px;font-weight:700;text-decoration:none;box-shadow:0 4px 12px #d5a40020}
+        .bb-not-found__button:hover{background:#f4bf13}
+        .bb-not-found a:focus-visible{outline:3px solid #171714;outline-offset:5px}
+        .bb-not-found footer{text-align:center;padding:24px;color:#78766e;font-size:12px}
+      ` })
+		]
 	});
 }
 //#endregion
@@ -10605,6 +10678,80 @@ function ClimbingCard({ climbing }) {
 		]
 	});
 }
+function PopularSearchesCard({ rows }) {
+	const [selected, setSelected] = useState(null);
+	const dialog = useRef(null);
+	useEffect(() => {
+		if (selected) dialog.current?.showModal();
+		else dialog.current?.close();
+	}, [selected]);
+	return /* @__PURE__ */ jsxs(Fragment$1, { children: [/* @__PURE__ */ jsxs("section", {
+		className: "bbf-rcard",
+		children: [
+			/* @__PURE__ */ jsxs("div", {
+				className: "bbf-rhead",
+				children: [/* @__PURE__ */ jsx("h3", { children: "Popular Searches" }), /* @__PURE__ */ jsx("span", {
+					className: "bbf-chip",
+					children: "All time"
+				})]
+			}),
+			rows.length ? rows.map((row) => /* @__PURE__ */ jsxs("button", {
+				type: "button",
+				className: "bbf-popular-row",
+				onClick: () => setSelected(row),
+				children: [/* @__PURE__ */ jsx("strong", { children: row.keyword }), /* @__PURE__ */ jsxs("small", { children: [
+					row.type === "product" ? "Product" : "Brand",
+					" · ",
+					row.occurrences.toLocaleString(),
+					" searches · ",
+					row.users.toLocaleString(),
+					" users"
+				] })]
+			}, `${row.type}:${row.keyword}`)) : /* @__PURE__ */ jsx("p", {
+				className: "bbf-rempty",
+				children: "Popular searches will appear here as people search."
+			}),
+			/* @__PURE__ */ jsx("p", {
+				className: "bbf-rfoot",
+				children: "Top keywords by total searches across all users."
+			})
+		]
+	}), /* @__PURE__ */ jsxs("dialog", {
+		ref: dialog,
+		className: "bbf-popular-dialog",
+		"aria-labelledby": "popular-search-title",
+		onCancel: () => setSelected(null),
+		onClose: () => setSelected(null),
+		children: [
+			/* @__PURE__ */ jsx("h2", {
+				id: "popular-search-title",
+				children: "Search this keyword?"
+			}),
+			/* @__PURE__ */ jsxs("p", { children: [
+				"Open a ",
+				selected?.type === "product" ? "product" : "brand",
+				" search for ",
+				/* @__PURE__ */ jsx("strong", { children: selected?.keyword }),
+				"? You can review it before starting."
+			] }),
+			/* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsx("button", {
+				type: "button",
+				className: "bbf-btn",
+				onClick: () => setSelected(null),
+				children: "Cancel"
+			}), /* @__PURE__ */ jsx("button", {
+				type: "button",
+				className: "bbf-btn",
+				onClick: () => {
+					const row = selected;
+					setSelected(null);
+					router.visit(`${row.type === "product" ? "/products" : "/brands"}?q=${encodeURIComponent(row.keyword)}`);
+				},
+				children: "Yes, continue"
+			})] })
+		]
+	})] });
+}
 function DiscoveryPrompt() {
 	return /* @__PURE__ */ jsxs("div", {
 		className: "bbf-prompt",
@@ -10628,7 +10775,7 @@ function EmptyState() {
 	});
 }
 function MyFeed({ feed = {}, currentPath = "/home", onAnalyze, analysisById = {} }) {
-	const { videos = [], totalCount = videos.length, searches = [], searchesCount = 0, hashtags = [], hashtagsCount = 0, climbing = [], isDiscoveryFeed = false } = feed;
+	const { videos = [], totalCount = videos.length, searches = [], searchesCount = 0, hashtags = [], hashtagsCount = 0, climbing = [], popularSearches = [], isDiscoveryFeed = false } = feed;
 	const [shown, setShown] = useState(FIRST_BATCH);
 	const [saved, setSaved] = useState({});
 	const [savingId, setSavingId] = useState(null);
@@ -10661,7 +10808,15 @@ function MyFeed({ feed = {}, currentPath = "/home", onAnalyze, analysisById = {}
 		return video.search_url ? router.visit(withReturnTo(video.search_url, currentPath)) : void 0;
 	};
 	const styles = /* @__PURE__ */ jsx("style", { children: scopedCss$3 });
-	if (videos.length === 0) return /* @__PURE__ */ jsxs(Fragment$1, { children: [styles, /* @__PURE__ */ jsx(EmptyState, {})] });
+	if (videos.length === 0) return /* @__PURE__ */ jsxs(Fragment$1, { children: [
+		styles,
+		/* @__PURE__ */ jsx(EmptyState, {}),
+		/* @__PURE__ */ jsxs("div", {
+			className: "bbf-rail",
+			style: { marginTop: 20 },
+			children: [/* @__PURE__ */ jsx(ClimbingCard, { climbing }), /* @__PURE__ */ jsx(PopularSearchesCard, { rows: popularSearches })]
+		})
+	] });
 	return /* @__PURE__ */ jsxs(Fragment$1, { children: [
 		styles,
 		isDiscoveryFeed && /* @__PURE__ */ jsx(DiscoveryPrompt, {}),
@@ -10704,13 +10859,25 @@ function MyFeed({ feed = {}, currentPath = "/home", onAnalyze, analysisById = {}
 						hashtags,
 						hashtagsCount
 					}),
-					/* @__PURE__ */ jsx(ClimbingCard, { climbing })
+					/* @__PURE__ */ jsx(ClimbingCard, { climbing }),
+					/* @__PURE__ */ jsx(PopularSearchesCard, { rows: popularSearches })
 				]
 			})]
 		})
 	] });
 }
 var scopedCss$3 = `
+.bbf-popular-row{display:block;width:100%;text-align:left;padding:12px 0;border:0;border-bottom:1px solid var(--line);background:transparent;cursor:pointer;color:var(--ink)}
+.bbf-popular-row strong{display:block;overflow-wrap:anywhere;font-size:.85rem}
+.bbf-popular-row small{display:block;margin-top:5px;color:var(--muted);font-size:.72rem}
+.bbf-popular-row:hover strong{text-decoration:underline}
+.bbf-popular-row:focus-visible{outline:2px solid var(--ink);outline-offset:3px}
+.bbf-popular-dialog{margin:auto;border:1px solid var(--line);border-radius:20px;padding:28px;width:calc(100% - 32px);max-width:440px;background:var(--white);color:var(--ink)}
+.bbf-popular-dialog::backdrop{background:#0006}
+.bbf-popular-dialog h2{font-size:1.2rem;font-weight:800;margin:0 0 12px}
+.bbf-popular-dialog p{line-height:1.6;overflow-wrap:anywhere}
+.bbf-popular-dialog>div{display:flex;justify-content:flex-end;gap:10px;margin-top:24px}
+.bbf-popular-dialog>div button:last-child{background:var(--yellow)}
 .bbf-sbar{margin:0 0 14px}
 .bbf-sbar h2{position:relative;margin:0;padding-left:13px;font-size:1.1rem;font-weight:800;letter-spacing:-.026em;color:var(--ink)}
 .bbf-sbar h2::before{content:'';position:absolute;left:0;top:.2em;bottom:.2em;width:3px;border-radius:2px;background:var(--yellow)}
@@ -14116,12 +14283,13 @@ function PrivacyPolicy() {
 //#endregion
 //#region resources/js/Pages/Products.jsx
 var Products_exports = /* @__PURE__ */ __exportAll({ default: () => Products });
-function Products({ searches = [], moving = [], suggestions = [] }) {
+function Products({ searches = [], moving = [], suggestions = [], prefillQuery = "" }) {
 	return /* @__PURE__ */ jsxs(Fragment$1, { children: [/* @__PURE__ */ jsx(Head, { title: "Product searches · Brand Beacon" }), /* @__PURE__ */ jsx(SearchListScreen, {
 		kind: "product",
 		searches,
 		moving,
-		suggestions
+		suggestions,
+		prefillQuery
 	})] });
 }
 //#endregion
@@ -24059,6 +24227,7 @@ createServer((page) => createInertiaApp({
 			"./Pages/ComingSoon.jsx": ComingSoon_exports,
 			"./Pages/Contact.jsx": Contact_exports,
 			"./Pages/DataProcessingAddendum.jsx": DataProcessingAddendum_exports,
+			"./Pages/Errors/NotFound.jsx": NotFound_exports,
 			"./Pages/Feed.jsx": Feed_exports,
 			"./Pages/Home.jsx": Home_exports,
 			"./Pages/Landing.jsx": Landing_exports,

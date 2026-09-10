@@ -21,6 +21,7 @@
   "resources/js/Pages/ComingSoon.jsx": [],
   "resources/js/Pages/Contact.jsx": [],
   "resources/js/Pages/DataProcessingAddendum.jsx": [],
+  "resources/js/Pages/Errors/NotFound.jsx": [],
   "resources/js/Pages/Feed.jsx": [],
   "resources/js/Pages/Home.jsx": [],
   "resources/js/Pages/Landing.jsx": [],

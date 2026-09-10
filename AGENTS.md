@@ -611,6 +611,10 @@ High-level flow:
 
 ## Frontend architecture notes
 
+- My Feed shows Popular Searches below Climbing this Week for all plans, including empty feeds. It ranks the top five all-time account-owned search records (including soft-deleted searches) by occurrences, then distinct users, then keyword/type. Keywords are trimmed and case-folded; competitor searches count as brands. Refresh runs are not new search occurrences. Only aggregate counts are exposed, cached for 15 minutes. Confirming a row opens the matching hub with `?q=`; Brands and Products must forward `prefillQuery` to SearchListScreen. No search is created by confirmation.
+
+- Web 404 responses render `Errors/NotFound` through the exception response handler, preserving HTTP 404 for direct and Inertia requests, with a homepage link. API 404s remain JSON.
+
 - Brand and product search listings use 25-card client-side pages with Previous/Next controls instead of infinite scrolling. Filtering and sorting apply to the full loaded collection and reset the page to one.
 
 - Accounts without searches receive up to eight visible global videos in My Feed, ranked by breakout score, views, indexing date, then ID. This collection has no recency or positive-score requirement, so older and unscored records remain available. Browsing it does not consume the free search; global cards expose no other account's search links. Discovery aggregates retain their seven-day windows.

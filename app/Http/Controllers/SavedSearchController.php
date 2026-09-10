@@ -352,6 +352,7 @@ class SavedSearchController extends Controller
             'hashtags' => [],
             'hashtagsCount' => 0,
             'climbing' => $climbing,
+            'popularSearches' => $discovery['popularSearches'] ?? [],
             'suggestions' => $suggestions,
         ];
 

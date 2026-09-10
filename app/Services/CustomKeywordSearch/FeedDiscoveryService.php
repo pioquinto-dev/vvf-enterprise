@@ -10,10 +10,21 @@ class FeedDiscoveryService
 {
     public function payload(): array
     {
-        return Cache::remember('feed-discovery:v3', 900, function (): array {
+        return Cache::remember('feed-discovery:v4', 900, function (): array {
             $end = now();
             $start = $end->copy()->subDays(7);
             $previous = $start->copy()->subDays(7);
+            $typeSql = "CASE WHEN search_type = 'product' THEN 'product' ELSE 'brand' END";
+            $popular = CustomKeywordSearch::withTrashed()
+                ->whereNotNull('user_id')
+                ->whereIn('search_type', ['brand', 'competitor', 'product'])
+                ->whereRaw("TRIM(phrase) <> ''")
+                ->selectRaw("{$typeSql} as type, LOWER(TRIM(phrase)) as keyword, COUNT(*) as occurrences, COUNT(DISTINCT user_id) as users")
+                ->groupByRaw($typeSql)->groupByRaw('LOWER(TRIM(phrase))')
+                ->orderByDesc('occurrences')->orderByDesc('users')->orderBy('keyword')->orderBy('type')
+                ->limit(5)->get()
+                ->map(fn ($row) => ['keyword' => $row->keyword, 'type' => $row->type, 'occurrences' => (int) $row->occurrences, 'users' => (int) $row->users])
+                ->all();
             $mostSearched = CustomKeywordSearch::query()
                 ->whereBetween('created_at', [$start, $end])
                 ->whereIn('search_type', ['brand', 'product'])
@@ -55,6 +66,7 @@ class FeedDiscoveryService
                 ->all();
 
             return [
+                'popularSearches' => $popular,
                 'mostSearched' => collect(['brand', 'product'])->mapWithKeys(fn ($type) => [$type => $mostSearched->where('search_type', $type)->take(3)->map(fn ($row) => ['phrase' => $row->phrase, 'count' => (int) $row->count])->values()->all()])->all(),
                 'climbingHashtags' => array_slice($climbing, 0, 5),
                 'topSounds' => collect($sounds)->take(3)->map(fn ($count, $label) => ['label' => $label, 'count' => $count])->values()->all(),

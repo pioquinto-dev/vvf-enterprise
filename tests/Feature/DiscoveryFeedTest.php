@@ -53,6 +53,7 @@ class DiscoveryFeedTest extends TestCase
             ->assertOk()
             ->assertInertia(fn ($page) => $page
                 ->where('feed.isDiscoveryFeed', true)
+                ->has('feed.popularSearches')
                 ->has('feed.videos', 2)
                 // Borrowed videos belong to no search of theirs.
                 ->where('feed.videos.0.search_url', null)
@@ -86,6 +87,7 @@ class DiscoveryFeedTest extends TestCase
                 // The flag is only sent for the borrowed feed; the page treats
                 // its absence as "these are the user's own results".
                 ->missing('feed.isDiscoveryFeed')
+                ->where('feed.popularSearches.0.keyword', 'rhode')
                 ->has('feed.videos', 0));
     }
 

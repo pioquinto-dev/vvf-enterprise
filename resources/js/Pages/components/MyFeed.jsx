@@ -282,6 +282,40 @@ function ClimbingCard({ climbing }) {
 }
 
 /* Shown above the stream, so borrowed videos never read as the user's own. */
+function PopularSearchesCard({ rows }) {
+  const [selected, setSelected] = useState(null);
+  const dialog = useRef(null);
+  useEffect(() => {
+    if (selected) dialog.current?.showModal();
+    else dialog.current?.close();
+  }, [selected]);
+
+  return <>
+    <section className="bbf-rcard">
+      <div className="bbf-rhead"><h3>Popular Searches</h3><span className="bbf-chip">All time</span></div>
+      {rows.length ? rows.map((row) => (
+        <button type="button" className="bbf-popular-row" key={`${row.type}:${row.keyword}`} onClick={() => setSelected(row)}>
+          <strong>{row.keyword}</strong>
+          <small>{row.type === 'product' ? 'Product' : 'Brand'} · {row.occurrences.toLocaleString()} searches · {row.users.toLocaleString()} users</small>
+        </button>
+      )) : <p className="bbf-rempty">Popular searches will appear here as people search.</p>}
+      <p className="bbf-rfoot">Top keywords by total searches across all users.</p>
+    </section>
+    <dialog ref={dialog} className="bbf-popular-dialog" aria-labelledby="popular-search-title" onCancel={() => setSelected(null)} onClose={() => setSelected(null)}>
+      <h2 id="popular-search-title">Search this keyword?</h2>
+      <p>Open a {selected?.type === 'product' ? 'product' : 'brand'} search for <strong>{selected?.keyword}</strong>? You can review it before starting.</p>
+      <div>
+        <button type="button" className="bbf-btn" onClick={() => setSelected(null)}>Cancel</button>
+        <button type="button" className="bbf-btn" onClick={() => {
+          const row = selected;
+          setSelected(null);
+          router.visit(`${row.type === 'product' ? '/products' : '/brands'}?q=${encodeURIComponent(row.keyword)}`);
+        }}>Yes, continue</button>
+      </div>
+    </dialog>
+  </>;
+}
+
 function DiscoveryPrompt() {
   return (
     <div className="bbf-prompt">
@@ -319,6 +353,7 @@ export default function MyFeed({ feed = {}, currentPath = '/home', onAnalyze, an
     hashtags = [],
     hashtagsCount = 0,
     climbing = [],
+    popularSearches = [],
     isDiscoveryFeed = false,
   } = feed;
 
@@ -367,6 +402,10 @@ export default function MyFeed({ feed = {}, currentPath = '/home', onAnalyze, an
       <>
         {styles}
         <EmptyState />
+        <div className="bbf-rail" style={{ marginTop: 20 }}>
+          <ClimbingCard climbing={climbing} />
+          <PopularSearchesCard rows={popularSearches} />
+        </div>
       </>
     );
   }
@@ -409,6 +448,7 @@ export default function MyFeed({ feed = {}, currentPath = '/home', onAnalyze, an
           <SearchesCard searches={searches} searchesCount={searchesCount} />
           <HashtagsCard hashtags={hashtags} hashtagsCount={hashtagsCount} />
           <ClimbingCard climbing={climbing} />
+          <PopularSearchesCard rows={popularSearches} />
         </aside>
       </div>
     </>
@@ -421,6 +461,17 @@ export default function MyFeed({ feed = {}, currentPath = '/home', onAnalyze, an
  * The tokens (--yellow, --line, --ink…) come from app.css.
  */
 const scopedCss = `
+.bbf-popular-row{display:block;width:100%;text-align:left;padding:12px 0;border:0;border-bottom:1px solid var(--line);background:transparent;cursor:pointer;color:var(--ink)}
+.bbf-popular-row strong{display:block;overflow-wrap:anywhere;font-size:.85rem}
+.bbf-popular-row small{display:block;margin-top:5px;color:var(--muted);font-size:.72rem}
+.bbf-popular-row:hover strong{text-decoration:underline}
+.bbf-popular-row:focus-visible{outline:2px solid var(--ink);outline-offset:3px}
+.bbf-popular-dialog{margin:auto;border:1px solid var(--line);border-radius:20px;padding:28px;width:calc(100% - 32px);max-width:440px;background:var(--white);color:var(--ink)}
+.bbf-popular-dialog::backdrop{background:#0006}
+.bbf-popular-dialog h2{font-size:1.2rem;font-weight:800;margin:0 0 12px}
+.bbf-popular-dialog p{line-height:1.6;overflow-wrap:anywhere}
+.bbf-popular-dialog>div{display:flex;justify-content:flex-end;gap:10px;margin-top:24px}
+.bbf-popular-dialog>div button:last-child{background:var(--yellow)}
 .bbf-sbar{margin:0 0 14px}
 .bbf-sbar h2{position:relative;margin:0;padding-left:13px;font-size:1.1rem;font-weight:800;letter-spacing:-.026em;color:var(--ink)}
 .bbf-sbar h2::before{content:'';position:absolute;left:0;top:.2em;bottom:.2em;width:3px;border-radius:2px;background:var(--yellow)}
