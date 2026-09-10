@@ -5368,6 +5368,10 @@ var FOOT_NAV = [
 		href: "/library"
 	},
 	{
+		label: "Blog",
+		href: "/blog"
+	},
+	{
 		label: "Contact",
 		href: "/contact"
 	},
