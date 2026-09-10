@@ -7930,7 +7930,7 @@ var SORT = {
 	recent: "Recently updated",
 	az: "Name A-Z"
 };
-var SEARCH_PAGE_SIZE = 20;
+var SEARCH_PAGE_SIZE = 25;
 function Sel$1({ value, onChange, ariaLabel, children }) {
 	return /* @__PURE__ */ jsxs("span", {
 		className: "sel",
@@ -8062,8 +8062,7 @@ function SearchListScreen({ kind = "brand", searches = [], moving = [], suggesti
 	const [query, setQuery] = useState("");
 	const [statusFilter, setStatusFilter] = useState("all");
 	const [sortBy, setSortBy] = useState("recent");
-	const [visibleCount, setVisibleCount] = useState(SEARCH_PAGE_SIZE);
-	const loadMoreRef = useRef(null);
+	const [page, setPage] = useState(1);
 	const [modalSearch, setModalSearch] = useState(null);
 	const [formState, setFormState] = useState({
 		name: "",
@@ -8106,19 +8105,11 @@ function SearchListScreen({ kind = "brand", searches = [], moving = [], suggesti
 		sortBy
 	]);
 	useEffect(() => {
-		setVisibleCount(SEARCH_PAGE_SIZE);
+		setPage(1);
 	}, [filtered]);
-	useEffect(() => {
-		const sentinel = loadMoreRef.current;
-		if (!sentinel || visibleCount >= filtered.length || typeof IntersectionObserver === "undefined") return void 0;
-		const observer = new IntersectionObserver(([entry]) => {
-			if (!entry.isIntersecting) return;
-			observer.disconnect();
-			setVisibleCount((count) => Math.min(count + SEARCH_PAGE_SIZE, filtered.length));
-		}, { rootMargin: "0px 0px 200px 0px" });
-		observer.observe(sentinel);
-		return () => observer.disconnect();
-	}, [filtered, visibleCount]);
+	const pageCount = Math.max(1, Math.ceil(filtered.length / SEARCH_PAGE_SIZE));
+	const currentPage = Math.min(page, pageCount);
+	const pageStart = (currentPage - 1) * SEARCH_PAGE_SIZE;
 	useEffect(() => {
 		if (!modalSearch) return void 0;
 		const onEsc = (e) => e.key === "Escape" && !submitting && setModalSearch(null);
@@ -8338,7 +8329,7 @@ function SearchListScreen({ kind = "brand", searches = [], moving = [], suggesti
 						]
 					}) : /* @__PURE__ */ jsx("div", {
 						className: "bgrid",
-						children: filtered.slice(0, visibleCount).map((s) => /* @__PURE__ */ jsx(BrandCard, {
+						children: filtered.slice(pageStart, pageStart + SEARCH_PAGE_SIZE).map((s) => /* @__PURE__ */ jsx(BrandCard, {
 							search: s,
 							onOpen: () => router.visit(withReturnTo(s.url ?? `/library/${s.id}`, currentPath)),
 							onEdit: () => openEdit(s)
@@ -8354,20 +8345,47 @@ function SearchListScreen({ kind = "brand", searches = [], moving = [], suggesti
 							role: "status",
 							children: [
 								"Showing ",
-								Math.min(visibleCount, filtered.length),
+								pageStart + 1,
+								"–",
+								Math.min(pageStart + SEARCH_PAGE_SIZE, filtered.length),
 								" of ",
 								filtered.length,
 								" searches"
 							]
-						}), visibleCount < filtered.length && /* @__PURE__ */ jsx("div", {
-							ref: loadMoreRef,
-							style: { paddingTop: 12 },
-							children: /* @__PURE__ */ jsx("button", {
-								type: "button",
-								className: "btn btn--g btn--sm",
-								onClick: () => setVisibleCount((count) => Math.min(count + SEARCH_PAGE_SIZE, filtered.length)),
-								children: "Load more searches"
-							})
+						}), pageCount > 1 && /* @__PURE__ */ jsxs("nav", {
+							"aria-label": `${copy.title} pagination`,
+							style: {
+								paddingTop: 12,
+								display: "flex",
+								justifyContent: "center",
+								alignItems: "center",
+								gap: 12
+							},
+							children: [
+								/* @__PURE__ */ jsx("button", {
+									type: "button",
+									className: "btn btn--g btn--sm",
+									disabled: currentPage === 1,
+									onClick: () => setPage(currentPage - 1),
+									children: "Previous"
+								}),
+								/* @__PURE__ */ jsxs("span", {
+									className: "note",
+									children: [
+										"Page ",
+										currentPage,
+										" of ",
+										pageCount
+									]
+								}),
+								/* @__PURE__ */ jsx("button", {
+									type: "button",
+									className: "btn btn--g btn--sm",
+									disabled: currentPage === pageCount,
+									onClick: () => setPage(currentPage + 1),
+									children: "Next"
+								})
+							]
 						})]
 					})
 				]
@@ -10593,7 +10611,7 @@ function DiscoveryPrompt() {
 		children: [/* @__PURE__ */ jsx("span", {
 			className: "bbf-prompt__i",
 			children: Icons$2.spark
-		}), /* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsx("h2", { children: "Run your first search to make this yours" }), /* @__PURE__ */ jsx("p", { children: "Until then, here is what is breaking out across Brand Beacon. Search a brand or product above to swap it for your own." })] })]
+		}), /* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsx("h2", { children: "Run your first search to make this yours" }), /* @__PURE__ */ jsx("p", { children: "Until then, explore videos from across Brand Beacon. Search a brand or product above to swap it for your own." })] })]
 	});
 }
 function EmptyState() {
@@ -10649,7 +10667,7 @@ function MyFeed({ feed = {}, currentPath = "/home", onAnalyze, analysisById = {}
 		isDiscoveryFeed && /* @__PURE__ */ jsx(DiscoveryPrompt, {}),
 		/* @__PURE__ */ jsxs("div", {
 			className: "bbf-sbar",
-			children: [/* @__PURE__ */ jsx("h2", { children: isDiscoveryFeed ? "Breaking out now" : "Your top breakout videos" }), /* @__PURE__ */ jsx("p", { children: isDiscoveryFeed ? "The strongest videos across Brand Beacon this week, while your own feed fills up." : `Curated list of the top breakout videos from your searches and categories.${totalCount > videos.length ? ` ${totalCount} broke out for you this week.` : ""}` })]
+			children: [/* @__PURE__ */ jsx("h2", { children: isDiscoveryFeed ? "Explore global videos" : "Your top breakout videos" }), /* @__PURE__ */ jsx("p", { children: isDiscoveryFeed ? "Discover videos from across Brand Beacon while your own feed fills up." : `Curated list of the top breakout videos from your searches and categories.${totalCount > videos.length ? ` ${totalCount} broke out for you this week.` : ""}` })]
 		}),
 		/* @__PURE__ */ jsxs("div", {
 			className: "bbf-grid",
