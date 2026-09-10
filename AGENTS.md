@@ -182,7 +182,7 @@ Defined in `routes/public.php`.
 - `/`
   - Marketing landing page for guests; signed-in users redirect to `/home` (My Feed). Do not render the retired `Dashboard` Inertia page.
 - `/search`
-  - Standalone public free-search funnel. It collects the subject and refinements without creating a search; the Google callback creates the account-owned search after sign-in.
+  - Guest free-search funnel. It collects the subject and refinements without creating a search; the Google callback creates the account-owned search after sign-in. Signed-in visitors redirect to `/home`. Register GET `/search` only in `routes/public.php`; an auth-protected duplicate overrides the guest funnel and sends landing-page searches back to `/`.
 - `/search/running`
   - Requires sign-in; signed-out visitors redirect to `/`. Running-state view for an existing, caller-owned scraping search. Missing or inaccessible IDs redirect to `/search`; inactive searches redirect to their results.
 - `/trial`

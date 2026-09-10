@@ -12,7 +12,6 @@ Route::middleware('auth')->group(function (): void {
     // start from the brand/product hubs. The name stays mapped so any missed
     // route('dashboard') caller lands on the feed rather than 500ing.
     Route::redirect('/dashboard', '/home')->name('dashboard');
-    Route::redirect('/search', '/home', 301);
     Route::get('/search-history', [SavedSearchController::class, 'history'])->name('search-history.index');
 
     Route::redirect('/saved-searches', '/library', 301);

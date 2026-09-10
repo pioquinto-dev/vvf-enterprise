@@ -20,6 +20,21 @@ class FreeSearchFunnelTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_guest_find_breakouts_opens_keyword_refinement_with_the_selected_subject(): void
+    {
+        foreach (['brand' => 'gopure beauty', 'product' => 'lip oil'] as $type => $phrase) {
+            $this->get('/search?'.http_build_query(['type' => $type, 'q' => $phrase]))
+                ->assertOk()
+                ->assertInertia(fn ($page) => $page
+                    ->component('Search/Free')
+                    ->where('phrase', $phrase)
+                    ->where('type', $type));
+        }
+
+        $this->assertGuest();
+        $this->assertSame(0, CustomKeywordSearch::count());
+    }
+
     public function test_pending_free_search_is_not_created_before_google_sign_in(): void
     {
         $this->postJson('/search/pending', [

@@ -49,6 +49,10 @@ Route::get('/ugc-trend-discovery', fn () => Inertia::render('LandingSolution', [
 
 Route::prefix('search')->group(function (): void {
     Route::get('/', function (Request $request) {
+        if ($request->user()) {
+            return redirect()->route('home');
+        }
+
         return Inertia::render('Search/Free', [
             'phrase' => trim((string) $request->query('q', '')),
             'type' => match ((string) $request->query('type')) {

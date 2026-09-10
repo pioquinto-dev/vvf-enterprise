@@ -7,8 +7,8 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 /**
- * My Feed is the signed-in landing page. The search homepage and the standalone
- * /search wizard are retired; searches now start from the brand/product hubs.
+ * My Feed is the signed-in landing page; signed-in searches start from the
+ * brand/product hubs. Guests still use the public /search funnel.
  */
 class RetiredSearchHomepageTest extends TestCase
 {
