@@ -38,6 +38,56 @@ const TYPES = [
   { key: 'product', label: 'Product', icon: Icons.product },
 ];
 
+// Rotating example subjects, typed and deleted letter by letter into the
+// (empty) search field so the field never reads as inert.
+const TYPEWRITER_WORDS = {
+  brand: ['rhode skin', 'olipop', 'jones road', 'skims'],
+  product: ['lip oil', 'neck cream', 'brow gel', 'hair oil'],
+};
+
+/**
+ * Drives the animated placeholder text and its blinking caret. Pauses (and
+ * hands the real placeholder back to the browser) the moment the field has a
+ * value or is focused, and restarts cleanly whenever the Brand/Product
+ * toggle changes.
+ */
+function useTypewriterPlaceholder(type, hasQuery, focused) {
+  const [placeholder, setPlaceholder] = useState('');
+
+  useEffect(() => {
+    if (hasQuery) {
+      setPlaceholder('');
+      return undefined;
+    }
+
+    const words = TYPEWRITER_WORDS[type] ?? [];
+    if (words.length === 0) return undefined;
+
+    let word = 0;
+    let i = 0;
+    let deleting = false;
+    let timer;
+
+    const step = () => {
+      const current = words[word];
+      i += deleting ? -1 : 1;
+      setPlaceholder(current.slice(0, i));
+
+      let wait = deleting ? 45 : 85;
+      if (!deleting && i === current.length) { deleting = true; wait = 1500; }
+      else if (deleting && i === 0) { deleting = false; word = (word + 1) % words.length; wait = 260; }
+
+      timer = window.setTimeout(step, wait);
+    };
+
+    timer = window.setTimeout(step, 0);
+
+    return () => window.clearTimeout(timer);
+  }, [type, hasQuery]);
+
+  return { placeholder, caretOn: !hasQuery && !focused };
+}
+
 /**
  * Brand / Product toggle. The indicator is a single sliding pill measured from
  * the active button, so it stays correct at any label width or font size.
@@ -84,8 +134,10 @@ function SearchCard({ suggestions }) {
   const [matches, setMatches] = useState([]);
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(-1);
+  const [focused, setFocused] = useState(false);
   const inputRef = useRef(null);
   const fieldRef = useRef(null);
+  const { placeholder: typedPlaceholder, caretOn } = useTypewriterPlaceholder(type, query.length > 0, focused);
 
   // The chip row follows the toggle, so it never offers a product while the
   // field is set to search brands.
@@ -200,15 +252,17 @@ function SearchCard({ suggestions }) {
           value={query}
           autoComplete="off"
           role="combobox"
-          placeholder={type === 'product' ? 'lip oil' : 'rhode skin'}
+          placeholder={typedPlaceholder}
           aria-label={type === 'product' ? 'Search a product' : 'Search a brand'}
           aria-expanded={open && matches.length > 0}
           aria-controls="bbs-suggest"
           aria-activedescendant={active >= 0 && matches[active] ? `bbs-opt-${matches[active].id}` : undefined}
           onChange={(e) => { setQuery(e.target.value); setOpen(true); }}
-          onFocus={() => setOpen(true)}
+          onFocus={() => { setOpen(true); setFocused(true); }}
+          onBlur={() => setFocused(false)}
           onKeyDown={onKeyDown}
         />
+        <span className={`bbs-caret${caretOn ? '' : ' off'}`} aria-hidden="true" />
         <button type="button" className="bbs-cta" onClick={() => run()}>
           {Icons.search}Find breakouts
         </button>
@@ -377,6 +431,9 @@ const scopedCss = `
 .bbs-field>svg{width:20px;height:20px;flex:none;margin-left:4px;color:var(--faint,#74716A)}
 .bbs-field input{flex:1;min-width:0;border:0;outline:0;background:none;font:inherit;font-size:1.08rem;font-weight:500;color:var(--ink)}
 .bbs-field input::placeholder{color:#A5A29A;font-weight:400}
+.bbs-caret{width:1.5px;height:22px;background:var(--ink);margin-left:-10px;flex:none;animation:bbs-blink 1s steps(1) infinite}
+.bbs-caret.off{display:none}
+@keyframes bbs-blink{50%{opacity:0}}
 
 .bbs-seg{position:relative;display:inline-flex;gap:3px;padding:3px;flex:none;border:1px solid var(--line);border-radius:100px;background:var(--paper,#FAF9F6)}
 .bbs-seg__ind{position:absolute;top:3px;left:3px;height:calc(100% - 6px);border-radius:100px;background:var(--yellow);box-shadow:0 2px 8px -2px rgba(255,198,41,.9);transition:transform .26s cubic-bezier(.22,.61,.36,1),width .26s cubic-bezier(.22,.61,.36,1)}
@@ -405,13 +462,14 @@ const scopedCss = `
 .bbs-kw:hover{border-color:var(--yellow);background:var(--wash);color:var(--ink)}
 .bbs-cta:focus-visible,.bbs-kw:focus-visible,.bbs-seg button:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
 
-@media (prefers-reduced-motion:reduce){.bbs-seg__ind,.bbs-cta,.bbs-kw{transition:none}}
+@media (prefers-reduced-motion:reduce){.bbs-seg__ind,.bbs-cta,.bbs-kw{transition:none}.bbs-caret{animation:none}}
 
 @media (max-width:680px){
   .bbs-card{padding:16px 14px 14px;border-radius:18px}
   .bbs-field{height:auto;flex-wrap:wrap;padding:12px;border-radius:16px;gap:10px}
   .bbs-field>svg{margin-left:2px}
   .bbs-field input{flex:1 1 auto;min-width:0;font-size:1rem}
+  .bbs-caret{display:none}
   .bbs-seg{flex:1 0 100%}
   .bbs-seg button{flex:1;justify-content:center}
   .bbs-cta{flex:1 0 100%;justify-content:center}
