@@ -68,6 +68,14 @@ export function gradientFor(id) {
   return palettes[h % palettes.length];
 }
 
+// Tint #hashtags and @mentions inside a caption, like the results mockup.
+function highlightCaption(text) {
+  if (!text) return text;
+  return String(text).split(/([#@][\w.]+)/g).map((part, i) => (
+    /^[#@][\w.]+$/.test(part) ? <b key={i}>{part}</b> : part
+  ));
+}
+
 function analysisCtaLabel(analysis) {
   if (analysis?.status === 'processing') return 'Analyzing video...';
   if (analysis?.status === 'complete') return 'View analysis';
@@ -221,7 +229,8 @@ export default function BreakoutVideoCard({
           </div>
           <div className="rs-oc__s">{postedAt}</div>
         </div>
-        <p className="rs-oc__c">{video.title || video.caption}</p>
+        {runBucket === 'new' && <span className="rs-oc__new">New this run</span>}
+        <p className="rs-oc__c">{highlightCaption(video.title || video.caption)}</p>
         <div className="rs-oc__st">
           <span>{Icons.Eye}{compact(video.views)}</span>
           <span>{Icons.Heart}{compact(video.likes)}</span>

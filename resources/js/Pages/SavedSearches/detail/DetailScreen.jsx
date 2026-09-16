@@ -528,7 +528,8 @@ export default function DetailScreen({
 
   /* ------------- winner + rest ------------- */
   const winner = results[0];
-  const rest = results.slice(1);
+  // Every result renders in one ranked grid (the separate winner hero was retired).
+  const rest = results;
 
   /* ------------- run bucketing -------------
    * The presenter returns `runs` ordered by completed_at ascending, so the
@@ -1021,6 +1022,71 @@ export default function DetailScreen({
         </div>
       )}
 
+      {/* MORE BREAKOUTS */}
+      {rest.length > 0 && (
+        <>
+          <div className="rs-sh">
+            <h2>Top breakout videos</h2>
+            <span className="rs-note">Videos with unusually strong engagement for their creator&rsquo;s audience, ranked by Breakout Score.</span>
+            <span className="rs-sh__actions">
+              <span className="rs-runfilter">
+                <span className="rs-runfilter__pre">Show:</span>
+                <select
+                  value={runFilter}
+                  onChange={(e) => setRunFilter(e.target.value)}
+                  aria-label="Filter by search run"
+                >
+                  <option value="all">All runs ({rest.length})</option>
+                  <option value="new">New this run ({runCounts.new})</option>
+                  <option value="prev">Previous run ({runCounts.prev})</option>
+                  <option value="old">Older ({runCounts.old})</option>
+                </select>
+                {Icons.ChevDown}
+              </span>
+              <span className="rs-sortsel">
+                <span className="rs-sortsel__pre">Sort:</span>
+                <select value={sortKey} onChange={(e) => setSortKey(e.target.value)}>
+                  <option value="outlier">Breakout Score</option>
+                  <option value="views">Views</option>
+                  <option value="date">Date posted</option>
+                </select>
+                {Icons.ChevDown}
+              </span>
+            </span>
+          </div>
+          {sortedRest.length === 0 ? (
+            <div className="rs-runempty">
+              No videos matched the current run filter.{' '}
+              <button type="button" className="rs-runempty__reset" onClick={() => setRunFilter('all')}>
+                Show all runs
+              </button>
+            </div>
+          ) : (
+            <div className="rs-ogrid">
+              {sortedRest.slice(0, visible).map((v, i) => (
+                <BreakoutVideoCard
+                  key={v.id}
+                  video={{ ...v, rank: i + 1 }}
+                  runBucket={bucketForVideo(v)}
+                  onAnalyze={() => handleAnalyzeAction(v)}
+                  onToggleBookmark={() => onToggleVideoBookmark?.(v)}
+                  bookmarking={bookmarkingVideoId === v.id}
+                  isPlaying={videoPlayingId === v.id}
+                  onTogglePlay={() => setVideoPlayingId((cur) => cur === v.id ? null : v.id)}
+                />
+              ))}
+            </div>
+          )}
+          {visible < sortedRest.length && (
+            <div className="rs-loadmore">
+              <button className="rs-btn rs-btn--g" onClick={() => setVisible((n) => n + PAGE_STEP)}>
+                {Icons.Plus} Load {Math.min(PAGE_STEP, sortedRest.length - visible)} more
+              </button>
+            </div>
+          )}
+        </>
+      )}
+
       {/* AI INSIGHTS */}
       {(bullets.length > 0 || search?.ai_summary) && (
         <div className={`rs-ai${mobileCards ? ' rs-ai--mobile' : ''}${insightsCollapsed ? ' is-collapsed' : ''}`}>
@@ -1070,177 +1136,6 @@ export default function DetailScreen({
             <span className="rs-sk" style={{ width: '61%', height: 10 }} />
           </div>
         </div>
-      )}
-
-      {/* STATS */}
-      <div className="rs-stats">
-        <div className="rs-stt">
-          <span className="rs-stt__k">Breakouts found</span>
-          <span className="rs-stt__v">{Number(outlierCount ?? 0).toLocaleString()}</span>
-          {processing
-            ? <span className="rs-sofar"><i />so far</span>
-            : <span className="rs-stt__d up">{Icons.UpTrend}<span>{outlierCount ?? 0} this cycle</span></span>}
-        </div>
-        <div className="rs-stt">
-          <span className="rs-stt__k">Videos in this search</span>
-          <span className="rs-stt__v">{Number(videosInRun ?? 0).toLocaleString()}</span>
-          {processing
-            ? <span className="rs-sofar"><i />so far</span>
-            : <span className="rs-stt__d">{search?.last_run_at ? `all from the ${formatDate(search.last_run_at)} refresh` : 'this run'}</span>}
-        </div>
-        <div className="rs-stt hi">
-          <span className="rs-stt__k">Top Breakout Score</span>
-          <span className="rs-stt__v">{compact(topBreakoutScore)}<small>×</small></span>
-          {processing
-            ? <span className="rs-sofar rs-sofar--flat"><i />can still rise</span>
-            : <span className="rs-stt__d">{medianViews ? `vs ${compact(medianViews)} median views` : '—'}</span>}
-        </div>
-        <div className="rs-stt">
-          <span className="rs-stt__k">Avg engagement rate</span>
-          {processing && avgEng == null
-            ? <span className="rs-sk" style={{ width: '66%', height: 18, marginTop: 3 }} />
-            : <span className="rs-stt__v">{avgEng != null ? Number(avgEng).toFixed(1) : '—'}<small>%</small></span>}
-          {!processing && <span className="rs-stt__d">across {results.length} videos</span>}
-        </div>
-      </div>
-
-      {/* BREAKOUT VIDEOS — winner */}
-      {winner && (() => {
-        const winnerBucket = bucketForVideo(winner);
-        const winnerBucketLabel = winnerBucket === 'new'
-          ? 'New this run'
-          : winnerBucket === 'prev'
-            ? 'From the previous run'
-            : 'From an older run';
-        const winnerBucketHint = winnerBucket === 'new'
-          ? runLabels.latest
-          : winnerBucket === 'prev'
-            ? runLabels.previous
-            : '3rd run+';
-        return (
-        <>
-          <div className="rs-sh"><h2>Breakout videos</h2><span className="rs-note">Videos with unusually strong engagement for their creator&rsquo;s audience, ranked by Breakout Score.</span></div>
-          <div className={`rs-winner rs-winner--run-${winnerBucket}`}>
-            <div className="rs-wmedia">
-              <VideoFrame video={winner} winner leading={processing} showStats={false} isPlaying={videoPlayingId === winner.id} onTogglePlay={() => setVideoPlayingId((v) => v === winner.id ? null : winner.id)} />
-              <div className="rs-oc__ov">
-                <div className="rs-ovchip rs-ovchip--out">
-                  <div className="rs-ovchip__l">Breakout Score</div>
-                  <div className="rs-ovchip__n">{compact(breakoutScore(winner))}×</div>
-                </div>
-                <div className="rs-ovchip rs-ovchip--views">
-                  <div className="rs-ovchip__l">Views</div>
-                  <div className="rs-ovchip__n">{compact(winner.views)}</div>
-                </div>
-              </div>
-            </div>
-            <div className="rs-wdet">
-              <div className="rs-wcreator">
-                <span className="rs-av" style={{ background: gradientFor(winner.handle ?? winner.id) }} />
-                <div className="rs-wcreator__copy" style={{ flex: 1, minWidth: 0 }}>
-                  <div className="rs-wcreator__topline">
-                    <div className="rs-wc__n">{winner.handle || winner.username || '—'}</div>
-                    <div className="rs-wc__s">{winner.uploaded_at ? formatDate(winner.uploaded_at) : winner.posted_at ? formatDate(winner.posted_at) : ''}</div>
-                  </div>
-                  <div className="rs-wc__s">{Number(winner.followers ?? 0) > 0 ? `${compact(winner.followers)} followers` : 'on TikTok'}</div>
-                </div>
-                <span className={`rs-runpill rs-runpill--${winnerBucket}`} title={winnerBucketHint}>
-                  <span className="rs-runpill__dot" aria-hidden />
-                  {winnerBucketLabel}
-                </span>
-                {winner.post_url && (
-                  <a href={winner.post_url} target="_blank" rel="noopener" className="rs-ic2" title="Open in TikTok">{Icons.ExtLink}</a>
-                )}
-              </div>
-              <p className="rs-wcap">{winner.title || winner.caption}</p>
-              <div className="rs-wmets">
-                <span>{Icons.Eye}<b>{compact(winner.views)}</b></span>
-                <span>{Icons.Heart}<b>{compact(winner.likes)}</b></span>
-                <span>{Icons.Comment}<b>{compact(winner.comments)}</b></span>
-                <span>{Icons.Share}<b>{compact(winner.shares)}</b></span>
-              </div>
-              <VideoTags video={winner} />
-              <AutoAnalysis video={winner} />
-              <div className="rs-wact">
-                <AnalyzeStateButton analysis={winner.analysis} onClick={() => openAnalysis(winner)} />
-                <button
-                  className={`rs-ic2${winner.bookmarked ? ' on' : ''}`}
-                  onClick={() => onToggleVideoBookmark?.(winner)}
-                  disabled={bookmarkingVideoId === winner.id}
-                  title={winner.bookmarked ? 'Remove from bookmarks' : 'Save video'}
-                  aria-label={winner.bookmarked ? 'Remove from bookmarks' : 'Save video'}
-                >
-                  {winner.bookmarked ? Icons.Bookmark : Icons.BookmarkO}
-                </button>
-              </div>
-            </div>
-          </div>
-        </>
-        );
-      })()}
-
-      {/* MORE BREAKOUTS */}
-      {rest.length > 0 && (
-        <>
-          <div className="rs-sh">
-            <h2>More breakouts</h2>
-            <span className="rs-sh__actions">
-              <span className="rs-runfilter">
-                <span className="rs-runfilter__pre">Show:</span>
-                <select
-                  value={runFilter}
-                  onChange={(e) => setRunFilter(e.target.value)}
-                  aria-label="Filter by search run"
-                >
-                  <option value="all">All runs ({rest.length})</option>
-                  <option value="new">New this run ({runCounts.new})</option>
-                  <option value="prev">Previous run ({runCounts.prev})</option>
-                  <option value="old">Older ({runCounts.old})</option>
-                </select>
-                {Icons.ChevDown}
-              </span>
-              <span className="rs-sortsel">
-                <span className="rs-sortsel__pre">Sort:</span>
-                <select value={sortKey} onChange={(e) => setSortKey(e.target.value)}>
-                  <option value="outlier">Breakout Score</option>
-                  <option value="views">Views</option>
-                  <option value="date">Date posted</option>
-                </select>
-                {Icons.ChevDown}
-              </span>
-            </span>
-          </div>
-          {sortedRest.length === 0 ? (
-            <div className="rs-runempty">
-              No videos matched the current run filter.{' '}
-              <button type="button" className="rs-runempty__reset" onClick={() => setRunFilter('all')}>
-                Show all runs
-              </button>
-            </div>
-          ) : (
-            <div className="rs-ogrid">
-              {sortedRest.slice(0, visible).map((v) => (
-                <BreakoutVideoCard
-                  key={v.id}
-                  video={v}
-                  runBucket={bucketForVideo(v)}
-                  onAnalyze={() => handleAnalyzeAction(v)}
-                  onToggleBookmark={() => onToggleVideoBookmark?.(v)}
-                  bookmarking={bookmarkingVideoId === v.id}
-                  isPlaying={videoPlayingId === v.id}
-                  onTogglePlay={() => setVideoPlayingId((cur) => cur === v.id ? null : v.id)}
-                />
-              ))}
-            </div>
-          )}
-          {visible < sortedRest.length && (
-            <div className="rs-loadmore">
-              <button className="rs-btn rs-btn--g" onClick={() => setVisible((n) => n + PAGE_STEP)}>
-                {Icons.Plus} Load {Math.min(PAGE_STEP, sortedRest.length - visible)} more
-              </button>
-            </div>
-          )}
-        </>
       )}
 
       {/* ANALYTICS */}
@@ -1495,16 +1390,24 @@ export default function DetailScreen({
         </>
       )}
 
-      {/* HASHTAGS & SOUNDS */}
-      {processing && hashtags.length === 0 && sounds.length === 0 && (
-        <SkeletonSection title="Hashtags & sounds" height={120} />
+      {/* HASHTAGS (top sounds retired) */}
+      {processing && hashtags.length === 0 && (
+        <SkeletonSection title="Hashtags they used" height={120} />
       )}
-      {(hashtags.length > 0 || sounds.length > 0) && (
+      {hashtags.length > 0 && (
         <>
-          <div className="rs-sh"><h2>Hashtags &amp; sounds</h2><span className="rs-note">Across this search's breakout videos.</span></div>
-          <div className="rs-two">
-            <ScrollPanel title="Hashtags they used" items={hashtags.map((h) => ({ label: h.tag, count: h.count, url: `https://www.tiktok.com/tag/${encodeURIComponent(String(h.tag).replace(/^#/, ''))}` }))} max={hashMax} />
-            <ScrollPanel title="Sounds they used" items={sounds.map((s) => ({ label: s.label, count: s.count, icon: Icons.Music, url: `https://www.tiktok.com/search/sound?q=${encodeURIComponent(s.label)}` }))} max={soundMax} barColor="var(--a4)" />
+          <div className="rs-sh"><h2>Hashtags they used</h2><span className="rs-note">Across this search's breakout videos.</span></div>
+          <div className="rs-tagcard">
+            {hashtags.map((h, i) => {
+              const tag = String(h.tag).replace(/^#/, '');
+              return (
+                <a key={i} className="rs-trow" href={`https://www.tiktok.com/tag/${encodeURIComponent(tag)}`} target="_blank" rel="noopener">
+                  <b>#{tag}</b>
+                  <span className="rs-trow__bar"><i style={{ width: `${(h.count / hashMax) * 100}%` }} /></span>
+                  <span className="rs-trow__c">{h.count}</span>
+                </a>
+              );
+            })}
           </div>
         </>
       )}
@@ -2338,6 +2241,144 @@ const scopedCss = `
 @media (prefers-reduced-motion:reduce){
 .rs-spin svg,.rs-spin>i,.rs-sweep i,.rs-tick--now .rs-tick__d,.rs-tick__c svg,.rs-runbar__mini svg,.rs-sofar i,.rs-sk::after{animation:none}
 }
+/* ===== results v2 mockup — exact desktop port (overrides above) ===== */
+.rs-tagcard{background:var(--white);border:1px solid var(--line);border-radius:16px;padding:8px 20px;margin-bottom:34px;max-height:436px;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin;scrollbar-color:var(--line-2,#D9D6CF) transparent}
+.rs-tagcard::-webkit-scrollbar{width:8px}
+.rs-tagcard::-webkit-scrollbar-thumb{background:var(--line-2,#D9D6CF);border-radius:8px;border:2px solid var(--white)}
+.rs-trow{display:flex;align-items:center;gap:11px;padding:9px 0;border-bottom:1px solid var(--line);text-decoration:none}
+.rs-trow:last-child{border-bottom:none}
+.rs-trow b{flex:1;min-width:0;font-size:.85rem;font-weight:700;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rs-trow:hover b{color:var(--amber-ink)}
+.rs-trow__bar{width:76px;height:7px;border-radius:5px;background:var(--paper);overflow:hidden;flex:none}
+.rs-trow__bar i{display:block;height:100%;border-radius:5px;background:var(--yellow)}
+.rs-trow__c{width:26px;text-align:right;font-size:.78rem;font-weight:800;color:var(--muted);font-variant-numeric:tabular-nums}
+@media (min-width:981px){
+.rs-viewbar{margin-bottom:16px}
+.rs-tbtn{height:34px;padding:0 14px 0 11px;border-radius:100px;border:1px solid var(--line);background:var(--white);font-size:.84rem;font-weight:700;color:var(--ink);transition:.16s}
+.rs-tbtn:hover{border-color:var(--line-2,#D9D6CF);background:var(--paper);color:var(--ink)}
+.rs-bhead{display:flex;align-items:flex-start;gap:16px;flex-wrap:nowrap;background:var(--white);border:1px solid var(--line);border-radius:22px;padding:20px 22px;margin-bottom:22px;box-shadow:none}
+.rs-bhead__l{width:54px;height:54px;border-radius:16px;font-size:1.05rem;font-weight:800;box-shadow:none;text-shadow:none}
+.bb .rs-h1{margin:0;font-size:1.6rem;font-weight:800;letter-spacing:-.032em;line-height:1.15}
+.rs-bmeta{display:flex;align-items:center;gap:9px;margin-top:5px;flex-wrap:wrap}
+.rs-bbadge{font-size:.68rem;font-weight:800;letter-spacing:.09em;padding:3px 8px;border-radius:6px;border:0}
+.rs-handle{padding:0;border:0;background:transparent;font-size:.85rem;font-weight:600;color:var(--muted)}
+.rs-ed{width:28px;height:28px;border-radius:50%;border:1px solid var(--line);background:var(--white);display:grid;place-items:center;color:var(--muted)}
+.rs-ed:hover{border-color:var(--ink);color:var(--ink)}
+.rs-ed svg{width:14px;height:14px}
+.rs-bsub{margin-top:9px;gap:10px;font-size:.82rem;color:#74716A}
+.rs-bline{gap:0}
+.rs-bline span+span::before{content:'';width:3px;height:3px;border-radius:50%;background:var(--line-2,#D9D6CF);margin:0 10px}
+.rs-bline__k{font-size:.68rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--amber-ink)}
+.rs-state{padding:4px 11px;border:0;font-size:.74rem;font-weight:700}
+.rs-state__dot{width:6px;height:6px;opacity:1}
+.rs-bhead__actions{gap:8px}
+.rs-bhead__actions .rs-iconbtn{width:38px;height:38px;border-radius:50%;border:1px solid var(--line);box-shadow:none;color:var(--muted)}
+.rs-bhead__actions .rs-iconbtn:hover{border-color:var(--ink);color:var(--ink)}
+.rs-bhead__actions .rs-iconbtn svg{width:16px;height:16px}
+
+.rs-sh{justify-content:flex-start;align-items:center;gap:16px;margin:0 0 14px}
+.bb .rs-sh h2{position:relative;display:block;padding-left:13px;font-size:1.12rem;letter-spacing:-.026em}
+.rs-sh h2::before{position:absolute;left:0;top:.2em;bottom:.2em;width:3px;height:auto;border-radius:2px}
+.rs-note{font-size:.83rem;color:#74716A;max-width:52ch}
+.rs-sh__actions{margin-left:auto;display:flex;gap:9px;flex-wrap:wrap}
+.rs-runfilter,.rs-sortsel{position:relative;display:inline-flex;align-items:center}
+.rs-runfilter__pre,.rs-sortsel__pre{display:none}
+.rs-runfilter select,.rs-sortsel select{appearance:none;height:36px;padding:0 34px 0 14px;border:1px solid var(--line);border-radius:100px;background:var(--white);font:inherit;font-size:.82rem;font-weight:600;color:var(--ink);cursor:pointer}
+.rs-runfilter select:hover,.rs-sortsel select:hover{border-color:var(--line-2,#D9D6CF)}
+.rs-runfilter svg,.rs-sortsel svg{position:absolute;right:13px;top:50%;transform:translateY(-50%);width:13px;height:13px;color:#74716A;pointer-events:none}
+.rs-ogrid{grid-template-columns:repeat(auto-fill,minmax(268px,1fr));gap:18px}
+.rs-ogrid{margin-bottom:34px}
+.rs-loadmore{display:flex;justify-content:center;padding:0 0 6px;margin:-14px 0 34px}
+.rs-loadmore .rs-btn{height:40px;padding:0 20px;border-radius:100px;font-size:.86rem;font-weight:700}
+
+.rs-ai{background:var(--white);border:1px solid var(--line);border-radius:16px;padding:18px 20px;margin:0 0 34px}
+.rs-ai__h{margin-bottom:12px}
+.rs-ai__h svg{width:17px;height:17px;color:var(--amber-ink);fill:var(--amber-ink)}
+.rs-ai__t{font-size:.98rem;font-weight:800;letter-spacing:-.02em;text-transform:none;color:var(--ink)}
+.rs-ai__when{font-size:.76rem;color:#74716A}
+.rs-ai__list{gap:10px}
+.rs-ai__list li{padding-left:20px;font-size:.88rem;line-height:1.5}
+.rs-ai__list li::before{left:4px;top:.6em;width:6px;height:6px;background:var(--yellow)}
+
+.rs-acard,.rs-heat{background:var(--white);border:1px solid var(--line);border-radius:16px;padding:18px 20px;margin-bottom:34px;box-shadow:none}
+.rs-mtabs{display:inline-flex;gap:3px;padding:3px;background:var(--paper);border:1px solid var(--line);border-radius:100px}
+.rs-mtab{height:32px;padding:0 14px;border-radius:100px;font-size:.81rem;font-weight:700;color:var(--muted);background:transparent;border:0;box-shadow:none}
+.rs-mtab.on{background:var(--yellow);color:#1A1400}
+.rs-abig{margin:16px 0 6px;display:flex;align-items:baseline;gap:12px}
+.rs-abig__v{font-size:1.9rem;font-weight:900;letter-spacing:-.04em;color:var(--ink)}
+.rs-abig__delta{font-size:.82rem;font-weight:700;color:#9A3412}
+.rs-achart{height:190px;margin-top:6px}
+.rs-axlabels{margin-top:8px;font-size:.74rem;color:#74716A}
+
+.rs-heatgrid{gap:3px}
+.rs-hh{font-size:.64rem;color:#74716A}
+.rs-hlabel{font-size:.72rem;font-weight:700;color:var(--muted)}
+.rs-hcell{border-radius:4px}
+.rs-hlegend{display:flex;align-items:center;gap:5px;justify-content:flex-end;margin-top:12px;font-size:.73rem;color:#74716A}
+.rs-hlegend span{width:13px;height:13px;border-radius:4px}
+.rs-insightbox{display:flex;gap:10px;align-items:flex-start;margin-top:14px;padding:13px 15px;border:0;border-radius:11px;background:var(--wash);font-size:.85rem;color:var(--body)}
+.rs-insightbox svg{width:16px;height:16px;color:var(--amber-ink);fill:var(--amber-ink);flex:none;margin-top:2px}
+
+.rs-two{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:34px}
+.rs-dcard{background:var(--white);border:1px solid var(--line);border-radius:16px;padding:18px 20px;box-shadow:none}
+.bb .rs-dcard h3{font-size:.96rem;font-weight:800;color:var(--ink)}
+.rs-sub{margin-top:3px;font-size:.8rem;color:#74716A}
+.rs-owk{display:flex;align-items:flex-end;gap:10px;height:130px;margin-top:16px}
+.rs-owk__col{flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;height:100%;justify-content:flex-end}
+.rs-owk__v{font-size:.8rem;font-weight:800;color:var(--ink)}
+.rs-owk__bar{width:100%;border-radius:7px 7px 3px 3px;background:var(--a2);min-height:3px}
+.rs-owk__col.peak .rs-owk__bar{background:var(--yellow)}
+.rs-owk__x{font-size:.7rem;color:#74716A}
+.rs-dist{display:flex;flex-direction:column;gap:11px;margin-top:16px}
+.rs-drow{display:flex;align-items:center;gap:11px}
+.rs-drow__lbl{width:54px;flex:none;font-size:.79rem;font-weight:700;color:var(--muted)}
+.rs-drow__track{flex:1;height:9px;border-radius:6px;background:var(--paper);overflow:hidden}
+.rs-drow__fill{display:block;height:100%;border-radius:6px}
+.rs-drow__c{width:26px;text-align:right;font-size:.79rem;font-weight:800;color:var(--ink)}
+}
+@media (min-width:981px) and (max-width:1100px){.rs-two{grid-template-columns:1fr}}
+
+/* ===== results header — mockup style on tablet/mobile too ===== */
+@media (max-width:980px){
+.rs-viewbar{margin-bottom:12px;align-items:center}
+.rs-tbtn{height:34px;padding:0 14px 0 11px;border-radius:100px;border:1px solid var(--line);background:var(--white);font-size:.84rem;font-weight:700;color:var(--ink)}
+.rs-viewbar__actions{display:flex;gap:8px}
+.rs-viewbar__actions .rs-iconbtn{width:36px;height:36px;border-radius:50%;border:1px solid var(--line);background:var(--white);box-shadow:none;color:var(--muted)}
+.rs-viewbar__actions .rs-iconbtn svg{width:15px;height:15px}
+.rs-bhead{display:flex;align-items:flex-start;gap:12px;flex-wrap:nowrap;padding:16px;margin-bottom:20px;border:1px solid var(--line);border-radius:18px;background:var(--white);box-shadow:none}
+.rs-bhead__l{width:44px;height:44px;border-radius:13px;font-size:.9rem;font-weight:800;box-shadow:none;text-shadow:none}
+.bb .rs-h1{margin:0;font-size:1.35rem;font-weight:800;letter-spacing:-.03em;line-height:1.15;overflow-wrap:anywhere}
+.rs-bmeta{display:flex;align-items:center;gap:8px;margin-top:6px;flex-wrap:wrap}
+.rs-bbadge{font-size:.62rem;font-weight:800;letter-spacing:.09em;padding:3px 7px;border-radius:6px;border:0}
+.rs-handle{padding:0;border:0;background:transparent;font-size:.82rem;font-weight:600;color:var(--muted);min-width:0}
+.rs-handle span:first-child{max-width:160px}
+.rs-ed{width:24px;height:24px;border-radius:50%;border:1px solid var(--line);background:var(--white);display:grid;place-items:center;color:var(--muted)}
+.rs-ed svg{width:12px;height:12px}
+.rs-bsub{width:calc(100% + 56px);max-width:none;margin:12px 0 0 -56px;padding-top:12px;border-top:1px solid var(--line);gap:6px 8px;font-size:.76rem;color:#74716A;align-items:center;justify-content:space-between}
+.rs-bline{gap:2px 0;flex-wrap:nowrap;white-space:nowrap}
+.rs-bsub .rs-state{flex-basis:auto}
+.rs-bline span+span::before{content:'';width:3px;height:3px;border-radius:50%;background:var(--line-2,#D9D6CF);margin:0 7px}
+.rs-bline__k{font-size:.62rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--amber-ink)}
+.rs-state{padding:3px 9px;border:0;font-size:.7rem;font-weight:700}
+.rs-state__dot{width:6px;height:6px;opacity:1}
+}
+
+/* ===== section heads + run/sort filters on mobile ===== */
+@media (max-width:980px){
+.rs-sh{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 12px;margin:28px 0 12px}
+.rs-sh .rs-note{grid-column:auto;grid-row:auto}
+.rs-sh__actions:has(> :only-child){grid-template-columns:1fr}
+.bb .rs-sh h2{position:relative;display:block;padding-left:12px;font-size:1.05rem;letter-spacing:-.026em}
+.rs-sh h2::before{position:absolute;left:0;top:.2em;bottom:.2em;width:3px;height:auto;border-radius:2px}
+.rs-note{order:2;flex-basis:100%;font-size:.8rem;line-height:1.45;color:#74716A}
+.rs-sh__actions{order:3;flex-basis:100%;display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:8px 0 0}
+.rs-runfilter,.rs-sortsel{grid-area:auto;position:relative;display:flex;align-items:center;min-width:0;height:auto;padding:0;border:0;background:none;box-shadow:none}
+.rs-runfilter__pre,.rs-sortsel__pre{display:none}
+.rs-runfilter select,.rs-sortsel select{appearance:none;-webkit-appearance:none;width:100%;min-width:0;height:38px;padding:0 32px 0 14px;border:1px solid var(--line);border-radius:100px;background:var(--white);font:inherit;font-size:.82rem;font-weight:600;color:var(--ink);text-overflow:ellipsis;cursor:pointer}
+.rs-runfilter select:focus,.rs-sortsel select:focus{outline:none;border-color:var(--yellow);box-shadow:0 0 0 3px var(--wash)}
+.rs-runfilter svg,.rs-sortsel svg{position:absolute;right:12px;top:50%;transform:translateY(-50%);width:13px;height:13px;color:#74716A;pointer-events:none}
+}
+
 `;
   const goBack = () => {
     window.location.assign('/home');
