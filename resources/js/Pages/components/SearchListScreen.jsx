@@ -7,30 +7,30 @@ import EntitlementsBar from './EntitlementsBar.jsx';
 import { compact } from './BreakoutVideoCard.jsx';
 import { STATUS, formatDate } from './SavedSearchRow.jsx';
 import { savedSearch as api } from '../../landing/flow/api.js';
-import { Search, Chevron, Refresh, Plus } from '../../landing/components/Icons.jsx';
+import { Search, Chevron } from '../../landing/components/Icons.jsx';
 import { withReturnTo } from '../utils/navigation.js';
 
 const COPY = {
   brand: {
     title: 'Brand searches',
-    subtitle: 'Research any brand on TikTok, then keep the good ones on a schedule.',
-    heroEyebrow: 'Start a brand search',
-    placeholder: 'Which brand do you want to research?',
-    sample: 'rhode skin',
-    heroHint: 'One brand per search — we widen it with keywords next.',
-    moversNote: 'Best breakout across every brand you track.',
+    subtitle: 'Track any brand on TikTok. Catch its breakout videos first.',
+    heroEyebrow: 'Search a brand',
+    modeLabel: 'Brand',
+    typingWords: ['rhode skin', 'drunk elephant', 'olipop', 'jones road'],
+    moversNote: 'Across every brand you track',
     allHeading: 'All brand searches',
+    nameHeader: 'Brand',
     filterPlaceholder: 'Filter brands',
   },
   product: {
     title: 'Product searches',
-    subtitle: 'Track a product category across every brand selling it, not just one label.',
-    heroEyebrow: 'Start a product search',
-    placeholder: 'Which product do you want to track?',
-    sample: 'lip oil',
-    heroHint: 'One product per search — we widen it with keywords next.',
-    moversNote: 'Best breakout across every product you track.',
+    subtitle: 'Track any product on TikTok. Catch its breakout videos first.',
+    heroEyebrow: 'Search a product',
+    modeLabel: 'Product',
+    typingWords: ['lip oil', 'heatless curlers', 'protein cold foam', 'led face mask'],
+    moversNote: 'Across every product you track',
     allHeading: 'All product searches',
+    nameHeader: 'Product',
     filterPlaceholder: 'Filter products',
   },
 };
@@ -39,7 +39,7 @@ const SORT = {
   outliers: 'Most breakouts',
   top_score: 'Top score',
   recent: 'Recently updated',
-  az: 'Name A-Z',
+  az: 'A–Z',
 };
 
 const SEARCH_PAGE_SIZE = 25;
@@ -71,75 +71,99 @@ function cardIdentity(search) {
   return { title, context: `${cadence} · ${coverage}` };
 }
 
-function BrandCard({ search, onOpen, onEdit }) {
+const AV_TONES = 5;
+
+function SearchRow({ search, index, onOpen, onEdit }) {
   const status = STATUS[search.status] ?? { label: 'Ready', cls: 'pill--off' };
   const identity = cardIdentity(search);
   const initials = identity.title.slice(0, 2).toUpperCase();
-  const topScore = Number(search.top_score) > 0 ? `${Math.round(search.top_score)}x` : '—';
-  const videosScanned = search.videos_scanned != null ? compact(search.videos_scanned) : '0';
-  const latestOutliers = search.latest_outlier_count != null ? compact(search.latest_outlier_count) : '0';
-  const averageVideoViews = Number(search.average_video_views) > 0 ? compact(search.average_video_views) : '—';
+  const topScore = Number(search.top_score) > 0 ? Math.round(search.top_score) : null;
+  const num = (v) => (v != null ? compact(v) : '0');
+  const avgViews = Number(search.average_video_views) > 0 ? compact(search.average_video_views) : '—';
 
   return (
-    <div
-      className="bcard"
-      role="button"
+    <tr
       tabIndex={0}
       onClick={onOpen}
       onKeyDown={(e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
+        if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) {
           e.preventDefault();
           onOpen();
         }
       }}
-      style={{ cursor: 'pointer' }}
     >
-      <div className="bcard__top">
-        <span className="bcard__av">{initials}</span>
-        <span style={{ minWidth: 0 }}>
-          <span className="bcard__n">{identity.title}</span>
-          <span className="bcard__h">{identity.context}</span>
+      <td>
+        <span className="sl-name">
+          <span className={`sl-av sl-av--${(index % AV_TONES) + 1}`}>{initials}</span>
+          <span style={{ minWidth: 0 }}>
+            <b>{identity.title}</b>
+            <span>{identity.context}</span>
+          </span>
         </span>
-        <span className={`pill ${status.cls}`}>
-          <i />
-          {status.label}
-        </span>
-      </div>
-      <div className="bcard__mid">
-        <div>
-          <span className="bcard__v">{videosScanned}</span>
-          <span className="bcard__l">videos scanned</span>
-        </div>
-        <div>
-          <span className="bcard__v">{latestOutliers}</span>
-          <span className="bcard__l">new breakouts</span>
-        </div>
-        <div>
-          <span className="bcard__v">{topScore}</span>
-          <span className="bcard__l">top breakout video</span>
-        </div>
-        <div>
-          <span className="bcard__v">{averageVideoViews}</span>
-          <span className="bcard__l">avg video views</span>
-        </div>
-      </div>
-      <div className="bcard__foot">
-        <span>Updated {formatDate(search.last_run_at)}</span>
+      </td>
+      <td>
+        <span className={`pill ${status.cls}`}><i />{status.label}</span>
+      </td>
+      <td className="num">
+        <span className="sl-cell"><b>{num(search.videos_scanned)}</b><span>{num(search.result_count)} total</span></span>
+      </td>
+      <td className="num">
+        <span className="sl-cell"><b className="hi">{num(search.latest_outlier_count)}</b><span>{num(search.outlier_count)} total</span></span>
+      </td>
+      <td className="num">
+        {topScore ? <span className="sl-score">{compact(topScore)}<em>×</em></span> : <span className="sl-dim">—</span>}
+      </td>
+      <td className="num"><span className="sl-cell"><b>{avgViews}</b></span></td>
+      <td><span className="sl-dim">{formatDate(search.last_run_at)}</span></td>
+      <td className="sl-act">
         <button
           type="button"
-          className="btn btn--g btn--sm"
+          className="sl-edit"
           onClick={(e) => {
             e.preventDefault();
             e.stopPropagation();
             onEdit();
           }}
         >
-          Edit details
+          Edit
         </button>
-      </div>
-    </div>
+      </td>
+    </tr>
   );
 }
+
+const TABLE_CSS = `
+  .bb .sl-wrap{margin-top:14px;background:var(--white);border:1px solid var(--line);border-radius:16px;overflow:hidden}
+  .bb .sl-scroll{overflow-x:auto}
+  .bb .sl-table{width:100%;border-collapse:collapse;min-width:860px}
+  .bb .sl-table th{background:var(--paper,#FAF9F6);text-align:left;font-size:.68rem;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:var(--faint-2,#74716A);padding:12px 16px;border-bottom:1px solid var(--line);white-space:nowrap}
+  .bb .sl-table td{padding:12px 16px;border-bottom:1px solid var(--line);font-size:.88rem;vertical-align:middle}
+  .bb .sl-table .num{text-align:right;font-variant-numeric:tabular-nums}
+  .bb .sl-table tbody tr{cursor:pointer;transition:background .14s}
+  .bb .sl-table tbody tr:hover,.bb .sl-table tbody tr:focus-visible{background:var(--paper,#FAF9F6);outline:none}
+  .bb .sl-table tbody tr:last-child td{border-bottom:0}
+  .bb .sl-name{display:flex;align-items:center;gap:11px;min-width:0}
+  .bb .sl-name b{display:block;font-size:.92rem;font-weight:800;color:var(--ink);letter-spacing:-.016em;line-height:1.3}
+  .bb .sl-name span span{display:block;font-size:.76rem;color:var(--faint-2,#74716A);line-height:1.3}
+  .bb .sl-av{width:34px;height:34px;flex:none;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:.74rem;font-weight:800;line-height:1}
+  .bb .sl-av--1{background:#FFF3CF;color:#8A5E00}
+  .bb .sl-av--2{background:#E8F2FF;color:#20609B}
+  .bb .sl-av--3{background:#EAF7EF;color:#1F7A4D}
+  .bb .sl-av--4{background:#FDEEF3;color:#A33A63}
+  .bb .sl-av--5{background:#F0EDFB;color:#5E4CA8}
+  .bb .sl-cell{display:block;line-height:1.2}
+  .bb .sl-cell b{display:block;font-weight:800;color:var(--ink);font-size:.95rem;letter-spacing:-.024em}
+  .bb .sl-cell b.hi{color:var(--amber-ink)}
+  .bb .sl-cell span{display:block;margin-top:2px;font-size:.72rem;font-weight:500;color:var(--faint-2,#74716A);white-space:nowrap}
+  .bb .sl-score{font-weight:900;font-size:.96rem;color:#6E4A00;letter-spacing:-.03em}
+  .bb .sl-score em{font-style:normal;font-size:.78em;margin-left:1px}
+  .bb .sl-dim{color:var(--faint-2,#74716A);font-size:.82rem;white-space:nowrap}
+  .bb .sl-act{text-align:right;white-space:nowrap}
+  .bb .sl-edit{font-size:.82rem;font-weight:700;color:var(--amber-ink);padding:6px 10px;border-radius:8px;border:0;background:none;cursor:pointer}
+  .bb .sl-edit:hover{background:var(--wash,#FFF8E6)}
+  .bb .sl-foot{display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap;padding:12px 16px;background:var(--paper,#FAF9F6);border-top:1px solid var(--line);font-size:.82rem;color:var(--faint-2,#74716A)}
+  .bb .sl-foot b{color:var(--ink)}
+`;
 
 export default function SearchListScreen({ kind = 'brand', searches = [], moving = [], suggestions = [], prefillQuery = '' }) {
   const copy = COPY[kind] ?? COPY.brand;
@@ -168,7 +192,7 @@ export default function SearchListScreen({ kind = 'brand', searches = [], moving
   const searchLimit = billing.searchCreditsLimit;
 
   const subjectSuggestions = useMemo(() => suggestions.slice(0, 5), [suggestions]);
-  const suggestedToTrack = useMemo(() => suggestions.slice(0, 4), [suggestions]);
+  const quickPicks = useMemo(() => suggestions.slice(0, 5).map((s) => s.name).filter(Boolean), [suggestions]);
 
   const seedInlineFlow = (value) => {
     const nextSubject = value.trim().replace(/\s+/g, ' ');
@@ -249,12 +273,13 @@ export default function SearchListScreen({ kind = 'brand', searches = [], moving
 
   return (
     <AppLayout width="max-w-[1240px]" title={copy.title} subtitle={copy.subtitle} actions={<EntitlementsBar />}>
+      <style>{TABLE_CSS}</style>
       <BrandInlineFlow
         kind={kind}
+        modeLabel={copy.modeLabel}
+        typingWords={copy.typingWords}
+        quickPicks={quickPicks}
         eyebrow={copy.heroEyebrow}
-        placeholder={copy.placeholder}
-        sample={copy.sample}
-        hint={copy.heroHint}
         prefillSubject={prefillSubject}
         prefillNonce={prefillNonce}
         onCreated={(created) => setSearchList((current) => [{ ...created, search_type: kind }, ...current])}
@@ -288,43 +313,11 @@ export default function SearchListScreen({ kind = 'brand', searches = [], moving
         </section>
       )}
 
-      {/* ---------------- suggested to track ---------------- */}
-      {suggestedToTrack.length > 0 && (
-        <section className="sugg">
-          <div className="movers__h">
-            <h2>Suggested to track</h2>
-            <span className="note">
-              {kind === 'product'
-                ? 'Products rising in the categories you already watch.'
-                : 'Based on creator overlap with brands you already watch.'}
-            </span>
-          </div>
-          <div className="sugg__g">
-            {suggestedToTrack.map((s) => (
-              <div className="sg" key={s.name}>
-                <span className="sg__av">{s.name.slice(0, 2).toUpperCase()}</span>
-                <span style={{ minWidth: 0 }}>
-                  <span className="sg__n">{s.name}</span>
-                  <span className="sg__w">{s.why}</span>
-                </span>
-                <button
-                  type="button"
-                  className="btn btn--g btn--sm"
-                  onClick={() => seedInlineFlow(s.name)}
-                >
-                  <Plus className="h-[15px] w-[15px]" /> Track
-                </button>
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
-
       {/* ---------------- all searches ---------------- */}
       <section className="section-gap">
         <div className="movers__h">
           <h2>{copy.allHeading}</h2>
-          <span className="note">{searchList.length} tracked</span>
+          <span className="note">{searchList.length} tracked · bold = latest refresh</span>
         </div>
 
         <div className="tools" style={{ marginTop: 14 }}>
@@ -366,41 +359,48 @@ export default function SearchListScreen({ kind = 'brand', searches = [], moving
             </p>
           </div>
         ) : (
-          <div className="bgrid">
-            {filtered.slice(pageStart, pageStart + SEARCH_PAGE_SIZE).map((s) => (
-              <BrandCard
-                key={s.id}
-                search={s}
-                onOpen={() => router.visit(withReturnTo(s.url ?? `/library/${s.id}`, currentPath))}
-                onEdit={() => openEdit(s)}
-              />
-            ))}
-          </div>
-        )}
-        {filtered.length > 0 && (
-          <div style={{ marginTop: 20, textAlign: 'center' }}>
-            <p className="note" role="status">Showing {pageStart + 1}–{Math.min(pageStart + SEARCH_PAGE_SIZE, filtered.length)} of {filtered.length} searches</p>
-            {pageCount > 1 && (
-              <nav aria-label={`${copy.title} pagination`} style={{ paddingTop: 12, display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 12 }}>
-                <button
-                  type="button"
-                  className="btn btn--g btn--sm"
-                  disabled={currentPage === 1}
-                  onClick={() => setPage(currentPage - 1)}
-                >
-                  Previous
-                </button>
-                <span className="note">Page {currentPage} of {pageCount}</span>
-                <button
-                  type="button"
-                  className="btn btn--g btn--sm"
-                  disabled={currentPage === pageCount}
-                  onClick={() => setPage(currentPage + 1)}
-                >
-                  Next
-                </button>
-              </nav>
-            )}
+          <div className="sl-wrap">
+            <div className="sl-scroll">
+              <table className="sl-table">
+                <thead>
+                  <tr>
+                    <th>{copy.nameHeader}</th>
+                    <th>Status</th>
+                    <th className="num">Scanned</th>
+                    <th className="num">Breakouts</th>
+                    <th className="num">Top score</th>
+                    <th className="num">Avg views</th>
+                    <th>Updated</th>
+                    <th aria-label="Actions" />
+                  </tr>
+                </thead>
+                <tbody>
+                  {filtered.slice(pageStart, pageStart + SEARCH_PAGE_SIZE).map((s, i) => (
+                    <SearchRow
+                      key={s.id}
+                      search={s}
+                      index={pageStart + i}
+                      onOpen={() => router.visit(withReturnTo(s.url ?? `/library/${s.id}`, currentPath))}
+                      onEdit={() => openEdit(s)}
+                    />
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <div className="sl-foot">
+              <span role="status"><b>{pageStart + 1}–{Math.min(pageStart + SEARCH_PAGE_SIZE, filtered.length)}</b> of <b>{filtered.length}</b></span>
+              {pageCount > 1 && (
+                <nav aria-label={`${copy.title} pagination`} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <button type="button" className="btn btn--g btn--sm" disabled={currentPage === 1} onClick={() => setPage(currentPage - 1)}>
+                    Previous
+                  </button>
+                  <span>Page {currentPage} of {pageCount}</span>
+                  <button type="button" className="btn btn--g btn--sm" disabled={currentPage === pageCount} onClick={() => setPage(currentPage + 1)}>
+                    Next
+                  </button>
+                </nav>
+              )}
+            </div>
           </div>
         )}
       </section>

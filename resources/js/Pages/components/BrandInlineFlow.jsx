@@ -80,6 +80,37 @@ function MiniStepper({ current }) {
   );
 }
 
+/* Types and deletes sample subjects into a ghost placeholder. Pauses while
+ * the field is focused or filled; shows the first word statically when the
+ * user prefers reduced motion. */
+function useTypingWords(words, active) {
+  const list = Array.isArray(words) ? words.filter(Boolean) : [];
+  const [text, setText] = useState(list[0] ?? '');
+  const key = list.join('|');
+
+  useEffect(() => {
+    if (!list.length) return undefined;
+    const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    if (!active || reduce) { setText(list[0]); return undefined; }
+
+    let w = 0; let i = 0; let del = false; let timer;
+    const step = () => {
+      const word = list[w];
+      i += del ? -1 : 1;
+      setText(word.slice(0, i));
+      let wait = del ? 40 : 80 + Math.random() * 50;
+      if (!del && i === word.length) { del = true; wait = 1600; }
+      else if (del && i === 0) { del = false; w = (w + 1) % list.length; wait = 300; }
+      timer = window.setTimeout(step, wait);
+    };
+    step();
+    return () => window.clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key, active]);
+
+  return text;
+}
+
 export default function BrandInlineFlow({
   kind = 'brand',
   placeholder = 'Which brand do you want to research?',
@@ -91,6 +122,10 @@ export default function BrandInlineFlow({
   expandOnPrefill = false,
   onReset = null,
   onCreated = null,
+  // Opt-in list-page variant: mode chip, typing placeholder, quick-pick row.
+  modeLabel = null,
+  typingWords = null,
+  quickPicks = null,
 }) {
   const { billing = {}, auth = {} } = usePage().props;
   const signedIn = auth.signedIn ?? Boolean(auth.user);
@@ -116,6 +151,8 @@ export default function BrandInlineFlow({
   runIdxRef.current = runIdx;
 
   const inputRef = useRef(null);
+  const [inputFocused, setInputFocused] = useState(false);
+  const typedWord = useTypingWords(typingWords, state === 'collapsed' && !subject && !inputFocused);
   const subjectFieldRef = useRef(null);
   const rootRef = useRef(null);
   const kwCount = useMemo(() => keywords.filter((k) => k.selected).length, [keywords]);
@@ -425,8 +462,24 @@ export default function BrandInlineFlow({
         .bif__cta:disabled{opacity:.55;cursor:not-allowed;box-shadow:none}
         .bif__hint{margin-top:14px;padding-left:6px;font-size:.85rem;color:var(--faint-2,#9A968E);line-height:1.5}
         .bif__hint b{color:var(--muted);font-weight:700}
+        .bif--bare{background:none;border:0;padding:0;margin-bottom:34px}
+        .bif__mode{flex:none;display:inline-flex;align-items:center;height:42px;padding:0 17px;margin-left:-13px;border-radius:100px;background:var(--yellow);color:#1A1400;font-size:.84rem;font-weight:800;letter-spacing:-.01em;box-shadow:0 2px 8px -2px rgba(255,198,41,.9)}
+        .bif__ghost{position:absolute;left:4px;top:50%;transform:translateY(-50%);display:flex;align-items:center;max-width:100%;overflow:hidden;white-space:nowrap;pointer-events:none;font-size:1.14rem;font-weight:500;letter-spacing:-.01em;color:var(--faint-2,#9A968E)}
+        .bif__ghost b{font-weight:600;color:var(--body,#34332F)}
+        .bif__caret{width:1.5px;height:22px;margin-left:2px;flex:none;background:var(--ink);animation:bifBlink 1s steps(1) infinite}
+        @keyframes bifBlink{50%{opacity:0}}
+        @media (prefers-reduced-motion:reduce){.bif__caret{animation:none}}
+        .bif__picks{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin-top:12px;padding:0 10px}
+        .bif__picks-l{font-size:.8rem;font-weight:700;color:var(--faint-2,#9A968E);margin-right:2px}
+        .bif__pick{display:inline-flex;align-items:center;gap:7px;height:30px;padding:0 12px;border:1px solid var(--line);border-radius:100px;background:var(--white);font-size:.83rem;font-weight:600;color:var(--muted);cursor:pointer;transition:border-color .16s,background .16s,color .16s}
+        .bif__pick i{width:5px;height:5px;border-radius:50%;background:var(--yellow);flex:none}
+        .bif__pick:hover{border-color:var(--yellow);background:var(--wash,#FFF8E6);color:var(--ink)}
         @media (max-width:640px){
           .bif{padding:20px}
+          .bif--bare{padding:0}
+          .bif__mode{margin-left:0}
+          .bif__ghost{font-size:1.02rem;left:6px}
+          .bif__picks{padding:0 2px}
           .bif__bar{flex-wrap:wrap;padding:12px;border-radius:20px;gap:10px}
           .bif__entry{width:100%;gap:10px}
           .bif__bar input{width:100%;height:44px;font-size:1.02rem;padding:0 6px}
@@ -539,16 +592,17 @@ export default function BrandInlineFlow({
         />
       )}
 
-      <section className="bif" ref={rootRef}>
+      <section className={`bif${typingWords && state === 'collapsed' ? ' bif--bare' : ''}`} ref={rootRef}>
         {/* ---------- COLLAPSED ---------- */}
         {state === 'collapsed' && (
           <>
-            <p className="bif__ey">{eyebrow}</p>
+            {!typingWords && <p className="bif__ey">{eyebrow}</p>}
             <form
               className="bif__bar"
               ref={subjectFieldRef}
               onSubmit={(e) => { e.preventDefault(); startFlow(); }}
             >
+              {modeLabel && <span className="bif__mode">{modeLabel}</span>}
               <div className="bif__entry">
                 <svg className="q" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
                   <circle cx="11" cy="11" r="7" />
@@ -564,7 +618,8 @@ export default function BrandInlineFlow({
                       setSubject(e.target.value);
                       setShowSuggestions(true);
                     }}
-                    onFocus={() => setShowSuggestions(true)}
+                    onFocus={() => { setInputFocused(true); setShowSuggestions(true); }}
+                    onBlur={() => setInputFocused(false)}
                     onKeyDown={(event) => {
                       if (!visibleSuggestions.length) {
                         return;
@@ -592,11 +647,17 @@ export default function BrandInlineFlow({
                         setActiveSuggestion(-1);
                       }
                     }}
-                    placeholder={placeholder}
+                    placeholder={typingWords ? (inputFocused ? `Search ${typingWords[0]}` : '') : placeholder}
                     aria-label={eyebrow}
                     aria-expanded={showSuggestions && visibleSuggestions.length > 0}
                     aria-haspopup="listbox"
                   />
+
+                  {typingWords && !subject && !inputFocused && (
+                    <span className="bif__ghost" aria-hidden="true">
+                      Search&nbsp;<b>{typedWord}</b><i className="bif__caret" />
+                    </span>
+                  )}
 
                   {showSuggestions && visibleSuggestions.length > 0 && (
                     <div className="bif__suggest" role="listbox" aria-label={`${kind} suggestions`}>
@@ -629,12 +690,25 @@ export default function BrandInlineFlow({
                 <Search className="h-4 w-4" /> Find breakouts
               </button>
             </form>
+            {Array.isArray(quickPicks) ? (
+              quickPicks.length > 0 && (
+                <div className="bif__picks">
+                  <span className="bif__picks-l">Try</span>
+                  {quickPicks.map((name) => (
+                    <button key={name} type="button" className="bif__pick" onClick={() => applySuggestion(name)}>
+                      <i />{name}
+                    </button>
+                  ))}
+                </div>
+              )
+            ) : (
             <p className="bif__hint">
               {hint} Try <b>"{sample}"</b>
               {searchLimit > 0 && (
                 <> · {searchLeft} of {searchLimit} searches left this cycle</>
               )}
             </p>
+            )}
           </>
         )}
 
