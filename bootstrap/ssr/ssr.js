@@ -504,32 +504,11 @@ var NAV_GROUPS = [
 				icon: "PD"
 			},
 			{
-				key: "plans-archived",
-				label: "Archived Plans",
-				href: "/x/admin/plans?status=archived",
-				description: "Legacy pricing",
-				icon: "AP"
-			},
-			{
 				key: "users-deleted",
 				label: "Deleted Users",
 				href: "/x/admin/users?status=deleted",
 				description: "Restore review",
 				icon: "DU"
-			},
-			{
-				key: "videos-archived",
-				label: "Archived Videos",
-				href: "/x/admin/viral-videos?status=archived",
-				description: "Content review",
-				icon: "AV"
-			},
-			{
-				key: "keywords-archived",
-				label: "Archived Keywords",
-				href: "/x/admin/keyword-index?status=archived",
-				description: "Suggestion cleanup",
-				icon: "AK"
 			}
 		]
 	},

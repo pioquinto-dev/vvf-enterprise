@@ -27,6 +27,7 @@ const Icons = {
   heart: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="round"><path d="M12 20s-7-4.5-7-9a4 4 0 0 1 7-2.6A4 4 0 0 1 19 11c0 4.5-7 9-7 9z" /></svg>,
   comment: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg>,
   share: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 2 11 13" /><path d="M22 2l-7 20-4-9-9-4z" /></svg>,
+  eye: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z" /><circle cx="12" cy="12" r="3" /></svg>,
   trend: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M3 17l6-6 4 4 8-8" /><path d="M21 3h-5m5 0v5" /></svg>,
   bookmark: <svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 3h12v18l-6-4.5L6 21z" /></svg>,
   bookmarkO: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="round"><path d="M6 3h12v18l-6-4.5L6 21z" /></svg>,
@@ -119,13 +120,9 @@ function PostMedia({ video }) {
           )}
           {video.duration && <span className="bbf-dur">{video.duration}</span>}
           <span className="bbf-ovstats">
-            <span className="bbf-ovchip bbf-ovchip--score">
-              <span className="lab"><i />Breakout score</span>
-              <span className="num">{video.score || '—'}</span>
-            </span>
-            <span className="bbf-ovchip bbf-ovchip--views">
-              <span className="lab"><i />Views</span>
-              <span className="num">{video.views || '—'}</span>
+            <span className="bbf-score">
+              <span className="bbf-score__n">{video.score || '—'}</span>
+              <span className="bbf-score__l">Breakout score</span>
             </span>
           </span>
           {playerUrl
@@ -167,6 +164,7 @@ function Post({ video, onAnalyze, onToggleSave, saving }) {
           <Caption text={video.caption} />
 
           <div className="bbf-eng">
+            <span>{Icons.eye}{video.views}</span>
             <span>{Icons.heart}{video.likes}</span>
             <span>{Icons.comment}{video.comments}</span>
             <span>{Icons.share}{video.shares}</span>
@@ -184,9 +182,6 @@ function Post({ video, onAnalyze, onToggleSave, saving }) {
               {busy ? <span className="bbf-spin" aria-hidden /> : Icons.spark}
               <span>{analyzeLabel(status)}</span>
             </button>
-            {video.post_url && (
-              <a className="bbf-act bbf-act--ic" href={video.post_url} target="_blank" rel="noopener noreferrer" title="Open in TikTok" aria-label="Open in TikTok">{Icons.ext}</a>
-            )}
             <button
               type="button"
               className={`bbf-act bbf-act--ic${video.bookmarked ? ' on' : ''}`}
@@ -498,15 +493,10 @@ const scopedCss = `
 .bbf-play svg{width:15px;height:15px;margin-left:2px;color:#1A1400}
 .bbf-close{position:absolute;top:9px;right:9px;z-index:7;width:28px;height:28px;border:0;border-radius:50%;background:rgba(0,0,0,.65);color:#fff;font-size:1.25rem;line-height:1;cursor:pointer}
 .bbf-play-error{position:absolute;inset:auto 12px 12px;z-index:6;padding:10px;border-radius:8px;background:rgba(0,0,0,.8);color:#fff;text-align:center;font-size:.78rem}
-.bbf-ovstats{position:absolute;left:9px;right:9px;bottom:9px;z-index:5;display:grid;grid-template-columns:1fr 1fr;gap:6px}
-.bbf-ovchip{border-radius:10px;padding:7px 8px 8px;border:1px solid rgba(255,255,255,.35);box-shadow:0 4px 14px rgba(0,0,0,.28)}
-.bbf-ovchip .lab{display:flex;align-items:center;gap:5px;font-size:.56rem;font-weight:800;letter-spacing:.07em;text-transform:uppercase;white-space:nowrap}
-.bbf-ovchip .lab i{width:4px;height:4px;border-radius:50%;background:currentColor;flex:none}
-.bbf-ovchip .num{display:block;margin-top:3px;font-size:1.02rem;font-weight:800;line-height:1;letter-spacing:-.02em;color:var(--ink);font-variant-numeric:tabular-nums}
-.bbf-ovchip--score{background:#FFF3CF}
-.bbf-ovchip--score .lab{color:var(--amber-ink)}
-.bbf-ovchip--views{background:#FEF0E7}
-.bbf-ovchip--views .lab{color:#C2410C}
+.bbf-ovstats{position:absolute;left:9px;bottom:9px;z-index:5}
+.bbf-score{display:flex;align-items:center;gap:7px;padding:6px 12px 6px 9px;border-radius:999px;background:rgba(255,255,255,.95);backdrop-filter:blur(10px);box-shadow:0 4px 14px rgba(0,0,0,.28)}
+.bbf-score__n{font-size:1.02rem;font-weight:900;letter-spacing:-.025em;line-height:1;color:var(--amber-ink);font-variant-numeric:tabular-nums}
+.bbf-score__l{font-size:.58rem;font-weight:800;line-height:1.15;color:var(--ink);max-width:48px}
 
 .bbf-side{min-width:0;display:flex;flex-direction:column;gap:12px}
 .bbf-who{display:flex;align-items:flex-start;gap:9px}
@@ -518,10 +508,10 @@ const scopedCss = `
 .bbf-cap{margin:0;font-size:.9rem;line-height:1.5;color:var(--ink);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .bbf-tag{color:var(--amber-ink);font-weight:700;text-decoration:none}
 .bbf-tag:hover{text-decoration:underline;text-underline-offset:2px}
-.bbf-eng{display:flex;justify-content:space-between;gap:6px;margin-top:auto;padding-top:12px;border-top:1px solid var(--line);font-size:.8rem;font-weight:600;color:var(--muted);font-variant-numeric:tabular-nums}
+.bbf-eng{display:flex;justify-content:space-between;gap:6px;margin-top:auto;padding:12px 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line);font-size:.8rem;font-weight:600;color:var(--muted);font-variant-numeric:tabular-nums}
 .bbf-eng span{display:inline-flex;align-items:center;gap:5px;white-space:nowrap}
 .bbf-eng svg{width:13px;height:13px;flex:none;color:var(--faint,#74716A)}
-.bbf-acts{display:flex;gap:8px;margin-top:2px}
+.bbf-acts{display:flex;gap:8px;margin-top:12px}
 .bbf-act{display:inline-flex;align-items:center;justify-content:center;gap:7px;height:38px;border:0;border-radius:10px;font:inherit;font-size:.84rem;font-weight:700;text-decoration:none;cursor:pointer;transition:.16s}
 .bbf-act svg{width:14px;height:14px;flex:none}
 .bbf-act--an{flex:1;background:var(--yellow);color:#1A1400}
@@ -601,10 +591,10 @@ const scopedCss = `
   .bbf-post__b{display:block;padding:0 0 14px}
   .bbf-media{aspect-ratio:9/16;border-radius:0;margin-bottom:13px}
   .bbf-play{opacity:1}
-  .bbf-ovstats{left:12px;right:12px;bottom:12px;gap:8px}
-  .bbf-ovchip{padding:9px 12px 10px}
-  .bbf-ovchip .lab{font-size:.6rem}
-  .bbf-ovchip .num{font-size:1.16rem}
+  .bbf-ovstats{left:12px;bottom:12px}
+  .bbf-score{padding:7px 14px 7px 11px}
+  .bbf-score__l{font-size:.62rem}
+  .bbf-score__n{font-size:1.16rem}
   .bbf-side{padding:0 14px}
   .bbf-cap{-webkit-line-clamp:3}
 }

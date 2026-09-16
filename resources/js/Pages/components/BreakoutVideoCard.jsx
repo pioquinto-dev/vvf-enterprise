@@ -176,13 +176,9 @@ export function VideoFrame({ video, winner = false, leading = false, showStats =
       {isPlaying && <button className="rs-vf__close" onClick={onTogglePlay} aria-label="Close video preview">×</button>}
       {showStats && (
         <div className="rs-vf__stats" aria-hidden={Boolean(isPlaying)}>
-          <div className="rs-ovchip rs-ovchip--out">
-            <div className="rs-ovchip__l">Breakout Score</div>
-            <div className="rs-ovchip__n">{compact(breakoutScore(video))}×</div>
-          </div>
-          <div className="rs-ovchip rs-ovchip--views">
-            <div className="rs-ovchip__l">Views</div>
-            <div className="rs-ovchip__n">{compact(video.views)}</div>
+          <div className="rs-vf__score">
+            <span className="rs-vf__score-n">{compact(breakoutScore(video))}<i>×</i></span>
+            <span className="rs-vf__score-l">Breakout Score</span>
           </div>
         </div>
       )}
@@ -236,9 +232,6 @@ export default function BreakoutVideoCard({
           {onAnalyze
             ? <AnalyzeStateButton analysis={video.analysis} onClick={onAnalyze} small />
             : <span />}
-          {video.post_url && (
-            <a className="rs-ic2" href={video.post_url} target="_blank" rel="noopener noreferrer" title="Open in TikTok" aria-label="Open in TikTok">{Icons.ExtLink}</a>
-          )}
           {onToggleBookmark && (
             <button
               className={`rs-ic2${video.bookmarked ? ' on' : ''}`}
