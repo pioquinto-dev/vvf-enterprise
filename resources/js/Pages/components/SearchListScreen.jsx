@@ -13,10 +13,10 @@ import { withReturnTo } from '../utils/navigation.js';
 const COPY = {
   brand: {
     title: 'Brand searches',
-    subtitle: 'Track any brand on TikTok. Catch its breakout videos first.',
+    subtitle: 'Research any brand on TikTok, then keep the good ones on a schedule.',
     heroEyebrow: 'Search a brand',
     modeLabel: 'Brand',
-    typingWords: ['rhode skin', 'drunk elephant', 'olipop', 'jones road'],
+    typingWords: ['drunk elephant', 'rhode skin', 'olipop', 'jones road'],
     moversNote: 'Across every brand you track',
     allHeading: 'All brand searches',
     nameHeader: 'Brand',
@@ -24,7 +24,7 @@ const COPY = {
   },
   product: {
     title: 'Product searches',
-    subtitle: 'Track any product on TikTok. Catch its breakout videos first.',
+    subtitle: 'Research any product on TikTok, then keep the good ones on a schedule.',
     heroEyebrow: 'Search a product',
     modeLabel: 'Product',
     typingWords: ['lip oil', 'heatless curlers', 'protein cold foam', 'led face mask'],
@@ -192,7 +192,7 @@ export default function SearchListScreen({ kind = 'brand', searches = [], moving
   const searchLimit = billing.searchCreditsLimit;
 
   const subjectSuggestions = useMemo(() => suggestions.slice(0, 5), [suggestions]);
-  const quickPicks = useMemo(() => suggestions.slice(0, 5).map((s) => s.name).filter(Boolean), [suggestions]);
+  const quickPicks = useMemo(() => suggestions.slice(0, 6).map((s) => s.name).filter(Boolean), [suggestions]);
 
   const seedInlineFlow = (value) => {
     const nextSubject = value.trim().replace(/\s+/g, ' ');
@@ -366,8 +366,8 @@ export default function SearchListScreen({ kind = 'brand', searches = [], moving
                   <tr>
                     <th>{copy.nameHeader}</th>
                     <th>Status</th>
-                    <th className="num">Scanned</th>
-                    <th className="num">Breakouts</th>
+                    <th className="num">New Scanned</th>
+                    <th className="num">New Breakouts</th>
                     <th className="num">Top score</th>
                     <th className="num">Avg views</th>
                     <th>Updated</th>

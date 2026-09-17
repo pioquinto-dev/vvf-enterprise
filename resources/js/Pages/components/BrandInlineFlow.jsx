@@ -364,6 +364,34 @@ export default function BrandInlineFlow({
           .bif__suggest-copy strong{font-size:.86rem}
         }
         .bif:has(.kx){background:var(--white);border:1px solid var(--line);border-radius:22px;padding:28px 30px}
+        /* list-page search card (Brand / Product searches) */
+        .bif--list{padding:20px 22px 18px;border-radius:22px;margin-bottom:40px;box-shadow:0 1px 2px rgba(20,15,0,.03)}
+        .bif--list .bif__bar{padding:8px;gap:12px;border:1px solid #E4E1DA;background:#fff;box-shadow:0 0 0 4px #FAF9F6,0 1px 2px rgba(20,15,0,.04)}
+        .bif--list .bif__bar:hover{border-color:#D6D2C9}
+        .bif--list .bif__bar:focus-within{border-color:var(--yellow);box-shadow:0 0 0 4px rgba(255,198,41,.22);background:#fff}
+        .bif--list .bif__mode{margin-left:0;gap:8px;height:44px;padding:0 18px;font-size:.86rem;box-shadow:0 4px 12px -4px rgba(255,198,41,.8)}
+        .bif--list .bif__mode svg{width:15px;height:15px;flex:none}
+        .bif--list .bif__entry{gap:12px;padding-left:4px}
+        .bif--list .bif__bar svg.q{width:18px;height:18px}
+        .bif--list .bif__bar input{height:44px;line-height:44px;font-size:1.02rem;font-weight:500}
+        .bif--list .bif__ghost{font-size:1.02rem}
+        .bif--list .bif__ghost b{font-weight:500;color:var(--faint-2,#9A968E)}
+        .bif--list .bif__caret{height:20px;margin-left:1px}
+        .bif--list .bif__cta{height:48px;padding:0 24px;font-size:.92rem;box-shadow:0 6px 18px -6px rgba(255,198,41,.9)}
+        .bif--list .bif__cta:disabled{opacity:1;cursor:default;box-shadow:0 6px 18px -6px rgba(255,198,41,.9)}
+        .bif--list .bif__picks{margin-top:16px;padding:16px 0 0;border-top:1px solid var(--line);gap:8px}
+        .bif--list .bif__picks-l{font-size:.8rem;font-weight:700;color:var(--muted);margin-right:4px}
+        .bif--list .bif__pick{height:32px;padding:0 14px;font-size:.83rem;color:var(--body,#34332F)}
+        @media (max-width:640px){
+          .bif--list{padding:16px}
+          .bif--list .bif__bar{box-shadow:none;padding:10px;border-radius:18px}
+          .bif--list .bif__mode{height:40px}
+          .bif--list .bif__entry{padding:0 12px;border:1px solid var(--line);border-radius:14px;background:var(--paper,#FAF9F6)}
+          .bif--list .bif__bar input,.bif__bar input{height:52px;line-height:52px;font-size:16px;font-weight:600}
+          .bif--list .bif__ghost,.bif__ghost{font-size:16px}
+          .bif--list .bif__cta{height:52px;font-size:1rem}
+          .kx__add input{font-size:16px}
+        }
         .kx{animation:kxIn .28s cubic-bezier(.22,.61,.36,1)}
         @keyframes kxIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
         .kx__top{display:flex;align-items:center;justify-content:space-between;gap:16px}
@@ -518,7 +546,7 @@ export default function BrandInlineFlow({
         />
       )}
 
-      <section className={`bif${typingWords && state === 'collapsed' ? ' bif--bare' : ''}`} ref={rootRef}>
+      <section className={`bif${typingWords && state === 'collapsed' ? ' bif--list' : ''}`} ref={rootRef}>
         {/* ---------- COLLAPSED ---------- */}
         {state === 'collapsed' && (
           <>
@@ -528,7 +556,16 @@ export default function BrandInlineFlow({
               ref={subjectFieldRef}
               onSubmit={(e) => { e.preventDefault(); startFlow(); }}
             >
-              {modeLabel && <span className="bif__mode">{modeLabel}</span>}
+              {modeLabel && (
+                <span className="bif__mode">
+                  {kind === 'brand' ? (
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3 9l1.5-5h15L21 9M3 9v10a1 1 0 0 0 1 1h16a1 1 0 0 0 1-1V9M3 9h18M9 20v-6h6v6" /></svg>
+                  ) : (
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><circle cx="12" cy="12" r="8" /><circle cx="12" cy="12" r="3" /></svg>
+                  )}
+                  {modeLabel}
+                </span>
+              )}
               <div className="bif__entry">
                 <svg className="q" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
                   <circle cx="11" cy="11" r="7" />
@@ -573,7 +610,7 @@ export default function BrandInlineFlow({
                         setActiveSuggestion(-1);
                       }
                     }}
-                    placeholder={typingWords ? (inputFocused ? `Search ${typingWords[0]}` : '') : placeholder}
+                    placeholder={typingWords ? (inputFocused ? `Search a ${kind}` : '') : placeholder}
                     aria-label={eyebrow}
                     aria-expanded={showSuggestions && visibleSuggestions.length > 0}
                     aria-haspopup="listbox"
@@ -581,7 +618,7 @@ export default function BrandInlineFlow({
 
                   {typingWords && !subject && !inputFocused && (
                     <span className="bif__ghost" aria-hidden="true">
-                      Search&nbsp;<b>{typedWord}</b><i className="bif__caret" />
+                      <b>{typedWord}</b><i className="bif__caret" />
                     </span>
                   )}
 
@@ -619,7 +656,7 @@ export default function BrandInlineFlow({
             {Array.isArray(quickPicks) ? (
               quickPicks.length > 0 && (
                 <div className="bif__picks">
-                  <span className="bif__picks-l">Try</span>
+                  <span className="bif__picks-l">Suggested to track</span>
                   {quickPicks.map((name) => (
                     <button key={name} type="button" className="bif__pick" onClick={() => applySuggestion(name)}>
                       <i />{name}

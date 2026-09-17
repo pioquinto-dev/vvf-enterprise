@@ -466,13 +466,16 @@ const scopedCss = `
 
 @media (max-width:680px){
   .bbs-card{padding:16px 14px 14px;border-radius:18px}
-  .bbs-field{height:auto;flex-wrap:wrap;padding:12px;border-radius:16px;gap:10px}
-  .bbs-field>svg{margin-left:2px}
-  .bbs-field input{flex:1 1 auto;min-width:0;font-size:1rem}
+  .bbs-field{height:auto;flex-wrap:wrap;padding:10px;border-radius:18px;gap:10px}
+  /* search icon + input share one full-width, finger-sized row */
+  .bbs-field>svg{position:absolute;left:24px;top:80px;margin:0;z-index:1;pointer-events:none}
+  .bbs-field input{flex:1 0 100%;order:1;height:52px;padding:0 14px 0 44px;border:1px solid var(--line);border-radius:14px;background:var(--paper,#FAF9F6);font-size:16px;font-weight:600}
+  .bbs-field input:focus{background:var(--white);border-color:var(--yellow)}
+  .bbs-field input::placeholder{font-size:16px}
   .bbs-caret{display:none}
   .bbs-seg{flex:1 0 100%}
   .bbs-seg button{flex:1;justify-content:center}
-  .bbs-cta{flex:1 0 100%;justify-content:center}
+  .bbs-cta{flex:1 0 100%;order:2;height:52px;justify-content:center;font-size:1rem}
   .bbs-suggest{max-height:260px}
 }
 `;
