@@ -143,7 +143,7 @@ class SearchRunProcessorTest extends TestCase
         $this->assertSame(1, ViralVideo::count());
     }
 
-    public function test_a_new_winner_is_automatically_analyzed_without_using_a_credit(): void
+    public function test_a_finished_run_does_not_auto_analyze_the_top_video(): void
     {
         Queue::fake();
 
@@ -151,36 +151,12 @@ class SearchRunProcessorTest extends TestCase
         $search = $this->search(['user_id' => $user->id, 'guest_token' => null]);
 
         $this->fakeApify([$this->apifyItem()]);
-        $first = $search->runs()->create(['status' => CustomKeywordSearchRun::STATUS_QUEUED]);
-        app(SearchRunProcessor::class)->process($first);
+        $run = $search->runs()->create(['status' => CustomKeywordSearchRun::STATUS_QUEUED]);
+        app(SearchRunProcessor::class)->process($run);
 
-        $firstAnalysis = VideoAnalysis::query()->where('user_id', $user->id)->firstOrFail();
-        $this->assertFalse($firstAnalysis->counts_toward_quota);
-        Queue::assertPushed(PrepareVideoAnalysis::class, 1);
-
-        // A higher-scoring different video takes the rank-one slot on the
-        // next run, so it earns its own free winner analysis.
-        $this->fakeApify([
-            $this->apifyItem([
-                'id' => '7300000000000000002',
-                'webVideoUrl' => 'https://www.tiktok.com/@winner/video/7300000000000000002',
-                'playCount' => 9_000_000,
-                'diggCount' => 500_000,
-                'authorMeta' => ['name' => 'winner', 'nickName' => 'Winner', 'fans' => 20_000],
-            ]),
-        ]);
-        $second = $search->runs()->create(['status' => CustomKeywordSearchRun::STATUS_QUEUED]);
-        app(SearchRunProcessor::class)->process($second);
-
-        $winner = $search->videos()
-            ->where('custom_keyword_search_run_id', $second->id)
-            ->where('rank', 1)
-            ->firstOrFail();
-
-        $this->assertNotSame($firstAnalysis->video_id, $winner->video->video_id);
-        $this->assertSame(2, VideoAnalysis::query()->where('user_id', $user->id)->count());
-        $this->assertSame(0, VideoAnalysis::query()->where('user_id', $user->id)->where('counts_toward_quota', true)->count());
-        Queue::assertPushed(PrepareVideoAnalysis::class, 2);
+        $this->assertSame(CustomKeywordSearchRun::STATUS_DONE, $run->fresh()->status);
+        $this->assertSame(0, VideoAnalysis::query()->where('user_id', $user->id)->count());
+        Queue::assertNotPushed(PrepareVideoAnalysis::class);
     }
 
     public function test_a_claimed_guest_search_still_sends_the_completion_email(): void

@@ -3,6 +3,7 @@ import { Link, router, useForm, usePage } from '@inertiajs/react';
 
 import AppFooter from './AppFooter.jsx';
 import EntitlementsBar from './EntitlementsBar.jsx';
+import SearchDoneWatcher from './SearchDoneWatcher.jsx';
 import { Logo, Menu, Close, Library, Store, Target, Exit, Spark, Arrow, Lock } from '../../landing/components/Icons.jsx';
 import { readTrackedVideoAnalyses, untrackVideoAnalysis, videoAnalysis } from '../../landing/flow/api.js';
 
@@ -365,6 +366,7 @@ export default function AppLayout({
                     <AppFooter width={width} />
                 </main>
             </div>
+            <SearchDoneWatcher signedIn={signedIn} />
             <CompletedAnalysisModal
                 item={completedAnalysis}
                 onClose={() => setCompletedAnalysis(null)}

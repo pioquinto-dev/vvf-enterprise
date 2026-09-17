@@ -3,7 +3,7 @@ import { Head, router, usePage } from '@inertiajs/react';
 
 import AppLayout from '../components/AppLayout.jsx';
 import DetailScreen from './detail/DetailScreen.jsx';
-import { bookmarks, savedSearch as api, untrackSearch } from '../../landing/flow/api.js';
+import { bookmarks, savedSearch as api, trackSearch, untrackSearch } from '../../landing/flow/api.js';
 
 const ACTIVE_SEARCH_STATUSES = new Set(['pending', 'queued', 'running', 'scraping']);
 const SEARCH_POLL_MS = 8000;
@@ -211,6 +211,8 @@ export default function Show({ search: initial, isAuthenticated = false, billing
 
         try {
             await api.refresh(search.id);
+            // Watch the refresh so the app-wide "search done" modal fires.
+            trackSearch({ id: search.id, name: search.name, url: search.url });
             // Stay on the paid results page and let it flip into the live M20
             // running state in place: the poller below picks up real progress
             // and the completion banner raises when it lands.

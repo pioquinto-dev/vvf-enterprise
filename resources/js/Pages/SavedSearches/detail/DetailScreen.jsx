@@ -25,7 +25,7 @@ import {
  *
  * Layout follows brandbeaconanalyticsredesign.html:
  *   Back bar · Header (with inline handle editor + kebab) · AI Insights bullets ·
- *   Stat strip (4 tiles) · Winner breakout with auto-analysis · More breakouts
+ *   Stat strip (4 tiles) · Ranked breakouts grid (no auto-analysis) · More breakouts
  *   grid with toggle-open per-card analysis · Analytics card with metric tabs +
  *   blurred history until the next refresh · When-they-post heatmap with a
  *   best-time insight bar · Breakouts-per-week + Score distribution ·
@@ -329,26 +329,53 @@ const Icons = {
 
 /* ------------- live-run (M20/M20b/M20c) pieces ------------- */
 
-// The five visible passes of a paid run. While the run is live the ticker
-// advances through the first three and holds on "Analyzing" — scoring and the
-// final polish only tick over to done once the real run completes.
+// The visible passes of a live run. Every step except the last gets exactly
+// PROC_STEP_MS; the last step then "floats" (spinner + slow bar creep) until the
+// real run completes and everything ticks over to done.
+const PROC_STEP_MS = 7000;
+const PROC_BAR_CAP = 94; // bar never reaches 100% until the run is actually done
 const PROC_STEPS = [
-  'Scanning TikTok’s videos for your selected keywords',
-  'Pulling video and creator information',
-  'Analyzing videos with our AI agents',
-  'Scoring each video and extracting winners',
-  'Making it look pretty for you',
+  'Searching TikTok',
+  'Pulling videos & creators',
+  'Scoring breakouts',
+  'Writing insights',
 ];
 
 const ProcCheck = (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12.5l4.6 4.5L19 7" /></svg>
 );
 
-/** The M20 processing panel — a spinner, the time estimate, a sweeping bar,
- * and the five-step checklist. Sits under the brand header while a run is live. */
-function ProcessingPanel({ panelRef, step }) {
+/** Compact live-run panel: one line of copy, a progress bar that tracks the
+ * paced step, and a row of step pills. Sits under the header while a run is
+ * live; skeleton cards below stand in for the results. */
+function ProcessingPanel({ panelRef, step, subject }) {
+  const last = PROC_STEPS.length - 1;
+  // Paced steps split the bar evenly up to 80%; the last step owns 80% -> cap.
+  const PACED_END = 80;
+  const [armed, setArmed] = useState(false);
+  useEffect(() => {
+    // One frame at 0% so the first segment animates instead of snapping.
+    const id = window.requestAnimationFrame(() => window.requestAnimationFrame(() => setArmed(true)));
+    return () => window.cancelAnimationFrame(id);
+  }, []);
+  let pct = 0;
+  let transition = 'none';
+  if (armed) {
+    if (step < last) {
+      // Fill this step's segment linearly over exactly PROC_STEP_MS.
+      pct = ((step + 1) / last) * PACED_END;
+      transition = `width ${PROC_STEP_MS}ms linear`;
+    } else if (step === last) {
+      // Float: creep toward the cap, fast at first then barely moving.
+      pct = PROC_BAR_CAP;
+      transition = 'width 90s cubic-bezier(.05,.6,.2,1)';
+    } else {
+      pct = 100;
+      transition = 'width .4s ease-out';
+    }
+  }
   return (
-    <div className="rs-proc" ref={panelRef}>
+    <div className="rs-proc" ref={panelRef} role="status" aria-live="polite">
       <div className="rs-proc__top">
         <span className="rs-spin" aria-hidden>
           <svg viewBox="0 0 108 108">
@@ -361,30 +388,46 @@ function ProcessingPanel({ panelRef, step }) {
             <circle className="rs-spin__tr" cx="54" cy="54" r="46" />
             <circle className="rs-spin__arc" cx="54" cy="54" r="46" />
           </svg>
-          <i />
         </span>
         <span className="rs-proc__copy">
-          <h2>Let us do our thing&hellip;</h2>
-          <span className="rs-proc__lede">1 to 5 minutes, mostly around 2 minutes.</span>
+          <h2>Finding breakouts for {subject}</h2>
+          <span className="rs-proc__lede">Usually 1 to 3 minutes. This page fills in on its own, so feel free to keep browsing.</span>
         </span>
       </div>
-      <div className="rs-sweep" aria-hidden><i /></div>
+      <div className="rs-pbar" aria-hidden><i style={{ width: `${pct}%`, transition }} /></div>
       <div className="rs-proc__steps">
         {PROC_STEPS.map((label, i) => {
           const state = i < step ? 'done' : i === step ? 'now' : 'wait';
           return (
             <span key={label} className={`rs-tick rs-tick--${state}`}>
-              <span className="rs-tick__d">{state === 'wait' ? '•' : ProcCheck}</span>
+              <span className="rs-tick__d">{state === 'done' ? ProcCheck : null}</span>
               {label}
-              {state === 'now' && (
-                <span className="rs-tick__c" aria-hidden>
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round"><path d="M12 3.4a8.6 8.6 0 1 0 8.6 8.6" /></svg>
-                </span>
-              )}
             </span>
           );
         })}
       </div>
+    </div>
+  );
+}
+
+/** Placeholder cards shown in the video grid until the first results land. */
+function SkeletonVideoGrid({ count = 4 }) {
+  return (
+    <div className="rs-ogrid" aria-hidden>
+      {Array.from({ length: count }, (_, i) => (
+        <div key={i} className="rs-skvc">
+          <span className="rs-sk rs-skvc__media" />
+          <div className="rs-skvc__b">
+            <div style={{ display: 'flex', gap: 9, alignItems: 'center' }}>
+              <span className="rs-sk" style={{ width: 30, height: 30, borderRadius: '50%' }} />
+              <span className="rs-sk" style={{ width: '55%', height: 10 }} />
+            </div>
+            <span className="rs-sk" style={{ width: '100%', height: 9 }} />
+            <span className="rs-sk" style={{ width: '72%', height: 9 }} />
+            <span className="rs-sk" style={{ width: '100%', height: 42, borderRadius: 999, marginTop: 6 }} />
+          </div>
+        </div>
+      ))}
     </div>
   );
 }
@@ -456,16 +499,20 @@ export default function DetailScreen({
   const [landedBarOpen, setLandedBarOpen] = useState(false);
   const wasProcessingRef = useRef(processing);
 
-  // Pace the visible checklist forward while the run is live, holding on the
-  // "Analyzing" pass (index 2) until completion marks everything done.
+  // Pace the checklist: each step before the last gets exactly PROC_STEP_MS
+  // (scheduled from one start time so timers never drift apart), then the last
+  // step floats until polling reports the run is done.
   useEffect(() => {
     if (!processing) {
       setProcStep(PROC_STEPS.length);
       return undefined;
     }
     setProcStep(0);
-    const timer = window.setInterval(() => setProcStep((i) => (i < 2 ? i + 1 : i)), 9000);
-    return () => window.clearInterval(timer);
+    const timers = [];
+    for (let i = 1; i < PROC_STEPS.length; i += 1) {
+      timers.push(window.setTimeout(() => setProcStep(i), i * PROC_STEP_MS));
+    }
+    return () => timers.forEach((t) => window.clearTimeout(t));
   }, [processing]);
 
   // When polling flips the run from processing → done, raise the green
@@ -1002,7 +1049,7 @@ export default function DetailScreen({
       </div>
 
       {/* PROCESSING PANEL (M20) */}
-      {processing && <ProcessingPanel panelRef={procPanelRef} step={procStep} />}
+      {processing && <ProcessingPanel panelRef={procPanelRef} step={procStep} subject={search?.name || search?.phrase || 'your search'} />}
 
       {/* inline handle editor */}
       {handleEditing && (
@@ -1020,6 +1067,14 @@ export default function DetailScreen({
           </button>
           <button className="rs-btn rs-btn--g rs-btn--sm" onClick={() => setHandleEditing(false)} disabled={savingHandle}>Cancel</button>
         </div>
+      )}
+
+      {/* VIDEO GRID skeleton until the first results land */}
+      {processing && rest.length === 0 && (
+        <>
+          <div className="rs-sh"><h2>Top breakout videos</h2><span className="rs-sofar"><i />finding videos</span></div>
+          <SkeletonVideoGrid />
+        </>
       )}
 
       {/* MORE BREAKOUTS */}
@@ -2378,6 +2433,32 @@ const scopedCss = `
 .rs-runfilter select:focus,.rs-sortsel select:focus{outline:none;border-color:var(--yellow);box-shadow:0 0 0 3px var(--wash)}
 .rs-runfilter svg,.rs-sortsel svg{position:absolute;right:12px;top:50%;transform:translateY(-50%);width:13px;height:13px;color:#74716A;pointer-events:none}
 }
+
+/* ===== compact live-run panel + skeleton video cards ===== */
+.rs-proc{gap:14px;padding:18px 20px;margin:0 0 22px;border-radius:16px;box-shadow:none}
+.rs-proc__top{gap:14px}
+.bb .rs-proc__copy h2{font-size:1.02rem;font-weight:800;letter-spacing:-.02em;line-height:1.3}
+.rs-proc__copy{gap:2px}
+.rs-proc__lede{font-size:.82rem;color:#74716A}
+.rs-spin{width:36px;height:36px}
+.rs-pbar{position:relative;height:6px;border-radius:999px;background:var(--paper,#f1efe9);overflow:hidden}
+.rs-pbar i{position:absolute;inset:0 auto 0 0;border-radius:999px;background:linear-gradient(90deg,#ffd84d,#ffc629);overflow:hidden;will-change:width}
+.rs-pbar i::after{content:'';position:absolute;inset:0;background:linear-gradient(100deg,transparent 20%,rgba(255,255,255,.7) 50%,transparent 80%);transform:translateX(-100%);animation:rs-pbar-shine 1.6s ease-in-out infinite}
+@keyframes rs-pbar-shine{to{transform:translateX(100%)}}
+.rs-proc__steps{flex-direction:row;flex-wrap:wrap;gap:8px}
+.rs-tick{align-items:center;gap:7px;height:30px;padding:0 12px 0 8px;border:1px solid var(--line);border-radius:999px;background:var(--white);font-size:.78rem;font-weight:600;line-height:1}
+.rs-tick__d{width:16px;height:16px;margin:0}
+.rs-tick--done{color:var(--ink)}
+.rs-tick{transition:background-color .35s ease,border-color .35s ease,color .35s ease}
+.rs-tick--now{border-color:var(--yellow);background:var(--wash)}
+.rs-tick--now .rs-tick__d{background:transparent;border:2px solid var(--yellow);border-top-color:transparent;animation:rs-turn .9s linear infinite}
+.rs-tick--wait{color:#A5A29A}
+.rs-tick--wait .rs-tick__d{background:transparent;border:1.5px solid var(--line-2,#D9D6CF)}
+.rs-skvc{background:var(--white);border:1px solid var(--line);border-radius:22px;overflow:hidden}
+.rs-skvc__media{border-radius:0;aspect-ratio:9/13;width:100%}
+.rs-skvc__b{padding:13px 15px 15px;display:flex;flex-direction:column;gap:9px}
+@media (max-width:560px){.rs-proc{padding:14px}.rs-proc__steps{gap:6px}.rs-tick{height:28px;font-size:.74rem}}
+@media (prefers-reduced-motion:reduce){.rs-pbar i::after,.rs-tick--now .rs-tick__d{animation:none}.rs-pbar i{transition:none}}
 
 `;
   const goBack = () => {

@@ -5,14 +5,13 @@ import { EXAMPLE_BREAKOUTS } from '../../data/exampleBreakouts.js';
 
 const POLL_MS = 10000;
 
-/* The five visible passes of a run. The ticker walks through the first three
- * and holds on "Analyzing" — scoring and the final polish only tick over to
- * done once the real run completes. */
+/* The visible passes of a run. Every step before the last gets exactly
+ * STEP_MS; the last step floats (spinner) until the real run completes. */
+const STEP_MS = 7000;
 const STEPS = [
   'Scanning TikTok’s videos for your selected keywords',
   'Pulling video and creator information',
-  'Analyzing videos with our AI agents',
-  'Scoring each video and extracting winners',
+  'Scoring each video by Breakout Score',
   'Making it look pretty for you',
 ];
 
@@ -242,12 +241,13 @@ export default function RunningScreen({ searchId, initialSearch = null, examples
     };
   }, [searchId, onDone]);
 
-  // Cosmetic step progression so the wait reads as movement, holding on the
-  // "Analyzing" pass until the run actually completes.
+  // Even pacing: each step before the last lasts exactly STEP_MS, then the
+  // last step floats until the run actually completes.
   useEffect(() => {
     if (failed || unavailable || search?.status !== 'scraping') return undefined;
-    const timer = window.setInterval(() => setStep((s) => Math.min(s + 1, 2)), 9000);
-    return () => window.clearInterval(timer);
+    const timers = [];
+    for (let i = 1; i < STEPS.length; i += 1) timers.push(window.setTimeout(() => setStep((s) => Math.max(s, i)), i * STEP_MS));
+    return () => timers.forEach((t) => window.clearTimeout(t));
   }, [failed, unavailable, search?.status]);
 
   // "Started N seconds ago" — count up from mount.
@@ -420,7 +420,7 @@ const scopedCss = `
 .m4-sweep{position:relative;height:5px;border-radius:999px;background:#f1efe9;overflow:hidden}
 .m4-sweep i{position:absolute;top:0;bottom:0;width:38%;border-radius:999px;background:linear-gradient(90deg,#ffd84d,#ff9f1c);animation:m4-sweepmove 1.7s ease-in-out infinite}
 .m4-steps{display:flex;flex-direction:column;gap:11px}
-.m4-tick{display:flex;align-items:flex-start;gap:11px;font-size:.87rem;font-weight:500;color:#33312c;line-height:1.45}
+.m4-tick{transition:color .35s ease;display:flex;align-items:flex-start;gap:11px;font-size:.87rem;font-weight:500;color:#33312c;line-height:1.45}
 .m4-tick__d{width:18px;height:18px;flex:none;margin-top:1px;display:grid;place-items:center;border-radius:50%;background:#edf7f0;color:#12703f;font-size:.7rem;line-height:1}
 .m4-tick__d svg{width:9px;height:9px}
 .m4-tick__c{margin-left:auto;flex:none;width:15px;height:15px;margin-top:2px;color:var(--amber-ink,#9a6b00)}

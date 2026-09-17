@@ -3,7 +3,6 @@ import { router, usePage } from '@inertiajs/react';
 
 import { Arrow, Check, Close, Search, Plus, Refresh } from '../../landing/components/Icons.jsx';
 import DuplicateSearchModal from './DuplicateSearchModal.jsx';
-import SearchCreditConfirmModal from './SearchCreditConfirmModal.jsx';
 import UpgradePromptModal from './UpgradePromptModal.jsx';
 import {
   billing as billingApi,
@@ -11,7 +10,6 @@ import {
   checkDuplicateSavedSearch,
   expandKeywords,
   fetchKeywordSuggestions,
-  fetchNotifications,
   trackSearch,
 } from '../../landing/flow/api.js';
 
@@ -19,66 +17,14 @@ import {
  * The brand/product page's expand-in-place search flow (matches the
  * "Brand Beacon — Inline search flow" mockup).
  *
- * States: collapsed → keywords → running → done. The card sits at
+ * States: collapsed → keywords, then straight to the results page (which
+ * owns the loading state). The card sits at
  * the top of the page and expands in-place — the page context beneath it
  * (moving-this-week, suggested-to-track, all-searches) never unmounts.
  *
  * This is the only search flow now — the dashboard's older SearchWizard was
  * retired along with the search homepage.
  */
-
-const STAGE_LIST = [
-  { key: 'start',   label: 'Starting the scrape' },
-  { key: 'pull',    label: 'Pulling videos from TikTok' },
-  { key: 'filter',  label: 'Filtering against your keywords' },
-  { key: 'rank',    label: 'Ranking by Breakout Score' },
-];
-
-/* animate the stages while a run is in flight — the API's status text is
- * coarse (pending → running → scraping → done), so a paced fake tick keeps
- * the visible progress moving. It stops at the last stage and only marks
- * everything done when the real notification says the run finished. */
-function useRunStages(active, done) {
-  const [idx, setIdx] = useState(0);
-
-  useEffect(() => {
-    if (!active) { setIdx(0); return undefined; }
-    if (done) { setIdx(STAGE_LIST.length); return undefined; }
-
-    const timer = window.setInterval(() => {
-      setIdx((i) => (i < STAGE_LIST.length - 1 ? i + 1 : i));
-    }, 1200);
-    return () => window.clearInterval(timer);
-  }, [active, done]);
-
-  return idx;
-}
-
-function MiniStepper({ current }) {
-  const steps = [{ key: 'keywords', label: 'Keywords' }];
-  const activeIdx = steps.findIndex((s) => s.key === current);
-  const shown = current === 'keywords';
-  if (!shown) return null;
-
-  return (
-    <div className="mini">
-      {[{ key: 'subject', label: 'Subject' }, ...steps].map((s, i, arr) => {
-        const stateIdx = i === 0 ? 0 : steps.findIndex((x) => x.key === s.key) + 1;
-        const cur = activeIdx + 1;
-        const cls = stateIdx < cur ? 'done' : stateIdx === cur ? 'now' : 'todo';
-        return (
-          <span key={s.key} className="mst-wrap" style={{ display: 'inline-flex', alignItems: 'center' }}>
-            <span className={`mst ${cls}`}>
-              <span className="mst__n">{cls === 'done' ? <Check /> : i + 1}</span>
-              <span className="mst__l">{s.label}</span>
-            </span>
-            {i < arr.length - 1 && <span className="mst__line" />}
-          </span>
-        );
-      })}
-    </div>
-  );
-}
 
 /* Types and deletes sample subjects into a ghost placeholder. Pauses while
  * the field is focused or filled; shows the first word statically when the
@@ -136,19 +82,12 @@ export default function BrandInlineFlow({
   const [activeSuggestion, setActiveSuggestion] = useState(-1);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [keywords, setKeywords] = useState([]); // [{label, selected, source: 'ai'|'yours'}]
-  const [emailWhenReady, setEmailWhenReady] = useState(true);
   const [addKeyword, setAddKeyword] = useState('');
   const [expanding, setExpanding] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
   const [duplicateSearch, setDuplicateSearch] = useState(null);
-  const [confirmRefresh, setConfirmRefresh] = useState(null);
-  const [searchResult, setSearchResult] = useState(null); // {id, name, url, status, initial_count, top_score}
-  const [runDone, setRunDone] = useState(false);
   const [upgradeModalOpen, setUpgradeModalOpen] = useState(false);
-  const runIdxRef = useRef(0);
-  const runIdx = useRunStages(state === 'running', runDone);
-  runIdxRef.current = runIdx;
 
   const inputRef = useRef(null);
   const [inputFocused, setInputFocused] = useState(false);
@@ -220,7 +159,7 @@ export default function BrandInlineFlow({
     try {
       const payload = await expandKeywords(q, { type: kind });
       const seed = [
-        ...(payload?.keywords ?? []).slice(0, 6).map((label) => ({ label, selected: true, source: 'ai' })),
+        ...(payload?.keywords ?? []).slice(0, 6).map((label, i) => ({ label, selected: i < 2, source: 'ai' })),
       ];
       // dedupe and cap
       const seen = new Set();
@@ -246,8 +185,6 @@ export default function BrandInlineFlow({
     }
     setState('collapsed');
     setKeywords([]);
-    setSearchResult(null);
-    setRunDone(false);
     setError(null);
     setAddKeyword('');
   };
@@ -275,7 +212,7 @@ export default function BrandInlineFlow({
       const fresh = (payload?.keywords ?? []).slice(0, 6);
       // keep the user's own additions, replace AI batch
       setKeywords((current) => [
-        ...fresh.map((label) => ({ label, selected: true, source: 'ai' })),
+        ...fresh.map((label, i) => ({ label, selected: i < 2, source: 'ai' })),
         ...current.filter((k) => k.source === 'yours'),
       ]);
     } catch (e) {
@@ -292,16 +229,11 @@ export default function BrandInlineFlow({
       window.location.assign(`/search?type=${kind}&q=${encodeURIComponent(subject)}`);
       return;
     }
-    const selected = keywords.filter((k) => k.selected).map((k) => k.label);
-    if (selected.length === 0) {
-      setError('Pick at least one keyword.');
-      return;
-    }
+    // The subject is always the main keyword; extra keywords are optional.
+    const selected = [subject, ...keywords.filter((k) => k.selected).map((k) => k.label)];
 
     setSubmitting(true);
     setError(null);
-    setState('running');
-    setRunDone(false);
 
     try {
       const created = await createSavedSearch({
@@ -315,17 +247,8 @@ export default function BrandInlineFlow({
       trackSearch({ id: created.id, name: created.name, url: created.url });
       onCreated?.(created);
 
-      // Hand straight off to the live results page (M20): the run continues
-      // there with the processing panel, SO-FAR counts, and skeletons until it
-      // lands. The brief inline "running" spinner covers the create request.
-      if (created?.url) {
-        router.visit(created.url);
-        return;
-      }
-
-      // Fallback for the unlikely case the API returns no url: keep the old
-      // inline running → done behaviour driven by the poller below.
-      setSearchResult(created);
+      // Straight to the results page, which shows its own live loading state.
+      router.visit(created?.url ?? `/library/${created.id}`);
     } catch (e) {
       if (e.status === 409 && e.payload?.code === 'existing_search') {
         setDuplicateSearch({ search: e.payload.search, newKeywords: e.payload.new_keywords });
@@ -335,8 +258,7 @@ export default function BrandInlineFlow({
       }
 
       setError(e.message || 'Could not start the search.');
-        setState('keywords');
-        setSubmitting(false);
+      setSubmitting(false);
     }
   };
 
@@ -346,11 +268,8 @@ export default function BrandInlineFlow({
       return;
     }
 
-    const selected = keywords.filter((k) => k.selected).map((k) => k.label);
-    if (selected.length === 0) {
-      setError('Pick at least one keyword.');
-      return;
-    }
+    // The subject is always the main keyword; extra keywords are optional.
+    const selected = [subject, ...keywords.filter((k) => k.selected).map((k) => k.label)];
 
     setSubmitting(true);
     setError(null);
@@ -364,64 +283,19 @@ export default function BrandInlineFlow({
       });
       if (duplicate.existing) {
         setDuplicateSearch({ search: duplicate.search, newKeywords: duplicate.new_keywords });
-      } else {
-        setConfirmRefresh(false);
+        setSubmitting(false);
+        return;
       }
     } catch (e) {
       setError(e.message || 'Could not check your search history. Try again.');
-    } finally {
       setSubmitting(false);
+      return;
     }
-  };
-
-  /* poll for completion once a run is queued */
-  useEffect(() => {
-    if (state !== 'running' || !searchResult?.id) return undefined;
-
-    let cancelled = false;
-    let timer;
-
-    const tick = async () => {
-      if (cancelled) return;
-      try {
-        const payload = await fetchNotifications([searchResult.id]);
-        const s = payload?.searches?.[0];
-        if (!cancelled && s && (s.status === 'done' || s.status === 'complete')) {
-          setSearchResult((current) => ({ ...current, ...s }));
-          setRunDone(true);
-          setSubmitting(false);
-          window.setTimeout(() => !cancelled && setState('done'), 800);
-          return;
-        }
-        if (!cancelled && s?.status === 'failed') {
-          setError('The search failed to complete.');
-          setSubmitting(false);
-          setState('keywords');
-          return;
-        }
-      } catch {
-        /* transient — next tick will retry */
-      }
-      timer = window.setTimeout(tick, 4000);
-    };
-
-    tick();
-    return () => {
-      cancelled = true;
-      window.clearTimeout(timer);
-    };
-  }, [state, searchResult?.id]);
-
-  const viewResults = () => {
-    if (searchResult?.url) router.visit(searchResult.url);
+    await startSearch(false);
   };
 
   /* -------- render -------- */
 
-  const showFlowBar = state !== 'collapsed';
-  const pFillWidth = state === 'running'
-    ? `${8 + (runIdx / STAGE_LIST.length) * 88}%`
-    : runDone ? '100%' : '8%';
   const visibleSuggestions = subjectSuggestions.filter((suggestion) => suggestion.label?.trim());
 
   const applySuggestion = (label) => {
@@ -489,6 +363,58 @@ export default function BrandInlineFlow({
           .bif__suggest-item{padding:10px}
           .bif__suggest-copy strong{font-size:.86rem}
         }
+        .bif:has(.kx){background:var(--white);border:1px solid var(--line);border-radius:22px;padding:28px 30px}
+        .kx{animation:kxIn .28s cubic-bezier(.22,.61,.36,1)}
+        @keyframes kxIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+        .kx__top{display:flex;align-items:center;justify-content:space-between;gap:16px}
+        .kx__subject{display:flex;align-items:center;gap:12px;min-width:0}
+        .kx__mono{width:40px;height:40px;flex:none;border-radius:12px;background:var(--wash,#FFF8E6);color:var(--amber-ink);display:grid;place-items:center;font-weight:800;font-size:.82rem}
+        .kx__name{display:flex;align-items:center;gap:8px;min-width:0}
+        .kx__name span{font-size:1.25rem;font-weight:800;color:var(--ink);letter-spacing:-.01em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+        .kx__name button{flex:none;border:0;background:none;padding:0;cursor:pointer;font-size:.78rem;font-weight:600;color:var(--muted);text-decoration:underline;text-underline-offset:3px}
+        .kx__name button:hover{color:var(--ink)}
+        .kx__subject small{display:block;font-size:.8rem;color:var(--muted)}
+        .kx__x{width:36px;height:36px;flex:none;border-radius:50%;border:1px solid var(--line);background:var(--white);display:grid;place-items:center;color:var(--muted);cursor:pointer}
+        .kx__x:hover{border-color:var(--ink);color:var(--ink)}
+        .kx__box{margin-top:22px;padding-top:22px;border-top:1px solid var(--line)}
+        .kx__row{display:flex;justify-content:space-between;align-items:baseline;gap:16px;flex-wrap:wrap}
+        .bif .kx__row h3{font-size:.94rem;font-weight:700;color:var(--ink);letter-spacing:0}
+        .kx__link{display:inline-flex;align-items:center;gap:6px;border:0;background:none;padding:0;cursor:pointer;font-size:.8rem;font-weight:600;color:var(--muted)}
+        .kx__link:hover:not(:disabled){color:var(--ink)}
+        .kx__link:disabled{opacity:.6;cursor:default}
+        .kx__chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px}
+        .kx__chip{display:inline-flex;align-items:center;gap:8px;height:36px;padding:0 14px 0 10px;border:1px solid var(--line-2,#D9D6CF);border-radius:999px;background:var(--white);font-size:.84rem;font-weight:600;color:var(--muted);cursor:pointer;transition:background .15s,border-color .15s,color .15s}
+        .kx__chip:hover:not(.is-lock){border-color:#BDBAB2}
+        .kx__ck{width:18px;height:18px;flex:none;border-radius:50%;border:1.5px solid var(--line-2,#D9D6CF);display:grid;place-items:center;transition:.15s}
+        .kx__ck svg{width:10px;height:10px;opacity:0;color:#0B0B0B}
+        .kx__chip.is-on{background:var(--wash,#FFF8E6);border-color:var(--yellow);color:var(--ink)}
+        .kx__chip.is-on .kx__ck{background:var(--yellow);border-color:var(--yellow)}
+        .kx__chip.is-on .kx__ck svg{opacity:1}
+        .kx__chip.is-lock{cursor:default}
+        .kx__chip em{font-style:normal;font-size:.68rem;font-weight:700;color:var(--amber-ink)}
+        .kx__chip--sk{padding:0;border-color:var(--line);background:linear-gradient(90deg,#f1efe9 25%,#faf9f6 50%,#f1efe9 75%);background-size:200% 100%;animation:kxShim 1.2s linear infinite;cursor:default}
+        @keyframes kxShim{to{background-position:-200% 0}}
+        .kx__add{display:inline-flex;align-items:center;height:36px;padding:0 4px 0 14px;border:1px dashed var(--line-2,#D9D6CF);border-radius:999px}
+        .kx__add:focus-within{border-style:solid;border-color:var(--ink)}
+        .kx__add input{width:140px;border:0;outline:0;background:none;font:inherit;font-size:.84rem;color:var(--ink)}
+        .kx__add button{width:28px;height:28px;flex:none;border:0;border-radius:50%;background:var(--ink);color:#fff;display:grid;place-items:center;cursor:pointer}
+        .kx__foot{display:flex;justify-content:flex-end;gap:10px;margin-top:26px;padding-top:20px;border-top:1px solid var(--line)}
+        .kx__btn{display:inline-flex;align-items:center;gap:8px;height:44px;padding:0 22px;border-radius:999px;font:inherit;font-size:.9rem;font-weight:700;cursor:pointer;transition:background .15s,border-color .15s}
+        .kx__btn svg{width:16px;height:16px}
+        .kx__btn--g{border:1px solid var(--line-2,#D9D6CF);background:var(--white);color:var(--ink)}
+        .kx__btn--g:hover:not(:disabled){border-color:#BDBAB2}
+        .kx__btn--y{border:0;background:var(--yellow);color:var(--ink)}
+        .kx__btn--y:hover:not(:disabled){background:var(--yellow-hot,#FFD84D)}
+        .kx__btn:disabled{opacity:.6;cursor:not-allowed}
+        @media (max-width:640px){
+          .bif:has(.kx){padding:20px 18px}
+          .kx__name span{font-size:1.08rem}
+          .kx__add{flex:1 1 100%}
+          .kx__add input{flex:1;width:auto}
+          .kx__foot{justify-content:stretch}
+          .kx__btn{flex:1;justify-content:center}
+        }
+        @media (prefers-reduced-motion:reduce){.kx,.kx__chip--sk{animation:none}}
         .flowbar{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
         .flowbar__head{display:flex;align-items:center;gap:14px;width:100%}
         .subject{display:inline-flex;align-items:center;gap:9px;height:40px;padding:0 8px 0 14px;border:1px solid var(--line-2,#DEDBD3);border-radius:100px;background:var(--paper,#FAF9F6)}
@@ -712,156 +638,92 @@ export default function BrandInlineFlow({
           </>
         )}
 
-        {/* ---------- EXPANDED (all non-collapsed states) ---------- */}
-        {showFlowBar && (
-          <>
-            <div className="flowbar">
-              <div className="flowbar__head">
-                <span className="subject">
-                  <b>{subject}</b>
-                  <button
-                    type="button"
-                    className="edit"
-                    title="Change subject"
-                    onClick={() => { collapse(); setTimeout(() => inputRef.current?.focus(), 0); }}
-                  >
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M12 20h9" />
-                      <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z" />
-                    </svg>
-                  </button>
-                </span>
-                {state !== 'running' && state !== 'done' && (
-                  <button className="cancel" title="Cancel" onClick={collapse}>
-                    <Close className="h-4 w-4" />
-                  </button>
-                )}
-              </div>
-              <MiniStepper current={state} />
-            </div>
-            <div className="divide" />
-          </>
-        )}
-
-        {/* ---------- KEYWORDS ---------- */}
-        {state === 'keywords' && (
-          <div>
-            <div className="ph ph__row">
-              <div>
-                <p className="ph__k">Expand</p>
-                <h3>Widen the pull</h3>
-                <p className="sub">Terms people actually pair with {subject} on TikTok.</p>
-              </div>
-              <button type="button" className="btn btn--g btn--sm" onClick={regenerate} disabled={expanding}>
-                <Refresh className="h-4 w-4" /> {expanding ? 'Loading…' : 'Regenerate'}
-              </button>
-            </div>
-
-            <div className="chips">
-              {keywords.map((k) => (
-                <button
-                  key={k.label}
-                  type="button"
-                  className={`kw${k.selected ? ' on' : ''}`}
-                  onClick={() => toggleKeyword(k.label)}
-                >
-                  <span className="kw__c">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.4" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="m5 13 4 4L19 7" />
-                    </svg>
-                  </span>
-                  {k.label}
-                  {k.source === 'yours' && <span className="kw__tag">yours</span>}
-                </button>
-              ))}
-
-              <span className="kw--input">
-                <input
-                  type="text"
-                  value={addKeyword}
-                  onChange={(e) => setAddKeyword(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addOwnKeyword(); } }}
-                  placeholder="Add your own"
-                  aria-label="Add your own keyword"
-                />
-                <button type="button" onClick={addOwnKeyword} title="Add">
-                  <Plus className="h-3 w-3" />
-                </button>
-              </span>
-            </div>
-            <p className="khint"><b>{kwCount}</b> selected · each keyword widens the same single search.</p>
-
-            {error && <div className="bif__err">{error}</div>}
-
-            <div className="biffoot">
-              <button type="button" className="btn btn--g" onClick={collapse}>Cancel</button>
-              <button
-                type="button"
-                className="btn btn--y"
-                onClick={checkAndConfirmSearch}
-                disabled={kwCount === 0 || submitting}
-              >
-                {submitting ? 'Starting…' : 'Run the search'} <Arrow />
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* ---------- RUNNING ---------- */}
-        {state === 'running' && (
-          <div className="run">
-            <div className="run__ring" />
-            <h3>Scanning TikTok for {subject}</h3>
-            <p className="sub">Widening with {kwCount} keyword{kwCount === 1 ? '' : 's'} · weekly schedule</p>
-            <div className="pbar"><div className="pbar__f" style={{ width: pFillWidth }} /></div>
-            <div className="stages">
-              {STAGE_LIST.map((s, i) => {
-                const cls = runDone || i < runIdx ? 'done' : i === runIdx ? 'now' : '';
-                return (
-                  <div key={s.key} className={`stg ${cls}`.trim()}>
-                    <span className="stg__i">
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.4" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="m5 13 4 4L19 7" />
-                      </svg>
-                    </span>
-                    {s.label}
+        {/* ---------- KEYWORDS (expand) ---------- */}
+        {state !== 'collapsed' && (
+          <div className="kx">
+            <div className="kx__top">
+              <div className="kx__subject">
+                <span className="kx__mono">{subject.replace(/[^a-z0-9]/gi, '').slice(0, 2).toUpperCase() || '?'}</span>
+                <div style={{ minWidth: 0 }}>
+                  <div className="kx__name">
+                    <span>{subject}</span>
+                    <button
+                      type="button"
+                      onClick={() => { collapse(); window.setTimeout(() => inputRef.current?.focus(), 0); }}
+                      disabled={submitting}
+                    >
+                      Change
+                    </button>
                   </div>
-                );
-              })}
+                  <small>{kind === 'product' ? 'Product search' : 'Brand search'}</small>
+                </div>
+              </div>
+              <button type="button" className="kx__x" aria-label="Cancel search" onClick={collapse} disabled={submitting}>
+                <Close className="h-3.5 w-3.5" />
+              </button>
             </div>
-            <div className="run__note">
-              Email me when it's ready
+
+            <div className="kx__box">
+              <div className="kx__row">
+                <h3>Add keywords to find more videos</h3>
+                <button type="button" className="kx__link" onClick={regenerate} disabled={expanding || submitting}>
+                  <Refresh className="h-3.5 w-3.5" />
+                  {expanding ? 'Finding keywords…' : 'Suggest different keywords'}
+                </button>
+              </div>
+
+              <div className="kx__chips">
+                <span className="kx__chip is-on is-lock">
+                  <span className="kx__ck"><Check /></span>
+                  {subject} <em>Main</em>
+                </span>
+                {expanding && keywords.length === 0 && [0, 1, 2, 3].map((i) => (
+                  <span key={i} className="kx__chip kx__chip--sk" style={{ width: 96 + i * 18 }} />
+                ))}
+                {keywords
+                  .filter((k) => k.label.toLowerCase() !== subject.toLowerCase())
+                  .map((k) => (
+                    <button
+                      key={k.label}
+                      type="button"
+                      className={`kx__chip${k.selected ? ' is-on' : ''}`}
+                      aria-pressed={k.selected}
+                      onClick={() => toggleKeyword(k.label)}
+                      disabled={submitting}
+                    >
+                      <span className="kx__ck"><Check /></span>
+                      {k.label}
+                    </button>
+                  ))}
+                <form
+                  className="kx__add"
+                  onSubmit={(e) => { e.preventDefault(); addOwnKeyword(); }}
+                >
+                  <input
+                    type="text"
+                    value={addKeyword}
+                    onChange={(e) => setAddKeyword(e.target.value)}
+                    placeholder="Add a keyword"
+                    aria-label="Add a keyword"
+                  />
+                  <button type="submit" aria-label="Add">
+                    <Plus className="h-3 w-3" />
+                  </button>
+                </form>
+              </div>
+
+              {error && <div className="bif__err">{error}</div>}
+            </div>
+
+            <div className="kx__foot">
+              <button type="button" className="kx__btn kx__btn--g" onClick={collapse} disabled={submitting}>Cancel</button>
               <button
                 type="button"
-                className={`sw${emailWhenReady ? ' on' : ''}`}
-                onClick={() => setEmailWhenReady((v) => !v)}
-                aria-pressed={emailWhenReady}
-                aria-label="Toggle email notification"
-              />
-            </div>
-          </div>
-        )}
-
-        {/* ---------- DONE ---------- */}
-        {state === 'done' && searchResult && (
-          <div className="done">
-            <span className="done__c">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                <path d="m5 13 4 4L19 7" />
-              </svg>
-            </span>
-            <div>
-              <h3>{searchResult.name || subject} is ready</h3>
-              <p>
-                {searchResult.outlier_count ?? 0} breakout{(searchResult.outlier_count ?? 0) === 1 ? '' : 's'} this week
-                {searchResult.top_score ? ` · top score ${Math.round(searchResult.top_score)}×` : ''}
-                {searchResult.result_count != null ? ` · ${searchResult.result_count} videos scanned` : ''}
-              </p>
-            </div>
-            <div className="done__r">
-              <button type="button" className="btn btn--g" onClick={collapse}>Start another</button>
-              <button type="button" className="btn btn--y" onClick={viewResults}>
-                View results <Arrow />
+                className="kx__btn kx__btn--y"
+                onClick={checkAndConfirmSearch}
+                disabled={submitting}
+              >
+                {submitting ? 'Starting search…' : 'Run search'} {!submitting && <Arrow />}
               </button>
             </div>
           </div>
@@ -876,21 +738,6 @@ export default function BrandInlineFlow({
           onRefresh={() => {
             setDuplicateSearch(null);
             startSearch(true);
-          }}
-        />
-      )}
-      {confirmRefresh !== null && (
-        <SearchCreditConfirmModal
-          body={searchLimit === -1
-            ? 'Your plan includes unlimited searches, so this run won’t use up a search credit.'
-            : `This will use 1 search credit, leaving you ${Math.max(0, Number(searchLeft ?? 0) - 1)} this cycle.`}
-          subject={subject}
-          busy={submitting}
-          onCancel={() => setConfirmRefresh(null)}
-          onConfirm={() => {
-            const refreshExisting = confirmRefresh;
-            setConfirmRefresh(null);
-            startSearch(refreshExisting);
           }}
         />
       )}

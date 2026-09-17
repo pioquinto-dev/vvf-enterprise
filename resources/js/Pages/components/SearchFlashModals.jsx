@@ -2,14 +2,9 @@ import { useEffect, useRef, useState } from 'react';
 import { Link, router, usePage } from '@inertiajs/react';
 
 import UpgradePromptModal from './UpgradePromptModal.jsx';
-import { withReturnTo } from '../utils/navigation.js';
 import {
   billing as billingApi,
-  fetchRecentSearches,
-  readTracked,
   trackSearch,
-  untrackSearch,
-  updateTracked,
 } from '../../landing/flow/api.js';
 
 /**
@@ -20,10 +15,10 @@ import {
  * messages, so they belong wherever a signed-in user lands — My Feed.
  */
 
-const POLL_MS = 10000;
-const ACTIVE_SEARCH_STATUSES = new Set(['pending', 'queued', 'running', 'scraping']);
+// The "search done" modal itself is raised app-wide by SearchDoneWatcher
+// (mounted in AppLayout); this file keeps the flash hand-off prompts.
 
-function SearchCompletionModal({ state, onClose, onViewResults, onContactUs }) {
+export function SearchCompletionModal({ state, onClose, onViewResults, onContactUs }) {
   if (!state) return null;
 
   const finished = state.finished ?? [];
@@ -207,91 +202,14 @@ function CouponAccessPromptModal({ prompt, onClose }) {
   );
 }
 
+// eslint-disable-next-line no-unused-vars
 export default function SearchFlashModals({ currentPath = '/home' }) {
   const { flash = {}, billing = {} } = usePage().props;
   const [processingModal, setProcessingModal] = useState(null);
-  const [completionModal, setCompletionModal] = useState(null);
   const [searchAccessPrompt, setSearchAccessPrompt] = useState(null);
   const [couponPrompt, setCouponPrompt] = useState(null);
-  const [recentSearches, setRecentSearches] = useState([]);
-  const polling = useRef(false);
-  const recentSearchesRef = useRef([]);
-  const recentStatuses = useRef(new Map());
   const flashedTrackedRef = useRef(false);
   const flashedProcessingRef = useRef(false);
-  const hasActiveRecentSearch = recentSearches.some((s) => ACTIVE_SEARCH_STATUSES.has(s.status));
-
-  const markTrackedAsPrompted = (searches, patch) => {
-    searches.forEach((search) => {
-      if (search?.id == null) return;
-      updateTracked(search.id, patch);
-    });
-  };
-
-  const trackedTerminalChanges = (searches) => {
-    const tracked = readTracked();
-    const trackedById = new Map(tracked.map((entry) => [String(entry.id), entry]));
-    const finished = [];
-    const failed = [];
-
-    searches.forEach((search) => {
-      const trackedEntry = trackedById.get(String(search.id));
-      if (!trackedEntry) return;
-
-      if (search.status === 'done' && trackedEntry.completedPromptShown !== true) {
-        finished.push(search);
-      }
-
-      if (search.status === 'failed' && trackedEntry.failedPromptShown !== true) {
-        failed.push(search);
-      }
-    });
-
-    return { finished, failed };
-  };
-
-  const applyRecentSearches = (searches, notifyOnTerminal = false) => {
-    const previousStatuses = recentStatuses.current;
-    recentStatuses.current = new Map(searches.map((s) => [String(s.id), s.status]));
-    recentSearchesRef.current = searches;
-    setRecentSearches(searches);
-
-    if (!notifyOnTerminal) return;
-
-    const terminalSearches = searches.filter((s) => (
-      ACTIVE_SEARCH_STATUSES.has(previousStatuses.get(String(s.id)))
-      && (s.status === 'done' || s.status === 'failed')
-    ));
-
-    if (terminalSearches.length === 0) return;
-
-    const trackedChanges = trackedTerminalChanges(terminalSearches);
-
-    if (trackedChanges.finished.length > 0 || trackedChanges.failed.length > 0) {
-      if (trackedChanges.finished.length > 0) {
-        markTrackedAsPrompted(trackedChanges.finished, { completedPromptShown: true });
-      }
-
-      if (trackedChanges.failed.length > 0) {
-        markTrackedAsPrompted(trackedChanges.failed, { failedPromptShown: true });
-      }
-
-      // Search usage is charged when the run starts, but this page is already
-      // mounted when it finishes. Refresh the shared entitlement prop before
-      // showing the completion prompt so the header is immediately true.
-      router.reload({
-        only: ['billing'],
-        preserveScroll: true,
-        preserveState: true,
-        onFinish: () => setCompletionModal(trackedChanges),
-      });
-    }
-  };
-
-  const refreshRecent = async (notifyOnTerminal = false) => {
-    const payload = await fetchRecentSearches();
-    applyRecentSearches(payload?.searches ?? [], notifyOnTerminal);
-  };
 
   useEffect(() => {
     if (flashedTrackedRef.current) return;
@@ -301,12 +219,12 @@ export default function SearchFlashModals({ currentPath = '/home' }) {
 
     if (flashed.length === 0) return;
 
+    // Tracking is enough: the app-wide SearchDoneWatcher polls tracked
+    // searches and raises the completion modal when they land.
     flashed.forEach((entry) => {
       if (entry?.id == null) return;
       trackSearch(entry);
     });
-
-    refreshRecent().catch(() => {});
   }, [flash.trackedSearches]);
 
   useEffect(() => {
@@ -330,44 +248,6 @@ export default function SearchFlashModals({ currentPath = '/home' }) {
     setCouponPrompt(flash.couponAccessPrompt);
   }, [flash.couponAccessPrompt]);
 
-  useEffect(() => {
-    if (completionModal) return undefined;
-
-    let cancelled = false;
-    let timer;
-
-    const poll = async () => {
-      if (cancelled || polling.current) return;
-      if (!recentSearchesRef.current.some((s) => ACTIVE_SEARCH_STATUSES.has(s.status))) return;
-
-      polling.current = true;
-      try {
-        const payload = await fetchRecentSearches();
-        if (cancelled) return;
-        applyRecentSearches(payload?.searches ?? [], true);
-      } catch {
-        /* transient — the next tick will retry */
-      } finally {
-        polling.current = false;
-      }
-
-      if (!cancelled) timer = window.setTimeout(poll, POLL_MS);
-    };
-
-    poll();
-
-    return () => {
-      cancelled = true;
-      window.clearTimeout(timer);
-    };
-  }, [completionModal, hasActiveRecentSearch]);
-
-  const viewResults = (search) => {
-    if (!search?.url) return setCompletionModal(null);
-    untrackSearch(search.id);
-    return router.visit(withReturnTo(search.url, currentPath));
-  };
-
   const openSearchUpgrade = () => {
     setSearchAccessPrompt(null);
     if ((billing.trialEligible ?? true) && !(billing.hasUsedTrial ?? false)) {
@@ -379,15 +259,6 @@ export default function SearchFlashModals({ currentPath = '/home' }) {
 
   return (
     <>
-      <SearchCompletionModal
-        state={completionModal}
-        onClose={() => setCompletionModal(null)}
-        onViewResults={viewResults}
-        onContactUs={() => {
-          setCompletionModal(null);
-          router.visit('/contact');
-        }}
-      />
       <SearchProcessingModal searches={processingModal} onClose={() => setProcessingModal(null)} />
       <CouponAccessPromptModal prompt={couponPrompt} onClose={() => setCouponPrompt(null)} />
       <SearchAccessPromptModal

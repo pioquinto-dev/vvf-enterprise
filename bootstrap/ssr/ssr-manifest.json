@@ -62,6 +62,7 @@
   "resources/js/Pages/components/MyFeed.jsx": [],
   "resources/js/Pages/components/SavedSearchRow.jsx": [],
   "resources/js/Pages/components/SearchCreditConfirmModal.jsx": [],
+  "resources/js/Pages/components/SearchDoneWatcher.jsx": [],
   "resources/js/Pages/components/SearchFlashModals.jsx": [],
   "resources/js/Pages/components/SearchHistoryTab.jsx": [],
   "resources/js/Pages/components/SearchLauncher.jsx": [],
