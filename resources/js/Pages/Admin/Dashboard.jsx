@@ -269,6 +269,64 @@ function CriticalErrorsPanel({ criticalErrors = {} }) {
     );
 }
 
+function SearchTrendPanel({ searchTrend = {} }) {
+    const rows = searchTrend.rows ?? [];
+    const totalSearches = searchTrend.totalSearches ?? 0;
+    const entityCount = searchTrend.entityCount ?? 0;
+
+    return (
+        <section className="rounded-2xl border border-[var(--line)] bg-white p-4 shadow-[0_1px_2px_rgba(20,15,0,.04),0_16px_32px_-26px_rgba(20,15,0,.18)] sm:p-5">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                    <p className="text-[10px] font-semibold tracking-[.22em] text-[var(--amber-ink)] uppercase">Search trend</p>
+                    <h3 className="mt-1 text-[17px] font-semibold text-[var(--ink)]">Most searched subjects</h3>
+                </div>
+                <Link href="/x/admin/searches" className="text-[11px] font-semibold text-[var(--amber-ink)] transition hover:opacity-80">
+                    Show All -&gt;
+                </Link>
+            </div>
+
+            {rows.length === 0 ? (
+                <p className="mt-4 text-[12px] text-[var(--muted)]">No searches recorded yet.</p>
+            ) : (
+                <>
+                    <p className="mt-1 text-[11.5px] text-[var(--muted)]">
+                        {totalSearches} search{totalSearches === 1 ? '' : 'es'} across {entityCount} subject{entityCount === 1 ? '' : 's'}
+                        {' '}&middot; spelling variants grouped
+                    </p>
+
+                    <div className="mt-4 flex flex-col gap-2.5">
+                        {rows.map((row, index) => (
+                            <div key={`${row.type}-${row.label}`} className="flex items-start gap-2.5">
+                                <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-[var(--wash)] text-[10px] font-bold text-[var(--amber-ink)]">
+                                    {index + 1}
+                                </span>
+                                <div className="min-w-0 flex-1">
+                                    <div className="flex items-baseline gap-2">
+                                        <strong className="truncate text-[13px] font-semibold text-[var(--ink)]">{row.label}</strong>
+                                        <span className="shrink-0 rounded-full border border-[var(--line)] px-1.5 py-0.5 text-[8px] font-semibold tracking-[.08em] text-[#718197] uppercase">
+                                            {row.type}
+                                        </span>
+                                        <span className="ml-auto shrink-0 text-[12.5px] font-bold tabular-nums text-[var(--ink)]">{row.count}</span>
+                                    </div>
+                                    <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-[#f1f4f8]">
+                                        <span className="block h-full rounded-full bg-[var(--yellow)]" style={{ width: `${Math.max(row.share ?? 0, 4)}%` }} />
+                                    </div>
+                                    <p className="mt-1 truncate text-[10.5px] text-[#718197]">
+                                        {row.percent}% of searches &middot; {row.searchers} searcher{row.searchers === 1 ? '' : 's'}
+                                        {row.variants?.length > 0 && ` · also typed: ${row.variants.join(', ')}`}
+                                        {row.variantCount > (row.variants?.length ?? 0) + 1 && ' …'}
+                                    </p>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </>
+            )}
+        </section>
+    );
+}
+
 function CouponProgramsPanel({ coupons = {} }) {
     const programs = coupons.programs ?? [];
     const alerts = coupons.alerts ?? [];
@@ -350,8 +408,11 @@ function CouponProgramsPanel({ coupons = {} }) {
     );
 }
 
-export default function Dashboard({ trend = [], stats = [], snapshot = {}, range = '30D', ranges = [], acquisition = {}, activity = {}, engagement = {}, coupons = {}, criticalErrors = {} }) {
+export default function Dashboard({ trend = [], stats = [], snapshot = {}, range = '30D', ranges = [], acquisition = {}, activity = {}, engagement = {}, coupons = {}, criticalErrors = {}, searchTrend = {} }) {
     const refresh = useForm({});
+    // CriticalErrorsPanel renders nothing when the queue is clear, so the row
+    // below drops to one column rather than leaving a hole beside the trend.
+    const hasCriticalErrors = (criticalErrors.unresolvedCount ?? 0) > 0;
 
     const selectRange = (next) => {
         router.get('/x/admin', { range: next }, { preserveScroll: true, preserveState: true, replace: true });
@@ -381,10 +442,6 @@ export default function Dashboard({ trend = [], stats = [], snapshot = {}, range
                     </button>
                 </div>
             </section>
-
-            <div className="mt-3">
-                <CriticalErrorsPanel criticalErrors={criticalErrors} />
-            </div>
 
             <section className="mt-3 rounded-2xl border border-[var(--line)] bg-white px-5 py-4 shadow-[0_1px_2px_rgba(20,15,0,.04),0_16px_32px_-26px_rgba(20,15,0,.18)]">
                 <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
@@ -433,6 +490,16 @@ export default function Dashboard({ trend = [], stats = [], snapshot = {}, range
             </div>
             <div className="mt-3">
                 <CouponProgramsPanel coupons={coupons} />
+            </div>
+            <div
+                className={`mt-3 grid gap-3 ${
+                    hasCriticalErrors
+                        ? 'grid-cols-[minmax(0,1fr)] xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]'
+                        : 'grid-cols-[minmax(0,1fr)]'
+                }`}
+            >
+                <CriticalErrorsPanel criticalErrors={criticalErrors} />
+                <SearchTrendPanel searchTrend={searchTrend} />
             </div>
         </AdminLayout>
     );
