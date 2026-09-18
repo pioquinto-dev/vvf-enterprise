@@ -13,7 +13,7 @@ use Carbon\CarbonImmutable;
 class SendBrevoTestEmail extends Command
 {
     protected $signature = 'testing:send-brevo-email
-        {notification : One of new_registration, subscription_started, subscription_canceled, verify_email_manual_account, trial_ending, final_failed_payment, no_cc_trial_ending, search_done, or all}
+        {notification : One of new_registration, subscription_started, subscription_canceled, verify_email_manual_account, trial_ending_cc, final_failed_payment, trial_ending_no_cc, search_done, or all}
         {--email= : Override the configured test recipient email}
         {--name=Test User : Recipient name}';
 
@@ -45,9 +45,9 @@ class SendBrevoTestEmail extends Command
             'subscription_started' => [BrevoTransactionalEmail::subscriptionStarted($user, $subscription)],
             'subscription_canceled' => [BrevoTransactionalEmail::subscriptionCanceled($user, $subscription)],
             'verify_email_manual_account' => [BrevoTransactionalEmail::verifyEmail($user)],
-            'trial_ending' => [BrevoTransactionalEmail::trialEnding($user, $trialSubscription, 3)],
+            'trial_ending_cc' => [BrevoTransactionalEmail::trialEnding($user, $trialSubscription, 3)],
             'final_failed_payment' => [BrevoTransactionalEmail::finalFailedPayment($user, $subscription)],
-            'no_cc_trial_ending' => [BrevoTransactionalEmail::noCardTrialEnding($user, $trialSubscription, 3)],
+            'trial_ending_no_cc' => [BrevoTransactionalEmail::noCardTrialEnding($user, $trialSubscription, 3)],
             'search_done' => [BrevoTransactionalEmail::searchDone($user, $this->fakeSearch($user))],
             'all' => [
                 BrevoTransactionalEmail::newRegistration($user),
@@ -63,7 +63,7 @@ class SendBrevoTestEmail extends Command
         };
 
         if ($payloads === null) {
-            $this->error('Unknown notification. Use one of: new_registration, subscription_started, subscription_canceled, verify_email_manual_account, trial_ending, final_failed_payment, no_cc_trial_ending, search_done, all');
+            $this->error('Unknown notification. Use one of: new_registration, subscription_started, subscription_canceled, verify_email_manual_account, trial_ending_cc, final_failed_payment, trial_ending_no_cc, search_done, all');
 
             return self::FAILURE;
         }

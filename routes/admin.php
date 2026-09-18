@@ -8,6 +8,7 @@ use App\Http\Controllers\Admin\AdminRecordController;
 use App\Http\Controllers\Admin\AdminSessionController;
 use App\Http\Controllers\Admin\Content\KeywordIndexController;
 use App\Http\Controllers\Admin\Content\PlanController;
+use App\Http\Controllers\Admin\Content\EmailTemplateController;
 use App\Http\Controllers\Admin\Content\SearchController;
 use App\Http\Controllers\Admin\Content\ViralVideoController;
 use App\Http\Controllers\Admin\Marketing\NewsletterSubscriberController;
@@ -43,7 +44,7 @@ Route::prefix('x/admin')
              * reaching the mutator.
              */
             Route::prefix('records/{resource}/{id}')
-                ->where(['resource' => 'viral-videos|searches|plans|subscription|users|keyword-index|coupon-programs|coupon-whitelist'])
+                ->where(['resource' => 'viral-videos|searches|plans|subscription|users|keyword-index|coupon-programs|coupon-whitelist|email-templates'])
                 ->group(function (): void {
                     Route::patch('/', [AdminRecordController::class, 'update'])->name('records.update');
                     Route::patch('/archive', [AdminRecordController::class, 'archive'])->name('records.archive');
@@ -57,6 +58,10 @@ Route::prefix('x/admin')
 
             Route::prefix('searches')->group(function (): void {
                 Route::get('/', [SearchController::class, 'index'])->name('searches.index');
+            });
+
+            Route::prefix('email-templates')->group(function (): void {
+                Route::get('/', [EmailTemplateController::class, 'index'])->name('email-templates.index');
             });
 
             Route::prefix('keyword-index')->group(function (): void {
@@ -76,7 +81,7 @@ Route::prefix('x/admin')
             });
 
             Route::post('/records/{resource}', [AdminRecordController::class, 'store'])
-                ->where(['resource' => 'plans|keyword-index|coupon-whitelist|coupon-programs'])
+                ->where(['resource' => 'plans|keyword-index|coupon-whitelist|coupon-programs|email-templates'])
                 ->name('records.store');
 
             Route::prefix('subscription')->group(function (): void {

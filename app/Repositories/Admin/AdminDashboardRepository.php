@@ -15,6 +15,7 @@ class AdminDashboardRepository
             ['group' => 'content', 'label' => 'Viral Videos'],
             ['group' => 'content', 'label' => 'Searches'],
             ['group' => 'content', 'label' => 'Keyword Index'],
+            ['group' => 'content', 'label' => 'Email Templates'],
             ['group' => 'content', 'label' => 'Inquiries'],
             ['group' => 'content', 'label' => 'Plans'],
             ['group' => 'subscription-management', 'label' => 'Subscription'],

@@ -4,6 +4,8 @@ namespace App\Providers;
 
 use App\Models\User;
 use App\Services\Billing\BillingService;
+use App\Services\Brevo\EmailSendLedger;
+use App\Services\Lifecycle\LifecycleDispatcher;
 use App\Services\CustomKeywordSearch\GuestSearchQuota;
 use App\Services\CustomKeywordSearch\SavedSearchManager;
 use App\Services\Stripe\StripeClient;
@@ -25,6 +27,18 @@ class AppServiceProvider extends ServiceProvider
         ));
 
         $this->app->singleton(BillingService::class);
+
+        /*
+         * The dispatcher takes its flows from config so a new lifecycle flow is
+         * one config line, not another scheduled command.
+         */
+        $this->app->bind(LifecycleDispatcher::class, fn ($app): LifecycleDispatcher => new LifecycleDispatcher(
+            $app->make(EmailSendLedger::class),
+            array_map(
+                static fn (string $flow) => $app->make($flow),
+                (array) config('email_lifecycle.flows', []),
+            ),
+        ));
     }
 
     public function boot(): void

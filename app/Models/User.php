@@ -33,6 +33,7 @@ class User extends Authenticatable
             'preferences' => 'array',
             'deletion_requested_at' => 'datetime',
             'deletion_scheduled_for' => 'datetime',
+            'email_opted_out_at' => 'datetime',
         ];
     }
 

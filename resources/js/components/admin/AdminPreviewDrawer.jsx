@@ -1,12 +1,24 @@
 import { Close } from '../../landing/components/Icons.jsx';
 
-function PreviewField({ label, value, multiline = false }) {
+function PreviewField({ label, value, multiline = false, href = null }) {
     const displayValue = value === null || value === undefined || value === '' ? '-' : value;
 
     return (
         <div className="min-w-0">
             <p className="mb-1.5 text-[11.5px] font-medium text-[var(--muted)]">{label}</p>
-            {multiline ? (
+            {href ? (
+                // A field can carry an href when the value is somewhere to go
+                // rather than something to read — the Brevo template editor,
+                // for instance.
+                <a
+                    href={href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="block max-w-full truncate rounded-lg border border-[var(--line)] bg-white px-3 py-2.5 text-[13px] font-semibold text-[var(--amber-ink)] transition hover:border-[var(--yellow)] hover:bg-[var(--wash)]"
+                >
+                    {displayValue}
+                </a>
+            ) : multiline ? (
                 <div className="min-h-[120px] max-w-full break-words rounded-lg border border-[var(--line)] bg-white px-3 py-2.5 text-[13px] leading-6 whitespace-pre-wrap [overflow-wrap:anywhere] text-[var(--body)]">
                     {displayValue}
                 </div>
@@ -72,6 +84,7 @@ export default function AdminPreviewDrawer({ open, title, row, onClose }) {
                                             label={field.label}
                                             value={field.value}
                                             multiline={field.multiline === true}
+                                            href={field.href ?? null}
                                         />
                                     ))}
                                 </div>

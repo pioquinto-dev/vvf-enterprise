@@ -3,6 +3,8 @@
 namespace App\Repositories\Admin\Listings;
 
 use App\Models\CustomKeywordSearch;
+use App\Models\EmailTemplate;
+use App\Support\EmailFieldLibrary;
 use App\Models\IndexedKeyword;
 use App\Models\Inquiry;
 use App\Models\ManagedCouponProgram;
@@ -44,6 +46,7 @@ class AdminListingRepository
             'keyword-index' => 'Keyword Index',
             'coupon-programs' => 'Coupon Programs',
             'coupon-whitelist' => 'Coupon Whitelist',
+            'email-templates' => 'Email Templates',
             'coupon-usage' => 'Coupon Usage',
             default => 'Admin',
         };
@@ -66,6 +69,7 @@ class AdminListingRepository
             'keyword-index' => ['search', 'type', 'status'],
             'coupon-programs' => ['search', 'status'],
             'coupon-whitelist' => ['search', 'program'],
+            'email-templates' => ['search', 'status'],
             'coupon-usage' => ['search', 'program'],
             default => ['search'],
         };
@@ -115,6 +119,9 @@ class AdminListingRepository
             ],
             'coupon-whitelist' => [
                 ['name' => 'program', 'label' => 'Program', 'options' => $this->couponProgramOptions()],
+            ],
+            'email-templates' => [
+                ['name' => 'status', 'label' => 'Status', 'options' => ['enabled', 'disabled', 'unmapped', 'unwired', 'deleted']],
             ],
             'coupon-usage' => [
                 ['name' => 'program', 'label' => 'Program', 'options' => $this->couponProgramOptions()],
@@ -197,6 +204,14 @@ class AdminListingRepository
                 ['key' => 'added_by', 'label' => 'Added by'],
                 ['key' => 'created', 'label' => 'Added'],
             ],
+            'email-templates' => [
+                ['key' => 'label', 'label' => 'Email'],
+                ['key' => 'template', 'label' => 'Brevo template'],
+                ['key' => 'subject', 'label' => 'Subject'],
+                ['key' => 'kind', 'label' => 'Kind'],
+                ['key' => 'wired', 'label' => 'Trigger'],
+                ['key' => 'status', 'label' => 'Status'],
+            ],
             'coupon-usage' => [
                 ['key' => 'subscriber', 'label' => 'Subscriber'],
                 ['key' => 'program', 'label' => 'Program'],
@@ -225,6 +240,7 @@ class AdminListingRepository
             'keyword-index' => IndexedKeyword::query()->withTrashed(),
             'coupon-programs' => ManagedCouponProgram::query()->withTrashed(),
             'coupon-whitelist' => ManagedCouponWhitelistEntry::query()->with('program'),
+            'email-templates' => EmailTemplate::query()->withTrashed(),
             'coupon-usage' => ManagedCouponRedemption::query()->with(['program', 'user'])->whereNotNull('redeemed_at'),
             default => null,
         };
@@ -271,6 +287,11 @@ class AdminListingRepository
                     ->orWhereRaw('LOWER(name) like ?', [$like])
                     ->orWhereRaw('LOWER(link_path) like ?', [$like]),
             ),
+            'email-templates' => $query->where(
+                fn (Builder $inner) => $inner->whereRaw('LOWER(key) like ?', [$like])
+                    ->orWhereRaw('LOWER(label) like ?', [$like])
+                    ->orWhereRaw('LOWER(subject) like ?', [$like]),
+            ),
             'coupon-whitelist' => $query->whereRaw('LOWER(email) like ?', [$like]),
             'coupon-usage' => $query->whereRaw('LOWER(email) like ?', [$like]),
             default => null,
@@ -290,6 +311,23 @@ class AdminListingRepository
 
         if ($name === 'status') {
             $this->applyStatusFilter($resource, $query, $value);
+
+            return;
+        }
+
+        if ($name === 'status' && $resource === 'email-templates') {
+            match ($value) {
+                'enabled' => $query->whereNull('deleted_at')->where('is_enabled', true),
+                'disabled' => $query->whereNull('deleted_at')->where('is_enabled', false),
+                // A template with no Brevo id cannot send — worth surfacing on
+                // its own, because it fails at send time rather than here.
+                'unmapped' => $query->whereNull('deleted_at')->whereNull('brevo_template_id'),
+                // Created by hand and not referenced by any flow, so nothing
+                // will ever send it.
+                'unwired' => $query->whereNotIn('key', array_keys((array) config('brevo_notifications.notifications', []))),
+                'deleted' => $query->whereNotNull('deleted_at'),
+                default => $query->whereNull('deleted_at'),
+            };
 
             return;
         }
@@ -665,6 +703,40 @@ class AdminListingRepository
                             ['label' => 'Program', 'value' => $record->program?->code],
                             ['label' => 'Added by', 'value' => $record->added_by],
                             ['label' => 'Note', 'value' => $record->note, 'multiline' => true],
+                        ],
+                    ]],
+                ],
+            ],
+            'email-templates' => [
+                'id' => $record->key,
+                'label' => $record->label,
+                'template' => $record->brevo_template_id === null ? 'Not mapped' : '#'.$record->brevo_template_id,
+                'subject' => $record->subject,
+                'kind' => $record->is_transactional ? 'Transactional' : 'Marketing',
+                'wired' => $record->isWiredToCode() ? 'Wired' : 'No trigger',
+                'status' => match (true) {
+                    $record->deleted_at !== null => 'Deleted',
+                    ! $record->is_enabled => 'Disabled',
+                    $record->brevo_template_id === null => 'Needs Brevo ID',
+                    default => 'Enabled',
+                },
+                'preview' => [
+                    'eyebrow' => 'Email template',
+                    'summary' => $record->label,
+                    'sections' => [[
+                        'title' => 'Template',
+                        'fields' => [
+                            ['label' => 'Key', 'value' => $record->key],
+                            ['label' => 'Subject', 'value' => $record->subject],
+                            ['label' => 'Preview text', 'value' => $record->preview_text],
+                            ['label' => 'Brevo template ID', 'value' => $record->brevo_template_id],
+                            ['label' => 'Edit in Brevo', 'value' => $record->brevoEditUrl(), 'href' => $record->brevoEditUrl()],
+                            ['label' => 'Kind', 'value' => $record->is_transactional ? 'Transactional (ignores unsubscribe)' : 'Marketing (respects unsubscribe)'],
+                            ['label' => 'Trigger', 'value' => $record->isWiredToCode()
+                                ? 'Wired — a flow in the app sends this key'
+                                : 'No trigger — nothing in the app sends this key yet, so it will never go out'],
+                            ['label' => 'Tags', 'value' => implode(', ', $record->tags ?? [])],
+                            ['label' => 'Notes', 'value' => $record->description, 'multiline' => true],
                         ],
                     ]],
                 ],
@@ -1270,6 +1342,9 @@ class AdminListingRepository
             'admin-users' => ['preview' => true, 'edit' => false, 'archive' => false, 'delete' => false],
             'coupon-programs' => ['preview' => true, 'edit' => true, 'archive' => false, 'delete' => false],
             'coupon-whitelist' => ['preview' => true, 'edit' => false, 'archive' => false, 'delete' => true],
+            // `createLabel` drives a generic New button in the listing toolbar,
+            // so a new creatable resource no longer needs its own branch there.
+            'email-templates' => ['preview' => true, 'edit' => true, 'archive' => false, 'delete' => true, 'create' => true, 'createLabel' => 'New email template'],
             'coupon-usage' => ['preview' => true, 'edit' => false, 'archive' => false, 'delete' => false],
             default => ['preview' => false, 'edit' => false, 'archive' => false, 'delete' => false],
         };
@@ -1398,6 +1473,10 @@ class AdminListingRepository
      */
     public function editableFields(string $resource): array
     {
+        if ($resource === 'email-templates') {
+            return $this->emailTemplateFields();
+        }
+
         return match ($resource) {
             'viral-videos' => [
                 ['name' => 'title', 'label' => 'Title', 'type' => 'text'],
@@ -1488,6 +1567,58 @@ class AdminListingRepository
     }
 
     /**
+     * Fields for the email template drawer.
+     *
+     * Two of them are reference rather than input: the merge fields the code
+     * always sends, and which library fields can actually resolve for this
+     * template. Without that, choosing a field is guesswork — and a field whose
+     * source is not in scope renders as a blank space in a live email.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    private function emailTemplateFields(): array
+    {
+        // Every field is selectable. What changes per template is only whether
+        // the value describes THIS email's subject or the recipient's latest —
+        // the drawer says which, using the row's `given_sources`.
+        $options = [];
+
+        foreach (EmailFieldLibrary::catalogue() as $field) {
+            $options[] = [
+                'value' => $field['key'],
+                'label' => $field['group'].' · '.$field['label'],
+                'param' => '{{ params.'.$field['param'].' }}',
+                'source' => $field['source'],
+                'hint' => 'e.g. '.$field['sample'],
+            ];
+        }
+
+        return [
+            ['name' => 'key', 'label' => 'Key', 'type' => 'text', 'createOnly' => true, 'rules' => ['required', 'string', 'max:64', 'regex:/^[a-z][a-z0-9_]*$/'], 'help' => 'Lowercase and underscores. Set once at creation and never changed — the app sends by this key.'],
+            ['name' => 'label', 'label' => 'Name', 'type' => 'text', 'rules' => ['required', 'string', 'max:191']],
+            ['name' => 'brevo_template_id', 'label' => 'Brevo template ID', 'type' => 'number', 'min' => 0, 'help' => 'The numeric ID from the Brevo template URL. Leave 0 to mark this template unmapped.'],
+            ['name' => 'subject', 'label' => 'Subject', 'type' => 'text', 'rules' => ['required', 'string', 'max:191'], 'help' => 'Overrides the subject set in Brevo. Supports {{param}} placeholders.'],
+            ['name' => 'preview_text', 'label' => 'Preview text', 'type' => 'text', 'help' => 'The grey line shown next to the subject in the inbox. Also supports {{param}} placeholders.'],
+            [
+                'name' => 'built_in_params',
+                'label' => 'Merge fields this email always sends',
+                'type' => 'reference',
+                'help' => 'Every email also gets {{ params.logoUrl }}, {{ params.appName }}, {{ params.previewText }} and {{ params.unsubscribeUrl }}.',
+            ],
+            [
+                'name' => 'extra_fields',
+                'label' => 'Add fields from the library',
+                'type' => 'multiselect',
+                'options' => $options,
+                'help' => 'Switched on here, sent at once, no deploy. Anything the email does not already carry is looked up from the recipient when it sends.',
+            ],
+            ['name' => 'is_transactional', 'label' => 'Transactional', 'type' => 'toggle', 'help' => 'On = always delivered, even to people who unsubscribed. Off = marketing, suppressed for opted-out recipients. Billing, verification and search results must stay on.'],
+            ['name' => 'is_enabled', 'label' => 'Enabled', 'type' => 'toggle', 'help' => 'Off stops this email sending entirely.'],
+            ['name' => 'description', 'label' => 'Notes', 'type' => 'text'],
+        ];
+    }
+
+    /**
      * Current values for the edit drawer.
      *
      * @return array<string, mixed>
@@ -1495,6 +1626,27 @@ class AdminListingRepository
     public function editValues(string $resource, Model $record): array
     {
         return match ($resource) {
+            'email-templates' => [
+                // Posted back unchanged so the shared required-rule passes; the
+                // mutator drops it, since the key cannot be renamed.
+                'key' => (string) $record->key,
+                'label' => (string) $record->label,
+                'brevo_template_id' => (int) ($record->brevo_template_id ?? 0),
+                'subject' => (string) $record->subject,
+                'preview_text' => (string) ($record->preview_text ?? ''),
+                'extra_fields' => array_values((array) ($record->extra_fields ?? [])),
+                // Reference data for the drawer, not editable inputs.
+                'built_in_params' => array_map(
+                    fn (string $param): string => '{{ params.'.$param.' }}',
+                    (array) config("brevo_notifications.notifications.{$record->key}.params", []),
+                ),
+                // Sources this email holds directly. Everything else still
+                // resolves — from the recipient — so this only decides wording.
+                'given_sources' => (array) config("brevo_notifications.notifications.{$record->key}.sources", []),
+                'is_transactional' => (bool) $record->is_transactional,
+                'is_enabled' => (bool) $record->is_enabled,
+                'description' => (string) ($record->description ?? ''),
+            ],
             'viral-videos' => [
                 'title' => $record->title,
                 'video_status' => $record->video_status ?? 'visible',
@@ -1626,6 +1778,21 @@ class AdminListingRepository
                 'usage_count' => 0,
                 'archived' => false,
             ],
+            'email-templates' => [
+                'key' => '',
+                'label' => '',
+                'brevo_template_id' => 0,
+                'subject' => '',
+                'preview_text' => '',
+                'extra_fields' => [],
+                'built_in_params' => [],
+                'given_sources' => ['user'],
+                // New templates default to marketing: it is the safer error.
+                // Wrongly transactional mail ignores unsubscribes.
+                'is_transactional' => false,
+                'is_enabled' => false,
+                'description' => '',
+            ],
             'coupon-whitelist' => [
                 'program_code' => (string) (ManagedCouponProgram::query()->orderBy('code')->value('code') ?? ''),
                 'email' => '',
@@ -1665,6 +1832,7 @@ class AdminListingRepository
             'keyword-index' => 'No indexed keywords match the current filters yet.',
             'coupon-programs' => 'No coupon programs match the current filters yet.',
             'coupon-whitelist' => 'No whitelist entries match the current filters yet.',
+            'email-templates' => 'No email templates are registered yet.',
             'coupon-usage' => 'No coupon redemptions match the current filters yet.',
             default => 'No records match the current filters yet.',
         };

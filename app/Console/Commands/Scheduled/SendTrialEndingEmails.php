@@ -14,7 +14,19 @@ class SendTrialEndingEmails extends Command
 
     protected $signature = 'brevo:send-trial-ending-emails';
 
-    protected $description = 'Send trial ending reminder emails for subscriptions nearing the end of their trial.';
+    protected $description = 'DEPRECATED — superseded by lifecycle:send-due-emails. Do not run alongside it.';
+
+    /**
+     * Superseded by App\Services\Lifecycle\Flows\TrialEndingFlow, which the
+     * lifecycle:send-due-emails dispatcher runs. This command is left in place
+     * only as a manual fallback and is no longer scheduled.
+     *
+     * Its dedupe lives in subscriptions.metadata while the dispatcher's lives
+     * in email_sends, so the two do NOT see each other's sends: running both
+     * on the same day double-sends every reminder. Remove this command once
+     * the dispatcher has run clean for a cycle.
+     */
+    protected $hidden = true;
 
     public function __construct(private readonly BrevoLifecycleEmailService $emails)
     {

@@ -39,6 +39,32 @@ import {
 
 /* ---------------------------- helpers ---------------------------- */
 
+/**
+ * Shown when a search has kept refreshing but the account cannot see past the
+ * first run — a free account on its second refresh, or a plan that lapsed.
+ *
+ * The rows themselves never reach the browser (the presenter drops them), so
+ * this states plainly what is being held rather than pretending to blur it.
+ */
+function LockedResultsNotice({ count, onSubscribe }) {
+  return (
+    <div className="rs-locked">
+      <div>
+        <strong>
+          {count > 0
+            ? `${count} newer breakout${count === 1 ? '' : 's'} held behind your plan`
+            : 'Newer breakouts are held behind your plan'}
+        </strong>
+        <p>
+          This search is still refreshing on schedule. Subscribe to see everything found
+          since your first run.
+        </p>
+      </div>
+      <button type="button" className="rs-btn rs-btn--y" onClick={onSubscribe}>Subscribe</button>
+    </div>
+  );
+}
+
 const PAGE_STEP = 4;
 /** How often a card-launched analysis re-checks its status. */
 const ANALYSIS_POLL_MS = 5000;
@@ -574,6 +600,11 @@ export default function DetailScreen({
     document.addEventListener('click', onDocClick);
     return () => document.removeEventListener('click', onDocClick);
   }, [menuOpen]);
+
+  // The presenter has already withheld the locked rows; these only drive the
+  // notice, so the page never implies it is hiding something it still holds.
+  const resultsLocked = Boolean(search?.results_locked);
+  const lockedResultCount = Number(search?.locked_result_count ?? 0);
 
   /* ------------- winner + rest ------------- */
   const winner = results[0];
@@ -1133,6 +1164,10 @@ export default function DetailScreen({
           <div className="rs-sh"><h2>Top breakout videos</h2><span className="rs-sofar"><i />finding videos</span></div>
           <SkeletonVideoGrid />
         </>
+      )}
+
+      {resultsLocked && (
+        <LockedResultsNotice count={lockedResultCount} onSubscribe={openUpgradeForAnalysis} />
       )}
 
       {/* MORE BREAKOUTS */}
@@ -2081,6 +2116,10 @@ const scopedCss = `
 .rs-upgmodal p{margin-top:8px;font-size:.9rem;line-height:1.55;color:var(--muted)}
 .rs-upgmodal__actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:18px}
 .rs-upgmodal__actions .rs-btn{flex:1}
+.rs-locked{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;margin:18px 0 0;padding:16px 18px;border:1px solid var(--yellow);border-radius:16px;background:var(--wash)}
+.rs-locked strong{display:block;font-size:.95rem;font-weight:800;letter-spacing:-.02em;color:var(--ink)}
+.rs-locked p{margin:5px 0 0;max-width:62ch;font-size:.85rem;line-height:1.5;color:#5B4300}
+@media (max-width:560px){.rs-locked{flex-direction:column;align-items:stretch}.rs-locked .rs-btn{width:100%;justify-content:center}}
 .rs-loadmore{display:flex;justify-content:center;margin-top:20px}
 
 .rs-acard{background:linear-gradient(180deg,#FFFEFB 0%,#FFF8EB 100%);border:1px solid #F1E2BE;border-radius:20px;padding:20px 22px;box-shadow:0 18px 38px -30px rgba(117,85,11,.25);min-width:0;max-width:100%;overflow-x:hidden}

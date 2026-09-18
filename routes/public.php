@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\ComingSoonInterestController;
 use App\Http\Controllers\ContactInquiryController;
+use App\Http\Controllers\EmailPreferenceController;
 use App\Http\Controllers\FreeSearchFunnelController;
 use App\Http\Controllers\NewsletterSubscriptionController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
@@ -46,6 +47,14 @@ Route::get('/tiktok-product-research', fn () => Inertia::render('LandingSolution
 Route::get('/viral-video-monitoring', fn () => Inertia::render('LandingSolution', ['topic' => 'viral-video-monitoring']))->name('seo.viral-video-monitoring');
 Route::redirect('/competitor-tracking', '/tiktok-brand-tracking', 301)->name('seo.competitor-tracking');
 Route::get('/ugc-trend-discovery', fn () => Inertia::render('LandingSolution', ['topic' => 'ugc-trend-discovery']))->name('seo.ugc-trend-discovery');
+
+// Unsubscribe is tokened rather than signed-in: the people who receive the
+// winback flows have usually stopped logging in, and an opt-out behind a login
+// wall is not an opt-out.
+Route::prefix('email')->group(function (): void {
+    Route::get('/unsubscribe/{token}', [EmailPreferenceController::class, 'unsubscribe'])->name('email.unsubscribe');
+    Route::post('/unsubscribe/{token}/undo', [EmailPreferenceController::class, 'resubscribe'])->name('email.resubscribe');
+});
 
 Route::prefix('search')->group(function (): void {
     Route::get('/', function (Request $request) {

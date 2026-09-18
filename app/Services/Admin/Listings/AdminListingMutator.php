@@ -3,6 +3,7 @@
 namespace App\Services\Admin\Listings;
 
 use App\Models\CustomKeywordSearch;
+use App\Models\EmailTemplate;
 use App\Models\IndexedKeyword;
 use App\Models\ManagedCouponProgram;
 use App\Models\ManagedCouponWhitelistEntry;
@@ -12,6 +13,8 @@ use App\Models\User;
 use App\Models\ViralVideo;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
+use App\Support\EmailFieldLibrary;
+use App\Support\EmailTemplateRegistry;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -39,6 +42,7 @@ class AdminListingMutator
             'keyword-index' => IndexedKeyword::withTrashed()->find($id),
             'coupon-programs' => ManagedCouponProgram::withTrashed()->find($id),
             'coupon-whitelist' => ManagedCouponWhitelistEntry::find($id),
+            'email-templates' => EmailTemplate::withTrashed()->whereKey($id)->first(),
             default => null,
         };
     }
@@ -55,6 +59,7 @@ class AdminListingMutator
             'users' => $this->updateUser($record, $input),
             'keyword-index' => $this->updateIndexedKeyword($record, $input),
             'coupon-programs' => $this->updateCouponProgram($record, $input),
+            'email-templates' => $this->updateEmailTemplate($record, $input),
             default => throw ValidationException::withMessages(['resource' => 'This resource cannot be edited.']),
         };
     }
@@ -69,6 +74,7 @@ class AdminListingMutator
             'keyword-index' => $this->createIndexedKeyword($input),
             'coupon-whitelist' => $this->createCouponWhitelistEntry($input),
             'coupon-programs' => $this->createCouponProgram($input),
+            'email-templates' => $this->createEmailTemplate($input),
             default => throw ValidationException::withMessages(['resource' => 'This resource cannot be created.']),
         };
     }
@@ -85,11 +91,21 @@ class AdminListingMutator
     public function delete(Model $record): void
     {
         $record->delete();
+
+        // Email templates are read through a cached registry; without this the
+        // one just removed keeps sending until the cache expires.
+        if ($record instanceof EmailTemplate) {
+            EmailTemplateRegistry::forget();
+        }
     }
 
     public function restore(Model $record): void
     {
         $record->restore();
+
+        if ($record instanceof EmailTemplate) {
+            EmailTemplateRegistry::forget();
+        }
     }
 
     /**
@@ -317,6 +333,106 @@ class AdminListingMutator
     /**
      * @param  array<string, mixed>  $input
      */
+    /**
+     * @param  array<string, mixed>  $input
+     */
+    /**
+     * @param  array<string, mixed>  $input
+     */
+    private function createEmailTemplate(array $input): EmailTemplate
+    {
+        $key = (string) ($input['key'] ?? '');
+
+        // A soft-deleted row still owns its key. Reviving it keeps the history
+        // rather than colliding on the primary key.
+        $existing = EmailTemplate::withTrashed()->whereKey($key)->first();
+
+        if ($existing !== null) {
+            if ($existing->deleted_at === null) {
+                throw ValidationException::withMessages(['key' => 'A template with this key already exists.']);
+            }
+
+            $existing->restore();
+            $this->updateEmailTemplate($existing, $input);
+
+            return $existing;
+        }
+
+        $brevoId = (int) ($input['brevo_template_id'] ?? 0);
+
+        $template = EmailTemplate::query()->create([
+            'key' => $key,
+            'label' => (string) ($input['label'] ?? $key),
+            'subject' => (string) ($input['subject'] ?? 'BrandBeacon update'),
+            'preview_text' => filled($input['preview_text'] ?? null) ? (string) $input['preview_text'] : null,
+            'brevo_template_id' => $brevoId > 0 ? $brevoId : null,
+            'tags' => [],
+            'is_transactional' => (bool) ($input['is_transactional'] ?? false),
+            // Cannot be on without somewhere to send.
+            'is_enabled' => $brevoId > 0 && (bool) ($input['is_enabled'] ?? false),
+            'description' => filled($input['description'] ?? null) ? (string) $input['description'] : null,
+        ]);
+
+        EmailTemplateRegistry::forget();
+
+        return $template;
+    }
+
+    private function updateEmailTemplate(EmailTemplate $template, array $input): void
+    {
+        // `key` is offered by the shared field list so the create drawer can
+        // ask for it. It is the primary key and what the app sends by, so a
+        // rename here would orphan the template silently — ignore it on update.
+        unset($input['key']);
+
+        // Reference-only values the drawer renders; they are not columns.
+        unset($input['built_in_params'], $input['given_sources']);
+
+        foreach (['label', 'subject'] as $field) {
+            if (array_key_exists($field, $input) && filled($input[$field])) {
+                $template->{$field} = (string) $input[$field];
+            }
+        }
+
+        // Preview text may be cleared, so it cannot use the filled() guard
+        // above — an empty value means "no preview line".
+        if (array_key_exists('preview_text', $input)) {
+            $template->preview_text = filled($input['preview_text']) ? (string) $input['preview_text'] : null;
+        }
+
+        if (array_key_exists('brevo_template_id', $input)) {
+            $id = (int) $input['brevo_template_id'];
+            // 0 is how the form says "not mapped"; a template with no id fails
+            // loudly at send time rather than silently mailing the wrong thing.
+            $template->brevo_template_id = $id > 0 ? $id : null;
+        }
+
+        if (array_key_exists('description', $input)) {
+            $template->description = filled($input['description']) ? (string) $input['description'] : null;
+        }
+
+        if (array_key_exists('extra_fields', $input)) {
+            // Only keys that exist in the library, so a stale selection cannot
+            // survive a field being removed from config.
+            $template->extra_fields = array_values(array_filter(
+                (array) $input['extra_fields'],
+                fn ($key): bool => is_string($key) && EmailFieldLibrary::find($key) !== null,
+            ));
+        }
+
+        foreach (['is_transactional', 'is_enabled'] as $flag) {
+            if (array_key_exists($flag, $input)) {
+                $template->{$flag} = (bool) $input[$flag];
+            }
+        }
+
+        $template->save();
+
+        // The registry caches for five minutes; an admin who just changed a
+        // template expects the next send to use it.
+        EmailTemplateRegistry::forget();
+    }
+
     private function updateIndexedKeyword(IndexedKeyword $keyword, array $input): void
     {
         foreach (['label', 'keyword_type', 'sector', 'source'] as $field) {

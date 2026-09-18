@@ -10,6 +10,7 @@ use App\Services\Analytics\AnalyticsEvent;
 use App\Services\Analytics\AnalyticsEventManager;
 use App\Services\Billing\BillingService;
 use App\Services\Brevo\BrevoLifecycleEmailService;
+use App\Services\Brevo\EmailSendLedger;
 use App\Support\AppEventLogger;
 use Carbon\CarbonImmutable;
 use Stripe\Event;
@@ -21,6 +22,7 @@ class StripeWebhookProcessor
     public function __construct(
         private readonly BillingService $billing,
         private readonly BrevoLifecycleEmailService $emails,
+        private readonly EmailSendLedger $ledger,
         private readonly ?UserActivityService $activity = null,
         private readonly ?AnalyticsEventManager $analytics = null,
     ) {}
@@ -116,6 +118,7 @@ class StripeWebhookProcessor
 
         $previousStatus = (string) ($subscription->status ?? '');
         $subscription->forceFill(['status' => 'active'])->save();
+        $this->rememberCardOnFile($subscription, $invoice);
 
         if ($subscription->user !== null) {
             if ($previousStatus === 'past_due') {
@@ -147,6 +150,36 @@ class StripeWebhookProcessor
         ]);
     }
 
+    /**
+     * Cache the card used on a successful invoice.
+     *
+     * Stripe has no "card is about to expire" webhook, and asking Stripe for
+     * every subscriber's payment method on a daily scan is a per-customer API
+     * call we do not need to make. A paid invoice already carries the card, so
+     * the expiry warning reads from here instead.
+     */
+    private function rememberCardOnFile(Subscription $subscription, mixed $invoice): void
+    {
+        $card = data_get($invoice, 'charge.payment_method_details.card');
+        $expMonth = (int) data_get($card, 'exp_month', 0);
+        $expYear = (int) data_get($card, 'exp_year', 0);
+
+        if ($expMonth < 1 || $expMonth > 12 || $expYear < 2000) {
+            return;
+        }
+
+        $metadata = $subscription->metadata ?? [];
+        data_set($metadata, 'card', [
+            'brand' => ucfirst((string) data_get($card, 'brand', 'card')),
+            'last4' => (string) data_get($card, 'last4', ''),
+            'exp_month' => $expMonth,
+            'exp_year' => $expYear,
+            'seen_at' => now()->toIso8601String(),
+        ]);
+
+        $subscription->forceFill(['metadata' => $metadata])->save();
+    }
+
     private function handleInvoicePaymentFailed(Event $event): void
     {
         $invoice = $event->data->object;
@@ -174,15 +207,53 @@ class StripeWebhookProcessor
         $previousStatus = (string) ($subscription->status ?? '');
         $subscription->forceFill(['status' => 'past_due'])->save();
 
+        // Stripe counts the retries for us. Without it the three dunning
+        // emails are indistinguishable, because every retry raises the same
+        // event with the same subscription in the same state.
+        $attempt = max(1, (int) ($invoice->attempt_count ?? 1));
+        $nextAttemptAt = isset($invoice->next_payment_attempt) && $invoice->next_payment_attempt
+            ? CarbonImmutable::createFromTimestamp((int) $invoice->next_payment_attempt)
+                ->timezone(config('app.timezone'))
+                ->format('F j, Y')
+            : null;
+
         if ($subscription->user !== null) {
             $this->activity()->record(
                 $subscription->user,
                 'subscription',
                 'payment_failed',
                 'Stripe invoice payment failed.',
-                ['subscription_id' => $subscription->id, 'stripe_subscription_id' => $subscriptionId, 'previous_status' => $previousStatus],
+                ['subscription_id' => $subscription->id, 'stripe_subscription_id' => $subscriptionId, 'previous_status' => $previousStatus, 'attempt' => $attempt],
                 'stripe:'.(string) $event->id.':payment_failed'
             );
+
+            // Only the first two retries get an email. Stripe keeps retrying
+            // after that, and the final notice belongs to the subscription
+            // transition that actually ends access — without this bound,
+            // attempts 3 and 4 would each re-send the second notice.
+            //
+            // The ledger claim is what makes this safe against a webhook
+            // replay: Stripe redelivers events, and this send does not run
+            // through the daily dispatcher that would otherwise dedupe it.
+            if ($attempt <= 2) {
+                $subscription->loadMissing('plan');
+
+                $claim = $this->ledger->claim(
+                    'payment_failed',
+                    "subscription:{$subscription->id}:attempt:{$attempt}",
+                    $subscription->user,
+                    (string) $subscription->user->email,
+                    ['stripe_event_id' => (string) ($event->id ?? ''), 'attempt' => $attempt],
+                );
+
+                if ($claim !== null) {
+                    $sent = $this->emails->sendPaymentFailed($subscription->user, $subscription, $attempt, $nextAttemptAt);
+
+                    $sent
+                        ? $this->ledger->markSent($claim, $attempt >= 2 ? 'payment_failed_second' : 'payment_failed_first')
+                        : $this->ledger->release($claim);
+                }
+            }
         }
 
         AppEventLogger::result('billing.webhook.invoice_payment_failed', [
@@ -190,6 +261,7 @@ class StripeWebhookProcessor
             'subscription_id' => $subscription->id,
             'user_id' => $subscription->user_id,
             'stripe_subscription_id' => $subscriptionId,
+            'attempt' => $attempt,
         ]);
     }
 

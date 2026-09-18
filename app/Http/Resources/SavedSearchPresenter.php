@@ -8,6 +8,7 @@ use App\Models\CustomKeywordSearchVideo;
 use App\Models\User;
 use App\Models\VideoAnalysis;
 use App\Models\ViralVideo;
+use App\Services\Billing\BillingEntitlementService;
 use App\Services\CustomKeywordSearch\SearchInsights;
 use App\Services\CustomKeywordSearch\TrendBuilder;
 
@@ -155,6 +156,40 @@ class SavedSearchPresenter
     {
         $results = self::resultRows($search, $bookmarkedVideoIds, $user);
 
+        /*
+         * The refresh paywall.
+         *
+         * Searches keep refreshing after a plan lapses — that is what makes the
+         * winback emails able to say "you missed 12 breakouts" truthfully — but
+         * everything found after the first run is paid product. The lock is
+         * applied here rather than in the page, because hiding rows in the
+         * browser still ships them over the wire.
+         *
+         * One rule covers both cases the paywall is for: a free account past
+         * its first run, and a lapsed account whose searches have kept going.
+         */
+        $runs = self::runHistory($search);
+        $locked = $user !== null
+            && ! app(BillingEntitlementService::class)->hasPaidPlan($user)
+            && count($runs) > 1;
+
+        $lockedCount = 0;
+
+        if ($locked) {
+            $firstRunId = $runs[0]['id'] ?? null;
+            $total = count($results);
+
+            $results = array_values(array_filter(
+                $results,
+                // A legacy row with no run id predates the column; it belongs to
+                // the earliest run by definition, so it stays visible.
+                fn (array $row): bool => ($row['search_run_id'] ?? null) === null
+                    || $row['search_run_id'] === $firstRunId,
+            ));
+
+            $lockedCount = max(0, $total - count($results));
+        }
+
         // Insights are derived from the same rows the cards render, so the
         // median a card is measured against is always the median of what the
         // user is actually looking at.
@@ -181,8 +216,10 @@ class SavedSearchPresenter
 
         return self::summary($search) + [
             'results' => $results,
+            'results_locked' => $locked,
+            'locked_result_count' => $lockedCount,
             'scanned_count' => (int) data_get($search->latestRun?->raw_summary, 'received', 0),
-            'runs' => self::runHistory($search),
+            'runs' => $runs,
             'ai_summary' => $search->ai_summary,
             'ai_summary_generated_at' => $search->ai_summary_generated_at?->toIso8601String(),
             'insights_bullets' => is_array($search->insights_bullets) ? $search->insights_bullets : [],

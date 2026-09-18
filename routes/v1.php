@@ -6,8 +6,15 @@ use App\Http\Controllers\VideoAnalysisController;
 use App\Http\Controllers\VideoBookmarkController;
 use Illuminate\Support\Facades\Route;
 
+// Keyword expansion is the only saved-search endpoint a signed-out visitor
+// touches: the free-search screen previews keywords before the funnel stashes
+// the pending search in session and sends the visitor to sign up. Everything
+// else below reads or writes someone's own searches and requires auth.
 Route::prefix('saved-searches')->group(function (): void {
     Route::post('/expand', [SavedSearchController::class, 'expand'])->name('api.v1.saved-searches.expand');
+});
+
+Route::prefix('saved-searches')->middleware('auth')->group(function (): void {
     Route::get('/notifications', [SavedSearchController::class, 'notifications'])->name('api.v1.saved-searches.notifications');
     Route::get('/recent', [SavedSearchController::class, 'recent'])->name('api.v1.saved-searches.recent');
     Route::get('/bookmarked-videos', [SavedSearchController::class, 'bookmarkedVideos'])->name('api.v1.saved-searches.bookmarked-videos');

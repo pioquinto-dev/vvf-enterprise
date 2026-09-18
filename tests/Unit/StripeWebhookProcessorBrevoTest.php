@@ -7,6 +7,7 @@ use App\Models\Subscription;
 use App\Models\User;
 use App\Services\Billing\BillingService;
 use App\Services\Brevo\BrevoLifecycleEmailService;
+use App\Services\Brevo\EmailSendLedger;
 use App\Services\Stripe\StripeWebhookProcessor;
 use App\Services\Utm\UtmAttributionService;
 use Carbon\CarbonImmutable;
@@ -90,7 +91,7 @@ class StripeWebhookProcessorBrevoTest extends TestCase
             )
             ->andReturn(true);
 
-        $processor = new StripeWebhookProcessor($billing, $emails);
+        $processor = new StripeWebhookProcessor($billing, $emails, app(EmailSendLedger::class));
 
         $event = Event::constructFrom([
             'id' => 'evt_test_123',
@@ -167,7 +168,7 @@ class StripeWebhookProcessorBrevoTest extends TestCase
 
         $emails->shouldReceive('sendSubscriptionCanceled')->never();
 
-        $processor = new StripeWebhookProcessor($billing, $emails);
+        $processor = new StripeWebhookProcessor($billing, $emails, app(EmailSendLedger::class));
 
         $event = Event::constructFrom([
             'id' => 'evt_test_scheduled_cancel',
@@ -262,7 +263,7 @@ class StripeWebhookProcessorBrevoTest extends TestCase
             ->andReturn(true);
         $emails->shouldReceive('sendSubscriptionCanceled')->never();
 
-        $processor = new StripeWebhookProcessor($billing, $emails);
+        $processor = new StripeWebhookProcessor($billing, $emails, app(EmailSendLedger::class));
 
         $event = Event::constructFrom([
             'id' => 'evt_test_final_failed_payment',
