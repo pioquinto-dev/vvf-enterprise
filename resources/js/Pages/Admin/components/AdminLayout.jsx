@@ -32,15 +32,20 @@ const NAV_GROUPS = [
         ],
     },
     {
-        label: 'Content',
+        label: 'Catalog',
         items: [
             { key: 'viral-videos', label: 'Viral Videos', href: '/x/admin/viral-videos', description: 'Video library', icon: 'VI' },
             { key: 'searches', label: 'Searches', href: '/x/admin/searches', description: 'Search runs', icon: 'SE' },
             { key: 'keyword-index', label: 'Keyword Index', href: '/x/admin/keyword-index', description: 'Brands and products', icon: 'KI' },
+            { key: 'plans', label: 'Plans', href: '/x/admin/plans', description: 'Pricing setup', icon: 'PL' },
+        ],
+    },
+    {
+        label: 'Messaging',
+        items: [
             { key: 'email-templates', label: 'Email Templates', href: '/x/admin/email-templates', description: 'Lifecycle email registry', icon: 'ET' },
             { key: 'inquiries', label: 'Inquiries', href: '/x/admin/inquiries', description: 'Contact inbox', icon: 'IN' },
             { key: 'newsletter', label: 'Newsletter', href: '/x/admin/newsletter', description: 'Digest subscribers', icon: 'NL' },
-            { key: 'plans', label: 'Plans', href: '/x/admin/plans', description: 'Pricing setup', icon: 'PL' },
         ],
     },
     {
