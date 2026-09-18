@@ -59,6 +59,15 @@ export default function Listing({
                             New keyword
                         </button>
                     )}
+                    {capabilities.create && capabilities.createLabel && (
+                        <button
+                            type="button"
+                            onClick={() => setCreating(true)}
+                            className="inline-flex h-8 items-center rounded-md bg-[var(--yellow)] px-3.5 text-[12.5px] font-semibold text-[#1a1400] transition hover:brightness-105"
+                        >
+                            {capabilities.createLabel}
+                        </button>
+                    )}
                     {resource === 'coupon-whitelist' && (
                         <button
                             type="button"

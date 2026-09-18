@@ -19,6 +19,7 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
+        $this->call(EmailTemplateSeeder::class);
         $this->call(IndexedKeywordSeeder::class);
         $this->call(ManagedCouponProgramSeeder::class);
 

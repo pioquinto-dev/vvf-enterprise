@@ -74,7 +74,77 @@ export default function AdminEditDrawer({ open, resource, title, fields = [], ro
                     <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-4 py-4">
                         {fields.map((field) => (
                             <div key={field.name} className="min-w-0">
-                                {field.type === 'toggle' ? (
+                                {field.type === 'reference' ? (
+                                    // Read-only: the merge fields the code sends for this
+                                    // template. Shown so nobody has to guess a tag name.
+                                    <div className="min-w-0">
+                                        <p className="mb-1.5 text-[11.5px] font-medium text-[var(--muted)]">{field.label}</p>
+                                        <div className="rounded-lg border border-[var(--line)] bg-[var(--paper,#faf9f6)] px-2.5 py-2">
+                                            {(form.data.built_in_params ?? []).length > 0 ? (
+                                                <div className="flex flex-wrap gap-1">
+                                                    {(form.data.built_in_params ?? []).map((tag) => (
+                                                        <code key={tag} className="rounded bg-white px-1.5 py-0.5 text-[11px] text-[var(--ink)] border border-[var(--line)]">{tag}</code>
+                                                    ))}
+                                                </div>
+                                            ) : (
+                                                <p className="text-[11.5px] text-[var(--faint)]">
+                                                    No trigger sends this key yet, so it receives only the shared fields.
+                                                </p>
+                                            )}
+                                        </div>
+                                        {field.help && <p className="mt-1 text-[11.5px] text-[var(--faint)]">{field.help}</p>}
+                                    </div>
+                                ) : field.type === 'multiselect' ? (
+                                    <div className="min-w-0">
+                                        <p className="mb-1.5 text-[11.5px] font-medium text-[var(--muted)]">{field.label}</p>
+                                        <p className="mb-1.5 text-[11.5px] text-[var(--faint)]">
+                                            Every field can be switched on. Ones this email already carries describe what it is
+                                            about; the rest are looked up from the recipient when it sends.
+                                        </p>
+                                        <div className="max-h-64 overflow-y-auto rounded-lg border border-[var(--line)] bg-white px-2.5 py-2">
+                                            {(field.options ?? []).map((option) => {
+                                                const selected = (form.data[field.name] ?? []).includes(option.value);
+                                                // Not a permission — just whether the value is
+                                                // this email's subject or the recipient's latest.
+                                                const given = (form.data.given_sources ?? []).includes(option.source);
+
+                                                return (
+                                                    <label key={option.value} className="flex cursor-pointer items-start gap-2 py-1.5">
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={selected}
+                                                            onChange={(event) => {
+                                                                const current = form.data[field.name] ?? [];
+                                                                form.setData(
+                                                                    field.name,
+                                                                    event.target.checked
+                                                                        ? [...current, option.value]
+                                                                        : current.filter((v) => v !== option.value),
+                                                                );
+                                                            }}
+                                                            className="mt-0.5 h-4 w-4 rounded border-[var(--line)] bg-white accent-[#ffc629]"
+                                                        />
+                                                        <span className="min-w-0">
+                                                            <span className="block text-[12.5px] text-[var(--ink)]">{option.label}</span>
+                                                            <code className="text-[11px] text-[var(--amber-ink)]">{option.param}</code>
+                                                            <span className="mt-0.5 block text-[11px] text-[var(--faint)]">
+                                                                {option.hint}
+                                                                {option.source !== 'user' && (
+                                                                    <span className={given ? 'text-[var(--amber-ink)]' : ''}>
+                                                                        {given
+                                                                            ? ` · this email's ${option.source}`
+                                                                            : ` · their most recent ${option.source}`}
+                                                                    </span>
+                                                                )}
+                                                            </span>
+                                                        </span>
+                                                    </label>
+                                                );
+                                            })}
+                                        </div>
+                                        {field.help && <p className="mt-1 text-[11.5px] text-[var(--faint)]">{field.help}</p>}
+                                    </div>
+                                ) : field.type === 'toggle' ? (
                                     <label className="flex cursor-pointer items-start gap-2.5">
                                         <input
                                             type="checkbox"
@@ -112,7 +182,16 @@ export default function AdminEditDrawer({ open, resource, title, fields = [], ro
                                                 min={field.type === 'number' ? (field.min ?? 0) : undefined}
                                                 value={form.data[field.name] ?? ''}
                                                 onChange={(event) => form.setData(field.name, event.target.value)}
-                                                className="h-9 min-w-0 w-full max-w-full rounded-lg border border-[var(--line)] bg-white px-2.5 text-[13px] text-[var(--ink)] outline-none focus:border-[var(--yellow)]"
+                                                // A field marked createOnly identifies the record
+                                                // (an email template's key, say). It still posts, so
+                                                // shared validation passes, but editing it would
+                                                // point the row at something else entirely.
+                                                readOnly={mode !== 'create' && field.createOnly === true}
+                                                className={`h-9 min-w-0 w-full max-w-full rounded-lg border border-[var(--line)] px-2.5 text-[13px] outline-none focus:border-[var(--yellow)] ${
+                                                    mode !== 'create' && field.createOnly === true
+                                                        ? 'bg-[var(--paper,#faf9f6)] text-[var(--faint)] cursor-not-allowed'
+                                                        : 'bg-white text-[var(--ink)]'
+                                                }`}
                                             />
                                         )}
                                         {field.help && <p className="mt-1 text-[11.5px] text-[var(--faint)]">{field.help}</p>}

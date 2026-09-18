@@ -30,7 +30,7 @@ class AdminRecordController extends Controller
 
     public function store(Request $request, string $resource): RedirectResponse
     {
-        if (! in_array($resource, ['plans', 'keyword-index', 'coupon-whitelist', 'coupon-programs'], true)) {
+        if (! in_array($resource, ['plans', 'keyword-index', 'coupon-whitelist', 'coupon-programs', 'email-templates'], true)) {
             throw new NotFoundHttpException('This resource does not support creation.');
         }
 
@@ -102,6 +102,9 @@ class AdminRecordController extends Controller
             $rules[$field['name']] = match ($field['type']) {
                 'number' => ['nullable', 'numeric', 'min:'.($field['min'] ?? 0)],
                 'toggle' => ['nullable', 'boolean'],
+                // Reference fields are display-only, so nothing to validate.
+                'reference' => ['nullable'],
+                'multiselect' => ['nullable', 'array'],
                 'select' => ['nullable', 'string', 'in:'.implode(',', array_map(
                     fn ($option) => is_array($option) ? $option['value'] : $option,
                     $field['options'] ?? [],

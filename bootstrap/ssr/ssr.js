@@ -537,6 +537,13 @@ var NAV_GROUPS = [
 				icon: "KI"
 			},
 			{
+				key: "email-templates",
+				label: "Email Templates",
+				href: "/x/admin/email-templates",
+				description: "Lifecycle email registry",
+				icon: "ET"
+			},
+			{
 				key: "inquiries",
 				label: "Inquiries",
 				href: "/x/admin/inquiries",
@@ -3799,6 +3806,93 @@ function CriticalErrorsPanel({ criticalErrors = {} }) {
 		})]
 	});
 }
+function SearchTrendPanel({ searchTrend = {} }) {
+	const rows = searchTrend.rows ?? [];
+	const totalSearches = searchTrend.totalSearches ?? 0;
+	const entityCount = searchTrend.entityCount ?? 0;
+	return /* @__PURE__ */ jsxs("section", {
+		className: "rounded-2xl border border-[var(--line)] bg-white p-4 shadow-[0_1px_2px_rgba(20,15,0,.04),0_16px_32px_-26px_rgba(20,15,0,.18)] sm:p-5",
+		children: [/* @__PURE__ */ jsxs("div", {
+			className: "flex flex-wrap items-start justify-between gap-3",
+			children: [/* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsx("p", {
+				className: "text-[10px] font-semibold tracking-[.22em] text-[var(--amber-ink)] uppercase",
+				children: "Search trend"
+			}), /* @__PURE__ */ jsx("h3", {
+				className: "mt-1 text-[17px] font-semibold text-[var(--ink)]",
+				children: "Most searched subjects"
+			})] }), /* @__PURE__ */ jsx(Link, {
+				href: "/x/admin/searches",
+				className: "text-[11px] font-semibold text-[var(--amber-ink)] transition hover:opacity-80",
+				children: "Show All ->"
+			})]
+		}), rows.length === 0 ? /* @__PURE__ */ jsx("p", {
+			className: "mt-4 text-[12px] text-[var(--muted)]",
+			children: "No searches recorded yet."
+		}) : /* @__PURE__ */ jsxs(Fragment$1, { children: [/* @__PURE__ */ jsxs("p", {
+			className: "mt-1 text-[11.5px] text-[var(--muted)]",
+			children: [
+				totalSearches,
+				" search",
+				totalSearches === 1 ? "" : "es",
+				" across ",
+				entityCount,
+				" subject",
+				entityCount === 1 ? "" : "s",
+				" ",
+				"· spelling variants grouped"
+			]
+		}), /* @__PURE__ */ jsx("div", {
+			className: "mt-4 flex flex-col gap-2.5",
+			children: rows.map((row, index) => /* @__PURE__ */ jsxs("div", {
+				className: "flex items-start gap-2.5",
+				children: [/* @__PURE__ */ jsx("span", {
+					className: "mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-[var(--wash)] text-[10px] font-bold text-[var(--amber-ink)]",
+					children: index + 1
+				}), /* @__PURE__ */ jsxs("div", {
+					className: "min-w-0 flex-1",
+					children: [
+						/* @__PURE__ */ jsxs("div", {
+							className: "flex items-baseline gap-2",
+							children: [
+								/* @__PURE__ */ jsx("strong", {
+									className: "truncate text-[13px] font-semibold text-[var(--ink)]",
+									children: row.label
+								}),
+								/* @__PURE__ */ jsx("span", {
+									className: "shrink-0 rounded-full border border-[var(--line)] px-1.5 py-0.5 text-[8px] font-semibold tracking-[.08em] text-[#718197] uppercase",
+									children: row.type
+								}),
+								/* @__PURE__ */ jsx("span", {
+									className: "ml-auto shrink-0 text-[12.5px] font-bold tabular-nums text-[var(--ink)]",
+									children: row.count
+								})
+							]
+						}),
+						/* @__PURE__ */ jsx("div", {
+							className: "mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-[#f1f4f8]",
+							children: /* @__PURE__ */ jsx("span", {
+								className: "block h-full rounded-full bg-[var(--yellow)]",
+								style: { width: `${Math.max(row.share ?? 0, 4)}%` }
+							})
+						}),
+						/* @__PURE__ */ jsxs("p", {
+							className: "mt-1 truncate text-[10.5px] text-[#718197]",
+							children: [
+								row.percent,
+								"% of searches · ",
+								row.searchers,
+								" searcher",
+								row.searchers === 1 ? "" : "s",
+								row.variants?.length > 0 && ` · also typed: ${row.variants.join(", ")}`,
+								row.variantCount > (row.variants?.length ?? 0) + 1 && " …"
+							]
+						})
+					]
+				})]
+			}, `${row.type}-${row.label}`))
+		})] })]
+	});
+}
 function CouponProgramsPanel({ coupons = {} }) {
 	const programs = coupons.programs ?? [];
 	const alerts = coupons.alerts ?? [];
@@ -3905,8 +3999,9 @@ function CouponProgramsPanel({ coupons = {} }) {
 		]
 	});
 }
-function Dashboard({ trend = [], stats = [], snapshot = {}, range = "30D", ranges = [], acquisition = {}, activity = {}, engagement = {}, coupons = {}, criticalErrors = {} }) {
+function Dashboard({ trend = [], stats = [], snapshot = {}, range = "30D", ranges = [], acquisition = {}, activity = {}, engagement = {}, coupons = {}, criticalErrors = {}, searchTrend = {} }) {
 	const refresh = useForm({});
+	const hasCriticalErrors = (criticalErrors.unresolvedCount ?? 0) > 0;
 	const selectRange = (next) => {
 		router.get("/x/admin", { range: next }, {
 			preserveScroll: true,
@@ -3965,10 +4060,6 @@ function Dashboard({ trend = [], stats = [], snapshot = {}, range = "30D", range
 					})
 				]
 			}),
-			/* @__PURE__ */ jsx("div", {
-				className: "mt-3",
-				children: /* @__PURE__ */ jsx(CriticalErrorsPanel, { criticalErrors })
-			}),
 			/* @__PURE__ */ jsxs("section", {
 				className: "mt-3 rounded-2xl border border-[var(--line)] bg-white px-5 py-4 shadow-[0_1px_2px_rgba(20,15,0,.04),0_16px_32px_-26px_rgba(20,15,0,.18)]",
 				children: [/* @__PURE__ */ jsxs("div", {
@@ -4009,6 +4100,10 @@ function Dashboard({ trend = [], stats = [], snapshot = {}, range = "30D", range
 			/* @__PURE__ */ jsx("div", {
 				className: "mt-3",
 				children: /* @__PURE__ */ jsx(CouponProgramsPanel, { coupons })
+			}),
+			/* @__PURE__ */ jsxs("div", {
+				className: `mt-3 grid gap-3 ${hasCriticalErrors ? "grid-cols-[minmax(0,1fr)] xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]" : "grid-cols-[minmax(0,1fr)]"}`,
+				children: [/* @__PURE__ */ jsx(CriticalErrorsPanel, { criticalErrors }), /* @__PURE__ */ jsx(SearchTrendPanel, { searchTrend })]
 			})
 		]
 	});
@@ -4335,7 +4430,8 @@ function AdminEditDrawer({ open, resource, title, fields = [], row, createValues
 								min: field.type === "number" ? field.min ?? 0 : void 0,
 								value: form.data[field.name] ?? "",
 								onChange: (event) => form.setData(field.name, event.target.value),
-								className: "h-9 min-w-0 w-full max-w-full rounded-lg border border-[var(--line)] bg-white px-2.5 text-[13px] text-[var(--ink)] outline-none focus:border-[var(--yellow)]"
+								readOnly: mode !== "create" && field.createOnly === true,
+								className: `h-9 min-w-0 w-full max-w-full rounded-lg border border-[var(--line)] px-2.5 text-[13px] outline-none focus:border-[var(--yellow)] ${mode !== "create" && field.createOnly === true ? "bg-[var(--paper,#faf9f6)] text-[var(--faint)] cursor-not-allowed" : "bg-white text-[var(--ink)]"}`
 							}),
 							field.help && /* @__PURE__ */ jsx("p", {
 								className: "mt-1 text-[11.5px] text-[var(--faint)]",
@@ -4668,14 +4764,20 @@ function AdminPagination({ pagination, query = {} }) {
 }
 //#endregion
 //#region resources/js/components/admin/AdminPreviewDrawer.jsx
-function PreviewField({ label, value, multiline = false }) {
+function PreviewField({ label, value, multiline = false, href = null }) {
 	const displayValue = value === null || value === void 0 || value === "" ? "-" : value;
 	return /* @__PURE__ */ jsxs("div", {
 		className: "min-w-0",
 		children: [/* @__PURE__ */ jsx("p", {
 			className: "mb-1.5 text-[11.5px] font-medium text-[var(--muted)]",
 			children: label
-		}), multiline ? /* @__PURE__ */ jsx("div", {
+		}), href ? /* @__PURE__ */ jsx("a", {
+			href,
+			target: "_blank",
+			rel: "noopener noreferrer",
+			className: "block max-w-full truncate rounded-lg border border-[var(--line)] bg-white px-3 py-2.5 text-[13px] font-semibold text-[var(--amber-ink)] transition hover:border-[var(--yellow)] hover:bg-[var(--wash)]",
+			children: displayValue
+		}) : multiline ? /* @__PURE__ */ jsx("div", {
 			className: "min-h-[120px] max-w-full break-words rounded-lg border border-[var(--line)] bg-white px-3 py-2.5 text-[13px] leading-6 whitespace-pre-wrap [overflow-wrap:anywhere] text-[var(--body)]",
 			children: displayValue
 		}) : /* @__PURE__ */ jsx("div", {
@@ -4744,7 +4846,8 @@ function AdminPreviewDrawer({ open, title, row, onClose }) {
 							children: section.fields.map((field) => /* @__PURE__ */ jsx(PreviewField, {
 								label: field.label,
 								value: field.value,
-								multiline: field.multiline === true
+								multiline: field.multiline === true,
+								href: field.href ?? null
 							}, `${section.title ?? "details"}-${field.label}`))
 						})]
 					}, section.title ?? "details")) : /* @__PURE__ */ jsx(PreviewField, {
@@ -9983,6 +10086,75 @@ function DataProcessingAddendum() {
 		sections: sections$3
 	});
 }
+//#endregion
+//#region resources/js/Pages/EmailPreferences.jsx
+var EmailPreferences_exports = /* @__PURE__ */ __exportAll({ default: () => EmailPreferences });
+/**
+* The page an unsubscribe link lands on. Deliberately standalone: the reader
+* is not signed in and may never sign in again, so it carries no app chrome
+* and asks nothing of them beyond confirming what just happened.
+*/
+function EmailPreferences({ state = "unsubscribed", email = "", token = "" }) {
+	const [working, setWorking] = useState(false);
+	const done = state === "unsubscribed";
+	const undo = () => {
+		setWorking(true);
+		router.post(`/email/unsubscribe/${token}/undo`, {}, {
+			preserveScroll: true,
+			onFinish: () => setWorking(false)
+		});
+	};
+	return /* @__PURE__ */ jsxs(Fragment$1, { children: [/* @__PURE__ */ jsx(Head, { title: done ? "Unsubscribed · Brand Beacon" : "Resubscribed · Brand Beacon" }), /* @__PURE__ */ jsxs("main", {
+		className: "ep",
+		children: [/* @__PURE__ */ jsx("style", { children: css }), /* @__PURE__ */ jsxs("div", {
+			className: "ep__card",
+			children: [
+				/* @__PURE__ */ jsx("span", {
+					className: "ep__mark",
+					"aria-hidden": true,
+					children: done ? "✓" : "↩"
+				}),
+				/* @__PURE__ */ jsx("h1", { children: done ? "You have been unsubscribed" : "You are subscribed again" }),
+				/* @__PURE__ */ jsxs("p", { children: [
+					done ? "We will stop sending marketing and re-engagement emails to " : "Marketing and re-engagement emails will resume for ",
+					/* @__PURE__ */ jsx("b", { children: email }),
+					"."
+				] }),
+				/* @__PURE__ */ jsx("p", {
+					className: "ep__note",
+					children: done ? "Account and billing emails still come through, since those cover payments, security and anything you asked us to run." : "You can unsubscribe again from the link at the bottom of any of those emails."
+				}),
+				/* @__PURE__ */ jsx("div", {
+					className: "ep__acts",
+					children: done ? /* @__PURE__ */ jsx("button", {
+						type: "button",
+						className: "ep__btn",
+						onClick: undo,
+						disabled: working,
+						children: working ? "Working…" : "That was a mistake, resubscribe me"
+					}) : /* @__PURE__ */ jsx("a", {
+						className: "ep__btn",
+						href: "/home",
+						children: "Back to Brand Beacon"
+					})
+				})
+			]
+		})]
+	})] });
+}
+var css = `
+.ep{min-height:100vh;display:grid;place-items:center;padding:24px;background:var(--paper,#FAF9F6);font-family:inherit}
+.ep__card{width:100%;max-width:460px;padding:32px 28px;border:1px solid var(--line,#E7E4DD);border-radius:20px;background:#fff;text-align:center;box-shadow:0 18px 44px -34px rgba(20,15,0,.4)}
+.ep__mark{display:grid;place-items:center;width:46px;height:46px;margin:0 auto 18px;border-radius:50%;background:var(--wash,#FFF8E6);color:var(--amber-ink,#8A5E00);font-size:20px;font-weight:700}
+.ep h1{margin:0;font-size:1.22rem;font-weight:800;letter-spacing:-.03em;color:var(--ink,#0B0B0B)}
+.ep p{margin:10px 0 0;font-size:.92rem;line-height:1.55;color:var(--muted,#57544D)}
+.ep__note{font-size:.84rem;color:var(--faint,#74716A)}
+.ep__acts{margin-top:22px}
+.ep__btn{display:inline-flex;align-items:center;justify-content:center;height:42px;padding:0 20px;border:1px solid var(--line-2,#D9D6CF);border-radius:999px;background:#fff;font:inherit;font-size:.87rem;font-weight:700;color:var(--ink,#0B0B0B);text-decoration:none;cursor:pointer;transition:.16s}
+.ep__btn:hover{border-color:var(--ink,#0B0B0B);background:var(--paper,#FAF9F6)}
+.ep__btn:disabled{opacity:.6;cursor:not-allowed}
+@media (max-width:480px){.ep__card{padding:26px 20px}}
+`;
 //#endregion
 //#region resources/js/Pages/Errors/NotFound.jsx
 var NotFound_exports = /* @__PURE__ */ __exportAll({ default: () => NotFound });
@@ -15818,6 +15990,24 @@ var DetailScreen_exports = /* @__PURE__ */ __exportAll({ default: () => DetailSc
 * SearchEnrichmentService on the backend. Nothing on this page fires a call
 * per section.
 */
+/**
+* Shown when a search has kept refreshing but the account cannot see past the
+* first run — a free account on its second refresh, or a plan that lapsed.
+*
+* The rows themselves never reach the browser (the presenter drops them), so
+* this states plainly what is being held rather than pretending to blur it.
+*/
+function LockedResultsNotice({ count, onSubscribe }) {
+	return /* @__PURE__ */ jsxs("div", {
+		className: "rs-locked",
+		children: [/* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsx("strong", { children: count > 0 ? `${count} newer breakout${count === 1 ? "" : "s"} held behind your plan` : "Newer breakouts are held behind your plan" }), /* @__PURE__ */ jsx("p", { children: "This search is still refreshing on schedule. Subscribe to see everything found since your first run." })] }), /* @__PURE__ */ jsx("button", {
+			type: "button",
+			className: "rs-btn rs-btn--y",
+			onClick: onSubscribe,
+			children: "Subscribe"
+		})]
+	});
+}
 var PAGE_STEP = 4;
 /** How often a card-launched analysis re-checks its status. */
 var ANALYSIS_POLL_MS = 5e3;
@@ -16514,6 +16704,8 @@ function DetailScreen({ search, isAuthenticated = false, billing: billing$2, pro
 		document.addEventListener("click", onDocClick);
 		return () => document.removeEventListener("click", onDocClick);
 	}, [menuOpen]);
+	const resultsLocked = Boolean(search?.results_locked);
+	const lockedResultCount = Number(search?.locked_result_count ?? 0);
 	const winner = results[0];
 	const rest = results;
 	const runList = search?.runs ?? [];
@@ -17141,6 +17333,10 @@ function DetailScreen({ search, isAuthenticated = false, billing: billing$2, pro
 				children: [/* @__PURE__ */ jsx("i", {}), "finding videos"]
 			})]
 		}), /* @__PURE__ */ jsx(SkeletonVideoGrid, {})] }),
+		resultsLocked && /* @__PURE__ */ jsx(LockedResultsNotice, {
+			count: lockedResultCount,
+			onSubscribe: openUpgradeForAnalysis
+		}),
 		rest.length > 0 && /* @__PURE__ */ jsxs(Fragment$1, { children: [
 			/* @__PURE__ */ jsxs("div", {
 				className: "rs-sh",
@@ -18226,6 +18422,10 @@ var scopedCss$1 = `
 .rs-upgmodal p{margin-top:8px;font-size:.9rem;line-height:1.55;color:var(--muted)}
 .rs-upgmodal__actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:18px}
 .rs-upgmodal__actions .rs-btn{flex:1}
+.rs-locked{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;margin:18px 0 0;padding:16px 18px;border:1px solid var(--yellow);border-radius:16px;background:var(--wash)}
+.rs-locked strong{display:block;font-size:.95rem;font-weight:800;letter-spacing:-.02em;color:var(--ink)}
+.rs-locked p{margin:5px 0 0;max-width:62ch;font-size:.85rem;line-height:1.5;color:#5B4300}
+@media (max-width:560px){.rs-locked{flex-direction:column;align-items:stretch}.rs-locked .rs-btn{width:100%;justify-content:center}}
 .rs-loadmore{display:flex;justify-content:center;margin-top:20px}
 
 .rs-acard{background:linear-gradient(180deg,#FFFEFB 0%,#FFF8EB 100%);border:1px solid #F1E2BE;border-radius:20px;padding:20px 22px;box-shadow:0 18px 38px -30px rgba(117,85,11,.25);min-width:0;max-width:100%;overflow-x:hidden}
@@ -24463,6 +24663,7 @@ createServer((page) => createInertiaApp({
 			"./Pages/ComingSoon.jsx": ComingSoon_exports,
 			"./Pages/Contact.jsx": Contact_exports,
 			"./Pages/DataProcessingAddendum.jsx": DataProcessingAddendum_exports,
+			"./Pages/EmailPreferences.jsx": EmailPreferences_exports,
 			"./Pages/Errors/NotFound.jsx": NotFound_exports,
 			"./Pages/Feed.jsx": Feed_exports,
 			"./Pages/Home.jsx": Home_exports,
