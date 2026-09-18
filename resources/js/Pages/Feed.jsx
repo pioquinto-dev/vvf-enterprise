@@ -312,6 +312,8 @@ function SearchCard({ suggestions }) {
   );
 }
 
+const ANALYSIS_POLL_MS = 5000;
+
 export default function Feed({ feed = {} }) {
   const { billing = {} } = usePage().props;
   const currentPath = typeof window === 'undefined'
@@ -368,6 +370,45 @@ export default function Feed({ feed = {} }) {
       setStarting(false);
     }
   };
+
+  /* An analysis started from a feed card had no watcher: the card's spinner
+   * ran until the page was reloaded. Poll anything still processing. */
+  const pendingAnalysisKey = (feed.videos ?? [])
+    .filter((video) => {
+      const status = analysisById[video.id]?.status ?? video.analysis?.status;
+      return status === 'processing' || status === 'queued' || status === 'pending';
+    })
+    .map((video) => video.id)
+    .join(',');
+
+  useEffect(() => {
+    if (pendingAnalysisKey === '') return undefined;
+
+    const ids = pendingAnalysisKey.split(',');
+    let cancelled = false;
+    let timerId = null;
+
+    const tick = async () => {
+      await Promise.all(ids.map(async (id) => {
+        try {
+          const payload = await videoAnalysis.get(id);
+          const next = payload?.analysis ?? null;
+          if (!cancelled && next) setAnalysisById((cur) => ({ ...cur, [id]: next }));
+        } catch {
+          /* transient failure — the next tick tries again */
+        }
+      }));
+
+      if (!cancelled) timerId = window.setTimeout(tick, ANALYSIS_POLL_MS);
+    };
+
+    timerId = window.setTimeout(tick, ANALYSIS_POLL_MS);
+
+    return () => {
+      cancelled = true;
+      if (timerId) window.clearTimeout(timerId);
+    };
+  }, [pendingAnalysisKey]);
 
   const upgrade = () => {
     setUpgradeOpen(false);

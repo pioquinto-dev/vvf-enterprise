@@ -43,6 +43,9 @@ class FeedRepository
             ->whereHas('video', fn ($query) => $query->visible())
             ->with('video')
             ->orderByDesc('viral_score')
+            // Without a tiebreaker, rows sharing a score came back in whatever
+            // order the engine chose, so the feed reshuffled between requests.
+            ->orderBy('id')
             ->limit($limit)
             ->get();
     }
@@ -143,6 +146,9 @@ class FeedRepository
             ->whereHas('video', fn ($query) => $query->visible())
             ->with('video')
             ->orderByDesc('viral_score')
+            // Without a tiebreaker, rows sharing a score came back in whatever
+            // order the engine chose, so the feed reshuffled between requests.
+            ->orderBy('id')
             ->limit($limit)
             ->get();
     }

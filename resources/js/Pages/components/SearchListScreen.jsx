@@ -36,9 +36,14 @@ const COPY = {
 };
 
 const SORT = {
-  outliers: 'Most breakouts',
+  // "Most breakouts" used to sort on the all-time total while the column it
+  // appears next to shows the latest refresh, so the order disagreed with the
+  // bold number on screen. Both are offered explicitly now.
+  latest_outliers: 'Breakouts (last refresh)',
+  outliers: 'Breakouts (total)',
   top_score: 'Top score',
   recent: 'Recently updated',
+  started: 'Recently started',
   az: 'A–Z',
 };
 
@@ -114,6 +119,7 @@ function SearchRow({ search, index, onOpen, onEdit }) {
         {topScore ? <span className="sl-score">{compact(topScore)}<em>×</em></span> : <span className="sl-dim">—</span>}
       </td>
       <td className="num"><span className="sl-cell"><b>{avgViews}</b></span></td>
+      <td><span className="sl-dim">{formatDate(search.created_at)}</span></td>
       <td><span className="sl-dim">{formatDate(search.last_run_at)}</span></td>
       <td className="sl-act">
         <button
@@ -135,7 +141,7 @@ function SearchRow({ search, index, onOpen, onEdit }) {
 const TABLE_CSS = `
   .bb .sl-wrap{margin-top:14px;background:var(--white);border:1px solid var(--line);border-radius:16px;overflow:hidden}
   .bb .sl-scroll{overflow-x:auto}
-  .bb .sl-table{width:100%;border-collapse:collapse;min-width:860px}
+  .bb .sl-table{width:100%;border-collapse:collapse;min-width:940px}
   .bb .sl-table th{background:var(--paper,#FAF9F6);text-align:left;font-size:.68rem;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:var(--faint-2,#74716A);padding:12px 16px;border-bottom:1px solid var(--line);white-space:nowrap}
   .bb .sl-table td{padding:12px 16px;border-bottom:1px solid var(--line);font-size:.88rem;vertical-align:middle}
   .bb .sl-table .num{text-align:right;font-variant-numeric:tabular-nums}
@@ -178,7 +184,7 @@ export default function SearchListScreen({ kind = 'brand', searches = [], moving
   useEffect(() => setSearchList(searches), [searches]);
   const [query, setQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
-  const [sortBy, setSortBy] = useState('recent');
+  const [sortBy, setSortBy] = useState('latest_outliers');
   const [page, setPage] = useState(1);
   const [modalSearch, setModalSearch] = useState(null);
   const [formState, setFormState] = useState({ name: '', frequency: 'weekly', type: 'brand' });
@@ -209,16 +215,25 @@ export default function SearchListScreen({ kind = 'brand', searches = [], moving
       const matchesStatus = statusFilter === 'all' || s.status === statusFilter;
       return matchesQuery && matchesStatus;
     });
+    const ms = (value) => {
+      if (!value) return 0;
+      const parsed = new Date(value).getTime();
+      return Number.isNaN(parsed) ? 0 : parsed;
+    };
     next.sort((l, r) => {
       switch (sortBy) {
         case 'top_score':
           return (r.top_score ?? 0) - (l.top_score ?? 0);
         case 'recent':
-          return (r.last_run_at ? new Date(r.last_run_at).getTime() : 0) - (l.last_run_at ? new Date(l.last_run_at).getTime() : 0);
+          return ms(r.last_run_at) - ms(l.last_run_at);
+        case 'started':
+          return ms(r.created_at) - ms(l.created_at);
+        case 'outliers':
+          return (r.outlier_count ?? 0) - (l.outlier_count ?? 0);
         case 'az':
           return (l.name ?? '').localeCompare(r.name ?? '');
         default:
-          return (r.outlier_count ?? 0) - (l.outlier_count ?? 0);
+          return (r.latest_outlier_count ?? 0) - (l.latest_outlier_count ?? 0);
       }
     });
     return next;
@@ -370,6 +385,7 @@ export default function SearchListScreen({ kind = 'brand', searches = [], moving
                     <th className="num">New Breakouts</th>
                     <th className="num">Top score</th>
                     <th className="num">Avg views</th>
+                    <th>Started</th>
                     <th>Updated</th>
                     <th aria-label="Actions" />
                   </tr>

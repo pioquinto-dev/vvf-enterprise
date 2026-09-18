@@ -478,7 +478,7 @@ const scopedCss = `
 @media (prefers-reduced-motion:reduce){.bbf-spin{animation:none}}
 .bbf-act:focus-visible,.bbf-play:focus-visible,.bbf-vtag:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
 
-.bbf-more{display:flex;justify-content:center;padding:6px 0 4px}
+.bbf-more{grid-column:1/-1;display:flex;justify-content:center;padding:10px 0 4px}
 .bbf-btn{display:inline-flex;align-items:center;justify-content:center;height:38px;padding:0 18px;border:1px solid var(--line-2,#D9D6CF);border-radius:10px;background:var(--white);font:inherit;font-size:.85rem;font-weight:700;color:var(--ink);cursor:pointer;transition:.16s}
 .bbf-btn:hover{background:var(--paper,#FAF9F6);border-color:#BDBAB2}
 

@@ -6387,6 +6387,13 @@
     .bbh .ftr__btm nav { display: none; }
     .bbh .final { margin-top: 80px; padding: 68px 0; }
     .bbh .hero__ctas .btn { width: 100%; }
+    /* The submit button is flex:none, so on a phone it ate the row and left the
+       input a few characters wide. Stack the field instead: full-width input
+       above a full-width button, 16px text so iOS does not zoom on focus. */
+    .bbh .box__field { flex-direction: column; align-items: stretch; gap: 8px; min-height: 0; padding: 10px; border-radius: 22px; }
+    .bbh .box__field input { height: 46px; padding: 0 6px; font-size: 16px; }
+    .bbh .box__ghost { left: 16px; right: 16px; top: 33px; font-size: 16px; }
+    .bbh .box__field .btn { width: 100%; height: 48px; font-size: 0.95rem; }
 }
 
 /* ---------------- breakout video card ----------------

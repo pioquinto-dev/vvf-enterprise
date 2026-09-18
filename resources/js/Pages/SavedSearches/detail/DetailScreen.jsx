@@ -40,6 +40,8 @@ import {
 /* ---------------------------- helpers ---------------------------- */
 
 const PAGE_STEP = 4;
+/** How often a card-launched analysis re-checks its status. */
+const ANALYSIS_POLL_MS = 5000;
 const DAYS_SHORT = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 const HOURS_LABELS = { 0: '12a', 6: '6a', 12: '12p', 18: '6p' };
 
@@ -616,6 +618,13 @@ export default function DetailScreen({
       : 'previous run',
   };
 
+  const postedAtMs = (video) => {
+    const raw = video?.uploaded_at ?? video?.posted_at ?? null;
+    if (!raw) return 0;
+    const ms = new Date(raw).getTime();
+    return Number.isNaN(ms) ? 0 : ms;
+  };
+
   const sortedRest = useMemo(() => {
     const arr = runFilter === 'all'
       ? [...rest]
@@ -623,8 +632,11 @@ export default function DetailScreen({
     arr.sort((a, b) => {
       if (sortKey === 'views') return (b.views ?? 0) - (a.views ?? 0);
       if (sortKey === 'date') {
-        const at = a.posted_at ? new Date(a.posted_at).getTime() : 0;
-        const bt = b.posted_at ? new Date(b.posted_at).getTime() : 0;
+        // The payload carries `uploaded_at` (ViralVideo::toArray); `posted_at`
+        // never existed, so this comparator used to read undefined on both
+        // sides and leave the order untouched.
+        const at = postedAtMs(a);
+        const bt = postedAtMs(b);
         return bt - at;
       }
       return breakoutScore(b) - breakoutScore(a);
@@ -807,6 +819,52 @@ export default function DetailScreen({
 
     return () => window.clearTimeout(timer);
   }, [analysisNotice]);
+
+  /* ------------- poll analyses started from a card -------------
+   * The analysis modal polls its own video, but analyses kicked off straight
+   * from a card never had a watcher: the card flipped to "Analyzing video…"
+   * and stayed there until a full reload. Poll every video the page currently
+   * believes is processing until it resolves.
+   */
+  const updateVideoAnalysisRef = useRef(updateVideoAnalysis);
+  updateVideoAnalysisRef.current = updateVideoAnalysis;
+
+  const pendingAnalysisKey = results
+    .filter((video) => {
+      const status = video.analysis?.status;
+      return status === 'processing' || status === 'queued' || status === 'pending';
+    })
+    .map((video) => video.id)
+    .join(',');
+
+  useEffect(() => {
+    if (pendingAnalysisKey === '') return undefined;
+
+    const ids = pendingAnalysisKey.split(',');
+    let cancelled = false;
+    let timerId = null;
+
+    const tick = async () => {
+      await Promise.all(ids.map(async (id) => {
+        try {
+          const payload = await videoAnalysis.get(id);
+          const analysis = payload?.analysis ?? null;
+          if (!cancelled && analysis) updateVideoAnalysisRef.current(id, analysis);
+        } catch {
+          /* transient failure — the next tick tries again */
+        }
+      }));
+
+      if (!cancelled) timerId = window.setTimeout(tick, ANALYSIS_POLL_MS);
+    };
+
+    timerId = window.setTimeout(tick, ANALYSIS_POLL_MS);
+
+    return () => {
+      cancelled = true;
+      if (timerId) window.clearTimeout(timerId);
+    };
+  }, [pendingAnalysisKey]);
 
   useEffect(() => {
     if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return undefined;
