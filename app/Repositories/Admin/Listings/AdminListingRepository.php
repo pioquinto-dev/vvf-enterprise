@@ -4,6 +4,8 @@ namespace App\Repositories\Admin\Listings;
 
 use App\Models\CustomKeywordSearch;
 use App\Models\EmailTemplate;
+use App\Services\Lifecycle\LifecycleSchedule;
+use App\Support\EmailTemplateRegistry;
 use App\Support\EmailFieldLibrary;
 use App\Models\IndexedKeyword;
 use App\Models\Inquiry;
@@ -735,6 +737,10 @@ class AdminListingRepository
                             ['label' => 'Trigger', 'value' => $record->isWiredToCode()
                                 ? 'Wired — a flow in the app sends this key'
                                 : 'No trigger — nothing in the app sends this key yet, so it will never go out'],
+                            ['label' => 'Goes out', 'value' => LifecycleSchedule::describe((string) $record->key), 'multiline' => true],
+                            ['label' => 'Schedule source', 'value' => EmailTemplateRegistry::scheduleIsStored((string) $record->key)
+                                ? 'This row'
+                                : 'config/email_lifecycle.php (nothing set on this row yet)'],
                             ['label' => 'Tags', 'value' => implode(', ', $record->tags ?? [])],
                             ['label' => 'Notes', 'value' => $record->description, 'multiline' => true],
                         ],
@@ -1567,6 +1573,27 @@ class AdminListingRepository
     }
 
     /**
+     * What a send offset can be measured from, in the words the drawer shows.
+     *
+     * Kept here rather than derived from the rows so the list is stable: an
+     * admin should be able to pick a trigger no template currently uses.
+     *
+     * @var array<string, string>
+     */
+    private const SEND_TRIGGERS = [
+        '' => 'Not scheduled',
+        'signup' => 'Signup',
+        'search_completed' => 'A search finishing',
+        'trial_start' => 'The trial starting',
+        'trial_end' => 'The trial ending',
+        'payment_failed' => 'The first failed payment',
+        'card_expiry' => 'The card on file expiring',
+        'access_ended' => 'Access ending',
+        'cancellation' => 'Cancellation',
+        'cadence' => 'Nothing, it runs on a cadence',
+    ];
+
+    /**
      * Fields for the email template drawer.
      *
      * Two of them are reference rather than input: the merge fields the code
@@ -1614,6 +1641,46 @@ class AdminListingRepository
             ],
             ['name' => 'is_transactional', 'label' => 'Transactional', 'type' => 'toggle', 'help' => 'On = always delivered, even to people who unsubscribed. Off = marketing, suppressed for opted-out recipients. Billing, verification and search results must stay on.'],
             ['name' => 'is_enabled', 'label' => 'Enabled', 'type' => 'toggle', 'help' => 'Off stops this email sending entirely.'],
+
+            // When it goes out. The flow decides who is due; these decide when
+            // the dispatcher is allowed to send to them, and they are the only
+            // part of the timing that is not a deploy.
+            [
+                'name' => 'send_schedule',
+                'label' => 'When this goes out',
+                'type' => 'reference',
+                'help' => 'Read from this row. Blank fields fall back to config/email_lifecycle.php.',
+            ],
+            [
+                'name' => 'send_trigger',
+                'label' => 'Counts from',
+                'type' => 'select',
+                'options' => array_map(
+                    static fn (string $value, string $label): array => ['value' => $value, 'label' => $label],
+                    array_keys(self::SEND_TRIGGERS),
+                    array_values(self::SEND_TRIGGERS),
+                ),
+                'help' => 'The event the day offset is measured from. Changing this does not change which flow sends the email; it is what the offset means.',
+            ],
+            // min is explicit and negative: the input defaults to a floor of 0,
+            // which would make "7 days before the card expires" unenterable.
+            ['name' => 'send_offset_days', 'label' => 'Days after the trigger', 'type' => 'number', 'min' => -365, 'help' => 'Negative counts backwards from a future date, so -7 is a week before the card expires. Leave blank for cadence emails.'],
+            ['name' => 'send_at', 'label' => 'Send at (HH:MM)', 'type' => 'text', 'rules' => ['nullable', 'string', 'regex:/^([01][0-9]|2[0-3]):[0-5][0-9]$/'], 'help' => 'Wall-clock slot on the lifecycle timezone. The hourly dispatcher sends within this hour, plus the catch-up window. Blank means no slot: it goes out on the first run that finds it due.'],
+            [
+                'name' => 'send_weekday',
+                'label' => 'Weekday',
+                'type' => 'select',
+                'options' => array_map(
+                    static fn (string $day): array => ['value' => $day, 'label' => ucfirst($day)],
+                    ['', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'],
+                ),
+                'help' => 'Cadence emails only, such as the weekly digest. Leave blank for everything else.',
+            ],
+            ['name' => 'send_interval_weeks', 'label' => 'Every N weeks', 'type' => 'number', 'min' => 0, 'help' => '1 or blank is weekly. 2 makes it fortnightly, counted from the anchor below so the whole list lands on the same fortnight.'],
+            ['name' => 'send_anchor_date', 'label' => 'Fortnight anchor', 'type' => 'text', 'rules' => ['nullable', 'date'], 'help' => 'Only used when the interval is above 1. Any date in a week the email should go out; the parity is counted from its Monday.'],
+            ['name' => 'send_immediate', 'label' => 'Send immediately', 'type' => 'toggle', 'help' => 'On means no slot and no waiting: results-ready, registration and the first dunning notice. Holding these back until morning would make them worse emails.'],
+            ['name' => 'send_timezone', 'label' => 'Timezone override', 'type' => 'text', 'help' => 'Almost always blank. Set it only when this one email should run on a different clock from the rest.'],
+
             ['name' => 'description', 'label' => 'Notes', 'type' => 'text'],
         ];
     }
@@ -1643,6 +1710,21 @@ class AdminListingRepository
                 // Sources this email holds directly. Everything else still
                 // resolves — from the recipient — so this only decides wording.
                 'given_sources' => (array) config("brevo_notifications.notifications.{$record->key}.sources", []),
+                // The schedule in words, above the fields that set it, plus
+                // where it is currently being read from. Editing a slot that
+                // config is still answering would be a silent no-op.
+                'send_schedule' => LifecycleSchedule::describe((string) $record->key)
+                    .(EmailTemplateRegistry::scheduleIsStored((string) $record->key)
+                        ? ' Set on this row.'
+                        : ' Falling back to config/email_lifecycle.php — saving here takes over.'),
+                'send_trigger' => (string) ($record->send_trigger ?? ''),
+                'send_offset_days' => $record->send_offset_days,
+                'send_at' => (string) ($record->send_at ?? ''),
+                'send_weekday' => (string) ($record->send_weekday ?? ''),
+                'send_interval_weeks' => $record->send_interval_weeks,
+                'send_anchor_date' => $record->send_anchor_date?->toDateString() ?? '',
+                'send_immediate' => (bool) $record->send_immediate,
+                'send_timezone' => (string) ($record->send_timezone ?? ''),
                 'is_transactional' => (bool) $record->is_transactional,
                 'is_enabled' => (bool) $record->is_enabled,
                 'description' => (string) ($record->description ?? ''),

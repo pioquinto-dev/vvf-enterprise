@@ -373,6 +373,11 @@ class AdminListingMutator
             'description' => filled($input['description'] ?? null) ? (string) $input['description'] : null,
         ]);
 
+        // A template created by hand gets its schedule from the same drawer
+        // fields as an edit, so a new key is not left with no timing at all.
+        $this->applySendSchedule($template, $input);
+        $template->save();
+
         EmailTemplateRegistry::forget();
 
         return $template;
@@ -386,7 +391,7 @@ class AdminListingMutator
         unset($input['key']);
 
         // Reference-only values the drawer renders; they are not columns.
-        unset($input['built_in_params'], $input['given_sources']);
+        unset($input['built_in_params'], $input['given_sources'], $input['send_schedule']);
 
         foreach (['label', 'subject'] as $field) {
             if (array_key_exists($field, $input) && filled($input[$field])) {
@@ -420,17 +425,111 @@ class AdminListingMutator
             ));
         }
 
-        foreach (['is_transactional', 'is_enabled'] as $flag) {
+        foreach (['is_transactional', 'is_enabled', 'send_immediate'] as $flag) {
             if (array_key_exists($flag, $input)) {
                 $template->{$flag} = (bool) $input[$flag];
             }
         }
+
+        $this->applySendSchedule($template, $input);
 
         $template->save();
 
         // The registry caches for five minutes; an admin who just changed a
         // template expects the next send to use it.
         EmailTemplateRegistry::forget();
+    }
+
+    /**
+     * The send schedule: when this email is allowed to go out.
+     *
+     * Every field can be cleared, and clearing them is meaningful — an empty row
+     * falls back to config/email_lifecycle.php — so none of these can use a
+     * filled() guard the way the copy fields do.
+     *
+     * Values are normalised here rather than trusted: a slot that does not parse
+     * would not fail loudly, it would quietly never open, and the email would
+     * stop going out with nothing to show why.
+     *
+     * @param  array<string, mixed>  $input
+     */
+    private function applySendSchedule(EmailTemplate $template, array $input): void
+    {
+        if (array_key_exists('send_trigger', $input)) {
+            $trigger = is_string($input['send_trigger']) ? trim($input['send_trigger']) : '';
+            $template->send_trigger = $trigger === '' ? null : $trigger;
+        }
+
+        foreach (['send_offset_days', 'send_offset_hours', 'send_interval_weeks'] as $field) {
+            if (array_key_exists($field, $input)) {
+                $value = $input[$field];
+                $template->{$field} = $value === null || $value === '' ? null : (int) $value;
+            }
+        }
+
+        if (array_key_exists('send_at', $input)) {
+            $at = is_string($input['send_at']) ? trim($input['send_at']) : '';
+
+            if ($at !== '' && preg_match('/^([01][0-9]|2[0-3]):[0-5][0-9]$/', $at) !== 1) {
+                throw ValidationException::withMessages([
+                    'send_at' => 'Use a 24-hour time like 07:40, or leave it blank for no slot.',
+                ]);
+            }
+
+            $template->send_at = $at === '' ? null : $at;
+        }
+
+        if (array_key_exists('send_weekday', $input)) {
+            $weekday = is_string($input['send_weekday']) ? strtolower(trim($input['send_weekday'])) : '';
+            $days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+
+            if ($weekday !== '' && ! in_array($weekday, $days, true)) {
+                throw ValidationException::withMessages([
+                    'send_weekday' => 'Pick a weekday, or leave it blank for an email that is not on a cadence.',
+                ]);
+            }
+
+            $template->send_weekday = $weekday === '' ? null : $weekday;
+        }
+
+        if (array_key_exists('send_anchor_date', $input)) {
+            $anchor = is_string($input['send_anchor_date']) ? trim($input['send_anchor_date']) : '';
+
+            if ($anchor !== '' && strtotime($anchor) === false) {
+                throw ValidationException::withMessages([
+                    'send_anchor_date' => 'Use a date like 2026-01-05, or leave it blank.',
+                ]);
+            }
+
+            $template->send_anchor_date = $anchor === '' ? null : $anchor;
+        }
+
+        if (array_key_exists('send_timezone', $input)) {
+            $zone = is_string($input['send_timezone']) ? trim($input['send_timezone']) : '';
+
+            if ($zone !== '' && ! in_array($zone, timezone_identifiers_list(), true)) {
+                throw ValidationException::withMessages([
+                    'send_timezone' => 'Use an IANA timezone like America/New_York, or leave it blank to follow the lifecycle default.',
+                ]);
+            }
+
+            $template->send_timezone = $zone === '' ? null : $zone;
+        }
+
+        // An interval above 1 with no anchor would count its fortnights from the
+        // hard-coded default, which is almost certainly not the week the admin
+        // had in mind. Ask rather than guess.
+        if ((int) $template->send_interval_weeks > 1 && $template->send_anchor_date === null) {
+            throw ValidationException::withMessages([
+                'send_anchor_date' => 'An interval above 1 week needs an anchor date, so the cadence lands on the same fortnight for everyone.',
+            ]);
+        }
+
+        if ($template->send_weekday === null && (int) $template->send_interval_weeks > 1) {
+            throw ValidationException::withMessages([
+                'send_weekday' => 'Pick the weekday this cadence goes out on.',
+            ]);
+        }
     }
 
     private function updateIndexedKeyword(IndexedKeyword $keyword, array $input): void

@@ -12,6 +12,7 @@ use App\Services\Billing\BillingService;
 use App\Services\Brevo\BrevoLifecycleEmailService;
 use App\Services\Brevo\EmailSendLedger;
 use App\Support\AppEventLogger;
+use App\Support\BrevoTransactionalEmail;
 use Carbon\CarbonImmutable;
 use Stripe\Event;
 
@@ -247,7 +248,14 @@ class StripeWebhookProcessor
                 );
 
                 if ($claim !== null) {
-                    $sent = $this->emails->sendPaymentFailed($subscription->user, $subscription, $attempt, $nextAttemptAt);
+                    // The dunning copy names the amount that failed, so it
+                    // comes off the invoice rather than off the plan price,
+                    // which a coupon or proration can make wrong.
+                    $amount = isset($invoice->amount_due) && is_numeric($invoice->amount_due)
+                        ? BrevoTransactionalEmail::money(((int) $invoice->amount_due) / 100, (string) ($invoice->currency ?? 'usd'))
+                        : null;
+
+                    $sent = $this->emails->sendPaymentFailed($subscription->user, $subscription, $attempt, $nextAttemptAt, $amount);
 
                     $sent
                         ? $this->ledger->markSent($claim, $attempt >= 2 ? 'payment_failed_second' : 'payment_failed_first')

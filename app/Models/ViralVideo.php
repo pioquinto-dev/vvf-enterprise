@@ -90,6 +90,22 @@ class ViralVideo extends Model
     }
 
     /**
+     * The still to show for this video.
+     *
+     * `thumbnail_url` and `cover` are both TikTok CDN links, and both expire —
+     * which is what `viral-videos:repair-tiktok-cdn-media` refreshes. Either can
+     * be null on any given row, so anything rendering a still has to fall back
+     * rather than read one column. Result cards and lifecycle emails go through
+     * here so they cannot disagree about which one a row has.
+     */
+    public function previewImageUrl(): ?string
+    {
+        $url = $this->thumbnail_url ?: $this->cover;
+
+        return is_string($url) && $url !== '' ? $url : null;
+    }
+
+    /**
      * Shape used by the result cards. Kept here so the API and any future
      * export speak the same language.
      */
@@ -100,7 +116,7 @@ class ViralVideo extends Model
         $embedUrl = $this->embed_url;
         $postUrl = $this->post_url;
         $videoUrl = $this->video_url;
-        $thumbnailUrl = $this->thumbnail_url ?: $this->cover;
+        $thumbnailUrl = $this->previewImageUrl();
         $cover = $this->cover;
         $previewPlayable = $this->isDashboardPlayable($platform, $videoId, $embedUrl, $postUrl);
 

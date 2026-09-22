@@ -8,7 +8,7 @@
 <title>Your results are ready</title>
 <!--[if mso]><xml><o:OfficeDocumentSettings><o:PixelsPerInch>96</o:PixelsPerInch></o:OfficeDocumentSettings></xml><![endif]-->
 <style>
-  /* Progressive enhancement only - the inline styles above carry the layout. */
+  /* Progressive enhancement only - the inline styles carry the layout. */
   body { margin:0; padding:0; width:100% !important; -webkit-text-size-adjust:100%; -ms-text-size-adjust:100%; }
   table { border-collapse:collapse !important; }
   img { -ms-interpolation-mode:bicubic; }
@@ -16,48 +16,90 @@
   @media only screen and (max-width:620px) {
     .bb-wrap { width:100% !important; }
     .bb-pad { padding-left:20px !important; padding-right:20px !important; }
-    .bb-h1 { font-size:23px !important; line-height:31px !important; }
     .bb-btn a { display:block !important; width:100% !important; box-sizing:border-box; text-align:center; }
   }
 </style>
 </head>
-<body style="margin:0;padding:0;background:#FAF9F6;">
-  <!-- Inbox preview line. Editable per template in Admin -> Email Templates;
-       the trailing entities stop clients pulling body copy in after it. -->
+<body style="margin:0;padding:0;background:#F5F4F0;">
+  <!-- Inbox preview line. Editable per template in Admin -> Email Templates. -->
   <div style="display:none;max-height:0;overflow:hidden;mso-hide:all;opacity:0;">{{ params.previewText }}</div>
   <div style="display:none;max-height:0;overflow:hidden;mso-hide:all;opacity:0;">&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;</div>
-  <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background:#FAF9F6;">
+  <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background:#F5F4F0;">
     <tr>
       <td align="center" style="padding:24px 12px;">
-        <table role="presentation" class="bb-wrap" cellpadding="0" cellspacing="0" border="0" width="600" style="width:600px;max-width:600px;background:#ffffff;border:1px solid #E7E4DD;border-radius:18px;">
+        <table role="presentation" class="bb-wrap" cellpadding="0" cellspacing="0" border="0" width="600" style="width:600px;max-width:600px;background:#FFFFFF;border:1px solid #EAE7E0;border-radius:10px;">
+          <!-- Masthead: wordmark and the one-word purpose of this email. -->
           <tr>
-            <td class="bb-pad" style="padding:28px 32px 0;">
-              <img src="{{ params.logoUrl }}" alt="{{ params.appName }}" width="132" style="display:block;width:132px;max-width:60%;height:auto;border:0;margin:0 0 24px;">
+            <td class="bb-pad" style="padding:17px 32px 15px;border-bottom:1px solid #EAE7E0;">
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+                <tr>
+                  <td style="font-family:-apple-system,'Segoe UI',Helvetica,Arial,sans-serif;font-size:15px;font-weight:bold;letter-spacing:-0.4px;color:#0B0B0B;padding-right:10px;">{{ params.appName }}</td>
+                  <td style="font-family:-apple-system,'Segoe UI',Helvetica,Arial,sans-serif;font-size:11px;font-weight:bold;letter-spacing:1.1px;text-transform:uppercase;color:#5C5A54;">Your results</td>
+                </tr>
+              </table>
             </td>
           </tr>
           <tr>
-            <td class="bb-pad bb-btn" style="padding:0 32px 30px;">
-              <h1 class="bb-h1" style="margin:0 0 18px;font-family:Helvetica,Arial,sans-serif;font-size:26px;line-height:34px;font-weight:bold;color:#0B0B0B;letter-spacing:-0.5px;">{{ params.searchTerm }}: {{ params.breakoutCount }} breakouts found</h1>
-              <p style="margin:0 0 16px;font-family:Helvetica,Arial,sans-serif;font-size:16px;line-height:26px;color:#57544D;">Your search finished {{ params.latestRunAt }}. The results are ranked by Breakout Score, so the top of the list is where the outperformance is, not just the view count.</p>
-              <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin:0 0 20px;">
-                <tr><td style="padding:18px 20px;background:#FFF8E6;border-radius:14px;">
-                  <p style="margin:0;font-family:Helvetica,Arial,sans-serif;font-size:32px;line-height:36px;font-weight:bold;color:#6E4A00;">{{ params.breakoutCount }}</p>
-                  <p style="margin:4px 0 0;font-family:Helvetica,Arial,sans-serif;font-size:14px;line-height:20px;color:#5B4300;">breakout videos found</p>
-                </td></tr>
+            <td class="bb-pad" style="padding:18px 32px 26px;">
+              <p style="margin:0 0 14px;font-family:-apple-system,'Segoe UI',Helvetica,Arial,sans-serif;font-size:16px;line-height:26px;color:#1A1813;">Hi <span style="font-family:ui-monospace,Menlo,Consolas,monospace;font-size:0.88em;color:#945E00;word-break:break-all;">{{ params.firstName }}</span>,</p>
+              <p style="margin:0 0 14px;font-family:-apple-system,'Segoe UI',Helvetica,Arial,sans-serif;font-size:16px;line-height:26px;color:#1A1813;">You searched <span style="font-family:ui-monospace,Menlo,Consolas,monospace;font-size:0.88em;color:#945E00;word-break:break-all;">{{ params.searchTerm }}</span>. We found <span style="font-family:ui-monospace,Menlo,Consolas,monospace;font-size:0.88em;color:#945E00;word-break:break-all;">{{ params.resultsCount }}</span> videos, and <span style="font-family:ui-monospace,Menlo,Consolas,monospace;font-size:0.88em;color:#945E00;word-break:break-all;">{{ params.breakoutCount }}</span> of them were viral breakouts, meaning they beat the average of the account that posted them.</p>
+              <p style="margin:0 0 14px;font-family:-apple-system,'Segoe UI',Helvetica,Arial,sans-serif;font-size:16px;line-height:26px;color:#1A1813;">The ones that broke out hardest:</p>
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin:6px 0 14px;">
+                  <tr><td style="padding:4px 0 14px;">
+                    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
+                      <tr>{% if params.breakout1Thumbnail %}
+                        <td width="132" valign="top" style="width:132px;padding-right:16px;">
+                          <img src="{{ params.breakout1Thumbnail }}" alt="" width="132" style="display:block;width:132px;max-width:132px;height:auto;border:0;border-radius:5px;background:#ECEAE4;">
+                        </td>{% endif %}
+                        <td valign="top">
+                          <p style="margin:0;font-family:-apple-system,'Segoe UI',Helvetica,Arial,sans-serif;font-size:16px;line-height:22px;font-weight:bold;color:#0B0B0B;">01 {{ params.breakout1Title }}</p>
+                          <p style="margin:5px 0 0;font-family:-apple-system,'Segoe UI',Helvetica,Arial,sans-serif;font-size:14px;line-height:21px;color:#5C5A54;word-break:break-word;"><span style="font-family:ui-monospace,Menlo,Consolas,monospace;font-size:0.88em;color:#945E00;word-break:break-all;">{{ params.breakout1Handle }}</span> &middot; <span style="font-family:ui-monospace,Menlo,Consolas,monospace;font-size:0.88em;color:#945E00;word-break:break-all;">{{ params.breakout1Views }}</span> views &middot; <span style="font-family:ui-monospace,Menlo,Consolas,monospace;font-size:0.88em;color:#945E00;word-break:break-all;">{{ params.breakout1Score }}</span>x</p>
+                        </td>
+                      </tr>
+                    </table>
+                  </td></tr>{% if params.breakout2Title %}
+                  <tr><td style="padding:15px 0 14px;border-top:1px solid #EAE7E0;">
+                    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
+                      <tr>{% if params.breakout2Thumbnail %}
+                        <td width="132" valign="top" style="width:132px;padding-right:16px;">
+                          <img src="{{ params.breakout2Thumbnail }}" alt="" width="132" style="display:block;width:132px;max-width:132px;height:auto;border:0;border-radius:5px;background:#ECEAE4;">
+                        </td>{% endif %}
+                        <td valign="top">
+                          <p style="margin:0;font-family:-apple-system,'Segoe UI',Helvetica,Arial,sans-serif;font-size:16px;line-height:22px;font-weight:bold;color:#0B0B0B;">02 {{ params.breakout2Title }}</p>
+                          <p style="margin:5px 0 0;font-family:-apple-system,'Segoe UI',Helvetica,Arial,sans-serif;font-size:14px;line-height:21px;color:#5C5A54;word-break:break-word;"><span style="font-family:ui-monospace,Menlo,Consolas,monospace;font-size:0.88em;color:#945E00;word-break:break-all;">{{ params.breakout2Handle }}</span> &middot; <span style="font-family:ui-monospace,Menlo,Consolas,monospace;font-size:0.88em;color:#945E00;word-break:break-all;">{{ params.breakout2Views }}</span> views &middot; <span style="font-family:ui-monospace,Menlo,Consolas,monospace;font-size:0.88em;color:#945E00;word-break:break-all;">{{ params.breakout2Score }}</span>x</p>
+                        </td>
+                      </tr>
+                    </table>
+                  </td></tr>{% endif %}{% if params.breakout3Title %}
+                  <tr><td style="padding:15px 0 14px;border-top:1px solid #EAE7E0;">
+                    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
+                      <tr>{% if params.breakout3Thumbnail %}
+                        <td width="132" valign="top" style="width:132px;padding-right:16px;">
+                          <img src="{{ params.breakout3Thumbnail }}" alt="" width="132" style="display:block;width:132px;max-width:132px;height:auto;border:0;border-radius:5px;background:#ECEAE4;">
+                        </td>{% endif %}
+                        <td valign="top">
+                          <p style="margin:0;font-family:-apple-system,'Segoe UI',Helvetica,Arial,sans-serif;font-size:16px;line-height:22px;font-weight:bold;color:#0B0B0B;">03 {{ params.breakout3Title }}</p>
+                          <p style="margin:5px 0 0;font-family:-apple-system,'Segoe UI',Helvetica,Arial,sans-serif;font-size:14px;line-height:21px;color:#5C5A54;word-break:break-word;"><span style="font-family:ui-monospace,Menlo,Consolas,monospace;font-size:0.88em;color:#945E00;word-break:break-all;">{{ params.breakout3Handle }}</span> &middot; <span style="font-family:ui-monospace,Menlo,Consolas,monospace;font-size:0.88em;color:#945E00;word-break:break-all;">{{ params.breakout3Views }}</span> views &middot; <span style="font-family:ui-monospace,Menlo,Consolas,monospace;font-size:0.88em;color:#945E00;word-break:break-all;">{{ params.breakout3Score }}</span>x</p>
+                        </td>
+                      </tr>
+                    </table>
+                  </td></tr>{% endif %}
               </table>
-              <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:26px 0 0;">
-                <tr><td align="center" bgcolor="#FFC629" style="border-radius:999px;">
+              <p style="margin:0 0 14px;font-family:-apple-system,'Segoe UI',Helvetica,Arial,sans-serif;font-size:16px;line-height:26px;color:#1A1813;">Start at the top. A high Breakout Score means the video did far more than that account normally manages, so whatever is in it, the opening line, the format or the angle, is doing the work. That is what transfers to your own creators.</p>
+              <table role="presentation" class="bb-btn" cellpadding="0" cellspacing="0" border="0" style="margin:22px 0 0;">
+                <tr><td bgcolor="#FFC629" style="border-radius:6px;">
                   <a href="{{ params.resultsUrl }}" target="_blank"
-                     style="display:inline-block;padding:15px 30px;font-family:Helvetica,Arial,sans-serif;font-size:16px;font-weight:bold;line-height:20px;color:#1A1400;text-decoration:none;border-radius:999px;">Open your results</a>
+                     style="display:inline-block;padding:13px 22px;font-family:-apple-system,'Segoe UI',Helvetica,Arial,sans-serif;font-size:16px;font-weight:bold;line-height:20px;color:#0B0B0B;text-decoration:none;border-radius:6px;">Open your results</a>
                 </td></tr>
               </table>
+              <p class="bb-url" style="margin:8px 0 0;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:13px;line-height:20px;color:#5C5A54;word-break:break-all;">{{ params.resultsUrl }}</p>
+              <p style="margin:0 0 14px;font-family:-apple-system,'Segoe UI',Helvetica,Arial,sans-serif;font-size:16px;line-height:26px;color:#1A1813;">We&rsquo;re a small team building BrandBeacon with brand and social teams like yours. If this was useful, or if something felt off, just reply and tell me.</p>
+              <p style="margin:18px 0 0;font-family:-apple-system,'Segoe UI',Helvetica,Arial,sans-serif;font-size:16px;line-height:26px;color:#1A1813;">Ivan</p>
             </td>
           </tr>
           <tr>
-            <td class="bb-pad" style="padding:20px 32px 26px;border-top:1px solid #E7E4DD;">
-              <p style="margin:0;font-family:Helvetica,Arial,sans-serif;font-size:12px;line-height:18px;color:#8A857C;">
-                Sent by {{ params.appName }}.
-              </p>
+            <td class="bb-pad" style="padding:16px 32px 20px;border-top:1px solid #EAE7E0;">
+              <p style="margin:0;font-family:-apple-system,'Segoe UI',Helvetica,Arial,sans-serif;font-size:12px;line-height:18px;color:#5C5A54;">You ran one free search at brandbeacon.io.</p>
             </td>
           </tr>
         </table>

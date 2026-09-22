@@ -33,8 +33,15 @@ Schedule::command('users:process-pending-account-deletions')
     ->withoutOverlapping()
     ->runInBackground();
 
+/*
+ * Lifecycle email. Hourly rather than once a day because every template has
+ * its own wall-clock slot in config/email_lifecycle.php (7:00am Monday for the
+ * weekly digest, 6:12am for dunning, and so on). The dispatcher opens only the
+ * slots that are due on each run, and the send ledger is what guarantees one
+ * email per recipient per stage however often this fires.
+ */
 Schedule::command('lifecycle:send-due-emails')
-    ->dailyAt('09:00')
+    ->hourly()
     ->withoutOverlapping()
     ->runInBackground();
 

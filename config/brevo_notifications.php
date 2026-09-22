@@ -6,24 +6,30 @@ return [
         'email' => env('BREVO_SENDER_EMAIL', config('mail.from.address', 'hello@example.com')),
     ],
     'logo_url' => env('BREVO_LOGO_URL', rtrim((string) config('app.url'), '/').'/brand-beacon-logo.png'),
+    /*
+     * The still used in the day-2 onboarding email. Its copy quotes fixed
+     * numbers (4.6M views against a 10k baseline), so this has to stay the
+     * video those numbers describe rather than become a live thumbnail.
+     */
+    'example_image_url' => env('BREVO_EXAMPLE_IMAGE_URL', rtrim((string) config('app.url'), '/').'/emails/breakout-example.jpg'),
     'search_done_enabled' => env('BREVO_SEARCH_DONE_ENABLED', env('APP_ENV', 'production') !== 'local'),
 
     'notifications' => [
         'new_registration' => [
             'sources' => ['user'],
             'params' => ['dashboardUrl', 'firstName', 'fullName', 'loginUrl', 'plansUrl'],
-            'preview' => 'Your free search is ready when you are',
+            'preview' => 'One free search, still unused',
             'label' => 'Account created',
-            'subject' => 'Your account is ready. Let’s find your next winning creative.',
+            'subject' => 'Your BrandBeacon account',
             'template_id' => env('BREVO_TEMPLATE_ID_NEW_REGISTRATION'),
             'tags' => ['registration', 'lifecycle'],
         ],
         'subscription_started' => [
             'sources' => ['user', 'subscription'],
-            'params' => ['accessEndsAt', 'dashboardUrl', 'firstName', 'fullName', 'isTrial', 'planName', 'planSlug', 'renewalLabel', 'savedSearchesUrl', 'searchBookmarkLimit', 'searchLimit', 'settingsUrl', 'videoAnalysisLimit', 'videoBookmarkLimit'],
-            'preview' => 'What to set up first',
+            'params' => ['accessEndsAt', 'dashboardUrl', 'firstName', 'fullName', 'isTrial', 'planName', 'planSlug', 'renewalLabel', 'savedSearchesUrl', 'searchBookmarkLimit', 'searchLimit', 'settingsUrl', 'startHeadline', 'videoAnalysisLimit', 'videoBookmarkLimit'],
+            'preview' => 'Three searches worth running today',
             'label' => 'Subscription started',
-            'subject' => 'Your plan is live. Here’s what you can do now.',
+            'subject' => '{{startHeadline}}',
             'template_id' => env('BREVO_TEMPLATE_ID_SUBSCRIPTION_STARTED'),
             'tags' => ['subscription', 'billing'],
         ],
@@ -56,8 +62,8 @@ return [
         ],
         'payment_failed_first' => [
             'sources' => ['user', 'subscription'],
-            'params' => ['attempt', 'billingUrl', 'dashboardUrl', 'firstName', 'fullName', 'nextAttemptAt', 'planName', 'supportEmail'],
-            'preview' => 'Nothing has changed yet',
+            'params' => ['amount', 'attempt', 'billingUrl', 'cardLast4', 'dashboardUrl', 'firstName', 'fullName', 'lockDate', 'nextAttemptAt', 'planName', 'supportEmail'],
+            'preview' => 'Nothing on your account has changed yet',
             'label' => 'Card declined (1st attempt)',
             'subject' => 'Your card did not go through',
             'template_id' => env('BREVO_TEMPLATE_ID_PAYMENT_FAILED_FIRST'),
@@ -65,7 +71,7 @@ return [
         ],
         'payment_failed_second' => [
             'sources' => ['user', 'subscription'],
-            'params' => ['attempt', 'billingUrl', 'dashboardUrl', 'firstName', 'fullName', 'nextAttemptAt', 'planName', 'supportEmail'],
+            'params' => ['amount', 'attempt', 'billingUrl', 'cardLast4', 'dashboardUrl', 'firstName', 'fullName', 'lockDate', 'nextAttemptAt', 'planName', 'supportEmail'],
             'preview' => 'Second attempt declined',
             'label' => 'Card declined (2nd attempt)',
             'subject' => 'Still having trouble with your card',
@@ -74,7 +80,7 @@ return [
         ],
         'card_expiring' => [
             'sources' => ['user', 'subscription'],
-            'params' => ['billingUrl', 'cardBrand', 'cardExpiryDate', 'cardLast4', 'firstName', 'fullName', 'planName', 'supportEmail'],
+            'params' => ['amount', 'billingUrl', 'cardBrand', 'cardExpiryDate', 'cardLast4', 'firstName', 'fullName', 'nextChargeDate', 'planName', 'supportEmail'],
             'preview' => '{{cardBrand}} ending {{cardLast4}}',
             'label' => 'Card expiring soon',
             'subject' => 'The card on file expires on {{cardExpiryDate}}',
@@ -83,10 +89,10 @@ return [
         ],
         'final_failed_payment' => [
             'sources' => ['user', 'subscription'],
-            'params' => ['accessEndedAt', 'contactUrl', 'dashboardUrl', 'firstName', 'fullName', 'planName', 'plansUrl', 'settingsUrl', 'supportEmail'],
-            'preview' => 'Your saved work is kept',
+            'params' => ['accessEndedAt', 'billingUrl', 'cardLast4', 'contactUrl', 'dashboardUrl', 'firstName', 'fullName', 'lockDate', 'planName', 'plansUrl', 'retentionDays', 'settingsUrl', 'supportEmail'],
+            'preview' => 'Your saved work is kept for a while yet',
             'label' => 'Final payment failure',
-            'subject' => 'Your paid access is ending due to a final payment failure',
+            'subject' => 'Last chance before your account pauses',
             'template_id' => env('BREVO_TEMPLATE_ID_FINAL_FAILED_PAYMENT'),
             'tags' => ['billing', 'payment-failed', 'downgrade'],
         ],
@@ -101,11 +107,11 @@ return [
         ],
         'onboarding_no_search' => [
             'sources' => ['user'],
-            'params' => ['dashboardUrl', 'firstName', 'fullName', 'searchUrl'],
-            'preview' => 'An example of what a Breakout Score catches',
+            'params' => ['dashboardUrl', 'exampleImageUrl', 'firstName', 'fullName', 'searchUrl'],
+            'preview' => 'What a Breakout Score actually catches',
             'transactional' => false,
             'label' => 'Signed up, no search yet',
-            'subject' => 'Your free search is still waiting',
+            'subject' => '4.6M views from an account that usually gets 10k',
             'template_id' => env('BREVO_TEMPLATE_ID_ONBOARDING_NO_SEARCH'),
             'tags' => ['onboarding', 'activation'],
         ],
@@ -138,9 +144,18 @@ return [
             'template_id' => env('BREVO_TEMPLATE_ID_TRIAL_BREAKOUT_SCORE'),
             'tags' => ['trial', 'education'],
         ],
+        'trial_day5_video_analysis' => [
+            'sources' => ['user', 'subscription'],
+            'params' => ['dashboardUrl', 'firstName', 'fullName', 'libraryUrl', 'planName'],
+            'preview' => 'The part most people miss',
+            'label' => 'Trial day 5: video analysis',
+            'subject' => 'A few days left on your 8-day trial',
+            'template_id' => env('BREVO_TEMPLATE_ID_TRIAL_DAY5_VIDEO_ANALYSIS'),
+            'tags' => ['trial', 'education'],
+        ],
         'trial_one_breakout' => [
             'sources' => ['user', 'subscription', 'search'],
-            'params' => ['breakoutScore', 'dashboardUrl', 'firstName', 'fullName', 'resultsUrl', 'searchTerm', 'videoCaption', 'videoHandle', 'videoThumbnail', 'videoViews'],
+            'params' => ['breakoutScore', 'dashboardUrl', 'firstName', 'fullName', 'resultsUrl', 'searchTerm', 'videoCaption', 'videoHandle', 'videoThumbnail', 'videoUrl', 'videoViews'],
             'preview' => 'The strongest thing you tracked',
             'label' => 'Trial day 7: one breakout',
             'subject' => 'One breakout from {{searchTerm}}',
@@ -150,7 +165,7 @@ return [
         // --- Winback: trial lapsed without a purchase (flow 5) ---
         'trial_winback_ended' => [
             'sources' => ['user', 'subscription'],
-            'params' => ['contactUrl', 'dashboardUrl', 'endedOn', 'firstName', 'fullName', 'libraryUrl', 'missedCount', 'planName', 'plansUrl'],
+            'params' => ['breakoutScore', 'breakoutThumbnail', 'breakoutTitle', 'breakoutUrl', 'competitorBreakouts', 'contactUrl', 'dashboardUrl', 'endedOn', 'firstName', 'fullName', 'libraryUrl', 'missedCount', 'planName', 'plansUrl', 'searchTerm', 'trialBreakouts', 'trialSearches', 'trialVideos'],
             'preview' => 'Your workspace is kept',
             'transactional' => false,
             'label' => 'Trial ended (day 1)',
@@ -160,7 +175,7 @@ return [
         ],
         'trial_winback_missed' => [
             'sources' => ['user', 'subscription'],
-            'params' => ['contactUrl', 'dashboardUrl', 'endedOn', 'firstName', 'fullName', 'libraryUrl', 'missedCount', 'planName', 'plansUrl'],
+            'params' => ['breakoutScore', 'breakoutThumbnail', 'breakoutTitle', 'breakoutUrl', 'competitorBreakouts', 'contactUrl', 'dashboardUrl', 'endedOn', 'firstName', 'fullName', 'libraryUrl', 'missedCount', 'planName', 'plansUrl', 'searchTerm', 'trialBreakouts', 'trialSearches', 'trialVideos'],
             'preview' => '{{missedCount}} since you left',
             'transactional' => false,
             'label' => 'Trial winback, missed breakouts (day 7)',
@@ -170,7 +185,7 @@ return [
         ],
         'trial_winback_last_note' => [
             'sources' => ['user', 'subscription'],
-            'params' => ['contactUrl', 'dashboardUrl', 'endedOn', 'firstName', 'fullName', 'libraryUrl', 'missedCount', 'planName', 'plansUrl'],
+            'params' => ['breakoutScore', 'breakoutThumbnail', 'breakoutTitle', 'breakoutUrl', 'competitorBreakouts', 'contactUrl', 'dashboardUrl', 'endedOn', 'firstName', 'fullName', 'libraryUrl', 'missedCount', 'planName', 'plansUrl', 'searchTerm', 'trialBreakouts', 'trialSearches', 'trialVideos'],
             'preview' => 'Last note, then we stop',
             'transactional' => false,
             'label' => 'Trial winback, last note (day 21)',
@@ -182,7 +197,7 @@ return [
         // --- Winback: a paying subscription ended (flow 6) ---
         'churn_winback_ended' => [
             'sources' => ['user', 'subscription'],
-            'params' => ['contactUrl', 'dashboardUrl', 'endedOn', 'firstName', 'fullName', 'libraryUrl', 'missedCount', 'planName', 'plansUrl'],
+            'params' => ['breakoutScore', 'breakoutThumbnail', 'breakoutTitle', 'breakoutUrl', 'competitorBreakouts', 'contactUrl', 'dashboardUrl', 'endedOn', 'firstName', 'fullName', 'libraryUrl', 'missedCount', 'planName', 'plansUrl', 'searchTerm', 'trialBreakouts', 'trialSearches', 'trialVideos'],
             'preview' => 'Nothing has been deleted',
             'transactional' => false,
             'label' => 'Subscription ended (day 3)',
@@ -192,7 +207,7 @@ return [
         ],
         'churn_winback_missed' => [
             'sources' => ['user', 'subscription'],
-            'params' => ['contactUrl', 'dashboardUrl', 'endedOn', 'firstName', 'fullName', 'libraryUrl', 'missedCount', 'planName', 'plansUrl'],
+            'params' => ['breakoutScore', 'breakoutThumbnail', 'breakoutTitle', 'breakoutUrl', 'competitorBreakouts', 'contactUrl', 'dashboardUrl', 'endedOn', 'firstName', 'fullName', 'libraryUrl', 'missedCount', 'planName', 'plansUrl', 'searchTerm', 'trialBreakouts', 'trialSearches', 'trialVideos'],
             'preview' => '{{missedCount}} since you cancelled',
             'transactional' => false,
             'label' => 'Churn winback, missed breakouts (day 14)',
@@ -202,7 +217,7 @@ return [
         ],
         'churn_winback_last_note' => [
             'sources' => ['user', 'subscription'],
-            'params' => ['contactUrl', 'dashboardUrl', 'endedOn', 'firstName', 'fullName', 'libraryUrl', 'missedCount', 'planName', 'plansUrl'],
+            'params' => ['breakoutScore', 'breakoutThumbnail', 'breakoutTitle', 'breakoutUrl', 'competitorBreakouts', 'contactUrl', 'dashboardUrl', 'endedOn', 'firstName', 'fullName', 'libraryUrl', 'missedCount', 'planName', 'plansUrl', 'searchTerm', 'trialBreakouts', 'trialSearches', 'trialVideos'],
             'preview' => 'Last note, then we stop',
             'transactional' => false,
             'label' => 'Churn winback, last note (day 45)',
@@ -213,18 +228,18 @@ return [
 
         'biweekly_pack' => [
             'sources' => ['user', 'subscription'],
-            'params' => ['breakoutCount', 'dashboardUrl', 'firstName', 'fullName', 'libraryUrl', 'pick1Caption', 'pick1Handle', 'pick1Score', 'pick1Subject', 'pick1Thumbnail', 'pick1Views', 'pick2Caption', 'pick2Handle', 'pick2Score', 'pick2Subject', 'pick2Thumbnail', 'pick2Views', 'pick3Caption', 'pick3Handle', 'pick3Score', 'pick3Subject', 'pick3Thumbnail', 'pick3Views', 'planName', 'since', 'topSubject'],
-            'preview' => 'Three worth a look',
+            'params' => ['breakoutCount', 'dashboardUrl', 'firstName', 'fullName', 'libraryUrl', 'pick1Caption', 'pick1Handle', 'pick1Score', 'pick1Subject', 'pick1Thumbnail', 'pick1Views', 'pick2Caption', 'pick2Handle', 'pick2Score', 'pick2Subject', 'pick2Thumbnail', 'pick2Views', 'pick3Caption', 'pick3Handle', 'pick3Score', 'pick3Subject', 'pick3Thumbnail', 'pick3Views', 'planName', 'plansUrl', 'resultsUrl', 'searchTerm', 'takeaway'],
+            'preview' => 'Three to start with',
             'transactional' => false,
             'label' => 'Bi-weekly pack',
-            'subject' => '{{breakoutCount}} breakouts worth a look',
+            'subject' => '{{searchTerm}}: {{breakoutCount}} breakouts worth a look',
             'template_id' => env('BREVO_TEMPLATE_ID_BIWEEKLY_PACK'),
             'tags' => ['digest', 'ongoing'],
         ],
         'weekly_digest' => [
             'sources' => ['user', 'subscription'],
-            'params' => ['brandBreakouts', 'breakoutCount', 'dashboardUrl', 'firstName', 'fullName', 'libraryUrl', 'planName', 'productBreakouts', 'searchTerm', 'weekOf'],
-            'preview' => '{{breakoutCount}} breakouts this week',
+            'params' => ['breakoutCount', 'comp1Brand', 'comp1Score', 'comp1Thumbnail', 'comp1Title', 'comp1Views', 'dashboardUrl', 'firstName', 'fullName', 'libraryUrl', 'newCreators', 'own1Handle', 'own1Score', 'own1Thumbnail', 'own1Title', 'own1Views', 'planName', 'prod1Name', 'prod1Score', 'prod1Thumbnail', 'prod1Title', 'prod1Views', 'resultsCount', 'resultsUrl', 'searchTerm', 'weekOf'],
+            'preview' => 'Your brand, your competitors, your products',
             'transactional' => false,
             'label' => 'Weekly digest',
             'subject' => '{{searchTerm}}, week of {{weekOf}}: {{breakoutCount}} viral breakouts',
@@ -233,8 +248,8 @@ return [
         ],
         'search_done' => [
             'sources' => ['user', 'search'],
-            'params' => ['breakoutCount', 'dashboardUrl', 'firstName', 'fullName', 'latestRunAt', 'resultsCount', 'resultsUrl', 'searchName', 'searchPhrase', 'searchTerm', 'searchType'],
-            'preview' => '{{breakoutCount}} breakouts, ranked',
+            'params' => ['breakout1Handle', 'breakout1Score', 'breakout1Thumbnail', 'breakout1Title', 'breakout1Views', 'breakout2Handle', 'breakout2Score', 'breakout2Thumbnail', 'breakout2Title', 'breakout2Views', 'breakout3Handle', 'breakout3Score', 'breakout3Thumbnail', 'breakout3Title', 'breakout3Views', 'breakoutCount', 'dashboardUrl', 'firstName', 'fullName', 'latestRunAt', 'resultsCount', 'resultsUrl', 'searchName', 'searchPhrase', 'searchTerm', 'searchType'],
+            'preview' => 'Ranked by how far each one beat its own account',
             'label' => 'Search results ready',
             'subject' => '{{searchTerm}}: {{breakoutCount}} viral breakouts found',
             'template_id' => env('BREVO_TEMPLATE_ID_SEARCH_DONE'),

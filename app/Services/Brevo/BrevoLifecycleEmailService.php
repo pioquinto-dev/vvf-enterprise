@@ -20,6 +20,21 @@ class BrevoLifecycleEmailService
 
     public function sendNewRegistration(User $user): bool
     {
+        // Built by hand rather than through send() because this one predates
+        // the shared path and logs its own event names, which are already
+        // wired into the registration dashboards.
+        if ($this->suppressed('new_registration', $user)) {
+            AppEventLogger::result('brevo.registration_email.suppressed', [
+                'user_id' => $user->id,
+                'email' => $user->email,
+                'reason' => EmailTemplateRegistry::brevoTemplateId('new_registration') === null
+                    ? 'no_brevo_template_id'
+                    : 'template_disabled',
+            ]);
+
+            return false;
+        }
+
         try {
             $payload = BrevoTransactionalEmail::newRegistration($user);
             $result = $this->sender->send($payload);
@@ -186,21 +201,22 @@ class BrevoLifecycleEmailService
     }
 
     /**
-     * @param  array<string, int>  $breakouts
+     * @param  array<string, mixed>  $week  The counts and the one video per
+     *                                     section that the digest leads on.
      */
-    public function sendWeeklyDigest(User $user, Subscription $subscription, int $total, array $breakouts, string $weekOf, string $topSearch = ''): bool
+    public function sendWeeklyDigest(User $user, Subscription $subscription, array $week): bool
     {
         return $this->send(
             event: 'brevo.weekly_digest.sent',
             failureEvent: 'brevo.weekly_digest.failed',
             notification: 'weekly_digest',
             user: $user,
-            payload: BrevoTransactionalEmail::weeklyDigest($user, $subscription, $total, $breakouts, $weekOf, $topSearch),
+            payload: BrevoTransactionalEmail::weeklyDigest($user, $subscription, $week),
             context: [
                 'user_id' => $user->id,
                 'email' => $user->email,
                 'subscription_id' => $subscription->id,
-                'breakouts' => $total,
+                'breakouts' => $week['breakoutCount'] ?? 0,
             ],
         );
     }
@@ -251,6 +267,18 @@ class BrevoLifecycleEmailService
     /**
      * @param  array<string, mixed>  $video
      */
+    public function sendTrialDay5VideoAnalysis(User $user, Subscription $subscription): bool
+    {
+        return $this->send(
+            event: 'brevo.trial_day5_video_analysis.sent',
+            failureEvent: 'brevo.trial_day5_video_analysis.failed',
+            notification: 'trial_day5_video_analysis',
+            user: $user,
+            payload: BrevoTransactionalEmail::trialDay5VideoAnalysis($user, $subscription),
+            context: ['user_id' => $user->id, 'email' => $user->email, 'subscription_id' => $subscription->id],
+        );
+    }
+
     public function sendTrialOneBreakout(User $user, Subscription $subscription, CustomKeywordSearch $search, array $video): bool
     {
         return $this->send(
@@ -268,19 +296,24 @@ class BrevoLifecycleEmailService
         );
     }
 
-    public function sendWinback(User $user, Subscription $subscription, string $templateKey, int $missedCount, string $endedOn): bool
+    /**
+     * @param  array<string, mixed>  $facts  missedCount, endedOn, searchTerm and,
+     *                                      for the last note in each sequence,
+     *                                      the strongest breakout to show.
+     */
+    public function sendWinback(User $user, Subscription $subscription, string $templateKey, array $facts): bool
     {
         return $this->send(
             event: 'brevo.'.$templateKey.'.sent',
             failureEvent: 'brevo.'.$templateKey.'.failed',
             notification: $templateKey,
             user: $user,
-            payload: BrevoTransactionalEmail::winback($user, $subscription, $templateKey, $missedCount, $endedOn),
+            payload: BrevoTransactionalEmail::winback($user, $subscription, $templateKey, $facts),
             context: [
                 'user_id' => $user->id,
                 'email' => $user->email,
                 'subscription_id' => $subscription->id,
-                'missed_count' => $missedCount,
+                'missed_count' => $facts['missedCount'] ?? 0,
             ],
         );
     }
@@ -288,14 +321,14 @@ class BrevoLifecycleEmailService
     /**
      * @param  array<int, array<string, mixed>>  $picks
      */
-    public function sendBiweeklyPack(User $user, Subscription $subscription, array $picks, string $since): bool
+    public function sendBiweeklyPack(User $user, Subscription $subscription, array $picks, string $searchTerm, string $resultsUrl, string $takeaway = ''): bool
     {
         return $this->send(
             event: 'brevo.biweekly_pack.sent',
             failureEvent: 'brevo.biweekly_pack.failed',
             notification: 'biweekly_pack',
             user: $user,
-            payload: BrevoTransactionalEmail::biweeklyPack($user, $subscription, $picks, $since),
+            payload: BrevoTransactionalEmail::biweeklyPack($user, $subscription, $picks, $searchTerm, $resultsUrl, $takeaway),
             context: [
                 'user_id' => $user->id,
                 'email' => $user->email,
@@ -330,12 +363,18 @@ class BrevoLifecycleEmailService
     /**
      * True when this notification must not go to this recipient.
      *
-     * Two independent reasons: the template is switched off in the registry,
-     * or the recipient opted out and the template is marketing.
+     * Three independent reasons: no Brevo template ID is mapped yet, the
+     * template is switched off in the registry, or the recipient opted out and
+     * the template is marketing.
+     *
+     * The unmapped case is deliberately a quiet non-send rather than an
+     * exception. Every trigger in the app calls through here, including the
+     * ones that run inside a web request (registration, the Stripe webhook), so
+     * an unbuilt template must not turn a user-facing action into a 500.
      */
     private function suppressed(string $notification, ?User $user): bool
     {
-        if (! EmailTemplateRegistry::isEnabled($notification)) {
+        if (! EmailTemplateRegistry::isSendable($notification)) {
             return true;
         }
 
@@ -355,6 +394,9 @@ class BrevoLifecycleEmailService
         if ($notification !== null && $this->suppressed($notification, $user)) {
             AppEventLogger::result($event.'.suppressed', array_merge($context, [
                 'notification' => $notification,
+                'reason' => EmailTemplateRegistry::brevoTemplateId($notification) === null
+                    ? 'no_brevo_template_id'
+                    : (EmailTemplateRegistry::isEnabled($notification) ? 'opted_out' : 'template_disabled'),
             ]));
 
             return false;

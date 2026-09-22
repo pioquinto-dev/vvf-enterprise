@@ -75,20 +75,28 @@ export default function AdminEditDrawer({ open, resource, title, fields = [], ro
                         {fields.map((field) => (
                             <div key={field.name} className="min-w-0">
                                 {field.type === 'reference' ? (
-                                    // Read-only: the merge fields the code sends for this
-                                    // template. Shown so nobody has to guess a tag name.
+                                    // Read-only context for the fields below it: a list
+                                    // renders as chips (the merge fields the code sends,
+                                    // so nobody has to guess a tag name), a string as a
+                                    // sentence (when this email actually goes out).
                                     <div className="min-w-0">
                                         <p className="mb-1.5 text-[11.5px] font-medium text-[var(--muted)]">{field.label}</p>
                                         <div className="rounded-lg border border-[var(--line)] bg-[var(--paper,#faf9f6)] px-2.5 py-2">
-                                            {(form.data.built_in_params ?? []).length > 0 ? (
-                                                <div className="flex flex-wrap gap-1">
-                                                    {(form.data.built_in_params ?? []).map((tag) => (
-                                                        <code key={tag} className="rounded bg-white px-1.5 py-0.5 text-[11px] text-[var(--ink)] border border-[var(--line)]">{tag}</code>
-                                                    ))}
-                                                </div>
+                                            {Array.isArray(form.data[field.name]) ? (
+                                                form.data[field.name].length > 0 ? (
+                                                    <div className="flex flex-wrap gap-1">
+                                                        {form.data[field.name].map((tag) => (
+                                                            <code key={tag} className="rounded bg-white px-1.5 py-0.5 text-[11px] text-[var(--ink)] border border-[var(--line)]">{tag}</code>
+                                                        ))}
+                                                    </div>
+                                                ) : (
+                                                    <p className="text-[11.5px] text-[var(--faint)]">
+                                                        No trigger sends this key yet, so it receives only the shared fields.
+                                                    </p>
+                                                )
                                             ) : (
-                                                <p className="text-[11.5px] text-[var(--faint)]">
-                                                    No trigger sends this key yet, so it receives only the shared fields.
+                                                <p className="text-[11.5px] text-[var(--ink)]">
+                                                    {form.data[field.name] || 'Not set.'}
                                                 </p>
                                             )}
                                         </div>

@@ -6,6 +6,7 @@ use App\Models\User;
 use App\Services\Brevo\BrevoLifecycleEmailService;
 use App\Services\Lifecycle\LifecycleCandidate;
 use App\Services\Lifecycle\LifecycleFlow;
+use App\Services\Lifecycle\LifecycleSchedule;
 use Carbon\CarbonImmutable;
 
 /**
@@ -18,8 +19,6 @@ use Carbon\CarbonImmutable;
  */
 class OnboardingNoSearchFlow implements LifecycleFlow
 {
-    private const DAYS_AFTER_SIGNUP = 2;
-
     public function __construct(private readonly BrevoLifecycleEmailService $emails) {}
 
     public function name(): string
@@ -32,7 +31,9 @@ class OnboardingNoSearchFlow implements LifecycleFlow
      */
     public function due(): iterable
     {
-        $day = CarbonImmutable::now()->startOfDay()->subDays(self::DAYS_AFTER_SIGNUP);
+        $day = CarbonImmutable::now()
+            ->startOfDay()
+            ->subDays(LifecycleSchedule::offsetDays('onboarding_no_search', 2));
 
         $users = User::query()
             ->whereBetween('created_at', [$day, $day->addDay()])

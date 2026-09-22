@@ -20,6 +20,32 @@ class AuditEmailParams extends Command
 
     protected $description = 'Verify declared email merge fields match what the code sends.';
 
+    /**
+     * Params built by a helper rather than written out as literals.
+     *
+     * Brevo addresses params by name rather than iterating, so a ranked set has
+     * to go out as breakout1Title, breakout2Title and so on. Those are
+     * generated in a loop, which this command's parser cannot see, so they are
+     * declared here instead. Adding a slot means adding it here too — that is
+     * the point: the declaration is what the admin screen shows an admin, and a
+     * field that is listed but never sent renders as a blank space in a live
+     * email.
+     *
+     * @var array<string, array<int, string>>
+     */
+    private const COMPUTED = [
+        'search_done' => [
+            'breakout1Title', 'breakout1Handle', 'breakout1Views', 'breakout1Score', 'breakout1Thumbnail',
+            'breakout2Title', 'breakout2Handle', 'breakout2Views', 'breakout2Score', 'breakout2Thumbnail',
+            'breakout3Title', 'breakout3Handle', 'breakout3Views', 'breakout3Score', 'breakout3Thumbnail',
+        ],
+        'weekly_digest' => [
+            'own1Title', 'own1Handle', 'own1Views', 'own1Score', 'own1Thumbnail',
+            'comp1Title', 'comp1Brand', 'comp1Views', 'comp1Score', 'comp1Thumbnail',
+            'prod1Title', 'prod1Name', 'prod1Views', 'prod1Score', 'prod1Thumbnail',
+        ],
+    ];
+
     public function handle(): int
     {
         $source = file_get_contents(app_path('Support/BrevoTransactionalEmail.php'));
@@ -31,6 +57,11 @@ class AuditEmailParams extends Command
         }
 
         $actual = $this->parseSentParams($source);
+
+        foreach (self::COMPUTED as $key => $params) {
+            $actual[$key] = array_values(array_unique(array_merge($actual[$key] ?? [], $params)));
+        }
+
         $problems = 0;
 
         foreach ((array) config('brevo_notifications.notifications', []) as $key => $definition) {
@@ -79,7 +110,15 @@ class AuditEmailParams extends Command
     {
         $sent = [];
 
-        preg_match_all('/payload\(\s*(.+?),\s*\$user,\s*\[(.*?)\n        \]\);/s', $source, $matches, PREG_SET_ORDER);
+        // Two shapes: a plain array of literals, or array_merge() of a literal
+        // array and a computed one (see COMPUTED above). Both end the literal
+        // array on a line indented by eight spaces.
+        preg_match_all(
+            '/payload\(\s*(.+?),\s*\$user,\s*(?:array_merge\(\s*)?\[(.*?)\n        \][,)]/s',
+            $source,
+            $matches,
+            PREG_SET_ORDER,
+        );
 
         foreach ($matches as $match) {
             $keyExpression = trim($match[1]);

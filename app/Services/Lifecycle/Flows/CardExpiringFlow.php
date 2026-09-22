@@ -6,6 +6,7 @@ use App\Models\Subscription;
 use App\Services\Brevo\BrevoLifecycleEmailService;
 use App\Services\Lifecycle\LifecycleCandidate;
 use App\Services\Lifecycle\LifecycleFlow;
+use App\Services\Lifecycle\LifecycleSchedule;
 use Carbon\CarbonImmutable;
 
 /**
@@ -18,9 +19,6 @@ use Carbon\CarbonImmutable;
  */
 class CardExpiringFlow implements LifecycleFlow
 {
-    /** How many days before the card lapses to send the warning. */
-    private const WARN_DAYS = 7;
-
     public function __construct(private readonly BrevoLifecycleEmailService $emails) {}
 
     public function name(): string
@@ -34,6 +32,10 @@ class CardExpiringFlow implements LifecycleFlow
     public function due(): iterable
     {
         $today = CarbonImmutable::now()->startOfDay();
+
+        // Config holds this as a negative offset from the expiry date, which is
+        // how every other backwards-looking email in the schedule is written.
+        $warnDays = abs(LifecycleSchedule::offsetDays('card_expiring', -7));
 
         $subscriptions = Subscription::query()
             ->with(['user', 'plan'])
@@ -60,7 +62,7 @@ class CardExpiringFlow implements LifecycleFlow
             // deadline is the first of the following month.
             $lapsesOn = CarbonImmutable::create($year, $month, 1)->addMonth()->startOfDay();
 
-            if ((int) $today->diffInDays($lapsesOn, false) !== self::WARN_DAYS) {
+            if ((int) $today->diffInDays($lapsesOn, false) !== $warnDays) {
                 continue;
             }
 

@@ -42,6 +42,8 @@ class EmailTemplateRegistry
             'extra_fields' => [],
             'is_transactional' => $definition['transactional'] ?? true,
             'is_enabled' => true,
+            // No row, so no stored schedule. schedule() falls back to config.
+            'schedule' => null,
         ] : null;
     }
 
@@ -57,6 +59,64 @@ class EmailTemplateRegistry
     public static function isEnabled(string $key): bool
     {
         return (bool) (self::find($key)['is_enabled'] ?? true);
+    }
+
+    /**
+     * The Brevo template ID mapped to this key, or null when nobody has
+     * entered one yet.
+     */
+    public static function brevoTemplateId(string $key): ?int
+    {
+        $id = self::find($key)['brevo_template_id'] ?? null;
+
+        return is_numeric($id) && (int) $id > 0 ? (int) $id : null;
+    }
+
+    /**
+     * True when this template can actually be sent right now.
+     *
+     * A template with no Brevo ID has nothing to render, so the lifecycle
+     * dispatcher skips it outright instead of claiming a send slot and failing
+     * on the API call. That is what makes it safe to ship the flows before the
+     * templates have been built in Brevo: nothing sends, nothing is logged as
+     * an error, and no send slot is burned, so the first run after the IDs are
+     * entered in Admin -> Email Templates picks the sequence up where it is.
+     */
+    public static function isSendable(string $key): bool
+    {
+        return self::isEnabled($key) && self::brevoTemplateId($key) !== null;
+    }
+
+    /**
+     * When this email goes out.
+     *
+     * The template row owns this. config/email_lifecycle.php is the fallback
+     * and the seed, the same arrangement subjects already have: an environment
+     * that has not run the schedule migration, or a key with no row, keeps the
+     * timings it was deployed with.
+     *
+     * @return array<string, mixed>
+     */
+    public static function schedule(string $key): array
+    {
+        $stored = self::find($key)['schedule'] ?? null;
+
+        if (is_array($stored) && $stored !== []) {
+            return $stored;
+        }
+
+        return (array) config("email_lifecycle.schedule.{$key}", []);
+    }
+
+    /**
+     * True when the schedule in force came from the database rather than config.
+     * The admin drawer says which, so nobody edits a slot that is not being read.
+     */
+    public static function scheduleIsStored(string $key): bool
+    {
+        $stored = self::find($key)['schedule'] ?? null;
+
+        return is_array($stored) && $stored !== [];
     }
 
     public static function forget(): void
@@ -85,6 +145,10 @@ class EmailTemplateRegistry
                     // as absent would fall through to the config default below
                     // and keep sending the thing an admin just removed.
                     'is_enabled' => $template->is_enabled && $template->deleted_at === null,
+                    // Null rather than an empty array when the admin has not
+                    // set one, so schedule() can tell "no schedule here" from
+                    // "a schedule that says nothing".
+                    'schedule' => $template->hasOwnSchedule() ? $template->scheduleSpec() : null,
                 ])
                 ->all());
         } catch (Throwable) {

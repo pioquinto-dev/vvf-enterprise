@@ -8,6 +8,7 @@ use App\Models\Subscription;
 use App\Services\Brevo\BrevoLifecycleEmailService;
 use App\Services\Lifecycle\LifecycleCandidate;
 use App\Services\Lifecycle\LifecycleFlow;
+use App\Services\Lifecycle\LifecycleSchedule;
 use Carbon\CarbonImmutable;
 
 /**
@@ -20,8 +21,11 @@ use Carbon\CarbonImmutable;
  */
 class FreeResultsFollowUpFlow implements LifecycleFlow
 {
-    /** Day offset => stage name. */
-    private const STAGES = [1 => 'second_look', 3 => 'last_note'];
+    /** Template key => the stage name the email builder switches on. */
+    private const TEMPLATES = [
+        'free_results_second_look' => 'second_look',
+        'free_results_last_note' => 'last_note',
+    ];
 
     /** Anything here means they are past the free tier. */
     private const CONVERTED_STATUSES = ['active', 'trialing', 'trial', 'past_due'];
@@ -45,7 +49,15 @@ class FreeResultsFollowUpFlow implements LifecycleFlow
             ->unique()
             ->all();
 
-        foreach (self::STAGES as $days => $stage) {
+        // Day offsets come from config/email_lifecycle.php, next to the send
+        // slots the handover board specifies for each of these.
+        $stages = [];
+
+        foreach (self::TEMPLATES as $templateKey => $stage) {
+            $stages[LifecycleSchedule::offsetDays($templateKey)] = $stage;
+        }
+
+        foreach ($stages as $days => $stage) {
             $day = CarbonImmutable::now()->startOfDay()->subDays($days);
 
             $searches = CustomKeywordSearch::query()

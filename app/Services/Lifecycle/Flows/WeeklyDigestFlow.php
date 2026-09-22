@@ -8,6 +8,7 @@ use App\Models\Subscription;
 use App\Services\Brevo\BrevoLifecycleEmailService;
 use App\Services\Lifecycle\LifecycleCandidate;
 use App\Services\Lifecycle\LifecycleFlow;
+use App\Services\Lifecycle\LifecycleSchedule;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Collection;
 
@@ -46,8 +47,9 @@ class WeeklyDigestFlow implements LifecycleFlow
     {
         $today = CarbonImmutable::now();
 
-        // The dispatcher runs daily; this flow only has work on Mondays.
-        if (! $today->isMonday()) {
+        // Weekday and the 7:00am slot both come from config; this flow has no
+        // work on any other day or hour.
+        if (! LifecycleSchedule::slotIsOpen('weekly_digest', $today)) {
             return;
         }
 
@@ -69,7 +71,8 @@ class WeeklyDigestFlow implements LifecycleFlow
                 continue;
             }
 
-            $breakouts = $this->breakoutsByType($searches->pluck('id'), $weekStart, $weekEnd);
+            $searchIds = $searches->pluck('id');
+            $breakouts = $this->breakoutsByType($searchIds, $weekStart, $weekEnd);
             $total = array_sum($breakouts);
 
             // Nothing broke out — an empty digest is worse than no digest.
@@ -77,18 +80,27 @@ class WeeklyDigestFlow implements LifecycleFlow
                 continue;
             }
 
+            // The digest leads each of its three sections on one video, so the
+            // searches are split by type here rather than in the template.
+            $byType = $searches->groupBy('search_type');
+
+            $week = [
+                'breakoutCount' => $total,
+                'resultsCount' => $this->videosSeen($searchIds, $weekStart, $weekEnd),
+                'newCreators' => $this->newCreators($searchIds, $weekStart, $weekEnd),
+                'searchTerm' => (string) ($searches->first()?->name ?: $searches->first()?->phrase ?: ''),
+                'weekOf' => $weekStart->format('M j'),
+                'resultsUrl' => url((string) ($searches->first()?->url() ?? '/library')),
+                'own' => $this->leadVideo($byType->get(CustomKeywordSearch::TYPE_BRAND), $weekStart, $weekEnd, 'handle'),
+                'comp' => $this->leadVideo($byType->get(CustomKeywordSearch::TYPE_COMPETITOR), $weekStart, $weekEnd, 'brand'),
+                'prod' => $this->leadVideo($byType->get(CustomKeywordSearch::TYPE_PRODUCT), $weekStart, $weekEnd, 'name'),
+            ];
+
             yield new LifecycleCandidate(
                 flowKey: 'weekly_digest',
                 dedupeKey: "user:{$user->id}:week:{$weekStart->format('o-\WW')}",
                 user: $user,
-                send: fn (): bool => $this->emails->sendWeeklyDigest(
-                    $user,
-                    $subscription,
-                    $total,
-                    $breakouts,
-                    $weekStart->format('M j'),
-                    (string) ($searches->first()?->name ?: $searches->first()?->phrase ?: ''),
-                ),
+                send: fn (): bool => $this->emails->sendWeeklyDigest($user, $subscription, $week),
                 templateKey: 'weekly_digest',
                 context: [
                     'subscription_id' => $subscription->id,
@@ -128,6 +140,94 @@ class WeeklyDigestFlow implements LifecycleFlow
                 return $daysLeft >= 0 && $daysLeft <= self::TRIAL_LAST_REFRESH_DAYS;
             })
             ->values();
+    }
+
+    /**
+     * The one video a section leads on: the week's strongest breakout across
+     * the searches of that type.
+     *
+     * `$metaKey` is what the second line of the row shows, and it differs per
+     * section — the creator's handle for their own brand, the competitor's
+     * name, the product's name — so the caller names it.
+     *
+     * @param  Collection<int, CustomKeywordSearch>|null  $searches
+     * @return array<string, string>|null
+     */
+    private function leadVideo(?Collection $searches, CarbonImmutable $from, CarbonImmutable $to, string $metaKey): ?array
+    {
+        if ($searches === null || $searches->isEmpty()) {
+            return null;
+        }
+
+        $row = CustomKeywordSearchVideo::query()
+            ->whereIn('custom_keyword_search_id', $searches->pluck('id'))
+            ->where('is_new_breakout', true)
+            ->whereBetween('created_at', [$from, $to])
+            ->whereHas('video', fn ($query) => $query->visible())
+            ->with(['video', 'search'])
+            ->orderByDesc('viral_score')
+            ->orderBy('id')
+            ->first();
+
+        if ($row === null || $row->video === null) {
+            return null;
+        }
+
+        return [
+            'title' => (string) ($row->video->title ?? ''),
+            $metaKey => $metaKey === 'handle'
+                ? ($row->video->username ? '@'.$row->video->username : '')
+                : (string) ($row->search?->name ?: $row->search?->phrase ?: ''),
+            'views' => number_format((int) ($row->video->views ?? 0)).' views',
+            'score' => $row->viral_score === null ? '' : (string) round((float) $row->viral_score, 1),
+            'thumbnail' => (string) ($row->video?->previewImageUrl() ?? ''),
+        ];
+    }
+
+    /**
+     * Every video the week's refreshes turned up, breakout or not. The digest
+     * quotes it as the denominator, so it has to count the same window the
+     * breakouts were counted in.
+     *
+     * @param  Collection<int, int>  $searchIds
+     */
+    private function videosSeen(Collection $searchIds, CarbonImmutable $from, CarbonImmutable $to): int
+    {
+        return CustomKeywordSearchVideo::query()
+            ->whereIn('custom_keyword_search_id', $searchIds)
+            ->whereBetween('created_at', [$from, $to])
+            ->count();
+    }
+
+    /**
+     * Creators who showed up in these searches this week and had not before.
+     *
+     * @param  Collection<int, int>  $searchIds
+     */
+    private function newCreators(Collection $searchIds, CarbonImmutable $from, CarbonImmutable $to): int
+    {
+        $thisWeek = CustomKeywordSearchVideo::query()
+            ->join('viral_videos', 'viral_videos.id', '=', 'custom_keyword_search_videos.viral_video_id')
+            ->whereIn('custom_keyword_search_videos.custom_keyword_search_id', $searchIds)
+            ->whereBetween('custom_keyword_search_videos.created_at', [$from, $to])
+            ->distinct()
+            ->pluck('viral_videos.username')
+            ->filter()
+            ->unique();
+
+        if ($thisWeek->isEmpty()) {
+            return 0;
+        }
+
+        $seenBefore = CustomKeywordSearchVideo::query()
+            ->join('viral_videos', 'viral_videos.id', '=', 'custom_keyword_search_videos.viral_video_id')
+            ->whereIn('custom_keyword_search_videos.custom_keyword_search_id', $searchIds)
+            ->where('custom_keyword_search_videos.created_at', '<', $from)
+            ->whereIn('viral_videos.username', $thisWeek)
+            ->distinct()
+            ->pluck('viral_videos.username');
+
+        return $thisWeek->diff($seenBefore)->count();
     }
 
     /**

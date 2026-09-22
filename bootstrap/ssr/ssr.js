@@ -513,7 +513,7 @@ var NAV_GROUPS = [
 		]
 	},
 	{
-		label: "Content",
+		label: "Catalog",
 		items: [
 			{
 				key: "viral-videos",
@@ -537,6 +537,18 @@ var NAV_GROUPS = [
 				icon: "KI"
 			},
 			{
+				key: "plans",
+				label: "Plans",
+				href: "/x/admin/plans",
+				description: "Pricing setup",
+				icon: "PL"
+			}
+		]
+	},
+	{
+		label: "Messaging",
+		items: [
+			{
 				key: "email-templates",
 				label: "Email Templates",
 				href: "/x/admin/email-templates",
@@ -556,13 +568,6 @@ var NAV_GROUPS = [
 				href: "/x/admin/newsletter",
 				description: "Digest subscribers",
 				icon: "NL"
-			},
-			{
-				key: "plans",
-				label: "Plans",
-				href: "/x/admin/plans",
-				description: "Pricing setup",
-				icon: "PL"
 			}
 		]
 	},
@@ -4392,7 +4397,89 @@ function AdminEditDrawer({ open, resource, title, fields = [], row, createValues
 					className: "min-h-0 flex-1 space-y-4 overflow-y-auto px-4 py-4",
 					children: fields.map((field) => /* @__PURE__ */ jsxs("div", {
 						className: "min-w-0",
-						children: [field.type === "toggle" ? /* @__PURE__ */ jsxs("label", {
+						children: [field.type === "reference" ? /* @__PURE__ */ jsxs("div", {
+							className: "min-w-0",
+							children: [
+								/* @__PURE__ */ jsx("p", {
+									className: "mb-1.5 text-[11.5px] font-medium text-[var(--muted)]",
+									children: field.label
+								}),
+								/* @__PURE__ */ jsx("div", {
+									className: "rounded-lg border border-[var(--line)] bg-[var(--paper,#faf9f6)] px-2.5 py-2",
+									children: Array.isArray(form.data[field.name]) ? form.data[field.name].length > 0 ? /* @__PURE__ */ jsx("div", {
+										className: "flex flex-wrap gap-1",
+										children: form.data[field.name].map((tag) => /* @__PURE__ */ jsx("code", {
+											className: "rounded bg-white px-1.5 py-0.5 text-[11px] text-[var(--ink)] border border-[var(--line)]",
+											children: tag
+										}, tag))
+									}) : /* @__PURE__ */ jsx("p", {
+										className: "text-[11.5px] text-[var(--faint)]",
+										children: "No trigger sends this key yet, so it receives only the shared fields."
+									}) : /* @__PURE__ */ jsx("p", {
+										className: "text-[11.5px] text-[var(--ink)]",
+										children: form.data[field.name] || "Not set."
+									})
+								}),
+								field.help && /* @__PURE__ */ jsx("p", {
+									className: "mt-1 text-[11.5px] text-[var(--faint)]",
+									children: field.help
+								})
+							]
+						}) : field.type === "multiselect" ? /* @__PURE__ */ jsxs("div", {
+							className: "min-w-0",
+							children: [
+								/* @__PURE__ */ jsx("p", {
+									className: "mb-1.5 text-[11.5px] font-medium text-[var(--muted)]",
+									children: field.label
+								}),
+								/* @__PURE__ */ jsx("p", {
+									className: "mb-1.5 text-[11.5px] text-[var(--faint)]",
+									children: "Every field can be switched on. Ones this email already carries describe what it is about; the rest are looked up from the recipient when it sends."
+								}),
+								/* @__PURE__ */ jsx("div", {
+									className: "max-h-64 overflow-y-auto rounded-lg border border-[var(--line)] bg-white px-2.5 py-2",
+									children: (field.options ?? []).map((option) => {
+										const selected = (form.data[field.name] ?? []).includes(option.value);
+										const given = (form.data.given_sources ?? []).includes(option.source);
+										return /* @__PURE__ */ jsxs("label", {
+											className: "flex cursor-pointer items-start gap-2 py-1.5",
+											children: [/* @__PURE__ */ jsx("input", {
+												type: "checkbox",
+												checked: selected,
+												onChange: (event) => {
+													const current = form.data[field.name] ?? [];
+													form.setData(field.name, event.target.checked ? [...current, option.value] : current.filter((v) => v !== option.value));
+												},
+												className: "mt-0.5 h-4 w-4 rounded border-[var(--line)] bg-white accent-[#ffc629]"
+											}), /* @__PURE__ */ jsxs("span", {
+												className: "min-w-0",
+												children: [
+													/* @__PURE__ */ jsx("span", {
+														className: "block text-[12.5px] text-[var(--ink)]",
+														children: option.label
+													}),
+													/* @__PURE__ */ jsx("code", {
+														className: "text-[11px] text-[var(--amber-ink)]",
+														children: option.param
+													}),
+													/* @__PURE__ */ jsxs("span", {
+														className: "mt-0.5 block text-[11px] text-[var(--faint)]",
+														children: [option.hint, option.source !== "user" && /* @__PURE__ */ jsx("span", {
+															className: given ? "text-[var(--amber-ink)]" : "",
+															children: given ? ` · this email's ${option.source}` : ` · their most recent ${option.source}`
+														})]
+													})
+												]
+											})]
+										}, option.value);
+									})
+								}),
+								field.help && /* @__PURE__ */ jsx("p", {
+									className: "mt-1 text-[11.5px] text-[var(--faint)]",
+									children: field.help
+								})
+							]
+						}) : field.type === "toggle" ? /* @__PURE__ */ jsxs("label", {
 							className: "flex cursor-pointer items-start gap-2.5",
 							children: [/* @__PURE__ */ jsx("input", {
 								type: "checkbox",
@@ -4902,6 +4989,12 @@ function Listing({ resource, title, search, searchPlaceholder, filters = [], col
 					onClick: () => setCreating(true),
 					className: "inline-flex h-8 items-center rounded-md bg-[var(--yellow)] px-3.5 text-[12.5px] font-semibold text-[#1a1400] transition hover:brightness-105",
 					children: "New keyword"
+				}),
+				capabilities.create && capabilities.createLabel && /* @__PURE__ */ jsx("button", {
+					type: "button",
+					onClick: () => setCreating(true),
+					className: "inline-flex h-8 items-center rounded-md bg-[var(--yellow)] px-3.5 text-[12.5px] font-semibold text-[#1a1400] transition hover:brightness-105",
+					children: capabilities.createLabel
 				}),
 				resource === "coupon-whitelist" && /* @__PURE__ */ jsx("button", {
 					type: "button",

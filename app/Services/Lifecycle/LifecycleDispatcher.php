@@ -4,6 +4,8 @@ namespace App\Services\Lifecycle;
 
 use App\Services\Brevo\EmailSendLedger;
 use App\Support\AppEventLogger;
+use App\Support\EmailTemplateRegistry;
+use Carbon\CarbonImmutable;
 use Throwable;
 
 /**
@@ -14,6 +16,18 @@ use Throwable;
  * that choice is a possible missed email after a crash, which is the right
  * trade for lifecycle mail — a duplicate winback email is worse than a missing
  * one.
+ *
+ * Two gates run before the claim, and both deliberately leave no trace:
+ *
+ *   the send window — this command runs hourly, and each template has its own
+ *   wall-clock slot from config/email_lifecycle.php. A candidate outside its
+ *   window is left alone so a later run today can send it.
+ *
+ *   the Brevo mapping — a template whose Brevo ID has not been entered in
+ *   Admin -> Email Templates cannot render, so it is skipped rather than
+ *   claimed and failed. Claiming it would retire that recipient's slot
+ *   permanently, and the first run after the ID is entered would find nothing
+ *   left to send.
  */
 class LifecycleDispatcher
 {
@@ -26,16 +40,38 @@ class LifecycleDispatcher
     ) {}
 
     /**
-     * @return array{sent: int, skipped: int, failed: int}
+     * @return array{sent: int, skipped: int, failed: int, deferred: int, unmapped: array<int, string>}
      */
     public function run(): array
     {
         $sent = 0;
         $skipped = 0;
         $failed = 0;
+        $deferred = 0;
+        $unmapped = [];
+        $now = CarbonImmutable::now();
 
         foreach ($this->flows as $flow) {
             foreach ($flow->due() as $candidate) {
+                $scheduleKey = $candidate->templateKey ?? $candidate->flowKey;
+
+                // Outside today's slot for this template. Not a skip: no row is
+                // written, so a later run in the catch-up window still sends it.
+                if (! LifecycleSchedule::slotIsOpen($scheduleKey, $now)) {
+                    $deferred++;
+
+                    continue;
+                }
+
+                // No Brevo template ID yet. Same reasoning — leave the slot
+                // free so the sequence resumes once the ID is entered.
+                if (! EmailTemplateRegistry::isSendable($scheduleKey)) {
+                    $deferred++;
+                    $unmapped[$scheduleKey] = true;
+
+                    continue;
+                }
+
                 $claim = $this->ledger->claim(
                     $candidate->flowKey,
                     $candidate->dedupeKey,
@@ -82,6 +118,18 @@ class LifecycleDispatcher
             }
         }
 
-        return ['sent' => $sent, 'skipped' => $skipped, 'failed' => $failed];
+        if ($unmapped !== []) {
+            AppEventLogger::result('lifecycle.send.unmapped_templates', [
+                'templates' => array_keys($unmapped),
+            ]);
+        }
+
+        return [
+            'sent' => $sent,
+            'skipped' => $skipped,
+            'failed' => $failed,
+            'deferred' => $deferred,
+            'unmapped' => array_keys($unmapped),
+        ];
     }
 }

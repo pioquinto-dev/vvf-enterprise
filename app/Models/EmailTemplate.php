@@ -21,6 +21,13 @@ class EmailTemplate extends Model
 
     protected $guarded = [];
 
+    /** Columns that together describe when this email goes out. */
+    public const SCHEDULE_COLUMNS = [
+        'send_trigger', 'send_offset_days', 'send_offset_hours', 'send_at',
+        'send_weekday', 'send_interval_weeks', 'send_anchor_date',
+        'send_immediate', 'send_timezone',
+    ];
+
     protected function casts(): array
     {
         return [
@@ -28,7 +35,59 @@ class EmailTemplate extends Model
             'extra_fields' => 'array',
             'is_transactional' => 'boolean',
             'is_enabled' => 'boolean',
+            'send_offset_days' => 'integer',
+            'send_offset_hours' => 'integer',
+            'send_interval_weeks' => 'integer',
+            'send_anchor_date' => 'date',
+            'send_immediate' => 'boolean',
         ];
+    }
+
+    /**
+     * True when this row carries a schedule of its own.
+     *
+     * The schedule columns were added after the table, and config is still the
+     * fallback, so "has an admin set this?" is a real question rather than an
+     * assumption. `send_immediate` alone counts: turning it on is a decision.
+     *
+     * @return bool
+     */
+    public function hasOwnSchedule(): bool
+    {
+        return $this->send_trigger !== null
+            || $this->send_at !== null
+            || $this->send_offset_days !== null
+            || $this->send_offset_hours !== null
+            || $this->send_weekday !== null
+            || $this->send_interval_weeks !== null
+            || $this->send_immediate === true;
+    }
+
+    /**
+     * The schedule in the shape LifecycleSchedule reads.
+     *
+     * Same keys as a config/email_lifecycle.php entry, so the two are
+     * interchangeable and nothing downstream has to know which one it got.
+     *
+     * @return array<string, mixed>
+     */
+    public function scheduleSpec(): array
+    {
+        $spec = [
+            'trigger' => $this->send_trigger,
+            'offset_days' => $this->send_offset_days,
+            'offset_hours' => $this->send_offset_hours,
+            'at' => $this->send_at,
+            'weekday' => $this->send_weekday,
+            'interval_weeks' => $this->send_interval_weeks,
+            'anchor' => $this->send_anchor_date?->toDateString(),
+            'immediate' => $this->send_immediate === true ? true : null,
+            'timezone' => $this->send_timezone,
+        ];
+
+        // Null means "not set", not "set to nothing": a key left in would make
+        // isset() checks downstream see a schedule that is not there.
+        return array_filter($spec, static fn ($value): bool => $value !== null && $value !== '');
     }
 
     /**

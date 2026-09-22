@@ -3,8 +3,10 @@
 namespace App\Support;
 
 use App\Models\CustomKeywordSearch;
+use App\Models\CustomKeywordSearchVideo;
 use App\Models\Subscription;
 use App\Models\User;
+use Carbon\CarbonImmutable;
 use RuntimeException;
 use Illuminate\Support\Facades\URL;
 
@@ -35,6 +37,10 @@ class BrevoTransactionalEmail
             'planName' => $planName,
             'planSlug' => (string) ($subscription->plan?->slug ?? ''),
             'isTrial' => $isTrial ? 'yes' : 'no',
+            // The handover leads the trial version with "You're on the 8-day
+            // trial". A subject line is one string per template, so the
+            // headline is a param and the registry subject is just {{...}}.
+            'startHeadline' => $isTrial ? "You're on the 8-day trial" : 'Your plan is live',
             'accessEndsAt' => $endsAt?->timezone(config('app.timezone'))->format('F j, Y') ?? 'your renewal date',
             'renewalLabel' => $isTrial ? 'Trial ends' : 'Renews',
             'searchLimit' => self::limitLabel(data_get($subscription->metadata, 'subscription.search_limits.limit', 0)),
@@ -106,6 +112,12 @@ class BrevoTransactionalEmail
             'fullName' => $user->name,
             'planName' => $planName,
             'accessEndedAt' => $subscription->current_period_ends_at?->timezone(config('app.timezone'))->format('F j, Y') ?? 'today',
+            'cardLast4' => self::cardLast4($subscription),
+            'lockDate' => self::lockDate(),
+            // How long the workspace is held after the account pauses. The
+            // whole point of the final notice is that this window exists.
+            'retentionDays' => (int) config('email_lifecycle.dunning.retention_days', 30),
+            'billingUrl' => url('/settings/subscription'),
             'dashboardUrl' => url('/home'),
             'settingsUrl' => url('/settings/subscription'),
             'contactUrl' => url('/contact'),
@@ -136,7 +148,7 @@ class BrevoTransactionalEmail
      * the only thing that distinguishes the first polite nudge from the
      * second, more urgent one.
      */
-    public static function paymentFailed(User $user, Subscription $subscription, int $attempt, ?string $nextAttemptAt): array
+    public static function paymentFailed(User $user, Subscription $subscription, int $attempt, ?string $nextAttemptAt, ?string $amount = null): array
     {
         $planName = ucfirst((string) ($subscription->plan?->name ?? $subscription->plan?->slug ?? 'Plan'));
 
@@ -146,6 +158,11 @@ class BrevoTransactionalEmail
             'planName' => $planName,
             'attempt' => $attempt,
             'nextAttemptAt' => $nextAttemptAt ?? 'in a few days',
+            // Both dunning emails name the card rather than the plan, which is
+            // what the customer has to go and change.
+            'cardLast4' => self::cardLast4($subscription),
+            'amount' => $amount ?? self::planAmount($subscription),
+            'lockDate' => self::lockDate(),
             'billingUrl' => url('/settings/subscription'),
             'dashboardUrl' => url('/home'),
             'supportEmail' => (string) config('mail.from.address', 'support@example.com'),
@@ -164,6 +181,12 @@ class BrevoTransactionalEmail
             'cardBrand' => $brand,
             'cardLast4' => $last4,
             'cardExpiryDate' => $expiresOn,
+            // What is about to fail, and when. Without both, the email is a
+            // warning with nothing at stake in it.
+            'amount' => self::planAmount($subscription),
+            'nextChargeDate' => $subscription->current_period_ends_at
+                ?->timezone(self::timezone())
+                ->format('F j, Y') ?? 'your next renewal',
             'planName' => ucfirst((string) ($subscription->plan?->name ?? $subscription->plan?->slug ?? 'Plan')),
             'billingUrl' => url('/settings/subscription'),
             'supportEmail' => (string) config('mail.from.address', 'support@example.com'),
@@ -175,30 +198,57 @@ class BrevoTransactionalEmail
      *
      * @param  array<string, int>  $breakouts  Counts keyed by search type.
      */
-    public static function weeklyDigest(User $user, Subscription $subscription, int $total, array $breakouts, string $weekOf, string $topSearch = ''): array
+    public static function weeklyDigest(User $user, Subscription $subscription, array $week): array
     {
-        return self::payload('weekly_digest', $user, [
+        // Three sections, one lead video each: their own brand, the
+        // competitors they watch, their products. A section with nothing in it
+        // renders as nothing rather than as an empty heading, which is why the
+        // template guards each block on its title param.
+        $sections = [];
+
+        foreach (['own' => 'handle', 'comp' => 'brand', 'prod' => 'name'] as $prefix => $metaKey) {
+            $pick = $week[$prefix] ?? null;
+            $sections[$prefix.'1Title'] = (string) (is_array($pick) ? ($pick['title'] ?? '') : '');
+            $sections[$prefix.'1'.ucfirst($metaKey)] = (string) (is_array($pick) ? ($pick[$metaKey] ?? '') : '');
+            $sections[$prefix.'1Views'] = (string) (is_array($pick) ? ($pick['views'] ?? '') : '');
+            $sections[$prefix.'1Score'] = (string) (is_array($pick) ? ($pick['score'] ?? '') : '');
+            $sections[$prefix.'1Thumbnail'] = (string) (is_array($pick) ? ($pick['thumbnail'] ?? '') : '');
+        }
+
+        return self::payload('weekly_digest', $user, array_merge([
             'firstName' => self::firstName($user->name),
             'fullName' => $user->name,
-            'breakoutCount' => $total,
-            'searchTerm' => $topSearch,
-            'brandBreakouts' => (int) ($breakouts['brand'] ?? 0),
-            'productBreakouts' => (int) ($breakouts['product'] ?? 0),
-            'weekOf' => $weekOf,
+            'breakoutCount' => (int) ($week['breakoutCount'] ?? 0),
+            'resultsCount' => (int) ($week['resultsCount'] ?? 0),
+            'newCreators' => (int) ($week['newCreators'] ?? 0),
+            'searchTerm' => (string) ($week['searchTerm'] ?? ''),
+            'weekOf' => (string) ($week['weekOf'] ?? ''),
             'planName' => ucfirst((string) ($subscription->plan?->name ?? $subscription->plan?->slug ?? 'Plan')),
+            'resultsUrl' => (string) ($week['resultsUrl'] ?? url('/library')),
             'libraryUrl' => url('/library'),
             'dashboardUrl' => url('/home'),
-        ], new EmailContext($user, $subscription));
+        ], $sections), new EmailContext($user, $subscription));
     }
 
-    /** Day 2 after signup, still no search run. */
-    public static function onboardingNoSearch(User $user): array
+    /**
+     * Day 2 after signup, still no search run.
+     *
+     * @param  string|null  $exampleImageUrl  Overrides the configured still. The
+     *              test-send command passes a real video's thumbnail, because the
+     *              configured default points at an asset that has to be uploaded
+     *              and a preview of a broken image tells you nothing.
+     */
+    public static function onboardingNoSearch(User $user, ?string $exampleImageUrl = null): array
     {
         return self::payload('onboarding_no_search', $user, [
             'firstName' => self::firstName($user->name),
             'fullName' => $user->name,
             'searchUrl' => url('/brands'),
             'dashboardUrl' => url('/home'),
+            // The one picture in this email. A still, not a live thumbnail:
+            // the copy quotes fixed numbers (4.6M against a 10k baseline), so
+            // the image has to stay the video those numbers describe.
+            'exampleImageUrl' => $exampleImageUrl ?? (string) config('brevo_notifications.example_image_url'),
         ]);
     }
 
@@ -231,6 +281,18 @@ class BrevoTransactionalEmail
         ], new EmailContext($user, $subscription));
     }
 
+    /** Day 5 of the trial: the nudge towards video analysis. */
+    public static function trialDay5VideoAnalysis(User $user, Subscription $subscription): array
+    {
+        return self::payload('trial_day5_video_analysis', $user, [
+            'firstName' => self::firstName($user->name),
+            'fullName' => $user->name,
+            'planName' => ucfirst((string) ($subscription->plan?->name ?? $subscription->plan?->slug ?? 'Plan')),
+            'dashboardUrl' => url('/home'),
+            'libraryUrl' => url('/library'),
+        ], new EmailContext($user, $subscription));
+    }
+
     /**
      * Day 7 of the trial: one video, picked as the strongest breakout across
      * everything they track.
@@ -247,6 +309,7 @@ class BrevoTransactionalEmail
             'videoCaption' => (string) ($video['caption'] ?? ''),
             'videoThumbnail' => (string) ($video['thumbnail'] ?? ''),
             'videoViews' => (string) ($video['views'] ?? ''),
+            'videoUrl' => (string) ($video['url'] ?? url($search->url())),
             'breakoutScore' => (string) ($video['score'] ?? ''),
             'resultsUrl' => url($search->url()),
             'dashboardUrl' => url('/home'),
@@ -258,14 +321,29 @@ class BrevoTransactionalEmail
      * and what has happened since — so the template key is the only thing that
      * varies.
      */
-    public static function winback(User $user, Subscription $subscription, string $templateKey, int $missedCount, string $endedOn): array
+    public static function winback(User $user, Subscription $subscription, string $templateKey, array $facts): array
     {
+        $breakout = is_array($facts['breakout'] ?? null) ? $facts['breakout'] : [];
+
         return self::payload($templateKey, $user, [
             'firstName' => self::firstName($user->name),
             'fullName' => $user->name,
             'planName' => ucfirst((string) ($subscription->plan?->name ?? $subscription->plan?->slug ?? 'Plan')),
-            'missedCount' => $missedCount,
-            'endedOn' => $endedOn,
+            'missedCount' => (int) ($facts['missedCount'] ?? 0),
+            'endedOn' => (string) ($facts['endedOn'] ?? ''),
+            // The middle and last emails in each sequence name what they are
+            // about: the search that kept moving, and how much of it went to
+            // someone else.
+            'searchTerm' => (string) ($facts['searchTerm'] ?? ''),
+            'competitorBreakouts' => (int) ($facts['competitorBreakouts'] ?? 0),
+            // The last note totals up what the trial actually produced.
+            'trialSearches' => (int) ($facts['trialSearches'] ?? 0),
+            'trialVideos' => (int) ($facts['trialVideos'] ?? 0),
+            'trialBreakouts' => (int) ($facts['trialBreakouts'] ?? 0),
+            'breakoutTitle' => (string) ($breakout['title'] ?? ''),
+            'breakoutScore' => (string) ($breakout['score'] ?? ''),
+            'breakoutUrl' => (string) ($breakout['url'] ?? ''),
+            'breakoutThumbnail' => (string) ($breakout['thumbnail'] ?? ''),
             'plansUrl' => url('/plans'),
             'libraryUrl' => url('/library'),
             'dashboardUrl' => url('/home'),
@@ -276,15 +354,18 @@ class BrevoTransactionalEmail
     /**
      * @param  array<int, array<string, mixed>>  $picks
      */
-    public static function biweeklyPack(User $user, Subscription $subscription, array $picks, string $since): array
+    public static function biweeklyPack(User $user, Subscription $subscription, array $picks, string $searchTerm, string $resultsUrl, string $takeaway = ''): array
     {
-        $first = $picks[0] ?? [];
-
         return self::payload('biweekly_pack', $user, [
             'firstName' => self::firstName($user->name),
             'fullName' => $user->name,
             'breakoutCount' => count($picks),
-            'since' => $since,
+            // One brand or product per pack, named in the subject line.
+            'searchTerm' => $searchTerm,
+            // Left blank when there is nothing honest to say about what the
+            // three have in common; the template drops the line rather than
+            // printing a guess.
+            'takeaway' => $takeaway,
             // Brevo templates address params by name rather than iterating, so
             // the three picks are flattened instead of passed as a list.
             'pick1Handle' => (string) ($picks[0]['handle'] ?? ''),
@@ -305,33 +386,112 @@ class BrevoTransactionalEmail
             'pick3Views' => (string) ($picks[2]['views'] ?? ''),
             'pick3Score' => (string) ($picks[2]['score'] ?? ''),
             'pick3Subject' => (string) ($picks[2]['subject'] ?? ''),
-            'topSubject' => (string) ($first['subject'] ?? ''),
             'planName' => ucfirst((string) ($subscription->plan?->name ?? $subscription->plan?->slug ?? 'Plan')),
+            'resultsUrl' => $resultsUrl,
+            'plansUrl' => url('/plans'),
             'libraryUrl' => url('/library'),
             'dashboardUrl' => url('/home'),
         ], new EmailContext($user, $subscription));
     }
 
-    public static function searchDone(User $user, CustomKeywordSearch $search): array
+    /**
+     * @param  array<string, mixed>|null  $sample  Overrides the counts and the
+     *              ranked videos instead of querying for them. Production passes
+     *              null; the test-send command passes sample or borrowed data, so
+     *              a preview shows three filled rows rather than the three blanks
+     *              an unsaved search would query its way to.
+     */
+    public static function searchDone(User $user, CustomKeywordSearch $search, ?array $sample = null): array
     {
         $latestRun = $search->latestRun;
-        $resultsCount = $search->videos_count ?? $search->videos()->count();
+        $resultsCount = $sample !== null
+            ? (int) ($sample['resultsCount'] ?? 0)
+            : (int) ($search->videos_count ?? $search->videos()->count());
 
-        return self::payload('search_done', $user, [
+        // breakoutCount used to be the total video count, which made the
+        // subject line ("14 viral breakouts found") wrong whenever some of the
+        // results were not breakouts. It is the real count now, and
+        // resultsCount carries the total the copy compares it against.
+        $breakouts = $sample !== null
+            ? (array) ($sample['breakouts'] ?? [])
+            : self::topBreakouts($search, 3);
+
+        $breakoutCount = $sample !== null
+            ? (int) ($sample['breakoutCount'] ?? count($breakouts))
+            : CustomKeywordSearchVideo::query()
+                ->where('custom_keyword_search_id', $search->id)
+                ->where('is_new_breakout', true)
+                ->count();
+
+        return self::payload('search_done', $user, array_merge([
             'firstName' => self::firstName($user->name),
             'fullName' => $user->name,
             'searchName' => (string) ($search->name ?: $search->phrase),
             // The spec's subject line uses these names; kept alongside the
             // originals so existing templates do not break.
             'searchTerm' => (string) ($search->name ?: $search->phrase),
-            'breakoutCount' => $resultsCount,
+            'breakoutCount' => $breakoutCount,
             'searchPhrase' => (string) $search->phrase,
             'searchType' => (string) $search->search_type,
             'resultsCount' => $resultsCount,
             'resultsUrl' => url($search->url()),
             'dashboardUrl' => url('/home'),
-            'latestRunAt' => $latestRun?->completed_at?->timezone(config('app.timezone'))->format('F j, Y g:i A') ?? 'just now',
-        ], new EmailContext($user, null, $search));
+            'latestRunAt' => $latestRun?->completed_at?->timezone(self::timezone())->format('F j, Y g:i A') ?? 'just now',
+        ], self::flattenPicks('breakout', $breakouts)), new EmailContext($user, null, $search));
+    }
+
+    /**
+     * The strongest breakouts in one search, ranked by the same Breakout Score
+     * the results page shows, with id as a tiebreak so two runs pick the same
+     * videos in the same order.
+     *
+     * @return array<int, array<string, string>>
+     */
+    public static function topBreakouts(CustomKeywordSearch $search, int $limit): array
+    {
+        return CustomKeywordSearchVideo::query()
+            ->where('custom_keyword_search_id', $search->id)
+            ->where('is_new_breakout', true)
+            ->whereHas('video', fn ($query) => $query->visible())
+            ->with('video')
+            ->orderByDesc('viral_score')
+            ->orderBy('id')
+            ->limit($limit)
+            ->get()
+            ->map(static fn (CustomKeywordSearchVideo $row): array => [
+                'title' => (string) ($row->video->title ?? ''),
+                'handle' => $row->video?->username ? '@'.$row->video->username : '',
+                'views' => number_format((int) ($row->video->views ?? 0)),
+                'score' => $row->viral_score === null ? '' : (string) round((float) $row->viral_score, 1),
+                'thumbnail' => (string) ($row->video?->previewImageUrl() ?? ''),
+                'url' => (string) ($row->video->video_url ?? ''),
+            ])
+            ->values()
+            ->all();
+    }
+
+    /**
+     * Brevo templates address params by name rather than iterating a list, so
+     * a ranked set has to go out as breakout1Title, breakout2Title and so on.
+     * Missing positions are sent as empty strings: the template guards each
+     * row on its own title, so a search with one breakout renders one row.
+     *
+     * @param  array<int, array<string, string>>  $picks
+     * @return array<string, string>
+     */
+    private static function flattenPicks(string $prefix, array $picks, int $slots = 3): array
+    {
+        $flat = [];
+
+        for ($i = 0; $i < $slots; $i++) {
+            $pick = $picks[$i] ?? [];
+
+            foreach (['Title', 'Handle', 'Views', 'Score', 'Thumbnail'] as $field) {
+                $flat[$prefix.($i + 1).$field] = (string) ($pick[lcfirst($field)] ?? '');
+            }
+        }
+
+        return $flat;
     }
 
     private static function payload(string $notification, User $user, array $params, ?EmailContext $context = null): array
@@ -411,6 +571,67 @@ class BrevoTransactionalEmail
     private static function firstName(string $name): string
     {
         return str($name)->trim()->before(' ')->value() ?: 'there';
+    }
+
+    /**
+     * The zone dates in email copy are rendered in.
+     *
+     * Lifecycle mail is written to wall-clock times ("we will try again on
+     * March 4"), so it reads on the same clock the send slots use rather than
+     * on app.timezone, which is UTC here.
+     */
+    private static function timezone(): string
+    {
+        return (string) config('email_lifecycle.timezone', config('app.timezone', 'UTC'));
+    }
+
+    /**
+     * Last four digits of the card cached on the subscription by the Stripe
+     * webhook. Empty when nothing is cached, which the templates handle by
+     * simply naming no card.
+     */
+    private static function cardLast4(Subscription $subscription): string
+    {
+        return (string) data_get($subscription->metadata, 'card.last4', '');
+    }
+
+    /**
+     * The day access pauses if a failed payment is not fixed.
+     *
+     * Counted from today rather than from the invoice, because every dunning
+     * email in the sequence has to name the same deadline, and only the first
+     * one is triggered by an invoice event.
+     */
+    private static function lockDate(): string
+    {
+        return CarbonImmutable::now(self::timezone())
+            ->addDays((int) config('email_lifecycle.dunning.lock_after_days', 7))
+            ->format('F j, Y');
+    }
+
+    /**
+     * What the plan costs, formatted for body copy.
+     *
+     * Read from the plan rather than the Stripe invoice so the card-expiry
+     * warning, which has no invoice behind it, can name a figure too.
+     */
+    private static function planAmount(Subscription $subscription): string
+    {
+        $cents = $subscription->plan?->price_cents;
+
+        if (! is_numeric($cents) || (int) $cents <= 0) {
+            return 'your usual amount';
+        }
+
+        return self::money(((int) $cents) / 100, (string) ($subscription->plan?->currency ?? 'USD'));
+    }
+
+    public static function money(float $amount, string $currency = 'USD'): string
+    {
+        $symbols = ['USD' => '$', 'EUR' => '€', 'GBP' => '£', 'PHP' => '₱'];
+        $symbol = $symbols[strtoupper($currency)] ?? (strtoupper($currency).' ');
+
+        return $symbol.number_format($amount, 2);
     }
 
     private static function limitLabel(mixed $limit): int|string

@@ -8,11 +8,13 @@ use App\Models\Subscription;
 use App\Services\Brevo\BrevoLifecycleEmailService;
 use App\Services\Lifecycle\LifecycleCandidate;
 use App\Services\Lifecycle\LifecycleFlow;
+use App\Services\Lifecycle\LifecycleSchedule;
 use Carbon\CarbonImmutable;
 
 /**
- * The two teaching moments inside the 8-day trial: how to read a Breakout
- * Score on day 2, and one real breakout from their own searches on day 7.
+ * The three teaching moments inside the 8-day trial: how to read a Breakout
+ * Score on day 2, what video analysis gives you on day 5, and one real
+ * breakout from their own searches on day 7.
  *
  * Day 7 sends nothing when there is no video to show. A "look at this
  * breakout" email with no breakout in it is worse than silence, and it lands
@@ -20,9 +22,12 @@ use Carbon\CarbonImmutable;
  */
 class TrialNudgeFlow implements LifecycleFlow
 {
-    private const BREAKOUT_SCORE_DAY = 2;
-
-    private const ONE_BREAKOUT_DAY = 7;
+    /** Which day of the trial each email lands on, in sequence order. */
+    private const TEMPLATES = [
+        'trial_breakout_score',
+        'trial_day5_video_analysis',
+        'trial_one_breakout',
+    ];
 
     private const TRIAL_STATUSES = ['trialing', 'trial'];
 
@@ -57,7 +62,15 @@ class TrialNudgeFlow implements LifecycleFlow
                 ->startOfDay()
                 ->diffInDays($today, false);
 
-            if ($dayOfTrial === self::BREAKOUT_SCORE_DAY) {
+            // Day offsets live in config/email_lifecycle.php next to the send
+            // slots, so moving an email in the trial sequence is a config edit.
+            $templateKey = LifecycleSchedule::stages(self::TEMPLATES)[$dayOfTrial] ?? null;
+
+            if ($templateKey === null) {
+                continue;
+            }
+
+            if ($templateKey === 'trial_breakout_score') {
                 yield new LifecycleCandidate(
                     flowKey: 'trial_breakout_score',
                     dedupeKey: "subscription:{$subscription->id}",
@@ -70,7 +83,16 @@ class TrialNudgeFlow implements LifecycleFlow
                 continue;
             }
 
-            if ($dayOfTrial !== self::ONE_BREAKOUT_DAY) {
+            if ($templateKey === 'trial_day5_video_analysis') {
+                yield new LifecycleCandidate(
+                    flowKey: 'trial_day5_video_analysis',
+                    dedupeKey: "subscription:{$subscription->id}",
+                    user: $user,
+                    send: fn (): bool => $this->emails->sendTrialDay5VideoAnalysis($user, $subscription),
+                    templateKey: 'trial_day5_video_analysis',
+                    context: ['subscription_id' => $subscription->id, 'day_of_trial' => $dayOfTrial],
+                );
+
                 continue;
             }
 
@@ -130,9 +152,11 @@ class TrialNudgeFlow implements LifecycleFlow
         return [$row->search, [
             'handle' => $row->video->username ? '@'.$row->video->username : '',
             'caption' => (string) ($row->video->title ?? ''),
-            'thumbnail' => (string) ($row->video->thumbnail_url ?? ''),
+            'thumbnail' => (string) ($row->video?->previewImageUrl() ?? ''),
             'views' => number_format((int) ($row->video->views ?? 0)),
             'score' => $row->viral_score === null ? '' : (string) round((float) $row->viral_score, 1),
+            // The day-7 email links the video itself, not just the results page.
+            'url' => (string) ($row->video->video_url ?? ''),
         ]];
     }
 }

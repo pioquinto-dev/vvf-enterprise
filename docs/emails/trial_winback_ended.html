@@ -5,10 +5,10 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="x-apple-disable-message-reformatting">
 <meta name="color-scheme" content="light">
-<title>Your trial ended</title>
+<title>Your 8-day trial ended</title>
 <!--[if mso]><xml><o:OfficeDocumentSettings><o:PixelsPerInch>96</o:PixelsPerInch></o:OfficeDocumentSettings></xml><![endif]-->
 <style>
-  /* Progressive enhancement only - the inline styles above carry the layout. */
+  /* Progressive enhancement only - the inline styles carry the layout. */
   body { margin:0; padding:0; width:100% !important; -webkit-text-size-adjust:100%; -ms-text-size-adjust:100%; }
   table { border-collapse:collapse !important; }
   img { -ms-interpolation-mode:bicubic; }
@@ -16,47 +16,51 @@
   @media only screen and (max-width:620px) {
     .bb-wrap { width:100% !important; }
     .bb-pad { padding-left:20px !important; padding-right:20px !important; }
-    .bb-h1 { font-size:23px !important; line-height:31px !important; }
     .bb-btn a { display:block !important; width:100% !important; box-sizing:border-box; text-align:center; }
   }
 </style>
 </head>
-<body style="margin:0;padding:0;background:#FAF9F6;">
-  <!-- Inbox preview line. Editable per template in Admin -> Email Templates;
-       the trailing entities stop clients pulling body copy in after it. -->
+<body style="margin:0;padding:0;background:#F5F4F0;">
+  <!-- Inbox preview line. Editable per template in Admin -> Email Templates. -->
   <div style="display:none;max-height:0;overflow:hidden;mso-hide:all;opacity:0;">{{ params.previewText }}</div>
   <div style="display:none;max-height:0;overflow:hidden;mso-hide:all;opacity:0;">&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;</div>
-  <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background:#FAF9F6;">
+  <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background:#F5F4F0;">
     <tr>
       <td align="center" style="padding:24px 12px;">
-        <table role="presentation" class="bb-wrap" cellpadding="0" cellspacing="0" border="0" width="600" style="width:600px;max-width:600px;background:#ffffff;border:1px solid #E7E4DD;border-radius:18px;">
+        <table role="presentation" class="bb-wrap" cellpadding="0" cellspacing="0" border="0" width="600" style="width:600px;max-width:600px;background:#FFFFFF;border:1px solid #EAE7E0;border-radius:10px;">
+          <!-- Masthead: wordmark and the one-word purpose of this email. -->
           <tr>
-            <td class="bb-pad" style="padding:28px 32px 0;">
-              <img src="{{ params.logoUrl }}" alt="{{ params.appName }}" width="132" style="display:block;width:132px;max-width:60%;height:auto;border:0;margin:0 0 24px;">
-            </td>
-          </tr>
-          <tr>
-            <td class="bb-pad bb-btn" style="padding:0 32px 30px;">
-              <h1 class="bb-h1" style="margin:0 0 18px;font-family:Helvetica,Arial,sans-serif;font-size:26px;line-height:34px;font-weight:bold;color:#0B0B0B;letter-spacing:-0.5px;">Your 8-day trial ended</h1>
-              <p style="margin:0 0 16px;font-family:Helvetica,Arial,sans-serif;font-size:16px;line-height:26px;color:#57544D;">Your account is paused as of {{ params.endedOn }}. Your searches, saved videos and analyses are all still there.</p>
-              <p style="margin:0 0 16px;font-family:Helvetica,Arial,sans-serif;font-size:16px;line-height:26px;color:#57544D;">If you decided against it, a one-line reply telling us why is genuinely useful and we do read them.</p>
-              <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:26px 0 0;">
-                <tr><td align="center" bgcolor="#FFC629" style="border-radius:999px;">
-                  <a href="{{ params.plansUrl }}" target="_blank"
-                     style="display:inline-block;padding:15px 30px;font-family:Helvetica,Arial,sans-serif;font-size:16px;font-weight:bold;line-height:20px;color:#1A1400;text-decoration:none;border-radius:999px;">Subscribe</a>
-                </td></tr>
+            <td class="bb-pad" style="padding:17px 32px 15px;border-bottom:1px solid #EAE7E0;">
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+                <tr>
+                  <td style="font-family:-apple-system,'Segoe UI',Helvetica,Arial,sans-serif;font-size:15px;font-weight:bold;letter-spacing:-0.4px;color:#0B0B0B;padding-right:10px;">{{ params.appName }}</td>
+                  <td style="font-family:-apple-system,'Segoe UI',Helvetica,Arial,sans-serif;font-size:11px;font-weight:bold;letter-spacing:1.1px;text-transform:uppercase;color:#5C5A54;">Trial ended</td>
+                </tr>
               </table>
             </td>
           </tr>
           <tr>
-            <td class="bb-pad" style="padding:20px 32px 26px;border-top:1px solid #E7E4DD;">
-              <p style="margin:0;font-family:Helvetica,Arial,sans-serif;font-size:12px;line-height:18px;color:#8A857C;">
-                Sent by {{ params.appName }}.
+            <td class="bb-pad" style="padding:18px 32px 26px;">
+              <p style="margin:0 0 14px;font-family:-apple-system,'Segoe UI',Helvetica,Arial,sans-serif;font-size:16px;line-height:26px;color:#1A1813;">Hi <span style="font-family:ui-monospace,Menlo,Consolas,monospace;font-size:0.88em;color:#945E00;word-break:break-all;">{{ params.firstName }}</span>,</p>
+              <p style="margin:0 0 14px;font-family:-apple-system,'Segoe UI',Helvetica,Arial,sans-serif;font-size:16px;line-height:26px;color:#1A1813;">Your BrandBeacon trial ended yesterday.</p>
+              <p style="margin:0 0 14px;font-family:-apple-system,'Segoe UI',Helvetica,Arial,sans-serif;font-size:16px;line-height:26px;color:#1A1813;">New searches and video analysis are paused. Everything you already ran is still in your account and stays there whether you come back or not.</p>
+              <table role="presentation" class="bb-btn" cellpadding="0" cellspacing="0" border="0" style="margin:22px 0 0;">
+                <tr><td bgcolor="#FFC629" style="border-radius:6px;">
+                  <a href="{{ params.plansUrl }}" target="_blank"
+                     style="display:inline-block;padding:13px 22px;font-family:-apple-system,'Segoe UI',Helvetica,Arial,sans-serif;font-size:16px;font-weight:bold;line-height:20px;color:#0B0B0B;text-decoration:none;border-radius:6px;">Subscribe</a>
+                </td></tr>
+              </table>
+              <p class="bb-url" style="margin:8px 0 0;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:13px;line-height:20px;color:#5C5A54;word-break:break-all;">{{ params.plansUrl }}</p>
+              <p style="margin:0 0 14px;font-family:-apple-system,'Segoe UI',Helvetica,Arial,sans-serif;font-size:16px;line-height:26px;color:#1A1813;">We&rsquo;re a small team and still shaping this. If you have a minute, reply and tell me what would have made BrandBeacon worth keeping.</p>
+              <p style="margin:18px 0 0;font-family:-apple-system,'Segoe UI',Helvetica,Arial,sans-serif;font-size:16px;line-height:26px;color:#1A1813;">Ivan</p>
+            </td>
+          </tr>
+          <tr>
+            <td class="bb-pad" style="padding:16px 32px 20px;border-top:1px solid #EAE7E0;">
+              <p style="margin:0;font-family:-apple-system,'Segoe UI',Helvetica,Arial,sans-serif;font-size:12px;line-height:18px;color:#5C5A54;">Sent because your trial ended without a subscription.</p>
+              <p style="margin:8px 0 0;font-family:-apple-system,'Segoe UI',Helvetica,Arial,sans-serif;font-size:12px;line-height:18px;color:#5C5A54;">
+                <a href="{{ params.unsubscribeUrl }}" style="color:#5C5A54;text-decoration:underline;">Unsubscribe</a> from emails like this one.
               </p>
-                  <p style="margin:10px 0 0;font-family:Helvetica,Arial,sans-serif;font-size:12px;line-height:18px;color:#8A857C;">
-                    Don't want these emails?
-                    <a href="{{ params.unsubscribeUrl }}" style="color:#8A857C;text-decoration:underline;">Unsubscribe</a>.
-                  </p>
             </td>
           </tr>
         </table>
