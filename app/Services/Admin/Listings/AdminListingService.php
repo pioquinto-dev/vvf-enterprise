@@ -127,8 +127,9 @@ class AdminListingService
 
         $total = (clone $query)->count();
 
+        $this->listings->applySort($resource, $query, $activeFilters['sort'] ?? null);
+
         $records = $query
-            ->latest($query->getModel()->getQualifiedCreatedAtColumn())
             ->forPage($page, self::PER_PAGE)
             ->get();
 
@@ -138,7 +139,12 @@ class AdminListingService
             ...$this->listings->mapRow($resource, $record),
             'values' => $this->listings->editValues($resource, $record),
             'trashed' => method_exists($record, 'trashed') && $record->trashed(),
-            'archived' => isset($record->archived_at) && $record->archived_at !== null,
+            // Email templates have no archived_at column of their own: being
+            // "archived" here means disabled, the same state the row menu's
+            // Archive/Unarchive action toggles.
+            'archived' => $resource === 'email-templates'
+                ? ! (bool) $record->is_enabled
+                : (isset($record->archived_at) && $record->archived_at !== null),
         ])->all();
 
         return [$rows, $total, $insights];

@@ -41,7 +41,7 @@ class AcquisitionDashboardServiceTest extends TestCase
         $this->assertSame(1, $payload['cohort']['totals']['trials']);
         $signupSources = collect($payload['cohort']['groups'])->keyBy('source');
         $this->assertSame(1, $signupSources['meta']['signups']);
-        $this->assertSame(1, $signupSources['Source not recorded']['signups']);
+        $this->assertSame(1, $signupSources['direct']['signups']);
         $this->assertSame(1, $signupSources['meta']['trials']);
 
         $funnel = collect($payload['funnel']['steps'])->keyBy('key');

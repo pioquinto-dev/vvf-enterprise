@@ -81,6 +81,16 @@ class AdminListingMutator
 
     public function archive(Model $record, bool $archived): void
     {
+        // Email templates have no archived_at column: archiving one here
+        // means disabling it, the same switch as the "Enabled" toggle in the
+        // edit drawer, just reachable as a one-click row action too.
+        if ($record instanceof EmailTemplate) {
+            $record->forceFill(['is_enabled' => ! $archived])->save();
+            EmailTemplateRegistry::forget();
+
+            return;
+        }
+
         if (! in_array($record::class, [ViralVideo::class, PricingPlan::class, IndexedKeyword::class], true)) {
             throw ValidationException::withMessages(['archive' => 'This resource cannot be archived.']);
         }

@@ -36,7 +36,10 @@ class AcquisitionCohortService
             return [
                 'id' => $user->id, 'name' => $user->name, 'email' => $user->email,
                 'signup_at' => $user->created_at->toIso8601String(),
-                'source' => $source === '' ? 'Source not recorded' : $source,
+                // No source captured on the signup attribution reads as direct
+                // traffic, matching how utm_page_visits reports no-source,
+                // no-referrer visits.
+                'source' => $source === '' ? 'direct' : $source,
                 'medium' => $medium === '' ? 'Medium not recorded' : $medium,
                 'campaign' => trim((string) $attribution?->utm_campaign) ?: 'No campaign recorded',
                 'signups' => true,

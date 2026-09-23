@@ -292,7 +292,7 @@ Important:
 ### UTM acquisition reporting
 
 - The "Where they come from" table selects a signup cohort in UTC and follows its outcomes through the current time. Source/medium rows expand into campaigns; counts open paginated user drilldowns over the complete cohort. Each user counts once per outcome, including soft-deleted accounts and searches.
-- Acquisition uses the earliest signup attribution, excluding subscription copies. Missing source is labeled "Source not recorded"; missing medium and campaign are hidden from user rows. Campaign expansion uses "No campaign recorded" for missing tags. No direct/paid/organic classification is inferred from missing data. Coupon membership is shown separately.
+- Acquisition uses the earliest signup attribution, excluding subscription copies. Missing source is labeled "direct" (mirrors `utm_page_visits`'s no-source/no-referrer handling, and applies to every signup, new or already on file, since the cohort report recomputes from stored attribution on each view); missing medium and campaign are hidden from user rows. Campaign expansion uses "No campaign recorded" for missing tags. No paid/organic classification is inferred beyond that. Coupon membership is shown separately.
 - Cohort trial starts use historical timestamps regardless of current subscription status. Paid conversions use subscription-paid/reactivated/payment-recovered activity or current paid status; trial completion alone is not payment evidence. Canceled legacy customers without recorded paid evidence may be missing, as disclosed in the panel.
 - The separate operations conversion funnel retains its event-window semantics; it is not the signup-cohort report.
 

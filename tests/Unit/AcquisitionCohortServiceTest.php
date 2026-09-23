@@ -43,7 +43,7 @@ class AcquisitionCohortServiceTest extends TestCase
         $this->assertSame('paid_social', $groups['tiktok']['medium']);
         $this->assertSame('Launch', $groups['tiktok']['campaigns'][0]['campaign']);
         $this->assertSame(1, $groups['tiktok']['paid']);
-        $this->assertSame(0, $groups['Source not recorded']['paid']);
+        $this->assertSame(0, $groups['direct']['paid']);
         $this->assertCount(2, $payload['rows']);
     }
 

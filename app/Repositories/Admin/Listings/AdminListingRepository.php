@@ -68,10 +68,10 @@ class AdminListingRepository
             'subscription' => ['search', 'status', 'plan', 'type'],
             'users' => ['search', 'status', 'plan'],
             'admin-users' => ['search', 'role', 'status'],
-            'keyword-index' => ['search', 'type', 'status'],
+            'keyword-index' => ['search', 'type', 'status', 'source'],
             'coupon-programs' => ['search', 'status'],
             'coupon-whitelist' => ['search', 'program'],
-            'email-templates' => ['search', 'status'],
+            'email-templates' => ['search', 'status', 'kind', 'sort'],
             'coupon-usage' => ['search', 'program'],
             default => ['search'],
         };
@@ -115,6 +115,7 @@ class AdminListingRepository
             'keyword-index' => [
                 ['name' => 'type', 'label' => 'Type', 'options' => ['brand', 'product']],
                 ['name' => 'status', 'label' => 'Status', 'options' => ['live', 'archived', 'deleted']],
+                ['name' => 'source', 'label' => 'Source', 'options' => $this->keywordSourceOptions()],
             ],
             'coupon-programs' => [
                 ['name' => 'status', 'label' => 'Status', 'options' => ['active', 'inactive']],
@@ -123,7 +124,14 @@ class AdminListingRepository
                 ['name' => 'program', 'label' => 'Program', 'options' => $this->couponProgramOptions()],
             ],
             'email-templates' => [
-                ['name' => 'status', 'label' => 'Status', 'options' => ['enabled', 'disabled', 'unmapped', 'unwired', 'deleted']],
+                ['name' => 'status', 'label' => 'Status', 'options' => ['enabled', 'unmapped', 'deleted']],
+                ['name' => 'kind', 'label' => 'Kind', 'options' => ['marketing', 'transactional']],
+                ['name' => 'sort', 'label' => 'Sort by', 'options' => [
+                    ['value' => 'name', 'label' => 'Email name'],
+                    ['value' => 'brevo_template', 'label' => 'Brevo Template (#1 to last)'],
+                    ['value' => 'last_edited', 'label' => 'Last edited'],
+                    ['value' => 'last_created', 'label' => 'Last created'],
+                ]],
             ],
             'coupon-usage' => [
                 ['name' => 'program', 'label' => 'Program', 'options' => $this->couponProgramOptions()],
@@ -149,6 +157,7 @@ class AdminListingRepository
                 ['key' => 'type', 'label' => 'Type'],
                 ['key' => 'owner', 'label' => 'Owner'],
                 ['key' => 'status', 'label' => 'Status'],
+                ['key' => 'searched_at', 'label' => 'Searched'],
             ],
             'inquiries' => [
                 ['key' => 'contact', 'label' => 'Contact'],
@@ -311,25 +320,37 @@ class AdminListingRepository
             return;
         }
 
-        if ($name === 'status') {
-            $this->applyStatusFilter($resource, $query, $value);
+        // Resource-specific status handling must run before the generic
+        // status filter below: it always matches on name alone and would
+        // otherwise swallow every resource's status filter, including this
+        // one, before it ever runs.
+        if ($name === 'status' && $resource === 'email-templates') {
+            match ($value) {
+                'enabled' => $query->whereNull('deleted_at')->where('is_enabled', true),
+                // A template with no Brevo id cannot send — worth surfacing on
+                // its own, because it fails at send time rather than here.
+                'unmapped' => $query->whereNull('deleted_at')->whereNull('brevo_template_id'),
+                'deleted' => $query->whereNotNull('deleted_at'),
+                default => $query->whereNull('deleted_at'),
+            };
 
             return;
         }
 
-        if ($name === 'status' && $resource === 'email-templates') {
-            match ($value) {
-                'enabled' => $query->whereNull('deleted_at')->where('is_enabled', true),
-                'disabled' => $query->whereNull('deleted_at')->where('is_enabled', false),
-                // A template with no Brevo id cannot send — worth surfacing on
-                // its own, because it fails at send time rather than here.
-                'unmapped' => $query->whereNull('deleted_at')->whereNull('brevo_template_id'),
-                // Created by hand and not referenced by any flow, so nothing
-                // will ever send it.
-                'unwired' => $query->whereNotIn('key', array_keys((array) config('brevo_notifications.notifications', []))),
-                'deleted' => $query->whereNotNull('deleted_at'),
-                default => $query->whereNull('deleted_at'),
-            };
+        if ($name === 'kind' && $resource === 'email-templates') {
+            $query->where('is_transactional', $value === 'transactional');
+
+            return;
+        }
+
+        if ($name === 'source' && $resource === 'keyword-index') {
+            $query->where('source', $value);
+
+            return;
+        }
+
+        if ($name === 'status') {
+            $this->applyStatusFilter($resource, $query, $value);
 
             return;
         }
@@ -563,6 +584,7 @@ class AdminListingRepository
                 'type' => $record->search_type ?? '-',
                 'owner' => $record->user?->name ?? $record->user?->email ?? 'Guest',
                 'status' => $record->trashed() ? 'deleted' : $record->status,
+                'searched_at' => $record->created_at?->format('M j, Y g:i A') ?? '-',
                 'preview' => [
                     'eyebrow' => 'Search record',
                     'summary' => $record->phrase ?: $record->name,
@@ -1016,6 +1038,50 @@ class AdminListingRepository
             ->all();
     }
 
+    /**
+     * Distinct source tags actually present on indexed keywords, so the
+     * filter never drifts from what admins can really pick between.
+     *
+     * @return array<int, array<string, string>>
+     */
+    private function keywordSourceOptions(): array
+    {
+        return IndexedKeyword::query()
+            ->withTrashed()
+            ->whereNotNull('source')
+            ->distinct()
+            ->orderBy('source')
+            ->pluck('source')
+            ->map(fn (string $source): array => [
+                'value' => $source,
+                'label' => Str::headline(str_replace('_', ' ', $source)),
+            ])
+            ->all();
+    }
+
+    /**
+     * Applies the "Sort by" chip. Only email-templates exposes one today;
+     * every other resource keeps the newest-first ordering it always had.
+     */
+    public function applySort(string $resource, Builder $query, ?string $sort): void
+    {
+        if ($resource === 'email-templates') {
+            match ($sort) {
+                'name' => $query->orderBy('label'),
+                // Nulls (unmapped templates) sort after numbered ones so the
+                // ordering reads as "#1 to last", not scattered.
+                'brevo_template' => $query->orderByRaw('brevo_template_id IS NULL')->orderBy('brevo_template_id'),
+                'last_edited' => $query->latest('updated_at'),
+                'last_created' => $query->latest($query->getModel()->getQualifiedCreatedAtColumn()),
+                default => $query->latest($query->getModel()->getQualifiedCreatedAtColumn()),
+            };
+
+            return;
+        }
+
+        $query->latest($query->getModel()->getQualifiedCreatedAtColumn());
+    }
+
     private function viralVideoStatus(ViralVideo $video): string
     {
         return match (true) {
@@ -1350,7 +1416,7 @@ class AdminListingRepository
             'coupon-whitelist' => ['preview' => true, 'edit' => false, 'archive' => false, 'delete' => true],
             // `createLabel` drives a generic New button in the listing toolbar,
             // so a new creatable resource no longer needs its own branch there.
-            'email-templates' => ['preview' => true, 'edit' => true, 'archive' => false, 'delete' => true, 'create' => true, 'createLabel' => 'New email template'],
+            'email-templates' => ['preview' => true, 'edit' => true, 'archive' => true, 'delete' => true, 'create' => true, 'createLabel' => 'New email template'],
             'coupon-usage' => ['preview' => true, 'edit' => false, 'archive' => false, 'delete' => false],
             default => ['preview' => false, 'edit' => false, 'archive' => false, 'delete' => false],
         };
