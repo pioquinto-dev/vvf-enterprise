@@ -593,7 +593,7 @@ class AdminListingRepository
                 'search' => $record->name,
                 'type' => $record->search_type ?? '-',
                 'owner' => $record->user?->name ?? $record->user?->email ?? 'Guest',
-                'status' => $record->trashed() ? 'deleted' : $record->status,
+                'status' => $this->searchStatus($record),
                 'searched_at' => $record->created_at?->format('M j, Y g:i A') ?? '-',
                 'preview' => [
                     'eyebrow' => 'Search record',
@@ -606,7 +606,7 @@ class AdminListingRepository
                                 ['label' => 'Phrase', 'value' => $record->phrase],
                                 ['label' => 'Type', 'value' => $record->search_type],
                                 ['label' => 'Owner', 'value' => $record->user?->name ?? $record->user?->email ?? 'Guest'],
-                                ['label' => 'Status', 'value' => $record->trashed() ? 'deleted' : $record->status],
+                                ['label' => 'Status', 'value' => $this->searchStatus($record)],
                                 ['label' => 'Frequency', 'value' => $record->frequency],
                             ],
                         ],
@@ -840,6 +840,7 @@ class AdminListingRepository
     private function mapSubscriptionRow(Subscription $record): array
     {
         $usage = $this->subscriptionUsage($record);
+        $status = $record->trashed() ? 'deleted' : $record->status;
 
         return [
             'id' => $record->id,
@@ -851,7 +852,7 @@ class AdminListingRepository
             },
             'plan' => $record->plan?->name ?? '-',
             'credits' => $this->creditSummary($usage['search']),
-            'status' => $record->trashed() ? 'deleted' : $record->status,
+            'status' => $status,
             'renewal' => $record->current_period_ends_at?->format('M j') ?? '-',
             'preview' => [
                 'eyebrow' => 'Subscription',
@@ -862,7 +863,7 @@ class AdminListingRepository
                         'fields' => [
                             ['label' => 'Name', 'value' => $record->user?->name],
                             ['label' => 'Email', 'value' => $record->user?->email],
-                            ['label' => 'Status', 'value' => $record->trashed() ? 'deleted' : $record->status],
+                            ['label' => 'Status', 'value' => $status],
                             ['label' => 'Plan', 'value' => $record->plan?->name],
                         ],
                     ],
@@ -893,14 +894,18 @@ class AdminListingRepository
     private function mapUserRow(User $record): array
     {
         $usage = $this->userUsage($record);
+        $status = $record->trashed() ? 'deleted' : 'active';
+        // Queried once and reused below — the column and the preview field
+        // both need the same current plan, not two separate lookups.
+        $currentPlan = $record->subscriptions()->latest('created_at')->first()?->plan?->slug ?? 'free';
 
         return [
             'id' => $record->id,
             'user' => $record->name ?: $record->email,
             'email' => $record->email ?: '-',
-            'plan' => $record->subscriptions()->latest('created_at')->first()?->plan?->slug ?? 'free',
+            'plan' => $currentPlan,
             'credits' => $this->creditSummary($usage['search']),
-            'status' => $record->trashed() ? 'deleted' : 'active',
+            'status' => $status,
             'joined_at' => $record->created_at?->format('M j, Y') ?? '-',
             'preview' => [
                 'eyebrow' => 'User account',
@@ -911,8 +916,8 @@ class AdminListingRepository
                         'fields' => [
                             ['label' => 'Name', 'value' => $record->name],
                             ['label' => 'Email', 'value' => $record->email],
-                            ['label' => 'Current plan', 'value' => $record->subscriptions()->latest('created_at')->first()?->plan?->slug ?? 'free'],
-                            ['label' => 'Status', 'value' => $record->trashed() ? 'deleted' : 'active'],
+                            ['label' => 'Current plan', 'value' => $currentPlan],
+                            ['label' => 'Status', 'value' => $status],
                             ['label' => 'Email verified', 'value' => $this->yesNo($record->email_verified_at !== null)],
                             ['label' => 'Free search used', 'value' => $this->yesNo($record->free_search_used_at !== null)],
                         ],
@@ -1090,6 +1095,11 @@ class AdminListingRepository
         }
 
         $query->latest($query->getModel()->getQualifiedCreatedAtColumn());
+    }
+
+    private function searchStatus(CustomKeywordSearch $search): string
+    {
+        return $search->trashed() ? 'deleted' : $search->status;
     }
 
     private function viralVideoStatus(ViralVideo $video): string
