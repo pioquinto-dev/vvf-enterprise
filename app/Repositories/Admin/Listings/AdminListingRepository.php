@@ -85,19 +85,19 @@ class AdminListingRepository
         return match ($resource) {
             'viral-videos' => [
                 ['name' => 'status', 'label' => 'Status', 'options' => ['visible', 'archived', 'deleted']],
-                ['name' => 'date', 'label' => 'Range', 'options' => ['today', '7d', '30d', 'custom']],
+                ['name' => 'date', 'label' => 'Range', 'options' => $this->dateRangeOptions()],
             ],
             'searches' => [
                 ['name' => 'type', 'label' => 'Type', 'options' => ['brand', 'product']],
                 ['name' => 'owner', 'label' => 'Owner', 'options' => $this->ownerOptions()],
-                ['name' => 'date', 'label' => 'Range', 'options' => ['today', '7d', '30d', 'custom']],
+                ['name' => 'date', 'label' => 'Range', 'options' => $this->dateRangeOptions()],
             ],
             'inquiries' => [
                 ['name' => 'category', 'label' => 'Category', 'options' => ['general', 'account', 'billing', 'feature-request', 'bug-report']],
-                ['name' => 'date', 'label' => 'Range', 'options' => ['today', '7d', '30d', 'custom']],
+                ['name' => 'date', 'label' => 'Range', 'options' => $this->dateRangeOptions()],
             ],
             'newsletter' => [
-                ['name' => 'date', 'label' => 'Range', 'options' => ['today', '7d', '30d', 'custom']],
+                ['name' => 'date', 'label' => 'Range', 'options' => $this->dateRangeOptions()],
             ],
             'plans' => [
                 ['name' => 'status', 'label' => 'Status', 'options' => ['active', 'inactive', 'archived', 'deleted']],
@@ -1102,6 +1102,17 @@ class AdminListingRepository
     }
 
     /**
+     * Same four choices every "Range" filter offers. Pulled out once so the
+     * option list can't drift between resources that both filter by date.
+     *
+     * @return array<int, string>
+     */
+    private function dateRangeOptions(): array
+    {
+        return ['today', '7d', '30d', 'custom'];
+    }
+
+    /**
      * Owners that actually have searches, newest account first. Capped because
      * this renders as a dropdown, not a directory.
      *
@@ -1401,7 +1412,7 @@ class AdminListingRepository
     public function capabilities(string $resource): array
     {
         return match ($resource) {
-            'viral-videos', 'plans' => ['preview' => true, 'edit' => true, 'archive' => true, 'delete' => true],
+            'viral-videos' => ['preview' => true, 'edit' => true, 'archive' => true, 'delete' => true],
             // Searches are an audit trail of what customers ran. Editing or
             // deleting one here would rewrite their history, so this listing
             // stays read-only.
@@ -1410,12 +1421,13 @@ class AdminListingRepository
             'newsletter' => ['preview' => true, 'edit' => false, 'archive' => false, 'delete' => false],
             'subscription' => ['preview' => true, 'edit' => true, 'archive' => false, 'delete' => true],
             'users' => ['preview' => true, 'edit' => true, 'archive' => false, 'delete' => true, 'impersonate' => true],
-            'keyword-index' => ['preview' => true, 'edit' => true, 'archive' => true, 'delete' => true],
             'admin-users' => ['preview' => true, 'edit' => false, 'archive' => false, 'delete' => false],
-            'coupon-programs' => ['preview' => true, 'edit' => true, 'archive' => false, 'delete' => false],
-            'coupon-whitelist' => ['preview' => true, 'edit' => false, 'archive' => false, 'delete' => true],
             // `createLabel` drives a generic New button in the listing toolbar,
-            // so a new creatable resource no longer needs its own branch there.
+            // so a creatable resource no longer needs its own branch in Listing.jsx.
+            'plans' => ['preview' => true, 'edit' => true, 'archive' => true, 'delete' => true, 'create' => true, 'createLabel' => 'New plan'],
+            'keyword-index' => ['preview' => true, 'edit' => true, 'archive' => true, 'delete' => true, 'create' => true, 'createLabel' => 'New keyword'],
+            'coupon-programs' => ['preview' => true, 'edit' => true, 'archive' => false, 'delete' => false, 'create' => true, 'createLabel' => 'New program'],
+            'coupon-whitelist' => ['preview' => true, 'edit' => false, 'archive' => false, 'delete' => true, 'create' => true, 'createLabel' => 'New entry'],
             'email-templates' => ['preview' => true, 'edit' => true, 'archive' => true, 'delete' => true, 'create' => true, 'createLabel' => 'New email template'],
             'coupon-usage' => ['preview' => true, 'edit' => false, 'archive' => false, 'delete' => false],
             default => ['preview' => false, 'edit' => false, 'archive' => false, 'delete' => false],
