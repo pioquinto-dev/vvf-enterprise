@@ -464,7 +464,7 @@ class BrevoTransactionalEmail
                 'views' => number_format((int) ($row->video->views ?? 0)),
                 'score' => $row->viral_score === null ? '' : (string) round((float) $row->viral_score, 1),
                 'thumbnail' => (string) ($row->video?->previewImageUrl() ?? ''),
-                'url' => (string) ($row->video->video_url ?? ''),
+                'url' => (string) ($row->video?->permalinkUrl() ?? ''),
             ])
             ->values()
             ->all();

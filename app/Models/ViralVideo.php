@@ -106,6 +106,37 @@ class ViralVideo extends Model
     }
 
     /**
+     * The link to give someone who wants to watch this video.
+     *
+     * `video_url` is a signed CDN link to the mp4 itself. It is hundreds of
+     * characters long, it expires within days, and pasted into an email it
+     * reads as a wall of noise. `post_url` is the permalink, which is short and
+     * does not expire, so anything sent outside the app links to that.
+     *
+     * Rows ingested before post_url was captured are rebuilt from the handle and
+     * the video id, which is the same shape the mapper writes. When neither is
+     * available this returns null, and the caller is expected to leave the link
+     * out rather than fall back to the CDN URL.
+     */
+    public function permalinkUrl(): ?string
+    {
+        $postUrl = $this->post_url;
+
+        if (is_string($postUrl) && $postUrl !== '') {
+            return $postUrl;
+        }
+
+        $username = ltrim((string) $this->username, '@');
+        $videoId = (string) $this->video_id;
+
+        if ($username !== '' && $videoId !== '') {
+            return "https://www.tiktok.com/@{$username}/video/{$videoId}";
+        }
+
+        return null;
+    }
+
+    /**
      * Shape used by the result cards. Kept here so the API and any future
      * export speak the same language.
      */

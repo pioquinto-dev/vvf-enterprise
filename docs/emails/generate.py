@@ -17,6 +17,11 @@ progressive enhancement.
 The handover's design rule is kept: an email is type. It may add a picture and
 a button. Nothing else.
 
+Video links are permalinks (post_url), never the signed CDN link to the mp4:
+that one runs to hundreds of characters, expires within days, and pasted into a
+sentence it reads as a wall of noise. Where a row has no permalink the link is
+left out and the sentence closes with a full stop instead.
+
 Merge-field names are the app's camelCase params (firstName, dashboardUrl),
 not the board's snake_case mockup labels; the mapping is documented in
 README.md next to this file.
@@ -378,7 +383,8 @@ E("trial_one_breakout", "One breakout from your results", "Your trial",
   para("Quick one from your " + TAG("searchTerm") + " results."),
   figure("videoThumbnail", TAG("videoCaption")),
   para(TAG("videoCaption") + " hit about " + TAG("breakoutScore")
-       + "x what that creator usually does: " + TAG("videoUrl")),
+       + "x what that creator usually does"
+       + IFELSE("params.videoUrl", ": " + TAG("videoUrl"), ".")),
   para("Worth a look before your 8-day trial ends. Your workspace: " + TAG("dashboardUrl")),
   btn("Open your workspace", "dashboardUrl"),
   sign(),
@@ -476,7 +482,8 @@ E("trial_winback_last_note", "Last note about your trial", "Last note",
        + TAG("trialVideos") + " videos, " + TAG("trialBreakouts") + " viral breakouts."),
   IF("breakoutThumbnail", figure("breakoutThumbnail", TAG("breakoutTitle") + " &middot; " + TAG("breakoutScore") + "x")),
   IF("breakoutTitle", para("The strongest was " + TAG("breakoutTitle") + ", at about " + TAG("breakoutScore")
-                           + "x what that creator usually does: " + TAG("breakoutUrl"))),
+                           + "x what that creator usually does"
+                           + IFELSE("params.breakoutUrl", ": " + TAG("breakoutUrl"), "."))),
   para("All of it is still in your account."),
   btn("Subscribe", "plansUrl", show_url=True),
   para("If not, no problem. I will stop nudging about the trial after this."),
@@ -519,7 +526,8 @@ E("churn_winback_last_note", "Last note since you cancelled", "Last note",
   para("Last email from me about coming back."),
   IF("breakoutThumbnail", figure("breakoutThumbnail", TAG("breakoutTitle") + " &middot; " + TAG("breakoutScore") + "x")),
   para("One of the stronger recent finds on " + TAG("searchTerm") + " was " + TAG("breakoutTitle")
-       + ", at about " + TAG("breakoutScore") + "x what that creator usually does: " + TAG("breakoutUrl")),
+       + ", at about " + TAG("breakoutScore") + "x what that creator usually does"
+       + IFELSE("params.breakoutUrl", ": " + TAG("breakoutUrl"), ".")),
   btn("Subscribe", "plansUrl", show_url=True),
   para("If not, no problem. I will stop nudging after this."),
   sign(),

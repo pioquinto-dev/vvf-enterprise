@@ -156,7 +156,9 @@ class TrialNudgeFlow implements LifecycleFlow
             'views' => number_format((int) ($row->video->views ?? 0)),
             'score' => $row->viral_score === null ? '' : (string) round((float) $row->viral_score, 1),
             // The day-7 email links the video itself, not just the results page.
-            'url' => (string) ($row->video->video_url ?? ''),
+            // The permalink, not the signed CDN link to the mp4: that one is
+            // hundreds of characters long and expires within days.
+            'url' => (string) ($row->video?->permalinkUrl() ?? ''),
         ]];
     }
 }

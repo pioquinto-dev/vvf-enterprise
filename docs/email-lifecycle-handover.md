@@ -168,6 +168,9 @@ In the admin screen, under Email Templates, per email:
 - **Video stills come from TikTok's CDN** and expire on their own. A scheduled
   job refreshes them twice a day, and an email that catches a row mid-expiry
   leaves the picture out rather than showing a broken image.
+- **Links to a video are permalinks**, the short tiktok.com address, not the
+  internal media link. The internal one runs to hundreds of characters, expires
+  within days, and would read as a wall of noise in the middle of a sentence.
 
 ## Previewing before launch
 
