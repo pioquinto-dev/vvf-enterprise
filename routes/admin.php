@@ -17,6 +17,7 @@ use App\Http\Controllers\Admin\Subscription\SubscriptionController;
 use App\Http\Controllers\Admin\Support\InquiryController;
 use App\Http\Controllers\Admin\Users\AdminUserController;
 use App\Http\Controllers\Admin\Users\UserController;
+use App\Repositories\Admin\Listings\AdminListingRepository;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('x/admin')
@@ -81,7 +82,7 @@ Route::prefix('x/admin')
             });
 
             Route::post('/records/{resource}', [AdminRecordController::class, 'store'])
-                ->where(['resource' => 'plans|keyword-index|coupon-whitelist|coupon-programs|email-templates'])
+                ->where(['resource' => implode('|', AdminListingRepository::CREATABLE_RESOURCES)])
                 ->name('records.store');
 
             Route::prefix('subscription')->group(function (): void {

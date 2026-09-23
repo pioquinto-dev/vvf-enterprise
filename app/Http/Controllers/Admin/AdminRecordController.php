@@ -30,7 +30,7 @@ class AdminRecordController extends Controller
 
     public function store(Request $request, string $resource): RedirectResponse
     {
-        if (! in_array($resource, ['plans', 'keyword-index', 'coupon-whitelist', 'coupon-programs', 'email-templates'], true)) {
+        if (! in_array($resource, AdminListingRepository::CREATABLE_RESOURCES, true)) {
             throw new NotFoundHttpException('This resource does not support creation.');
         }
 

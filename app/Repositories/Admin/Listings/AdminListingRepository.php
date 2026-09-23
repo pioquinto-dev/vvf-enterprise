@@ -34,6 +34,16 @@ use Illuminate\Support\Str;
  */
 class AdminListingRepository
 {
+    /**
+     * Resources whose admin listing can create a new record. This backs both
+     * the records.store route's {resource} constraint and the controller's
+     * own guard, so the set of creatable resources lives in one place
+     * instead of drifting between the two.
+     *
+     * @var array<int, string>
+     */
+    public const CREATABLE_RESOURCES = ['plans', 'keyword-index', 'coupon-whitelist', 'coupon-programs', 'email-templates'];
+
     public function title(string $resource): string
     {
         return match ($resource) {
